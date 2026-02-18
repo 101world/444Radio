@@ -672,42 +672,76 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
           {/* ── LEFT COLUMN: Blade Runner ID Card ── */}
           <div className="w-full lg:w-[340px] flex-shrink-0 space-y-4">
             {/* ═══ ID CARD ═══ */}
-            <div className="relative bg-[#0b1120]/95 border border-cyan-500/15 rounded-xl overflow-hidden backdrop-blur-md shadow-[0_0_40px_rgba(0,255,255,0.04)]">
+            <style jsx>{`
+              @keyframes cardHoloPulse {
+                0%, 100% { opacity: 0.04; }
+                50% { opacity: 0.08; }
+              }
+              @keyframes borderGlow {
+                0%, 100% { border-color: rgba(6,182,212,0.15); box-shadow: 0 0 20px rgba(6,182,212,0.03); }
+                50% { border-color: rgba(6,182,212,0.3); box-shadow: 0 0 40px rgba(6,182,212,0.08), 0 0 80px rgba(6,182,212,0.03); }
+              }
+              @keyframes scanLine {
+                0% { top: -10%; }
+                100% { top: 110%; }
+              }
+              @keyframes statPulse {
+                0%, 100% { text-shadow: 0 0 4px rgba(6,182,212,0.3); }
+                50% { text-shadow: 0 0 12px rgba(6,182,212,0.6), 0 0 20px rgba(6,182,212,0.2); }
+              }
+              .id-card-glow { animation: borderGlow 4s ease-in-out infinite; }
+              .stat-glow { animation: statPulse 3s ease-in-out infinite; }
+            `}</style>
+            <div className="relative id-card-glow bg-[#0a0e1a]/95 border border-cyan-500/15 rounded-2xl overflow-hidden backdrop-blur-xl"
+              style={{ boxShadow: '0 0 40px rgba(6,182,212,0.04), 0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(6,182,212,0.08)' }}>
               {/* Scan line overlay on entire card */}
               <div className="absolute inset-0 pointer-events-none opacity-[0.03] z-20"
                 style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,255,0.3) 2px, rgba(0,255,255,0.3) 3px)' }} />
+              {/* Moving scan line */}
+              <div className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent pointer-events-none z-20"
+                style={{ animation: 'scanLine 6s linear infinite' }} />
+              {/* Holographic shimmer overlay */}
+              <div className="absolute inset-0 pointer-events-none z-10 opacity-[0.04]"
+                style={{
+                  background: 'linear-gradient(135deg, transparent 30%, rgba(6,182,212,0.15) 40%, rgba(139,92,246,0.1) 50%, rgba(6,182,212,0.15) 60%, transparent 70%)',
+                  backgroundSize: '200% 200%',
+                  animation: 'cardHoloPulse 4s ease-in-out infinite',
+                }} />
               
               {/* ── CARD HEADER ── */}
-              <div className="relative px-4 py-2.5 border-b border-cyan-500/15 bg-gradient-to-r from-cyan-500/[0.06] to-transparent">
+              <div className="relative px-4 py-3 border-b border-cyan-500/15 bg-gradient-to-r from-cyan-500/[0.08] via-cyan-500/[0.03] to-transparent">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-mono font-bold text-cyan-400/90 tracking-wider">🎵 444RADIO</span>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.6)]" />
+                    <span className="text-[11px] font-mono font-bold text-cyan-400/90 tracking-wider">444RADIO</span>
+                    <div className="h-3 w-px bg-cyan-500/20" />
+                    <span className="text-[8px] font-mono text-cyan-500/40 tracking-[0.2em]">ARTIST ID</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[9px] font-mono text-cyan-500/50 tracking-wider">SIGNAL</span>
-                    <div className="flex items-center gap-[3px]">
-                      <div className="w-[3px] h-2 bg-cyan-400/60 rounded-sm" />
-                      <div className="w-[3px] h-3 bg-cyan-400/60 rounded-sm" />
-                      <div className="w-[3px] h-4 bg-cyan-400/70 rounded-sm" />
-                      <div className="w-[3px] h-3.5 bg-cyan-400/40 rounded-sm" />
-                      <div className="w-[3px] h-2.5 bg-cyan-500/20 rounded-sm" />
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-[8px] font-mono text-cyan-500/40 tracking-wider">SIGNAL</span>
+                    <div className="flex items-center gap-[2px]">
+                      <div className="w-[3px] h-1.5 bg-cyan-400/70 rounded-sm" />
+                      <div className="w-[3px] h-2.5 bg-cyan-400/70 rounded-sm" />
+                      <div className="w-[3px] h-4 bg-cyan-400/80 rounded-sm shadow-[0_0_4px_rgba(6,182,212,0.4)]" />
+                      <div className="w-[3px] h-3 bg-cyan-400/50 rounded-sm" />
+                      <div className="w-[3px] h-2 bg-cyan-500/25 rounded-sm" />
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* ── DESIGNATION ROW ── */}
-              <div className="px-4 pt-3 pb-1">
+              <div className="px-4 pt-3.5 pb-1.5">
                 <div className="flex items-baseline justify-between">
-                  <div>
-                    <p className="text-[9px] font-mono text-cyan-500/50 tracking-[0.15em] mb-0.5">ARTIST</p>
-                    <h1 className="text-2xl font-bold font-mono text-white tracking-wide uppercase truncate">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[8px] font-mono text-cyan-500/50 tracking-[0.2em] mb-1">ARTIST</p>
+                    <h1 className="text-2xl font-bold font-mono text-white tracking-wide uppercase truncate" style={{ textShadow: '0 0 20px rgba(6,182,212,0.15)' }}>
                       {profile.fullName}
                     </h1>
                   </div>
-                  <div className="text-right">
-                    <p className="text-[8px] font-mono text-cyan-500/40 tracking-wider">ACCESS</p>
-                    <p className="text-[10px] font-mono text-cyan-500/30">{'★'.repeat(Math.min(5, Math.max(1, Math.ceil(tracks.length / 5))))}</p>
+                  <div className="text-right flex-shrink-0 ml-3">
+                    <p className="text-[7px] font-mono text-cyan-500/35 tracking-[0.15em]">ACCESS LVL</p>
+                    <p className="text-[11px] font-mono text-cyan-400/50 tracking-wider mt-0.5">{'★'.repeat(Math.min(5, Math.max(1, Math.ceil(tracks.length / 5))))}<span className="text-cyan-500/15">{'★'.repeat(Math.max(0, 5 - Math.min(5, Math.max(1, Math.ceil(tracks.length / 5)))))}</span></p>
                   </div>
                 </div>
               </div>
@@ -717,18 +751,21 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                 <div className="flex gap-4">
                   {/* Photo */}
                   <div className="relative group flex-shrink-0">
-                    <div className="w-[110px] h-[130px] rounded-lg overflow-hidden border border-cyan-500/20"
-                      style={{ boxShadow: '0 0 20px rgba(0,255,255,0.06), inset 0 0 30px rgba(0,0,0,0.3)' }}>
+                    <div className="w-[110px] h-[132px] rounded-lg overflow-hidden border border-cyan-500/25 relative"
+                      style={{ boxShadow: '0 0 25px rgba(6,182,212,0.1), 0 0 50px rgba(6,182,212,0.03), inset 0 0 30px rgba(0,0,0,0.4)' }}>
                       <Image
                         src={profile.avatar_url}
                         alt={profile.username}
                         width={110}
-                        height={130}
+                        height={132}
                         className="w-full h-full object-cover"
-                        style={{ filter: 'saturate(0.7) contrast(1.1)' }}
+                        style={{ filter: 'saturate(0.6) contrast(1.15) brightness(0.95)' }}
                       />
-                      {/* Blue tint overlay like the card */}
-                      <div className="absolute inset-0 bg-cyan-500/[0.08] mix-blend-overlay" />
+                      {/* Blue tint overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-b from-cyan-500/[0.06] via-transparent to-cyan-900/[0.1] mix-blend-overlay" />
+                      {/* Corner accents */}
+                      <div className="absolute top-0 left-0 w-3 h-3 border-t border-l border-cyan-400/30" />
+                      <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-cyan-400/30" />
                     </div>
                     {/* Online indicator */}
                     <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-[#0b1120] rounded-full flex items-center justify-center">
@@ -793,22 +830,26 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
               {/* ── STATS STRIP ── */}
               <div className="px-4 py-3 grid grid-cols-3 gap-2">
                 {[
-                  { label: 'PLAYS', value: fmtNum(totalPlays), icon: BarChart3 },
-                  { label: 'LIKES', value: fmtNum(totalLikes), icon: Heart },
-                  { label: 'RELEASES', value: tracks.length.toString(), icon: Disc3 },
+                  { label: 'PLAYS', value: fmtNum(totalPlays), icon: BarChart3, color: 'text-cyan-400' },
+                  { label: 'LIKES', value: fmtNum(totalLikes), icon: Heart, color: 'text-pink-400' },
+                  { label: 'RELEASES', value: tracks.length.toString(), icon: Disc3, color: 'text-purple-400' },
                 ].map((stat) => (
-                  <div key={stat.label} className="text-center py-2 rounded-lg bg-white/[0.02] border border-white/[0.04]">
-                    <stat.icon size={11} className="text-cyan-500/40 mx-auto mb-1" />
-                    <p className="text-sm font-bold font-mono text-white">{stat.value}</p>
-                    <p className="text-[8px] font-mono text-gray-600 tracking-wider mt-0.5">{stat.label}</p>
+                  <div key={stat.label} className="text-center py-2.5 rounded-lg bg-gradient-to-b from-white/[0.03] to-transparent border border-white/[0.05] hover:border-cyan-500/15 transition-all group/stat">
+                    <stat.icon size={12} className={`${stat.color} opacity-50 mx-auto mb-1.5 group-hover/stat:opacity-80 transition-opacity`} />
+                    <p className="text-sm font-bold font-mono text-white stat-glow">{stat.value}</p>
+                    <p className="text-[7px] font-mono text-gray-600 tracking-[0.15em] mt-0.5">{stat.label}</p>
                   </div>
                 ))}
               </div>
 
               {/* ── BIO / AUTHORIZATION BLOCK ── */}
               <div className="mx-4 h-[1px] bg-gradient-to-r from-cyan-500/30 via-cyan-500/15 to-transparent" />
-              <div className="px-4 py-3">
-                <p className="text-[11px] font-mono text-gray-400 leading-[1.6] uppercase tracking-wide" style={{ fontVariantLigatures: 'none' }}>
+              <div className="px-4 py-3.5">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <div className="w-1 h-2.5 bg-cyan-500/50 rounded-full" />
+                  <span className="text-[7px] font-mono text-cyan-500/40 tracking-[0.2em]">AUTHORIZATION</span>
+                </div>
+                <p className="text-[10.5px] font-mono text-gray-400/90 leading-[1.7] uppercase tracking-wide" style={{ fontVariantLigatures: 'none' }}>
                   {profile.bio || 'NO BIO CONFIGURED. USER HAS NOT PROVIDED ADDITIONAL INFORMATION.'}
                 </p>
               </div>
@@ -824,20 +865,22 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
               </div>
 
               {/* ── CARD FOOTER ── */}
-              <div className="relative px-4 py-2.5 border-t border-cyan-500/15 bg-gradient-to-r from-cyan-500/[0.04] to-transparent">
+              <div className="relative px-4 py-3 border-t border-cyan-500/15 bg-gradient-to-r from-cyan-500/[0.05] via-transparent to-purple-500/[0.03]">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <div className="flex gap-[2px]">
                       {/* Barcode-style lines */}
-                      {Array.from({ length: 16 }, (_, i) => (
-                        <div key={i} className="h-3 rounded-sm bg-cyan-500/20" style={{ width: i % 3 === 0 ? '2px' : '1px' }} />
+                      {Array.from({ length: 20 }, (_, i) => (
+                        <div key={i} className="rounded-sm bg-cyan-500/20" style={{ width: i % 3 === 0 ? '2px' : '1px', height: `${8 + (i % 5) * 2}px` }} />
                       ))}
                     </div>
+                    <div className="h-3 w-px bg-cyan-500/10" />
+                    <span className="text-[7px] font-mono text-cyan-600/30 tracking-wider">{userId.slice(-8).toUpperCase()}</span>
                   </div>
-                  <span className="text-[8px] font-mono text-cyan-600/40 tracking-[0.15em]">
-                    PROPERTY OF 444RADIO<br />
-                    ARTIST / CREATOR UNIT
-                  </span>
+                  <div className="text-right">
+                    <span className="text-[7px] font-mono text-cyan-600/35 tracking-[0.1em] block">PROPERTY OF 444RADIO</span>
+                    <span className="text-[6px] font-mono text-cyan-700/25 tracking-[0.15em] block mt-px">ARTIST / CREATOR UNIT</span>
+                  </div>
                 </div>
               </div>
 

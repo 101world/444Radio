@@ -133,10 +133,10 @@ function Genre3DCard({ genre, trackCount, coverImages, isSelected, onClick }: {
       style={{ perspective: '800px' }}
     >
       <div
-        className={`relative w-full aspect-[4/5] rounded-2xl overflow-hidden border transition-all duration-300 ease-out ${
+        className={`relative w-full aspect-[3/4] rounded-xl overflow-hidden border transition-all duration-300 ease-out ${
           isSelected
             ? 'border-cyan-400/60 shadow-[0_0_40px_rgba(0,255,255,0.2)]'
-            : 'border-white/[0.08] hover:border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.4)]'
+            : 'border-white/[0.08] hover:border-white/20 shadow-[0_6px_24px_rgba(0,0,0,0.4)]'
         }`}
         style={{
           transform: isHovered
@@ -178,21 +178,21 @@ function Genre3DCard({ genre, trackCount, coverImages, isSelected, onClick }: {
         )}
 
         {/* Content */}
-        <div className="absolute inset-0 flex flex-col justify-end p-4" style={{ transform: 'translateZ(30px)', transformStyle: 'preserve-3d' }}>
+        <div className="absolute inset-0 flex flex-col justify-end p-3" style={{ transform: 'translateZ(30px)', transformStyle: 'preserve-3d' }}>
           {/* Genre icon */}
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 backdrop-blur-md border ${
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 backdrop-blur-md border ${
             gs ? `${gs.bg} ${gs.border}` : 'bg-cyan-500/20 border-cyan-500/30'
           }`} style={{ transform: 'translateZ(20px)' }}>
-            <Disc3 size={18} className={gs ? gs.text : 'text-cyan-400'} />
+            <Disc3 size={14} className={gs ? gs.text : 'text-cyan-400'} />
           </div>
 
-          <h3 className="text-lg font-bold text-white capitalize tracking-wide" style={{ transform: 'translateZ(15px)' }}>
+          <h3 className="text-sm font-bold text-white capitalize tracking-wide" style={{ transform: 'translateZ(15px)' }}>
             {genre}
           </h3>
-          <div className="flex items-center gap-2 mt-1" style={{ transform: 'translateZ(10px)' }}>
-            <span className="text-[11px] font-mono text-gray-400">{trackCount} tracks</span>
-            <div className="w-px h-3 bg-white/10" />
-            <span className={`text-[10px] font-semibold ${gs ? gs.text : 'text-cyan-400'}`}>EXPLORE →</span>
+          <div className="flex items-center gap-1.5 mt-0.5" style={{ transform: 'translateZ(10px)' }}>
+            <span className="text-[9px] font-mono text-gray-400">{trackCount} tracks</span>
+            <div className="w-px h-2.5 bg-white/10" />
+            <span className={`text-[8px] font-semibold ${gs ? gs.text : 'text-cyan-400'}`}>EXPLORE →</span>
           </div>
         </div>
 
@@ -206,7 +206,7 @@ function Genre3DCard({ genre, trackCount, coverImages, isSelected, onClick }: {
 }
 
 // ═══════════════════════════════════════════════
-// 3D TRACK CARD — Used inside expanded genre view
+// 3D TRACK CARD — Compact card for expanded genre
 // ═══════════════════════════════════════════════
 function Genre3DTrackCard({ media, index, isCurrentlyPlaying, isPlaying, onPlay, onLyrics, onInfo }: {
   media: CombinedMedia; index: number; isCurrentlyPlaying: boolean; isPlaying: boolean
@@ -222,88 +222,82 @@ function Genre3DTrackCard({ media, index, isCurrentlyPlaying, isPlaying, onPlay,
     const rect = cardRef.current.getBoundingClientRect()
     const x = (e.clientX - rect.left) / rect.width - 0.5
     const y = (e.clientY - rect.top) / rect.height - 0.5
-    setTilt({ x: y * -15, y: x * 15 })
+    setTilt({ x: y * -12, y: x * 12 })
   }
 
   return (
     <div
       ref={cardRef}
       className="cursor-pointer group"
-      style={{ perspective: '600px' }}
+      style={{
+        perspective: '500px',
+        animation: `genre3dFadeIn 0.4s ease-out ${index * 0.03}s both`,
+      }}
       onMouseMove={handleMouseMove}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => { setTilt({ x: 0, y: 0 }); setIsHovered(false) }}
       onClick={onPlay}
     >
       <div
-        className={`relative rounded-xl overflow-hidden border transition-all duration-200 ${
+        className={`relative rounded-lg overflow-hidden border transition-all duration-200 ${
           isCurrentlyPlaying
-            ? 'border-cyan-400/50 shadow-[0_0_30px_rgba(0,255,255,0.15)]'
-            : 'border-white/[0.06] hover:border-white/15 shadow-[0_4px_20px_rgba(0,0,0,0.3)]'
+            ? 'border-cyan-400/50 shadow-[0_0_20px_rgba(0,255,255,0.12)]'
+            : 'border-white/[0.06] hover:border-white/15 shadow-[0_2px_12px_rgba(0,0,0,0.3)]'
         }`}
         style={{
           transform: isHovered
-            ? `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale(1.02)`
+            ? `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale(1.04)`
             : 'rotateX(0) rotateY(0) scale(1)',
           transformStyle: 'preserve-3d',
-          transition: 'transform 0.15s ease-out',
+          transition: 'transform 0.12s ease-out',
         }}
       >
-        {/* Cover art */}
+        {/* Cover art — small square */}
         <div className="aspect-square relative">
           {media.video_url ? (
             <video src={media.video_url} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" />
           ) : media.image_url || media.imageUrl ? (
-            <Image src={media.image_url || media.imageUrl || ''} alt={media.title} width={200} height={200}
-              className="w-full h-full object-cover" loading="lazy" quality={70} unoptimized />
+            <Image src={media.image_url || media.imageUrl || ''} alt={media.title} width={120} height={120}
+              className="w-full h-full object-cover" loading="lazy" quality={60} unoptimized />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center">
-              <Music size={24} className="text-gray-700" />
+              <Music size={16} className="text-gray-700" />
             </div>
           )}
 
-          {/* Gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          {/* Hover overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
 
           {/* Play button */}
           <div className={`absolute inset-0 flex items-center justify-center transition-all ${
             isCurrentlyPlaying ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
           }`}>
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md shadow-2xl transition-transform group-hover:scale-110 ${
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md shadow-lg transition-transform group-hover:scale-110 ${
               isCurrentlyPlaying ? 'bg-cyan-400' : 'bg-white/90'
-            }`} style={{ transform: 'translateZ(40px)' }}>
+            }`}>
               {isCurrentlyPlaying && isPlaying
-                ? <Pause className="text-black" size={16} />
-                : <Play className="text-black ml-0.5" size={16} />}
+                ? <Pause className="text-black" size={11} />
+                : <Play className="text-black ml-0.5" size={11} />}
             </div>
           </div>
 
-          {/* Now playing indicator */}
+          {/* Now playing bars */}
           {isCurrentlyPlaying && isPlaying && (
-            <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/70 backdrop-blur px-2 py-1 rounded-full">
-              <div className="flex items-end gap-[2px] h-3">
-                <div className="w-[2px] bg-cyan-400 rounded-full animate-pulse" style={{ height: '40%' }} />
-                <div className="w-[2px] bg-cyan-400 rounded-full animate-pulse" style={{ height: '80%', animationDelay: '0.15s' }} />
-                <div className="w-[2px] bg-cyan-400 rounded-full animate-pulse" style={{ height: '55%', animationDelay: '0.3s' }} />
+            <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 bg-black/70 backdrop-blur px-1.5 py-0.5 rounded-full">
+              <div className="flex items-end gap-[1.5px] h-2.5">
+                <div className="w-[1.5px] bg-cyan-400 rounded-full animate-pulse" style={{ height: '35%' }} />
+                <div className="w-[1.5px] bg-cyan-400 rounded-full animate-pulse" style={{ height: '75%', animationDelay: '0.15s' }} />
+                <div className="w-[1.5px] bg-cyan-400 rounded-full animate-pulse" style={{ height: '50%', animationDelay: '0.3s' }} />
               </div>
-            </div>
-          )}
-
-          {/* Genre badge */}
-          {gs && (
-            <div className="absolute bottom-2 left-2">
-              <span className={`text-[9px] px-2 py-0.5 rounded-full font-semibold border backdrop-blur-sm ${gs.bg} ${gs.text} ${gs.border}`}>
-                {media.genre}
-              </span>
             </div>
           )}
 
           {/* Info button */}
           {onInfo && (
             <button onClick={e => { e.stopPropagation(); onInfo() }}
-              className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-gray-400 hover:text-cyan-400 opacity-0 group-hover:opacity-100 transition-all z-10"
+              className="absolute top-1.5 left-1.5 w-5 h-5 rounded-full bg-black/50 backdrop-blur flex items-center justify-center text-gray-400 hover:text-cyan-400 opacity-0 group-hover:opacity-100 transition-all z-10"
               title="Track info">
-              <Info size={10} />
+              <Info size={8} />
             </button>
           )}
 
@@ -311,26 +305,26 @@ function Genre3DTrackCard({ media, index, isCurrentlyPlaying, isPlaying, onPlay,
           {isHovered && (
             <div className="absolute inset-0 pointer-events-none"
               style={{
-                background: `radial-gradient(circle at ${(tilt.y / 15 + 0.5) * 100}% ${(-tilt.x / 15 + 0.5) * 100}%, rgba(255,255,255,0.1) 0%, transparent 50%)`,
+                background: `radial-gradient(circle at ${(tilt.y / 12 + 0.5) * 100}% ${(-tilt.x / 12 + 0.5) * 100}%, rgba(255,255,255,0.08) 0%, transparent 45%)`,
               }} />
           )}
         </div>
 
-        {/* Track info */}
-        <div className="p-3 bg-black/60 backdrop-blur-sm">
-          <h3 className={`font-semibold text-sm truncate ${isCurrentlyPlaying ? 'text-cyan-300' : 'text-white'}`}>
+        {/* Track info — tight */}
+        <div className="px-2 py-1.5 bg-black/50">
+          <h3 className={`font-semibold text-[10px] truncate leading-tight ${isCurrentlyPlaying ? 'text-cyan-300' : 'text-white'}`}>
             {media.title}
           </h3>
           {media.user_id && media.user_id !== 'undefined' ? (
-            <Link href={`/profile/${media.user_id}`} className="text-[11px] text-gray-500 hover:text-cyan-400 transition-colors truncate block mt-0.5" onClick={e => e.stopPropagation()}>
+            <Link href={`/profile/${media.user_id}`} className="text-[9px] text-gray-500 hover:text-cyan-400 transition-colors truncate block" onClick={e => e.stopPropagation()}>
               {media.artist_name || media.users?.username || media.username || 'Unknown'}
             </Link>
           ) : (
-            <span className="text-[11px] text-gray-600 truncate block mt-0.5">{media.users?.username || 'Unknown'}</span>
+            <span className="text-[9px] text-gray-600 truncate block">{media.users?.username || 'Unknown'}</span>
           )}
-          <div className="flex items-center gap-2 mt-1.5">
-            <span className="text-[10px] text-gray-600 flex items-center gap-0.5"><Headphones size={9} />{formatPlays(media.plays || 0)}</span>
-            <span className="text-[10px] text-gray-600 flex items-center gap-0.5"><Heart size={9} />{media.likes || 0}</span>
+          <div className="flex items-center gap-1.5 mt-0.5 text-[8px] text-gray-600">
+            <span className="flex items-center gap-0.5"><Headphones size={7} />{formatPlays(media.plays || 0)}</span>
+            <span className="flex items-center gap-0.5"><Heart size={7} />{media.likes || 0}</span>
           </div>
         </div>
       </div>
@@ -534,6 +528,7 @@ function ExplorePageContent() {
   const [selectedLyricsTitle, setSelectedLyricsTitle] = useState<string | null>(null)
   const [infoMedia, setInfoMedia] = useState<CombinedMedia | null>(null)
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null)
+  const [genreTransition, setGenreTransition] = useState<'idle' | 'zooming' | 'visible'>('idle')
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   const { currentTrack: globalCurrentTrack, isPlaying: globalIsPlaying, playTrack, togglePlayPause, setPlaylist } = useAudioPlayer()
@@ -991,49 +986,74 @@ function ExplorePageContent() {
 
             {/* ═══ GENRES TAB ═══ */}
             {activeTab === 'genres' && !isSearchActive && (
-              <div className="pt-4">
+              <div className="pt-4 relative" style={{ perspective: '1200px' }}>
+                {/* 3D Transition CSS */}
+                <style jsx>{`
+                  @keyframes genreZoomIn {
+                    0% { opacity: 0; transform: rotateX(15deg) scale(0.85) translateY(40px); }
+                    60% { opacity: 1; transform: rotateX(-3deg) scale(1.02) translateY(-5px); }
+                    100% { opacity: 1; transform: rotateX(0deg) scale(1) translateY(0); }
+                  }
+                  @keyframes genreZoomOut {
+                    0% { opacity: 1; transform: rotateX(0deg) scale(1); }
+                    100% { opacity: 0; transform: rotateX(-10deg) scale(0.9) translateY(30px); }
+                  }
+                  @keyframes genre3dFadeIn {
+                    0% { opacity: 0; transform: rotateY(8deg) rotateX(5deg) scale(0.88) translateZ(-30px); }
+                    100% { opacity: 1; transform: rotateY(0deg) rotateX(0deg) scale(1) translateZ(0); }
+                  }
+                  @keyframes genreGridFadeIn {
+                    0% { opacity: 0; transform: scale(0.92) translateY(20px); }
+                    100% { opacity: 1; transform: scale(1) translateY(0); }
+                  }
+                  .genre-expanded-enter { animation: genreZoomIn 0.5s cubic-bezier(0.16,1,0.3,1) forwards; }
+                  .genre-grid-enter { animation: genreGridFadeIn 0.35s ease-out forwards; }
+                `}</style>
+
                 {/* ── EXPANDED GENRE VIEW ── */}
                 {selectedGenre ? (() => {
                   const genreTracks = nonStemMedia.filter(m => m.genre?.toLowerCase() === selectedGenre.toLowerCase())
                   const gs = getGenreStyle(selectedGenre)
+                  const gradient = getGenreGradient(selectedGenre)
                   return (
-                    <div className="px-4 md:px-6">
-                      {/* Header with back button */}
-                      <div className="flex items-center gap-4 mb-6">
-                        <button
-                          onClick={() => setSelectedGenre(null)}
-                          className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.08] hover:border-cyan-500/30 flex items-center justify-center text-gray-400 hover:text-cyan-400 transition-all"
-                        >
-                          <ArrowLeft size={16} />
-                        </button>
-                        <div className="flex items-center gap-3 flex-1">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${gs ? gs.bg : 'bg-cyan-500/20'} border ${gs ? gs.border : 'border-cyan-500/30'}`}>
+                    <div className="genre-expanded-enter">
+                      {/* Genre hero strip */}
+                      <div className={`relative mx-4 md:mx-6 mb-5 rounded-2xl overflow-hidden border ${gs ? gs.border : 'border-cyan-500/20'}`}>
+                        <div className={`absolute inset-0 bg-gradient-to-r ${gradient}`} />
+                        <div className="absolute inset-0 opacity-[0.03]"
+                          style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.15) 2px, rgba(255,255,255,0.15) 3px)' }} />
+                        <div className="relative px-5 py-4 flex items-center gap-4">
+                          <button
+                            onClick={() => { setGenreTransition('idle'); setSelectedGenre(null) }}
+                            className="w-8 h-8 rounded-lg bg-black/30 backdrop-blur-md border border-white/10 hover:border-white/30 flex items-center justify-center text-white/70 hover:text-white transition-all"
+                          >
+                            <ArrowLeft size={14} />
+                          </button>
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center backdrop-blur-md ${gs ? gs.bg : 'bg-cyan-500/20'} border ${gs ? gs.border : 'border-cyan-500/30'}`}>
                             <Disc3 size={18} className={gs ? gs.text : 'text-cyan-400'} />
                           </div>
-                          <div>
-                            <h2 className="text-xl font-bold text-white capitalize tracking-wide">{selectedGenre}</h2>
-                            <p className="text-[11px] text-gray-500 font-mono">{genreTracks.length} tracks available</p>
+                          <div className="flex-1">
+                            <h2 className="text-lg font-bold text-white capitalize tracking-wide">{selectedGenre}</h2>
+                            <p className="text-[10px] text-white/50 font-mono">{genreTracks.length} tracks</p>
                           </div>
+                          <button
+                            onClick={() => {
+                              const pl = genreTracks.map(m => ({
+                                id: m.id, title: m.title, audioUrl: m.audioUrl || m.audio_url,
+                                imageUrl: m.imageUrl || m.image_url, videoUrl: m.video_url || undefined,
+                                artist: m.artist_name || m.users?.username || m.username || 'Unknown Artist', userId: m.user_id
+                              }))
+                              setPlaylist(pl)
+                              playTrack(pl[0])
+                            }}
+                            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-bold bg-white/10 backdrop-blur-md border border-white/15 text-white hover:bg-white/20 transition-all"
+                          >
+                            <Play size={10} /> PLAY ALL
+                          </button>
                         </div>
-                        <button
-                          onClick={() => {
-                            const pl = genreTracks.map(m => ({
-                              id: m.id, title: m.title, audioUrl: m.audioUrl || m.audio_url,
-                              imageUrl: m.imageUrl || m.image_url, videoUrl: m.video_url || undefined,
-                              artist: m.artist_name || m.users?.username || m.username || 'Unknown Artist', userId: m.user_id
-                            }))
-                            setPlaylist(pl)
-                            playTrack(pl[0])
-                          }}
-                          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all border ${
-                            gs ? `${gs.bg} ${gs.text} ${gs.border} hover:opacity-80` : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
-                          }`}
-                        >
-                          <Play size={12} /> PLAY ALL
-                        </button>
                       </div>
 
-                      {/* 3D Track Grid */}
+                      {/* 3D Track Grid — compact */}
                       {genreTracks.length === 0 ? (
                         <div className="text-center py-16">
                           <Music size={28} className="text-gray-700 mx-auto mb-3" />
@@ -1041,7 +1061,7 @@ function ExplorePageContent() {
                           <p className="text-gray-600 text-xs">Be the first to create something!</p>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 pb-8">
+                        <div className="px-4 md:px-6 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3 pb-8">
                           {genreTracks.map((media, i) => (
                             <Genre3DTrackCard
                               key={`expanded-${media.id}`}
@@ -1060,7 +1080,7 @@ function ExplorePageContent() {
                   )
                 })() : (
                   /* ── GENRE GRID VIEW ── */
-                  <>
+                  <div className="genre-grid-enter">
                     <div className="px-4 md:px-6">
                       <SectionHeader icon={Disc3} label="Browse by Genre" iconColor="text-violet-400" gradientFrom="from-violet-500/20" gradientTo="to-purple-500/20" />
                     </div>
@@ -1071,8 +1091,8 @@ function ExplorePageContent() {
                         <p className="text-gray-600 text-xs">Genres appear as artists release tracks</p>
                       </div>
                     ) : (
-                      <div className="px-4 md:px-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 pb-8">
-                        {genres.map(genre => {
+                      <div className="px-4 md:px-6 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 pb-8">
+                        {genres.map((genre, gi) => {
                           const genreTracks = nonStemMedia.filter(m => m.genre?.toLowerCase() === genre.toLowerCase())
                           if (genreTracks.length === 0) return null
                           const coverImages = genreTracks
@@ -1080,19 +1100,20 @@ function ExplorePageContent() {
                             .slice(0, 4)
                             .map(m => m.image_url || m.imageUrl || '')
                           return (
-                            <Genre3DCard
-                              key={`genre-card-${genre}`}
-                              genre={genre}
-                              trackCount={genreTracks.length}
-                              coverImages={coverImages}
-                              isSelected={false}
-                              onClick={() => setSelectedGenre(genre)}
-                            />
+                            <div key={`genre-card-${genre}`} style={{ animation: `genre3dFadeIn 0.4s ease-out ${gi * 0.05}s both` }}>
+                              <Genre3DCard
+                                genre={genre}
+                                trackCount={genreTracks.length}
+                                coverImages={coverImages}
+                                isSelected={false}
+                                onClick={() => { setGenreTransition('zooming'); setTimeout(() => { setSelectedGenre(genre); setGenreTransition('visible') }, 50) }}
+                              />
+                            </div>
                           )
                         })}
                       </div>
                     )}
-                  </>
+                  </div>
                 )}
               </div>
             )}
