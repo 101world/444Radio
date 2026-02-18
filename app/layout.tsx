@@ -20,6 +20,7 @@ import { Toaster } from 'sonner';
 import { defaultMetadata } from '@/lib/metadata';
 import { headers } from 'next/headers';
 import { Suspense } from 'react';
+import NotificationBell from './components/NotificationBell';
 import PluginBackButton from './components/PluginBackButton';
 import "./globals.css";
 
@@ -119,9 +120,9 @@ export default async function RootLayout({
                 <div className="w-full flex items-center justify-end px-6 py-4 bg-black/80 sticky top-0 z-50">
                   <div className="ml-auto flex items-center gap-4">
                     <Suspense fallback={null}>
-                      {/* @ts-expect-error Server Component import */}
                       <NotificationBell />
                     </Suspense>
+                    <CreditBadge />
                   </div>
                 </div>
                 <Toaster position="top-right" richColors closeButton />
