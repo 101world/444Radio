@@ -36,14 +36,19 @@ export async function POST(req: NextRequest) {
     }
 
     let releaseId: string
+    let body: any
     try {
-      const body = await req.json()
-      releaseId = body.releaseId || body.mediaId
-    } catch {
+      body = await req.json()
+      releaseId = body.releaseId
+      console.log('[Like API] Incoming body:', JSON.stringify(body))
+      console.log('[Like API] Parsed releaseId:', releaseId)
+    } catch (err) {
+      console.error('[Like API] JSON parse error:', err)
       return corsResponse(NextResponse.json({ success: false, error: 'Invalid JSON body' }, { status: 400 }))
     }
 
     if (!releaseId) {
+      console.error('[Like API] Missing releaseId in body:', JSON.stringify(body))
       return corsResponse(NextResponse.json({ success: false, error: 'Release ID is required' }, { status: 400 }))
     }
 
@@ -85,6 +90,26 @@ export async function POST(req: NextRequest) {
         return corsResponse(NextResponse.json({ success: false, error: 'Like failed', detail: err }, { status: 500 }))
       }
       liked = true
+
+      // Notification: fetch media owner and insert notification if not self-like
+      const mediaRes = await sb(`combined_media?id=eq.${releaseId}&select=user_id`)
+      if (mediaRes.ok) {
+        const mediaRows = await mediaRes.json()
+        if (Array.isArray(mediaRows) && mediaRows.length > 0) {
+          const mediaOwnerId = mediaRows[0].user_id
+          if (mediaOwnerId && mediaOwnerId !== userId) {
+            // Insert notification for the owner
+            await sb('notifications', {
+              method: 'POST',
+              body: JSON.stringify({
+                user_id: mediaOwnerId,
+                type: 'like',
+                data: { by: userId, mediaId: releaseId },
+              }),
+            })
+          }
+        }
+      }
     }
 
     // Step 2 — Count likes for this release

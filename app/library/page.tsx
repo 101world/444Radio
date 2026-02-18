@@ -1183,6 +1183,19 @@ export default function LibraryPage() {
                       <div className="flex-1 min-w-0">
                         <h3 className="text-white font-semibold text-sm truncate">{item.title || 'Release'}</h3>
                         <p className="text-pink-400/50 text-xs">{new Date(item.created_at).toLocaleDateString()}</p>
+                        {/* Show who liked this track */}
+                        {Array.isArray(item.likes) && item.likes.length > 0 && (
+                          <div className="mt-1 text-xs text-pink-300/80">
+                            <span className="font-semibold">Liked by:</span>{' '}
+                            {item.likes.map((like: any, idx: number) => (
+                              <span key={like.user_id} className="mr-2">
+                                {like.user_id}{' '}
+                                <span className="text-pink-400/50">({new Date(like.created_at).toLocaleDateString()})</span>
+                                {idx < item.likes.length - 1 && ','}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <button onClick={async () => {

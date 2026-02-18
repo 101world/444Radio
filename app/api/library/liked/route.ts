@@ -38,20 +38,31 @@ export async function GET() {
       return NextResponse.json({ success: true, liked: [], total: 0 })
     }
 
-    // Step 2: Fetch the actual combined_media rows for those IDs
+
+    // Step 2: Fetch all likes for these releases (who liked what)
     const releaseIds = likes.map((l: any) => l.release_id).filter(Boolean)
     if (releaseIds.length === 0) {
       return NextResponse.json({ success: true, liked: [], total: 0 })
     }
-
-    // Build a liked_at map for ordering
-    const likedAtMap: Record<string, string> = {}
-    for (const l of likes) {
-      likedAtMap[l.release_id] = l.created_at
-    }
-
-    // Supabase REST uses `in` filter: id=in.(id1,id2,id3)
     const idsParam = `(${releaseIds.join(',')})`
+    // Fetch all likes for these releases
+    const allLikesRes = await fetch(
+      `${supabaseUrl}/rest/v1/user_likes?release_id=in.${idsParam}&select=release_id,user_id,created_at`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        }
+      }
+    )
+    const allLikes = allLikesRes.ok ? await allLikesRes.json() : []
+    // Map: release_id -> [{user_id, created_at}]
+    const likesMap: Record<string, Array<{user_id: string, created_at: string}>> = {}
+    for (const l of allLikes) {
+      if (!likesMap[l.release_id]) likesMap[l.release_id] = []
+      likesMap[l.release_id].push({ user_id: l.user_id, created_at: l.created_at })
+    }
+    // Fetch media
     const mediaRes = await fetch(
       `${supabaseUrl}/rest/v1/combined_media?id=in.${idsParam}&select=*`,
       {
@@ -61,16 +72,18 @@ export async function GET() {
         }
       }
     )
-
     if (!mediaRes.ok) {
       const err = await mediaRes.text()
       console.error('❤️ Liked: Failed to fetch combined_media:', mediaRes.status, err)
       return NextResponse.json({ success: true, liked: [], total: 0 })
     }
-
     const mediaRows = await mediaRes.json()
-
-    // Step 3: Normalize and sort by liked_at descending
+    // Build a liked_at map for ordering
+    const likedAtMap: Record<string, string> = {}
+    for (const l of likes) {
+      likedAtMap[l.release_id] = l.created_at
+    }
+    // Step 3: Normalize and sort by liked_at descending, include who liked what
     const likedTracks = Array.isArray(mediaRows)
       ? mediaRows
           .map((m: any) => ({
@@ -78,12 +91,11 @@ export async function GET() {
             audioUrl: m.audio_url,
             imageUrl: m.image_url,
             liked_at: likedAtMap[m.id] || m.created_at,
+            likes: likesMap[m.id] || [], // who liked this track
           }))
           .sort((a: any, b: any) => new Date(b.liked_at).getTime() - new Date(a.liked_at).getTime())
       : []
-
     console.log(`❤️ Liked Songs: Fetched ${likedTracks.length} liked tracks for user ${userId}`)
-
     return NextResponse.json({
       success: true,
       liked: likedTracks,

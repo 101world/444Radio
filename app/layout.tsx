@@ -113,20 +113,29 @@ export default async function RootLayout({
         <ClerkProvider>
           <AudioPlayerProvider>
             <CreditsProvider>
-            <GenerationQueueProvider>
-              <SkipToContent />
-              <Toaster position="top-right" richColors closeButton />
-              <DockedSidebar />
-              <FloatingNavButton />
-              <CreditBadge />
-              <PlayerAwareMain>
-                {children}
-              </PlayerAwareMain>
-              <ConditionalGlobalPlayer />
-              <GenerationMonitor />
-              <GenerationRecovery />
-              <Suspense fallback={null}><PluginBackButton /></Suspense>
-            </GenerationQueueProvider>
+              <GenerationQueueProvider>
+                <SkipToContent />
+                {/* Notification Bell in header */}
+                <div className="w-full flex items-center justify-end px-6 py-4 bg-black/80 sticky top-0 z-50">
+                  <div className="ml-auto flex items-center gap-4">
+                    <Suspense fallback={null}>
+                      {/* @ts-expect-error Server Component import */}
+                      <NotificationBell />
+                    </Suspense>
+                  </div>
+                </div>
+                <Toaster position="top-right" richColors closeButton />
+                <DockedSidebar />
+                <FloatingNavButton />
+                <CreditBadge />
+                <PlayerAwareMain>
+                  {children}
+                </PlayerAwareMain>
+                <ConditionalGlobalPlayer />
+                <GenerationMonitor />
+                <GenerationRecovery />
+                <Suspense fallback={null}><PluginBackButton /></Suspense>
+              </GenerationQueueProvider>
             </CreditsProvider>
           </AudioPlayerProvider>
         </ClerkProvider>
