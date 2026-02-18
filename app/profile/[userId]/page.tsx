@@ -669,75 +669,180 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
         {/* ─── TOP SECTION: Avatar + Info Card ─── */}
         <div className="flex flex-col lg:flex-row gap-5">
 
-          {/* ── LEFT COLUMN: User Card ── */}
-          <div className="w-full lg:w-80 flex-shrink-0 space-y-4">
-            {/* Avatar Card */}
-            <div className="relative bg-[#0a0f1a]/90 border border-cyan-500/10 rounded-xl overflow-hidden backdrop-blur-sm">
-              {/* Card header accent */}
-              <div className="h-[1px] bg-gradient-to-r from-cyan-500/50 via-cyan-400/20 to-transparent" />
+          {/* ── LEFT COLUMN: Blade Runner ID Card ── */}
+          <div className="w-full lg:w-[340px] flex-shrink-0 space-y-4">
+            {/* ═══ ID CARD ═══ */}
+            <div className="relative bg-[#0b1120]/95 border border-cyan-500/15 rounded-xl overflow-hidden backdrop-blur-md shadow-[0_0_40px_rgba(0,255,255,0.04)]">
+              {/* Scan line overlay on entire card */}
+              <div className="absolute inset-0 pointer-events-none opacity-[0.03] z-20"
+                style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,255,0.3) 2px, rgba(0,255,255,0.3) 3px)' }} />
               
-              <div className="p-5">
-                {/* Section label */}
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-1 h-3 bg-cyan-500 rounded-full" />
-                  <span className="text-[9px] font-mono font-bold text-cyan-500/70 tracking-[0.2em]">USER PROFILE</span>
+              {/* ── CARD HEADER ── */}
+              <div className="relative px-4 py-2.5 border-b border-cyan-500/15 bg-gradient-to-r from-cyan-500/[0.06] to-transparent">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-mono font-bold text-cyan-400/90 tracking-wider">🎵 444RADIO</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] font-mono text-cyan-500/50 tracking-wider">SIGNAL</span>
+                    <div className="flex items-center gap-[3px]">
+                      <div className="w-[3px] h-2 bg-cyan-400/60 rounded-sm" />
+                      <div className="w-[3px] h-3 bg-cyan-400/60 rounded-sm" />
+                      <div className="w-[3px] h-4 bg-cyan-400/70 rounded-sm" />
+                      <div className="w-[3px] h-3.5 bg-cyan-400/40 rounded-sm" />
+                      <div className="w-[3px] h-2.5 bg-cyan-500/20 rounded-sm" />
+                    </div>
+                  </div>
                 </div>
+              </div>
 
-                {/* Avatar + Name */}
-                <div className="flex items-start gap-4">
-                  {/* Hexagonal-style avatar */}
+              {/* ── DESIGNATION ROW ── */}
+              <div className="px-4 pt-3 pb-1">
+                <div className="flex items-baseline justify-between">
+                  <div>
+                    <p className="text-[9px] font-mono text-cyan-500/50 tracking-[0.15em] mb-0.5">ARTIST</p>
+                    <h1 className="text-2xl font-bold font-mono text-white tracking-wide uppercase truncate">
+                      {profile.fullName}
+                    </h1>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[8px] font-mono text-cyan-500/40 tracking-wider">ACCESS</p>
+                    <p className="text-[10px] font-mono text-cyan-500/30">{'★'.repeat(Math.min(5, Math.max(1, Math.ceil(tracks.length / 5))))}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── PHOTO + STATS PANEL ── */}
+              <div className="px-4 py-3">
+                <div className="flex gap-4">
+                  {/* Photo */}
                   <div className="relative group flex-shrink-0">
-                    <div className="w-20 h-20 rounded-xl overflow-hidden border-2 border-cyan-500/20 shadow-[0_0_15px_rgba(0,255,255,0.05)]">
+                    <div className="w-[110px] h-[130px] rounded-lg overflow-hidden border border-cyan-500/20"
+                      style={{ boxShadow: '0 0 20px rgba(0,255,255,0.06), inset 0 0 30px rgba(0,0,0,0.3)' }}>
                       <Image
                         src={profile.avatar_url}
                         alt={profile.username}
-                        width={80}
-                        height={80}
+                        width={110}
+                        height={130}
                         className="w-full h-full object-cover"
+                        style={{ filter: 'saturate(0.7) contrast(1.1)' }}
                       />
+                      {/* Blue tint overlay like the card */}
+                      <div className="absolute inset-0 bg-cyan-500/[0.08] mix-blend-overlay" />
                     </div>
                     {/* Online indicator */}
-                    <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-[#0a0f1a] rounded-full flex items-center justify-center">
-                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]" />
+                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-[#0b1120] rounded-full flex items-center justify-center">
+                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
                     </div>
                     {isOwnProfile && (
                       <button
                         onClick={() => setShowAvatarUpload(true)}
-                        className="absolute inset-0 bg-black/60 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute inset-0 bg-black/60 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <Edit2 size={14} className="text-cyan-400" />
                       </button>
                     )}
                   </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <h1 className="text-xl font-bold text-white tracking-wide truncate">{profile.fullName}</h1>
-                    <p className="text-xs font-mono text-cyan-500 mt-0.5">@{profile.username}</p>
-                    {profile.location && (
-                      <div className="flex items-center gap-1 mt-1.5">
-                        <MapPin size={10} className="text-gray-600" />
-                        <span className="text-[10px] font-mono text-gray-600">{profile.location}</span>
+
+                  {/* Right side info panel */}
+                  <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+                    {/* Classification */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-mono text-cyan-400/80 tracking-wider">TRACKS</span>
+                        <span className="text-xs font-bold font-mono text-white">{tracks.length}</span>
                       </div>
-                    )}
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-mono text-cyan-400/80 tracking-wider">SEC CODE</span>
+                        <span className="text-[10px] font-mono text-cyan-300/60">{userId.slice(-10).toUpperCase()}</span>
+                      </div>
+                    </div>
+
+                    {/* Separator */}
+                    <div className="h-[1px] bg-cyan-500/10 my-1.5" />
+
+                    {/* Stats grid */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-mono text-gray-500 tracking-wider">FOLLOWERS</span>
+                        <span className="text-xs font-bold font-mono text-cyan-400">{fmtNum(profile.follower_count)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-mono text-gray-500 tracking-wider">FOLLOWING</span>
+                        <span className="text-xs font-bold font-mono text-cyan-400">{fmtNum(profile.following_count)}</span>
+                      </div>
+                    </div>
+
+                    {/* Location / handle */}
+                    <div className="mt-auto pt-1">
+                      <p className="text-[10px] font-mono text-cyan-500/60">@{profile.username}</p>
+                      {profile.location && (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <MapPin size={8} className="text-gray-600" />
+                          <span className="text-[9px] font-mono text-gray-600">{profile.location}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
+              </div>
 
-                {/* Bio */}
-                <div className="mt-4 pt-3 border-t border-white/[0.04]">
-                  <p className="text-xs text-gray-400 leading-relaxed">{profile.bio || 'No bio yet'}</p>
-                </div>
+              {/* ── DIVIDER ── */}
+              <div className="mx-4 h-[1px] bg-gradient-to-r from-cyan-500/30 via-cyan-500/15 to-transparent" />
 
-                {/* Joined */}
-                <div className="flex items-center gap-1.5 mt-3">
-                  <Calendar size={10} className="text-gray-700" />
-                  <span className="text-[9px] font-mono text-gray-700">
-                    JOINED {new Date(profile.joined_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }).toUpperCase()}
+              {/* ── STATS STRIP ── */}
+              <div className="px-4 py-3 grid grid-cols-3 gap-2">
+                {[
+                  { label: 'PLAYS', value: fmtNum(totalPlays), icon: BarChart3 },
+                  { label: 'LIKES', value: fmtNum(totalLikes), icon: Heart },
+                  { label: 'RELEASES', value: tracks.length.toString(), icon: Disc3 },
+                ].map((stat) => (
+                  <div key={stat.label} className="text-center py-2 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+                    <stat.icon size={11} className="text-cyan-500/40 mx-auto mb-1" />
+                    <p className="text-sm font-bold font-mono text-white">{stat.value}</p>
+                    <p className="text-[8px] font-mono text-gray-600 tracking-wider mt-0.5">{stat.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* ── BIO / AUTHORIZATION BLOCK ── */}
+              <div className="mx-4 h-[1px] bg-gradient-to-r from-cyan-500/30 via-cyan-500/15 to-transparent" />
+              <div className="px-4 py-3">
+                <p className="text-[11px] font-mono text-gray-400 leading-[1.6] uppercase tracking-wide" style={{ fontVariantLigatures: 'none' }}>
+                  {profile.bio || 'NO BIO CONFIGURED. USER HAS NOT PROVIDED ADDITIONAL INFORMATION.'}
+                </p>
+              </div>
+
+              {/* ── JOINED DATE ── */}
+              <div className="px-4 pb-2">
+                <div className="flex items-center gap-1.5">
+                  <Calendar size={9} className="text-gray-700" />
+                  <span className="text-[8px] font-mono text-gray-700 tracking-wider">
+                    REGISTERED {new Date(profile.joined_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }).toUpperCase()}
                   </span>
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="px-5 pb-5">
+              {/* ── CARD FOOTER ── */}
+              <div className="relative px-4 py-2.5 border-t border-cyan-500/15 bg-gradient-to-r from-cyan-500/[0.04] to-transparent">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-[2px]">
+                      {/* Barcode-style lines */}
+                      {Array.from({ length: 16 }, (_, i) => (
+                        <div key={i} className="h-3 rounded-sm bg-cyan-500/20" style={{ width: i % 3 === 0 ? '2px' : '1px' }} />
+                      ))}
+                    </div>
+                  </div>
+                  <span className="text-[8px] font-mono text-cyan-600/40 tracking-[0.15em]">
+                    PROPERTY OF 444RADIO<br />
+                    ARTIST / CREATOR UNIT
+                  </span>
+                </div>
+              </div>
+
+              {/* ── ACTION BUTTONS ── */}
+              <div className="px-4 pb-4 pt-2">
                 {isOwnProfile ? (
                   <button
                     onClick={() => {
@@ -745,7 +850,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                       setEditBio(profile?.bio || '')
                       setShowEditProfile(true)
                     }}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white/[0.03] border border-white/[0.06] hover:border-cyan-500/25 rounded-lg transition-all text-xs font-mono text-gray-400 hover:text-cyan-400"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-cyan-500/[0.06] border border-cyan-500/15 hover:border-cyan-500/35 rounded-lg transition-all text-xs font-mono text-cyan-500/70 hover:text-cyan-400"
                   >
                     <Settings size={12} /> EDIT PROFILE
                   </button>
@@ -774,39 +879,9 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
               </div>
             </div>
 
-            {/* Stats Card */}
-            <div className="bg-[#0a0f1a]/90 border border-cyan-500/10 rounded-xl overflow-hidden backdrop-blur-sm">
-              <div className="h-[1px] bg-gradient-to-r from-cyan-500/50 via-cyan-400/20 to-transparent" />
-              <div className="p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-1 h-3 bg-cyan-500 rounded-full" />
-                  <span className="text-[9px] font-mono font-bold text-cyan-500/70 tracking-[0.2em]">STATS</span>
-                </div>
-
-                {/* Stats table */}
-                <div className="space-y-0">
-                  {[
-                    { label: 'TRACKS', value: tracks.length, icon: Music },
-                    { label: 'TOTAL PLAYS', value: fmtNum(totalPlays), icon: BarChart3 },
-                    { label: 'TOTAL LIKES', value: fmtNum(totalLikes), icon: Heart },
-                    { label: 'FOLLOWERS', value: fmtNum(profile.follower_count), icon: Users },
-                    { label: 'FOLLOWING', value: fmtNum(profile.following_count), icon: Users },
-                  ].map((stat, i) => (
-                    <div key={stat.label} className={`flex items-center justify-between py-2.5 ${i > 0 ? 'border-t border-white/[0.03]' : ''}`}>
-                      <div className="flex items-center gap-2.5">
-                        <stat.icon size={12} className="text-gray-700" />
-                        <span className="text-[10px] font-mono text-gray-500 tracking-wider">{stat.label}</span>
-                      </div>
-                      <span className="text-sm font-bold font-mono text-cyan-400">{stat.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
             {/* Social Links */}
             {(profile.website || Object.keys(profile.social_links).length > 0) && (
-              <div className="bg-[#0a0f1a]/90 border border-cyan-500/10 rounded-xl overflow-hidden backdrop-blur-sm">
+              <div className="bg-[#0b1120]/95 border border-cyan-500/15 rounded-xl overflow-hidden backdrop-blur-md">
                 <div className="h-[1px] bg-gradient-to-r from-cyan-500/50 via-cyan-400/20 to-transparent" />
                 <div className="p-5">
                   <div className="flex items-center gap-2 mb-3">

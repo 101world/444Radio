@@ -1,6 +1,8 @@
 # Building the 444 Radio Ableton Plugin
 
-VST3 plugin built with [JUCE 7](https://juce.com/) that loads the 444 Radio generation UI inside Ableton Live and lets you drag generated audio directly into your project timeline.
+plugin?host=juce:3  [444] JS error: Uncaught Error: useGenerationQueue must be used within GenerationQueueProvider https://www.444radio.co.in/_next/static/chunks/0a601be277a9eaba.js?dpl=dpl_5p6xZqP9JiZq55WhSCZ1Y636Gnj7 1
+window.onerror @ plugin?host=juce:3
+3 plugin built with [JUCE 7](https://juce.com/) that loads the 444 Radio generation UI inside Ableton Live and lets you drag generated audio directly into your project timeline.
 
 ---
 
