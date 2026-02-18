@@ -674,3 +674,16 @@ input[placeholder*="Video"]:focus {
   transform: scale(1.1);
   box-shadow: 0 0 20px rgba(34, 211, 238, 1);
 }
+
+/* Override: hide full-screen decorative overlays (vignette / radial glows / scanlines)
+   These are often rendered as `fixed inset-0 pointer-events-none` layers.
+   Make them transparent so the underlying page is fully visible for previews. */
+.fixed.inset-0.pointer-events-none {
+  pointer-events: none !important;
+}
+.fixed.inset-0.pointer-events-none > * {
+  background: transparent !important;
+  background-image: none !important;
+  opacity: 0 !important;
+}
+

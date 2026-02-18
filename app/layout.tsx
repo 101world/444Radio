@@ -117,7 +117,7 @@ export default async function RootLayout({
               <GenerationQueueProvider>
                 <SkipToContent />
                 {/* Notification Bell in header */}
-                <div className="w-full flex items-center justify-end px-6 py-4 bg-black/80 sticky top-0 z-50">
+                <div className="w-full flex items-center justify-end px-6 py-4 sticky top-0 z-50 bg-transparent shadow-none" style={{ background: 'none', boxShadow: 'none' }}>
                   <div className="ml-auto flex items-center gap-4">
                     <Suspense fallback={null}>
                       <NotificationBell />

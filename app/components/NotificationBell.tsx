@@ -1,98 +1,130 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useUser } from '@clerk/nextjs';
-import { useAudioPlayer } from '@/app/contexts/AudioPlayerContext';
-import Link from 'next/link';
-import {
-  Bell,
-  Music,
-  Image,
-  Video,
-  Sparkles,
-  Scissors,
-  Volume2,
-  ShoppingCart,
-  Tag,
-  Send,
-  Gift,
-  RefreshCw,
-  Zap,
-  Filter,
-  X,
-  Wallet,
-  Info,
-} from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { Bell, X } from 'lucide-react';
 
-interface Transaction {
+type NotificationItem = {
   id: string;
-  type: string;
-  amount: number;
-  description: string | null;
-  status: string;
-  balance_after: number | null;
-  created_at: string;
-  metadata?: Record<string, any>;
-}
-
-const txTypeLabel = (type: string) => {
-  const map: Record<string, string> = {
-    generation_music: 'Music Generation',
-    generation_effects: 'Sound Effects',
-    generation_loops: 'Loop Generation',
-    generation_image: 'Image Generation',
-    generation_video_to_audio: 'Video-to-Audio',
-    generation_cover_art: 'Cover Art',
-    generation_stem_split: 'Stem Split',
-    generation_audio_boost: 'Audio Boost',
-    generation_autotune: 'Autotune',
-    generation_video: '444 Visualizer',
-    generation_extract: 'Audio Extract',
-    earn_list: 'Earn Listing',
-    earn_purchase: 'Earn Purchase',
-    earn_sale: 'Earn Sale',
-  };
-  return map[type] || type;
+  title: string;
+  body?: string;
+  unread?: boolean;
+  created_at?: string;
 };
 
-import { usePathname, useRouter } from 'next/navigation'
+export default function NotificationBell() {
+  const { user, isLoaded } = useUser();
+  const pathname = usePathname();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [items, setItems] = useState<NotificationItem[]>([]);
+  const ref = useRef<HTMLDivElement | null>(null);
 
-function NotificationBell() {
-  const { user, isLoaded } = useUser()
-  const pathname = usePathname()
-  const router = useRouter()
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (!ref.current) return;
+      if (e.target instanceof Node && !ref.current.contains(e.target)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('click', onDoc);
+    return () => document.removeEventListener('click', onDoc);
+  }, []);
 
-  if (!isLoaded || !user) return null
+  useEffect(() => {
+    let mounted = true;
+    async function fetchNotifications() {
+      try {
+        const res = await fetch('/api/notifications');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (mounted && Array.isArray(data)) setItems(data);
+      } catch (err) {
+        // noop
+      }
+    }
+    fetchNotifications();
+    return () => {
+      mounted = false;
+    };
+  }, [isLoaded]);
 
-  const onClick = () => {
-    router.push('/notifications')
-  }
+  if (!isLoaded || !user) return null;
 
-  // If we're on the create page, render a floating minimal bell next to the fixed CreditBadge
-  if (pathname === '/create') {
-    return (
-      <button
-        onClick={onClick}
-        aria-label="Notifications"
-        className="fixed top-4 right-16 z-50 p-2 text-gray-300 hover:text-white transition-colors"
-        title="Notifications"
-      >
-        <Bell className="w-5 h-5" />
-      </button>
-    )
-  }
+  const unreadCount = items.filter((i) => i.unread).length;
 
-  // Default header placement (no background)
+  const openSettings = () => router.push('/settings?tab=notifications');
+
+  // Render floating bell on create page to sit near CreditBadge
+  const isCreate = pathname === '/create';
+
   return (
-    <button
-      onClick={onClick}
-      aria-label="Notifications"
-      className="p-2 text-gray-300 hover:text-white transition-colors"
-      title="Notifications"
+    <div
+      ref={ref}
+      className={isCreate ? 'fixed top-4 right-16 z-50' : 'relative'}
     >
-      <Bell className="w-5 h-5" />
-    </button>
-  )
-}
+      <button
+        onClick={() => setOpen((s) => !s)}
+        aria-label="Notifications"
+        className="p-2 hover:text-white transition-colors flex items-center bg-transparent shadow-none"
+        title="Notifications"
+        style={{ background: 'none', boxShadow: 'none' }}
+      >
+        <Bell className="w-5 h-5" style={{ background: 'none' }} />
+        {unreadCount > 0 && (
+          <span className="ml-1 inline-flex items-center justify-center rounded-full bg-red-600 text-white text-[10px] w-4 h-4">
+            {unreadCount}
+          </span>
+        )}
+      </button>
 
-export default NotificationBell;
+      {open && (
+        <div
+          className="mt-2 w-80 bg-gray-900 text-white rounded-lg shadow-lg overflow-hidden"
+          style={isCreate ? { right: 0, position: 'absolute' } : { position: 'absolute' }}
+        >
+          <div className="flex items-center justify-between px-3 py-2 border-b border-gray-800">
+            <div className="text-sm font-medium">Notifications</div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setItems((s) => s.map((i) => ({ ...i, unread: false })))}
+                className="text-xs text-gray-400 hover:text-white"
+              >
+                Mark all read
+              </button>
+              <button onClick={() => setOpen(false)} className="p-1">
+                <X className="w-4 h-4 text-gray-400" />
+              </button>
+            </div>
+          </div>
+
+          <div className="max-h-64 overflow-auto">
+            {items.length === 0 && (
+              <div className="p-4 text-sm text-gray-400">No notifications</div>
+            )}
+            {items.map((n) => (
+              <div
+                key={n.id}
+                className={`px-3 py-2 hover:bg-gray-800 cursor-pointer ${n.unread ? 'bg-gray-800' : ''}`}
+                onClick={() => {
+                  // simple local mark-as-read
+                  setItems((s) => s.map((it) => (it.id === n.id ? { ...it, unread: false } : it)));
+                }}
+              >
+                <div className="text-sm font-medium">{n.title}</div>
+                {n.body && <div className="text-xs text-gray-400">{n.body}</div>}
+              </div>
+            ))}
+          </div>
+
+          <div className="px-3 py-2 border-t border-gray-800">
+            <button onClick={openSettings} className="w-full text-sm text-gray-300 hover:text-white">
+              Open notification settings
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
