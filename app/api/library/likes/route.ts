@@ -8,7 +8,7 @@ export async function OPTIONS() {
 
 /**
  * GET /api/library/likes
- * Get all tracks the user has liked
+ * Get all tracks the user has liked (alias for /api/library/liked)
  */
 export async function GET() {
   try {
@@ -21,50 +21,32 @@ export async function GET() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-    // TODO: Update this query once we confirm likes table structure
-    // For now, check if 'likes' table exists
-    try {
-      const response = await fetch(
-        `${supabaseUrl}/rest/v1/likes?user_id=eq.${userId}&order=created_at.desc`,
-        {
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-          }
+    // Fetch from user_likes table (the actual likes table)
+    const likesRes = await fetch(
+      `${supabaseUrl}/rest/v1/user_likes?user_id=eq.${userId}&select=release_id,created_at&order=created_at.desc`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
         }
-      )
-
-      if (response.ok) {
-        const likes = await response.json()
-        const likedTracks = Array.isArray(likes) ? likes : []
-
-        console.log(`❤️ Likes: Fetched ${likedTracks.length} liked tracks`)
-
-        return corsResponse(NextResponse.json({
-          success: true,
-          likes: likedTracks,
-          total: likedTracks.length
-        }))
-      } else {
-        // Table doesn't exist or different structure
-        console.log('❤️ Likes table not found, returning empty array')
-        return corsResponse(NextResponse.json({
-          success: true,
-          likes: [],
-          total: 0,
-          message: 'Likes feature not yet implemented'
-        }))
       }
-    } catch (tableError) {
-      // Table doesn't exist
-      console.log('❤️ Likes table not accessible:', tableError)
-      return corsResponse(NextResponse.json({
-        success: true,
-        likes: [],
-        total: 0,
-        message: 'Likes feature not yet implemented'
-      }))
+    )
+
+    if (!likesRes.ok) {
+      console.log('❤️ user_likes query failed:', likesRes.status)
+      return corsResponse(NextResponse.json({ success: true, likes: [], total: 0 }))
     }
+
+    const likes = await likesRes.json()
+    const likedTracks = Array.isArray(likes) ? likes : []
+
+    console.log(`❤️ Likes: Fetched ${likedTracks.length} liked tracks`)
+
+    return corsResponse(NextResponse.json({
+      success: true,
+      likes: likedTracks,
+      total: likedTracks.length
+    }))
 
   } catch (error) {
     console.error('Error fetching likes:', error)

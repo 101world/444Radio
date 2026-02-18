@@ -324,7 +324,9 @@ function Genre3DTrackCard({ media, index, isCurrentlyPlaying, isPlaying, onPlay,
           )}
           <div className="flex items-center gap-1.5 mt-0.5 text-[8px] text-gray-600">
             <span className="flex items-center gap-0.5"><Headphones size={7} />{formatPlays(media.plays || 0)}</span>
-            <span className="flex items-center gap-0.5"><Heart size={7} />{media.likes || 0}</span>
+            <span onClick={e => e.stopPropagation()}>
+              <LikeButton releaseId={media.id} initialLikesCount={media.likes || 0} size="sm" showCount={true} className="!p-0.5 !rounded !text-[8px] !gap-0.5 !border-0 !bg-transparent" />
+            </span>
           </div>
         </div>
       </div>

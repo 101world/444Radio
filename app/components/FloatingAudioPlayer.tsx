@@ -402,6 +402,7 @@ export default function FloatingAudioPlayer() {
   const [collapsed, setCollapsed] = useState(false)
   const [showQueue, setShowQueue] = useState(false)
   const [liked, setLiked] = useState(false)
+  const [likeLoading, setLikeLoading] = useState(false)
   const [playbackRate, setPlaybackRate] = useState(1)
   const [showSpeed, setShowSpeed] = useState(false)
 
@@ -462,7 +463,45 @@ export default function FloatingAudioPlayer() {
     if (el) el.playbackRate = playbackRate
   }, [playbackRate, getAudioElement, currentTrack])
 
-  useEffect(() => { setLiked(false) }, [currentTrack?.id])
+  // Fetch real like status from API when track changes
+  useEffect(() => {
+    if (!currentTrack?.id) { setLiked(false); return }
+    setLiked(false) // reset immediately while fetching
+    fetch(`/api/media/like?releaseId=${currentTrack.id}`)
+      .then(r => r.json())
+      .then(data => { if (data.success) setLiked(data.liked) })
+      .catch(() => {})
+  }, [currentTrack?.id])
+
+  const handleLikeToggle = async () => {
+    if (!currentTrack?.id || likeLoading) return
+    const prev = liked
+    setLiked(!prev) // optimistic
+    setLikeLoading(true)
+    try {
+      const res = await fetch('/api/media/like', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ releaseId: currentTrack.id }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setLiked(data.liked)
+        // Broadcast so Library liked tab updates
+        try {
+          const bc = new BroadcastChannel('like-updates')
+          bc.postMessage({ releaseId: currentTrack.id, liked: data.liked, likesCount: data.likesCount })
+          bc.close()
+        } catch {}
+      } else {
+        setLiked(prev) // revert
+      }
+    } catch {
+      setLiked(prev) // revert
+    } finally {
+      setLikeLoading(false)
+    }
+  }
 
   const formatTime = useCallback((t: number) => {
     if (isNaN(t)) return '0:00'
@@ -822,9 +861,9 @@ export default function FloatingAudioPlayer() {
             </div>
           )}
           <div className="flex items-center gap-1.5 mt-3 justify-center">
-            <button onClick={() => setLiked(!liked)}
-              className={`p-2 rounded-xl transition-all ${liked ? 'text-pink-400 bg-pink-500/10 shadow-sm shadow-pink-500/10' : 'text-gray-600 hover:text-pink-400 hover:bg-white/[0.04]'}`}
-              title="Like">
+            <button onClick={handleLikeToggle} disabled={likeLoading}
+              className={`p-2 rounded-xl transition-all ${liked ? 'text-pink-400 bg-pink-500/10 shadow-sm shadow-pink-500/10' : 'text-gray-600 hover:text-pink-400 hover:bg-white/[0.04]'} ${likeLoading ? 'opacity-50' : ''}`}
+              title={liked ? 'Unlike' : 'Like'}>
               <Heart size={15} fill={liked ? 'currentColor' : 'none'} />
             </button>
             <button onClick={() => addToPlaylist(currentTrack)}
