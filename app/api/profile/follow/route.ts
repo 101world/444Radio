@@ -32,6 +32,18 @@ export async function POST(request: Request) {
 
       if (error) throw error
 
+      // Create notification for the followed user
+      await supabaseAdmin
+        .from('notifications')
+        .insert({
+          user_id: targetUserId,
+          type: 'follow',
+          data: { by: clerkUserId }
+        })
+        .then(({ error }) => {
+          if (error) console.error('[Follow] Notification insert failed:', error)
+        })
+
       return NextResponse.json({ success: true, isFollowing: true })
     } else if (action === 'unfollow') {
       // Delete follow relationship
