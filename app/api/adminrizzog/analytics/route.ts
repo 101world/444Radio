@@ -377,51 +377,43 @@ export async function GET(req: NextRequest) {
     }
 
     if (type === 'credits-by-model') {
-      // Credits consumed by AI model
+      // Credits consumed by AI model type
       const { data: jobs } = await supabase
         .from('plugin_jobs')
-        .select('plugin_name, status, params')
+        .select('type, credits_cost, params')
         .eq('status', 'completed')
+        .not('type', 'is', null)
         .order('created_at', { ascending: false })
       
       // Model name mapping and credit calculation
       const modelStats: Record<string, { runs: number; credits: number; name: string }> = {}
       
       for (const job of jobs || []) {
-        const pluginName = job.plugin_name || 'unknown'
-        let modelName = pluginName
-        let creditsPerRun = 2 // Default
+        const jobType = job.type || 'unknown'
+        const actualCredits = job.credits_cost || 0
         
-        // Map plugin names to friendly model names and credit costs
-        if (pluginName === 'minimax-music-01') {
-          modelName = 'MiniMax Music 01'
-          creditsPerRun = 5
-        } else if (pluginName === 'ace-step-music') {
-          modelName = 'ACE-Step Music'
-          creditsPerRun = 10
-        } else if (pluginName === 'flux-klein-image') {
-          modelName = 'FLUX Klein Image'
-          creditsPerRun = 2
-        } else if (pluginName === 'video-generator') {
-          modelName = 'Video Generator'
-          creditsPerRun = 8
-        } else if (pluginName.includes('music')) {
+        // Map type to friendly model names
+        let modelName = jobType
+        if (jobType === 'music') {
           modelName = 'Music Generation'
-          creditsPerRun = 5
-        } else if (pluginName.includes('image')) {
+        } else if (jobType === 'effects') {
+          modelName = 'Audio Effects'
+        } else if (jobType === 'loops') {
+          modelName = 'Loop Generation'
+        } else if (jobType === 'stems') {
+          modelName = 'Stem Splitting'
+        } else if (jobType === 'image') {
           modelName = 'Image Generation'
-          creditsPerRun = 2
-        } else if (pluginName.includes('video')) {
-          modelName = 'Video Generation'
-          creditsPerRun = 8
+        } else if (jobType === 'audio-boost') {
+          modelName = 'Audio Boost'
         }
         
-        if (!modelStats[pluginName]) {
-          modelStats[pluginName] = { runs: 0, credits: 0, name: modelName }
+        if (!modelStats[jobType]) {
+          modelStats[jobType] = { runs: 0, credits: 0, name: modelName }
         }
         
-        modelStats[pluginName].runs++
-        modelStats[pluginName].credits += creditsPerRun
+        modelStats[jobType].runs++
+        modelStats[jobType].credits += actualCredits
       }
       
       // Convert to array and sort by credits descending
