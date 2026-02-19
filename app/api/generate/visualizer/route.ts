@@ -303,7 +303,6 @@ export async function POST(req: NextRequest) {
             audio_url: permanentVideoUrl,  // NOT NULL constraint — use video URL
             image_url: permanentVideoUrl,  // NOT NULL constraint — use video URL as placeholder
             media_url: permanentVideoUrl,
-            cover_url: null,
             prompt,
             genre: 'visualizer',
             is_public: false,
