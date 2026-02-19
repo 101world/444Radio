@@ -21,6 +21,7 @@ export default function DockedSidebar() {
   const { user } = useUser()
   const pathname = usePathname()
   const [isExpanded, setIsExpanded] = useState(false)
+  const [collapseTimeout, setCollapseTimeout] = useState<NodeJS.Timeout | null>(null)
   const { credits } = useCredits()
   const [username, setUsername] = useState<string>('')
   const [avatarUrl, setAvatarUrl] = useState<string>('')
@@ -39,6 +40,32 @@ export default function DockedSidebar() {
         .catch(() => {})
     }
   }, [user])
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (collapseTimeout) {
+        clearTimeout(collapseTimeout)
+      }
+    }
+  }, [collapseTimeout])
+
+  // Handle mouse enter - cancel any pending collapse
+  const handleMouseEnter = () => {
+    if (collapseTimeout) {
+      clearTimeout(collapseTimeout)
+      setCollapseTimeout(null)
+    }
+    setIsExpanded(true)
+  }
+
+  // Handle mouse leave - delay collapse to allow interaction with dropdowns
+  const handleMouseLeave = () => {
+    const timeout = setTimeout(() => {
+      setIsExpanded(false)
+    }, 800) // Increased delay to 800ms for comfortable dropdown interaction
+    setCollapseTimeout(timeout)
+  }
 
   // Hide on /plugin — plugin uses its own token-based auth, not Clerk
   if (pathname === '/plugin' || pathname?.startsWith('/plugin')) return null
@@ -81,8 +108,8 @@ export default function DockedSidebar() {
       className={`hidden md:flex fixed left-0 top-0 h-screen bg-black/95 backdrop-blur-2xl border-r border-white/10 transition-all duration-300 ease-in-out z-50 flex-col ${
         isExpanded ? 'w-64' : 'w-20'
       }`}
-      onMouseEnter={() => setIsExpanded(true)}
-      onMouseLeave={() => setIsExpanded(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       {/* Logo / Brand */}
       <div className="flex items-center justify-center h-20 border-b border-white/10">
