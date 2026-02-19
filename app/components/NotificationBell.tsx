@@ -33,13 +33,20 @@ export default function NotificationBell() {
   }, []);
 
   useEffect(() => {
+    if (!isLoaded || !user?.id) return;
+
     let mounted = true;
     async function fetchNotifications() {
       try {
         const res = await fetch('/api/notifications');
         if (!res.ok) return;
         const data = await res.json();
-        if (mounted && Array.isArray(data)) setItems(data);
+        const nextItems = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.notifications)
+            ? data.notifications
+            : [];
+        if (mounted) setItems(nextItems);
       } catch (err) {
         // noop
       }
@@ -48,7 +55,7 @@ export default function NotificationBell() {
     return () => {
       mounted = false;
     };
-  }, [isLoaded]);
+  }, [isLoaded, user?.id]);
 
   if (!isLoaded || !user) return null;
 
@@ -67,11 +74,10 @@ export default function NotificationBell() {
       <button
         onClick={() => setOpen((s) => !s)}
         aria-label="Notifications"
-        className="p-2 hover:text-white transition-colors flex items-center bg-transparent shadow-none"
+        className="p-2 text-gray-300 hover:text-white transition-colors flex items-center"
         title="Notifications"
-        style={{ background: 'none', boxShadow: 'none' }}
       >
-        <Bell className="w-5 h-5" style={{ background: 'none' }} />
+        <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
           <span className="ml-1 inline-flex items-center justify-center rounded-full bg-red-600 text-white text-[10px] w-4 h-4">
             {unreadCount}
