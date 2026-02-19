@@ -184,10 +184,15 @@ export default function VisualizerModal({
         const formData = new FormData()
         formData.append('file', imageFile)
         formData.append('type', 'image')
-        const uploadRes = await fetch('/api/storage/upload', { method: 'POST', body: formData, headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {} })
+        formData.append('title', `Visualizer Reference Image`)
+        const uploadRes = await fetch('/api/profile/upload', { method: 'POST', body: formData, headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {} })
         if (uploadRes.ok) {
           const uploadData = await uploadRes.json()
-          imageUrl = uploadData.url
+          imageUrl = uploadData.data?.image_url || uploadData.url
+          console.log('✅ Reference image uploaded:', imageUrl)
+        } else {
+          console.error('❌ Image upload failed:', uploadRes.status)
+          throw new Error('Failed to upload reference image')
         }
       }
 
