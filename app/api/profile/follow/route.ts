@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createClient } from '@supabase/supabase-js'
 import { notifyFollow } from '@/lib/notifications'
+import { logFollow, logUnfollow } from '@/lib/activity-logger'
 
 // Use service role key to bypass RLS
 const supabaseAdmin = createClient(
@@ -36,6 +37,9 @@ export async function POST(request: Request) {
       // Create notification for the followed user
       await notifyFollow(targetUserId, clerkUserId)
 
+      // Log the follow activity (non-blocking)
+      logFollow(clerkUserId, targetUserId).catch(err => console.error('[Follow API] Activity log failed:', err))
+
       return NextResponse.json({ success: true, isFollowing: true })
     } else if (action === 'unfollow') {
       // Delete follow relationship
@@ -46,6 +50,9 @@ export async function POST(request: Request) {
         .eq('following_id', targetUserId)
 
       if (error) throw error
+
+      // Log the unfollow activity (non-blocking)
+      logUnfollow(clerkUserId, targetUserId).catch(err => console.error('[Follow API] Activity log failed:', err))
 
       return NextResponse.json({ success: true, isFollowing: false })
     } else {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { X, Upload, Film, Music, Loader2, AlertCircle, Scissors, Volume2, Zap, Layers, Mic } from 'lucide-react'
 
 interface MediaUploadModalProps {
@@ -14,13 +14,14 @@ interface MediaUploadModalProps {
 
 export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, onError, onStemSplit }: MediaUploadModalProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [fileType, setFileType] = useState<'audio' | 'video' | null>(null)
-  const [uploadMode, setUploadMode] = useState<'video-to-audio' | 'audio-remix' | 'stem-split' | 'audio-boost' | 'extract-video' | 'extract-audio' | 'autotune' | null>(null)
+  const [fileType, setFileType] = useState<'audio' | 'video' | 'image' | null>(null)
+  const [uploadMode, setUploadMode] = useState<'video-to-audio' | 'audio-remix' | 'stem-split' | 'audio-boost' | 'extract-video' | 'extract-audio' | 'autotune' | 'visualizer' | null>(null)
   const [prompt, setPrompt] = useState('')
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState('')
   const [error, setError] = useState('')
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const audioFileInputRef = useRef<HTMLInputElement>(null)
   const boostFileInputRef = useRef<HTMLInputElement>(null)
@@ -42,6 +43,124 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
   const [boostFormat, setBoostFormat] = useState('mp3')
   const [boostBitrate, setBoostBitrate] = useState('192k')
 
+  // Detect media type from file
+  const detectMediaType = (file: File): 'audio' | 'video' | 'image' | null => {
+    const type = file.type
+    if (type.startsWith('audio/')) return 'audio'
+    if (type.startsWith('video/')) return 'video'
+    if (type.startsWith('image/')) return 'image'
+    return null
+  }
+
+  // Smart mode detection based on file type
+  const suggestMode = (mediaType: 'audio' | 'video' | 'image'): typeof uploadMode => {
+    if (mediaType === 'video') return 'video-to-audio'
+    if (mediaType === 'image') return 'visualizer'
+    if (mediaType === 'audio') return null // Show all audio options
+    return null
+  }
+
+  // Drag and drop handlers
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    // Only set to false if leaving the modal container itself
+    if (e.currentTarget === e.target) {
+      setIsDragging(false)
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+
+    const files = e.dataTransfer?.files
+    if (!files || files.length === 0) return
+
+    const file = files[0]
+    const mediaType = detectMediaType(file)
+    
+    if (!mediaType) {
+      setError('Unsupported file type. Please drop audio, video, or image files.')
+      return
+    }
+
+    // Auto-detect mode based on file type
+    const mode = suggestMode(mediaType)
+    
+    if (mode === 'visualizer') {
+      // For images, show visualizer hint but don't auto-select
+      setError('💡 Tip: Images can be used in the Visualizer to create videos')
+      return
+    }
+
+    // For video and audio, process the file
+    processDroppedFile(file, mediaType)
+  }
+
+  const processDroppedFile = (file: File, mediaType: 'audio' | 'video' | 'image') => {
+    setError('')
+    
+    // Check file size (100MB max)
+    const MAX_SIZE = 100 * 1024 * 1024
+    if (file.size > MAX_SIZE) {
+      setError('File size must be under 100MB')
+      return
+    }
+
+    // Set file immediately
+    setSelectedFile(file)
+    setFileType(mediaType)
+
+    // Auto-select mode for video
+    if (mediaType === 'video') {
+      setUploadMode('video-to-audio')
+      setError('🎬 Video detected! Ready to extract audio or generate synced sound effects.')
+    } else if (mediaType === 'audio') {
+      // For audio, show all options (don't auto-select)
+      setUploadMode(null)
+      setError('🎵 Audio detected! Choose a function below to process your audio.')
+    }
+
+    // Create preview
+    const objectUrl = URL.createObjectURL(file)
+    setPreviewUrl(objectUrl)
+
+    // Validate duration asynchronously
+    if (mediaType === 'video' || mediaType === 'audio') {
+      const media = document.createElement(mediaType) as HTMLVideoElement | HTMLAudioElement
+      media.onloadedmetadata = () => {
+        const duration = media.duration
+        if (mediaType === 'video' && duration > 5.5) {
+          setError(`⚠️ Video is ${duration.toFixed(1)}s. Recommended max is 5s for video-to-audio.`)
+        }
+      }
+      media.onerror = () => {
+        console.warn('Could not load media metadata')
+      }
+      media.src = objectUrl
+    }
+  }
+
+  // Reset drag state when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setIsDragging(false)
+    }
+  }, [isOpen])
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, mode: 'video-to-audio' | 'stem-split' | 'audio-boost' | 'extract-video' | 'extract-audio' | 'autotune') => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -57,8 +176,9 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
     }
 
     // Determine file type
-    const isAudio = file.type.startsWith('audio/')
-    const isVideo = file.type.startsWith('video/')
+    const mediaType = detectMediaType(file)
+    const isAudio = mediaType === 'audio'
+    const isVideo = mediaType === 'video'
     
     // Validate file type based on mode
     if ((mode === 'video-to-audio' || mode === 'extract-video') && !isVideo) {
@@ -88,7 +208,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
 
     // Set file immediately for better UX
     setSelectedFile(file)
-    setFileType(isVideo ? 'video' : 'audio')
+    setFileType(mediaType)
     const objectUrl = URL.createObjectURL(file)
     setPreviewUrl(objectUrl)
 
@@ -400,39 +520,65 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn"
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/95 backdrop-blur-xl"
         onClick={handleClose}
       />
       
-      {/* Modal - Clean & Simple */}
-      <div className="relative w-full max-w-lg bg-gradient-to-b from-gray-900/95 to-black/95 border border-cyan-500/20 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-2xl">
+      {/* Modal - Clean & Simple with Drag & Drop Support */}
+      <div className={`relative w-full max-w-lg bg-gradient-to-b from-gray-900/95 to-black/95 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-2xl transition-all duration-200 ${isDragging ? 'border-4 border-cyan-400 scale-105 ring-4 ring-cyan-400/30' : 'border border-cyan-500/20'}`}>
         
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-cyan-500/10 rounded-lg">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 relative overflow-hidden">
+          {isDragging && (
+            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 via-cyan-400/30 to-cyan-500/20 animate-pulse pointer-events-none" />
+          )}
+          <div className="flex items-center gap-3 relative z-10">
+            <div className={`p-2 bg-cyan-500/10 rounded-lg transition-transform ${isDragging ? 'scale-125 bg-cyan-500/30' : ''}`}>
               <Upload size={20} className="text-cyan-400" />
             </div>
-            <h3 className="text-lg font-semibold text-white">Upload Media</h3>
+            <div>
+              <h3 className="text-lg font-semibold text-white">{isDragging ? '🎯 Drop your file here!' : 'Upload Media'}</h3>
+              {isDragging && <p className="text-xs text-cyan-400">Audio, video, or image supported</p>}
+            </div>
           </div>
           <button
             onClick={handleClose}
-            className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+            className="p-2 rounded-lg hover:bg-white/5 transition-colors relative z-10"
           >
             <X size={20} className="text-gray-400 hover:text-white transition-colors" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-6 relative">
           
+          {/* Drag & Drop Overlay - Shows when dragging */}
+          {isDragging && (
+            <div className="absolute inset-4 z-50 flex flex-col items-center justify-center bg-cyan-500/10 border-4 border-dashed border-cyan-400 rounded-xl backdrop-blur-sm pointer-events-none">
+              <Upload size={64} className="text-cyan-400 mb-4 animate-bounce" />
+              <p className="text-2xl font-bold text-white mb-2">Drop your file here</p>
+              <p className="text-sm text-cyan-400">We'll auto-detect the best function for you</p>
+              <div className="flex gap-3 mt-4">
+                <span className="px-3 py-1 bg-cyan-500/20 rounded-full text-xs text-cyan-300">🎵 Audio</span>
+                <span className="px-3 py-1 bg-cyan-500/20 rounded-full text-xs text-cyan-300">🎬 Video</span>
+                <span className="px-3 py-1 bg-cyan-500/20 rounded-full text-xs text-cyan-300">🖼️ Image</span>
+              </div>
+            </div>
+          )}
+
           {/* Feature Selection - Show if no file selected */}
           {!selectedFile && (
             <div className="space-y-3">
-              <p className="text-sm text-gray-400 text-center mb-4">Choose a feature to get started</p>
+              <p className="text-sm text-gray-400 text-center mb-4">Choose a feature or drag & drop a file</p>
               
               {/* Video to Audio Button */}
               <button

@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { corsResponse, handleOptions } from '@/lib/cors'
+import { logPlay } from '@/lib/activity-logger'
 
 export async function OPTIONS() {
   return handleOptions()
@@ -67,6 +68,10 @@ export async function POST(request: Request) {
     }
 
     const newPlayCount = data || 0
+
+    // Log the play activity (non-blocking)
+    logPlay(userId, mediaId).catch(err => console.error('[Track-play] Activity log failed:', err))
+
     return corsResponse(NextResponse.json({ success: true, plays: newPlayCount }))
   } catch (error) {
     console.error('Track play exception:', error)

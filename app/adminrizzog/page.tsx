@@ -7,7 +7,7 @@ import { ADMIN_CLERK_ID } from '@/lib/constants'
 
 const ADMIN_ID = ADMIN_CLERK_ID
 
-type Tab = 'overview' | 'users' | 'transactions' | 'redemptions' | 'generations' | 'user-detail'
+type Tab = 'overview' | 'users' | 'transactions' | 'redemptions' | 'generations' | 'user-detail' | 'analytics' | 'activity' | 'sessions' | 'credits-by-model'
 
 interface UserRow {
   clerk_user_id: string
@@ -235,6 +235,10 @@ export default function AdminBillingPage() {
 
   const tabs: { key: Tab; label: string; icon: string }[] = [
     { key: 'overview', label: 'Overview', icon: '📊' },
+    { key: 'analytics', label: 'Analytics', icon: '📈' },
+    { key: 'activity', label: 'Live Activity', icon: '🔴' },
+    { key: 'sessions', label: 'Sessions', icon: '👤' },
+    { key: 'credits-by-model', label: 'Credits by Model', icon: '💰' },
     { key: 'users', label: 'Users', icon: '👥' },
     { key: 'transactions', label: 'Transactions', icon: '💳' },
     { key: 'redemptions', label: 'Redemptions', icon: '🎟️' },
@@ -300,6 +304,10 @@ export default function AdminBillingPage() {
         ) : (
           <>
             {tab === 'overview' && data && <OverviewTab data={data} onViewUser={viewUser} />}
+            {tab === 'analytics' && data && <AnalyticsTab data={data} />}
+            {tab === 'activity' && data && <ActivityFeedTab data={data} onViewUser={viewUser} />}
+            {tab === 'sessions' && data && <SessionsTab data={data} onViewUser={viewUser} />}
+            {tab === 'credits-by-model' && data && <CreditsByModelTab data={data} />}
             {tab === 'users' && data && <UsersTab data={data} page={page} onPage={setPage} onViewUser={viewUser} />}
             {tab === 'transactions' && data && (
               <TransactionsTab data={data} page={page} onPage={setPage} typeFilter={txnTypeFilter} setTypeFilter={setTxnTypeFilter} onViewUser={viewUser} />
@@ -1106,6 +1114,371 @@ function UserDetailTab({ data, onBack }: { data: ApiData; onBack: () => void }) 
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ═══════════ ANALYTICS TAB ═══════════
+function AnalyticsTab({ data }: { data: ApiData }) {
+  return (
+    <div className="space-y-6">
+      <div className="bg-gray-900/80 border border-gray-700/50 rounded-xl p-6">
+        <h3 className="text-sm font-bold text-gray-300 mb-6 uppercase tracking-wider">📈 User Engagement Metrics</h3>
+        
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <StatCard label="DAU (Daily)" value={data.activeUsers?.today || 0} icon="📅" sub="Active today" />
+          <StatCard label="WAU (Weekly)" value={data.activeUsers?.week || 0} icon="📊" sub="Active this week" />
+          <StatCard label="MAU (Monthly)" value={data.activeUsers?.month || 0} icon="📈" sub="Active this month" />
+        </div>
+
+        <div className="grid grid-cols-3 gap-4">
+          <StatCard label="New Users Today" value={data.newUsers?.today || 0} icon="👤" sub="Signups today" />
+          <StatCard label="New Users (Week)" value={data.newUsers?.week || 0} icon="👥" sub="Signups this week" />
+          <StatCard label="New Users (Month)" value={data.newUsers?.month || 0} icon="🎯" sub="Signups this month" />
+        </div>
+      </div>
+
+      <div className="bg-gray-900/80 border border-gray-700/50 rounded-xl p-6">
+        <h3 className="text-sm font-bold text-gray-300 mb-4 uppercase tracking-wider">🎵 Platform Overview</h3>
+        <div className="grid grid-cols-4 gap-4">
+          <StatCard label="Total Users" value={data.totalUsers || 0} icon="👥" />
+          <StatCard label="Total Media" value={data.totalMedia || 0} icon="🎵" />
+          <StatCard label="Total Plays" value={(data.totalPlays || 0).toLocaleString()} icon="▶️" />
+          <StatCard label="Total Likes" value={(data.totalLikes || 0).toLocaleString()} icon="❤️" />
+        </div>
+      </div>
+
+      <div className="bg-gray-900/80 border border-gray-700/50 rounded-xl p-6">
+        <h3 className="text-sm font-bold text-gray-300 mb-4 uppercase tracking-wider">🤖 Generation Stats</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <StatCard label="Total Generations" value={data.totalGenerations || 0} icon="✨" sub="Completed" />
+          <StatCard label="Total Revenue" value={`$${(data.totalRevenue || 0).toFixed(2)}`} icon="💰" sub="From wallet deposits" />
+        </div>
+      </div>
+
+      <div className="bg-gradient-to-br from-cyan-950/40 via-gray-900/80 to-purple-950/30 border border-cyan-500/30 rounded-xl p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center text-xl">📊</div>
+          <div>
+            <h3 className="text-sm font-black text-white uppercase tracking-wider">Analytics Dashboard</h3>
+            <p className="text-[10px] text-gray-400">Activity logging active • Real-time metrics available</p>
+          </div>
+        </div>
+        <p className="text-sm text-gray-400">
+          Activity tracking is now live. Data is collected from plays, likes, follows, generations, and more. 
+          Charts and detailed trends will appear as data accumulates over the next few days.
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// ═══════════ ACTIVITY FEED TAB ═══════════
+function ActivityFeedTab({ data, onViewUser }: { data: ApiData; onViewUser: (id: string) => void }) {
+  const activities = data.activities || []
+  
+  const getActionDescription = (actionType: string) => {
+    const map: Record<string, string> = {
+      play: 'played a track',
+      like: 'liked a track',
+      unlike: 'unliked a track',
+      follow: 'followed a user',
+      unfollow: 'unfollowed a user',
+      generate_music: 'generated music',
+      generate_image: 'generated an image',
+      generate_video: 'generated a video',
+      release: 'released a track',
+      signup: 'signed up',
+      login: 'logged in',
+      search: 'searched',
+      profile_view: 'viewed a profile',
+      code_redeem: 'redeemed a code',
+      decrypt_unlock: 'unlocked decrypt puzzle',
+    }
+    return map[actionType] || actionType
+  }
+
+  const formatTimeAgo = (date: string) => {
+    const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
+    if (seconds < 60) return `${seconds}s ago`
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
+    return `${Math.floor(seconds / 86400)}d ago`
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-gradient-to-br from-red-950/40 via-gray-900/80 to-gray-900/80 border border-red-500/30 rounded-xl p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-pink-600 flex items-center justify-center text-xl animate-pulse">🔴</div>
+            <div>
+              <h3 className="text-sm font-black text-white uppercase tracking-wider">Live Activity Feed</h3>
+              <p className="text-[10px] text-gray-400">Last 100 user actions • Real-time monitoring</p>
+            </div>
+          </div>
+          <div className="text-emerald-400 text-xs font-semibold">● Live</div>
+        </div>
+
+        {activities.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="text-4xl mb-3">📭</div>
+            <p className="text-gray-500 text-sm">No recent activity yet</p>
+            <p className="text-gray-600 text-xs mt-1">Activities will appear here as users interact with the platform</p>
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-[600px] overflow-y-auto">
+            {activities.map((activity: any) => (
+              <div 
+                key={activity.id} 
+                className="flex items-center gap-3 p-3 bg-gray-800/40 rounded-lg hover:bg-gray-800/60 transition group"
+              >
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-purple-500 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                  {activity.user?.username?.[0]?.toUpperCase() || '?'}
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline gap-2">
+                    <button 
+                      onClick={() => onViewUser(activity.user_id)}
+                      className="text-white text-sm font-medium hover:text-cyan-400 transition truncate"
+                    >
+                      {activity.user?.username || 'Unknown User'}
+                    </button>
+                    <span className="text-gray-400 text-sm flex-shrink-0">{getActionDescription(activity.action_type)}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-gray-600 text-xs">{formatTimeAgo(activity.created_at)}</span>
+                    {activity.resource_type && (
+                      <Badge text={activity.resource_type} color="gray" />
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex-shrink-0">
+                  <Badge text={activity.action_type} color="purple" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ═══════════ SESSIONS TAB ═══════════
+function SessionsTab({ data, onViewUser }: { data: ApiData; onViewUser: (id: string) => void }) {
+  const sessions = data.activeSessions || []
+  const deviceStats = data.deviceStats || {}
+  const browserStats = data.browserStats || {}
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-gray-900/80 border border-gray-700/50 rounded-xl p-6">
+        <h3 className="text-sm font-bold text-gray-300 mb-6 uppercase tracking-wider">👤 Active Sessions</h3>
+        
+        {sessions.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="text-4xl mb-3">💤</div>
+            <p className="text-gray-500 text-sm">No active sessions</p>
+            <p className="text-gray-600 text-xs mt-1">Sessions will appear here when users are online</p>
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-[500px] overflow-y-auto">
+            {sessions.slice(0, 50).map((session: any) => (
+              <div 
+                key={session.id} 
+                className="flex items-center justify-between p-3 bg-gray-800/40 rounded-lg hover:bg-gray-800/60 transition"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-xs">●</div>
+                  <div>
+                    <div className="text-sm font-medium text-white">{session.session_id?.slice(0, 12) || 'Session'}</div>
+                    <div className="text-xs text-gray-500">
+                      Last active: {formatDate(session.last_activity_at)}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  {session.device_type && <Badge text={session.device_type} color="cyan" />}
+                  {session.browser && <Badge text={session.browser} color="purple" />}
+                  {session.os && <Badge text={session.os} color="gray" />}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-6">
+        <div className="bg-gray-900/80 border border-gray-700/50 rounded-xl p-6">
+          <h3 className="text-sm font-bold text-gray-300 mb-4 uppercase tracking-wider">📱 Device Distribution</h3>
+          <div className="space-y-3">
+            {Object.entries(deviceStats).map(([device, count]) => (
+              <div key={device} className="flex items-center justify-between">
+                <span className="text-sm text-gray-400 capitalize">{device}</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-32 h-2 bg-gray-800 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full"
+                      style={{ width: `${(count as number / Math.max(...Object.values(deviceStats) as number[])) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-sm font-bold text-white w-8 text-right">{count as number}</span>
+                </div>
+              </div>
+            ))}
+            {Object.keys(deviceStats).length === 0 && (
+              <p className="text-gray-600 text-xs text-center py-4">No device data yet</p>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-gray-900/80 border border-gray-700/50 rounded-xl p-6">
+          <h3 className="text-sm font-bold text-gray-300 mb-4 uppercase tracking-wider">🌐 Browser Distribution</h3>
+          <div className="space-y-3">
+            {Object.entries(browserStats).map(([browser, count]) => (
+              <div key={browser} className="flex items-center justify-between">
+                <span className="text-sm text-gray-400">{browser}</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-32 h-2 bg-gray-800 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
+                      style={{ width: `${(count as number / Math.max(...Object.values(browserStats) as number[])) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-sm font-bold text-white w-8 text-right">{count as number}</span>
+                </div>
+              </div>
+            ))}
+            {Object.keys(browserStats).length === 0 && (
+              <p className="text-gray-600 text-xs text-center py-4">No browser data yet</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ═══════════ CREDITS BY MODEL TAB ═══════════
+function CreditsByModelTab({ data }: { data: ApiData }) {
+  const models = data.models || []
+  const totalCredits = data.totalCredits || 0
+  const totalRuns = data.totalRuns || 0
+  
+  // Color mapping for different model types
+  const getModelColor = (modelName: string) => {
+    if (modelName.includes('Music')) return 'from-pink-500 to-purple-600'
+    if (modelName.includes('Image')) return 'from-cyan-500 to-blue-600'
+    if (modelName.includes('Video')) return 'from-orange-500 to-red-600'
+    return 'from-gray-500 to-gray-600'
+  }
+  
+  const getModelIcon = (modelName: string) => {
+    if (modelName.includes('Music')) return '🎵'
+    if (modelName.includes('Image')) return '🖼️'
+    if (modelName.includes('Video')) return '🎬'
+    return '✨'
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-gradient-to-br from-gray-800/60 to-gray-900/40 border border-gray-700/40 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Models</span>
+            <span className="text-lg">🤖</span>
+          </div>
+          <div className="text-2xl font-black text-white mb-0.5">{models.length}</div>
+          <div className="text-[10px] text-gray-600">Active AI models</div>
+        </div>
+
+        <div className="bg-gradient-to-br from-gray-800/60 to-gray-900/40 border border-gray-700/40 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Runs</span>
+            <span className="text-lg">⚡</span>
+          </div>
+          <div className="text-2xl font-black text-white mb-0.5">{totalRuns.toLocaleString()}</div>
+          <div className="text-[10px] text-gray-600">Completed generations</div>
+        </div>
+
+        <div className="bg-gradient-to-br from-gray-800/60 to-gray-900/40 border border-gray-700/40 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Credits</span>
+            <span className="text-lg">💰</span>
+          </div>
+          <div className="text-2xl font-black text-white mb-0.5">{totalCredits.toLocaleString()}c</div>
+          <div className="text-[10px] text-gray-600">Credits consumed</div>
+        </div>
+      </div>
+
+      {/* Models List */}
+      <div className="bg-gray-900/80 border border-gray-700/50 rounded-xl p-6">
+        <h3 className="text-sm font-bold text-gray-300 mb-6 uppercase tracking-wider">💰 Credits by Model</h3>
+        
+        {models.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="text-4xl mb-3">🤖</div>
+            <p className="text-gray-500 text-sm">No generation data yet</p>
+            <p className="text-gray-600 text-xs mt-1">Model statistics will appear after AI generations</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {models.map((model: any, idx: number) => {
+              const percentage = totalCredits > 0 ? (model.credits / totalCredits) * 100 : 0
+              return (
+                <div 
+                  key={model.plugin || idx} 
+                  className="bg-gradient-to-r from-gray-800/40 to-gray-900/20 border border-gray-700/30 rounded-lg p-4 hover:border-cyan-500/30 transition"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${getModelColor(model.name)} flex items-center justify-center text-xl`}>
+                        {getModelIcon(model.name)}
+                      </div>
+                      <div>
+                        <div className="text-white font-bold text-sm">{model.name}</div>
+                        <div className="text-gray-500 text-xs">{model.runs} runs</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-black text-white">{model.credits}c</div>
+                      <div className="text-[10px] text-gray-600">{percentage.toFixed(1)}% of total</div>
+                    </div>
+                  </div>
+                  
+                  {/* Progress bar */}
+                  <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full bg-gradient-to-r ${getModelColor(model.name)} rounded-full transition-all duration-500`}
+                      style={{ width: `${percentage}%` }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Info Card */}
+      <div className="bg-gradient-to-br from-purple-950/40 via-gray-900/80 to-gray-900/80 border border-purple-500/30 rounded-xl p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-xl">💡</div>
+          <div>
+            <h3 className="text-sm font-black text-white uppercase tracking-wider">Usage Analytics</h3>
+            <p className="text-[10px] text-gray-400">Model performance tracking</p>
+          </div>
+        </div>
+        <p className="text-sm text-gray-400">
+          This shows credits consumed by each AI model. Credits are calculated based on completed generations. 
+          Use this data to optimize model selection and track usage costs.
+        </p>
+      </div>
     </div>
   )
 }

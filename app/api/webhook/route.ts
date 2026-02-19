@@ -2,6 +2,7 @@ import { Webhook } from 'svix'
 import { headers } from 'next/headers'
 import { WebhookEvent } from '@clerk/nextjs/server'
 import { supabase } from '../../../lib/supabase'
+import { logActivity } from '@/lib/activity-logger'
 
 // ─────────────────────────────────────────────────────────────
 // Clerk-only webhook handler
@@ -115,6 +116,17 @@ async function handleClerkWebhook(req: Request) {
           console.error('Error creating user in Supabase:', error)
           return new Response('Error creating user', { status: 500 })
         }
+
+        // Log signup activity (non-blocking)
+        logActivity({
+          userId: id,
+          actionType: 'signup',
+          metadata: {
+            email: emailAddress,
+            username: username || null,
+            has_avatar: !!validImageUrl
+          }
+        }).catch(err => console.error('[Webhook] Activity log failed:', err))
       }
     } catch (err) {
       console.error('Unexpected error in user.created webhook:', err)

@@ -18,6 +18,27 @@ export async function GET(req: NextRequest) {
   const offset = (page - 1) * limit
 
   try {
+    // Handle new analytics/activity/sessions/credits-by-model tabs by delegating to analytics API
+    if (tab === 'analytics' || tab === 'activity' || tab === 'sessions' || tab === 'credits-by-model') {
+      const analyticsUrl = new URL(req.url)
+      analyticsUrl.pathname = '/api/adminrizzog/analytics'
+      analyticsUrl.searchParams.set('type', tab === 'activity' ? 'activity-feed' : tab)
+      analyticsUrl.searchParams.set('days', '30')
+      
+      const analyticsRes = await fetch(analyticsUrl.toString(), {
+        headers: {
+          'Authorization': req.headers.get('Authorization') || '',
+          'Cookie': req.headers.get('Cookie') || ''
+        }
+      })
+      
+      if (!analyticsRes.ok) {
+        return NextResponse.json({ error: 'Failed to fetch analytics' }, { status: analyticsRes.status })
+      }
+      
+      return NextResponse.json(await analyticsRes.json())
+    }
+
     if (tab === 'overview') {
       // Parallel fetch: totals
       const [usersRes, mediaRes, txnSummaryRes, recentTxnsRes, topUsersRes, subUsersRes] = await Promise.all([

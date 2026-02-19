@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { corsResponse, handleOptions } from '@/lib/cors'
 import { notifyLike } from '@/lib/notifications'
+import { logLike, logUnlike } from '@/lib/activity-logger'
 
 /**
  * Like API v4 — Uses raw Supabase REST (same pattern as working earn routes)
@@ -124,6 +125,13 @@ export async function POST(req: NextRequest) {
     )
     if (!upRes.ok) {
       console.warn('[Like API] combined_media update failed:', await upRes.text())
+    }
+
+    // Log the activity (non-blocking)
+    if (liked) {
+      logLike(userId, releaseId).catch(err => console.error('[Like API] Activity log failed:', err))
+    } else {
+      logUnlike(userId, releaseId).catch(err => console.error('[Like API] Activity log failed:', err))
     }
 
     return corsResponse(NextResponse.json({ success: true, liked, likesCount: newCount }))

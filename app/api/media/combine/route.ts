@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import { supabase as supabaseClient } from '@/lib/supabase'
 import { createClient } from '@supabase/supabase-js'
 import { logCreditTransaction } from '@/lib/credit-transactions'
+import { logRelease } from '@/lib/activity-logger'
 
 // Use service role for admin operations
 const supabase = createClient(
@@ -169,6 +170,16 @@ export async function POST(req: NextRequest) {
     // Track quest progress — "Social Butterfly" (share_tracks) quest
     const { trackQuestProgress } = await import('@/lib/quest-progress')
     trackQuestProgress(userId, 'share_tracks').catch(() => {})
+
+    // Log release activity (non-blocking)
+    logRelease(userId, data.id, {
+      title: data.title,
+      genre: data.genre,
+      has_audio: !!audioUrl,
+      has_image: !!imageUrl,
+      has_video: !!videoUrl,
+      is_public: isPublic
+    }).catch(err => console.error('[Combine API] Activity log failed:', err))
 
     return NextResponse.json({
       success: true,

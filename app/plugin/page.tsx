@@ -2405,7 +2405,7 @@ function PluginPageInner() {
                 <span className="text-[10px] bg-white/5 px-2 py-1 rounded-full" style={{color:'rgba(6,182,212,0.3)'}}>AI</span>
               </button>
 
-              <p className="text-[9px] uppercase tracking-widest font-bold mb-2 px-1" style={{color:'rgba(6,182,212,0.12)'}}>Creation Tools</p>
+              <p className="text-[9px] uppercase tracking-widest font-bold mb-2 px-1" style={{color:'rgba(6,182,212,0.45)'}}>Creation Tools</p>
               <div className="space-y-1">
                 {FEATURES.filter(f => {
                   // Hide lyrics when not in music vocal mode
@@ -2416,16 +2416,16 @@ function PluginPageInner() {
                   const isActive = f.key === selectedType || (f.key === 'lyrics' && !!(customTitle || genre || customLyrics || bpm))
                   const colorMap: Record<string, { active: React.CSSProperties; inactive: React.CSSProperties }> = {
                     cyan: {
-                      active: {background:'linear-gradient(135deg, rgba(6,182,212,0.12), rgba(20,184,166,0.06))',border:'1px solid rgba(200,200,220,0.35)',color:'rgba(220,240,245,0.95)',boxShadow:'0 0 20px rgba(6,182,212,0.12), inset 0 1px 0 rgba(6,182,212,0.15)'},
-                      inactive: {background:'rgba(6,182,212,0.03)',border:'1px solid rgba(200,200,220,0.08)',color:'rgba(180,220,230,0.5)'},
+                      active: {background:'linear-gradient(135deg, rgba(6,182,212,0.18), rgba(20,184,166,0.12))',border:'1px solid rgba(200,200,220,0.45)',color:'rgba(220,240,245,1)',boxShadow:'0 0 24px rgba(6,182,212,0.2), inset 0 1px 0 rgba(6,182,212,0.25)'},
+                      inactive: {background:'rgba(6,182,212,0.08)',border:'1px solid rgba(200,200,220,0.18)',color:'rgba(200,230,240,0.85)'},
                     },
                     purple: {
-                      active: {background:'linear-gradient(135deg, rgba(168,85,247,0.12), rgba(139,92,246,0.06))',border:'1px solid rgba(168,85,247,0.35)',color:'rgba(230,220,250,0.95)',boxShadow:'0 0 20px rgba(168,85,247,0.12), inset 0 1px 0 rgba(168,85,247,0.15)'},
-                      inactive: {background:'rgba(168,85,247,0.03)',border:'1px solid rgba(168,85,247,0.08)',color:'rgba(200,180,240,0.5)'},
+                      active: {background:'linear-gradient(135deg, rgba(168,85,247,0.18), rgba(139,92,246,0.12))',border:'1px solid rgba(168,85,247,0.45)',color:'rgba(240,230,255,1)',boxShadow:'0 0 24px rgba(168,85,247,0.2), inset 0 1px 0 rgba(168,85,247,0.25)'},
+                      inactive: {background:'rgba(168,85,247,0.08)',border:'1px solid rgba(168,85,247,0.18)',color:'rgba(220,200,255,0.85)'},
                     },
                     orange: {
-                      active: {background:'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(217,119,6,0.06))',border:'1px solid rgba(245,158,11,0.35)',color:'rgba(255,235,210,0.95)',boxShadow:'0 0 20px rgba(245,158,11,0.1), inset 0 1px 0 rgba(245,158,11,0.15)'},
-                      inactive: {background:'rgba(245,158,11,0.03)',border:'1px solid rgba(245,158,11,0.08)',color:'rgba(240,200,150,0.5)'},
+                      active: {background:'linear-gradient(135deg, rgba(245,158,11,0.18), rgba(217,119,6,0.12))',border:'1px solid rgba(245,158,11,0.45)',color:'rgba(255,240,220,1)',boxShadow:'0 0 24px rgba(245,158,11,0.2), inset 0 1px 0 rgba(245,158,11,0.25)'},
+                      inactive: {background:'rgba(245,158,11,0.08)',border:'1px solid rgba(245,158,11,0.18)',color:'rgba(255,220,180,0.85)'},
                     },
                   }
                   return (
@@ -2452,10 +2452,10 @@ function PluginPageInner() {
                       <div className="p-1.5 rounded-md" style={{background:'rgba(255,255,255,0.03)'}}><Icon size={14} /></div>
                       <div className="flex-1 text-left">
                         <div className="text-xs font-semibold">{f.label}</div>
-                        <div className="text-[9px]" style={{color:'rgba(6,182,212,0.2)'}}>{f.desc}</div>
+                        <div className="text-[9px]" style={{color:isActive ? 'rgba(6,182,212,0.6)' : 'rgba(6,182,212,0.5)'}}>{f.desc}</div>
                       </div>
-                      {f.cost > 0 && <span className="text-[10px] px-2 py-1 rounded-full" style={{color:'rgba(6,182,212,0.2)',background:'rgba(6,182,212,0.03)',border:'1px solid rgba(200,200,220,0.04)'}}>-{f.cost}</span>}
-                      {f.cost === -1 && <span className="text-[10px] px-2 py-1 rounded-full" style={{color:'rgba(6,182,212,0.3)',background:'rgba(6,182,212,0.03)',border:'1px solid rgba(200,200,220,0.06)'}}>~5+</span>}
+                      {f.cost > 0 && <span className="text-[10px] px-2 py-1 rounded-full font-bold" style={{color:'rgba(6,182,212,0.7)',background:'rgba(6,182,212,0.1)',border:'1px solid rgba(200,200,220,0.15)'}}>-{f.cost}</span>}
+                      {f.cost === -1 && <span className="text-[10px] px-2 py-1 rounded-full font-bold" style={{color:'rgba(6,182,212,0.75)',background:'rgba(6,182,212,0.1)',border:'1px solid rgba(200,200,220,0.18)'}}>~5+</span>}
                     </button>
                   )
                 })}

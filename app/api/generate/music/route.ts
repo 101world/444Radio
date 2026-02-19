@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { trackQuestProgress } from '@/lib/quest-progress'
 import { SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
+import { logGeneration } from '@/lib/activity-logger'
 
 // Allow up to 5 minutes for music generation (Vercel Pro limit: 300s)
 export const maxDuration = 300
@@ -75,6 +76,15 @@ export async function POST(req: NextRequest) {
     console.log(`🎵 Starting music generation with ${modelName} for language: ${language}`)
     console.log('🎵 Prompt:', prompt)
     console.log('🎵 Parameters:', params)
+
+    // Log generation activity (non-blocking)
+    logGeneration(userId, 'music', {
+      prompt: prompt.substring(0, 200), // Truncate for storage
+      language,
+      model: modelName,
+      song_id: songId,
+      params
+    }).catch(err => console.error('[Music Gen] Activity log failed:', err))
     
     let finalPrediction: any
 

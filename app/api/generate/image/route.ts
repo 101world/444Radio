@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { uploadToR2 } from '@/lib/r2-upload'
+import { logGeneration } from '@/lib/activity-logger'
 
 // Allow up to 5 minutes for image generation (Vercel Pro limit: 300s)
 export const maxDuration = 300
@@ -49,6 +50,14 @@ export async function POST(req: NextRequest) {
     // Fast 1-4 step generation, 12B parameters, Apache 2.0 license
     console.log('🎨 Starting cover art generation with Flux Schnell for:', prompt)
     console.log('🎨 Parameters:', params)
+
+    // Log generation activity (non-blocking)
+    logGeneration(userId, 'image', {
+      prompt: prompt.substring(0, 200),
+      song_id: songId,
+      model: 'FLUX.2 Klein 9B Base',
+      params
+    }).catch(err => console.error('[Image Gen] Activity log failed:', err))
     
     // Create a visual prompt for album cover
     const coverPrompt = `Album cover art for: ${prompt}. Professional music album artwork, vibrant colors, artistic, high quality, studio lighting`
