@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     interface UploadData {
       user_id: string
       title: string
-      content_type: string
+      type?: string
       is_public: boolean
       created_at: string
       audio_url?: string
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     const uploadData: UploadData = {
       user_id: userId,
       title,
-      content_type: type,
+      type: type === 'music-image' ? 'audio' : type === 'music' ? 'audio' : type,
       is_public: true,
       created_at: new Date().toISOString()
     }
