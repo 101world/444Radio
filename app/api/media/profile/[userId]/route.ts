@@ -45,7 +45,7 @@ export async function GET(
       .from('users')
       .select('username, avatar_url, bio, tagline, banner_url, banner_type')
       .eq('clerk_user_id', userId)
-      .single()
+      .maybeSingle()
 
     // If no user found, create one with minimal data
     if (!userData) {
