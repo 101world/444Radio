@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { corsResponse, handleOptions } from '@/lib/cors'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { notifyWalletConversion } from '@/lib/notifications'
 
 export async function OPTIONS() {
   return handleOptions()
@@ -52,6 +53,9 @@ export async function POST(request: Request) {
     }
 
     console.log(`[Wallet Convert] ✅ ${userId}: +${row.credits_added} credits, wallet=$${row.new_wallet_balance}`)
+
+    // Notify user of successful conversion
+    await notifyWalletConversion(userId, row.credits_added, parseFloat(row.amount_converted || amountUsd || 0))
 
     return corsResponse(
       NextResponse.json({

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { corsResponse, handleOptions } from '@/lib/cors'
+import { notifyLike } from '@/lib/notifications'
 
 /**
  * Like API v4 — Uses raw Supabase REST (same pattern as working earn routes)
@@ -92,21 +93,15 @@ export async function POST(req: NextRequest) {
       liked = true
 
       // Notification: fetch media owner and insert notification if not self-like
-      const mediaRes = await sb(`combined_media?id=eq.${releaseId}&select=user_id`)
+      const mediaRes = await sb(`combined_media?id=eq.${releaseId}&select=user_id,title`)
       if (mediaRes.ok) {
         const mediaRows = await mediaRes.json()
         if (Array.isArray(mediaRows) && mediaRows.length > 0) {
           const mediaOwnerId = mediaRows[0].user_id
+          const mediaTitle = mediaRows[0].title
           if (mediaOwnerId && mediaOwnerId !== userId) {
-            // Insert notification for the owner
-            await sb('notifications', {
-              method: 'POST',
-              body: JSON.stringify({
-                user_id: mediaOwnerId,
-                type: 'like',
-                data: { by: userId, mediaId: releaseId },
-              }),
-            })
+            // Notify owner of the like
+            await notifyLike(mediaOwnerId, userId, releaseId, mediaTitle)
           }
         }
       }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
+import { notifyGenerationComplete } from '@/lib/notifications'
 
 export async function POST(req: NextRequest) {
   try {
@@ -81,6 +82,16 @@ export async function POST(req: NextRequest) {
     }
 
     console.log('✅ Song finalized:', songId)
+
+    // Notify user that generation is complete
+    if (songData) {
+      await notifyGenerationComplete(
+        userId,
+        songId,
+        'music',
+        songData.title || songData.prompt?.substring(0, 50) || 'Your track'
+      )
+    }
 
     return NextResponse.json({ 
       success: true,

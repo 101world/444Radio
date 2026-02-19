@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createClient } from '@supabase/supabase-js'
+import { notifyFollow } from '@/lib/notifications'
 
 // Use service role key to bypass RLS
 const supabaseAdmin = createClient(
@@ -33,16 +34,7 @@ export async function POST(request: Request) {
       if (error) throw error
 
       // Create notification for the followed user
-      await supabaseAdmin
-        .from('notifications')
-        .insert({
-          user_id: targetUserId,
-          type: 'follow',
-          data: { by: clerkUserId }
-        })
-        .then(({ error }) => {
-          if (error) console.error('[Follow] Notification insert failed:', error)
-        })
+      await notifyFollow(targetUserId, clerkUserId)
 
       return NextResponse.json({ success: true, isFollowing: true })
     } else if (action === 'unfollow') {

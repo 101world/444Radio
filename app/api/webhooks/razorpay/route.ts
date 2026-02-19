@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
 import { logCreditTransaction } from '@/lib/credit-transactions'
+import { notifyWalletDeposit, notifyBilling } from '@/lib/notifications'
 
 // ─────────────────────────────────────────────────────────────
 // CANONICAL Razorpay webhook handler — PAY-PER-USAGE model
@@ -248,7 +249,11 @@ async function handlePaymentCaptured(payment: any, eventType: string) {
   if (result.already_processed) {
     console.log(`[Razorpay] ⏭ Payment ${paymentId} already deposited (verify or order.paid won)`)
   } else {
-    console.log(`[Razorpay] ✅ Payment ${paymentId}: +$${depositUsd} → wallet=$${result.new_balance} → ${user.email}`)
+    console.log(`[Razorpay] ✅ Payment ${paymentId}: +$${depositUsd} →wallet=$${result.new_balance} → ${user.email}`)
+    
+    // Notify user of successful wallet deposit
+    await notifyWalletDeposit(user.clerk_user_id, depositUsd, 'INR', paymentId)
+    await notifyBilling(user.clerk_user_id, depositUsd, 'Wallet deposit', true)
   }
 }
 

@@ -4,6 +4,7 @@ import { corsResponse, handleOptions } from '@/lib/cors'
 import { logCreditTransaction } from '@/lib/credit-transactions'
 import { logOwnershipEvent, recordDownloadLineage } from '@/lib/ownership-engine'
 import { ADMIN_CLERK_ID } from '@/lib/constants'
+import { notifyPurchase, notifyRevenueEarned } from '@/lib/notifications'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -311,6 +312,23 @@ export async function POST(request: NextRequest) {
         console.error('Failed to queue split stems:', e)
       }
     }
+
+    // Notify seller about the purchase (they earned revenue)
+    await notifyRevenueEarned(
+      track.user_id,
+      artistShare,
+      'track purchase',
+      { trackId, trackTitle: track.title, buyerId: userId, buyerUsername }
+    )
+
+    // Notify seller with more details
+    await notifyPurchase(
+      track.user_id,
+      userId,
+      trackId,
+      totalCost,
+      track.title
+    )
 
     return corsResponse(NextResponse.json({
       success: true,
