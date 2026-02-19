@@ -64,22 +64,24 @@ export async function GET(req: NextRequest) {
       console.warn('⚠️ No tracks returned! Check if is_public is set to true in database.')
     }
 
-    // Fetch usernames for all user_ids
+    // Fetch usernames and avatars for all user_ids
     const userIds = [...new Set((data || []).map(m => m.user_id))]
     const { data: usersData } = await supabase
       .from('users')
-      .select('clerk_user_id, username')
+      .select('clerk_user_id, username, avatar_url')
       .in('clerk_user_id', userIds)
 
-    // Create username lookup map
-    const usernameMap = new Map(
-      (usersData || []).map(u => [u.clerk_user_id, u.username])
+    // Create user data lookup map
+    const userDataMap = new Map(
+      (usersData || []).map(u => [u.clerk_user_id, { username: u.username, avatar_url: u.avatar_url }])
     )
 
-    // Add username to each media item and normalize field names
+    // Add username and avatar to each media item and normalize field names
     // IMPORTANT: strip track_id_444 — it's private to the owner / buyer only
     const mediaWithUsers = (data || []).map((media) => {
-      const username = usernameMap.get(media.user_id) || 'Unknown User'
+      const userData = userDataMap.get(media.user_id)
+      const username = userData?.username || 'Unknown User'
+      const avatar_url = userData?.avatar_url || null
       const { track_id_444, ...publicMedia } = media
       
       return {
@@ -87,7 +89,7 @@ export async function GET(req: NextRequest) {
         audioUrl: media.audio_url, // Normalize for AudioPlayerContext
         imageUrl: media.image_url, // Normalize for AudioPlayerContext
         video_url: media.video_url || null, // Ensure video_url is always present
-        users: { username }
+        users: { username, avatar_url }
       }
     })
 

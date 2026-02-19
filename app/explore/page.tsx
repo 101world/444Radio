@@ -21,7 +21,7 @@ interface CombinedMedia {
   id: string; title: string; audio_url: string; audioUrl?: string; image_url: string; imageUrl?: string
   video_url?: string
   audio_prompt: string; image_prompt: string; user_id: string; username?: string; likes: number; plays: number
-  created_at: string; users: { username: string }; genre?: string; mood?: string; bpm?: number; vocals?: string
+  created_at: string; users: { username: string; avatar_url?: string | null }; genre?: string; mood?: string; bpm?: number; vocals?: string
   language?: string; tags?: string[]; description?: string; key_signature?: string; instruments?: string[]
   secondary_genre?: string; is_explicit?: boolean; duration_seconds?: number; artist_name?: string
   featured_artists?: string[]; release_type?: string
@@ -590,8 +590,9 @@ function ExplorePageContent() {
         data.combinedMedia.forEach((media: CombinedMedia) => {
           const username = media.artist_name || media.users?.username || media.username
           const userId = media.user_id
+          const avatarUrl = media.users?.avatar_url || media.image_url // Fallback to track cover if no avatar
           if (username && userId && !artistMap.has(userId)) {
-            artistMap.set(userId, { username, user_id: userId, trackCount: 1, avatar: media.image_url })
+            artistMap.set(userId, { username, user_id: userId, trackCount: 1, avatar: avatarUrl })
           } else if (artistMap.has(userId)) { artistMap.get(userId)!.trackCount++ }
         })
         setArtists(Array.from(artistMap.values()).filter(a => a.user_id && a.user_id !== 'undefined').slice(0, 20))
