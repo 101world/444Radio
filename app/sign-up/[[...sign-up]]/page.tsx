@@ -276,7 +276,7 @@ function SignUpContent() {
           className="w-full bg-slate-950/80 border border-slate-700 text-gray-100 placeholder:text-gray-500 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 transition-all rounded-lg px-4 py-2.5 text-sm font-mono tracking-wider"
         />
         <p className="text-gray-500 text-xs mt-2">
-          Get bonus credits when you sign up with a friend's code! 🎁
+          Help a friend complete their invite quest! Your sign-up counts toward their progress.
         </p>
       </div>
 
