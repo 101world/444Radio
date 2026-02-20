@@ -5,6 +5,8 @@ import { useUser } from '@clerk/nextjs'
 
 interface CreditsContextType {
   credits: number | null
+  freeCredits: number | null
+  totalCredits: number | null
   totalGenerated: number
   walletBalance: number | null
   isLoading: boolean
@@ -13,6 +15,8 @@ interface CreditsContextType {
 
 const CreditsContext = createContext<CreditsContextType>({
   credits: null,
+  freeCredits: null,
+  totalCredits: null,
   totalGenerated: 0,
   walletBalance: null,
   isLoading: true,
@@ -31,6 +35,8 @@ export function useCredits() {
 export function CreditsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useUser()
   const [credits, setCredits] = useState<number | null>(null)
+  const [freeCredits, setFreeCredits] = useState<number | null>(null)
+  const [totalCredits, setTotalCredits] = useState<number | null>(null)
   const [totalGenerated, setTotalGenerated] = useState(0)
   const [walletBalance, setWalletBalance] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -43,6 +49,8 @@ export function CreditsProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch('/api/credits')
       const data = await res.json()
       setCredits(data.credits ?? 0)
+      setFreeCredits(data.freeCredits ?? 0)
+      setTotalCredits(data.totalCredits ?? 0)
       setTotalGenerated(data.totalGenerated ?? 0)
       setWalletBalance(data.walletBalance ?? 0)
       setIsLoading(false)
@@ -74,7 +82,7 @@ export function CreditsProvider({ children }: { children: React.ReactNode }) {
   }, [user?.id])
 
   return (
-    <CreditsContext.Provider value={{ credits, totalGenerated, walletBalance, isLoading, refreshCredits }}>
+    <CreditsContext.Provider value={{ credits, freeCredits, totalCredits, totalGenerated, walletBalance, isLoading, refreshCredits }}>
       {children}
     </CreditsContext.Provider>
   )

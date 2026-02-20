@@ -19,7 +19,7 @@ export async function GET() {
     
     // First, try to fetch the user with core fields only (always exist)
     const response = await fetch(
-      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,total_generated,wallet_balance`,
+      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,free_credits,total_generated,wallet_balance`,
       {
         headers: {
           'apikey': supabaseKey,
@@ -52,6 +52,7 @@ export async function GET() {
             clerk_user_id: userId,
             email: '', // Will be updated by webhook
             credits: 0,
+            free_credits: 0,
             total_generated: 0,
             wallet_balance: 0
           })
@@ -65,7 +66,7 @@ export async function GET() {
       } else {
         // User might have been created by webhook in the meantime, try fetching again
         const retryResponse = await fetch(
-          `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,total_generated,wallet_balance`,
+          `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,free_credits,total_generated,wallet_balance`,
           {
             headers: {
               'apikey': supabaseKey,
@@ -86,8 +87,14 @@ export async function GET() {
       trackQuestProgress(userId!, 'login_days').catch(() => {})
     }).catch(() => {})
 
+    const paidCredits = user?.credits || 0
+    const freeCredits = user?.free_credits || 0
+    const totalCredits = paidCredits + freeCredits
+
     return corsResponse(NextResponse.json({ 
-      credits: user?.credits || 0,
+      credits: paidCredits,
+      freeCredits,
+      totalCredits,
       totalGenerated: user?.total_generated || 0,
       walletBalance: parseFloat(user?.wallet_balance || '0'),
     }))
@@ -96,6 +103,8 @@ export async function GET() {
     return corsResponse(NextResponse.json({ 
       error: 'Failed to fetch credits',
       credits: 0,
+      freeCredits: 0,
+      totalCredits: 0,
       totalGenerated: 0
     }, { status: 500 }))
   }

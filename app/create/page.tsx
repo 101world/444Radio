@@ -498,7 +498,7 @@ function CreatePageContent() {
   }, [generations])
 
   // Fetch user credits function — synced from shared context
-  const { credits: contextCredits, refreshCredits } = useCredits()
+  const { totalCredits: contextCredits, refreshCredits } = useCredits()
 
   // Sync credits from shared context (removes mount-time fetch)
   useEffect(() => {

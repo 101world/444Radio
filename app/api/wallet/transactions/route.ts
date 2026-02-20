@@ -154,7 +154,7 @@ export async function GET(req: NextRequest) {
 
     // Also fetch current credit balance
     const userRes = await fetch(
-      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,total_generated`,
+      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,free_credits,total_generated`,
       {
         headers: {
           'apikey': supabaseKey,
@@ -174,6 +174,8 @@ export async function GET(req: NextRequest) {
         totalPages: Math.ceil(totalCount / limit),
       },
       credits: user?.credits ?? 0,
+      freeCredits: user?.free_credits ?? 0,
+      totalCredits: (user?.credits ?? 0) + (user?.free_credits ?? 0),
       totalGenerated: user?.total_generated ?? 0,
     }))
   } catch (error) {

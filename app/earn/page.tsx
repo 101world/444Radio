@@ -40,7 +40,7 @@ export default function EarnPage() {
 
   const [tracks, setTracks] = useState<EarnTrack[]>([])
   const [loading, setLoading] = useState(true)
-  const { credits, refreshCredits } = useCredits()
+  const { totalCredits: credits, refreshCredits } = useCredits()
   const [filter, setFilter] = useState<FilterType>('trending')
   const [selectedGenre, setSelectedGenre] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')

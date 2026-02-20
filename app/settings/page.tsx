@@ -27,7 +27,7 @@ function SettingsPageInner() {
   const searchParams = useSearchParams()
   const initialTab = (['profile', 'credits', 'wallet', 'plugin'].includes(searchParams.get('tab') || '') ? searchParams.get('tab') : 'credits') as 'profile' | 'credits' | 'wallet' | 'plugin'
   const [activeTab, setActiveTab] = useState<'profile' | 'credits' | 'wallet' | 'plugin'>(initialTab)
-  const { credits, walletBalance, isLoading: isLoadingCredits, refreshCredits } = useCredits()
+  const { credits, freeCredits, totalCredits, walletBalance, isLoading: isLoadingCredits, refreshCredits } = useCredits()
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [customAvatarUrl, setCustomAvatarUrl] = useState<string | null>(null)
   const [isConverting, setIsConverting] = useState(false)
@@ -85,7 +85,7 @@ function SettingsPageInner() {
         setWalletPage(data.pagination.page)
         setWalletTotal(data.pagination.total)
         setWalletTotalPages(data.pagination.totalPages)
-        setWalletCredits(data.credits ?? 0)
+        setWalletCredits(data.totalCredits ?? data.credits ?? 0)
       }
     } catch (err) {
       console.error('Failed to fetch wallet:', err)
@@ -357,9 +357,14 @@ function SettingsPageInner() {
                       {isLoadingCredits ? (
                         <span className="text-gray-500">...</span>
                       ) : (
-                        <span className="text-cyan-400">{credits || 0}</span>
+                        <span className="text-cyan-400">{totalCredits || 0}</span>
                       )}
                     </p>
+                    {!isLoadingCredits && (freeCredits ?? 0) > 0 && (
+                      <p className="text-xs text-gray-400 mt-1">
+                        {credits || 0} paid + {freeCredits || 0} free
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-start gap-3">

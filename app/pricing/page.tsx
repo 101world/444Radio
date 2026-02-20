@@ -117,7 +117,7 @@ function calcCharge(amountUsd: number, currency: 'INR' | 'USD') {
 export default function PricingPage() {
   const { user, isLoaded } = useUser()
   const router = useRouter()
-  const { credits: currentCredits, walletBalance, refreshCredits } = useCredits()
+  const { totalCredits: currentCredits, walletBalance, refreshCredits } = useCredits()
 
   const [currency, setCurrency] = useState<'INR' | 'USD' | 'CREDITS'>('INR')
   const [customAmount, setCustomAmount] = useState(10)

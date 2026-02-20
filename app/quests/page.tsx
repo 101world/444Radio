@@ -227,7 +227,7 @@ function StatsPanel({ stats }: { stats: QuestStats | null }) {
 export default function QuestsPage() {
   const { user, isSignedIn } = useUser()
   const router = useRouter()
-  const { credits, refreshCredits } = useCredits()
+  const { totalCredits: credits, refreshCredits } = useCredits()
 
   const [quests, setQuests] = useState<Quest[]>([])
   const [pass, setPass] = useState<QuestPass | null>(null)
