@@ -31,53 +31,37 @@ SET genre = 'chords'
 WHERE genre = 'musicongen';
 
 -- 3. Update credit_transactions type enum to include Chords
--- Note: PostgreSQL doesn't allow direct ALTER TYPE ADD, so we use this workaround
-DO $$
-BEGIN
-  -- Add new type if it doesn't exist
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_enum 
-    WHERE enumlabel = 'generation_chords' 
-    AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'credit_transaction_type')
-  ) THEN
-    -- If the enum type exists but doesn't have the value, we need to alter it
-    BEGIN
-      EXECUTE 'ALTER TYPE credit_transaction_type ADD VALUE IF NOT EXISTS ''generation_chords'';';
-    EXCEPTION WHEN OTHERS THEN
-      -- Fallback: recreate constraint if enum doesn't exist as type
-      ALTER TABLE credit_transactions DROP CONSTRAINT IF EXISTS credit_transactions_type_check;
-      ALTER TABLE credit_transactions ADD CONSTRAINT credit_transactions_type_check CHECK (type IN (
-        'generation_music',
-        'generation_effects',
-        'generation_loops',
-        'generation_chords',
-        'generation_image',
-        'generation_video_to_audio',
-        'generation_video',
-        'generation_cover_art',
-        'generation_stem_split',
-        'generation_audio_boost',
-        'generation_autotune',
-        'generation_extract',
-        'earn_list',
-        'earn_purchase',
-        'earn_sale',
-        'earn_admin',
-        'credit_award',
-        'credit_refund',
-        'wallet_deposit',
-        'wallet_conversion',
-        'subscription_bonus',
-        'plugin_purchase',
-        'quest_entry',
-        'quest_reward',
-        'release',
-        'code_claim',
-        'other'
-      ));
-    END;
-  END IF;
-END $$;
+-- Always drop and recreate the constraint to include generation_chords
+ALTER TABLE credit_transactions DROP CONSTRAINT IF EXISTS credit_transactions_type_check;
+ALTER TABLE credit_transactions ADD CONSTRAINT credit_transactions_type_check CHECK (type IN (
+  'generation_music',
+  'generation_effects',
+  'generation_loops',
+  'generation_chords',
+  'generation_image',
+  'generation_video_to_audio',
+  'generation_video',
+  'generation_cover_art',
+  'generation_stem_split',
+  'generation_audio_boost',
+  'generation_autotune',
+  'generation_extract',
+  'earn_list',
+  'earn_purchase',
+  'earn_sale',
+  'earn_admin',
+  'credit_award',
+  'credit_refund',
+  'wallet_deposit',
+  'wallet_conversion',
+  'subscription_bonus',
+  'plugin_purchase',
+  'quest_entry',
+  'quest_reward',
+  'release',
+  'code_claim',
+  'other'
+));
 
 -- 4. Backfill chord progression from metadata for existing Chords generations
 -- (if any were generated before this migration)
