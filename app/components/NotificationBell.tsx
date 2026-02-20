@@ -19,7 +19,13 @@ export default function NotificationBell() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<NotificationItem[]>([]);
+  const [mounted, setMounted] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
+
+  // Prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
@@ -57,7 +63,16 @@ export default function NotificationBell() {
     };
   }, [isLoaded, user?.id]);
 
-  if (!isLoaded || !user) return null;
+  // Return placeholder during SSR to prevent hydration mismatch
+  if (!mounted || !isLoaded || !user) {
+    return (
+      <div className={pathname === '/create' ? 'fixed top-4 right-16 z-50' : 'relative'}>
+        <div className="p-2 text-gray-300 flex items-center opacity-50">
+          <Bell className="w-5 h-5" />
+        </div>
+      </div>
+    );
+  }
 
   const unreadCount = items.filter((i) => i.unread).length;
 

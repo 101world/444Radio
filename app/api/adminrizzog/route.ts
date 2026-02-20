@@ -17,26 +17,287 @@ export async function GET(req: NextRequest) {
   const userFilter = searchParams.get('userId') || null
   const offset = (page - 1) * limit
 
+  console.log(`[adminrizzog] GET request: tab=${tab}, page=${page}, limit=${limit}, userId=${userFilter}`)
+
   try {
-    // Handle new analytics/activity/sessions/credits-by-model tabs by delegating to analytics API
+    // Handle new analytics/activity/sessions/credits-by-model tabs by direct implementation
     if (tab === 'analytics' || tab === 'activity' || tab === 'sessions' || tab === 'credits-by-model') {
-      const analyticsUrl = new URL(req.url)
-      analyticsUrl.pathname = '/api/adminrizzog/analytics'
-      analyticsUrl.searchParams.set('type', tab === 'activity' ? 'activity-feed' : tab)
-      analyticsUrl.searchParams.set('days', '30')
+      console.log(`[adminrizzog] Handling tab: ${tab}`)
       
-      const analyticsRes = await fetch(analyticsUrl.toString(), {
-        headers: {
-          'Authorization': req.headers.get('Authorization') || '',
-          'Cookie': req.headers.get('Cookie') || ''
+      // Map tab to analytics type
+      const analyticsType = tab === 'activity' ? 'activity-feed' : tab
+      
+      // Call analytics API route logic inline to avoid fetch issues
+      try {
+        if (analyticsType === 'analytics') {
+          // Get comprehensive analytics overview
+          const [usersCount, mediaCount, generationsCount, txnData] = await Promise.all([
+            supabase.from('users').select('id', { count: 'exact', head: true }),
+            supabase.from('combined_media').select('id', { count: 'exact', head: true }),
+            supabase.from('plugin_jobs').select('id', { count: 'exact', head: true }).eq('status', 'completed'),
+            supabase.from('credit_transactions').select('*').order('created_at', { ascending: false }).limit(100)
+          ])
+          
+          console.log(`[adminrizzog] Analytics data: ${usersCount.count} users, ${mediaCount.count} media, ${generationsCount.count} generations`)
+          
+          return NextResponse.json({
+            type: 'analytics',
+            tab: 'analytics',
+            totalUsers: usersCount.count || 0,
+            totalMedia: mediaCount.count || 0,
+            totalGenerations: generationsCount.count || 0,
+            recentTransactions: txnData.data || [],
+            charts: []
+          })
         }
-      })
-      
-      if (!analyticsRes.ok) {
-        return NextResponse.json({ error: 'Failed to fetch analytics' }, { status: analyticsRes.status })
+        
+        if (analyticsType === 'activity-feed') {
+          // Get recent activity feed with user info
+          const { data: activityData, error: activityError } = await supabase
+            .from('activity_logs')
+            .select(`
+              *,
+              user:users!activity_logs_user_id_fkey(
+                clerk_user_id,
+                username,
+                email
+              )
+            `)
+            .order('created_at', { ascending: false })
+            .limit(parseInt(searchParams.get('limit') || '50'))
+          
+          if (activityError) {
+            console.error('[adminrizzog] Activity feed error:', activityError)
+            // Return empty if table doesn't exist yet
+            return NextResponse.json({
+              type: 'activity-feed',
+              tab: 'activity',
+              activities: [],
+              note: 'activity_logs table may not exist yet'
+            })
+          }
+          
+          console.log(`[adminrizzog] Activity feed: ${activityData?.length || 0} activities`)
+          
+          return NextResponse.json({
+            type: 'activity-feed',
+            tab: 'activity',
+            activities: activityData || []
+          })
+        }
+        
+        if (analyticsType === 'sessions') {
+          // Get active sessions
+          const { data: sessionData, error: sessionError } = await supabase
+            .from('user_sessions')
+            .select('*')
+            .order('last_active', { ascending: false })
+            .limit(50)
+          
+          if (sessionError) {
+            console.error('[adminrizzog] Sessions error:', sessionError)
+            // Return empty if table doesn't exist
+            return NextResponse.json({
+              type: 'sessions',
+              tab: 'sessions',
+              activeSessions: [],
+              deviceStats: {},
+              browserStats: {},
+              note: 'user_sessions table may not exist yet'
+            })
+          }
+          
+          // Calculate device and browser stats
+          const deviceStats: Record<string, number> = {}
+          const browserStats: Record<string, number> = {}
+          
+          for (const session of sessionData || []) {
+            const device = session.device_type || 'unknown'
+            const browser = session.browser || 'unknown'
+            deviceStats[device] = (deviceStats[device] || 0) + 1
+            browserStats[browser] = (browserStats[browser] || 0) + 1
+          }
+          
+          console.log(`[adminrizzog] Sessions: ${sessionData?.length || 0} active`)
+          
+          return NextResponse.json({
+            type: 'sessions',
+            tab: 'sessions',
+            activeSessions: sessionData || [],
+            deviceStats,
+            browserStats
+          })
+        }
+        
+        if (analyticsType === 'credits-by-model') {
+          // Comprehensive credits-by-model analytics with ALL historic data
+          console.log('[adminrizzog] Fetching comprehensive credits-by-model analytics...')
+          
+          // Fetch ALL plugin jobs (completed AND failed to show full history)
+          const { data: allJobs, error: jobsError } = await supabase
+            .from('plugin_jobs')
+            .select(`
+              id,
+              clerk_user_id,
+              type,
+              status,
+              credits_cost,
+              params,
+              created_at,
+              completed_at
+            `)
+            .order('created_at', { ascending: false })
+          
+          if (jobsError) {
+            console.error('[adminrizzog] Error fetching plugin_jobs:', jobsError)
+            throw new Error(`Failed to fetch plugin jobs: ${jobsError.message}`)
+          }
+          
+          // Fetch user info for all jobs
+          const userIds = [...new Set((allJobs || []).map(j => j.clerk_user_id))]
+          const { data: users } = await supabase
+            .from('users')
+            .select('clerk_user_id, username, email')
+            .in('clerk_user_id', userIds)
+          
+          const userMap = new Map((users || []).map(u => [u.clerk_user_id, u]))
+          
+          // Fetch all generation credit transactions for cross-reference
+          const { data: genTxns } = await supabase
+            .from('credit_transactions')
+            .select('id, user_id, type, amount, status, created_at, metadata')
+            .like('type', 'generation_%')
+            .order('created_at', { ascending: false })
+          
+          console.log(`[adminrizzog] Found ${allJobs?.length || 0} plugin jobs, ${users?.length || 0} users, ${genTxns?.length || 0} generation transactions`)
+          
+          // Build comprehensive model statistics
+          interface ModelStats {
+            name: string
+            plugin: string
+            runs: number
+            completedRuns: number
+            failedRuns: number
+            credits: number
+            avgCreditsPerRun: number
+            users: Array<{
+              userId: string
+              username: string
+              email: string
+              runs: number
+              credits: number
+              lastRun: string
+            }>
+          }
+          
+          const modelStatsMap = new Map<string, ModelStats>()
+          
+          // Process each job
+          for (const job of allJobs || []) {
+            const modelType = job.type || 'unknown'
+            const user = userMap.get(job.clerk_user_id)
+            
+            if (!modelStatsMap.has(modelType)) {
+              modelStatsMap.set(modelType, {
+                name: modelType.charAt(0).toUpperCase() + modelType.slice(1).replace(/_/g, ' '),
+                plugin: modelType,
+                runs: 0,
+                completedRuns: 0,
+                failedRuns: 0,
+                credits: 0,
+                avgCreditsPerRun: 0,
+                users: []
+              })
+            }
+            
+            const stats = modelStatsMap.get(modelType)!
+            stats.runs++
+            
+            if (job.status === 'completed') {
+              stats.completedRuns++
+              stats.credits += job.credits_cost || 0
+            } else if (job.status === 'failed' || job.status === 'cancelled') {
+              stats.failedRuns++
+              // Note: Failed jobs may have been refunded, don't count credits
+            }
+            
+            // Find or create user entry in this model's stats
+            let userStats = stats.users.find(u => u.userId === job.clerk_user_id)
+            if (!userStats) {
+              userStats = {
+                userId: job.clerk_user_id,
+                username: user?.username || 'Unknown',
+                email: user?.email || 'N/A',
+                runs: 0,
+                credits: 0,
+                lastRun: job.created_at
+              }
+              stats.users.push(userStats)
+            }
+            
+            userStats.runs++
+            if (job.status === 'completed') {
+              userStats.credits += job.credits_cost || 0
+            }
+            if (new Date(job.created_at) > new Date(userStats.lastRun)) {
+              userStats.lastRun = job.created_at
+            }
+          }
+          
+          // Calculate averages and sort users
+          const models = Array.from(modelStatsMap.values())
+          for (const model of models) {
+            model.avgCreditsPerRun = model.completedRuns > 0 
+              ? Math.round(model.credits / model.completedRuns) 
+              : 0
+            // Sort users by credits desc
+            model.users.sort((a, b) => b.credits - a.credits)
+          }
+          
+          // Sort models by total credits desc
+          models.sort((a, b) => b.credits - a.credits)
+          
+          const totalCredits = models.reduce((sum, m) => sum + m.credits, 0)
+          const totalRuns = models.reduce((sum, m) => sum + m.runs, 0)
+          
+          // Credit transaction summary for verification
+          const txnCredits = (genTxns || [])
+            .filter(t => t.status === 'success')
+            .reduce((sum, t) => sum + Math.abs(t.amount || 0), 0)
+          
+          console.log(`[adminrizzog] ✅ Credits by model: ${models.length} models, ${totalRuns} total runs, ${totalCredits} credits from jobs, ${txnCredits} from transactions`)
+          
+          return NextResponse.json({
+            type: 'credits-by-model',
+            tab: 'credits-by-model',
+            models,
+            totalCredits,
+            totalRuns,
+            uniqueUsers: userIds.length,
+            creditTransactionTotal: txnCredits,
+            mismatch: Math.abs(totalCredits - txnCredits),
+            generatedAt: new Date().toISOString()
+          })
+        }
+        
+        // If no matching analytics type, return error
+        console.error(`[adminrizzog] Unknown analytics type: ${analyticsType}`)
+        return NextResponse.json({ 
+          error: `Unknown analytics type: ${analyticsType}`,
+          tab 
+        }, { status: 400 })
+        
+      } catch (analyticsError) {
+        console.error('[adminrizzog] Analytics error:', analyticsError)
+        const errMsg = (analyticsError as any)?.message || 'Unknown error'
+        const analyticsType = tab === 'activity' ? 'activity-feed' : tab
+        return NextResponse.json({ 
+          error: 'Analytics data unavailable', 
+          details: errMsg,
+          tab,
+          type: analyticsType 
+        }, { status: 500 })
       }
-      
-      return NextResponse.json(await analyticsRes.json())
     }
 
     if (tab === 'overview') {
@@ -318,10 +579,11 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    return NextResponse.json({ error: 'Invalid tab' }, { status: 400 })
+    console.error(`[adminrizzog] Invalid tab requested: ${tab}`)
+    return NextResponse.json({ error: `Invalid tab: ${tab}` }, { status: 400 })
   } catch (err: any) {
     console.error('[adminrizzog] Error:', JSON.stringify(err, null, 2))
     const msg = err?.message || err?.error_description || (typeof err === 'string' ? err : 'Internal error')
-    return NextResponse.json({ error: msg, code: err?.code, details: err?.details, hint: err?.hint }, { status: 500 })
+    return NextResponse.json({ error: msg, code: err?.code, details: err?.details, hint: err?.hint, tab }, { status: 500 })
   }
 }

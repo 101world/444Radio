@@ -15,7 +15,6 @@ interface UserRow {
   email: string
   full_name: string | null
   credits: number
-  free_credits?: number
   total_generated: number
   wallet_balance: number
   subscription_status: string
@@ -24,11 +23,6 @@ interface UserRow {
   subscription_end: number | null
   created_at: string
   [key: string]: unknown
-}
-
-// Helper to calculate total credits (paid + free)
-function getTotalCredits(user: UserRow): number {
-  return (user.credits || 0) + (user.free_credits || 0)
 }
 
 interface Transaction {
@@ -165,8 +159,14 @@ export default function AdminBillingPage() {
   const [page, setPage] = useState(1)
   const [selectedUser, setSelectedUser] = useState<string | null>(null)
   const [txnTypeFilter, setTxnTypeFilter] = useState<string>('')
+  const [mounted, setMounted] = useState(false)
 
   const isAdmin = isLoaded && user?.id === ADMIN_ID
+
+  // Prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const fetchData = useCallback(async (t: Tab, p: number, userId?: string | null, txnType?: string) => {
     setLoading(true)
@@ -200,8 +200,17 @@ export default function AdminBillingPage() {
     }
   }, [isLoaded, isAdmin, tab, page, selectedUser, txnTypeFilter, fetchData])
 
-  // Not loaded yet
-  if (!isLoaded) {
+  // Auto-refresh for live activity tab (every 5 seconds)
+  useEffect(() => {
+    if (!isLoaded || !isAdmin || tab !== 'activity') return
+    const interval = setInterval(() => {
+      fetchData('activity', 1, null, '')
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [isLoaded, isAdmin, tab, fetchData])
+
+  // Prevent hydration mismatch - show loading during SSR
+  if (!mounted || !isLoaded) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
@@ -423,9 +432,7 @@ function OverviewTab({ data, onViewUser }: { data: ApiData; onViewUser: (id: str
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-sm font-black text-cyan-400">{getTotalCredits(u).toLocaleString()}</span>
-                  <br />
-                  <span className="text-[10px] text-gray-500">{u.credits}p + {u.free_credits || 0}f</span>
+                  <span className="text-sm font-black text-cyan-400">{u.credits.toLocaleString()}</span>
                   <br />
                   <Badge text={`$${(u.wallet_balance || 0).toFixed(2)}`} color={walletStatusColor(u.wallet_balance || 0)} />
                 </div>
@@ -451,7 +458,7 @@ function OverviewTab({ data, onViewUser }: { data: ApiData; onViewUser: (id: str
                     <span className="text-sm font-semibold text-white">{u.username || u.email}</span>
                     <br />
                     <span className="text-[10px] text-gray-500">
-                      ${Number(u.wallet_balance || 0).toFixed(2)} wallet · {getTotalCredits(u)} credits ({u.credits}p + {u.free_credits || 0}f)
+                      ${Number(u.wallet_balance || 0).toFixed(2)} wallet · {u.credits} credits
                     </span>
                   </div>
                   <div className="text-right">
@@ -600,11 +607,7 @@ function UsersTab({ data, page, onPage, onViewUser }: { data: ApiData; page: num
                   <span className="text-[10px] text-gray-600 font-mono">{u.clerk_user_id.slice(0, 16)}...</span>
                 </td>
                 <td className="py-2.5 px-2 text-gray-400">{u.email}</td>
-                <td className="py-2.5 px-2 text-right font-bold text-cyan-400">
-                  {getTotalCredits(u).toLocaleString()}
-                  <br />
-                  <span className="text-[9px] text-gray-600">{u.credits}p + {u.free_credits || 0}f</span>
-                </td>
+                <td className="py-2.5 px-2 text-right font-bold text-cyan-400">{u.credits.toLocaleString()}</td>
                 <td className="py-2.5 px-2 text-right text-gray-300">{u.total_generated}</td>
                 <td className="py-2.5 px-2 text-center text-emerald-400 font-mono">
                   ${(u.wallet_balance || 0).toFixed(2)}
@@ -999,9 +1002,8 @@ function UserDetailTab({ data, onBack }: { data: ApiData; onBack: () => void }) 
           </div>
           <div className="flex gap-4">
             <div className="text-center bg-gray-800/50 rounded-lg px-4 py-3">
-              <div className="text-2xl font-black text-cyan-400">{getTotalCredits(user).toLocaleString()}</div>
-              <div className="text-[10px] text-gray-500">Total Credits</div>
-              <div className="text-[9px] text-gray-600">{user.credits}p + {user.free_credits || 0}f</div>
+              <div className="text-2xl font-black text-cyan-400">{(user.credits || 0).toLocaleString()}</div>
+              <div className="text-[10px] text-gray-500">Credits</div>
             </div>
             <div className="text-center bg-gray-800/50 rounded-lg px-4 py-3">
               <div className="text-2xl font-black text-white">{(user.total_generated || 0).toLocaleString()}</div>
@@ -1381,29 +1383,40 @@ function CreditsByModelTab({ data }: { data: ApiData }) {
   const models = data.models || []
   const totalCredits = data.totalCredits || 0
   const totalRuns = data.totalRuns || 0
+  const uniqueUsers = data.uniqueUsers || 0
+  const txnTotal = data.creditTransactionTotal || 0
+  const mismatch = data.mismatch || 0
+  const [expandedModel, setExpandedModel] = useState<string | null>(null)
   
   // Color mapping for different model types
   const getModelColor = (modelName: string) => {
-    if (modelName.includes('Music')) return 'from-pink-500 to-purple-600'
-    if (modelName.includes('Image')) return 'from-cyan-500 to-blue-600'
-    if (modelName.includes('Video')) return 'from-orange-500 to-red-600'
+    const lower = modelName.toLowerCase()
+    if (lower.includes('music') || lower.includes('audio')) return 'from-pink-500 to-purple-600'
+    if (lower.includes('image') || lower.includes('cover')) return 'from-cyan-500 to-blue-600'
+    if (lower.includes('video')) return 'from-orange-500 to-red-600'
+    if (lower.includes('stem') || lower.includes('effect')) return 'from-green-500 to-emerald-600'
+    if (lower.includes('loop')) return 'from-yellow-500 to-amber-600'
     return 'from-gray-500 to-gray-600'
   }
   
   const getModelIcon = (modelName: string) => {
-    if (modelName.includes('Music')) return '🎵'
-    if (modelName.includes('Image')) return '🖼️'
-    if (modelName.includes('Video')) return '🎬'
-    return '✨'
+    const lower = modelName.toLowerCase()
+    if (lower.includes('music') || lower.includes('audio')) return '🎵'
+    if (lower.includes('image') || lower.includes('cover')) return '🖼️'
+    if (lower.includes('video')) return '🎬'
+    if (lower.includes('stem')) return '🎛️'
+    if (lower.includes('loop')) return '🔁'
+    if (lower.includes('effect')) return '✨'
+    return '🤖'
   }
 
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-gradient-to-br from-gray-800/60 to-gray-900/40 border border-gray-700/40 rounded-lg p-4">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Models</span>
+            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Models</span>
             <span className="text-lg">🤖</span>
           </div>
           <div className="text-2xl font-black text-white mb-0.5">{models.length}</div>
@@ -1416,18 +1429,42 @@ function CreditsByModelTab({ data }: { data: ApiData }) {
             <span className="text-lg">⚡</span>
           </div>
           <div className="text-2xl font-black text-white mb-0.5">{totalRuns.toLocaleString()}</div>
-          <div className="text-[10px] text-gray-600">Completed generations</div>
+          <div className="text-[10px] text-gray-600">All time generations</div>
         </div>
 
         <div className="bg-gradient-to-br from-gray-800/60 to-gray-900/40 border border-gray-700/40 rounded-lg p-4">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Credits</span>
+            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Credits Used</span>
             <span className="text-lg">💰</span>
           </div>
           <div className="text-2xl font-black text-white mb-0.5">{totalCredits.toLocaleString()}c</div>
-          <div className="text-[10px] text-gray-600">Credits consumed</div>
+          <div className="text-[10px] text-gray-600">From completed jobs</div>
+        </div>
+
+        <div className="bg-gradient-to-br from-gray-800/60 to-gray-900/40 border border-gray-700/40 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Users</span>
+            <span className="text-lg">👥</span>
+          </div>
+          <div className="text-2xl font-black text-white mb-0.5">{uniqueUsers}</div>
+          <div className="text-[10px] text-gray-600">Unique generators</div>
         </div>
       </div>
+
+      {/* Verification Banner */}
+      {mismatch > 0 && (
+        <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">⚠️</span>
+            <div>
+              <div className="text-yellow-400 text-sm font-bold">Credit Mismatch Detected</div>
+              <div className="text-yellow-300/70 text-xs mt-1">
+                Plugin jobs total: {totalCredits}c • Transaction ledger: {txnTotal}c • Difference: {mismatch}c
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Models List */}
       <div className="bg-gray-900/80 border border-gray-700/50 rounded-xl p-6">
@@ -1443,33 +1480,84 @@ function CreditsByModelTab({ data }: { data: ApiData }) {
           <div className="space-y-3">
             {models.map((model: any, idx: number) => {
               const percentage = totalCredits > 0 ? (model.credits / totalCredits) * 100 : 0
+              const isExpanded = expandedModel === model.plugin
+              const avgCredits = model.avgCreditsPerRun || 0
+              const successRate = model.runs > 0 ? (model.completedRuns / model.runs * 100).toFixed(1) : 0
+              
               return (
                 <div 
                   key={model.plugin || idx} 
-                  className="bg-gradient-to-r from-gray-800/40 to-gray-900/20 border border-gray-700/30 rounded-lg p-4 hover:border-cyan-500/30 transition"
+                  className="bg-gradient-to-r from-gray-800/40 to-gray-900/20 border border-gray-700/30 rounded-lg overflow-hidden hover:border-cyan-500/30 transition"
                 >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${getModelColor(model.name)} flex items-center justify-center text-xl`}>
-                        {getModelIcon(model.name)}
+                  <div className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${getModelColor(model.name)} flex items-center justify-center text-xl flex-shrink-0`}>
+                          {getModelIcon(model.name)}
+                        </div>
+                        <div>
+                          <div className="text-white font-bold text-sm">{model.name}</div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-gray-500 text-xs">{model.runs} runs</span>
+                            <Badge text={`${successRate}% success`} color={Number(successRate) > 90 ? 'green' : Number(successRate) > 70 ? 'yellow' : 'red'} />
+                            <span className="text-gray-600 text-xs">~{avgCredits}c/run</span>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="text-white font-bold text-sm">{model.name}</div>
-                        <div className="text-gray-500 text-xs">{model.runs} runs</div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <div className="text-2xl font-black text-white">{model.credits.toLocaleString()}c</div>
+                          <div className="text-[10px] text-gray-600">{percentage.toFixed(1)}% of total</div>
+                        </div>
+                        <button
+                          onClick={() => setExpandedModel(isExpanded ? null : model.plugin)}
+                          className="px-3 py-1.5 rounded-lg bg-gray-700/30 text-gray-300 hover:bg-gray-700/50 text-xs font-semibold transition"
+                        >
+                          {isExpanded ? '▲ Hide' : '▼ Show'} Users
+                        </button>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-black text-white">{model.credits}c</div>
-                      <div className="text-[10px] text-gray-600">{percentage.toFixed(1)}% of total</div>
+                    
+                    {/* Progress bar */}
+                    <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full bg-gradient-to-r ${getModelColor(model.name)} rounded-full transition-all duration-500`}
+                        style={{ width: `${percentage}%` }}
+                      />
                     </div>
-                  </div>
-                  
-                  {/* Progress bar */}
-                  <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full bg-gradient-to-r ${getModelColor(model.name)} rounded-full transition-all duration-500`}
-                      style={{ width: `${percentage}%` }}
-                    />
+
+                    {/* User Breakdown (Expandable) */}
+                    {isExpanded && model.users && model.users.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-gray-700/50">
+                        <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+                          Top Users ({model.users.length} total)
+                        </div>
+                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                          {model.users.slice(0, 20).map((user: any) => (
+                            <div key={user.userId} className="flex items-center justify-between p-2 bg-gray-800/30 rounded text-xs hover:bg-gray-800/50 transition">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-cyan-500 to-purple-500 flex items-center justify-center text-[10px] font-bold flex-shrink-0">
+                                  {user.username?.[0]?.toUpperCase() || '?'}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="text-white font-medium truncate">{user.username || 'Unknown'}</div>
+                                  <div className="text-gray-600 text-[10px]">{user.email}</div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-4 flex-shrink-0">
+                                <div className="text-right">
+                                  <div className="text-white font-bold">{user.runs} runs</div>
+                                  <div className="text-gray-500">{user.credits}c</div>
+                                </div>
+                                <div className="text-gray-600 text-[10px] whitespace-nowrap">
+                                  {formatDate(user.lastRun).split(',')[0]}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )
@@ -1484,12 +1572,12 @@ function CreditsByModelTab({ data }: { data: ApiData }) {
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-xl">💡</div>
           <div>
             <h3 className="text-sm font-black text-white uppercase tracking-wider">Usage Analytics</h3>
-            <p className="text-[10px] text-gray-400">Model performance tracking</p>
+            <p className="text-[10px] text-gray-400">Comprehensive model performance tracking</p>
           </div>
         </div>
         <p className="text-sm text-gray-400">
-          This shows credits consumed by each AI model. Credits are calculated based on completed generations. 
-          Use this data to optimize model selection and track usage costs.
+          This shows complete historical data of all AI model usage. Credits are calculated from completed generations only. 
+          Failed/cancelled jobs are tracked but don&apos;t count toward credit totals. Click &quot;Show Users&quot; to see per-user breakdown for each model.
         </p>
       </div>
     </div>
