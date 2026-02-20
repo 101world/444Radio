@@ -1,4 +1,4 @@
-# MusiConGen Integration - Complete Implementation
+# Chords Integration - Complete Implementation
 
 **Date:** February 20, 2026  
 **Feature:** Chord progression & rhythm control for AI music generation  
@@ -8,15 +8,15 @@
 
 ### 1. **API Endpoint** (`/api/generate/musicongen`)
 - Full Replicate integration for MusiConGen model
-- Credit system integration (5 credits for ≤15s, 7 credits for 16-30s)
+- Credit system integration (1 credit flat rate)
 - Automatic refund on failure
 - Saves chord progression and time signature to database
 - Uploads generated audio to Cloudflare R2
-- Tracks generation in `credit_transactions` with type `generation_musicongen`
+- Tracks generation in `credit_transactions` with type `generation_chords`
 
 **Location:** `app/api/generate/musicongen/route.ts`
 
-### 2. **UI Component** (MusiConGenModal)
+### 2. **UI Component** (Chords Modal)
 - Clean, user-friendly modal interface
 - **10 curated presets** for instant testing:
   1. **Blues Shuffle** - A:min7 D:min7 E:7 @ 78 BPM
@@ -32,7 +32,7 @@
 
 - Advanced settings panel with all API parameters
 - Real-time prompt validation (10-300 characters)
-- Credit cost display (dynamic based on duration)
+- Credit cost display (1 credit flat rate)
 - Integration with generation queue system
 - Chord format help text and validation
 
@@ -45,17 +45,17 @@ Added two new columns to `combined_media`:
 - Indexes for performance (chord search, BPM filtering)
 
 Added new transaction type to `credit_transactions`:
-- `generation_musicongen` - For tracking MusiConGen generations
+- `generation_chords` - For tracking Chords generations
 
 **Location:** `db/migrations/129_add_musicongen_support.sql`
 
 ### 4. **Type Definitions**
-Updated `CreditTransactionType` to include `'generation_musicongen'`
+Updated `CreditTransactionType` to include `'generation_chords'`
 
 **Location:** `lib/credit-transactions.ts`
 
 ### 5. **UI Integration**
-- Added MusiConGen button to create page (purple Music2 icon)
+- Added Chords button to create page (purple Music2 icon)
 - Appears in advanced buttons section alongside Loopers/Effects
 - Full chat integration with generation queue
 - Success/failure handling with user feedback
@@ -151,14 +151,14 @@ C,C:7 G, E:min A:min                # 2 chords in bar 1, 1 in bar 2, etc.
 
 3. Test generation:
    - Open `/create` page
-   - Click MusiConGen button (purple Music2 icon)
+   - Click Chords button (purple Music2 icon)
    - Try "Blues Shuffle" preset
    - Verify:
      - Credits deducted
      - Audio uploaded to R2
      - Saved to `combined_media` with chord_progression
      - Shows up in Library
-     - Transaction logged with `generation_musicongen` type
+     - Transaction logged with `generation_chords` type
 
 ---
 
@@ -171,11 +171,13 @@ C,C:7 G, E:min A:min                # 2 chords in bar 1, 1 in bar 2, etc.
 - [x] Type definitions updated (`CreditTransactionType`)
 - [x] UI integration in create page
 - [x] All API parameters supported
-- [x] Credit system integrated
+- [x] Credit system integrated (1 credit flat rate)
 - [x] Quest progress tracking (via `generate_songs`)
 - [x] Generation queue integration
 - [x] TypeScript compilation passing
 - [x] No ESLint errors
+- [x] Features sidebar integration
+- [x] Plugin API support
 
 ### Environment Variables Required
 ```env
@@ -192,7 +194,7 @@ NEXT_PUBLIC_R2_AUDIO_URL=https://audio.444radio.co.in
 1. **Commit all changes:**
    ```bash
    git add .
-   git commit -m "Add MusiConGen: chord progression & rhythm control"
+   git commit -m "Add Chords: chord progression & rhythm control"
    git push
    ```
 
@@ -215,7 +217,7 @@ NEXT_PUBLIC_R2_AUDIO_URL=https://audio.444radio.co.in
 ✅ **Rhythm Control** - BPM and time signature customization  
 ✅ **10 Genre Presets** - One-click testing across music styles  
 ✅ **Advanced Parameters** - Temperature, top_k, CFG, seed control  
-✅ **Credit Integration** - Dynamic pricing based on duration  
+✅ **Credit Integration** - 1 credit flat rate for all durations  
 ✅ **Database Tracking** - Chords saved for future search/filtering  
 ✅ **Generation Queue** - Non-blocking UI with progress tracking  
 ✅ **Auto-Refund** - Credits refunded on generation failure  
@@ -232,7 +234,7 @@ ALTER TABLE combined_media
   ADD COLUMN time_signature TEXT DEFAULT '4/4';
 
 -- New transaction type
-ALTER TYPE credit_transaction_type ADD VALUE 'generation_musicongen';
+ALTER TYPE credit_transaction_type ADD VALUE 'generation_chords';
 ```
 
 ---
@@ -242,11 +244,13 @@ ALTER TYPE credit_transaction_type ADD VALUE 'generation_musicongen';
 ### Created
 1. `app/api/generate/musicongen/route.ts` (289 lines)
 2. `app/components/MusiConGenModal.tsx` (526 lines)
-3. `db/migrations/129_add_musicongen_support.sql` (61 lines)
+3. `db/migrations/129_add_musicongen_support.sql` (92 lines)
 
 ### Modified
-1. `app/create/page.tsx` - Added MusiConGen modal integration
-2. `lib/credit-transactions.ts` - Added `generation_musicongen` type
+1. `app/create/page.tsx` - Added Chords modal integration
+2. `lib/credit-transactions.ts` - Added `generation_chords` type
+3. `app/components/FeaturesSidebar.tsx` - Added Chords feature entry
+4. `app/api/plugin/generate/route.ts` - Added plugin support for Chords
 3. `db/migrations/128_generation_streaks.sql` - Unchanged (user's active file)
 
 ---
