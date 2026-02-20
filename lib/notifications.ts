@@ -144,11 +144,30 @@ export async function notifyCreditPurchase(userId: string, credits: number, amou
   });
 }
 
-export async function notifyCreditAward(userId: string, credits: number, reason: string) {
+export async function notifyCreditAward(
+  userId: string, 
+  creditsAwarded: number, 
+  reason: string,
+  totalBalance?: number,
+  paidCredits?: number,
+  freeCredits?: number
+) {
+  const baseMessage = `Awarded ${creditsAwarded} credits: ${reason}`
+  const detailMessage = (totalBalance !== undefined && paidCredits !== undefined && freeCredits !== undefined)
+    ? `${baseMessage}. Total available: ${totalBalance} (${paidCredits} paid + ${freeCredits} free)`
+    : baseMessage
+
   return createNotification({
     userId,
     type: 'credit_award',
-    data: { credits, reason, message: `Awarded ${credits} credits: ${reason}` }
+    data: { 
+      credits: creditsAwarded, 
+      totalBalance,
+      paidCredits,
+      freeCredits,
+      reason, 
+      message: detailMessage 
+    }
   });
 }
 

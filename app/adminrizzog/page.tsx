@@ -15,6 +15,7 @@ interface UserRow {
   email: string
   full_name: string | null
   credits: number
+  free_credits?: number
   total_generated: number
   wallet_balance: number
   subscription_status: string
@@ -23,6 +24,11 @@ interface UserRow {
   subscription_end: number | null
   created_at: string
   [key: string]: unknown
+}
+
+// Helper to calculate total credits (paid + free)
+function getTotalCredits(user: UserRow): number {
+  return (user.credits || 0) + (user.free_credits || 0)
 }
 
 interface Transaction {
@@ -417,7 +423,9 @@ function OverviewTab({ data, onViewUser }: { data: ApiData; onViewUser: (id: str
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-sm font-black text-cyan-400">{u.credits.toLocaleString()}</span>
+                  <span className="text-sm font-black text-cyan-400">{getTotalCredits(u).toLocaleString()}</span>
+                  <br />
+                  <span className="text-[10px] text-gray-500">{u.credits}p + {u.free_credits || 0}f</span>
                   <br />
                   <Badge text={`$${(u.wallet_balance || 0).toFixed(2)}`} color={walletStatusColor(u.wallet_balance || 0)} />
                 </div>
@@ -443,7 +451,7 @@ function OverviewTab({ data, onViewUser }: { data: ApiData; onViewUser: (id: str
                     <span className="text-sm font-semibold text-white">{u.username || u.email}</span>
                     <br />
                     <span className="text-[10px] text-gray-500">
-                      ${Number(u.wallet_balance || 0).toFixed(2)} wallet · {u.credits} credits
+                      ${Number(u.wallet_balance || 0).toFixed(2)} wallet · {getTotalCredits(u)} credits ({u.credits}p + {u.free_credits || 0}f)
                     </span>
                   </div>
                   <div className="text-right">
@@ -592,7 +600,11 @@ function UsersTab({ data, page, onPage, onViewUser }: { data: ApiData; page: num
                   <span className="text-[10px] text-gray-600 font-mono">{u.clerk_user_id.slice(0, 16)}...</span>
                 </td>
                 <td className="py-2.5 px-2 text-gray-400">{u.email}</td>
-                <td className="py-2.5 px-2 text-right font-bold text-cyan-400">{u.credits.toLocaleString()}</td>
+                <td className="py-2.5 px-2 text-right font-bold text-cyan-400">
+                  {getTotalCredits(u).toLocaleString()}
+                  <br />
+                  <span className="text-[9px] text-gray-600">{u.credits}p + {u.free_credits || 0}f</span>
+                </td>
                 <td className="py-2.5 px-2 text-right text-gray-300">{u.total_generated}</td>
                 <td className="py-2.5 px-2 text-center text-emerald-400 font-mono">
                   ${(u.wallet_balance || 0).toFixed(2)}
@@ -987,8 +999,9 @@ function UserDetailTab({ data, onBack }: { data: ApiData; onBack: () => void }) 
           </div>
           <div className="flex gap-4">
             <div className="text-center bg-gray-800/50 rounded-lg px-4 py-3">
-              <div className="text-2xl font-black text-cyan-400">{(user.credits || 0).toLocaleString()}</div>
-              <div className="text-[10px] text-gray-500">Credits</div>
+              <div className="text-2xl font-black text-cyan-400">{getTotalCredits(user).toLocaleString()}</div>
+              <div className="text-[10px] text-gray-500">Total Credits</div>
+              <div className="text-[9px] text-gray-600">{user.credits}p + {user.free_credits || 0}f</div>
             </div>
             <div className="text-center bg-gray-800/50 rounded-lg px-4 py-3">
               <div className="text-2xl font-black text-white">{(user.total_generated || 0).toLocaleString()}</div>
