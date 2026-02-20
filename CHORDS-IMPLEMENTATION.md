@@ -8,7 +8,7 @@
 
 ### 1. **API Endpoint** (`/api/generate/musicongen`)
 - Full Replicate integration for MusiConGen model
-- Credit system integration (1 credit flat rate)
+- Credit system integration (4 credits flat rate)
 - Automatic refund on failure
 - Saves chord progression and time signature to database
 - Uploads generated audio to Cloudflare R2
@@ -32,7 +32,7 @@
 
 - Advanced settings panel with all API parameters
 - Real-time prompt validation (10-300 characters)
-- Credit cost display (1 credit flat rate)
+- Credit cost display (4 credits flat rate)
 - Integration with generation queue system
 - Chord format help text and validation
 
@@ -119,9 +119,9 @@ C,C:7 G, E:min A:min                # 2 chords in bar 1, 1 in bar 2, etc.
 
 ## 💰 Credit Pricing
 
-**1 credit** for all durations (1-30 seconds)
+**4 credits** for all durations (1-30 seconds)
 
-*Affordable pricing to encourage experimentation with chord progressions*
+*Fixed pricing for consistent cost per generation regardless of duration*
 
 ---
 
@@ -171,7 +171,7 @@ C,C:7 G, E:min A:min                # 2 chords in bar 1, 1 in bar 2, etc.
 - [x] Type definitions updated (`CreditTransactionType`)
 - [x] UI integration in create page
 - [x] All API parameters supported
-- [x] Credit system integrated (1 credit flat rate)
+- [x] Credit system integrated (4 credits flat rate)
 - [x] Quest progress tracking (via `generate_songs`)
 - [x] Generation queue integration
 - [x] TypeScript compilation passing
@@ -217,7 +217,7 @@ NEXT_PUBLIC_R2_AUDIO_URL=https://audio.444radio.co.in
 ✅ **Rhythm Control** - BPM and time signature customization  
 ✅ **10 Genre Presets** - One-click testing across music styles  
 ✅ **Advanced Parameters** - Temperature, top_k, CFG, seed control  
-✅ **Credit Integration** - 1 credit flat rate for all durations  
+✅ **Credit Integration** - 4 credits flat rate for all durations  
 ✅ **Database Tracking** - Chords saved for future search/filtering  
 ✅ **Generation Queue** - Non-blocking UI with progress tracking  
 ✅ **Auto-Refund** - Credits refunded on generation failure  
