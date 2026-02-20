@@ -46,37 +46,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing songId or prompt' }, { status: 400 })
     }
 
-    // Generate cover art using Flux Schnell with Predictions API
-    // Fast 1-4 step generation, 12B parameters, Apache 2.0 license
-    console.log('🎨 Starting cover art generation with Flux Schnell for:', prompt)
+    // Generate cover art using z-image-turbo
+    // Ultra-fast generation with high quality output
+    console.log('🎨 Starting cover art generation with z-image-turbo for:', prompt)
     console.log('🎨 Parameters:', params)
 
     // Log generation activity (non-blocking)
     logGeneration(userId, 'image', {
       prompt: prompt.substring(0, 200),
       song_id: songId,
-      model: 'FLUX.2 Klein 9B Base',
+      model: 'z-image-turbo',
       params
     }).catch(err => console.error('[Image Gen] Activity log failed:', err))
     
     // Create a visual prompt for album cover
     const coverPrompt = `Album cover art for: ${prompt}. Professional music album artwork, vibrant colors, artistic, high quality, studio lighting`
     
-    // Create prediction with FLUX.2 Klein 9B Base (faster, better quality)
+    // Create prediction with z-image-turbo (ultra-fast, high quality)
     let prediction, finalPrediction
     try {
       prediction = await createPredictionWithRetry(
         replicate,
-        "black-forest-labs/flux-2-klein-9b-base",
+        "prunaai/z-image-turbo",
         {
           prompt: coverPrompt,
-          aspect_ratio: params?.aspect_ratio ?? "1:1",
+          width: params?.width ?? 1024,
+          height: params?.height ?? 1024,
           output_format: params?.output_format ?? "jpg",
-          output_quality: params?.output_quality ?? 95,
-          output_megapixels: params?.output_megapixels ?? "1",
-          guidance: params?.guidance ?? 4,
-          go_fast: params?.go_fast ?? true,
-          images: []
+          output_quality: params?.output_quality ?? 100,
+          guidance_scale: params?.guidance_scale ?? 0,
+          num_inference_steps: params?.num_inference_steps ?? 8,
+          go_fast: params?.go_fast ?? false
         }
       )
 
@@ -106,20 +106,19 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // The output is an array from FLUX.2 Klein
+    // The output is a direct URL string from z-image-turbo
     const output = finalPrediction.output
     let imageUrl: string
     
-    // Handle FLUX.2 Klein output format:
-    // - Array of URL strings: ["https://..."]
-    // - Array of objects with url(): [{url: () => "https://..."}]
-    // - Direct string: "https://..."
-    if (Array.isArray(output)) {
+    // Handle z-image-turbo output format:
+    // Output is typically a direct URL string: "https://replicate.delivery/.../output.jpeg"
+    if (typeof output === 'string') {
+      imageUrl = output
+    } else if (Array.isArray(output)) {
       const firstItem = output[0]
-      // Check if it's an object with url() method
       imageUrl = typeof firstItem?.url === 'function' ? firstItem.url() : firstItem
     } else {
-      imageUrl = output
+      imageUrl = output as string
     }
 
     if (!imageUrl) {

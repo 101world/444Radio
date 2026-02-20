@@ -82,8 +82,8 @@ export async function POST(req: NextRequest) {
     console.log(`✅ Credit deducted. Remaining: ${deductResult.new_credits}`)
     await logCreditTransaction({ userId, amount: -1, balanceAfter: deductResult.new_credits, type: 'generation_image', description: `Image: ${prompt.substring(0, 80)}`, metadata: { prompt } })
 
-    // Generate image directly with Flux Schnell (with retry logic for 502 errors)
-    console.log('🎨 Generating standalone image with Flux Schnell')
+    // Generate image directly with z-image-turbo (with retry logic for 502 errors)
+    console.log('🎨 Generating standalone image with z-image-turbo')
     console.log('🎨 Prompt:', prompt)
     console.log('🎨 Parameters:', params)
     
@@ -93,23 +93,23 @@ export async function POST(req: NextRequest) {
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`🎨 Generation attempt ${attempt}/${maxRetries} with FLUX.2 Klein 9B`)
+        console.log(`🎨 Generation attempt ${attempt}/${maxRetries} with z-image-turbo`)
         output = await replicate.run(
-          "black-forest-labs/flux-2-klein-9b-base",
+          "prunaai/z-image-turbo",
           {
             input: {
               prompt,
-              aspect_ratio: params?.aspect_ratio ?? "1:1",
+              width: params?.width ?? 1024,
+              height: params?.height ?? 1024,
               output_format: params?.output_format ?? "jpg",
-              output_quality: params?.output_quality ?? 95,
-              output_megapixels: params?.output_megapixels ?? "1",
-              guidance: params?.guidance ?? 4,
-              go_fast: params?.go_fast ?? true,
-              images: [] // For potential image-to-image in future
+              output_quality: params?.output_quality ?? 100,
+              guidance_scale: params?.guidance_scale ?? 0,
+              num_inference_steps: params?.num_inference_steps ?? 8,
+              go_fast: params?.go_fast ?? false
             }
           }
         )
-        console.log('✅ FLUX.2 Klein generation succeeded in ~2-3s')
+        console.log('✅ z-image-turbo generation succeeded')
         break // Success, exit retry loop
       } catch (genError) {
         lastError = genError
@@ -160,9 +160,11 @@ export async function POST(req: NextRequest) {
 
     // Handle output format
     let imageUrl: string
-    if (Array.isArray(output)) {
+    // z-image-turbo returns a direct URL string: "https://replicate.delivery/.../output.jpeg"
+    if (typeof output === 'string') {
+      imageUrl = output
+    } else if (Array.isArray(output)) {
       const firstItem = output[0]
-      // Check if it's an object with url() method
       imageUrl = typeof firstItem?.url === 'function' ? firstItem.url() : firstItem
     } else {
       imageUrl = output as unknown as string
@@ -174,7 +176,7 @@ export async function POST(req: NextRequest) {
 
     // Upload to R2 for permanent storage
     console.log('📦 Uploading image to R2 for permanent storage...')
-    const outputFormat = params?.output_format ?? 'webp'
+    const outputFormat = params?.output_format ?? 'jpg'
     const fileName = `${prompt.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.${outputFormat}`
     
     const r2Result = await downloadAndUploadToR2(
@@ -200,14 +202,15 @@ export async function POST(req: NextRequest) {
       title: prompt.substring(0, 100), // Use first 100 chars as title
       prompt: prompt,
       image_url: imageUrl,
-      aspect_ratio: params?.aspect_ratio ?? "1:1",
-      image_format: params?.output_format ?? "webp",
+      aspect_ratio: `${params?.width ?? 1024}x${params?.height ?? 1024}`,
+      image_format: params?.output_format ?? "jpg",
       generation_params: {
-        num_outputs: params?.num_outputs ?? 1,
-        aspect_ratio: params?.aspect_ratio ?? "1:1",
-        output_format: params?.output_format ?? "webp",
-        output_quality: params?.output_quality ?? 80,
-        num_inference_steps: params?.num_inference_steps ?? 4
+        width: params?.width ?? 1024,
+        height: params?.height ?? 1024,
+        output_format: params?.output_format ?? "jpg",
+        output_quality: params?.output_quality ?? 100,
+        guidance_scale: params?.guidance_scale ?? 0,
+        num_inference_steps: params?.num_inference_steps ?? 8
       },
       status: 'ready'
     }
@@ -238,7 +241,7 @@ export async function POST(req: NextRequest) {
     // Quest progress tracking
     const { trackQuestProgress, trackModelUsage, trackGenerationStreak } = await import('@/lib/quest-progress')
     trackQuestProgress(userId, 'generate_cover_art').catch(() => {})
-    trackModelUsage(userId, 'flux-2-klein-9b').catch(() => {})
+    trackModelUsage(userId, 'z-image-turbo').catch(() => {})
     trackGenerationStreak(userId).catch(() => {})
 
     return NextResponse.json({ 

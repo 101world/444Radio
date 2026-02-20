@@ -430,16 +430,16 @@ async function generateImage(userId: string, body: Record<string, unknown>, jobI
   let output: unknown
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      output = await replicate.run('black-forest-labs/flux-2-klein-9b-base', {
+      output = await replicate.run('prunaai/z-image-turbo', {
         input: {
           prompt,
-          aspect_ratio: params.aspect_ratio ?? '1:1',
+          width: params.width ?? 1024,
+          height: params.height ?? 1024,
           output_format: params.output_format ?? 'jpg',
-          output_quality: params.output_quality ?? 95,
-          output_megapixels: params.output_megapixels ?? '1',
-          guidance: params.guidance ?? 4,
-          go_fast: true,
-          images: [],
+          output_quality: params.output_quality ?? 100,
+          guidance_scale: params.guidance_scale ?? 0,
+          num_inference_steps: params.num_inference_steps ?? 8,
+          go_fast: false,
         },
       })
       break
@@ -465,7 +465,7 @@ async function generateImage(userId: string, body: Record<string, unknown>, jobI
       clerk_user_id: userId,
       title: prompt.substring(0, 100),
       prompt, image_url: imageUrl,
-      aspect_ratio: params.aspect_ratio ?? '1:1',
+      aspect_ratio: `${params.width ?? 1024}x${params.height ?? 1024}`,
       image_format: fmt,
       generation_params: { ...params, source: 'plugin' },
       status: 'ready',
@@ -1228,8 +1228,8 @@ function expandLyricsForDuration(baseLyrics: string, duration: 'short' | 'medium
 async function generateCoverArtForTrack(userId: string, prompt: string, title: string, genre?: string): Promise<string | null> {
   try {
     const imagePrompt = `${prompt} music album cover art, ${genre || 'electronic'} style, professional music artwork`
-    const output = await replicate.run('black-forest-labs/flux-2-klein-9b-base', {
-      input: { prompt: imagePrompt, aspect_ratio: '1:1', output_format: 'jpg', output_quality: 95, output_megapixels: '1', guidance: 4, go_fast: true, images: [] },
+    const output = await replicate.run('prunaai/z-image-turbo', {
+      input: { prompt: imagePrompt, width: 1024, height: 1024, output_format: 'jpg', output_quality: 100, guidance_scale: 0, num_inference_steps: 8, go_fast: false },
     })
     let imageUrl = extractUrl(output)
     if (!imageUrl) return null

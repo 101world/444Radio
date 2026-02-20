@@ -21,17 +21,17 @@ const aspectRatios = [
 ]
 
 const outputFormats = [
-  { value: 'webp', label: 'WebP', desc: 'Best compression' },
   { value: 'jpg', label: 'JPEG', desc: 'Universal' },
+  { value: 'webp', label: 'WebP', desc: 'Best compression' },
   { value: 'png', label: 'PNG', desc: 'Lossless' },
 ]
 
 export default function CoverArtGenerationModal({ isOpen, onClose, userCredits, onGenerated, onSuccess }: CoverArtModalProps) {
   const [prompt, setPrompt] = useState('')
-  const [inferenceSteps, setInferenceSteps] = useState(4)
-  const [outputQuality, setOutputQuality] = useState(80)
+  const [inferenceSteps, setInferenceSteps] = useState(8)
+  const [outputQuality, setOutputQuality] = useState(100)
   const [aspectRatio, setAspectRatio] = useState('1:1')
-  const [outputFormat, setOutputFormat] = useState('webp')
+  const [outputFormat, setOutputFormat] = useState('jpg')
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null)
   
@@ -53,6 +53,16 @@ export default function CoverArtGenerationModal({ isOpen, onClose, userCredits, 
     setGeneratedImageUrl(null)
     
     try {
+      // Convert aspect ratio to width/height for z-image-turbo
+      const aspectToSize: Record<string, { width: number; height: number }> = {
+        '1:1': { width: 1024, height: 1024 },
+        '16:9': { width: 1024, height: 576 },
+        '9:16': { width: 576, height: 1024 },
+        '4:5': { width: 820, height: 1024 },
+        '5:4': { width: 1024, height: 820 },
+      }
+      const dimensions = aspectToSize[aspectRatio] || { width: 1024, height: 1024 }
+      
       // Generate image directly (no song record needed)
       const res = await fetch('/api/generate/image-only', {
         method: 'POST',
@@ -60,12 +70,13 @@ export default function CoverArtGenerationModal({ isOpen, onClose, userCredits, 
         body: JSON.stringify({
           prompt,
           params: {
+            width: dimensions.width,
+            height: dimensions.height,
             num_inference_steps: inferenceSteps,
             output_quality: outputQuality,
-            aspect_ratio: aspectRatio,
             output_format: outputFormat,
-            go_fast: true,
-            num_outputs: 1
+            guidance_scale: 0,
+            go_fast: false
           }
         })
       })

@@ -247,9 +247,10 @@ export default function CreatorV2Page() {
         body: JSON.stringify({
           prompt: prompt.trim(),
           params: {
-            aspect_ratio: '1:1',
+            width: 1024,
+            height: 1024,
             output_format: 'jpg',
-            output_quality: 95
+            output_quality: 100
           }
         })
       })

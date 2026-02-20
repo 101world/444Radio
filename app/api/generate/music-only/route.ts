@@ -463,16 +463,16 @@ export async function POST(req: NextRequest) {
           try {
             const imagePrompt = `${prompt} music album cover art, ${genre || 'electronic'} style, professional music artwork`
             const imagePrediction = await replicate.predictions.create({
-              model: "black-forest-labs/flux-2-klein-9b-base",
+              model: "prunaai/z-image-turbo",
               input: {
                 prompt: imagePrompt,
-                aspect_ratio: "1:1",
+                width: 1024,
+                height: 1024,
                 output_format: "jpg",
-                output_quality: 95,
-                output_megapixels: "1",
-                guidance: 4,
-                go_fast: true,
-                images: []
+                output_quality: 100,
+                guidance_scale: 0,
+                num_inference_steps: 8,
+                go_fast: false
               }
             })
 
