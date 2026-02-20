@@ -535,7 +535,7 @@ export async function GET(req: NextRequest) {
           .from('users')
           .select('*')
           .order('credits', { ascending: false })
-          .limit(10),
+          .limit(50), // Fetch more so we can sort by total after
         // Paid users (wallet_balance >= $1 = has access)
         supabase
           .from('users')
@@ -548,6 +548,15 @@ export async function GET(req: NextRequest) {
       if (subUsersRes.error) {
         console.error('[adminrizzog] Paid users query error:', subUsersRes.error)
       }
+      
+      // Sort top users by TOTAL credits (paid + free) and take top 10
+      const topUsersSorted = (topUsersRes.data || [])
+        .sort((a: any, b: any) => {
+          const aTotal = (a.credits || 0) + (a.free_credits || 0)
+          const bTotal = (b.credits || 0) + (b.free_credits || 0)
+          return bTotal - aTotal
+        })
+        .slice(0, 10)
       
       // Build paid users list: wallet_balance >= $1 OR has wallet_deposit/credit_award transactions
       let paidUsersList = subUsersRes.data || []
@@ -582,12 +591,17 @@ export async function GET(req: NextRequest) {
       console.log(`[adminrizzog] Total paid users: ${paidUsersList.length}`, 
         paidUsersList.map((u: any) => ({ username: u.username, wallet: u.wallet_balance })))
 
-      // Sum all credits in system
+      // Sum all credits in system (BOTH paid credits AND free_credits)
       const { data: creditSum } = await supabase
         .from('users')
-        .select('credits')
+        .select('credits, free_credits')
 
-      const totalCreditsInSystem = (creditSum || []).reduce((sum: number, u: { credits: number }) => sum + (u.credits || 0), 0)
+      const totalCreditsInSystem = (creditSum || []).reduce((sum: number, u: { credits: number; free_credits: number }) => {
+        return sum + (u.credits || 0) + (u.free_credits || 0)
+      }, 0)
+      
+      const totalPaidCredits = (creditSum || []).reduce((sum: number, u: { credits: number }) => sum + (u.credits || 0), 0)
+      const totalFreeCredits = (creditSum || []).reduce((sum: number, u: { free_credits: number }) => sum + (u.free_credits || 0), 0)
 
       // Sum total credits ever awarded (positive transactions only)
       const { data: awardedTxns } = await supabase
@@ -645,12 +659,14 @@ export async function GET(req: NextRequest) {
         totalUsers: usersRes.count || 0,
         totalMedia: mediaRes.count || 0,
         totalCreditsInSystem,
+        totalPaidCredits,
+        totalFreeCredits,
         totalCreditsAwarded,
         totalCreditsSpent,
         adminWalletTotal: 444_000_000_000,
         adminWalletRemaining: 444_000_000_000 - totalCreditsAwarded,
         mediaByType,
-        topUsers: topUsersRes.data || [],
+        topUsers: topUsersSorted || [],
         paidUsers: paidUsersList,
         paidUsersCount: paidUsersList.length,
         recentTransactions: recentTxnsRes.data || [],

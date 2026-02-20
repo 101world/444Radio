@@ -394,7 +394,25 @@ function OverviewTab({ data, onViewUser }: { data: ApiData; onViewUser: (id: str
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard icon="👥" label="Total Users" value={totalUsers} />
         <StatCard icon="🎵" label="Total Media" value={totalMedia} />
-        <StatCard icon="💰" label="Credits in System" value={totalCreditsInSystem} />
+        <div className="bg-gray-900/80 border border-gray-700/50 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="text-2xl">💰</div>
+            <div>
+              <div className="text-[10px] text-gray-400 uppercase tracking-wider">Credits in System</div>
+              <div className="text-2xl font-black text-white">{(totalCreditsInSystem || 0).toLocaleString()}</div>
+            </div>
+          </div>
+          <div className="flex gap-2 mt-2 pt-2 border-t border-gray-700/50">
+            <div className="flex-1">
+              <div className="text-[9px] text-cyan-400 uppercase">Paid</div>
+              <div className="text-sm font-bold text-cyan-300">{(data.totalPaidCredits || 0).toLocaleString()}</div>
+            </div>
+            <div className="flex-1">
+              <div className="text-[9px] text-emerald-400 uppercase">Free</div>
+              <div className="text-sm font-bold text-emerald-300">{(data.totalFreeCredits || 0).toLocaleString()}</div>
+            </div>
+          </div>
+        </div>
         <StatCard icon="📦" label="Media Types" value={Object.keys(mediaByType || {}).length} />
       </div>
 
@@ -432,8 +450,12 @@ function OverviewTab({ data, onViewUser }: { data: ApiData; onViewUser: (id: str
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-sm font-black text-cyan-400">{u.credits.toLocaleString()}</span>
-                  <br />
+                  <div className="text-sm font-black text-white">{((u.credits || 0) + ((u as any).free_credits || 0)).toLocaleString()} total</div>
+                  <div className="text-[9px] text-gray-500">
+                    <span className="text-cyan-400">{(u.credits || 0).toLocaleString()} paid</span>
+                    {' + '}
+                    <span className="text-emerald-400">{((u as any).free_credits || 0).toLocaleString()} free</span>
+                  </div>
                   <Badge text={`$${(u.wallet_balance || 0).toFixed(2)}`} color={walletStatusColor(u.wallet_balance || 0)} />
                 </div>
               </button>
@@ -458,7 +480,15 @@ function OverviewTab({ data, onViewUser }: { data: ApiData; onViewUser: (id: str
                     <span className="text-sm font-semibold text-white">{u.username || u.email}</span>
                     <br />
                     <span className="text-[10px] text-gray-500">
-                      ${Number(u.wallet_balance || 0).toFixed(2)} wallet · {u.credits} credits
+                      ${Number(u.wallet_balance || 0).toFixed(2)} wallet
+                    </span>
+                    <br />
+                    <span className="text-[10px]">
+                      <span className="text-cyan-400">{u.credits || 0} paid</span>
+                      {' + '}
+                      <span className="text-emerald-400">{(u as any).free_credits || 0} free</span>
+                      {' = '}
+                      <span className="text-white font-semibold">{(u.credits || 0) + ((u as any).free_credits || 0)} total</span>
                     </span>
                   </div>
                   <div className="text-right">
@@ -607,7 +637,14 @@ function UsersTab({ data, page, onPage, onViewUser }: { data: ApiData; page: num
                   <span className="text-[10px] text-gray-600 font-mono">{u.clerk_user_id.slice(0, 16)}...</span>
                 </td>
                 <td className="py-2.5 px-2 text-gray-400">{u.email}</td>
-                <td className="py-2.5 px-2 text-right font-bold text-cyan-400">{u.credits.toLocaleString()}</td>
+                <td className="py-2.5 px-2 text-right">
+                  <div className="font-bold text-white">{((u.credits || 0) + ((u as any).free_credits || 0)).toLocaleString()}</div>
+                  <div className="text-[9px] text-gray-500">
+                    <span className="text-cyan-400">{(u.credits || 0).toLocaleString()}p</span>
+                    {' + '}
+                    <span className="text-emerald-400">{((u as any).free_credits || 0).toLocaleString()}f</span>
+                  </div>
+                </td>
                 <td className="py-2.5 px-2 text-right text-gray-300">{u.total_generated}</td>
                 <td className="py-2.5 px-2 text-center text-emerald-400 font-mono">
                   ${(u.wallet_balance || 0).toFixed(2)}
@@ -1002,8 +1039,13 @@ function UserDetailTab({ data, onBack }: { data: ApiData; onBack: () => void }) 
           </div>
           <div className="flex gap-4">
             <div className="text-center bg-gray-800/50 rounded-lg px-4 py-3">
-              <div className="text-2xl font-black text-cyan-400">{(user.credits || 0).toLocaleString()}</div>
-              <div className="text-[10px] text-gray-500">Credits</div>
+              <div className="text-2xl font-black text-white">{((user.credits || 0) + ((user as any).free_credits || 0)).toLocaleString()}</div>
+              <div className="text-[10px] text-gray-500">Total Credits</div>
+              <div className="text-[9px] text-gray-600 mt-1">
+                <span className="text-cyan-400">{(user.credits || 0).toLocaleString()}p</span>
+                {' + '}
+                <span className="text-emerald-400">{((user as any).free_credits || 0).toLocaleString()}f</span>
+              </div>
             </div>
             <div className="text-center bg-gray-800/50 rounded-lg px-4 py-3">
               <div className="text-2xl font-black text-white">{(user.total_generated || 0).toLocaleString()}</div>
