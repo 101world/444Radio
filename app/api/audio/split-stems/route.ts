@@ -397,17 +397,40 @@ export async function POST(request: Request) {
                   audio_url: r2Result.url,
                   image_url: parentTrack?.image_url || null,
                   is_public: false,
-                  genre: 'stem',
+                  genre: 'stem',  // Marks as stem in library
                   stem_type: stemName.toLowerCase().replace(/\s+\d+$/, ''),
                   parent_track_id: parentTrack?.id || null,
                   description: `Stem split (${finalStem}) from: ${parentTrack?.title || audioUrl}`,
-                  category: 'stems',  // Save to stems category
                 })
                 .select('id')
                 .single()
 
               if (saved?.id) {
                 savedLibraryIds.push(saved.id)
+                
+                // Send chat message for this stem (so it appears in Create page chat)
+                try {
+                  await supabase
+                    .from('chat_messages')
+                    .insert({
+                      clerk_user_id: userId,
+                      message_type: 'assistant',
+                      content: `🎵 **${stemTitle}** stem extracted and saved to your library`,
+                      generation_type: 'stem_split',
+                      generation_id: saved.id,
+                      result: {
+                        title: stemTitle,
+                        audioUrl: r2Result.url,
+                        stemType: stemName,
+                        parentTrack: parentTrack?.title || 'Unknown',
+                        savedToLibrary: true,
+                        libraryId: saved.id,
+                      }
+                    })
+                  console.log(`[Stem Split] ✅ Chat message sent for ${stemName}`)
+                } catch (chatErr) {
+                  console.error(`[Stem Split] Failed to send chat message for ${stemName}:`, chatErr)
+                }
               } else if (saveErr) {
                 console.error(`[Stem Split] Library save error for ${stemName}:`, saveErr.message)
               }

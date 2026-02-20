@@ -314,21 +314,53 @@ export async function POST(request: Request) {
 
     console.log(`✅ Stem separation complete: ${Object.keys(stems).length} stems extracted`)
     
-    // Save each stem to music_library under "stems" category
+    // Save each stem to music_library and send chat messages
     try {
       for (const [stemName, stemUrl] of Object.entries(stems)) {
-        await supabase
+        const stemTitle = `${stemName.charAt(0).toUpperCase() + stemName.slice(1)} (Stem)`
+        
+        const { data: savedStem, error: insertErr } = await supabase
           .from('music_library')
           .insert({
             clerk_user_id: userId,
-            title: `${stemName} (Stem)`,
+            title: stemTitle,
             audio_url: stemUrl,
             prompt: `Stem split from audio | type:${stemName} | model:444 Heat`,
             status: 'ready',
-            category: 'stems',
           })
+          .select('id')
+          .single()
+        
+        if (insertErr) {
+          console.error(`[Stem Split] Failed to save ${stemName} to library:`, insertErr)
+          continue
+        }
+        
+        // Send chat message for this stem (appears in Create page chat)
+        try {
+          await supabase
+            .from('chat_messages')
+            .insert({
+              clerk_user_id: userId,
+              message_type: 'assistant',
+              content: `🎵 **${stemTitle}** extracted and saved to your library`,
+              generation_type: 'stem_split',
+              generation_id: savedStem?.id || stemName,
+              result: {
+                title: stemTitle,
+                audioUrl: stemUrl,
+                stemType: stemName,
+                model: '444 Heat',
+                savedToLibrary: true,
+                libraryId: savedStem?.id,
+              }
+            })
+          console.log(`[Stem Split] ✅ Chat message sent for ${stemName}`)
+        } catch (chatErr) {
+          console.error(`[Stem Split] Failed to send chat message for ${stemName}:`, chatErr)
+        }
       }
-      console.log(`✅ Saved ${Object.keys(stems).length} stems to music_library under "stems" category`)
+      console.log(`✅ Saved ${Object.keys(stems).length} stems to music_library with chat notifications`)
     } catch (saveError) {
       console.error('⚠️ Failed to save stems to library (non-critical):', saveError)
     }
