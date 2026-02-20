@@ -41,40 +41,20 @@ BEGIN
     WHERE cr.code = 'FREE THE MUSIC'
       AND cr.clerk_user_id IS NOT NULL
   LOOP
-    -- Award 24 free credits
-    UPDATE public.users
-    SET free_credits = COALESCE(free_credits, 0) + 24,
-        updated_at = NOW()
-    WHERE clerk_user_id = v_user_record.clerk_user_id;
-
-    -- Log transaction
+    -- Award 24 free credits using RPC (logs transaction automatically)
     BEGIN
-      INSERT INTO public.credit_transactions (
-        user_id,
-        amount,
-        balance_after,
-        type,
-        status,
-        description,
-        metadata
-      )
-      SELECT
+      PERFORM award_free_credits(
         v_user_record.clerk_user_id,
         24,
-        COALESCE(free_credits, 0),
-        'credit_award',
-        'success',
         'Free the Music credits upgrade from admin — +24 credits',
         jsonb_build_object(
           'source', 'admin_upgrade',
           'campaign', 'free_the_music',
-          'is_free_credits', true,
           'upgrade_date', NOW()
         )
-      FROM public.users
-      WHERE clerk_user_id = v_user_record.clerk_user_id;
+      );
     EXCEPTION WHEN OTHERS THEN
-      RAISE WARNING 'Failed to log transaction for user %: %', v_user_record.clerk_user_id, SQLERRM;
+      RAISE WARNING 'Failed to award credits to user %: %', v_user_record.clerk_user_id, SQLERRM;
     END;
 
     -- Create notification
