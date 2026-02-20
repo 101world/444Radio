@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
     const artistCreditResult = await supabaseAdmin.rpc('award_credits', {
       p_clerk_user_id: track.user_id,
       p_amount: artistShare,
-      p_type: 'earn_revenue',
+      p_type: 'earn_sale',  // Artist earns from sale (valid transaction type)
       p_description: `Sale: ${track.title}`,
       p_metadata: { trackId, trackTitle: track.title, buyerId: userId, buyerUsername, purchasedAt: new Date().toISOString() }
     })
