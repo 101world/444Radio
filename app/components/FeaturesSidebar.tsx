@@ -19,6 +19,7 @@ interface FeaturesSidebarProps {
   onSelectType: (type: string) => void
   onShowEffects: () => void
   onShowLoopers: () => void
+  onShowMusiConGen: () => void
   onShowLyrics: () => void
   onShowUpload: () => void
   onShowVideoToAudio: () => void
@@ -57,6 +58,7 @@ export default function FeaturesSidebar({
   onSelectType,
   onShowEffects,
   onShowLoopers,
+  onShowMusiConGen,
   onShowLyrics,
   onShowUpload,
   onShowVideoToAudio,
@@ -111,6 +113,15 @@ export default function FeaturesSidebar({
       active: false,
       cost: 6,
       onClick: onShowLoopers,
+    },
+    {
+      icon: Music,
+      label: 'MusiConGen',
+      description: 'Chord & rhythm control',
+      color: 'purple',
+      active: false,
+      cost: 1,
+      onClick: onShowMusiConGen,
     },
     {
       icon: ImageIcon,

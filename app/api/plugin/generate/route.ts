@@ -4,7 +4,7 @@
  * POST /api/plugin/generate
  * Auth: Bearer <plugin_token>
  * 
- * Accepts all generation types: music, effects, loops, image, stems, audio-boost
+ * Accepts all generation types: music, effects, loops, musicongen, image, stems, audio-boost
  * Creates an async job in plugin_jobs table, kicks off generation,
  * and returns a jobId for the plugin to poll via GET /api/plugin/jobs/[jobId].
  * 
@@ -45,6 +45,7 @@ const CREDIT_COSTS: Record<string, number | ((params: Record<string, unknown>) =
   image: 1,
   effects: 2,
   loops: (p) => ((p.max_duration as number) || 8) <= 10 ? 6 : 7,
+  musicongen: 1,
   stems: (p) => {
     const model = (p.model as string) || 'htdemucs'
     const wavFormat = (p.wav_format as string) || 'int24'
@@ -183,6 +184,9 @@ export async function POST(req: NextRequest) {
           break
         case 'loops':
           result = await generateLoops(userId, body, jobId)
+          break
+        case 'musicongen':
+          result = await generateMusiConGen(userId, body, jobId)
           break
         case 'stems':
           result = await generateStems(userId, body, jobId, requestSignal)
@@ -616,6 +620,110 @@ async function generateLoops(userId: string, body: Record<string, unknown>, jobI
   if (loops.length === 0) return { success: false, error: 'No loops generated' }
 
   return { success: true, loops, prompt, bpm, duration: max_duration }
+}
+
+// ──────────────────────────────────────────────────────────────────
+// MUSICONGEN  (chord progression & rhythm control)
+// ──────────────────────────────────────────────────────────────────
+async function generateMusiConGen(userId: string, body: Record<string, unknown>, jobId: string) {
+  const prompt = body.prompt as string
+  if (!prompt) return { success: false, error: 'Missing prompt' }
+
+  const text_chords = (body.text_chords as string) || 'C G A:min F'
+  const bpm = (body.bpm as number) || 120
+  const time_sig = (body.time_sig as string) || '4/4'
+  const duration = Math.min(30, Math.max(1, (body.duration as number) || 15))
+  const output_format = (body.output_format as string) || 'wav'
+
+  await updatePluginJob(jobId, { status: 'processing' })
+
+  const input: Record<string, any> = {
+    prompt,
+    text_chords,
+    bpm,
+    time_sig,
+    duration,
+    top_k: (body.top_k as number) || 250,
+    top_p: (body.top_p as number) || 0,
+    temperature: (body.temperature as number) || 1,
+    classifier_free_guidance: (body.classifier_free_guidance as number) || 3,
+    output_format,
+  }
+
+  // Only include seed if explicitly provided
+  const seed = body.seed as number | undefined
+  if (seed !== undefined && seed !== -1) {
+    input.seed = seed
+  }
+
+  const prediction = await replicate.predictions.create({
+    model: 'sakemin/musicongen',
+    version: 'a05ec8bdf5cc902cd849077d985029ce9b05e3dfb98a2d74accc9c94fdf15747',
+    input,
+  })
+
+  await updatePluginJob(jobId, { replicatePredictionId: prediction.id })
+
+  let final = prediction
+  let attempts = 0
+  while (final.status !== 'succeeded' && final.status !== 'failed' && attempts < 120) {
+    await new Promise(r => setTimeout(r, 1000))
+    final = await replicate.predictions.get(prediction.id)
+    attempts++
+  }
+
+  if (final.status !== 'succeeded') {
+    console.error('[plugin/musicongen] Prediction failed:', final.error)
+    return { success: false, error: SAFE_ERROR_MESSAGE }
+  }
+
+  const outputUrl = final.output as string
+  if (!outputUrl) return { success: false, error: 'No output from MusiConGen' }
+
+  const dlRes = await fetch(outputUrl)
+  if (!dlRes.ok) return { success: false, error: 'Failed to download audio' }
+  
+  const buffer = Buffer.from(await dlRes.arrayBuffer())
+  const r2Key = `${userId}/musicongen-${Date.now()}.${output_format}`
+  const r2 = await uploadToR2(buffer, 'audio-files', r2Key)
+
+  if (!r2.success || !r2.url) return { success: false, error: 'Failed to save audio' }
+
+  // Save to combined_media (appears in library)
+  await fetch(`${supabaseUrl}/rest/v1/combined_media`, {
+    method: 'POST',
+    headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      user_id: userId, type: 'audio',
+      title: prompt.substring(0, 40),
+      audio_prompt: prompt,
+      audio_url: r2.url,
+      is_public: false,
+      genre: 'musicongen',
+      bpm,
+      chord_progression: text_chords,
+      time_signature: time_sig,
+      metadata: JSON.stringify({
+        source: 'plugin',
+        text_chords,
+        time_sig,
+        duration,
+        output_format,
+        model: 'musicongen',
+      }),
+    }),
+  })
+
+  // Track in credit_transactions
+  await logCreditTransaction({
+    userId,
+    amount: -1,
+    type: 'generation_musicongen',
+    description: `MusiConGen (plugin): ${prompt}`,
+    metadata: { source: 'plugin', jobId, text_chords, bpm, time_sig },
+  })
+
+  return { success: true, audioUrl: r2.url, prompt, text_chords, bpm, time_sig }
 }
 
 // ──────────────────────────────────────────────────────────────────

@@ -1721,6 +1721,7 @@ function CreatePageContent() {
           onSelectType={(type) => setSelectedType(type as GenerationType)}
           onShowEffects={() => setShowEffectsModal(true)}
           onShowLoopers={() => setShowLoopersModal(true)}
+          onShowMusiConGen={() => setShowMusiConGenModal(true)}
           onShowLyrics={() => setShowLyricsModal(true)}
           onShowUpload={() => setShowMediaUploadModal(true)}
           onShowVideoToAudio={() => setShowMediaUploadModal(true)}
