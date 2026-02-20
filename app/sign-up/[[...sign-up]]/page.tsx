@@ -1,14 +1,51 @@
 'use client'
 
-import { SignUp } from '@clerk/nextjs'
-import { useRouter } from 'next/navigation'
-import { useEffect, useState, Suspense } from 'react'
-import { Music2, Sparkles, Radio } from 'lucide-react'
+import { SignUp, useAuth } from '@clerk/nextjs'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useState, Suspense, useCallback } from 'react'
+import { Music2, Sparkles, Radio, Gift } from 'lucide-react'
 
 function SignUpContent() {
   const [ageVerified, setAgeVerified] = useState(false)
   const [agreeToTerms, setAgreeToTerms] = useState(false)
   const [error, setError] = useState('')
+  const [referralCode, setReferralCode] = useState('')
+  const [referralApplied, setReferralApplied] = useState(false)
+  const searchParams = useSearchParams()
+  const { isSignedIn, userId } = useAuth()
+
+  // Check for referral code in URL on mount
+  useEffect(() => {
+    const refFromUrl = searchParams.get('ref')
+    if (refFromUrl) {
+      setReferralCode(refFromUrl.toUpperCase())
+    }
+  }, [searchParams])
+
+  const applyReferralCode = useCallback(async () => {
+    if (!referralCode) return
+    try {
+      const res = await fetch('/api/referral/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ referralCode })
+      })
+      const data = await res.json()
+      if (data.success) {
+        console.log('✅ Referral code applied:', referralCode)
+        setReferralApplied(true)
+      }
+    } catch (err) {
+      console.error('Failed to apply referral code:', err)
+    }
+  }, [referralCode])
+
+  // Apply referral code after sign-up completes
+  useEffect(() => {
+    if (isSignedIn && userId && referralCode && !referralApplied) {
+      applyReferralCode()
+    }
+  }, [isSignedIn, userId, referralCode, referralApplied, applyReferralCode])
 
   const handleContinue = () => {
     if (!ageVerified) {
@@ -223,6 +260,25 @@ function SignUpContent() {
           }
         }}
       />
+
+      {/* Referral Code Input */}
+      <div className="mt-6 p-4 bg-gradient-to-br from-cyan-950/20 to-teal-950/20 border border-cyan-500/20 rounded-xl">
+        <div className="flex items-center gap-2 mb-3">
+          <Gift className="w-5 h-5 text-cyan-400" />
+          <h3 className="text-white font-semibold text-sm">Have a Referral Code?</h3>
+        </div>
+        <input
+          type="text"
+          value={referralCode}
+          onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+          placeholder="Enter code (optional)"
+          maxLength={8}
+          className="w-full bg-slate-950/80 border border-slate-700 text-gray-100 placeholder:text-gray-500 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 transition-all rounded-lg px-4 py-2.5 text-sm font-mono tracking-wider"
+        />
+        <p className="text-gray-500 text-xs mt-2">
+          Get bonus credits when you sign up with a friend's code! 🎁
+        </p>
+      </div>
 
       {/* 444Radio Footer */}
       <div className="mt-6 text-center">
