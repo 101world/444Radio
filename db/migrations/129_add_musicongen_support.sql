@@ -19,7 +19,18 @@ COMMENT ON COLUMN combined_media.time_signature IS 'Time signature (e.g., 4/4, 3
 -- Create index for searching by chords (helpful for future chord-based search)
 CREATE INDEX IF NOT EXISTS idx_combined_media_chord_progression ON combined_media(chord_progression) WHERE chord_progression IS NOT NULL;
 
--- 2. Update credit_transactions type enum to include Chords
+-- 2. Migrate old generation_musicongen rows to generation_chords
+-- This handles the rename from MusiConGen to Chords
+UPDATE credit_transactions 
+SET type = 'generation_chords'
+WHERE type = 'generation_musicongen';
+
+-- Also update combined_media genre from musicongen to chords
+UPDATE combined_media 
+SET genre = 'chords'
+WHERE genre = 'musicongen';
+
+-- 3. Update credit_transactions type enum to include Chords
 -- Note: PostgreSQL doesn't allow direct ALTER TYPE ADD, so we use this workaround
 DO $$
 BEGIN
@@ -68,7 +79,7 @@ BEGIN
   END IF;
 END $$;
 
--- 3. Backfill chord progression from metadata for existing Chords generations
+-- 4. Backfill chord progression from metadata for existing Chords generations
 -- (if any were generated before this migration)
 UPDATE combined_media
 SET 
@@ -79,7 +90,7 @@ WHERE
   AND metadata IS NOT NULL 
   AND chord_progression IS NULL;
 
--- 4. Add index for BPM if not exists (helpful for filtering by tempo)
+-- 5. Add index for BPM if not exists (helpful for filtering by tempo)
 CREATE INDEX IF NOT EXISTS idx_combined_media_bpm ON combined_media(bpm) WHERE bpm IS NOT NULL;
 
 -- Success message
