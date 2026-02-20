@@ -19,6 +19,7 @@ const SplitStemsModal = lazy(() => import('../components/SplitStemsModal'))
 const VisualizerModal = lazy(() => import('../components/VisualizerModal'))
 const FeaturesSidebar = lazy(() => import('../components/FeaturesSidebar'))
 const MatrixConsole = lazy(() => import('../components/MatrixConsole'))
+const OutOfCreditsModal = lazy(() => import('../components/OutOfCreditsModal'))
 import PluginGenerationQueue from '../components/PluginGenerationQueue'
 import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLanguage } from '@/lib/language-hooks'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
@@ -148,6 +149,8 @@ function CreatePageContent() {
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showAdvancedButtons, setShowAdvancedButtons] = useState(false)
   const [showDeletedChatsModal, setShowDeletedChatsModal] = useState(false)
+  const [showOutOfCreditsModal, setShowOutOfCreditsModal] = useState(false)
+  const [outOfCreditsError, setOutOfCreditsError] = useState('')
   const [selectedLanguage, setSelectedLanguage] = useState('English')
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
@@ -706,7 +709,8 @@ function CreatePageContent() {
     console.log('[Credit Check]', { currentCredits, pendingCredits, availableCredits, creditsNeeded })
     
     if (availableCredits < creditsNeeded) {
-      alert(`⚡ Insufficient credits! You need ${creditsNeeded} credits but only have ${currentCredits} available (${pendingCredits} reserved for active generations). Visit the pricing page to get more.`)
+      setOutOfCreditsError(`You need ${creditsNeeded} credits but only have ${currentCredits} available (${pendingCredits} reserved for active generations).`)
+      setShowOutOfCreditsModal(true)
       return
     }
     
@@ -3839,6 +3843,16 @@ function CreatePageContent() {
           onDelete={(chatId) => {
             console.log('Chat deleted from history:', chatId)
           }}
+        />
+      </Suspense>
+
+      {/* Out of Credits Modal */}
+      <Suspense fallback={null}>
+        <OutOfCreditsModal
+          isOpen={showOutOfCreditsModal}
+          onClose={() => setShowOutOfCreditsModal(false)}
+          errorMessage={outOfCreditsError}
+          freeCreditsRemaining={0}
         />
       </Suspense>
     </div>

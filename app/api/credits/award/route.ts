@@ -22,7 +22,7 @@ interface CodeConfig {
 }
 
 const VALID_CODES: Record<string, CodeConfig> = {
-  'FREE THE MUSIC': { credits: 20,  description: 'Decrypt puzzle — 20 credits',  policy: 'lifetime'  },
+  'FREE THE MUSIC': { credits: 44,  description: 'Free the Music — 44 free credits',  policy: 'lifetime'  },
 }
 
 export async function POST(req: NextRequest) {
@@ -153,64 +153,54 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Get current credits
+    // ── Award FREE credits (no wallet gate) via RPC ──
+    const { data: awardResult, error: awardError } = await supabase.rpc('award_free_credits', {
+      p_clerk_user_id: userId,
+      p_amount: creditsToAward,
+      p_description: `Code claimed: ${normalizedCode} — +${creditsToAward} free credits`,
+      p_metadata: {
+        code: normalizedCode,
+        credits_awarded: creditsToAward,
+        source: 'code_claim',
+        campaign: 'free_the_music',
+      }
+    })
+
+    if (awardError || !awardResult || awardResult.length === 0) {
+      console.error('Error awarding free credits:', awardError)
+      return NextResponse.json(
+        { success: false, error: 'Failed to award credits' },
+        { status: 500 }
+      )
+    }
+
+    const result = awardResult[0]
+    if (!result.success) {
+      console.error('Award credits failed:', result.error_message)
+      return NextResponse.json(
+        { success: false, error: result.error_message || 'Failed to award credits' },
+        { status: 500 }
+      )
+    }
+
+    // Get total credits for response
     const { data: userData, error: fetchError } = await supabase
       .from('users')
-      .select('credits')
+      .select('credits, free_credits')
       .eq('clerk_user_id', userId)
       .single()
 
-    if (fetchError) {
-      console.error('Error fetching user:', fetchError)
-      return NextResponse.json(
-        { success: false, error: 'Failed to fetch user data' },
-        { status: 500 }
-      )
-    }
+    const totalCredits = (userData?.credits || 0) + (userData?.free_credits || 0)
 
-    const currentCredits = userData?.credits || 0
-    const newCredits = currentCredits + creditsToAward
-
-    // Update credits on users table
-    const { error: updateError } = await supabase
-      .from('users')
-      .update({
-        credits: newCredits,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('clerk_user_id', userId)
-
-    if (updateError) {
-      console.error('Error updating credits:', updateError)
-      return NextResponse.json(
-        { success: false, error: 'Failed to update credits' },
-        { status: 500 }
-      )
-    }
-
-    // ── Log to credit_transactions (wallet history) ──
-    await logCreditTransaction({
-      userId,
-      amount: creditsToAward,
-      balanceAfter: newCredits,
-      type: 'code_claim',
-      status: 'success',
-      description: `Code claimed: ${normalizedCode} — +${creditsToAward} credits`,
-      metadata: {
-        code: normalizedCode,
-        credits_awarded: creditsToAward,
-        previous_balance: currentCredits,
-      },
-    })
-
-    console.log(`✅ Code "${normalizedCode}" redeemed by ${userId}: +${creditsToAward} credits (${currentCredits} → ${newCredits})`)
+    console.log(`✅ Code "${normalizedCode}" redeemed by ${userId}: +${creditsToAward} free credits (total: ${totalCredits})`)
 
     return NextResponse.json({
       success: true,
-      credits: newCredits,
+      credits: totalCredits,
+      free_credits: userData?.free_credits || 0,
       awarded: creditsToAward,
       code: normalizedCode,
-      message: `+${creditsToAward} credits unlocked!`,
+      message: `+${creditsToAward} free credits unlocked! Generate for free, no payment required.`,
     })
 
   } catch (error) {
