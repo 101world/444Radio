@@ -11,7 +11,10 @@
 -- ============================================================================
 
 -- ── 1. Create notifications table if not exists ───────────────────────────
-CREATE TABLE IF NOT EXISTS public.notifications (
+-- Drop table if it exists from previous failed run
+DROP TABLE IF EXISTS public.notifications CASCADE;
+
+CREATE TABLE public.notifications (
   id BIGSERIAL PRIMARY KEY,
   user_id TEXT NOT NULL,
   title TEXT NOT NULL,
@@ -22,8 +25,8 @@ CREATE TABLE IF NOT EXISTS public.notifications (
   metadata JSONB DEFAULT '{}'
 );
 
-CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON public.notifications(user_id);
-CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON public.notifications(is_read) WHERE is_read = false;
+CREATE INDEX idx_notifications_user_id ON public.notifications(user_id);
+CREATE INDEX idx_notifications_is_read ON public.notifications(is_read) WHERE is_read = false;
 
 -- ── 2. Award +24 credits to users who claimed "FREE THE MUSIC" code ──────
 -- Find users who have redeemed the code (exists in code_redemptions)
