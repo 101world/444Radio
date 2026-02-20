@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { handleOptions } from '@/lib/cors'
+import { handleOptions, corsResponse } from '@/lib/cors'
 
 // Route verified working - Jan 20, 2026
 const supabase = createClient(
@@ -93,16 +93,16 @@ export async function GET(req: NextRequest) {
       }
     })
 
-    return NextResponse.json({
+    return corsResponse(NextResponse.json({
       success: true,
       combinedMedia: mediaWithUsers
-    })
+    }))
   } catch (error) {
     console.error('Fetch explore error:', error)
-    return NextResponse.json(
+    return corsResponse(NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
-    )
+    ))
   }
 }
 
