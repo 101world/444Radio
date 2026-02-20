@@ -43,14 +43,15 @@ export default function LipSyncModal({ isOpen, onClose, userCredits, onSuccess }
   const effectiveDuration = Math.min(audioTrimRange.end - audioTrimRange.start, 10)
 
   // Calculate credit cost based on resolution
-  // 720p = $0.10/s × 1.5 markup / $0.035 per credit = 4.29 → 5 credits/s
-  // 1080p = $0.15/s × 1.5 markup / $0.035 per credit = 6.43 → 7 credits/s
+  // Formula: (duration × $per_second × 1.5 markup) ÷ $0.035 per credit
+  // 720p: 5s × $0.10 × 1.5 = $0.75 → $0.75/$0.035 = 21.43 → 22 credits
+  // 1080p: 5s × $0.15 × 1.5 = $1.125 → $1.125/$0.035 = 32.14 → 33 credits
   const creditCosts: Record<string, number[]> = {
-    '480p': [6, 9, 12, 15, 18, 21, 24, 27, 30],  // 2-10s: 3 credits/s
-    '720p': [10, 15, 20, 25, 30, 35, 40, 45, 50],  // 5 credits/s
-    '1080p': [14, 21, 28, 35, 42, 49, 56, 63, 70],  // 7 credits/s
+    '480p': [6, 9, 12, 15, 18, 21, 24, 27, 30],  // 2-10s (accurate)
+    '720p': [9, 13, 18, 22, 26, 30, 35, 39, 43],  // 2-10s (accurate)
+    '1080p': [13, 20, 26, 33, 39, 45, 52, 58, 65],  // 2-10s (accurate)
   }
-  const creditCost = creditCosts[resolution][Math.max(0, Math.ceil(effectiveDuration) - 2)] || 50
+  const creditCost = creditCosts[resolution][Math.max(0, Math.ceil(effectiveDuration) - 2)] || 65
 
   // Handle image upload
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

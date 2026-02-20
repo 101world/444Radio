@@ -29,10 +29,10 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
  * Charge (cost × 1.5), then credits = ceil(dur × charge / 0.035):
  *   Duration │  480p │  720p │ 1080p
  *   ─────────┼───────┼───────┼───────
- *      2s    │    6  │   10  │   14
- *      5s    │   15  │   25  │   35
- *      8s    │   24  │   40  │   56
- *     10s    │   30  │   50  │   70
+ *      2s    │    6  │    9  │   13
+ *      5s    │   15  │   22  │   33
+ *      8s    │   24  │   35  │   52
+ *     10s    │   30  │   43  │   65
  *
  * Note: Model supports up to 10 seconds max duration for lip-sync mode.
  */
