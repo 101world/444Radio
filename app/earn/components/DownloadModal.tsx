@@ -26,7 +26,7 @@ export default function DownloadModal({ track, userCredits, onClose, onConfirm }
   const baseCost = 5
   const artistCut = 1
   const adminCut = 4
-  const stemsCost = 1
+  const stemsCost = 5  // 444 Heat model (htdemucs_6s) - extracts all stems
   const totalCost = baseCost + (splitStems ? stemsCost : 0)
   const canAfford = userCredits >= totalCost
 
@@ -118,8 +118,9 @@ export default function DownloadModal({ track, userCredits, onClose, onConfirm }
               <div className="text-sm font-semibold text-white flex items-center gap-2">
                 Split Stems
                 <span className="px-1.5 py-0.5 bg-purple-500/20 text-purple-300 text-[10px] rounded-full font-bold">+{stemsCost} cr</span>
+                <span className="px-1.5 py-0.5 bg-gradient-to-r from-orange-500 to-pink-500 text-white text-[9px] rounded-full font-black">444 HEAT</span>
               </div>
-              <p className="text-xs text-gray-500 mt-0.5">Separate vocals, drums, bass, and melody — sent to your Create page</p>
+              <p className="text-xs text-gray-500 mt-0.5">Extract ALL stems (vocals, drums, bass, guitar, piano, other) using 444 Heat model — saved to Library</p>
             </div>
           </label>
         </div>
