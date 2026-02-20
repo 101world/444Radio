@@ -392,34 +392,57 @@ LIMIT 10;
 
 DO $$
 DECLARE
-  v_user_count INTEGER;
-  v_total_credits INTEGER;
+  v_users_upgraded INTEGER;
+  v_total_credits_distributed INTEGER;
+  v_admin_wallet_remaining NUMERIC;
+  v_total_awarded NUMERIC;
 BEGIN
   -- Count users who got the upgrade
-  SELECT COUNT(DISTINCT clerk_user_id)
-  INTO v_user_count
-  FROM public.code_redemptions
-  WHERE code = 'FREE THE MUSIC';
-
-  v_total_credits := v_user_count * 24;
-
+  SELECT COUNT(*) INTO v_users_upgraded
+  FROM public.credit_transactions
+  WHERE type = 'credit_award'
+    AND description LIKE '%Free the Music%'
+    AND metadata->>'campaign' = 'free_the_music';
+  
+  -- Calculate total credits distributed
+  v_total_credits_distributed := v_users_upgraded * 24;
+  
+  -- Calculate current admin wallet status
+  SELECT COALESCE(SUM(amount), 0) INTO v_total_awarded
+  FROM public.credit_transactions
+  WHERE amount > 0 AND status = 'success';
+  
+  v_admin_wallet_remaining := 444000000000 - v_total_awarded;
+  
   -- Send admin notification
-  PERFORM notify_admin(
+  INSERT INTO public.admin_notifications (
+    title,
+    message,
+    category,
+    metadata
+  ) VALUES (
     '🎵 Free the Music Upgrade Complete',
-    format('%s users received +24 credits bonus (total: %s credits distributed)', 
-      v_user_count, v_total_credits),
+    format('Successfully distributed %s credits to %s users. Admin wallet: %s remaining (%s%% of 444B allocation used)',
+      v_total_credits_distributed,
+      v_users_upgraded,
+      v_admin_wallet_remaining,
+      ROUND((v_total_awarded / 444000000000.0 * 100)::numeric, 6)
+    ),
     'milestone',
     jsonb_build_object(
       'campaign', 'free_the_music',
-      'users_upgraded', v_user_count,
+      'users_upgraded', v_users_upgraded,
+      'credits_distributed', v_total_credits_distributed,
       'credits_per_user', 24,
-      'total_credits_distributed', v_total_credits,
-      'admin_pool_impact', v_total_credits,
+      'total_credits_awarded_system_wide', v_total_awarded,
+      'admin_wallet_remaining', v_admin_wallet_remaining,
+      'allocation_used_percent', (v_total_awarded / 444000000000.0 * 100),
       'upgrade_date', NOW()
     )
   );
-
-  RAISE NOTICE 'Admin notified: % users upgraded with % total credits', v_user_count, v_total_credits;
+  
+  RAISE NOTICE '✅ Admin notified: % users upgraded, % credits distributed', 
+    v_users_upgraded, v_total_credits_distributed;
 END;
 $$;
 ```
