@@ -9,6 +9,7 @@ import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause,
 const MusicGenerationModal = lazy(() => import('../components/MusicGenerationModal'))
 const EffectsGenerationModal = lazy(() => import('../components/EffectsGenerationModal'))
 const LoopersGenerationModal = lazy(() => import('../components/LoopersGenerationModal'))
+const MusiConGenModal = lazy(() => import('../components/MusiConGenModal'))
 const CombineMediaModal = lazy(() => import('../components/CombineMediaModal'))
 const TwoStepReleaseModal = lazy(() => import('../components/TwoStepReleaseModal'))
 const MediaUploadModal = lazy(() => import('../components/MediaUploadModal'))
@@ -93,6 +94,7 @@ function CreatePageContent() {
   const [showMusicModal, setShowMusicModal] = useState(false)
   const [showEffectsModal, setShowEffectsModal] = useState(false)
   const [showLoopersModal, setShowLoopersModal] = useState(false)
+  const [showMusiConGenModal, setShowMusiConGenModal] = useState(false)
   const [showCombineModal, setShowCombineModal] = useState(false)
   const [showReleaseModal, setShowReleaseModal] = useState(false)
   const [showMediaUploadModal, setShowMediaUploadModal] = useState(false)
@@ -2295,6 +2297,20 @@ function CreatePageContent() {
             </button>
             )}
 
+            {/* MusiConGen Button - Chord Control */}
+            {showAdvancedButtons && (
+            <button
+              onClick={() => setShowMusiConGenModal(true)}
+              className="flex-shrink-0 group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-purple-500/30 hover:border-purple-400/60 hover:scale-105"
+              title="MusiConGen - Chord & Rhythm Control"
+            >
+              <Music2 
+                size={18} 
+                className="text-purple-400 drop-shadow-[0_0_12px_rgba(168,85,247,0.9)] md:w-[20px] md:h-[20px]"
+              />
+            </button>
+            )}
+
             {/* Image Type Button - Hidden by default */}
             {showAdvancedButtons && (
             <button
@@ -3415,6 +3431,43 @@ function CreatePageContent() {
           })
         }}
       />
+      </Suspense>
+
+      {/* MusiConGen Modal */}
+      <Suspense fallback={null}>
+        <MusiConGenModal
+          isOpen={showMusiConGenModal}
+          onClose={() => setShowMusiConGenModal(false)}
+          userCredits={userCredits || 0}
+          initialPrompt={input}
+          onGenerationStart={(prompt: string, generationId: string) => {
+            const userMsgId = Date.now().toString()
+            const genMsgId = (Date.now() + 1).toString()
+            
+            const userMessage: Message = {
+              id: userMsgId,
+              type: 'user',
+              content: `🎹 Generate with chords: "${prompt}"`,
+              timestamp: new Date()
+            }
+            
+            const generatingMessage: Message = {
+              id: genMsgId,
+              type: 'generation',
+              content: '🎹 Generating music with chord control...',
+              generationType: 'music',
+              generationId: generationId,
+              isGenerating: true,
+              timestamp: new Date()
+            }
+            
+            setMessages(prev => [...prev, userMessage, generatingMessage])
+            setInput('')
+          }}
+          onSuccess={(audioUrl: string, prompt: string) => {
+            // The GenerationQueue will update the message automatically
+          }}
+        />
       </Suspense>
 
       {/* Combine Media Modal */}

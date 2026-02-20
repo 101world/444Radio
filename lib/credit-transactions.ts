@@ -10,6 +10,7 @@ export type CreditTransactionType =
   | 'generation_music'
   | 'generation_effects'
   | 'generation_loops'
+  | 'generation_musicongen'
   | 'generation_image'
   | 'generation_video_to_audio'
   | 'generation_video'
