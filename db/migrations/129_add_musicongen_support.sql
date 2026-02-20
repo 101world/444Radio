@@ -1,8 +1,8 @@
 -- ============================================================
--- Add MusiConGen Support: Chords & Time Signature
+-- Add Chords Support: Chord Progressions & Time Signatures
 -- ============================================================
 -- Adds chord progression and time signature columns to combined_media
--- Updates credit_transactions type enum to include generation_musicongen
+-- Updates credit_transactions type enum to include generation_chords
 --
 -- Date: 2026-02-20
 -- ============================================================
@@ -19,19 +19,19 @@ COMMENT ON COLUMN combined_media.time_signature IS 'Time signature (e.g., 4/4, 3
 -- Create index for searching by chords (helpful for future chord-based search)
 CREATE INDEX IF NOT EXISTS idx_combined_media_chord_progression ON combined_media(chord_progression) WHERE chord_progression IS NOT NULL;
 
--- 2. Update credit_transactions type enum to include MusiConGen
+-- 2. Update credit_transactions type enum to include Chords
 -- Note: PostgreSQL doesn't allow direct ALTER TYPE ADD, so we use this workaround
 DO $$
 BEGIN
   -- Add new type if it doesn't exist
   IF NOT EXISTS (
     SELECT 1 FROM pg_enum 
-    WHERE enumlabel = 'generation_musicongen' 
+    WHERE enumlabel = 'generation_chords' 
     AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'credit_transaction_type')
   ) THEN
     -- If the enum type exists but doesn't have the value, we need to alter it
     BEGIN
-      EXECUTE 'ALTER TYPE credit_transaction_type ADD VALUE IF NOT EXISTS ''generation_musicongen''';
+      EXECUTE 'ALTER TYPE credit_transaction_type ADD VALUE IF NOT EXISTS ''generation_chords'';';
     EXCEPTION WHEN OTHERS THEN
       -- Fallback: recreate constraint if enum doesn't exist as type
       ALTER TABLE credit_transactions DROP CONSTRAINT IF EXISTS credit_transactions_type_check;
@@ -39,7 +39,7 @@ BEGIN
         'generation_music',
         'generation_effects',
         'generation_loops',
-        'generation_musicongen',
+        'generation_chords',
         'generation_image',
         'generation_video_to_audio',
         'generation_video',
@@ -68,14 +68,14 @@ BEGIN
   END IF;
 END $$;
 
--- 3. Backfill chord progression from metadata for existing MusiConGen generations
+-- 3. Backfill chord progression from metadata for existing Chords generations
 -- (if any were generated before this migration)
 UPDATE combined_media
 SET 
   chord_progression = metadata->>'text_chords',
   time_signature = COALESCE(metadata->>'time_sig', '4/4')
 WHERE 
-  genre = 'musicongen' 
+  genre = 'chords' 
   AND metadata IS NOT NULL 
   AND chord_progression IS NULL;
 
@@ -85,7 +85,7 @@ CREATE INDEX IF NOT EXISTS idx_combined_media_bpm ON combined_media(bpm) WHERE b
 -- Success message
 DO $$
 BEGIN
-  RAISE NOTICE '✅ MusiConGen support added: chord_progression, time_signature columns created';
-  RAISE NOTICE '✅ Credit transaction type generation_musicongen added';
+  RAISE NOTICE '✅ Chords support added: chord_progression, time_signature columns created';
+  RAISE NOTICE '✅ Credit transaction type generation_chords added';
   RAISE NOTICE '✅ Indexes created for performance';
 END $$;

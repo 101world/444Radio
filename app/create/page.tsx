@@ -2298,12 +2298,12 @@ function CreatePageContent() {
             </button>
             )}
 
-            {/* MusiConGen Button - Chord Control */}
+            {/* Chords Button - Chord Control */}
             {showAdvancedButtons && (
             <button
               onClick={() => setShowMusiConGenModal(true)}
               className="flex-shrink-0 group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-purple-500/30 hover:border-purple-400/60 hover:scale-105"
-              title="MusiConGen - Chord & Rhythm Control"
+              title="Chords - Chord & Rhythm Control"
             >
               <Music2 
                 size={18} 

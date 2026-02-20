@@ -116,7 +116,7 @@ export default function FeaturesSidebar({
     },
     {
       icon: Music,
-      label: 'MusiConGen',
+      label: 'Chords',
       description: 'Chord & rhythm control',
       color: 'purple',
       active: false,

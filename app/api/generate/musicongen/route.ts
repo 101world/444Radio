@@ -7,7 +7,7 @@ import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-trans
 import { sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 import { refundCredits } from '@/lib/refund-credits'
 
-// Allow up to 3 minutes for MusiConGen generation
+// Allow up to 3 minutes for Chords generation
 export const maxDuration = 180
 
 const replicate = new Replicate({
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     // Calculate credit cost - 1 credit for all durations
     const creditCost = 1
 
-    console.log('🎹 MusiConGen generation request')
+    console.log('🎹 Chords generation request')
     console.log('💬 Prompt:', prompt)
     console.log('🎵 Chords:', text_chords)
     console.log('⏱️ Duration:', duration, 'seconds')
@@ -80,13 +80,13 @@ export async function POST(req: NextRequest) {
     
     if (!user || user.credits < creditCost) {
       return corsResponse(NextResponse.json({ 
-        error: `Insufficient credits. MusiConGen generation requires ${creditCost} credits.`,
+        error: `Insufficient credits. Chords generation requires ${creditCost} credits.`,
         creditsNeeded: creditCost,
         creditsAvailable: user?.credits || 0
       }, { status: 402 }))
     }
 
-    console.log(`💰 User has ${user.credits} credits. MusiConGen generation requires ${creditCost} credits.`)
+    console.log(`💰 User has ${user.credits} credits. Chords generation requires ${creditCost} credits.`)
 
     // ✅ DEDUCT credits atomically BEFORE generation (blocks if wallet < $1)
     const deductRes = await fetch(
@@ -109,14 +109,14 @@ export async function POST(req: NextRequest) {
     if (!deductRes.ok || !deductResult?.success) {
       const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
       console.error('❌ Credit deduction blocked:', errorMsg)
-      await logCreditTransaction({ userId, amount: -creditCost, type: 'generation_musicongen', status: 'failed', description: `MusiConGen: ${prompt}`, metadata: { prompt, text_chords, bpm, time_sig } })
+      await logCreditTransaction({ userId, amount: -creditCost, type: 'generation_chords', status: 'failed', description: `Chords: ${prompt}`, metadata: { prompt, text_chords, bpm, time_sig } })
       return corsResponse(NextResponse.json({ error: sanitizeCreditError(errorMsg) }, { status: 402 }))
     }
     console.log(`✅ Credits deducted. Remaining: ${deductResult.new_credits}`)
-    await logCreditTransaction({ userId, amount: -creditCost, balanceAfter: deductResult.new_credits, type: 'generation_musicongen', description: `MusiConGen: ${prompt}`, metadata: { prompt, text_chords, bpm, time_sig } })
+    await logCreditTransaction({ userId, amount: -creditCost, balanceAfter: deductResult.new_credits, type: 'generation_chords', description: `Chords: ${prompt}`, metadata: { prompt, text_chords, bpm, time_sig } })
 
-    // Generate music using MusiConGen
-    console.log('🎹 Generating music with MusiConGen (chord control)...')
+    // Generate music using Chords
+    console.log('🎹 Generating music with chords (chord control)...')
     
     try {
       const input: Record<string, any> = {
@@ -168,10 +168,10 @@ export async function POST(req: NextRequest) {
       const outputUrl = finalPrediction.output as string
       
       if (!outputUrl) {
-        throw new Error('No output URL from MusiConGen')
+        throw new Error('No output URL from Chords generation')
       }
 
-      console.log(`✅ MusiConGen generated audio`)
+      console.log(`✅ Chords generated audio`)
 
       // Download and upload to R2
       console.log(`📥 Downloading audio...`)
@@ -182,7 +182,7 @@ export async function POST(req: NextRequest) {
       }
 
       const outputBuffer = Buffer.from(await downloadRes.arrayBuffer())
-      const outputFileName = `${userId}/musicongen-${Date.now()}.${output_format}`
+      const outputFileName = `${userId}/chords-${Date.now()}.${output_format}`
       
       const outputR2Result = await uploadToR2(
         outputBuffer,
@@ -208,7 +208,7 @@ export async function POST(req: NextRequest) {
         audio_url: outputR2Result.url,
         image_url: null,
         is_public: false,
-        genre: 'musicongen',
+        genre: 'chords',
         bpm: bpm,
         chord_progression: text_chords,
         time_signature: time_sig,
@@ -217,7 +217,7 @@ export async function POST(req: NextRequest) {
           time_sig: time_sig,
           duration: duration,
           output_format: output_format,
-          model: 'musicongen',
+          model: 'chords',
           temperature: temperature,
           top_k: top_k,
           classifier_free_guidance: classifier_free_guidance
@@ -250,12 +250,12 @@ export async function POST(req: NextRequest) {
         console.log(`✅ Saved to library:`, libraryId)
       }
 
-      console.log('✅ MusiConGen generation complete')
+      console.log('✅ Chords generation complete')
 
       // Update transaction with output media
       updateTransactionMedia({ 
         userId, 
-        type: 'generation_musicongen', 
+        type: 'generation_chords', 
         mediaUrl: outputR2Result.url, 
         mediaType: 'audio', 
         title: `${prompt.substring(0, 50)}`,
@@ -283,19 +283,19 @@ export async function POST(req: NextRequest) {
       }))
 
     } catch (genError) {
-      console.error('❌ MusiConGen generation failed:', genError)
+      console.error('❌ Chords generation failed:', genError)
       await refundCredits({ 
         userId, 
         amount: creditCost, 
-        type: 'generation_musicongen', 
-        reason: `MusiConGen failed: ${prompt?.substring(0, 50) || 'unknown'}`, 
+        type: 'generation_chords', 
+        reason: `Chords generation failed: ${prompt?.substring(0, 50) || 'unknown'}`, 
         metadata: { prompt, text_chords, bpm, time_sig, error: String(genError).substring(0, 200) } 
       })
       throw genError
     }
 
   } catch (error) {
-    console.error('MusiConGen generation error:', error)
+    console.error('Chords generation error:', error)
     
     return corsResponse(NextResponse.json(
       { error: SAFE_ERROR_MESSAGE },

@@ -164,7 +164,7 @@ export default function MusiConGenModal({
     const generationId = addGeneration({
       type: 'music',
       prompt: prompt,
-      title: `MusiConGen: ${prompt.substring(0, 30)}`
+      title: `Chords: ${prompt.substring(0, 30)}`
     })
     
     // Update status to generating
@@ -211,7 +211,7 @@ export default function MusiConGenModal({
           status: 'completed',
           result: {
             audioUrl: data.audioUrl,
-            title: `MusiConGen: ${prompt.substring(0, 30)}`,
+            title: `Chords: ${prompt.substring(0, 30)}`,
             prompt: prompt
           }
         })
@@ -290,7 +290,7 @@ export default function MusiConGenModal({
               <Music size={20} className="text-purple-400" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">MusiConGen</h3>
+              <h3 className="text-lg font-semibold text-white">Chords</h3>
               <p className="text-xs text-gray-400">Rhythm & chord control</p>
             </div>
           </div>

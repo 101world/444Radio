@@ -45,7 +45,7 @@ const CREDIT_COSTS: Record<string, number | ((params: Record<string, unknown>) =
   image: 1,
   effects: 2,
   loops: (p) => ((p.max_duration as number) || 8) <= 10 ? 6 : 7,
-  musicongen: 1,
+  chords: 1,
   stems: (p) => {
     const model = (p.model as string) || 'htdemucs'
     const wavFormat = (p.wav_format as string) || 'int24'
@@ -185,8 +185,8 @@ export async function POST(req: NextRequest) {
         case 'loops':
           result = await generateLoops(userId, body, jobId)
           break
-        case 'musicongen':
-          result = await generateMusiConGen(userId, body, jobId)
+        case 'chords':
+          result = await generateChords(userId, body, jobId)
           break
         case 'stems':
           result = await generateStems(userId, body, jobId, requestSignal)
@@ -623,9 +623,9 @@ async function generateLoops(userId: string, body: Record<string, unknown>, jobI
 }
 
 // ──────────────────────────────────────────────────────────────────
-// MUSICONGEN  (chord progression & rhythm control)
+// CHORDS (chord progression & rhythm control)
 // ──────────────────────────────────────────────────────────────────
-async function generateMusiConGen(userId: string, body: Record<string, unknown>, jobId: string) {
+async function generateChords(userId: string, body: Record<string, unknown>, jobId: string) {
   const prompt = body.prompt as string
   if (!prompt) return { success: false, error: 'Missing prompt' }
 
@@ -673,18 +673,18 @@ async function generateMusiConGen(userId: string, body: Record<string, unknown>,
   }
 
   if (final.status !== 'succeeded') {
-    console.error('[plugin/musicongen] Prediction failed:', final.error)
+    console.error('[plugin/chords] Prediction failed:', final.error)
     return { success: false, error: SAFE_ERROR_MESSAGE }
   }
 
   const outputUrl = final.output as string
-  if (!outputUrl) return { success: false, error: 'No output from MusiConGen' }
+  if (!outputUrl) return { success: false, error: 'No output from Chords' }
 
   const dlRes = await fetch(outputUrl)
   if (!dlRes.ok) return { success: false, error: 'Failed to download audio' }
   
   const buffer = Buffer.from(await dlRes.arrayBuffer())
-  const r2Key = `${userId}/musicongen-${Date.now()}.${output_format}`
+  const r2Key = `${userId}/chords-${Date.now()}.${output_format}`
   const r2 = await uploadToR2(buffer, 'audio-files', r2Key)
 
   if (!r2.success || !r2.url) return { success: false, error: 'Failed to save audio' }
@@ -699,7 +699,7 @@ async function generateMusiConGen(userId: string, body: Record<string, unknown>,
       audio_prompt: prompt,
       audio_url: r2.url,
       is_public: false,
-      genre: 'musicongen',
+      genre: 'chords',
       bpm,
       chord_progression: text_chords,
       time_signature: time_sig,
@@ -709,7 +709,7 @@ async function generateMusiConGen(userId: string, body: Record<string, unknown>,
         time_sig,
         duration,
         output_format,
-        model: 'musicongen',
+        model: 'chords',
       }),
     }),
   })
@@ -718,8 +718,8 @@ async function generateMusiConGen(userId: string, body: Record<string, unknown>,
   await logCreditTransaction({
     userId,
     amount: -1,
-    type: 'generation_musicongen',
-    description: `MusiConGen (plugin): ${prompt}`,
+    type: 'generation_chords',
+    description: `Chords (plugin): ${prompt}`,
     metadata: { source: 'plugin', jobId, text_chords, bpm, time_sig },
   })
 
