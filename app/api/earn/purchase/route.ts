@@ -84,11 +84,11 @@ export async function POST(request: NextRequest) {
       }
     } catch { /* table may not exist yet */ }
 
-    // 4. Calculate cost — 5 base + optional 5 for stems
+    // 4. Calculate cost — 5 base + optional 5 for stems (444 Heat model)
     const baseCost = 5
     const artistShare = 1
     const adminShare = 4
-    const stemsCost = splitStems ? 1 : 0
+    const stemsCost = splitStems ? 5 : 0  // 444 Heat stem split costs 5 credits
     const totalCost = baseCost + stemsCost
 
     // 5. Atomically deduct credits from buyer via RPC (prevents race conditions)

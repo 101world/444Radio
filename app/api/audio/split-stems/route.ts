@@ -91,8 +91,10 @@ export async function POST(request: Request) {
     }
 
     // Validate and apply advanced params with safe defaults
+    // For earn purchases, default to 444 Heat (htdemucs_6s) model
     const VALID_MODELS = ['htdemucs', 'htdemucs_6s'] as const
-    const demucsModel = VALID_MODELS.includes(requestedModel as any) ? requestedModel as string : 'htdemucs'
+    const defaultModel = earnJobId ? 'htdemucs_6s' : 'htdemucs'  // Earn jobs use 444 Heat
+    const demucsModel = VALID_MODELS.includes(requestedModel as any) ? requestedModel as string : defaultModel
     const outputFormat = (['wav', 'mp3', 'flac'].includes(requestedOutputFormat || '') ? requestedOutputFormat : 'wav') as string
     const mp3Bitrate = typeof requestedMp3Bitrate === 'number' && requestedMp3Bitrate >= 64 && requestedMp3Bitrate <= 320 ? requestedMp3Bitrate : 320
     const mp3Preset = typeof requestedMp3Preset === 'number' && requestedMp3Preset >= 2 && requestedMp3Preset <= 9 ? requestedMp3Preset : 2
@@ -115,8 +117,11 @@ export async function POST(request: Request) {
     }
 
     // Validate stem choice for the chosen model
+    // For earn purchases, default to 'all' (444 Heat extracts all stems)
+    const defaultStem = earnJobId ? 'all' : undefined
+    const finalStem = stem || defaultStem
     const validStemsList = validStemsForModel as readonly string[]
-    if (!stem || (stem !== 'all' && !validStemsList.includes(stem))) {
+    if (!finalStem || (finalStem !== 'all' && !validStemsList.includes(finalStem))) {
       return NextResponse.json({ 
         error: `Invalid stem for ${demucsModel}. Choose one of: ${validStemsForModel.join(', ')}, all` 
       }, { status: 400 })
@@ -162,7 +167,7 @@ export async function POST(request: Request) {
 
     const HEAT_COST = 5 // 444 Heat is always 5 credits flat
     const perStemCost = getStemCost(demucsModel, outputFormat, wavFormat)
-    const stemCost = stem === 'all' ? HEAT_COST : perStemCost
+    const stemCost = finalStem === 'all' ? HEAT_COST : perStemCost
     if (!skipCreditDeduction && stemCost > 0 && userData.credits < stemCost) {
       return NextResponse.json({ 
         error: `Insufficient credits. Need ${stemCost} credit${stemCost > 1 ? 's' : ''} but have ${userData.credits}` 
@@ -172,7 +177,7 @@ export async function POST(request: Request) {
     // ✅ DEDUCT credits atomically BEFORE generation (skip if earn-purchased or free tier)
     let deductResult: { success: boolean; new_credits: number; error_message?: string | null } | null = null
     if (!skipCreditDeduction && stemCost > 0) {
-      const rpcLabel = stem === 'all' ? '444 Heat' : `${stem} (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel})`
+      const rpcLabel = finalStem === 'all' ? '444 Heat' : `${finalStem} (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel})`
       const { data: deductResultRaw } = await supabase
         .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: stemCost, p_type: 'generation_stem_split', p_description: `Stem Split: ${rpcLabel} [${wavFormat}]` })
         .single()
@@ -184,21 +189,21 @@ export async function POST(request: Request) {
       }
       console.log(`✅ Credits deducted: ${stemCost}. Remaining: ${deductResult.new_credits}`)
       // Log the deduction to credit_transactions
-      const txnLabel = stem === 'all' ? '444 Heat' : `${stem} (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel})`
+      const txnLabel = finalStem === 'all' ? '444 Heat' : `${finalStem} (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel})`
       await logCreditTransaction({
         userId, amount: -stemCost, balanceAfter: deductResult.new_credits,
         type: 'generation_stem_split',
         description: `Stem Split: ${txnLabel} [${outputFormat}/${wavFormat}]`,
-        metadata: { stem, model: demucsModel, cost: stemCost, wav_format: wavFormat, output_format: outputFormat },
+        metadata: { stem: finalStem, model: demucsModel, cost: stemCost, wav_format: wavFormat, output_format: outputFormat },
       })
     } else {
       // Free generation — still log it for tracking
-      console.log(`🆓 Free stem split: ${stem} (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel}) [${outputFormat}/${wavFormat}]`)
+      console.log(`🆓 Free stem split: ${finalStem} (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel}) [${outputFormat}/${wavFormat}]`)
       await logCreditTransaction({
         userId, amount: 0, balanceAfter: userData.credits,
         type: 'generation_stem_split',
-        description: `Stem Split (FREE): ${stem} (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel}) [${outputFormat}/${wavFormat}]`,
-        metadata: { stem, model: demucsModel, cost: 0, wav_format: wavFormat, output_format: outputFormat, free: true },
+        description: `Stem Split (FREE): ${finalStem} (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel}) [${outputFormat}/${wavFormat}]`,
+        metadata: { stem: finalStem, model: demucsModel, cost: 0, wav_format: wavFormat, output_format: outputFormat, free: true },
       })
     }
 
@@ -225,7 +230,7 @@ export async function POST(request: Request) {
         const demucsInput: Record<string, unknown> = {
             audio: audioUrl,
             model: demucsModel,
-            stem: stem === 'all' ? 'none' : stem,  // 'none' returns all stems; 'other' isolates instrumental
+            stem: finalStem === 'all' ? 'none' : finalStem,  // 'none' returns all stems; 'other' isolates instrumental
             output_format: outputFormat,
             wav_format: wavFormat,
             clip_mode: clipMode,
@@ -262,7 +267,7 @@ export async function POST(request: Request) {
               await refundEarnStemCredits(userId, earnJobId, 'client_disconnected')
             }
             if (!skipCreditDeduction) {
-              await refundCredits({ userId, amount: stemCost, type: 'generation_stem_split', reason: `Stem split cancelled (client disconnected): ${stem}`, metadata: { reason: 'client_disconnected' } })
+              await refundCredits({ userId, amount: stemCost, type: 'generation_stem_split', reason: `Stem split cancelled (client disconnected): ${finalStem}`, metadata: { reason: 'client_disconnected' } })
             }
             await sendLine({ type: 'result', success: false, error: 'Stem split cancelled', refunded: true }).catch(() => {})
             await writer.close().catch(() => {})
@@ -285,7 +290,7 @@ export async function POST(request: Request) {
             await refundEarnStemCredits(userId, earnJobId, 'timeout')
           }
           if (!skipCreditDeduction) {
-            await refundCredits({ userId, amount: stemCost, type: 'generation_stem_split', reason: `Stem split timed out: ${stem}`, metadata: { reason: 'timeout', predictionId: prediction.id } })
+            await refundCredits({ userId, amount: stemCost, type: 'generation_stem_split', reason: `Stem split timed out: ${finalStem}`, metadata: { reason: 'timeout', predictionId: prediction.id } })
           }
           await sendLine({ type: 'result', success: false, error: 'Stem splitting timed out. The model may be overloaded — please try again later.', refunded: true })
           await writer.close()
@@ -297,7 +302,7 @@ export async function POST(request: Request) {
             await refundEarnStemCredits(userId, earnJobId, 'canceled')
           }
           if (!skipCreditDeduction) {
-            await refundCredits({ userId, amount: stemCost, type: 'generation_stem_split', reason: `Stem split cancelled: ${stem}`, metadata: { reason: 'canceled' } })
+            await refundCredits({ userId, amount: stemCost, type: 'generation_stem_split', reason: `Stem split cancelled: ${finalStem}`, metadata: { reason: 'canceled' } })
           }
           await sendLine({ type: 'result', success: false, error: 'Stem split cancelled', refunded: true })
           await writer.close()
@@ -309,7 +314,7 @@ export async function POST(request: Request) {
             await refundEarnStemCredits(userId, earnJobId, 'failed')
           }
           if (!skipCreditDeduction) {
-            await refundCredits({ userId, amount: stemCost, type: 'generation_stem_split', reason: `Stem split failed: ${stem}`, metadata: { reason: 'failed' } })
+            await refundCredits({ userId, amount: stemCost, type: 'generation_stem_split', reason: `Stem split failed: ${finalStem}`, metadata: { reason: 'failed' } })
           }
           await sendLine({ type: 'result', success: false, error: 'Stem split failed', refunded: true })
           await writer.close()
@@ -322,7 +327,7 @@ export async function POST(request: Request) {
         const raw = finalPrediction.output as Record<string, string | null> | null
         if (!raw) {
           if (!skipCreditDeduction) {
-            await refundCredits({ userId, amount: stemCost, type: 'generation_stem_split', reason: `Stem split: no output for ${stem}`, metadata: {} })
+            await refundCredits({ userId, amount: stemCost, type: 'generation_stem_split', reason: `Stem split: no output for ${finalStem}`, metadata: {} })
           }
           await sendLine({ type: 'result', success: false, error: 'No output returned from model.', refunded: true })
           await writer.close()
@@ -337,8 +342,8 @@ export async function POST(request: Request) {
         for (const [key, value] of Object.entries(raw)) {
           if (typeof value === 'string' && value.startsWith('http')) {
             // If a specific stem was requested, skip the residual "other" output
-            if (stem !== 'other' && stem !== 'none' && stem !== 'all' && key === 'other') {
-              console.log(`[Stem Split] Skipping residual "other" output (user requested: ${stem})`)
+            if (finalStem !== 'other' && finalStem !== 'none' && finalStem !== 'all' && key === 'other') {
+              console.log(`[Stem Split] Skipping residual "other" output (user requested: ${finalStem})`)
               continue
             }
             outputStems[key] = value
@@ -347,7 +352,7 @@ export async function POST(request: Request) {
 
         if (Object.keys(outputStems).length === 0) {
           if (!skipCreditDeduction) {
-            await refundCredits({ userId, amount: stemCost, type: 'generation_stem_split', reason: `Stem split: no stems returned for ${stem}`, metadata: {} })
+            await refundCredits({ userId, amount: stemCost, type: 'generation_stem_split', reason: `Stem split: no stems returned for ${finalStem}`, metadata: {} })
           }
           await sendLine({ type: 'result', success: false, error: 'No stems returned. Try a different audio file.', refunded: true })
           await writer.close()
@@ -395,7 +400,8 @@ export async function POST(request: Request) {
                   genre: 'stem',
                   stem_type: stemName.toLowerCase().replace(/\s+\d+$/, ''),
                   parent_track_id: parentTrack?.id || null,
-                  description: `Stem split (${stem}) from: ${parentTrack?.title || audioUrl}`,
+                  description: `Stem split (${finalStem}) from: ${parentTrack?.title || audioUrl}`,
+                  category: 'stems',  // Save to stems category
                 })
                 .select('id')
                 .single()
@@ -418,7 +424,7 @@ export async function POST(request: Request) {
         await sendLine({
           type: 'result',
           success: true,
-          stem: stem,
+          stem: finalStem,
           stems: permanentStems,
           libraryIds: savedLibraryIds,
           creditsUsed: stemCost,
@@ -450,7 +456,7 @@ export async function POST(request: Request) {
         }
         // Refund credits for non-earn failures
         if (!skipCreditDeduction) {
-          await refundCredits({ userId, amount: stemCost, type: 'generation_stem_split', reason: `Stem split stream error: ${stem}`, metadata: { error: String(error).substring(0, 200) } })
+            await refundCredits({ userId, amount: stemCost, type: 'generation_stem_split', reason: `Stem split stream error: ${finalStem}`, metadata: { error: String(error).substring(0, 200) } })
         }
         try {
           await sendLine({ type: 'result', success: false, error: '444 radio is locking in, please try again in few minutes', refunded: true })

@@ -120,7 +120,13 @@ export default function EarnPage() {
       const res = await fetch('/api/audio/split-stems', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ audioUrl, earnJobId }),
+        body: JSON.stringify({ 
+          audioUrl, 
+          earnJobId,
+          model: 'htdemucs_6s',  // 444 Heat model (Extended)
+          stem: 'all',            // Extract all stems
+          output_format: 'wav',   // High quality WAV output
+        }),
       })
 
       if (!res.ok || !res.body) {
