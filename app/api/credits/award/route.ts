@@ -194,6 +194,36 @@ export async function POST(req: NextRequest) {
 
     console.log(`✅ Code "${normalizedCode}" redeemed by ${userId}: +${creditsToAward} free credits (total: ${totalCredits})`)
 
+    // ── Notify admin on milestone redemptions (every 10 codes) ──
+    try {
+      const { data: redemptionCount } = await supabase
+        .from('code_redemptions')
+        .select('id', { count: 'exact', head: true })
+        .eq('code', normalizedCode)
+
+      const count = redemptionCount || 0
+      if (count > 0 && count % 10 === 0) {
+        // Milestone reached - notify admin
+        await supabase.rpc('notify_admin', {
+          p_title: `🎵 ${normalizedCode} Milestone: ${count} Redemptions`,
+          p_message: `The "${normalizedCode}" code has been redeemed ${count} times. Total credits distributed: ${count * creditsToAward}. Keep vibing! 🎶`,
+          p_type: 'success',
+          p_category: 'credits',
+          p_metadata: {
+            code: normalizedCode,
+            total_redemptions: count,
+            total_credits_distributed: count * creditsToAward,
+            credits_per_redemption: creditsToAward,
+            milestone: count,
+            latest_user_id: userId
+          }
+        })
+      }
+    } catch (err) {
+      // Non-critical - don't fail the redemption
+      console.warn('Failed to send admin notification:', err)
+    }
+
     return NextResponse.json({
       success: true,
       credits: totalCredits,
