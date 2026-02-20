@@ -63,10 +63,10 @@ export default function HolographicDemo() {
             </Link>
             
             <Link
-              href="/explore"
+              href="/radio"
               className="px-8 py-3 bg-white/10 backdrop-blur-sm border border-white/20 text-white font-bold rounded-full hover:bg-white/20 transition-all"
             >
-              Back to Explore
+              Back to Radio
             </Link>
           </div>
         </div>

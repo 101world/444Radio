@@ -198,7 +198,7 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
 
     setIsSaving(true)
     try {
-      console.log('🚀 PUBLISHING TO EXPLORE/PROFILE')
+      console.log('🚀 PUBLISHING TO RADIO/PROFILE')
       console.log('Combined ID:', combinedResult.combinedId)
       console.log('Combined ID type:', typeof combinedResult.combinedId)
       console.log('Metadata:', metadata)
@@ -240,7 +240,7 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
 
       if (data.success) {
         setSavedMediaId(data.combined.id)
-        alert('✅ Published to Explore and your Profile!\n\n🎵 Your track is now live with copyright protection.\n📍 Metadata saved for filtering and monetization.')
+        alert('✅ Published to Radio and your Profile!\n\n🎵 Your track is now live with copyright protection.\n📍 Metadata saved for filtering and monetization.')
       } else {
         console.error('❌ Publish failed:', data)
         alert(`Error: ${data.error || 'Unknown error'}`)

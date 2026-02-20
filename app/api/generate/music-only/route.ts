@@ -430,9 +430,19 @@ export async function POST(req: NextRequest) {
         console.log('✅ Music generated successfully:', audioUrl)
 
         // Quest progress: fire-and-forget
-        const { trackQuestProgress } = await import('@/lib/quest-progress')
+        const { trackQuestProgress, trackModelUsage, trackGenerationStreak } = await import('@/lib/quest-progress')
         trackQuestProgress(userId, 'generate_songs').catch(() => {})
         if (genre) trackQuestProgress(userId, 'use_genres', 1, genre).catch(() => {})
+        
+        // Track instrumental generation if lyrics are minimal
+        const isInstrumental = !formattedLyrics || formattedLyrics.length < 30 || formattedLyrics.toLowerCase().includes('[instrumental]')
+        if (isInstrumental) {
+          trackQuestProgress(userId, 'create_instrumental').catch(() => {})
+        }
+        
+        // Track model usage and generation streak
+        trackModelUsage(userId, 'chirp-v3-5').catch(() => {})
+        trackGenerationStreak(userId).catch(() => {})
 
         // Update transaction with output media
         updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: audioUrl, mediaType: 'audio', title, extraMeta: { genre } }).catch(() => {})

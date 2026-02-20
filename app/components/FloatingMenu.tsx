@@ -140,12 +140,12 @@ export default function FloatingMenu() {
                       <span className="ml-auto text-xs bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded-full">Suggested</span>
                     </Link>
                     <Link
-                      href="/explore"
+                      href="/radio"
                       onClick={() => setIsOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 rounded-xl transition-colors"
                     >
                       <Compass size={20} />
-                      <span className="font-medium">Explore</span>
+                      <span className="font-medium">Radio</span>
                     </Link>
                     <Link
                       href="/library"
@@ -224,12 +224,12 @@ export default function FloatingMenu() {
                       <span className="ml-auto text-xs bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded-full">Suggested</span>
                     </Link>
                     <Link
-                      href="/explore"
+                      href="/radio"
                       onClick={() => setIsOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 rounded-xl transition-colors"
                     >
                       <Compass size={20} />
-                      <span className="font-medium">Explore</span>
+                      <span className="font-medium">Radio</span>
                     </Link>
                     <Link
                       href="/library"
@@ -343,4 +343,5 @@ export default function FloatingMenu() {
     </>
   )
 }
+
 

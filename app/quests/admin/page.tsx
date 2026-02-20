@@ -35,12 +35,13 @@ const QUEST_ACTIONS = [
   { value: 'invite_users', label: 'Invite Users' },
   { value: 'upload_marketplace', label: 'Upload to Marketplace' },
   { value: 'use_mastering', label: 'Use AI Mastering' },
-  { value: 'generation_streak', label: 'Generation Streak (days)' },
+  { value: 'streak_lord', label: 'Daily Generate + Release Streak' },
   { value: 'share_tracks', label: 'Share Tracks' },
   { value: 'login_days', label: 'Login Days' },
   { value: 'use_genres', label: 'Use Different Genres' },
-  { value: 'use_new_model', label: 'Use New AI Model' },
-  { value: 'create_beat', label: 'Create Beat' },
+  { value: 'use_all_models', label: 'Use All AI Models' },
+  { value: 'create_instrumental', label: 'Create Instrumental' },
+  { value: 'generate_cover_art', label: 'Generate Cover Art' },
 ]
 
 export default function QuestAdminPage() {

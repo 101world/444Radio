@@ -157,23 +157,24 @@ END $$;
 INSERT INTO quests (title, description, quest_type, requirement, credits_reward, is_active)
 SELECT * FROM (VALUES
   -- Monthly quests
-  ('Song Machine',        'Generate 200 songs in a month',       'monthly', '{"action": "generate_songs", "target": 200}'::jsonb,   100, true),
-  ('Recruiter Elite',     'Invite 100 paying users',             'monthly', '{"action": "invite_users", "target": 100}'::jsonb,     100, true),
-  ('Marketplace Maven',   'Upload 10 tracks to marketplace',     'monthly', '{"action": "upload_marketplace", "target": 10}'::jsonb, 100, true),
-  ('Master Engineer',     'Use AI mastering 50 times',           'monthly', '{"action": "use_mastering", "target": 50}'::jsonb,     100, true),
-  ('Streak Lord',         'Complete a 7-day generation streak',  'monthly', '{"action": "generation_streak", "target": 7}'::jsonb,  100, true),
+  ('Song Machine',        'Generate 200 songs in a month',                'monthly', '{"action": "generate_songs", "target": 200}'::jsonb,     100, true),
+  ('Recruiter Elite',     'Invite 100 paying users',                      'monthly', '{"action": "invite_users", "target": 100}'::jsonb,       100, true),
+  ('Marketplace Maven',   'Upload 10 tracks to marketplace',              'monthly', '{"action": "upload_marketplace", "target": 10}'::jsonb,  100, true),
+  ('Master Engineer',     'Use AI mastering 50 times',                    'monthly', '{"action": "use_mastering", "target": 50}'::jsonb,       100, true),
+  ('Streak Lord',         'Generate and release 1 track daily for 30 days', 'monthly', '{"action": "streak_lord", "target": 30}'::jsonb,     100, true),
+  ('Cover Art Maestro',   'Generate 100 cover arts in a month',           'monthly', '{"action": "generate_cover_art", "target": 100}'::jsonb, 100, true),
   -- Weekly quests
-  ('Weekly Grinder',      'Generate 25 songs this week',         'weekly',  '{"action": "generate_songs", "target": 25}'::jsonb,     20, true),
-  ('Social Butterfly',    'Share 3 tracks publicly',             'weekly',  '{"action": "share_tracks", "target": 3}'::jsonb,        20, true),
-  ('Loyal Operator',      'Login 5 days in a week',              'weekly',  '{"action": "login_days", "target": 5}'::jsonb,          20, true),
-  ('Genre Explorer',      'Use 3 different genres',              'weekly',  '{"action": "use_genres", "target": 3}'::jsonb,          20, true),
-  ('Recruitment Drive',   'Invite 5 users',                      'weekly',  '{"action": "invite_users", "target": 5}'::jsonb,        20, true),
+  ('Weekly Grinder',      'Generate 25 songs this week',                  'weekly',  '{"action": "generate_songs", "target": 25}'::jsonb,       20, true),
+  ('Social Butterfly',    'Share 3 tracks publicly',                      'weekly',  '{"action": "share_tracks", "target": 3}'::jsonb,          20, true),
+  ('Loyal Operator',      'Login 5 days in a week',                       'weekly',  '{"action": "login_days", "target": 5}'::jsonb,            20, true),
+  ('Genre Explorer',      'Use 3 different genres',                       'weekly',  '{"action": "use_genres", "target": 3}'::jsonb,            20, true),
+  ('Recruitment Drive',   'Invite 5 users',                               'weekly',  '{"action": "invite_users", "target": 5}'::jsonb,          20, true),
+  ('Beat Maker',          'Create 10 instrumental tracks',                'weekly',  '{"action": "create_instrumental", "target": 10}'::jsonb,  20, true),
   -- Daily quests
-  ('Daily Creator',       'Generate 5 songs today',              'daily',   '{"action": "generate_songs", "target": 5}'::jsonb,      50, false),
-  ('Social Share',        'Share 1 track on social',             'daily',   '{"action": "share_tracks", "target": 1}'::jsonb,        50, false),
-  ('New Model Test',      'Use a new AI model once',             'daily',   '{"action": "use_new_model", "target": 1}'::jsonb,       50, false),
-  ('Beat Maker',          'Login and create 1 beat',             'daily',   '{"action": "create_beat", "target": 1}'::jsonb,         50, false),
+  ('Daily Creator',       'Generate 5 songs today',                       'daily',   '{"action": "generate_songs", "target": 5}'::jsonb,        50, false),
+  ('Social Share',        'Share 1 track on social',                      'daily',   '{"action": "share_tracks", "target": 1}'::jsonb,          50, false),
+  ('Model Explorer',      'Use all available AI models at least once',    'daily',   '{"action": "use_all_models", "target": 1}'::jsonb,        50, false),
   -- Yearly quest
-  ('Golden Recruiter',    'Invite 1000 users in a year',         'yearly',  '{"action": "invite_users", "target": 1000}'::jsonb,    250, true)
+  ('Golden Recruiter',    'Invite 1000 users in a year',                  'yearly',  '{"action": "invite_users", "target": 1000}'::jsonb,      250, true)
 ) AS v(title, description, quest_type, requirement, credits_reward, is_active)
 WHERE NOT EXISTS (SELECT 1 FROM quests LIMIT 1);

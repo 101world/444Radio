@@ -232,7 +232,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Quest progress: fire-and-forget
+    const { trackModelUsage, trackGenerationStreak } = await import('@/lib/quest-progress')
     trackQuestProgress(userId, 'generate_songs').catch(() => {})
+    trackModelUsage(userId, modelName.toLowerCase().replace(/[^a-z0-9]/g, '-')).catch(() => {})
+    trackGenerationStreak(userId).catch(() => {})
 
     return NextResponse.json({ 
       success: true, 

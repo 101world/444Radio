@@ -51,7 +51,7 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
   const navItems = [
     { href: '/', icon: Home, label: 'Home' },
     { href: '/create', icon: Zap, label: 'Create', highlight: 'cyan' as const, badge: 'AI' },
-    { href: '/explore', icon: Compass, label: 'Explore' },
+    { href: '/radio', icon: Compass, label: 'Radio' },
     { href: '/library', icon: Library, label: 'Library' },
     { href: '/earn', icon: DollarSign, label: 'Earn', highlight: 'green' as const, badge: 'New' },
     { href: '/quests', icon: Swords, label: 'Quests', highlight: 'cyan' as const, badge: '🎮' },

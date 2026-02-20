@@ -79,9 +79,9 @@ function HomePageContent() {
 
   const fetchAllTracks = async () => {
     try {
-      const res = await fetch('/api/media/explore')
+      const res = await fetch('/api/media/radio')
       if (!res.ok) {
-        console.error('❌ Explore API failed:', res.status, res.statusText)
+        console.error('❌ Radio API failed:', res.status, res.statusText)
         return
       }
       const data = await res.json()

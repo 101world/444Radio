@@ -2470,8 +2470,8 @@ function PluginPageInner() {
                   <button onClick={handleClearChat} className="p-2 rounded-lg transition-all" style={{border:'1px solid rgba(200,200,220,0.06)',color:'rgba(6,182,212,0.35)'}} title="New Chat">
                     <Plus size={14} />
                   </button>
-                  <button onClick={() => window.open('https://444radio.co.in/explore?host=juce', '_blank')}
-                    className="p-2 rounded-lg transition-all" style={{border:'1px solid rgba(200,200,220,0.06)',color:'rgba(6,182,212,0.35)'}} title="Explore 444 Radio">
+                  <button onClick={() => window.open('https://444radio.co.in/radio?host=juce', '_blank')}
+                    className="p-2 rounded-lg transition-all" style={{border:'1px solid rgba(200,200,220,0.06)',color:'rgba(6,182,212,0.35)'}} title="Radio 444">
                     <Compass size={14} />
                   </button>
                   <button onClick={() => window.location.href = '/plugin'}

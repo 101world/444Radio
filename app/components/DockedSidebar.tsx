@@ -79,7 +79,7 @@ export default function DockedSidebar() {
   const menuItems: MenuItem[] = user ? [
     { icon: Home, label: 'Home', href: '/', highlight: false },
     { icon: Zap, label: 'Create', href: '/create', highlight: true, badge: 'Suggested' },
-    { icon: Compass, label: 'Explore', href: '/explore', highlight: false },
+    { icon: Compass, label: 'Radio', href: '/radio', highlight: false },
     { icon: Library, label: 'Library', href: '/library', highlight: false },
     { icon: Unlock, label: 'Decrypt', href: '/decrypt', highlight: 'cyan' },
     { icon: CreditCard, label: 'Pricing', href: '/pricing', highlight: false },
@@ -90,7 +90,7 @@ export default function DockedSidebar() {
   ] : [
     { icon: Home, label: 'Home', href: '/', highlight: false },
     { icon: Zap, label: 'Create', href: '/create', highlight: true, badge: 'Suggested' },
-    { icon: Compass, label: 'Explore', href: '/explore', highlight: false },
+    { icon: Compass, label: 'Radio', href: '/radio', highlight: false },
     { icon: Library, label: 'Library', href: '/library', highlight: false },
     { icon: Unlock, label: 'Decrypt', href: '/decrypt', highlight: 'cyan' },
     { icon: CreditCard, label: 'Pricing', href: '/pricing', highlight: false },
@@ -263,3 +263,4 @@ export default function DockedSidebar() {
     </aside>
   )
 }
+

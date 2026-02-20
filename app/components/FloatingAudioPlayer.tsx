@@ -436,7 +436,7 @@ export default function FloatingAudioPlayer() {
   useEffect(() => {
     if (expanded && !exploreFetched) {
       setExploreLoading(true)
-      fetch('/api/media/explore?limit=200')
+      fetch('/api/media/radio?limit=200')
         .then(r => r.json())
         .then(data => {
           if (data.combinedMedia) setExploreSongs(data.combinedMedia)

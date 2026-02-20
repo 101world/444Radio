@@ -240,11 +240,11 @@ function SettingsPageInner() {
 
       <div className="max-w-5xl mx-auto relative z-10 px-6 py-12">
         <Link
-          href="/explore"
+          href="/radio"
           className="group flex items-center gap-2 text-cyan-400/60 hover:text-cyan-400 transition-colors duration-300 mb-8"
         >
           <ArrowLeft className="w-5 h-5" />
-          <span className="text-sm font-medium">Back to Explore</span>
+          <span className="text-sm font-medium">Back to Radio</span>
         </Link>
 
         <div className="mb-8">

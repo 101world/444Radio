@@ -538,7 +538,7 @@ function StationContent() {
         
         // If viewer, redirect back
         if (!isHost) {
-          router.push('/explore')
+          router.push('/radio')
         }
       }
     } catch (error) {

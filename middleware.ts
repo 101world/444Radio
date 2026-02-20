@@ -11,8 +11,8 @@ const isPublicRoute = createRouteMatcher([
   '/api/cron/(.*)',
   '/api/media/track-play',
   '/api/songs/track-play',
-  '/api/media/explore(.*)',
-  '/api/explore/genre-summary(.*)',
+  '/api/media/radio(.*)',
+  '/api/radio/genre-summary(.*)',
   '/api/plugin/(.*)',  // Plugin API uses Bearer token auth, not Clerk sessions
   '/plugin',           // Plugin WebView page (auth via token, not Clerk)
   '/api/r2/proxy(.*)', // R2 file proxy — must be public so audio downloads work in plugin/DAW
@@ -23,7 +23,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/storage/upload',       // Used by VisualizerModal (image upload, hybrid auth)
   '/api/upload/media',         // Used by AutotuneModal (audio upload, hybrid auth)
   '/manifest.json',
-  '/explore',
+  '/radio',
   '/sitemap.xml',
   '/robots.txt',
 ])

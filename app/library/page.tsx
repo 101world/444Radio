@@ -1155,8 +1155,8 @@ export default function LibraryPage() {
                 </div>
                 <h3 className="text-xl font-bold text-white/80 mb-2">No liked tracks yet</h3>
                 <p className="text-pink-400/50 mb-6 text-sm">Like tracks to see them here</p>
-                <Link href="/explore" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-pink-600 to-pink-400 text-white rounded-xl font-bold hover:from-pink-700 hover:to-pink-500 transition-all shadow-lg shadow-pink-500/20">
-                  Explore Music
+                <Link href="/radio" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-pink-600 to-pink-400 text-white rounded-xl font-bold hover:from-pink-700 hover:to-pink-500 transition-all shadow-lg shadow-pink-500/20">
+                  Radio
                 </Link>
               </div>
             ) : (

@@ -35,7 +35,7 @@ export default function HomePage() {
 
   const fetchAllTracks = async () => {
     try {
-      const res = await fetch('/api/media/explore')
+      const res = await fetch('/api/media/radio')
       const data = await res.json()
       if (data.success && data.combinedMedia) {
         interface MediaItem {
@@ -174,3 +174,4 @@ export default function HomePage() {
 
 fs.writeFileSync('app/page.tsx', content, 'utf8');
 console.log('✓ Updated homepage - smaller title, play button icon, aesthetic input bar');
+

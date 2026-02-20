@@ -9,7 +9,7 @@
  *   • Draggable WAV chip (drag → drop into DAW timeline)
  *   • Split Stems  (−5 credits)
  *   • Audio Boost  (−1 credit)
- *   • Release to Explore (publish to feed)
+ *   • Release to Radio (publish to feed)
  */
 
 import { useState, useRef, useEffect } from 'react'
@@ -202,7 +202,7 @@ export default function PluginPostGenModal({
     }
   }
 
-  // ── Release to Explore ──
+  // ── Release to Radio ──
   async function handleRelease() {
     if (releasing || released || !result || !token) return
     setReleasing(true)
@@ -321,7 +321,7 @@ export default function PluginPostGenModal({
             </button>
           </div>
 
-          {/* Release to Explore */}
+          {/* Release to Radio */}
           <button
             onClick={handleRelease}
             disabled={releasing || released}
@@ -334,9 +334,9 @@ export default function PluginPostGenModal({
             {releasing ? (
               <><Loader2 size={16} className="animate-spin" /> Publishing...</>
             ) : released ? (
-              <><CheckCircle size={16} /> Released to Explore!</>
+              <><CheckCircle size={16} /> Released to Radio!</>
             ) : (
-              <><Rocket size={16} /> Release to Explore</>
+              <><Rocket size={16} /> Release to Radio</>
             )}
           </button>
           {releaseError && (

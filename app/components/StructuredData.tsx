@@ -132,8 +132,8 @@ export default function StructuredData() {
       {
         '@type': 'ListItem',
         position: 3,
-        name: 'Explore Music',
-        item: 'https://444radio.co.in/explore',
+        name: 'Radio',
+        item: 'https://444radio.co.in/radio',
       },
       {
         '@type': 'ListItem',

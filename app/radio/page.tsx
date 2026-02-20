@@ -192,7 +192,7 @@ function Genre3DCard({ genre, trackCount, coverImages, isSelected, onClick }: {
           <div className="flex items-center gap-1.5 mt-0.5" style={{ transform: 'translateZ(10px)' }}>
             <span className="text-[9px] font-mono text-gray-400">{trackCount} tracks</span>
             <div className="w-px h-2.5 bg-white/10" />
-            <span className={`text-[8px] font-semibold ${gs ? gs.text : 'text-cyan-400'}`}>EXPLORE →</span>
+            <span className={`text-[8px] font-semibold ${gs ? gs.text : 'text-cyan-400'}`}>RADIO →</span>
           </div>
         </div>
 
@@ -509,7 +509,7 @@ function ListTrackRow({ media, index, isCurrentlyPlaying, isPlaying, onPlay, onL
 // ═══════════════════════════════════════════════
 // MAIN PAGE
 // ═══════════════════════════════════════════════
-function ExplorePageContent() {
+function RadioPageContent() {
   const router = useRouter()
   const [combinedMedia, setCombinedMedia] = useState<CombinedMedia[]>([])
   const [artists, setArtists] = useState<Artist[]>([])
@@ -582,7 +582,7 @@ function ExplorePageContent() {
   const fetchCombinedMedia = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/media/explore?limit=500')
+      const res = await fetch('/api/media/radio?limit=500')
       const data = await res.json()
       if (data.success) {
         setCombinedMedia(data.combinedMedia)
@@ -597,7 +597,7 @@ function ExplorePageContent() {
         })
         setArtists(Array.from(artistMap.values()).filter(a => a.user_id && a.user_id !== 'undefined').slice(0, 20))
         try {
-          const genreRes = await fetch('/api/explore/genre-summary')
+          const genreRes = await fetch('/api/radio/genre-summary')
           const genreData = await genreRes.json()
           if (genreData.success && Array.isArray(genreData.genres) && genreData.genres.length > 0) {
             setGenres(genreData.genres)
@@ -706,7 +706,7 @@ function ExplorePageContent() {
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 px-4 md:px-6 pb-4">
             <span className="text-[10px] uppercase tracking-[0.2em] text-cyan-400 font-semibold">DISCOVER</span>
-            <h1 className="text-2xl md:text-3xl font-bold text-white mt-0.5 tracking-tight">Explore Music</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-white mt-0.5 tracking-tight">Radio</h1>
             <p className="text-gray-400 text-xs mt-1">{combinedMedia.length} tracks &middot; {artists.length} artists</p>
           </div>
         </div>
@@ -1223,6 +1223,6 @@ function FilterBadge({ label, onRemove }: { label: string; onRemove: () => void 
   )
 }
 
-export default function ExplorePage() {
-  return <ErrorBoundary><ExplorePageContent /></ErrorBoundary>
+export default function RadioPage() {
+  return <ErrorBoundary><RadioPageContent /></ErrorBoundary>
 }

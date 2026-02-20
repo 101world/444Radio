@@ -365,9 +365,10 @@ export async function PATCH(req: NextRequest) {
       )
     }
 
-    // Quest progress: share_tracks (fire-and-forget)
-    import('@/lib/quest-progress').then(({ trackQuestProgress }) => {
+    // Quest progress: share_tracks + release_streak (fire-and-forget)
+    import('@/lib/quest-progress').then(({ trackQuestProgress, trackReleaseStreak }) => {
       trackQuestProgress(userId!, 'share_tracks').catch(() => {})
+      trackReleaseStreak(userId!).catch(() => {}) // Track for Streak Lord quest
     }).catch(() => {})
 
     return NextResponse.json({

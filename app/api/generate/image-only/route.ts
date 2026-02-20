@@ -235,6 +235,12 @@ export async function POST(req: NextRequest) {
     // Update transaction with output media
     updateTransactionMedia({ userId, type: 'generation_image', mediaUrl: imageUrl, mediaType: 'image', title: `Image: ${prompt.substring(0, 50)}` }).catch(() => {})
 
+    // Quest progress tracking
+    const { trackQuestProgress, trackModelUsage, trackGenerationStreak } = await import('@/lib/quest-progress')
+    trackQuestProgress(userId, 'generate_cover_art').catch(() => {})
+    trackModelUsage(userId, 'flux-2-klein-9b').catch(() => {})
+    trackGenerationStreak(userId).catch(() => {})
+
     return NextResponse.json({ 
       success: true, 
       imageUrl,

@@ -176,7 +176,7 @@ export default function ReleasePage() {
         if (previewItem?.id === id) {
           setPreviewItem(prev => prev ? { ...prev, is_published: true } : null)
         }
-        setToast({ message: '🎉 Published to Explore!', type: 'success' })
+        setToast({ message: '🎉 Published to Radio!', type: 'success' })
       } else {
         setToast({ message: data.error || 'Failed to publish', type: 'error' })
       }
@@ -246,7 +246,7 @@ export default function ReleasePage() {
           <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400 mb-2">
             Release Manager
           </h1>
-          <p className="text-cyan-400/60 text-sm">Preview, edit, and publish your tracks to Explore</p>
+          <p className="text-cyan-400/60 text-sm">Preview, edit, and publish your tracks to Radio</p>
         </div>
 
         {/* Layout: Left panel (list) + Right panel (preview) */}
@@ -565,11 +565,11 @@ export default function ReleasePage() {
                       className="w-full py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white font-bold rounded-xl hover:from-cyan-700 hover:to-cyan-500 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20"
                     >
                       <Send size={20} />
-                      {isPublishing ? 'Publishing...' : 'Publish to Explore'}
+                      {isPublishing ? 'Publishing...' : 'Publish to Radio'}
                     </button>
                   ) : (
                     <div className="text-center py-3 bg-green-500/10 border border-green-500/30 rounded-xl">
-                      <span className="text-green-400 font-bold text-sm">✓ Published to Explore</span>
+                      <span className="text-green-400 font-bold text-sm">✓ Published to Radio</span>
                     </div>
                   )}
                 </div>

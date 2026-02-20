@@ -190,10 +190,10 @@ export default function StationsPage() {
             View My Profile
           </button>
           <button
-            onClick={() => router.push('/explore')}
+            onClick={() => router.push('/radio')}
             className="flex-1 px-6 py-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all"
           >
-            Explore Live Stations
+            Radio
           </button>
         </div>
       </div>

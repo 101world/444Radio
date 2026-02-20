@@ -6,7 +6,7 @@ import { Home } from 'lucide-react'
 /**
  * Floating "Back to Plugin" button that appears on ANY page when
  * the user is browsing inside the JUCE WebView (host=juce in URL).
- * This lets them navigate back to the plugin chat from Explore, Library, etc.
+ * This lets them navigate back to the plugin chat from Radio, Library, etc.
  */
 export default function PluginBackButton() {
   const searchParams = useSearchParams()

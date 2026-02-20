@@ -51,10 +51,11 @@ export async function PATCH(req: NextRequest) {
 
     console.log(`✅ Song ${songId} visibility updated to: ${isPublic ? 'PUBLIC' : 'PRIVATE'}`)
 
-    // Track quest progress when making a song public — "Social Butterfly" quest
+    // Track quest progress when making a song public — "Social Butterfly" quest + release streak
     if (isPublic) {
-      const { trackQuestProgress } = await import('@/lib/quest-progress')
+      const { trackQuestProgress, trackReleaseStreak } = await import('@/lib/quest-progress')
       trackQuestProgress(userId, 'share_tracks').catch(() => {})
+      trackReleaseStreak(userId).catch(() => {}) // Track for Streak Lord quest
     }
 
     return NextResponse.json({ 

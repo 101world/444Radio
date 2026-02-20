@@ -167,9 +167,10 @@ export async function POST(req: NextRequest) {
       },
     }).catch(() => {}) // fire-and-forget
 
-    // Track quest progress — "Social Butterfly" (share_tracks) quest
-    const { trackQuestProgress } = await import('@/lib/quest-progress')
+    // Track quest progress — "Social Butterfly" (share_tracks) quest + release streak
+    const { trackQuestProgress, trackReleaseStreak } = await import('@/lib/quest-progress')
     trackQuestProgress(userId, 'share_tracks').catch(() => {})
+    trackReleaseStreak(userId).catch(() => {}) // Track for Streak Lord quest
 
     // Log release activity (non-blocking)
     logRelease(userId, data.id, {
