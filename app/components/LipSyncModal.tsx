@@ -134,6 +134,7 @@ export default function LipSyncModal({
       throw new Error('Both image and audio files are required')
     }
 
+    console.log('📤 Starting upload process...')
     setStatusMsg('Uploading media files...')
 
     // Trim audio if needed
@@ -141,12 +142,20 @@ export default function LipSyncModal({
     const trimDuration = audioEndTime - audioStartTime
 
     if (audioStartTime > 0 || trimDuration < audioDuration) {
+      console.log('✂️ Trimming audio from', audioStartTime, 'to', audioEndTime)
       setStatusMsg('Trimming audio...')
-      const trimmedBlob = await trimAudio(audioFile, audioStartTime, audioEndTime)
-      audioToUpload = new File([trimmedBlob], `trimmed-${audioFile.name}`, { type: audioFile.type })
+      try {
+        const trimmedBlob = await trimAudio(audioFile, audioStartTime, audioEndTime)
+        audioToUpload = new File([trimmedBlob], `trimmed-${audioFile.name}`, { type: audioFile.type })
+        console.log('✅ Audio trimmed successfully, size:', trimmedBlob.size, 'bytes')
+      } catch (trimError) {
+        console.error('❌ Audio trim failed:', trimError)
+        throw new Error('Failed to trim audio: ' + (trimError instanceof Error ? trimError.message : 'Unknown error'))
+      }
     }
 
     // Upload via API
+    console.log('📤 Uploading to /api/upload/lipsync...')
     const formData = new FormData()
     formData.append('image', imageFile)
     formData.append('audio', audioToUpload)
@@ -154,43 +163,61 @@ export default function LipSyncModal({
     const headers: Record<string, string> = {}
     if (authToken) headers['Authorization'] = `Bearer ${authToken}`
 
-    const response = await fetch('/api/upload/lipsync', {
-      method: 'POST',
-      headers,
-      body: formData,
-    })
+    try {
+      const response = await fetch('/api/upload/lipsync', {
+        method: 'POST',
+        headers,
+        body: formData,
+      })
 
-    if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.error || 'Upload failed')
-    }
+      console.log('📥 Upload response status:', response.status)
 
-    const data = await response.json()
-    return {
-      imageUrl: data.imageUrl,
-      audioUrl: data.audioUrl,
+      if (!response.ok) {
+        const error = await response.json()
+        console.error('❌ Upload failed:', error)
+        throw new Error(error.error || 'Upload failed')
+      }
+
+      const data = await response.json()
+      console.log('✅ Upload successful:', data)
+      
+      return {
+        imageUrl: data.imageUrl,
+        audioUrl: data.audioUrl,
+      }
+    } catch (fetchError) {
+      console.error('❌ Upload request failed:', fetchError)
+      throw fetchError
     }
   }
 
   // Generate lip-sync video
   const handleGenerate = async () => {
+    console.log('🎬 Generate button clicked')
+    
     if (!imageFile || !audioFile) {
+      console.error('❌ Missing files:', { imageFile: !!imageFile, audioFile: !!audioFile })
       alert('Please upload both an image and audio file')
       return
     }
 
     const trimDuration = audioEndTime - audioStartTime
+    console.log('⏱️ Trim duration:', trimDuration, 'seconds')
+    
     if (trimDuration > MAX_DURATION) {
       alert(`Audio duration cannot exceed ${MAX_DURATION} seconds`)
       return
     }
 
     const creditCost = calcCredits(trimDuration, resolution)
+    console.log('💰 Credit cost:', creditCost, 'credits')
+    
     if (userCredits !== undefined && userCredits < creditCost) {
       alert(`⚡ You need ${creditCost} credits for this generation (you have ${userCredits})`)
       return
     }
 
+    console.log('✅ All checks passed, starting generation...')
     setIsGenerating(true)
     setStatusMsg('Preparing...')
 
@@ -200,6 +227,7 @@ export default function LipSyncModal({
       prompt: 'Lip-sync video generation',
       title: `Lip-sync: ${imageFile.name}`,
     })
+    console.log('📝 Generation ID:', generationId)
     updateGeneration(generationId, { status: 'generating', progress: 5 })
 
     // Notify parent to show progress bar in chat
@@ -210,13 +238,16 @@ export default function LipSyncModal({
 
     try {
       // Upload files
+      console.log('📤 Step 1: Uploading files...')
       updateGeneration(generationId, { progress: 20 })
       const { imageUrl, audioUrl } = await uploadMediaFiles()
+      console.log('✅ Files uploaded:', { imageUrl, audioUrl })
 
       updateGeneration(generationId, { progress: 40, status: 'Generating lip-sync...' })
       setStatusMsg('Generating lip-sync video...')
 
       // Call generation API with NDJSON streaming
+      console.log('🎬 Step 2: Calling generation API...')
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (authToken) headers['Authorization'] = `Bearer ${authToken}`
 
@@ -230,10 +261,15 @@ export default function LipSyncModal({
         }),
       })
 
+      console.log('📥 Generation API response status:', response.status)
+
       if (!response.ok) {
         const error = await response.json()
+        console.error('❌ Generation API failed:', error)
         throw new Error(error.error || 'Generation failed')
       }
+
+      console.log('✅ Generation started, processing stream...')
 
       // Process NDJSON stream
       const reader = response.body?.getReader()
@@ -253,6 +289,7 @@ export default function LipSyncModal({
             if (line.trim()) {
               try {
                 const data = JSON.parse(line)
+                console.log('📨 Stream data:', data)
 
                 if (data.status) {
                   setStatusMsg(data.status)
@@ -264,10 +301,12 @@ export default function LipSyncModal({
                 }
 
                 if (data.error) {
+                  console.error('❌ Stream error:', data.error)
                   throw new Error(data.error)
                 }
 
                 if (data.success && data.videoUrl) {
+                  console.log('✨ Generation complete!', data)
                   setStatusMsg('Complete!')
                   updateGeneration(generationId, {
                     status: 'completed',
@@ -286,20 +325,21 @@ export default function LipSyncModal({
                   return
                 }
               } catch (parseError) {
-                console.error('Parse error:', parseError)
+                console.error('⚠️ Parse error:', parseError, 'Line:', line)
               }
             }
           }
         }
       }
     } catch (error) {
-      console.error('Generation error:', error)
+      console.error('💥 Generation error:', error)
       updateGeneration(generationId, {
         status: 'failed',
         error: error instanceof Error ? error.message : 'Unknown error',
       })
       alert(error instanceof Error ? error.message : 'Failed to generate lip-sync video')
     } finally {
+      console.log('🏁 Generation process completed')
       setIsGenerating(false)
       setStatusMsg('')
     }
@@ -439,54 +479,236 @@ export default function LipSyncModal({
 
             {/* Audio Trimming */}
             {audioFile && audioDuration > 0 && (
-              <div className="p-5 bg-white/5 border border-white/10 rounded-xl space-y-4">
-                <div className="flex items-center gap-2 text-white font-semibold">
-                  <Scissors size={18} className="text-cyan-400" />
-                  <span>Trim Audio (Max {MAX_DURATION}s)</span>
+              <div className="p-5 bg-gradient-to-br from-white/5 to-white/10 border border-white/10 rounded-xl space-y-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-white font-semibold">
+                    <Scissors size={18} className="text-cyan-400" />
+                    <span>Precise Audio Trimmer</span>
+                  </div>
+                  <div className="text-xs text-gray-400">Max: {MAX_DURATION}s output</div>
                 </div>
 
-                {/* Audio Player */}
+                {/* Audio Player with Controls */}
                 {audioPreview && (
-                  <audio ref={audioElementRef} src={audioPreview} className="w-full" controls />
+                  <div className="relative">
+                    <audio 
+                      ref={audioElementRef} 
+                      src={audioPreview} 
+                      className="w-full"
+                      controls
+                      onLoadedMetadata={(e) => {
+                        const audio = e.currentTarget
+                        if (audio.duration) {
+                          setAudioDuration(audio.duration)
+                          setAudioEndTime(Math.min(audio.duration, MAX_DURATION))
+                        }
+                      }}
+                    />
+                  </div>
                 )}
 
-                {/* Start Time */}
-                <div>
-                  <label className="block text-sm text-gray-400 mb-2">
-                    Start Time: <span className="text-white font-mono">{audioStartTime.toFixed(1)}s</span>
-                  </label>
-                  <input
-                    type="range"
-                    min={0}
-                    max={Math.max(0, audioEndTime - 0.1)}
-                    step={0.1}
-                    value={audioStartTime}
-                    onChange={(e) => setAudioStartTime(Number(e.target.value))}
-                    className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-500"
-                    disabled={isGenerating}
-                  />
+                {/* Visual Timeline with Selected Region */}
+                <div className="relative">
+                  <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
+                    <span>0:00</span>
+                    <span className="text-cyan-400 font-mono font-bold">
+                      Selected: {trimDuration.toFixed(2)}s
+                    </span>
+                    <span>{audioDuration.toFixed(1)}s</span>
+                  </div>
+                  
+                  {/* Timeline Track */}
+                  <div className="relative h-12 bg-white/5 rounded-lg overflow-hidden border border-white/10">
+                    {/* Full duration background */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-gray-700/50 to-gray-600/50"></div>
+                    
+                    {/* Selected region highlight */}
+                    <div 
+                      className="absolute top-0 bottom-0 bg-gradient-to-r from-cyan-500/40 to-purple-500/40 border-l-2 border-r-2 border-cyan-400"
+                      style={{
+                        left: `${(audioStartTime / audioDuration) * 100}%`,
+                        width: `${((audioEndTime - audioStartTime) / audioDuration) * 100}%`
+                      }}
+                    >
+                      <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold">
+                        {audioStartTime.toFixed(1)}s - {audioEndTime.toFixed(1)}s
+                      </div>
+                    </div>
+
+                    {/* Start marker */}
+                    <div 
+                      className="absolute top-0 bottom-0 w-1 bg-cyan-400 shadow-lg shadow-cyan-400/50 cursor-ew-resize z-10"
+                      style={{ left: `${(audioStartTime / audioDuration) * 100}%` }}
+                    ></div>
+                    
+                    {/* End marker */}
+                    <div 
+                      className="absolute top-0 bottom-0 w-1 bg-purple-400 shadow-lg shadow-purple-400/50 cursor-ew-resize z-10"
+                      style={{ left: `${(audioEndTime / audioDuration) * 100}%` }}
+                    ></div>
+                  </div>
+
+                  {/* Time markers */}
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    {Array.from({ length: Math.min(11, Math.ceil(audioDuration) + 1) }, (_, i) => (
+                      <span key={i} className="w-px">{i}s</span>
+                    ))}
+                  </div>
                 </div>
 
-                {/* End Time */}
-                <div>
-                  <label className="block text-sm text-gray-400 mb-2">
-                    End Time: <span className="text-white font-mono">{audioEndTime.toFixed(1)}s</span>
-                  </label>
-                  <input
-                    type="range"
-                    min={Math.min(audioStartTime + 0.1, audioDuration)}
-                    max={Math.min(audioDuration, audioStartTime + MAX_DURATION)}
-                    step={0.1}
-                    value={audioEndTime}
-                    onChange={(e) => setAudioEndTime(Number(e.target.value))}
-                    className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-500"
-                    disabled={isGenerating}
-                  />
+                {/* Precise Numeric Inputs */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Start Time Input */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-white flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-cyan-400"></div>
+                      Start Time
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min={0}
+                        max={Math.max(0, audioEndTime - 0.1)}
+                        step={0.01}
+                        value={audioStartTime.toFixed(2)}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0
+                          setAudioStartTime(Math.max(0, Math.min(val, audioEndTime - 0.1)))
+                        }}
+                        disabled={isGenerating}
+                        className="flex-1 px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white font-mono focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 outline-none transition-all"
+                      />
+                      <span className="text-gray-400 text-sm">sec</span>
+                    </div>
+                    {/* Quick buttons */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setAudioStartTime(0)}
+                        disabled={isGenerating}
+                        className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs text-gray-300 transition-colors disabled:opacity-50"
+                      >
+                        Start
+                      </button>
+                      {audioElementRef.current && (
+                        <button
+                          onClick={() => {
+                            if (audioElementRef.current) {
+                              setAudioStartTime(audioElementRef.current.currentTime)
+                            }
+                          }}
+                          disabled={isGenerating}
+                          className="px-3 py-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 rounded-lg text-xs text-cyan-300 transition-colors disabled:opacity-50"
+                        >
+                          Use Current
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* End Time Input */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-white flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-purple-400"></div>
+                      End Time
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min={audioStartTime + 0.1}
+                        max={audioDuration}
+                        step={0.01}
+                        value={audioEndTime.toFixed(2)}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0
+                          const maxEnd = Math.min(audioDuration, audioStartTime + MAX_DURATION)
+                          setAudioEndTime(Math.max(audioStartTime + 0.1, Math.min(val, maxEnd)))
+                        }}
+                        disabled={isGenerating}
+                        className="flex-1 px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white font-mono focus:border-purple-400 focus:ring-2 focus:ring-purple-400/20 outline-none transition-all"
+                      />
+                      <span className="text-gray-400 text-sm">sec</span>
+                    </div>
+                    {/* Quick buttons */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setAudioEndTime(Math.min(audioDuration, audioStartTime + MAX_DURATION))}
+                        disabled={isGenerating}
+                        className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs text-gray-300 transition-colors disabled:opacity-50"
+                      >
+                        Max ({MAX_DURATION}s)
+                      </button>
+                      {audioElementRef.current && (
+                        <button
+                          onClick={() => {
+                            if (audioElementRef.current) {
+                              const current = audioElementRef.current.currentTime
+                              const maxEnd = Math.min(audioDuration, audioStartTime + MAX_DURATION)
+                              setAudioEndTime(Math.max(audioStartTime + 0.1, Math.min(current, maxEnd)))
+                            }
+                          }}
+                          disabled={isGenerating}
+                          className="px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 rounded-lg text-xs text-purple-300 transition-colors disabled:opacity-50"
+                        >
+                          Use Current
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-400">Duration:</span>
-                  <span className="text-white font-mono font-bold">{trimDuration.toFixed(1)}s</span>
+                {/* Range Sliders for Fine Tuning */}
+                <div className="space-y-3">
+                  <div className="text-xs text-gray-400 font-semibold">FINE TUNE WITH SLIDERS</div>
+                  
+                  {/* Start Time Slider */}
+                  <div>
+                    <div className="flex items-center justify-between text-xs text-gray-400 mb-1.5">
+                      <span>Start Position</span>
+                      <span className="text-cyan-400 font-mono">{audioStartTime.toFixed(2)}s</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={Math.max(0, audioEndTime - 0.1)}
+                      step={0.01}
+                      value={audioStartTime}
+                      onChange={(e) => setAudioStartTime(Number(e.target.value))}
+                      disabled={isGenerating}
+                      className="w-full h-3 bg-white/10 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-cyan-400 [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:shadow-cyan-400/50 [&::-webkit-slider-thumb]:cursor-ew-resize disabled:opacity-50"
+                    />
+                  </div>
+
+                  {/* End Time Slider */}
+                  <div>
+                    <div className="flex items-center justify-between text-xs text-gray-400 mb-1.5">
+                      <span>End Position</span>
+                      <span className="text-purple-400 font-mono">{audioEndTime.toFixed(2)}s</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={audioStartTime + 0.1}
+                      max={Math.min(audioDuration, audioStartTime + MAX_DURATION)}
+                      step={0.01}
+                      value={audioEndTime}
+                      onChange={(e) => setAudioEndTime(Number(e.target.value))}
+                      disabled={isGenerating}
+                      className="w-full h-3 bg-white/10 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-purple-400 [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:shadow-purple-400/50 [&::-webkit-slider-thumb]:cursor-ew-resize disabled:opacity-50"
+                    />
+                  </div>
+                </div>
+
+                {/* Duration Info Card */}
+                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border border-cyan-500/30 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Zap className="text-yellow-400" size={18} />
+                    <span className="text-white font-semibold">Output Duration</span>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-white font-mono">{trimDuration.toFixed(2)}s</div>
+                    {trimDuration > MAX_DURATION && (
+                      <div className="text-xs text-red-400 font-semibold">Exceeds {MAX_DURATION}s limit!</div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
