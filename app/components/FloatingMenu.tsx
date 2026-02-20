@@ -10,7 +10,7 @@ import { useCredits } from '@/app/contexts/CreditsContext'
 export default function FloatingMenu() {
   const { user } = useUser()
   const [isOpen, setIsOpen] = useState(false)
-  const { credits, isLoading: isLoadingCredits } = useCredits()
+  const { totalCredits, isLoading: isLoadingCredits } = useCredits()
   const [username, setUsername] = useState<string>('')
   const [avatarUrl, setAvatarUrl] = useState<string>('')
   const [isLoadingUsername, setIsLoadingUsername] = useState(true)
@@ -112,7 +112,7 @@ export default function FloatingMenu() {
                   <div className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full w-fit">
                     <Zap className="text-[#22D3EE]" size={18} />
                     <span className="text-white font-bold text-sm">
-                      {isLoadingCredits ? '...' : `${credits} credits`}
+                      {isLoadingCredits ? '...' : `${totalCredits} credits`}
                     </span>
                   </div>
                 </div>

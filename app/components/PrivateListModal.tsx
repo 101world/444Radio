@@ -34,7 +34,7 @@ export default function PrivateListModal({ isOpen, onClose, artistId, isOwnProfi
   const [lists, setLists] = useState<PrivateList[]>([])
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
-  const { credits: userCredits, refreshCredits } = useCredits()
+  const { totalCredits: userCredits, refreshCredits } = useCredits()
   const [selectedList, setSelectedList] = useState<PrivateList | null>(null)
 
   // Create list form state

@@ -22,7 +22,7 @@ export default function DockedSidebar() {
   const pathname = usePathname()
   const [isExpanded, setIsExpanded] = useState(false)
   const [collapseTimeout, setCollapseTimeout] = useState<NodeJS.Timeout | null>(null)
-  const { credits } = useCredits()
+  const { totalCredits } = useCredits()
   const [username, setUsername] = useState<string>('')
   const [avatarUrl, setAvatarUrl] = useState<string>('')
 
@@ -162,7 +162,7 @@ export default function DockedSidebar() {
                 >
                   <Zap className="text-[#22D3EE]" size={14} />
                   <span className="text-white font-bold text-xs">
-                    {credits !== null ? `${credits} credits` : '...'}
+                    {totalCredits !== null ? `${totalCredits} credits` : '...'}
                   </span>
                 </Link>
               </>

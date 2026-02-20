@@ -10,7 +10,7 @@ import NotificationBell from './NotificationBell'
 export default function CreditIndicator() {
   const { user } = useUser()
   const { currentTrack } = useAudioPlayer()
-  const { credits, isLoading } = useCredits()
+  const { totalCredits, isLoading } = useCredits()
 
   if (!user) return null
 
@@ -35,7 +35,7 @@ export default function CreditIndicator() {
           </div>
           <div className="flex flex-col">
             <span className="text-white font-bold text-sm leading-tight">
-              {isLoading ? '...' : credits}
+              {isLoading ? '...' : totalCredits}
             </span>
           </div>
         </div>
