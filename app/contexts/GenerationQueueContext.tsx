@@ -5,10 +5,10 @@ import { safeLocalStorage } from '@/lib/safe-storage'
 
 export interface GenerationItem {
   id: string
-  type: 'music' | 'image' | 'video' | 'effects' | 'stem-split'
+  type: 'music' | 'image' | 'video' | 'effects' | 'stem-split' | 'lipsync'
   prompt: string
   title?: string
-  status: 'queued' | 'generating' | 'completed' | 'failed'
+  status: 'queued' | 'generating' | 'completed' | 'failed' | string
   progress?: number
   result?: {
     audioUrl?: string
@@ -21,6 +21,7 @@ export interface GenerationItem {
     variations?: Array<{ url: string; variation: number }>
     creditsUsed?: number
     creditsRemaining?: number
+    mediaId?: string
   }
   error?: string
   startedAt: number
