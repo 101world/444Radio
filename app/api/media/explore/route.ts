@@ -32,8 +32,8 @@ export async function GET(req: NextRequest) {
       .neq('audio_url', '')
       // Must have cover art OR a visualizer video — this ensures proper releases only
       .or('and(image_url.not.is.null,image_url.neq.),and(video_url.not.is.null,video_url.neq.)')
-      // Exclude internal tool genres (safety net)
-      .not('genre', 'in', '(stem,effects,loop,boosted)')
+      // Exclude internal tool genres + standalone visualizers (safety net)
+      .not('genre', 'in', '(stem,effects,loop,boosted,visualizer)')
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
