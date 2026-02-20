@@ -240,7 +240,7 @@ export async function DELETE(req: NextRequest) {
 
 /**
  * PATCH /api/library/combined
- * Publish combined media to profile/explore with metadata
+ * Publish combined media to profile/radio page with metadata
  */
 export async function PATCH(req: NextRequest) {
   try {

@@ -14,7 +14,7 @@ AI-powered music social network ("Instagram for AI Music") built with Next.js 15
 
 - **Frontend**: Next.js 15 App Router (`app/**`), React 19, TypeScript, Tailwind CSS- User lifecycle: Clerk → Svix webhook → `app/api/webhook/route.ts` → inserts/updates/deletes rows in `supabase` `users` table.
 
-- **Auth**: Clerk with global middleware protection (`middleware.ts`)- Content: audio/images/videos uploaded to Cloudflare R2 via `lib/r2-upload.ts` and read across pages (e.g., Explore, Library). Playback is centralized by `app/contexts/AudioPlayerContext.tsx` which also tracks plays via `/api/media/track-play` (fallback `/api/songs/track-play`).
+- **Auth**: Clerk with global middleware protection (`middleware.ts`)- Content: audio/images/videos uploaded to Cloudflare R2 via `lib/r2-upload.ts` and read across pages (e.g., Radio, Library). Playback is centralized by `app/contexts/AudioPlayerContext.tsx` which also tracks plays via `/api/media/track-play` (fallback `/api/songs/track-play`).
 
 - **Database**: Supabase PostgreSQL (primary table: `combined_media` for all content types)- AI: Replicate token is configured but model endpoints are under `app/api/generate/**` (see folder) and may need wiring depending on feature.
 
@@ -502,7 +502,7 @@ export default function FeaturePage() {
 - `/sign-in` - Clerk sign-in (public)
 - `/decrypt` - Credit unlock puzzle (protected)
 - `/create` - Generation interface (protected)
-- `/explore` - Browse all content (protected)
+- `/radio` - Browse all content (protected)
 - `/profile/[userId]` - User profile (protected)
 - `/api/credits` - Check user credits (protected)
 - `/api/debug` - Debug endpoints (protected; check folder)

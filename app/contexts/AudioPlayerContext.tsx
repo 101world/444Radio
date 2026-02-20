@@ -64,12 +64,14 @@ function computeUrl(u: string): string {
     if (process.env.NEXT_PUBLIC_R2_VIDEOS_URL) r2CustomHosts.push(new URL(process.env.NEXT_PUBLIC_R2_VIDEOS_URL).hostname)
     // Also recognize the unified R2_PUBLIC_URL (media.444radio.co.in) as a CDN host
     if (process.env.NEXT_PUBLIC_R2_PUBLIC_URL) r2CustomHosts.push(new URL(process.env.NEXT_PUBLIC_R2_PUBLIC_URL).hostname)
-    // Fallback: always treat media.444radio.co.in as CDN
-    r2CustomHosts.push('media.444radio.co.in')
+    // NOTE: Removed media.444radio.co.in from CDN whitelist - force through proxy until CORS is configured
+    // r2CustomHosts.push('media.444radio.co.in')
     if (r2CustomHosts.includes(target.hostname)) return u // CDN — play direct
     const isRawR2 = target.hostname.endsWith('.r2.dev') || target.hostname.endsWith('.r2.cloudflarestorage.com')
     const isReplicate = target.hostname.includes('replicate.delivery') || target.hostname.includes('replicate.com')
-    return (isRawR2 || isReplicate) ? `/api/r2/proxy?url=${encodeURIComponent(u)}` : u
+    // Force media.444radio.co.in through proxy to handle CORS
+    const isMediaDomain = target.hostname === 'media.444radio.co.in'
+    return (isRawR2 || isReplicate || isMediaDomain) ? `/api/r2/proxy?url=${encodeURIComponent(u)}` : u
   } catch { return u }
 }
 

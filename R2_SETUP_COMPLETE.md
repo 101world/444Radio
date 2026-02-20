@@ -190,6 +190,6 @@ Your audio player is now fully functional with:
 - ✅ Proper seeking/scrubbing
 - ✅ Multi-track playlist support
 
-**Test it live:** https://www.444radio.co.in/explore
+**Test it live:** https://www.444radio.co.in/radio
 
 🎉 **Checkpoint complete - audio system is production-ready!**

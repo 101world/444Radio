@@ -45,7 +45,7 @@ export default function StructuredData() {
       '@type': 'SearchAction',
       target: {
         '@type': 'EntryPoint',
-        urlTemplate: 'https://444radio.co.in/explore?search={search_term_string}',
+        urlTemplate: 'https://444radio.co.in/radio?search={search_term_string}',
       },
       'query-input': 'required name=search_term_string',
     },
