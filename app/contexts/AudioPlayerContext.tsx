@@ -59,14 +59,14 @@ function computeUrl(u: string): string {
     if (u.startsWith('blob:') || u.startsWith('/')) return u
     const target = new URL(u)
     const r2CustomHosts: string[] = []
-    if (process.env.NEXT_PUBLIC_R2_AUDIO_URL) r2CustomHosts.push(new URL(process.env.NEXT_PUBLIC_R2_AUDIO_URL).hostname)
-    if (process.env.NEXT_PUBLIC_R2_IMAGES_URL) r2CustomHosts.push(new URL(process.env.NEXT_PUBLIC_R2_IMAGES_URL).hostname)
-    if (process.env.NEXT_PUBLIC_R2_VIDEOS_URL) r2CustomHosts.push(new URL(process.env.NEXT_PUBLIC_R2_VIDEOS_URL).hostname)
-    // Also recognize the unified R2_PUBLIC_URL (media.444radio.co.in) as a CDN host
-    if (process.env.NEXT_PUBLIC_R2_PUBLIC_URL) r2CustomHosts.push(new URL(process.env.NEXT_PUBLIC_R2_PUBLIC_URL).hostname)
-    // NOTE: Removed media.444radio.co.in from CDN whitelist - force through proxy until CORS is configured
+    // NOTE: Commenting out ALL R2 env variables to force ALL media through proxy until CORS is configured
+    // This includes audio, images, videos from media.444radio.co.in
+    // if (process.env.NEXT_PUBLIC_R2_AUDIO_URL) r2CustomHosts.push(new URL(process.env.NEXT_PUBLIC_R2_AUDIO_URL).hostname)
+    // if (process.env.NEXT_PUBLIC_R2_IMAGES_URL) r2CustomHosts.push(new URL(process.env.NEXT_PUBLIC_R2_IMAGES_URL).hostname)
+    // if (process.env.NEXT_PUBLIC_R2_VIDEOS_URL) r2CustomHosts.push(new URL(process.env.NEXT_PUBLIC_R2_VIDEOS_URL).hostname)
+    // if (process.env.NEXT_PUBLIC_R2_PUBLIC_URL) r2CustomHosts.push(new URL(process.env.NEXT_PUBLIC_R2_PUBLIC_URL).hostname)
     // r2CustomHosts.push('media.444radio.co.in')
-    if (r2CustomHosts.includes(target.hostname)) return u // CDN — play direct
+    if (r2CustomHosts.includes(target.hostname)) return u // CDN — play direct (none whitelisted now)
     const isRawR2 = target.hostname.endsWith('.r2.dev') || target.hostname.endsWith('.r2.cloudflarestorage.com')
     const isReplicate = target.hostname.includes('replicate.delivery') || target.hostname.includes('replicate.com')
     // Force media.444radio.co.in through proxy to handle CORS
