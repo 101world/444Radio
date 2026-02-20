@@ -73,16 +73,38 @@ export async function POST(request: NextRequest) {
       return corsResponse(NextResponse.json({ error: 'Cannot purchase your own track' }, { status: 400 }))
     }
 
-    // Prevent duplicate purchase
+    // Check if user already owns this track
+    let alreadyOwned = false
     try {
       const dupRes = await supabaseRest(`earn_purchases?buyer_id=eq.${userId}&track_id=eq.${trackId}&select=id`)
       if (dupRes.ok) {
         const dups = await dupRes.json()
         if (dups && dups.length > 0) {
-          return corsResponse(NextResponse.json({ error: 'You already own this track' }, { status: 400 }))
+          alreadyOwned = true
         }
       }
     } catch { /* table may not exist yet */ }
+
+    // If already owned, allow free re-download without charging
+    if (alreadyOwned) {
+      // Log that this was a re-download (no charge)
+      await logCreditTransaction({
+        userId,
+        amount: 0,
+        balanceAfter: buyer.credits || 0,
+        type: 'earn_purchase',
+        description: `Re-download: ${track.title}`,
+        metadata: { trackId, trackTitle: track.title, redownload: true, splitStems: false }
+      })
+
+      return corsResponse(NextResponse.json({
+        success: true,
+        message: 'Track already owned - free re-download',
+        audioUrl: track.audio_url,
+        title: track.title,
+        redownload: true,
+      }))
+    }
 
     // 4. Calculate cost — 5 base + optional 5 for stems (444 Heat model)
     const baseCost = 5

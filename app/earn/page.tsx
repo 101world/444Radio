@@ -31,7 +31,7 @@ interface ArtistInfo {
   user_id: string; username: string; avatar_url?: string; bio?: string
   trackCount: number; totalDownloads: number; totalPlays: number
 }
-type FilterType = 'trending' | 'most_downloaded' | 'latest'
+type FilterType = 'trending' | 'most_downloaded' | 'latest' | 'bought'
 
 export default function EarnPage() {
   const { user, isSignedIn } = useUser()
@@ -39,6 +39,7 @@ export default function EarnPage() {
   const { currentTrack, isPlaying, togglePlayPause, setPlaylist } = useAudioPlayer()
 
   const [tracks, setTracks] = useState<EarnTrack[]>([])
+  const [boughtTracks, setBoughtTracks] = useState<EarnTrack[]>([])
   const [loading, setLoading] = useState(true)
   const { totalCredits: credits, refreshCredits } = useCredits()
   const [filter, setFilter] = useState<FilterType>('trending')
@@ -56,16 +57,24 @@ export default function EarnPage() {
   const fetchTracks = useCallback(async () => {
     setLoading(true)
     try {
-      const params = new URLSearchParams({ filter, genre: selectedGenre === 'All' ? '' : selectedGenre, q: searchQuery })
-      const res = await fetch(`/api/earn/tracks?${params}`)
-      const data = await res.json()
-      if (data.success) {
-        setTracks(data.tracks || [])
-        if (data.genres?.length) setGenres(['All', ...data.genres])
+      if (filter === 'bought' && isSignedIn) {
+        const res = await fetch('/api/library/bought')
+        const data = await res.json()
+        if (data.success && data.tracks) {
+          setBoughtTracks(data.tracks)
+        }
+      } else {
+        const params = new URLSearchParams({ filter, genre: selectedGenre === 'All' ? '' : selectedGenre, q: searchQuery })
+        const res = await fetch(`/api/earn/tracks?${params}`)
+        const data = await res.json()
+        if (data.success) {
+          setTracks(data.tracks || [])
+          if (data.genres?.length) setGenres(['All', ...data.genres])
+        }
       }
     } catch (err) { console.error('Failed to fetch earn tracks:', err) }
     finally { setLoading(false) }
-  }, [filter, selectedGenre, searchQuery])
+  }, [filter, selectedGenre, searchQuery, isSignedIn])
 
   useEffect(() => { fetchTracks() }, [fetchTracks])
 
@@ -194,10 +203,11 @@ export default function EarnPage() {
   }
 
   const displayTracks = useMemo(() => {
-    if (!searchQuery.trim()) return tracks
+    const sourceData = filter === 'bought' ? boughtTracks : tracks
+    if (!searchQuery.trim()) return sourceData
     const q = searchQuery.toLowerCase()
-    return tracks.filter(t => t.title.toLowerCase().includes(q) || t.username?.toLowerCase().includes(q) || t.genre?.toLowerCase().includes(q))
-  }, [tracks, searchQuery])
+    return sourceData.filter(t => t.title.toLowerCase().includes(q) || t.username?.toLowerCase().includes(q) || t.genre?.toLowerCase().includes(q))
+  }, [tracks, boughtTracks, searchQuery, filter])
 
   const totalDownloads = useMemo(() => tracks.reduce((s, t) => s + (t.downloads || 0), 0), [tracks])
   const totalArtists = useMemo(() => new Set(tracks.map(t => t.user_id)).size, [tracks])
@@ -256,6 +266,7 @@ export default function EarnPage() {
                 { key: 'trending' as FilterType, label: 'Trending', icon: TrendingUp },
                 { key: 'most_downloaded' as FilterType, label: 'Top', icon: Download },
                 { key: 'latest' as FilterType, label: 'New', icon: Clock },
+                ...(isSignedIn ? [{ key: 'bought' as FilterType, label: 'Bought', icon: Download }] : []),
               ] as const).map(f => (
                 <button key={f.key} onClick={() => setFilter(f.key)}
                   className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all ${filter === f.key ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
