@@ -17,13 +17,13 @@ CREATE TABLE IF NOT EXISTS public.notifications (
   title TEXT NOT NULL,
   message TEXT NOT NULL,
   type TEXT DEFAULT 'info', -- 'info', 'success', 'warning', 'error'
-  read BOOLEAN DEFAULT false,
+  is_read BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   metadata JSONB DEFAULT '{}'
 );
 
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON public.notifications(user_id);
-CREATE INDEX IF NOT EXISTS idx_notifications_read ON public.notifications(read) WHERE read = false;
+CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON public.notifications(is_read) WHERE is_read = false;
 
 -- ── 2. Award +24 credits to users who claimed "FREE THE MUSIC" code ──────
 -- Find users who have redeemed the code (exists in code_redemptions)
