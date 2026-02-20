@@ -131,8 +131,8 @@ export default function MusiConGenModal({
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [showPresets, setShowPresets] = useState(true)
 
-  // Calculate credit cost - 1 credit for all durations
-  const creditCost = 1
+  // Calculate credit cost - 4 credits for all durations
+  const creditCost = 4
 
   const loadPreset = (preset: typeof MUSICONGEN_PRESETS[0]) => {
     setPrompt(preset.prompt)
@@ -548,7 +548,7 @@ export default function MusiConGenModal({
             ) : (
               <>
                 <Music size={18} />
-                Generate with Chords (1 credit)
+                Generate with Chords (4 credits)
               </>
             )}
           </button>

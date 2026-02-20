@@ -120,7 +120,7 @@ export default function FeaturesSidebar({
       description: 'Chord & rhythm control',
       color: 'purple',
       active: false,
-      cost: 1,
+      cost: 4,
       onClick: onShowMusiConGen,
     },
     {

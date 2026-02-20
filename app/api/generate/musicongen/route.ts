@@ -50,8 +50,8 @@ export async function POST(req: NextRequest) {
       return corsResponse(NextResponse.json({ error: 'Duration must be between 1 and 30 seconds' }, { status: 400 }))
     }
 
-    // Calculate credit cost - 1 credit for all durations
-    const creditCost = 1
+    // Calculate credit cost - 4 credits for all durations
+    const creditCost = 4
 
     console.log('🎹 Chords generation request')
     console.log('💬 Prompt:', prompt)

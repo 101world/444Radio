@@ -45,7 +45,7 @@ const CREDIT_COSTS: Record<string, number | ((params: Record<string, unknown>) =
   image: 1,
   effects: 2,
   loops: (p) => ((p.max_duration as number) || 8) <= 10 ? 6 : 7,
-  chords: 1,
+  chords: 4,
   stems: (p) => {
     const model = (p.model as string) || 'htdemucs'
     const wavFormat = (p.wav_format as string) || 'int24'
