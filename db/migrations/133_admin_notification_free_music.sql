@@ -36,19 +36,17 @@ BEGIN
   INSERT INTO public.admin_notifications (
     title,
     message,
-    type,
     category,
     metadata
   ) VALUES (
     '🎵 Free the Music Upgrade Complete',
-    format('Successfully distributed %s credits to %s users. Admin wallet: %s remaining (%.6f%% of 444B allocation used)',
+    format('Successfully distributed %s credits to %s users. Admin wallet: %s remaining (%s%% of 444B allocation used)',
       v_total_credits_distributed,
       v_users_upgraded,
       v_admin_wallet_remaining,
-      (v_total_awarded / 444000000000.0 * 100)
+      ROUND((v_total_awarded / 444000000000.0 * 100)::numeric, 6)
     ),
-    'success',
-    'credits',
+    'milestone',
     jsonb_build_object(
       'campaign', 'free_the_music',
       'users_upgraded', v_users_upgraded,
@@ -70,7 +68,6 @@ $$;
 SELECT 
   title,
   message,
-  type,
   category,
   metadata,
   created_at

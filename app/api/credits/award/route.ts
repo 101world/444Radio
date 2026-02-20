@@ -196,25 +196,24 @@ export async function POST(req: NextRequest) {
 
     // ── Notify admin on milestone redemptions (every 10 codes) ──
     try {
-      const { data: redemptionCount } = await supabase
+      const { count } = await supabase
         .from('code_redemptions')
-        .select('id', { count: 'exact', head: true })
+        .select('*', { count: 'exact', head: true })
         .eq('code', normalizedCode)
 
-      const count = redemptionCount || 0
-      if (count > 0 && count % 10 === 0) {
+      const redemptionCount = count || 0
+      if (redemptionCount > 0 && redemptionCount % 10 === 0) {
         // Milestone reached - notify admin
         await supabase.rpc('notify_admin', {
-          p_title: `🎵 ${normalizedCode} Milestone: ${count} Redemptions`,
-          p_message: `The "${normalizedCode}" code has been redeemed ${count} times. Total credits distributed: ${count * creditsToAward}. Keep vibing! 🎶`,
-          p_type: 'success',
-          p_category: 'credits',
+          p_title: `🎵 ${normalizedCode} Milestone: ${redemptionCount} Redemptions`,
+          p_message: `The "${normalizedCode}" code has been redeemed ${redemptionCount} times. Total credits distributed: ${redemptionCount * creditsToAward}. Keep vibing! 🎶`,
+          p_category: 'milestone',
           p_metadata: {
             code: normalizedCode,
-            total_redemptions: count,
-            total_credits_distributed: count * creditsToAward,
+            total_redemptions: redemptionCount,
+            total_credits_distributed: redemptionCount * creditsToAward,
             credits_per_redemption: creditsToAward,
-            milestone: count,
+            milestone: redemptionCount,
             latest_user_id: userId
           }
         })

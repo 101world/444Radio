@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { corsResponse, handleOptions } from '@/lib/cors'
 import { logCreditTransaction } from '@/lib/credit-transactions'
 import { ADMIN_CLERK_ID } from '@/lib/constants'
+import { supabase } from '@/lib/supabase'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -131,16 +132,19 @@ export async function POST(request: NextRequest) {
       console.warn('Admin account not found — listing will still proceed but admin will not be credited')
     }
 
-    // 4. Credit admin (skip if admin account not found)
-    // Note: buyer deduction already done atomically above via RPC
+    // 4. Credit admin using award_credits() RPC (transaction logging automatic)
+    // Note: lister deduction already done atomically above via deduct_credits RPC
     if (admin) {
-      const newAdminCredits = (admin.credits || 0) + LISTING_FEE
-      const creditAdminRes = await supabaseRest(`users?clerk_user_id=eq.${admin.clerk_user_id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ credits: newAdminCredits }),
+      const adminCreditResult = await supabase.rpc('award_credits', {
+        p_clerk_user_id: admin.clerk_user_id,
+        p_amount: LISTING_FEE,
+        p_type: 'earn_admin',
+        p_description: `Listing fee received for: ${trackId}`,
+        p_metadata: { trackId, listerId: userId }
       })
 
-      if (!creditAdminRes.ok) {
+      if (adminCreditResult.error) {
+        console.error('Failed to credit admin:', adminCreditResult.error)
         // Refund lister atomically — add credits back
         await supabaseRest(`users?clerk_user_id=eq.${userId}`, {
           method: 'PATCH',
@@ -150,11 +154,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 5. Log credit transactions (buyer already logged atomically by deduct_credits RPC)
-    if (admin) {
-      const newAdminCredits2 = (admin.credits || 0) + LISTING_FEE
-      await logCreditTransaction({ userId: admin.clerk_user_id, amount: LISTING_FEE, balanceAfter: newAdminCredits2, type: 'earn_admin', description: `Listing fee received`, metadata: { trackId, listerId: userId } })
-    }
+    // 5. Credit transactions already logged by RPCs
+    // (lister deduction logged by deduct_credits RPC, admin credits logged by award_credits RPC)
 
     // 6b. Enrich the track with release metadata if missing
     //     The release flow creates a SEPARATE combined_media record with full metadata.

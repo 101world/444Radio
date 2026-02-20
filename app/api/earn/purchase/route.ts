@@ -5,6 +5,7 @@ import { logCreditTransaction } from '@/lib/credit-transactions'
 import { logOwnershipEvent, recordDownloadLineage } from '@/lib/ownership-engine'
 import { ADMIN_CLERK_ID } from '@/lib/constants'
 import { notifyPurchase, notifyRevenueEarned } from '@/lib/notifications'
+import { supabase } from '@/lib/supabase'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -140,13 +141,17 @@ export async function POST(request: NextRequest) {
     }
 
     // 7. Credit artist (1 credit) and admin/444 Radio (4 credits)
-    const newArtistCredits = (artist.credits || 0) + artistShare
-    const creditArtistRes = await supabaseRest(`users?clerk_user_id=eq.${track.user_id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ credits: newArtistCredits }),
+    // Use award_credits() RPC to ensure transaction logging and 444B pool deduction
+    const artistCreditResult = await supabase.rpc('award_credits', {
+      p_clerk_user_id: track.user_id,
+      p_amount: artistShare,
+      p_type: 'earn_revenue',
+      p_description: `Sale: ${track.title}`,
+      p_metadata: { trackId, trackTitle: track.title, buyerId: userId, buyerUsername, purchasedAt: new Date().toISOString() }
     })
 
-    if (!creditArtistRes.ok) {
+    if (artistCreditResult.error) {
+      console.error('Failed to credit artist:', artistCreditResult.error)
       // Rollback buyer deduction — add credits back
       await supabaseRest(`users?clerk_user_id=eq.${userId}`, {
         method: 'PATCH',
@@ -154,19 +159,20 @@ export async function POST(request: NextRequest) {
       })
       return corsResponse(NextResponse.json({ error: 'Failed to credit artist — rolled back' }, { status: 500 }))
     }
+    
+    const newArtistCredits = artistCreditResult.data?.[0]?.new_balance_total || (artist.credits || 0) + artistShare
 
-    // Credit 444 Radio admin
-    const adminRes2 = await supabaseRest(`users?clerk_user_id=eq.${ADMIN_CLERK_ID}&select=clerk_user_id,credits`)
-    const admins = await adminRes2.json()
-    const admin = admins?.[0]
-    if (admin) {
-      const newAdminCredits = (admin.credits || 0) + adminShare
-      await supabaseRest(`users?clerk_user_id=eq.${ADMIN_CLERK_ID}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ credits: newAdminCredits }),
-      })
-      // Log admin credit transaction
-      await logCreditTransaction({ userId: ADMIN_CLERK_ID, amount: adminShare, balanceAfter: newAdminCredits, type: 'earn_admin', description: `Download fee: ${track.title}`, metadata: { trackId, trackTitle: track.title, buyerId: userId, buyerUsername, sellerId: track.user_id, sellerUsername: artist?.username || 'Unknown' } })
+    // Credit 444 Radio admin using RPC (transaction logging automatic)
+    const adminCreditResult = await supabase.rpc('award_credits', {
+      p_clerk_user_id: ADMIN_CLERK_ID,
+      p_amount: adminShare,
+      p_type: 'earn_admin',
+      p_description: `Download fee: ${track.title}`,
+      p_metadata: { trackId, trackTitle: track.title, buyerId: userId, buyerUsername, sellerId: track.user_id, sellerUsername: artist?.username || 'Unknown' }
+    })
+    
+    if (adminCreditResult.error) {
+      console.warn('Failed to credit admin:', adminCreditResult.error)
     }
 
     // 8. Increment download count on track
@@ -183,7 +189,7 @@ export async function POST(request: NextRequest) {
       const txBase: Record<string, unknown> = {
         buyer_id: userId,
         seller_id: track.user_id,
-        admin_id: admin?.clerk_user_id || null,
+        admin_id: ADMIN_CLERK_ID,
         track_id: trackId,
         total_cost: totalCost,
         artist_share: artistShare,
@@ -239,8 +245,8 @@ export async function POST(request: NextRequest) {
       console.error('earn_purchases network error:', e)
     }
 
-    // 9b. Log credit transactions (buyer already logged atomically by deduct_credits RPC)
-    await logCreditTransaction({ userId: track.user_id, amount: artistShare, balanceAfter: newArtistCredits, type: 'earn_sale', description: `Sale: ${track.title}`, metadata: { trackId, trackTitle: track.title, buyerId: userId, buyerUsername, purchasedAt: new Date().toISOString() } })
+    // 9b. Credit transactions already logged by award_credits() RPC
+    // (buyer logged by deduct_credits RPC, artist and admin logged by award_credits RPC)
 
     // 9c. Log 444 ownership lineage for the purchase
     try {
