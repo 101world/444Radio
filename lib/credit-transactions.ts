@@ -14,6 +14,7 @@ export type CreditTransactionType =
   | 'generation_image'
   | 'generation_video_to_audio'
   | 'generation_video'
+  | 'generation_lipsync'
   | 'generation_cover_art'
   | 'generation_stem_split'
   | 'generation_audio_boost'

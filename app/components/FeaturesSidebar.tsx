@@ -28,6 +28,7 @@ interface FeaturesSidebarProps {
   onShowExtract: () => void
   onShowAutotune: () => void
   onShowVisualizer: () => void
+  onShowLipSync: () => void
   onOpenRelease: () => void
   onClearChat: () => void
   onShowDeletedChats: () => void
@@ -67,6 +68,7 @@ export default function FeaturesSidebar({
   onShowExtract,
   onShowAutotune,
   onShowVisualizer,
+  onShowLipSync,
   onOpenRelease,
   onClearChat,
   onShowDeletedChats,
@@ -185,6 +187,15 @@ export default function FeaturesSidebar({
       active: false,
       cost: undefined,
       onClick: onShowVisualizer,
+    },
+    {
+      icon: Mic,
+      label: 'Lip-Sync',
+      description: 'Image + Audio to video',
+      color: 'pink',
+      active: false,
+      cost: undefined,
+      onClick: onShowLipSync,
     },
     {
       icon: Edit3,

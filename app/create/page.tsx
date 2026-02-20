@@ -18,6 +18,7 @@ const AutotuneModal = lazy(() => import('../components/AutotuneModal'))
 const DeletedChatsModal = lazy(() => import('../components/DeletedChatsModal'))
 const SplitStemsModal = lazy(() => import('../components/SplitStemsModal'))
 const VisualizerModal = lazy(() => import('../components/VisualizerModal'))
+const LipSyncModal = lazy(() => import('../components/LipSyncModal'))
 const FeaturesSidebar = lazy(() => import('../components/FeaturesSidebar'))
 const MatrixConsole = lazy(() => import('../components/MatrixConsole'))
 const OutOfCreditsModal = lazy(() => import('../components/OutOfCreditsModal'))
@@ -101,6 +102,7 @@ function CreatePageContent() {
   const [showAudioBoostModal, setShowAudioBoostModal] = useState(false)
   const [showAutotuneModal, setShowAutotuneModal] = useState(false)
   const [showVisualizerModal, setShowVisualizerModal] = useState(false)
+  const [showLipSyncModal, setShowLipSyncModal] = useState(false)
   const [boostAudioUrl, setBoostAudioUrl] = useState('')
   const [boostTrackTitle, setBoostTrackTitle] = useState('')
   const [preselectedMusicId, setPreselectedMusicId] = useState<string | undefined>()
@@ -1730,6 +1732,7 @@ function CreatePageContent() {
           onShowExtract={() => setShowMediaUploadModal(true)}
           onShowAutotune={() => setShowAutotuneModal(true)}
           onShowVisualizer={() => setShowVisualizerModal(true)}
+          onShowLipSync={() => setShowLipSyncModal(true)}
           onOpenRelease={() => handleOpenRelease()}
           onTagClick={(tag: string) => {
             const newInput = input ? `${input}, ${tag}` : tag
@@ -2382,6 +2385,22 @@ function CreatePageContent() {
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-purple-400 drop-shadow-[0_0_12px_rgba(168,85,247,0.9)] md:w-[20px] md:h-[20px]">
                 <rect x="2" y="4" width="20" height="16" rx="2"/>
                 <path d="M10 9l5 3-5 3V9z"/>
+              </svg>
+            </button>
+            )}
+
+            {/* Lip-Sync Button - Audio + Video to Lip-Synced Video */}
+            {showAdvancedButtons && (
+            <button
+              onClick={() => setShowLipSyncModal(true)}
+              className="flex-shrink-0 group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-pink-500/30 hover:border-pink-400/60 hover:scale-105"
+              title="Lip-Sync Video Generator"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-pink-400 drop-shadow-[0_0_12px_rgba(236,72,153,0.9)] md:w-[20px] md:h-[20px]">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                <path d="M9 9h.01"/>
+                <path d="M15 9h.01"/>
               </svg>
             </button>
             )}
@@ -3861,6 +3880,32 @@ function CreatePageContent() {
               }
               return updated
             })
+            refreshCredits()
+            window.dispatchEvent(new Event('credits:refresh'))
+          }}
+        />
+      </Suspense>
+
+      {/* Lip-Sync Modal - Audio + Video to Lip-Synced Video */}
+      <Suspense fallback={null}>
+        <LipSyncModal
+          isOpen={showLipSyncModal}
+          onClose={() => setShowLipSyncModal(false)}
+          userCredits={userCredits || 0}
+          onSuccess={(videoUrl: string) => {
+            // Add success message to chat
+            const successMsg: Message = {
+              id: Date.now().toString(),
+              type: 'generation',
+              content: '✅ Lip-sync video generated successfully!',
+              generationType: 'video',
+              result: {
+                url: videoUrl,
+                title: 'Lip-Sync Video',
+              },
+              timestamp: new Date()
+            }
+            setMessages(prev => [...prev, successMsg])
             refreshCredits()
             window.dispatchEvent(new Event('credits:refresh'))
           }}
