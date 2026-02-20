@@ -131,8 +131,8 @@ export default function MusiConGenModal({
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [showPresets, setShowPresets] = useState(true)
 
-  // Calculate credit cost based on duration
-  const creditCost = duration <= 15 ? 5 : 7
+  // Calculate credit cost - 1 credit for all durations
+  const creditCost = 1
 
   const loadPreset = (preset: typeof MUSICONGEN_PRESETS[0]) => {
     setPrompt(preset.prompt)
@@ -530,7 +530,7 @@ export default function MusiConGenModal({
           <div className="flex items-center justify-between p-3 bg-purple-500/5 border border-purple-500/20 rounded-lg">
             <span className="text-sm text-gray-300">Credit Cost</span>
             <span className="text-sm font-semibold text-purple-300">
-              {creditCost} credits • {duration <= 15 ? 'Short' : 'Long'} track
+              {creditCost} credit • Any duration
             </span>
           </div>
 
@@ -548,7 +548,7 @@ export default function MusiConGenModal({
             ) : (
               <>
                 <Music size={18} />
-                Generate with Chords ({creditCost} credits)
+                Generate with Chords (1 credit)
               </>
             )}
           </button>

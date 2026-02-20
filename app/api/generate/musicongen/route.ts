@@ -50,9 +50,8 @@ export async function POST(req: NextRequest) {
       return corsResponse(NextResponse.json({ error: 'Duration must be between 1 and 30 seconds' }, { status: 400 }))
     }
 
-    // Calculate credit cost based on duration
-    // Up to 15s = 5 credits, 16-30s = 7 credits
-    const creditCost = duration <= 15 ? 5 : 7
+    // Calculate credit cost - 1 credit for all durations
+    const creditCost = 1
 
     console.log('🎹 MusiConGen generation request')
     console.log('💬 Prompt:', prompt)

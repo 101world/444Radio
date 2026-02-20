@@ -119,12 +119,9 @@ C,C:7 G, E:min A:min                # 2 chords in bar 1, 1 in bar 2, etc.
 
 ## 💰 Credit Pricing
 
-| Duration | Credits | Notes |
-|----------|---------|-------|
-| 1-15 seconds | **5 credits** | Short tracks |
-| 16-30 seconds | **7 credits** | Longer tracks |
+**1 credit** for all durations (1-30 seconds)
 
-*Pricing matches the complexity of chord-controlled generation*
+*Affordable pricing to encourage experimentation with chord progressions*
 
 ---
 
