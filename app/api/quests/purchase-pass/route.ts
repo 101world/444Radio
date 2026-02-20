@@ -36,8 +36,9 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Check credits balance before calling RPC (quick pre-check)
+    // IMPORTANT: Check BOTH paid credits AND free_credits columns
     const userRes = await fetch(
-      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,wallet_balance`,
+      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,free_credits,wallet_balance`,
       { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
     )
     const users = await userRes.json()
@@ -46,11 +47,14 @@ export async function POST(req: NextRequest) {
       return corsResponse(NextResponse.json({ error: 'User not found' }, { status: 404 }))
     }
 
-    if ((user.credits || 0) < QUEST_PASS_COST) {
+    const totalCredits = (user.credits || 0) + (user.free_credits || 0)
+    if (totalCredits < QUEST_PASS_COST) {
       return corsResponse(NextResponse.json({
-        error: `Quest Pass costs ${QUEST_PASS_COST} credits. You have ${user.credits || 0}.`,
+        error: `Quest Pass costs ${QUEST_PASS_COST} credits. You have ${totalCredits} (${user.credits || 0} paid + ${user.free_credits || 0} free).`,
         required: QUEST_PASS_COST,
-        creditsAvailable: user.credits || 0,
+        creditsAvailable: totalCredits,
+        paidCredits: user.credits || 0,
+        freeCredits: user.free_credits || 0,
       }, { status: 402 }))
     }
 

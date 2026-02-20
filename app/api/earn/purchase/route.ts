@@ -5,7 +5,7 @@ import { logCreditTransaction } from '@/lib/credit-transactions'
 import { logOwnershipEvent, recordDownloadLineage } from '@/lib/ownership-engine'
 import { ADMIN_CLERK_ID } from '@/lib/constants'
 import { notifyPurchase, notifyRevenueEarned } from '@/lib/notifications'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
 
     // 7. Credit artist (1 credit) and admin/444 Radio (4 credits)
     // Use award_credits() RPC to ensure transaction logging and 444B pool deduction
-    const artistCreditResult = await supabase.rpc('award_credits', {
+    const artistCreditResult = await supabaseAdmin.rpc('award_credits', {
       p_clerk_user_id: track.user_id,
       p_amount: artistShare,
       p_type: 'earn_revenue',
@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
     const newArtistCredits = artistCreditResult.data?.[0]?.new_balance_total || (artist.credits || 0) + artistShare
 
     // Credit 444 Radio admin using RPC (transaction logging automatic)
-    const adminCreditResult = await supabase.rpc('award_credits', {
+    const adminCreditResult = await supabaseAdmin.rpc('award_credits', {
       p_clerk_user_id: ADMIN_CLERK_ID,
       p_amount: adminShare,
       p_type: 'earn_admin',

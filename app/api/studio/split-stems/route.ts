@@ -78,9 +78,10 @@ export async function POST(request: Request) {
     }
 
     // Extract advanced params with safe defaults
-    // Valid models: htdemucs (Core) and htdemucs_6s (Extended)
+    // 444 HEAT MODEL: Uses htdemucs_6s (Extended) with high-quality settings
+    // Fixed cost: 5 credits (no free tier)
     const VALID_MODELS = ['htdemucs', 'htdemucs_6s'] as const
-    const demucsModel = VALID_MODELS.includes(body?.model as any) ? (body.model as string) : 'htdemucs'
+    const demucsModel = 'htdemucs_6s' // Always use Extended (6-stem) for 444 Heat
     const wavFormat = (['int16', 'int24', 'float32'].includes(body?.wav_format) ? body.wav_format : 'int24') as string
     const clipMode = (['rescale', 'clamp'].includes(body?.clip_mode) ? body.clip_mode : 'rescale') as string
     const shifts = typeof body?.shifts === 'number' && body.shifts >= 1 && body.shifts <= 10 ? body.shifts : 1
@@ -91,20 +92,19 @@ export async function POST(request: Request) {
     const segment = typeof body?.segment === 'number' && body.segment > 0 ? body.segment : undefined
     const jobs = 0 // Locked to 0 (auto) — prevents abuse of parallel jobs
 
-    // Display names for Demucs models (used in transaction descriptions)
+    // Display names for models
     const MODEL_DISPLAY_NAMES: Record<string, string> = {
       htdemucs: '444 Core',
-      htdemucs_6s: '444 Extended',
+      htdemucs_6s: '444 Heat',
     }
 
     /**
-     * Credit cost per stem:
-     * - 444 Core (htdemucs): FREE for int16/int24 WAV, 1 credit for float32/mp3/flac
-     * - 444 Extended (htdemucs_6s): always 1 credit per stem
-     * - 444 Heat handled separately at 5 credits flat (not used in studio route)
+     * 444 HEAT MODEL PRICING:
+     * - Flat 5 credits per stem split operation
+     * - Uses htdemucs_6s (Extended) for best quality
+     * - No free tier
      */
-    const isCoreFree = demucsModel !== 'htdemucs_6s' && outputFormat === 'wav' && wavFormat !== 'float32'
-    const stemCost = isCoreFree ? 0 : 1
+    const stemCost = 5
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -123,33 +123,27 @@ export async function POST(request: Request) {
     if (stemCost > 0 && userData.credits < stemCost) {
       return corsResponse(NextResponse.json({
         success: false,
-        error: `Insufficient credits. Stem split requires ${stemCost} credit${stemCost > 1 ? 's' : ''}, you have ${userData.credits}.`,
+        error: `Insufficient credits. 444 Heat stem split requires ${stemCost} credits, you have ${userData.credits}.`,
         creditsNeeded: stemCost,
         creditsAvailable: userData.credits
       }, { status: 402 }))
     }
 
-    // ✅ DEDUCT credits atomically BEFORE generation (skip if free tier)
-    if (stemCost > 0) {
-      const { data: deductResultRaw } = await supabase
-        .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: stemCost, p_type: 'generation_stem_split', p_description: `Stem Split (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel}) [${wavFormat}]` })
-        .single()
-      const deductResult = deductResultRaw as { success: boolean; new_credits: number; error_message?: string | null } | null
-      if (!deductResult?.success) {
-        const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
-        console.error('❌ Credit deduction blocked:', errorMsg)
-        await logCreditTransaction({ userId, amount: -stemCost, type: 'generation_stem_split', status: 'failed', description: `Stem Split (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel}) [${wavFormat}]`, metadata: {} })
-        return corsResponse(NextResponse.json({ success: false, error: errorMsg }, { status: 402 }))
-      }
-      console.log(`✅ Credits deducted: ${stemCost}. Remaining: ${deductResult.new_credits}`)
-      deductedAmount = stemCost
-      deductedUserId = userId
-      await logCreditTransaction({ userId, amount: -stemCost, balanceAfter: deductResult.new_credits, type: 'generation_stem_split', description: `Stem Split (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel}) [${wavFormat}]`, metadata: { model: demucsModel, cost: stemCost, wav_format: wavFormat } })
-    } else {
-      // Free generation — still log it for tracking
-      console.log(`🆓 Free stem split (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel}) [${outputFormat}/${wavFormat}]`)
-      await logCreditTransaction({ userId, amount: 0, balanceAfter: userData.credits, type: 'generation_stem_split', description: `Stem Split (FREE): ${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel} [${outputFormat}/${wavFormat}]`, metadata: { model: demucsModel, cost: 0, wav_format: wavFormat, output_format: outputFormat, free: true } })
+    // ✅ DEDUCT credits atomically BEFORE generation (always 5 credits for 444 Heat)
+    const { data: deductResultRaw } = await supabase
+      .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: stemCost, p_type: 'generation_stem_split', p_description: `Stem Split (444 Heat) [${wavFormat}]` })
+      .single()
+    const deductResult = deductResultRaw as { success: boolean; new_credits: number; error_message?: string | null } | null
+    if (!deductResult?.success) {
+      const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
+      console.error('❌ Credit deduction blocked:', errorMsg)
+      await logCreditTransaction({ userId, amount: -stemCost, type: 'generation_stem_split', status: 'failed', description: `Stem Split (444 Heat) [${wavFormat}]`, metadata: {} })
+      return corsResponse(NextResponse.json({ success: false, error: errorMsg }, { status: 402 }))
     }
+    console.log(`✅ Credits deducted: ${stemCost}. Remaining: ${deductResult.new_credits}`)
+    deductedAmount = stemCost
+    deductedUserId = userId
+    await logCreditTransaction({ userId, amount: -stemCost, balanceAfter: deductResult.new_credits, type: 'generation_stem_split', description: `Stem Split (444 Heat) [${wavFormat}]`, metadata: { model: demucsModel, cost: stemCost, wav_format: wavFormat } })
 
     console.log('🎵 Stem splitting requested by user:', userId)
 
@@ -319,8 +313,34 @@ export async function POST(request: Request) {
     }
 
     console.log(`✅ Stem separation complete: ${Object.keys(stems).length} stems extracted`)
-    // Do not upload stems to R2 here; return direct URLs for immediate placement
-    return corsResponse(NextResponse.json({ success: true, stems, predictionId: result.id }))
+    
+    // Save each stem to music_library under "stems" category
+    try {
+      for (const [stemName, stemUrl] of Object.entries(stems)) {
+        await supabase
+          .from('music_library')
+          .insert({
+            clerk_user_id: userId,
+            title: `${stemName} (Stem)`,
+            audio_url: stemUrl,
+            prompt: `Stem split from audio | type:${stemName} | model:444 Heat`,
+            status: 'ready',
+            category: 'stems',
+          })
+      }
+      console.log(`✅ Saved ${Object.keys(stems).length} stems to music_library under "stems" category`)
+    } catch (saveError) {
+      console.error('⚠️ Failed to save stems to library (non-critical):', saveError)
+    }
+    
+    // Return stems with success message
+    return corsResponse(NextResponse.json({ 
+      success: true, 
+      stems, 
+      predictionId: result.id,
+      message: `${Object.keys(stems).length} stems saved to your Library under "Stems"`,
+      savedToLibrary: true,
+    }))
   } catch (error: any) {
     console.error('❌ Split-stems critical error:', {
       message: error?.message,
