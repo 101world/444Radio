@@ -12,6 +12,7 @@ export async function GET() {
     const { data: mediaData, error: mediaError } = await supabase
       .from('combined_media')
       .select('genre')
+      .eq('is_public', true)
       .not('genre', 'is', null)
 
     if (mediaError) {

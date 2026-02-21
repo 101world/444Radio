@@ -54,6 +54,7 @@ export async function GET(req: NextRequest) {
     let query = supabase
       .from('combined_media')
       .select('*')
+      .eq('is_public', true)
       .not('audio_url', 'is', null)
       .neq('audio_url', '')
 
@@ -170,6 +171,7 @@ export async function GET(req: NextRequest) {
         const { data: artistTracks } = await supabase
           .from('combined_media')
           .select('*')
+          .eq('is_public', true)
           .not('audio_url', 'is', null)
           .neq('audio_url', '')
           .in('user_id', matchingUserIds)
@@ -214,6 +216,7 @@ async function fallbackSearch(q: string, genre: string | undefined, mood: string
     let query = supabase
       .from('combined_media')
       .select('*')
+      .eq('is_public', true)
       .not('audio_url', 'is', null)
       .neq('audio_url', '')
 

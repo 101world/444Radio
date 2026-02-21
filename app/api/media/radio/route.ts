@@ -27,6 +27,8 @@ export async function GET(req: NextRequest) {
     const { data, error } = await supabase
       .from('combined_media')
       .select('*')
+      // Only show explicitly released tracks
+      .eq('is_public', true)
       // Must have audio
       .not('audio_url', 'is', null)
       .neq('audio_url', '')
