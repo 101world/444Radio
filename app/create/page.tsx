@@ -2248,212 +2248,159 @@ function CreatePageContent() {
       <div className="fixed bottom-0 left-0 right-0 px-4 sm:px-6 lg:px-8 pb-4 md:pb-8 z-20 bg-gradient-to-t from-black via-black/80 to-transparent pt-8 transition-all duration-300 ease-out">
         <div className="w-full md:max-w-xl lg:max-w-3xl mx-auto">
           
-          {/* Icon Row Above Prompt Box — scrollable on mobile */}
-          <div className="flex items-center gap-2 sm:gap-3 mb-3 md:mb-4 overflow-x-auto no-scrollbar px-1 sm:justify-center">
-            {/* Music Type Button - Hidden by default */}
-            {showAdvancedButtons && (
-            <button
-              onClick={() => setSelectedType('music')}
-              className={`flex-shrink-0 group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 ${
-                selectedType === 'music'
-                  ? 'bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 shadow-lg shadow-cyan-500/50 scale-110'
-                  : 'bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105'
-              }`}
-              title="Generate Music"
-            >
-              <Music 
-                size={18} 
-                className={`${
-                  selectedType === 'music' ? 'text-black' : 'text-cyan-400'
-                } drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[20px] md:h-[20px]`}
-              />
-              {selectedType === 'music' && (
-                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-black rounded-full"></div>
-              )}
-            </button>
-            )}
-
-            {/* Effects Type Button - Hidden by default */}
-            {showAdvancedButtons && (
-            <button
-              onClick={() => setShowEffectsModal(true)}
-              className="flex-shrink-0 group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-purple-500/30 hover:border-purple-400/60 hover:scale-105"
-              title="Generate Sound Effects"
-            >
-              <Sparkles 
-                size={18} 
-                className="text-purple-400 drop-shadow-[0_0_12px_rgba(168,85,247,0.9)] md:w-[20px] md:h-[20px]"
-              />
-            </button>
-            )}
-
-            {/* Loopers Button - Hidden by default */}
-            {showAdvancedButtons && (
-            <button
-              onClick={() => setShowLoopersModal(true)}
-              className="flex-shrink-0 group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105"
-              title="Generate Fixed BPM Loops"
-            >
-              <Repeat 
-                size={18} 
-                className="text-cyan-400 drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[20px] md:h-[20px]"
-              />
-            </button>
-            )}
-
-            {/* Chords Button - Chord Control */}
-            {showAdvancedButtons && (
-            <button
-              onClick={() => setShowMusiConGenModal(true)}
-              className="flex-shrink-0 group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-purple-500/30 hover:border-purple-400/60 hover:scale-105"
-              title="Chords - Chord & Rhythm Control"
-            >
-              <Music2 
-                size={18} 
-                className="text-purple-400 drop-shadow-[0_0_12px_rgba(168,85,247,0.9)] md:w-[20px] md:h-[20px]"
-              />
-            </button>
-            )}
-
-            {/* Image Type Button - Hidden by default */}
-            {showAdvancedButtons && (
-            <button
-              onClick={() => setSelectedType('image')}
-              className={`flex-shrink-0 group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 ${
-                selectedType === 'image'
-                  ? 'bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 shadow-lg shadow-cyan-500/50 scale-110'
-                  : 'bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105'
-              }`}
-              title="Generate Cover Art"
-            >
-              <ImageIcon 
-                size={18} 
-                className={`${
-                  selectedType === 'image' ? 'text-black' : 'text-cyan-400'
-                } drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[20px] md:h-[20px]`}
-              />
-              {selectedType === 'image' && (
-                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-black rounded-full"></div>
-              )}
-            </button>
-            )}
-
-            {/* Divider - Only show when advanced buttons are visible */}
-            {showAdvancedButtons && <div className="flex-shrink-0 w-px h-8 bg-cyan-500/30"></div>}
-
-            {/* Lyrics Button - Only show for regular music, not instrumental - Hidden by default */}
-            {showAdvancedButtons && selectedType === 'music' && !isInstrumental && (
-              <button
-                onClick={() => setShowLyricsModal(true)}
-                className={`flex-shrink-0 group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 ${
-                  customTitle || genre || customLyrics || bpm
-                    ? 'bg-gradient-to-r from-cyan-600/20 via-cyan-500/20 to-cyan-400/20 border-2 border-cyan-400 scale-105'
-                    : 'bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105'
-                }`}
-                title="Lyrics & Settings"
-              >
-                <Edit3 
-                  size={18} 
-                  className={`${
-                    customTitle || genre || customLyrics || bpm ? 'text-cyan-300' : 'text-cyan-400'
-                  } drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[20px] md:h-[20px]`}
-                />
-              </button>
-            )}
-
-            {/* Rocket Button - Hidden by default */}
-            {showAdvancedButtons && (
-            <button
-              onClick={() => handleOpenRelease()}
-              className="flex-shrink-0 group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105"
-              title="Release to Feed"
-            >
-              <Rocket 
-                size={18} 
-                className="text-cyan-400 drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[20px] md:h-[20px]"
-              />
-            </button>
-            )}
-
-            {/* Visualizer Button - Text/Image to Video */}
-            {showAdvancedButtons && (
-            <button
-              onClick={() => setShowVisualizerModal(true)}
-              className="flex-shrink-0 group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-purple-500/30 hover:border-purple-400/60 hover:scale-105"
-              title="Generate Video (Visualizer)"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-purple-400 drop-shadow-[0_0_12px_rgba(168,85,247,0.9)] md:w-[20px] md:h-[20px]">
-                <rect x="2" y="4" width="20" height="16" rx="2"/>
-                <path d="M10 9l5 3-5 3V9z"/>
-              </svg>
-            </button>
-            )}
-
-            {/* Lip-Sync Button - Audio + Video to Lip-Synced Video */}
-            {showAdvancedButtons && (
-            <button
-              onClick={() => setShowLipSyncModal(true)}
-              className="flex-shrink-0 group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-pink-500/30 hover:border-pink-400/60 hover:scale-105"
-              title="Lip-Sync Video Generator"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-pink-400 drop-shadow-[0_0_12px_rgba(236,72,153,0.9)] md:w-[20px] md:h-[20px]">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
-                <path d="M9 9h.01"/>
-                <path d="M15 9h.01"/>
-              </svg>
-            </button>
-            )}
-
-            {/* Upload Button - Audio/Video Processing */}
-            {showAdvancedButtons && (
-            <button
-              onClick={() => setShowMediaUploadModal(true)}
-              className="flex-shrink-0 group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-purple-500/30 hover:border-purple-400/60 hover:scale-105"
-              title="Upload Audio/Video"
-            >
-              <Upload 
-                size={18} 
-                className="text-purple-400 drop-shadow-[0_0_12px_rgba(168,85,247,0.9)] md:w-[20px] md:h-[20px]"
-              />
-            </button>
-            )}
-
-            {/* New Chat Button */}
-            {showAdvancedButtons && (
-            <button
-              onClick={handleClearChat}
-              className="flex-shrink-0 group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-green-500/30 hover:border-green-400/60 hover:scale-105"
-              title="New Chat"
-            >
-              <Plus 
-                size={18} 
-                className="text-green-400 drop-shadow-[0_0_12px_rgba(34,197,94,0.9)] md:w-[20px] md:h-[20px]"
-              />
-            </button>
-            )}
-
-            {/* Restore Chat Button - Opens archived chats modal */}
-            {showAdvancedButtons && (
-            <button
-              onClick={() => setShowDeletedChatsModal(true)}
-              className="flex-shrink-0 group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-green-500/30 hover:border-green-400/60 hover:scale-105"
-              title="Chat History"
-            >
-              <RotateCcw 
-                size={18} 
-                className="text-green-400 drop-shadow-[0_0_12px_rgba(34,197,94,0.9)] md:w-[20px] md:h-[20px]"
-              />
-            </button>
-            )}
-
-            {/* Credits Display - Always Visible */}
-            <div className="flex-shrink-0 flex items-center gap-1.5 md:gap-2 px-2.5 md:px-4 py-2 md:py-2.5 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 rounded-2xl shadow-lg shadow-cyan-500/10">
-              <Zap size={14} className="text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.9)] md:w-[16px] md:h-[16px]" />
-              <span className="text-xs md:text-sm font-bold text-white">
+          {/* Advanced Options Dropdown Panel */}
+          {showAdvancedButtons && (
+            <div className="mb-3 mx-auto max-w-4xl animate-in slide-in-from-top-2 duration-200">
+              <div className="bg-black/30 backdrop-blur-2xl border border-white/10 rounded-2xl p-4 shadow-2xl shadow-black/40">
+                
+                {/* Generation Types */}
+                <div className="mb-4">
+                  <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2 px-1">Generate</h3>
+                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                    <button
+                      onClick={() => setSelectedType('music')}
+                      className={`group relative p-3 rounded-xl transition-all duration-200 ${
+                        selectedType === 'music'
+                          ? 'bg-cyan-500/20 border border-cyan-400/50 shadow-lg shadow-cyan-500/20'
+                          : 'bg-white/5 border border-white/10 hover:bg-white/10 hover:border-cyan-400/30'
+                      }`}
+                    >
+                      <Music size={20} className={selectedType === 'music' ? 'text-cyan-400 mx-auto' : 'text-white/60 mx-auto group-hover:text-cyan-400'} />
+                      <span className="block text-xs mt-1 text-center text-white/70">Music</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => setSelectedType('image')}
+                      className={`group relative p-3 rounded-xl transition-all duration-200 ${
+                        selectedType === 'image'
+                          ? 'bg-cyan-500/20 border border-cyan-400/50 shadow-lg shadow-cyan-500/20'
+                          : 'bg-white/5 border border-white/10 hover:bg-white/10 hover:border-cyan-400/30'
+                      }`}
+                    >
+                      <ImageIcon size={20} className={selectedType === 'image' ? 'text-cyan-400 mx-auto' : 'text-white/60 mx-auto group-hover:text-cyan-400'} />
+                      <span className="block text-xs mt-1 text-center text-white/70">Image</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => setShowEffectsModal(true)}
+                      className="group relative p-3 rounded-xl transition-all duration-200 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-purple-400/30"
+                    >
+                      <Sparkles size={20} className="text-white/60 mx-auto group-hover:text-purple-400" />
+                      <span className="block text-xs mt-1 text-center text-white/70">Effects</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => setShowLoopersModal(true)}
+                      className="group relative p-3 rounded-xl transition-all duration-200 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-cyan-400/30"
+                    >
+                      <Repeat size={20} className="text-white/60 mx-auto group-hover:text-cyan-400" />
+                      <span className="block text-xs mt-1 text-center text-white/70">Loops</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => setShowMusiConGenModal(true)}
+                      className="group relative p-3 rounded-xl transition-all duration-200 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-purple-400/30"
+                    >
+                      <Music2 size={20} className="text-white/60 mx-auto group-hover:text-purple-400" />
+                      <span className="block text-xs mt-1 text-center text-white/70">Chords</span>
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Content Tools */}
+                <div className="mb-4">
+                  <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2 px-1">Tools</h3>
+                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                    {selectedType === 'music' && !isInstrumental && (
+                      <button
+                        onClick={() => setShowLyricsModal(true)}
+                        className={`group relative p-3 rounded-xl transition-all duration-200 ${
+                          customTitle || genre || customLyrics || bpm
+                            ? 'bg-cyan-500/20 border border-cyan-400/50'
+                            : 'bg-white/5 border border-white/10 hover:bg-white/10 hover:border-cyan-400/30'
+                        }`}
+                      >
+                        <Edit3 size={20} className={customTitle || genre || customLyrics || bpm ? 'text-cyan-400 mx-auto' : 'text-white/60 mx-auto group-hover:text-cyan-400'} />
+                        <span className="block text-xs mt-1 text-center text-white/70">Lyrics</span>
+                      </button>
+                    )}
+                    
+                    <button
+                      onClick={() => setShowVisualizerModal(true)}
+                      className="group relative p-3 rounded-xl transition-all duration-200 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-purple-400/30"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/60 mx-auto group-hover:text-purple-400">
+                        <rect x="2" y="4" width="20" height="16" rx="2"/>
+                        <path d="M10 9l5 3-5 3V9z"/>
+                      </svg>
+                      <span className="block text-xs mt-1 text-center text-white/70">Video</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => setShowLipSyncModal(true)}
+                      className="group relative p-3 rounded-xl transition-all duration-200 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-pink-400/30"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/60 mx-auto group-hover:text-pink-400">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                        <path d="M9 9h.01"/>
+                        <path d="M15 9h.01"/>
+                      </svg>
+                      <span className="block text-xs mt-1 text-center text-white/70">Lip-Sync</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => setShowMediaUploadModal(true)}
+                      className="group relative p-3 rounded-xl transition-all duration-200 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-purple-400/30"
+                    >
+                      <Upload size={20} className="text-white/60 mx-auto group-hover:text-purple-400" />
+                      <span className="block text-xs mt-1 text-center text-white/70">Upload</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => handleOpenRelease()}
+                      className="group relative p-3 rounded-xl transition-all duration-200 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-cyan-400/30"
+                    >
+                      <Rocket size={20} className="text-white/60 mx-auto group-hover:text-cyan-400" />
+                      <span className="block text-xs mt-1 text-center text-white/70">Release</span>
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Actions */}
+                <div>
+                  <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2 px-1">Actions</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={handleClearChat}
+                      className="group relative p-3 rounded-xl transition-all duration-200 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-green-400/30 flex items-center gap-2"
+                    >
+                      <Plus size={18} className="text-white/60 group-hover:text-green-400" />
+                      <span className="text-sm text-white/70">New Chat</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => setShowDeletedChatsModal(true)}
+                      className="group relative p-3 rounded-xl transition-all duration-200 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-green-400/30 flex items-center gap-2"
+                    >
+                      <RotateCcw size={18} className="text-white/60 group-hover:text-green-400" />
+                      <span className="text-sm text-white/70">Chat History</span>
+                    </button>
+                  </div>
+                </div>
+                
+              </div>
+            </div>
+          )}
+          
+          {/* Credits Display - Always Visible */}
+          <div className="flex justify-center mb-3">
+            <div className="flex items-center gap-2 px-4 py-2 bg-black/20 backdrop-blur-xl border border-white/10 rounded-2xl shadow-lg">
+              <Zap size={16} className="text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.9)]" />
+              <span className="text-sm font-bold text-white">
                 {isLoadingCredits ? '...' : userCredits}
               </span>
-              <span className="hidden sm:inline text-xs text-cyan-400/60 font-mono">
+              <span className="text-xs text-cyan-400/60 font-mono">
                 {selectedType === 'music' ? '(-2)' : selectedType === 'image' ? '(-1)' : selectedType === 'effects' ? '(-2)' : ''}
               </span>
             </div>
