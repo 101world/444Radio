@@ -208,7 +208,7 @@ export async function POST(req: NextRequest) {
           // Poll until completed (typically 40-60 seconds for 5-10s video)
           let finalPrediction = prediction
           let pollCount = 0
-          const maxPolls = 120 // 120 * 3s = 6 minutes max
+          const maxPolls = 90 // 90 * 3s = 4.5 minutes max (under 5min Vercel timeout)
           while (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed' && finalPrediction.status !== 'canceled') {
             await new Promise(resolve => setTimeout(resolve, 3000))
             finalPrediction = await replicate.predictions.get(prediction.id)
@@ -224,7 +224,7 @@ export async function POST(req: NextRequest) {
             }
 
             if (pollCount >= maxPolls) {
-              throw new Error('Lip-sync generation timed out after 6 minutes')
+              throw new Error('Lip-sync generation timed out after 4.5 minutes')
             }
           }
 

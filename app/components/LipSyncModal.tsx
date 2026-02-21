@@ -263,100 +263,114 @@ export default function LipSyncModal({
       updateGeneration(generationId, { progress: 40, status: 'Generating lip-sync...' })
       setStatusMsg('Generating lip-sync video...')
 
-      // Call generation API with NDJSON streaming
+      // Call generation API with NDJSON streaming (with timeout)
       console.log('🎬 Step 2: Calling generation API...')
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (authToken) headers['Authorization'] = `Bearer ${authToken}`
 
-      const response = await fetch('/api/generate/lipsync', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          imageUrl,
-          audioUrl,
-          duration,  // Use the fixed duration option (5, 10, or 15)
-          resolution,
-        }),
-      })
+      // Add 5 minute timeout for the entire generation
+      const abortController = new AbortController()
+      const timeoutId = setTimeout(() => {
+        console.warn('⏱️ Generation timeout after 5 minutes')
+        abortController.abort()
+      }, 300000) // 5 minutes
 
-      console.log('📥 Generation API response status:', response.status)
+      try {
+        const response = await fetch('/api/generate/lipsync', {
+          method: 'POST',
+          headers,
+          signal: abortController.signal,
+          body: JSON.stringify({
+            imageUrl,
+            audioUrl,
+            duration,  // Use the fixed duration option (5, 10, or 15)
+            resolution,
+          }),
+        })
 
-      if (!response.ok) {
-        const error = await response.json()
-        console.error('❌ Generation API failed:', error)
-        throw new Error(error.error || 'Generation failed')
-      }
+        clearTimeout(timeoutId)
+        console.log('📥 Generation API response status:', response.status)
 
-      console.log('✅ Generation started, processing stream...')
+        if (!response.ok) {
+          const error = await response.json()
+          console.error('❌ Generation API failed:', error)
+          throw new Error(error.error || 'Generation failed')
+        }
 
-      // Process NDJSON stream
-      const reader = response.body?.getReader()
-      const decoder = new TextDecoder()
+        console.log('✅ Generation started, processing stream...')
 
-      if (reader) {
-        let buffer = ''
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
+        // Process NDJSON stream
+        const reader = response.body?.getReader()
+        const decoder = new TextDecoder()
 
-          buffer += decoder.decode(value, { stream: true })
-          const lines = buffer.split('\n')
-          buffer = lines.pop() || ''
+        if (reader) {
+          let buffer = ''
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
 
-          for (const line of lines) {
-            if (line.trim()) {
-              try {
-                const data = JSON.parse(line)
-                console.log('📨 Stream data:', data)
+            buffer += decoder.decode(value, { stream: true })
+            const lines = buffer.split('\n')
+            buffer = lines.pop() || ''
 
-                if (data.status) {
-                  setStatusMsg(data.status)
-                  updateGeneration(generationId, { status: data.status })
-                }
+            for (const line of lines) {
+              if (line.trim()) {
+                try {
+                  const data = JSON.parse(line)
+                  console.log('📨 Stream data:', data)
 
-                if (data.progress !== undefined) {
-                  updateGeneration(generationId, { progress: 40 + (data.progress * 0.6) })
-                }
-
-                if (data.error) {
-                  console.error('❌ Stream error:', data.error)
-                  throw new Error(data.error)
-                }
-
-                // Check for completion - API sends status: 'complete', not success: true
-                if ((data.status === 'complete' || data.success) && data.videoUrl) {
-                  console.log('✨ Generation complete!', data)
-                  setStatusMsg('Complete!')
-                  updateGeneration(generationId, {
-                    status: 'completed',
-                    progress: 100,
-                    result: {
-                      videoUrl: data.videoUrl,
-                      mediaId: data.mediaId,
-                    },
-                  })
-
-                  if (onSuccess) {
-                    console.log('📢 Calling onSuccess callback with:', {
-                      videoUrl: data.videoUrl,
-                      prompt: `Lip-sync video (${duration}s ${resolution})`,
-                      mediaId: data.mediaId || null
-                    })
-                    onSuccess(data.videoUrl, `Lip-sync video (${duration}s ${resolution})`, data.mediaId || null)
-                  } else {
-                    console.warn('⚠️ onSuccess callback not provided!')
+                  if (data.status) {
+                    setStatusMsg(data.status)
+                    updateGeneration(generationId, { status: data.status })
                   }
 
-                  // Don't show alert - queue system will handle notification
-                  console.log(`✅ Lip-sync video generated! Media ID: ${data.mediaId}`)
-                  return
+                  if (data.progress !== undefined) {
+                    updateGeneration(generationId, { progress: 40 + (data.progress * 0.6) })
+                  }
+
+                  if (data.error) {
+                    console.error('❌ Stream error:', data.error)
+                    throw new Error(data.error)
+                  }
+
+                  // Check for completion - API sends status: 'complete', not success: true
+                  if ((data.status === 'complete' || data.success) && data.videoUrl) {
+                    console.log('✨ Generation complete!', data)
+                    setStatusMsg('Complete!')
+                    updateGeneration(generationId, {
+                      status: 'completed',
+                      progress: 100,
+                      result: {
+                        videoUrl: data.videoUrl,
+                        mediaId: data.mediaId,
+                      },
+                    })
+
+                    if (onSuccess) {
+                      console.log('📢 Calling onSuccess callback with:', {
+                        videoUrl: data.videoUrl,
+                        prompt: `Lip-sync video (${duration}s ${resolution})`,
+                        mediaId: data.mediaId || null
+                      })
+                      onSuccess(data.videoUrl, `Lip-sync video (${duration}s ${resolution})`, data.mediaId || null)
+                    } else {
+                      console.warn('⚠️ onSuccess callback not provided!')
+                    }
+
+                    // Don't show alert - queue system will handle notification
+                    console.log(`✅ Lip-sync video generated! Media ID: ${data.mediaId}`)
+                    return
+                  }
+                } catch (parseError) {
+                  console.error('⚠️ Parse error:', parseError, 'Line:', line)
                 }
-              } catch (parseError) {
-                console.error('⚠️ Parse error:', parseError, 'Line:', line)
               }
             }
           }
         }
+      } catch (fetchError) {
+        clearTimeout(timeoutId)
+        throw fetchError
       }
     } catch (error) {
       console.error('💥 Generation error:', error)
