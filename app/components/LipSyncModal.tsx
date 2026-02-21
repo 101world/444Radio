@@ -18,10 +18,9 @@ interface LipSyncModalProps {
  * Credit cost for Wan 2.6 I2V Lip-Sync Generation
  * 1 credit = $0.035 | 50% profit margin (charge = cost × 1.5)
  *
- * Replicate per-second cost by resolution:
+ * Replicate per-second cost by resolution (Wan 2.6 I2V only supports 720p and 1080p):
  *   Resolution │ Cost/second
  *   ───────────┼─────────────
- *     480p     │  $0.07/s
  *     720p     │  $0.10/s
  *    1080p     │  $0.15/s
  *
@@ -29,12 +28,10 @@ interface LipSyncModalProps {
  *
  *   Resolution │  3s │  5s │  7s │ 10s
  *   ───────────┼─────┼─────┼─────┼─────
- *     480p     │  10 │  16 │  22 │  31
  *     720p     │  13 │  22 │  31 │  43
  *    1080p     │  20 │  33 │  46 │  65
  */
 const REPLICATE_COST_PER_SECOND: Record<string, number> = {
-  '480p': 0.07,
   '720p': 0.10,
   '1080p': 0.15,
 }
@@ -62,7 +59,7 @@ export default function LipSyncModal({
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [audioFile, setAudioFile] = useState<File | null>(null)
   const [audioPreview, setAudioPreview] = useState<string | null>(null)
-  const [resolution, setResolution] = useState<'480p' | '720p' | '1080p'>('720p')
+  const [resolution, setResolution] = useState<'720p' | '1080p'>('720p')
 
   // Trimming state
   const [audioDuration, setAudioDuration] = useState(0)
@@ -719,8 +716,8 @@ export default function LipSyncModal({
                 <Video size={16} className="text-cyan-400" />
                 Output Resolution
               </label>
-              <div className="grid grid-cols-3 gap-3">
-                {(['480p', '720p', '1080p'] as const).map((res) => (
+              <div className="grid grid-cols-2 gap-3">
+                {(['720p', '1080p'] as const).map((res) => (
                   <button
                     key={res}
                     onClick={() => setResolution(res)}

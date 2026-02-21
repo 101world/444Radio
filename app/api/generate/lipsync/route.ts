@@ -20,24 +20,23 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
  * 1 credit = $0.035 | 50% profit margin (charge = cost × 1.5)
  *
  * Wan 2.6 I2V Replicate cost (image+audio to video):
+ * Note: Model ONLY supports 720p and 1080p (480p not supported)
  *   Resolution │ Cost per second of output video
  *   ───────────┼────────────────────────────────
- *     480p     │  $0.07/s (estimated)
  *     720p     │  $0.10/s
  *    1080p     │  $0.15/s
  *
  * Charge (cost × 1.5), then credits = ceil(dur × charge / 0.035):
- *   Duration │  480p │  720p │ 1080p
- *   ─────────┼───────┼───────┼───────
- *      2s    │    6  │    9  │   13
- *      5s    │   15  │   22  │   33
- *      8s    │   24  │   35  │   52
- *     10s    │   30  │   43  │   65
+ *   Duration │  720p │ 1080p
+ *   ─────────┼───────┼───────
+ *      2s    │    9  │   13
+ *      5s    │   22  │   33
+ *      8s    │   35  │   52
+ *     10s    │   43  │   65
  *
  * Note: Model supports up to 10 seconds max duration for lip-sync mode.
  */
 const REPLICATE_COST_PER_SECOND: Record<string, number> = {
-  '480p': 0.07,
   '720p': 0.10,
   '1080p': 0.15,
 }
@@ -95,8 +94,8 @@ export async function POST(req: NextRequest) {
     // Validate duration: API supports up to 10 seconds for lip-sync
     const durationSec = Math.max(2, Math.min(10, Math.round(Number(duration))))
 
-    // Validate resolution
-    const validResolutions = ['480p', '720p', '1080p']
+    // Validate resolution (Wan 2.6 I2V only supports 720p and 1080p)
+    const validResolutions = ['720p', '1080p']
     const finalResolution = validResolutions.includes(resolution) ? resolution : '720p'
 
     // Calculate credit cost
