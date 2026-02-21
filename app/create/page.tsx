@@ -3587,8 +3587,8 @@ function CreatePageContent() {
             }
           }}
           onError={(errorMessage) => {
-            // Remove processing message
-            setMessages(prev => prev.filter(msg => !msg.isGenerating))
+            // Remove only processing messages without generationType (from MediaUploadModal)
+            setMessages(prev => prev.filter(msg => !msg.isGenerating || msg.generationType !== undefined))
             
             // Show error in chat
             const errorMsg: Message = {
@@ -3600,8 +3600,8 @@ function CreatePageContent() {
             setMessages(prev => [...prev, errorMsg])
           }}
           onSuccess={(result) => {
-            // Remove processing message
-            setMessages(prev => prev.filter(msg => !msg.isGenerating))
+            // Remove only processing messages without generationType (from MediaUploadModal)
+            setMessages(prev => prev.filter(msg => !msg.isGenerating || msg.generationType !== undefined))
             
             // Handle stem splitting results
             if (result.stems) {
@@ -3791,8 +3791,8 @@ function CreatePageContent() {
             setShowAutotuneModal(false)
           }}
           onSuccess={(result) => {
-            // Remove processing message
-            setMessages(prev => prev.filter(msg => !msg.isGenerating))
+            // Remove only processing messages without generationType (from AutotuneModal)
+            setMessages(prev => prev.filter(msg => !msg.isGenerating || msg.generationType !== undefined))
             // Add result to chat
             const autotuneMessage: Message = {
               id: Date.now().toString(),
@@ -3815,7 +3815,8 @@ function CreatePageContent() {
             window.dispatchEvent(new Event('credits:refresh'))
           }}
           onError={(errorMessage) => {
-            setMessages(prev => prev.filter(msg => !msg.isGenerating))
+            // Remove only processing messages without generationType (from AutotuneModal)
+            setMessages(prev => prev.filter(msg => !msg.isGenerating || msg.generationType !== undefined))
             const errorMsg: Message = {
               id: Date.now().toString(),
               type: 'assistant',
