@@ -2206,7 +2206,7 @@ function CreatePageContent() {
                 {/* Generation progress bar — replaces simple spinner */}
                 {message.isGenerating && message.generationId && (() => {
                   const gen = generations.find(g => g.id === message.generationId)
-                  if (gen && (gen.status === 'queued' || gen.status === 'generating')) {
+                  if (gen && gen.status !== 'completed' && gen.status !== 'failed') {
                     return (
                       <PluginGenerationQueue
                         jobs={[{
