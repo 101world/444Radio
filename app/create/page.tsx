@@ -3916,24 +3916,34 @@ function CreatePageContent() {
             setMessages(prev => [...prev, userMessage, generatingMessage])
           }}
           onSuccess={(videoUrl: string, prompt: string, mediaId: string | null) => {
+            console.log('🎬 LipSync onSuccess called:', { videoUrl, prompt, mediaId })
             // Replace generating message with result
             setMessages(prev => {
-              const filtered = prev.filter(m => !m.isGenerating || m.generationType !== 'video')
-              return [
-                ...filtered,
-                {
-                  id: Date.now().toString(),
-                  type: 'generation',
-                  content: '✅ Lip-sync video generated successfully!',
-                  generationType: 'video',
-                  result: {
-                    url: videoUrl,
-                    title: prompt || 'Lip-Sync Video',
-                    mediaId: mediaId || null,
-                  },
-                  timestamp: new Date()
+              console.log('📝 Current messages before filter:', prev.length)
+              const filtered = prev.filter(m => {
+                const keep = !m.isGenerating || m.generationType !== 'video'
+                if (!keep) {
+                  console.log('🗑️ Removing generating video message:', m.id, m.content)
                 }
-              ]
+                return keep
+              })
+              console.log('📝 Messages after filter:', filtered.length)
+              
+              const successMessage = {
+                id: Date.now().toString(),
+                type: 'generation' as const,
+                content: '✅ Lip-sync video generated successfully!',
+                generationType: 'video' as const,
+                result: {
+                  url: videoUrl,
+                  title: prompt || 'Lip-Sync Video',
+                  mediaId: mediaId || null,
+                },
+                timestamp: new Date()
+              }
+              console.log('✅ Adding success message:', successMessage)
+              
+              return [...filtered, successMessage]
             })
             refreshCredits()
             window.dispatchEvent(new Event('credits:refresh'))

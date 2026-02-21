@@ -323,7 +323,8 @@ export default function LipSyncModal({
                   throw new Error(data.error)
                 }
 
-                if (data.success && data.videoUrl) {
+                // Check for completion - API sends status: 'complete', not success: true
+                if ((data.status === 'complete' || data.success) && data.videoUrl) {
                   console.log('✨ Generation complete!', data)
                   setStatusMsg('Complete!')
                   updateGeneration(generationId, {
@@ -336,11 +337,18 @@ export default function LipSyncModal({
                   })
 
                   if (onSuccess) {
+                    console.log('📢 Calling onSuccess callback with:', {
+                      videoUrl: data.videoUrl,
+                      prompt: `Lip-sync video (${duration}s ${resolution})`,
+                      mediaId: data.mediaId || null
+                    })
                     onSuccess(data.videoUrl, `Lip-sync video (${duration}s ${resolution})`, data.mediaId || null)
+                  } else {
+                    console.warn('⚠️ onSuccess callback not provided!')
                   }
 
                   // Don't show alert - queue system will handle notification
-                  console.log(`✅ Lip-sync video generated! ${data.creditsRemaining} credits remaining`)
+                  console.log(`✅ Lip-sync video generated! Media ID: ${data.mediaId}`)
                   return
                 }
               } catch (parseError) {
