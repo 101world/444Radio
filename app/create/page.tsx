@@ -2471,60 +2471,60 @@ function CreatePageContent() {
             </div>
           )}
 
-          {/* Main Prompt Box - Home Page Style */}
+          {/* Main Prompt Box - Sleek Modern Design */}
           <div 
-            className="group relative active:scale-95 md:hover:scale-105 transition-transform duration-200"
+            className="group relative"
           >
-            {/* Glow Effect - Simplified for mobile */}
-            {!isMobile && <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 blur-lg md:blur-xl opacity-30 md:opacity-40 group-hover:opacity-70 group-active:opacity-60 transition-opacity duration-300"></div>}
+            {/* Ambient Glow Effect */}
+            {!isMobile && <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500/20 via-blue-500/20 to-purple-500/20 rounded-[24px] blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>}
             
-            {/* Input Container */}
-            <div className="relative flex gap-2.5 md:gap-4 items-center bg-black/60 md:bg-black/20 backdrop-blur-sm md:backdrop-blur-3xl px-4 md:px-6 py-3.5 md:py-5 border-2 border-cyan-500/30 group-active:border-cyan-400/60 md:group-hover:border-cyan-400/60 transition-colors duration-200 shadow-lg md:shadow-2xl">
+            {/* Sleek Glass Container */}
+            <div className="relative flex gap-2 md:gap-3 items-center bg-gradient-to-br from-slate-900/90 via-slate-800/80 to-slate-900/90 backdrop-blur-2xl px-4 md:px-5 py-3 md:py-4 rounded-3xl border border-slate-700/50 focus-within:border-cyan-400/60 focus-within:shadow-[0_0_30px_rgba(34,211,238,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-300 shadow-xl shadow-black/40">
               
-              {/* Toggle Advanced Buttons - Plus Icon */}
+              {/* Toggle Advanced Buttons - Sleek Plus */}
               <button
                 onClick={() => setShowAdvancedButtons(!showAdvancedButtons)}
-                className={`relative flex-shrink-0 p-2.5 rounded-full transition-all duration-300 ${
+                className={`relative flex-shrink-0 w-9 h-9 rounded-xl transition-all duration-300 ${
                   showAdvancedButtons
-                    ? 'bg-cyan-500 shadow-lg shadow-cyan-500/50 scale-110'
-                    : 'bg-cyan-500/20 border border-cyan-500/40 hover:bg-cyan-500/30 hover:border-cyan-400 hover:scale-110'
+                    ? 'bg-gradient-to-br from-cyan-400 to-blue-500 shadow-lg shadow-cyan-500/30'
+                    : 'bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 hover:border-cyan-500/50'
                 }`}
                 title={showAdvancedButtons ? 'Hide Options' : 'Show Options'}
               >
                 <PlusCircle 
-                  size={16} 
-                  className={`${showAdvancedButtons ? 'text-black rotate-45' : 'text-cyan-400'} transition-transform duration-300`}
+                  size={18} 
+                  className={`absolute inset-0 m-auto ${showAdvancedButtons ? 'text-white rotate-45' : 'text-cyan-400'} transition-transform duration-300`}
                 />
               </button>
 
-              {/* Record Button - Small Dot/Mic */}
+              {/* Record Button - Sleek Mic */}
               <button
                 onClick={isRecording ? stopRecording : startRecording}
-                className={`relative flex-shrink-0 p-2.5 rounded-full transition-all duration-300 ${
+                className={`relative flex-shrink-0 w-9 h-9 rounded-xl transition-all duration-300 ${
                   isRecording 
-                    ? 'bg-red-500 shadow-lg shadow-red-500/50 scale-110 animate-pulse' 
-                    : 'bg-cyan-500/20 border border-cyan-500/40 hover:bg-cyan-500/30 hover:border-cyan-400 hover:scale-110'
+                    ? 'bg-gradient-to-br from-red-500 to-rose-600 shadow-lg shadow-red-500/40 animate-pulse' 
+                    : 'bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 hover:border-red-500/50'
                 }`}
                 title={isRecording ? 'Stop Recording' : 'Start Voice Recording'}
               >
                 {isRecording ? (
-                  <div className="w-3 h-3 bg-white rounded-full"></div>
+                  <div className="w-2.5 h-2.5 bg-white rounded-sm absolute inset-0 m-auto"></div>
                 ) : (
                   <Mic 
-                    size={16} 
-                    className="text-cyan-400"
+                    size={18} 
+                    className="absolute inset-0 m-auto text-gray-300"
                   />
                 )}
               </button>
 
-              {/* Instrumental Toggle Button - New Position */}
+              {/* Instrumental Toggle - Sleek Pill */}
               {selectedType === 'music' && (
                 <button
                   onClick={() => setIsInstrumental(!isInstrumental)}
-                  className={`relative flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 ${
+                  className={`relative flex-shrink-0 px-3 py-2 rounded-xl text-xs font-bold tracking-wide transition-all duration-300 ${
                     isInstrumental
-                      ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/50'
-                      : 'bg-purple-500/20 border border-purple-500/40 text-purple-400 hover:bg-purple-500/30 hover:border-purple-400'
+                      ? 'bg-gradient-to-br from-purple-500 to-violet-600 text-white shadow-lg shadow-purple-500/30'
+                      : 'bg-slate-800/80 border border-slate-600/50 text-purple-300 hover:border-purple-500/50 hover:bg-slate-700/80'
                   }`}
                   title={isInstrumental ? 'Switch to Vocal Mode' : 'Switch to Instrumental Mode'}
                 >
@@ -2534,33 +2534,43 @@ function CreatePageContent() {
 
               {/* Input Field */}
               <div className="flex-1 text-center md:text-left">
-                <input
+                <textarea
                   ref={(el) => {
                     if (el) {
                       // Store input ref for keyboard control
-                      (window as unknown as Record<string, HTMLInputElement>).__createPageInput = el;
+                      (window as unknown as Record<string, HTMLTextAreaElement>).__createPageInput = el;
+                      // Auto-resize based on content
+                      el.style.height = 'auto';
+                      el.style.height = el.scrollHeight + 'px';
                     }
                   }}
-                  type="text"
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  onChange={(e) => {
+                    setInput(e.target.value)
+                    // Auto-resize on content change
+                    e.target.style.height = 'auto'
+                    e.target.style.height = e.target.scrollHeight + 'px'
+                  }}
                   onFocus={handleInputFocus}
-                  onKeyPress={(e) => {
+                  onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault()
-                      // Close keyboard by blurring input
-                      if (e.currentTarget) {
-                        e.currentTarget.blur()
+                      // Only create if valid length
+                      if (input.trim().length >= MIN_PROMPT_LENGTH && input.trim().length <= MAX_PROMPT_LENGTH) {
+                        // Close keyboard by blurring input
+                        if (e.currentTarget) {
+                          e.currentTarget.blur()
+                        }
+                        // Small delay to let keyboard close before generating
+                        setTimeout(() => {
+                          handleGenerate()
+                        }, 100)
                       }
-                      // Small delay to let keyboard close before generating
-                      setTimeout(() => {
-                        handleGenerate()
-                      }, 100)
                     }
                   }}
                   placeholder={
                     selectedType === 'music'
-                      ? 'Describe your sound...'
+                      ? 'Describe your sound... (e.g., upbeat lofi with piano and vinyl crackle)'
                       : selectedType === 'image'
                       ? 'Describe your cover art...'
                       : selectedType === 'effects'
@@ -2568,37 +2578,48 @@ function CreatePageContent() {
                       : 'Coming soon...'
                   }
                   disabled={selectedType === 'video'}
-                  className="w-full bg-transparent text-sm md:text-lg font-light text-gray-200 placeholder-gray-400/60 tracking-wide focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                  rows={1}
+                  className="w-full bg-transparent text-sm md:text-lg font-normal text-white placeholder-gray-500/70 tracking-wide focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed resize-none overflow-hidden transition-all duration-200"
+                  style={{ minHeight: '1.5rem', maxHeight: '6rem' }}
                 />
                 
-                <div className="flex items-center justify-between gap-2 mt-0.5">
-                  <div className="text-xs text-cyan-400/60 font-mono hidden md:block">
-                    {activeGenerations.size > 0 ? `Creating (${activeGenerations.size} active)...` : 'Press Enter to create'}
+                <div className="flex items-center justify-between gap-3 mt-1.5">
+                  <div className="text-xs font-medium tracking-wide hidden md:block">
+                    {activeGenerations.size > 0 
+                      ? <span className="text-cyan-400/70">Creating ({activeGenerations.size} active)...</span>
+                      : input.trim().length >= MIN_PROMPT_LENGTH && input.trim().length <= MAX_PROMPT_LENGTH
+                      ? <span className="text-emerald-400/80">Press Enter to create ✨</span>
+                      : input.length === 0
+                      ? <span className="text-gray-500">Start typing your idea...</span>
+                      : input.trim().length < MIN_PROMPT_LENGTH
+                      ? <span className="text-amber-400/80">{MIN_PROMPT_LENGTH - input.trim().length} more chars needed</span>
+                      : <span className="text-red-400/80">Prompt too long!</span>}
                   </div>
-                  <div className={`text-xs font-mono ${
-                    input.length < MIN_PROMPT_LENGTH ? 'text-red-400' :
-                    input.length > MAX_PROMPT_LENGTH ? 'text-red-400' :
-                    input.length > MAX_PROMPT_LENGTH * 0.9 ? 'text-yellow-400' :
-                    'text-gray-500'
+                  <div className={`text-xs font-bold tracking-wider px-2 py-0.5 rounded-md transition-all duration-200 ${
+                    input.length === 0 ? 'text-gray-500 bg-slate-800/30' :
+                    input.trim().length < MIN_PROMPT_LENGTH ? 'text-amber-300 bg-amber-500/10' :
+                    input.length > MAX_PROMPT_LENGTH ? 'text-red-300 bg-red-500/20 animate-pulse' :
+                    input.length > MAX_PROMPT_LENGTH * 0.9 ? 'text-yellow-300 bg-yellow-500/10' :
+                    'text-emerald-300 bg-emerald-500/10'
                   }`}>
                     {input.length}/{MAX_PROMPT_LENGTH}
                   </div>
                 </div>
               </div>
 
-              {/* Prompt Suggestions Button - Only for music */}
+              {/* Prompt Suggestions - Sleek Lightbulb */}
               {selectedType === 'music' && (
                 <div className="relative">
                   <button
                     onClick={() => setShowPromptSuggestions(!showPromptSuggestions)}
-                    className={`p-2.5 rounded-xl transition-all duration-300 ${
+                    className={`w-9 h-9 rounded-xl transition-all duration-300 flex items-center justify-center ${
                       showPromptSuggestions
-                        ? 'bg-yellow-500/20 border-2 border-yellow-400/60 shadow-lg shadow-yellow-500/30'
-                        : 'bg-yellow-500/10 border-2 border-yellow-500/30 hover:bg-yellow-500/20 hover:border-yellow-400/50 hover:shadow-lg hover:shadow-yellow-500/20'
+                        ? 'bg-gradient-to-br from-yellow-400 to-orange-500 shadow-lg shadow-yellow-500/30'
+                        : 'bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 hover:border-yellow-500/50'
                     }`}
                     title="Prompt Suggestions"
                   >
-                    <svg className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className={`w-5 h-5 ${showPromptSuggestions ? 'text-white' : 'text-yellow-400'}`} fill="currentColor" viewBox="0 0 20 20">
                       <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
                     </svg>
                   </button>
@@ -2836,6 +2857,7 @@ function CreatePageContent() {
               )}
 
               {/* Create Button */}
+              {/* Premium Send Button */}
               <button
                 onClick={() => {
                   // Close keyboard if open
@@ -2849,29 +2871,35 @@ function CreatePageContent() {
                   }, 100);
                 }}
                 disabled={!input.trim() || selectedType === 'video'}
-                className="relative flex-shrink-0 w-10 h-10 md:w-12 md:h-12 bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 hover:from-cyan-700 hover:via-cyan-600 hover:to-cyan-500 rounded-full flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-cyan-500/50 active:scale-95"
+                className="relative flex-shrink-0 w-11 h-11 md:w-12 md:h-12 bg-gradient-to-br from-cyan-400 via-cyan-500 to-blue-600 hover:from-cyan-500 hover:via-cyan-600 hover:to-blue-700 rounded-2xl flex items-center justify-center transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed shadow-xl shadow-cyan-500/40 hover:shadow-cyan-500/60 hover:scale-105 active:scale-95 border border-cyan-300/20"
               >
                 {activeGenerations.size > 0 && (
-                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-xs font-bold text-white">
+                  <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gradient-to-br from-red-500 to-rose-600 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-lg shadow-red-500/50 animate-pulse">
                     {activeGenerations.size}
                   </div>
                 )}
                 {activeGenerations.size > 0 ? (
-                  <Loader2 className="text-black animate-spin" size={20} />
+                  <Loader2 className="text-white animate-spin" size={22} />
                 ) : (
-                  <Send className="text-black ml-0.5" size={20} />
+                  <Send className="text-white ml-0.5" size={22} />
                 )}
               </button>
             </div>
           </div>
           
-          {/* Quick Info - Below the bar */}
-          <div className="flex items-center justify-center gap-2 mt-2 text-xs md:text-sm">
-            <span className="text-cyan-400/60 font-mono tracking-wider">
+          {/* Sleek Info Label */}
+          <div className="flex items-center justify-center gap-2 mt-3 text-xs md:text-sm">
+            <span className="px-4 py-1.5 rounded-full bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 text-cyan-300/80 font-medium tracking-wide">
               {activeGenerations.size > 0 ? (
-                `⚡ ${activeGenerations.size} generation${activeGenerations.size > 1 ? 's' : ''} in progress • You can queue more`
+                <span className="flex items-center gap-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+                  </span>
+                  {activeGenerations.size} generation{activeGenerations.size > 1 ? 's' : ''} in progress
+                </span>
               ) : (
-                `✨ ${selectedType === 'music' ? 'Create amazing tracks' : selectedType === 'image' ? 'Generate cover art' : selectedType === 'effects' ? 'Generate Text to SFX' : 'Coming soon'}`
+                `✨ ${selectedType === 'music' ? 'Create amazing tracks' : selectedType === 'image' ? 'Generate cover art' : selectedType === 'effects' ? 'Generate sound effects' : 'Coming soon'}`
               )}
             </span>
           </div>
