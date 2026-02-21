@@ -229,9 +229,12 @@ export async function POST(req: NextRequest) {
           }
 
           if (finalPrediction.status === 'failed' || finalPrediction.status === 'canceled') {
-            console.error('[lipsync] Prediction failed:', finalPrediction.error)
+            console.error('[lipsync] Prediction failed!')
+            console.error('[lipsync] Status:', finalPrediction.status)
+            console.error('[lipsync] Error field:', JSON.stringify(finalPrediction.error, null, 2))
+            console.error('[lipsync] Full prediction:', JSON.stringify(finalPrediction, null, 2))
             const errDetail = String(finalPrediction.error || 'Lip-sync generation failed')
-            throw new Error(errDetail)
+            throw new Error(`Replicate prediction ${finalPrediction.status}: ${errDetail}`)
           }
 
           // ────── Get output URL ──────
