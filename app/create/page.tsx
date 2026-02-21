@@ -2478,32 +2478,32 @@ function CreatePageContent() {
             {/* Ambient Glow Effect */}
             {!isMobile && <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500/20 via-blue-500/20 to-purple-500/20 rounded-[24px] blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>}
             
-            {/* Sleek Glass Container */}
-            <div className="relative flex gap-2 md:gap-3 items-center bg-gradient-to-br from-slate-900/90 via-slate-800/80 to-slate-900/90 backdrop-blur-2xl px-4 md:px-5 py-3 md:py-4 rounded-3xl border border-slate-700/50 focus-within:border-cyan-400/60 focus-within:shadow-[0_0_30px_rgba(34,211,238,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-300 shadow-xl shadow-black/40">
+            {/* Ultra-Slim Transparent Glass Container */}
+            <div className="relative flex gap-1.5 md:gap-2 items-center bg-black/20 backdrop-blur-xl px-3 md:px-4 py-2 md:py-2.5 rounded-2xl border border-white/10 focus-within:border-cyan-400/30 focus-within:shadow-[0_0_15px_rgba(34,211,238,0.1)] transition-all duration-300 shadow-lg shadow-black/20">
               
-              {/* Toggle Advanced Buttons - Sleek Plus */}
+              {/* Toggle Advanced Buttons - Glowing Plus */}
               <button
                 onClick={() => setShowAdvancedButtons(!showAdvancedButtons)}
-                className={`relative flex-shrink-0 w-9 h-9 rounded-xl transition-all duration-300 ${
+                className={`relative flex-shrink-0 w-8 h-8 md:w-9 md:h-9 rounded-lg transition-all duration-300 ${
                   showAdvancedButtons
-                    ? 'bg-gradient-to-br from-cyan-400 to-blue-500 shadow-lg shadow-cyan-500/30'
-                    : 'bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 hover:border-cyan-500/50'
+                    ? 'bg-gradient-to-br from-cyan-400 via-cyan-500 to-blue-500 shadow-lg shadow-cyan-500/50'
+                    : 'bg-white/5 hover:bg-white/10 border border-cyan-400/40 hover:border-cyan-400/70 shadow-[0_0_12px_rgba(34,211,238,0.4)]'
                 }`}
-                title={showAdvancedButtons ? 'Hide Options' : 'Show Options'}
+                title={showAdvancedButtons ? 'Hide Options' : 'Show More Options'}
               >
                 <PlusCircle 
-                  size={18} 
-                  className={`absolute inset-0 m-auto ${showAdvancedButtons ? 'text-white rotate-45' : 'text-cyan-400'} transition-transform duration-300`}
+                  size={16} 
+                  className={`absolute inset-0 m-auto ${showAdvancedButtons ? 'text-white rotate-45' : 'text-cyan-300'} transition-transform duration-300 drop-shadow-[0_0_6px_rgba(34,211,238,0.9)]`}
                 />
               </button>
 
-              {/* Record Button - Sleek Mic */}
+              {/* Record Button - Transparent Mic */}
               <button
                 onClick={isRecording ? stopRecording : startRecording}
-                className={`relative flex-shrink-0 w-9 h-9 rounded-xl transition-all duration-300 ${
+                className={`relative flex-shrink-0 w-8 h-8 md:w-9 md:h-9 rounded-lg transition-all duration-300 ${
                   isRecording 
-                    ? 'bg-gradient-to-br from-red-500 to-rose-600 shadow-lg shadow-red-500/40 animate-pulse' 
-                    : 'bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 hover:border-red-500/50'
+                    ? 'bg-gradient-to-br from-red-500 to-rose-600 shadow-lg shadow-red-500/50 animate-pulse' 
+                    : 'bg-white/5 hover:bg-white/10 border border-white/10 hover:border-red-400/50'
                 }`}
                 title={isRecording ? 'Stop Recording' : 'Start Voice Recording'}
               >
@@ -2511,20 +2511,20 @@ function CreatePageContent() {
                   <div className="w-2.5 h-2.5 bg-white rounded-sm absolute inset-0 m-auto"></div>
                 ) : (
                   <Mic 
-                    size={18} 
+                    size={16} 
                     className="absolute inset-0 m-auto text-gray-300"
                   />
                 )}
               </button>
 
-              {/* Instrumental Toggle - Sleek Pill */}
+              {/* Instrumental Toggle - Transparent Pill */}
               {selectedType === 'music' && (
                 <button
                   onClick={() => setIsInstrumental(!isInstrumental)}
-                  className={`relative flex-shrink-0 px-3 py-2 rounded-xl text-xs font-bold tracking-wide transition-all duration-300 ${
+                  className={`relative flex-shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-bold tracking-wide transition-all duration-300 ${
                     isInstrumental
-                      ? 'bg-gradient-to-br from-purple-500 to-violet-600 text-white shadow-lg shadow-purple-500/30'
-                      : 'bg-slate-800/80 border border-slate-600/50 text-purple-300 hover:border-purple-500/50 hover:bg-slate-700/80'
+                      ? 'bg-gradient-to-br from-purple-500 to-violet-600 text-white shadow-lg shadow-purple-500/40'
+                      : 'bg-white/5 border border-purple-400/30 text-purple-300 hover:border-purple-400/60 hover:bg-white/10'
                   }`}
                   title={isInstrumental ? 'Switch to Vocal Mode' : 'Switch to Instrumental Mode'}
                 >
@@ -2583,43 +2583,43 @@ function CreatePageContent() {
                   style={{ minHeight: '1.5rem', maxHeight: '6rem' }}
                 />
                 
-                <div className="flex items-center justify-between gap-3 mt-1.5">
+                <div className="flex items-center justify-between gap-2 mt-1">
                   <div className="text-xs font-medium tracking-wide hidden md:block">
                     {activeGenerations.size > 0 
-                      ? <span className="text-cyan-400/70">Creating ({activeGenerations.size} active)...</span>
+                      ? <span className="text-cyan-300/60">Creating ({activeGenerations.size})...</span>
                       : input.trim().length >= MIN_PROMPT_LENGTH && input.trim().length <= MAX_PROMPT_LENGTH
-                      ? <span className="text-emerald-400/80">Press Enter to create ✨</span>
+                      ? <span className="text-emerald-300/70">Press Enter ✨</span>
                       : input.length === 0
-                      ? <span className="text-gray-500">Start typing your idea...</span>
+                      ? <span className="text-gray-400/50">Start typing...</span>
                       : input.trim().length < MIN_PROMPT_LENGTH
-                      ? <span className="text-amber-400/80">{MIN_PROMPT_LENGTH - input.trim().length} more chars needed</span>
-                      : <span className="text-red-400/80">Prompt too long!</span>}
+                      ? <span className="text-amber-300/70">{MIN_PROMPT_LENGTH - input.trim().length} more...</span>
+                      : <span className="text-red-300/70">Too long!</span>}
                   </div>
-                  <div className={`text-xs font-bold tracking-wider px-2 py-0.5 rounded-md transition-all duration-200 ${
-                    input.length === 0 ? 'text-gray-500 bg-slate-800/30' :
-                    input.trim().length < MIN_PROMPT_LENGTH ? 'text-amber-300 bg-amber-500/10' :
-                    input.length > MAX_PROMPT_LENGTH ? 'text-red-300 bg-red-500/20 animate-pulse' :
-                    input.length > MAX_PROMPT_LENGTH * 0.9 ? 'text-yellow-300 bg-yellow-500/10' :
-                    'text-emerald-300 bg-emerald-500/10'
+                  <div className={`text-xs font-bold tracking-wide px-1.5 py-0.5 rounded transition-all duration-200 ${
+                    input.length === 0 ? 'text-gray-400/60' :
+                    input.trim().length < MIN_PROMPT_LENGTH ? 'text-amber-300/90 bg-amber-500/10' :
+                    input.length > MAX_PROMPT_LENGTH ? 'text-red-300/90 bg-red-500/20 animate-pulse' :
+                    input.length > MAX_PROMPT_LENGTH * 0.9 ? 'text-yellow-300/90 bg-yellow-500/10' :
+                    'text-emerald-300/90 bg-emerald-500/10'
                   }`}>
                     {input.length}/{MAX_PROMPT_LENGTH}
                   </div>
                 </div>
               </div>
 
-              {/* Prompt Suggestions - Sleek Lightbulb */}
+              {/* Prompt Suggestions - Transparent Lightbulb */}
               {selectedType === 'music' && (
                 <div className="relative">
                   <button
                     onClick={() => setShowPromptSuggestions(!showPromptSuggestions)}
-                    className={`w-9 h-9 rounded-xl transition-all duration-300 flex items-center justify-center ${
+                    className={`w-8 h-8 md:w-9 md:h-9 rounded-lg transition-all duration-300 flex items-center justify-center ${
                       showPromptSuggestions
-                        ? 'bg-gradient-to-br from-yellow-400 to-orange-500 shadow-lg shadow-yellow-500/30'
-                        : 'bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 hover:border-yellow-500/50'
+                        ? 'bg-gradient-to-br from-yellow-400 to-orange-500 shadow-lg shadow-yellow-500/50'
+                        : 'bg-white/5 hover:bg-white/10 border border-yellow-400/30 hover:border-yellow-400/60'
                     }`}
                     title="Prompt Suggestions"
                   >
-                    <svg className={`w-5 h-5 ${showPromptSuggestions ? 'text-white' : 'text-yellow-400'}`} fill="currentColor" viewBox="0 0 20 20">
+                    <svg className={`w-4 h-4 md:w-5 md:h-5 ${showPromptSuggestions ? 'text-white' : 'text-yellow-300'}`} fill="currentColor" viewBox="0 0 20 20">
                       <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
                     </svg>
                   </button>
@@ -2871,7 +2871,7 @@ function CreatePageContent() {
                   }, 100);
                 }}
                 disabled={!input.trim() || selectedType === 'video'}
-                className="relative flex-shrink-0 w-11 h-11 md:w-12 md:h-12 bg-gradient-to-br from-cyan-400 via-cyan-500 to-blue-600 hover:from-cyan-500 hover:via-cyan-600 hover:to-blue-700 rounded-2xl flex items-center justify-center transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed shadow-xl shadow-cyan-500/40 hover:shadow-cyan-500/60 hover:scale-105 active:scale-95 border border-cyan-300/20"
+                className="relative flex-shrink-0 w-10 h-10 md:w-11 md:h-11 bg-gradient-to-br from-cyan-400 via-cyan-500 to-blue-600 hover:from-cyan-500 hover:via-cyan-600 hover:to-blue-700 rounded-xl flex items-center justify-center transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed shadow-xl shadow-cyan-500/50 hover:shadow-cyan-500/70 hover:scale-105 active:scale-95"
               >
                 {activeGenerations.size > 0 && (
                   <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gradient-to-br from-red-500 to-rose-600 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-lg shadow-red-500/50 animate-pulse">
@@ -2879,27 +2879,27 @@ function CreatePageContent() {
                   </div>
                 )}
                 {activeGenerations.size > 0 ? (
-                  <Loader2 className="text-white animate-spin" size={22} />
+                  <Loader2 className="text-white animate-spin" size={20} />
                 ) : (
-                  <Send className="text-white ml-0.5" size={22} />
+                  <Send className="text-white ml-0.5" size={20} />
                 )}
               </button>
             </div>
           </div>
           
-          {/* Sleek Info Label */}
-          <div className="flex items-center justify-center gap-2 mt-3 text-xs md:text-sm">
-            <span className="px-4 py-1.5 rounded-full bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 text-cyan-300/80 font-medium tracking-wide">
+          {/* Slim Info Label */}
+          <div className="flex items-center justify-center gap-2 mt-2.5 text-xs md:text-sm">
+            <span className="px-3 py-1 rounded-full bg-black/20 backdrop-blur-sm border border-white/5 text-cyan-300/70 font-medium tracking-wide">
               {activeGenerations.size > 0 ? (
                 <span className="flex items-center gap-2">
                   <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
                   </span>
-                  {activeGenerations.size} generation{activeGenerations.size > 1 ? 's' : ''} in progress
+                  {activeGenerations.size} generating
                 </span>
               ) : (
-                `✨ ${selectedType === 'music' ? 'Create amazing tracks' : selectedType === 'image' ? 'Generate cover art' : selectedType === 'effects' ? 'Generate sound effects' : 'Coming soon'}`
+                `✨ ${selectedType === 'music' ? 'Create tracks' : selectedType === 'image' ? 'Generate art' : selectedType === 'effects' ? 'Generate sounds' : 'Coming soon'}`
               )}
             </span>
           </div>
