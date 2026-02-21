@@ -351,7 +351,10 @@ export async function POST(req: NextRequest) {
 
         } catch (error) {
           const errMsg = error instanceof Error ? error.message : 'Lip-sync generation failed'
+          const errStack = error instanceof Error ? error.stack : undefined
           console.error('❌ Lip-sync generation error:', errMsg)
+          console.error('Stack:', errStack)
+          console.error('Full error object:', error)
 
           // Refund credits on failure
           if (creditsDeducted && userId && creditCost > 0) {
@@ -367,7 +370,7 @@ export async function POST(req: NextRequest) {
             }
           }
 
-          send({ status: 'error', message: '444 radio is locking in, please try again in a few minutes', error: errMsg })
+          send({ status: 'error', message: errMsg, error: errMsg, details: errStack?.substring(0, 500) })
           controller.close()
         }
       },
