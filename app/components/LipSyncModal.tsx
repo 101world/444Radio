@@ -18,6 +18,9 @@ interface LipSyncModalProps {
  * Credit cost for Wan 2.6 I2V Lip-Sync Generation
  * 1 credit = $0.035 | 50% profit margin (charge = cost × 1.5)
  *
+ * IMPORTANT: Replicate bills in FIXED intervals of 5s, 10s, or 15s
+ * Even if you request 2s, you get charged for 5s minimum
+ *
  * Replicate per-second cost by resolution (Wan 2.6 I2V only supports 720p and 1080p):
  *   Resolution │ Cost/second
  *   ───────────┼─────────────
@@ -26,10 +29,10 @@ interface LipSyncModalProps {
  *
  * Credits formula: (duration × cost_per_second × 1.5) ÷ 0.035
  *
- *   Resolution │  3s │  5s │  7s │ 10s
- *   ───────────┼─────┼─────┼─────┼─────
- *     720p     │  13 │  22 │  31 │  43
- *    1080p     │  20 │  33 │  46 │  65
+ *   Resolution │  5s │ 10s │ 15s
+ *   ───────────┼─────┼─────┼─────
+ *     720p     │  22 │  43 │  65
+ *    1080p     │  33 │  65 │  98
  */
 const REPLICATE_COST_PER_SECOND: Record<string, number> = {
   '720p': 0.10,
@@ -37,6 +40,10 @@ const REPLICATE_COST_PER_SECOND: Record<string, number> = {
 }
 const PROFIT_MARGIN = 1.5
 const CREDIT_VALUE = 0.035
+
+// Fixed duration options (Replicate billing tiers)
+const DURATION_OPTIONS = [5, 10, 15] as const
+type DurationOption = typeof DURATION_OPTIONS[number]
 
 function calcCredits(duration: number, resolution: string): number {
   const costPerSec = REPLICATE_COST_PER_SECOND[resolution] || REPLICATE_COST_PER_SECOND['720p']
@@ -60,11 +67,12 @@ export default function LipSyncModal({
   const [audioFile, setAudioFile] = useState<File | null>(null)
   const [audioPreview, setAudioPreview] = useState<string | null>(null)
   const [resolution, setResolution] = useState<'720p' | '1080p'>('720p')
+  const [duration, setDuration] = useState<DurationOption>(5)
 
-  // Trimming state
+  // Trimming state (for audio cutting only)
   const [audioDuration, setAudioDuration] = useState(0)
   const [audioStartTime, setAudioStartTime] = useState(0)
-  const [audioEndTime, setAudioEndTime] = useState(10)
+  const [audioEndTime, setAudioEndTime] = useState(5)
 
   // Generation state
   const [isGenerating, setIsGenerating] = useState(false)
@@ -74,8 +82,11 @@ export default function LipSyncModal({
   const audioInputRef = useRef<HTMLInputElement>(null)
   const audioElementRef = useRef<HTMLAudioElement>(null)
 
-  // Max duration is 10 seconds
-  const MAX_DURATION = 10
+  // Max duration is based on selected duration option
+  const MAX_DURATION = duration
+
+  // Computed trim duration
+  const trimDuration = audioEndTime - audioStartTime
 
   // Handle image upload
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -118,12 +129,19 @@ export default function LipSyncModal({
     // Get audio duration
     const audio = new Audio(url)
     audio.addEventListener('loadedmetadata', () => {
-      const duration = audio.duration
-      setAudioDuration(duration)
+      const fileDuration = audio.duration
+      setAudioDuration(fileDuration)
       setAudioStartTime(0)
-      setAudioEndTime(Math.min(duration, MAX_DURATION))
+      setAudioEndTime(Math.min(fileDuration, duration))
     })
   }
+
+  // Update end time when duration option changes
+  useEffect(() => {
+    if (audioDuration > 0) {
+      setAudioEndTime(Math.min(audioDuration, audioStartTime + duration))
+    }
+  }, [duration, audioDuration, audioStartTime])
 
   // Upload media files via API
   const uploadMediaFiles = async () => {
@@ -201,12 +219,12 @@ export default function LipSyncModal({
     const trimDuration = audioEndTime - audioStartTime
     console.log('⏱️ Trim duration:', trimDuration, 'seconds')
     
-    if (trimDuration > MAX_DURATION) {
-      alert(`Audio duration cannot exceed ${MAX_DURATION} seconds`)
+    if (trimDuration > duration) {
+      alert(`Audio segment cannot exceed ${duration} seconds`)
       return
     }
 
-    const creditCost = calcCredits(trimDuration, resolution)
+    const creditCost = calcCredits(duration, resolution)
     console.log('💰 Credit cost:', creditCost, 'credits')
     
     if (userCredits !== undefined && userCredits < creditCost) {
@@ -221,17 +239,19 @@ export default function LipSyncModal({
     // Add to persistent generation queue
     const generationId = addGeneration({
       type: 'lipsync',
-      prompt: 'Lip-sync video generation',
+      prompt: `Lip-sync video (${duration}s ${resolution})`,
       title: `Lip-sync: ${imageFile.name}`,
     })
     console.log('📝 Generation ID:', generationId)
     updateGeneration(generationId, { status: 'generating', progress: 5 })
 
-    // Notify parent to show progress bar in chat
+    // Notify parent to show progress bar in chat and close modal immediately
     if (onGenerationStart) {
-      onGenerationStart('Lip-sync video generation', generationId)
-      onClose()
+      onGenerationStart(`Lip-sync video (${duration}s ${resolution})`, generationId)
     }
+    
+    // Close modal immediately so user can navigate
+    onClose()
 
     try {
       // Upload files
@@ -254,6 +274,7 @@ export default function LipSyncModal({
         body: JSON.stringify({
           imageUrl,
           audioUrl,
+          duration,  // Use the fixed duration option (5, 10, or 15)
           resolution,
         }),
       })
@@ -315,10 +336,11 @@ export default function LipSyncModal({
                   })
 
                   if (onSuccess) {
-                    onSuccess(data.videoUrl, 'Lip-sync video', data.mediaId || null)
+                    onSuccess(data.videoUrl, `Lip-sync video (${duration}s ${resolution})`, data.mediaId || null)
                   }
 
-                  alert(`✨ Lip-sync video generated! ${data.creditsRemaining} credits remaining`)
+                  // Don't show alert - queue system will handle notification
+                  console.log(`✅ Lip-sync video generated! ${data.creditsRemaining} credits remaining`)
                   return
                 }
               } catch (parseError) {
@@ -334,7 +356,8 @@ export default function LipSyncModal({
         status: 'failed',
         error: error instanceof Error ? error.message : 'Unknown error',
       })
-      alert(error instanceof Error ? error.message : 'Failed to generate lip-sync video')
+      // Don't show alert - error will be visible in queue
+      console.error('Failed to generate lip-sync video:', error)
     } finally {
       console.log('🏁 Generation process completed')
       setIsGenerating(false)
@@ -342,10 +365,9 @@ export default function LipSyncModal({
     }
   }
 
-  // Calculate current credit cost
-  const trimDuration = audioEndTime - audioStartTime
-  const creditCost = calcCredits(trimDuration, resolution)
-  const canGenerate = imageFile && audioFile && trimDuration <= MAX_DURATION && !isGenerating
+  // Calculate current credit cost (use fixed duration, not trim duration)
+  const creditCost = calcCredits(duration, resolution)
+  const canGenerate = imageFile && audioFile && !isGenerating
 
   if (!isOpen) return null
 
@@ -429,6 +451,23 @@ export default function LipSyncModal({
                   className="hidden"
                 />
               </div>
+
+              {/* Photo Quality Tip */}
+              {imageFile && (
+                <div className="p-4 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 rounded-xl">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-cyan-500/20 rounded-lg shrink-0">
+                      <Sparkles className="text-cyan-400" size={18} />
+                    </div>
+                    <div className="text-sm">
+                      <div className="text-white font-semibold mb-1">💡 Best Results Tip</div>
+                      <p className="text-gray-300 leading-relaxed">
+                        Upload a <span className="text-cyan-400 font-semibold">clear, well-lit photo</span> showing the <span className="text-cyan-400 font-semibold">full face, facing forward</span>. Avoid blurry images, extreme angles, or obstructed faces for optimal lip-sync quality.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Audio Upload */}
               <div className="space-y-3">
@@ -709,6 +748,51 @@ export default function LipSyncModal({
                 </div>
               </div>
             )}
+
+            {/* Duration Selector (5s/10s/15s) */}
+            <div className="space-y-3">
+              <label className="block text-sm font-semibold text-white flex items-center gap-2">
+                <Zap size={16} className="text-yellow-400" />
+                Output Duration
+                <span className="text-xs text-gray-400 font-normal ml-auto">(Replicate billing tiers)</span>
+              </label>
+              <div className="grid grid-cols-3 gap-3">
+                {DURATION_OPTIONS.map((dur) => {
+                  const cost720 = calcCredits(dur, '720p')
+                  const cost1080 = calcCredits(dur, '1080p')
+                  
+                  return (
+                    <button
+                      key={dur}
+                      onClick={() => setDuration(dur)}
+                      disabled={isGenerating}
+                      className={`p-4 rounded-xl border-2 transition-all disabled:opacity-50 ${
+                        duration === dur
+                          ? 'bg-gradient-to-br from-yellow-500/20 to-orange-500/20 border-yellow-500 shadow-lg shadow-yellow-500/20'
+                          : 'bg-white/5 border-white/10 hover:border-white/30'
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className={`text-2xl font-bold mb-1 ${duration === dur ? 'text-white' : 'text-gray-400'}`}>
+                          {dur}s
+                        </div>
+                        <div className="text-xs space-y-0.5">
+                          <div className={duration === dur ? 'text-gray-300' : 'text-gray-500'}>
+                            720p: <span className="font-semibold">{cost720}</span>
+                          </div>
+                          <div className={duration === dur ? 'text-gray-300' : 'text-gray-500'}>
+                            1080p: <span className="font-semibold">{cost1080}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="text-xs text-gray-400 text-center">
+                ⚡ Your audio will be trimmed to match the selected duration
+              </div>
+            </div>
 
             {/* Resolution Selector */}
             <div className="space-y-3">
