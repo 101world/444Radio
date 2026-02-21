@@ -776,7 +776,7 @@ export default function LipSyncModal({
               <label className="block text-sm font-semibold text-white flex items-center gap-2">
                 <Zap size={16} className="text-yellow-400" />
                 Output Duration
-                <span className="text-xs text-gray-400 font-normal ml-auto">(Replicate billing tiers)</span>
+
               </label>
               <div className="grid grid-cols-3 gap-3">
                 {DURATION_OPTIONS.map((dur) => {
