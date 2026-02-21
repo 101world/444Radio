@@ -3892,20 +3892,49 @@ function CreatePageContent() {
           isOpen={showLipSyncModal}
           onClose={() => setShowLipSyncModal(false)}
           userCredits={userCredits || 0}
-          onSuccess={(videoUrl: string) => {
-            // Add success message to chat
-            const successMsg: Message = {
-              id: Date.now().toString(),
-              type: 'generation',
-              content: '✅ Lip-sync video generated successfully!',
-              generationType: 'video',
-              result: {
-                url: videoUrl,
-                title: 'Lip-Sync Video',
-              },
+          onGenerationStart={(prompt: string, generationId: string) => {
+            const userMsgId = Date.now().toString()
+            const genMsgId = (Date.now() + 1).toString()
+            
+            const userMessage: Message = {
+              id: userMsgId,
+              type: 'user',
+              content: `🎤 Generate lip-sync video: ${prompt}`,
               timestamp: new Date()
             }
-            setMessages(prev => [...prev, successMsg])
+            
+            const generatingMessage: Message = {
+              id: genMsgId,
+              type: 'generation',
+              content: '🎤 Generating lip-sync video...',
+              generationType: 'video',
+              generationId: generationId,
+              isGenerating: true,
+              timestamp: new Date()
+            }
+            
+            setMessages(prev => [...prev, userMessage, generatingMessage])
+          }}
+          onSuccess={(videoUrl: string, prompt: string, mediaId: string | null) => {
+            // Replace generating message with result
+            setMessages(prev => {
+              const filtered = prev.filter(m => !m.isGenerating || m.generationType !== 'video')
+              return [
+                ...filtered,
+                {
+                  id: Date.now().toString(),
+                  type: 'generation',
+                  content: '✅ Lip-sync video generated successfully!',
+                  generationType: 'video',
+                  result: {
+                    url: videoUrl,
+                    title: prompt || 'Lip-Sync Video',
+                    mediaId: mediaId || null,
+                  },
+                  timestamp: new Date()
+                }
+              ]
+            })
             refreshCredits()
             window.dispatchEvent(new Event('credits:refresh'))
           }}
