@@ -70,6 +70,10 @@ export default function DockedSidebar() {
   // Hide on /plugin — plugin uses its own token-based auth, not Clerk
   if (pathname === '/plugin' || pathname?.startsWith('/plugin')) return null
 
+  // Hide on fullscreen editor pages (Input, Creator V2) — they have their own UI
+  if (pathname === '/input' || pathname?.startsWith('/input/')) return null
+  if (pathname === '/creator-v2' || pathname?.startsWith('/creator-v2/')) return null
+
   // Hide on home page and pricing pages
   const hiddenPages = ['/', '/pricing']
   if (hiddenPages.includes(pathname)) {
