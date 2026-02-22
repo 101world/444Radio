@@ -23,14 +23,33 @@ interface PatternNode {
   hpf: number
   pan: number
   room: number
+  roomsize: number
   delay: number
   delayfeedback: number
+  delaytime: number
   crush: number
+  coarse: number
   shape: number
+  distort: number
   speed: number       // .slow() factor
   vowel: string
   velocity: number
+  // ADSR
+  attack: number
   decay: number
+  sustain: number
+  release: number
+  // Modulation
+  phaser: number
+  phaserdepth: number
+  vibmod: number
+  // Filter resonance
+  lpq: number
+  hpq: number
+  // FM
+  fmi: number
+  // Misc
+  orbit: number
   scale: string
   pattern: string
   soundSource: string
@@ -231,6 +250,75 @@ const VOWELS = [
   { label: 'u', value: 'u' },
 ]
 
+const DISTORT_TYPES = [
+  { label: 'None', value: '' },
+  { label: 'Waveshape', value: 'shape' },
+  { label: 'Fold', value: 'fold' },
+  { label: 'S-Curve', value: 'scurve' },
+  { label: 'Diode', value: 'diode' },
+  { label: 'Chebyshev', value: 'chebyshev' },
+  { label: 'Asymmetric', value: 'asym' },
+  { label: 'Sine Fold', value: 'sinefold' },
+]
+
+// ═══════════════════════════════════════════════════════════════
+//  QUICK FX — one-click pattern modifiers injected into code
+// ═══════════════════════════════════════════════════════════════
+
+interface QuickFX {
+  id: string
+  label: string
+  icon: string
+  category: 'pattern' | 'time' | 'stereo' | 'glitch' | 'groove' | 'lfo'
+  code: string           // Strudel code to inject
+  detect: RegExp         // regex to detect if already present
+  color: string
+  desc: string
+}
+
+const QUICK_FX: QuickFX[] = [
+  // Pattern transforms
+  { id: 'rev', label: 'REV', icon: '↩', category: 'pattern', code: '.rev()', detect: /\.rev\s*\(/, color: '#f472b6', desc: 'Reverse pattern each cycle' },
+  { id: 'palindrome', label: 'PALIN', icon: '↔', category: 'pattern', code: '.every(2, rev)', detect: /\.every\s*\(\s*2\s*,\s*rev/, color: '#c084fc', desc: 'Forward then backward' },
+  { id: 'jux', label: 'JUX', icon: '◐', category: 'stereo', code: '.jux(rev)', detect: /\.jux\s*\(/, color: '#22d3ee', desc: 'Apply function to right channel' },
+  { id: 'juxBy', label: 'JUX.5', icon: '◑', category: 'stereo', code: '.juxBy(0.5, rev)', detect: /\.juxBy\s*\(/, color: '#22d3ee', desc: 'Subtle stereo split' },
+  { id: 'echo3', label: 'ECHO', icon: '≡', category: 'pattern', code: '.echo(3, 1/8, 0.5)', detect: /\.echo\s*\(/, color: '#fb923c', desc: 'Stutter echo 3x' },
+  { id: 'echo6', label: 'ECHO6', icon: '≡≡', category: 'pattern', code: '.echo(6, 1/16, 0.4)', detect: /\.echo\s*\(\s*6/, color: '#fb923c', desc: 'Rapid 6x stutter' },
+  { id: 'degrade', label: 'DGRDE', icon: '░', category: 'glitch', code: '.degradeBy(0.3)', detect: /\.degrade/, color: '#ef4444', desc: 'Randomly drop 30% events' },
+  { id: 'every4fast', label: 'E4⇡', icon: '⚡', category: 'time', code: '.every(4, fast(2))', detect: /\.every\s*\(\s*4\s*,\s*fast/, color: '#facc15', desc: 'Double speed every 4 cycles' },
+  { id: 'every3add', label: 'E3+12', icon: '⇞', category: 'time', code: '.every(3, x => x.add(12))', detect: /\.every\s*\(\s*3.*add\s*\(\s*12/, color: '#facc15', desc: 'Octave up every 3 cycles' },
+  { id: 'sometimes', label: 'SMTMS', icon: '?', category: 'glitch', code: '.sometimes(fast(2))', detect: /\.sometimes\s*\(/, color: '#a78bfa', desc: 'Randomly double speed' },
+  { id: 'often', label: 'OFTEN', icon: '‼', category: 'glitch', code: '.often(x => x.add(7))', detect: /\.often\s*\(/, color: '#a78bfa', desc: '75% chance add a 5th' },
+  { id: 'rarely', label: 'RARE', icon: '…', category: 'glitch', code: '.rarely(x => x.crush(4))', detect: /\.rarely\s*\(/, color: '#a78bfa', desc: '25% chance bitcrush' },
+  { id: 'chop8', label: 'CHOP', icon: '✂', category: 'glitch', code: '.chop(8)', detect: /\.chop\s*\(/, color: '#34d399', desc: 'Granular: 8 slices' },
+  { id: 'striate', label: 'STRT', icon: '≋', category: 'glitch', code: '.striate(4)', detect: /\.striate\s*\(/, color: '#34d399', desc: 'Granular interleave' },
+  { id: 'iter4', label: 'ITER', icon: '⟳', category: 'pattern', code: '.iter(4)', detect: /\.iter\s*\(/, color: '#22d3ee', desc: 'Shift start each cycle' },
+  { id: 'ply', label: 'PLY', icon: '×2', category: 'pattern', code: '.ply(2)', detect: /\.ply\s*\(/, color: '#f472b6', desc: 'Repeat each event 2x' },
+  { id: 'chunk', label: 'CHNK', icon: '▧', category: 'pattern', code: '.chunk(4, fast(2))', detect: /\.chunk\s*\(/, color: '#facc15', desc: 'Transform rotating quarter' },
+  { id: 'brak', label: 'BRAK', icon: '⚡', category: 'groove', code: '.brak()', detect: /\.brak\s*\(/, color: '#ef4444', desc: 'Breakbeat transform' },
+  { id: 'press', label: 'PRSS', icon: '→', category: 'groove', code: '.press()', detect: /\.press\s*\(/, color: '#fb923c', desc: 'Push events to 2nd half' },
+  { id: 'swing', label: 'SWNG', icon: '♪', category: 'groove', code: '.swing(0.2)', detect: /\.swing\s*\(/, color: '#fb923c', desc: 'Add swing feel' },
+  { id: 'linger', label: 'LNGR', icon: '∞', category: 'time', code: '.linger(0.25)', detect: /\.linger\s*\(/, color: '#c084fc', desc: 'Loop first quarter' },
+  { id: 'hurry', label: 'HRRY', icon: '»', category: 'time', code: '.hurry(2)', detect: /\.hurry\s*\(/, color: '#facc15', desc: 'Speed up + pitch up' },
+  // Euclid
+  { id: 'euclid35', label: 'E(3,5)', icon: '◇', category: 'groove', code: '.euclid(3,5)', detect: /\.euclid\s*\(\s*3\s*,\s*5/, color: '#34d399', desc: 'Euclidean 3/5 rhythm' },
+  { id: 'euclid58', label: 'E(5,8)', icon: '◆', category: 'groove', code: '.euclid(5,8)', detect: /\.euclid\s*\(\s*5\s*,\s*8/, color: '#34d399', desc: 'Euclidean 5/8 rhythm' },
+  { id: 'euclid38', label: 'E(3,8)', icon: '◈', category: 'groove', code: '.euclid(3,8)', detect: /\.euclid\s*\(\s*3\s*,\s*8/, color: '#34d399', desc: 'Euclidean 3/8 rhythm' },
+]
+
+// LFO presets — inject as replacement for a knob's static value
+const LFO_PRESETS = [
+  { label: 'Sine Slow', value: 'sine.range({min},{max}).slow(4)', icon: '∿' },
+  { label: 'Sine Fast', value: 'sine.range({min},{max}).slow(1)', icon: '∿⚡' },
+  { label: 'Cosine', value: 'cosine.range({min},{max}).slow(4)', icon: '∾' },
+  { label: 'Saw Up', value: 'saw.range({min},{max}).slow(4)', icon: '⟋' },
+  { label: 'Saw Down', value: 'isaw.range({min},{max}).slow(4)', icon: '⟍' },
+  { label: 'Triangle', value: 'tri.range({min},{max}).slow(4)', icon: '△' },
+  { label: 'Square', value: 'square.range({min},{max}).slow(2)', icon: '□' },
+  { label: 'Perlin', value: 'perlin.range({min},{max}).slow(4)', icon: '≈' },
+  { label: 'Random', value: 'rand.range({min},{max}).segment(8)', icon: '⁂' },
+]
+
 // ═══════════════════════════════════════════════════════════════
 //  SVG MATH
 // ═══════════════════════════════════════════════════════════════
@@ -398,14 +486,28 @@ function parseCodeToNodes(code: string, existingNodes?: PatternNode[]): PatternN
       hpf: detectNum(rawCode, 'hpf', 0),
       pan: detectNum(rawCode, 'pan', 0.5),
       room: detectNum(rawCode, 'room', 0),
+      roomsize: detectNum(rawCode, 'roomsize', 0.5),
       delay: detectNum(rawCode, 'delay', 0),
       delayfeedback: detectNum(rawCode, 'delayfeedback', 0),
+      delaytime: detectNum(rawCode, 'delaytime', 0.25),
       crush: detectNum(rawCode, 'crush', 0),
+      coarse: detectNum(rawCode, 'coarse', 0),
       shape: detectNum(rawCode, 'shape', 0),
+      distort: detectNum(rawCode, 'distort', 0),
       speed: detectNum(rawCode, 'slow', 1),
       vowel: detectVowel(rawCode),
       velocity: detectNum(rawCode, 'velocity', 1),
-      decay: detectNum(rawCode, 'decay', 0),
+      attack: detectNum(rawCode, 'attack', 0.001),
+      decay: detectNum(rawCode, 'decay', 0.1),
+      sustain: detectNum(rawCode, 'sustain', 0.5),
+      release: detectNum(rawCode, 'release', 0.1),
+      phaser: detectNum(rawCode, 'phaser', 0),
+      phaserdepth: detectNum(rawCode, 'phaserdepth', 0.5),
+      vibmod: detectNum(rawCode, 'vibmod', 0),
+      lpq: detectNum(rawCode, 'lpq', 1),
+      hpq: detectNum(rawCode, 'hpq', 1),
+      fmi: detectNum(rawCode, 'fmi', 0),
+      orbit: detectNum(rawCode, 'orbit', 0),
       scale: detectedScale || (isMelodic ? 'C4:major' : ''),
       pattern: detectPattern(rawCode),
       soundSource: detectSoundSource(rawCode),
@@ -611,6 +713,98 @@ function RotaryKnob({ value, min, max, step, onChange, onCommit, color, label, s
       <span className="text-[8px] font-mono tabular-nums mt-0.5" style={{ color: isDynamic ? '#f59e0b88' : `${color}bb` }}>
         {fmtVal}{suffix || ''}
       </span>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  QUICK LFO PANEL — Assign continuous signals to any parameter
+// ═══════════════════════════════════════════════════════════════
+const LFO_TARGETS = [
+  { param: 'lpf', label: 'LPF', min: 200, max: 4000 },
+  { param: 'hpf', label: 'HPF', min: 50, max: 2000 },
+  { param: 'gain', label: 'VOL', min: 0.3, max: 1 },
+  { param: 'pan', label: 'PAN', min: 0, max: 1 },
+  { param: 'room', label: 'VERB', min: 0, max: 0.8 },
+  { param: 'phaser', label: 'PHSR', min: 0, max: 12 },
+  { param: 'shape', label: 'SHPE', min: 0, max: 0.7 },
+  { param: 'speed', label: 'SPD', min: 0.5, max: 2 },
+  { param: 'crush', label: 'CRSH', min: 4, max: 16 },
+]
+
+function QuickLFOPanel({ nodeId, color, onAssign }: {
+  nodeId: string; color: string
+  onAssign: (nodeId: string, method: string, lfoTemplate: string, min: number, max: number) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [selTarget, setSelTarget] = useState<typeof LFO_TARGETS[0] | null>(null)
+
+  if (!open) {
+    return (
+      <div className="px-2 pb-2">
+        <button onClick={e => { e.stopPropagation(); setOpen(true) }}
+          className="w-full py-1.5 rounded text-[8px] font-bold tracking-[0.15em] uppercase cursor-pointer transition-all"
+          style={{
+            background: `linear-gradient(135deg, ${color}08, ${color}12)`,
+            border: `1px dashed ${color}30`, color: `${color}99`,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = `${color}60`; e.currentTarget.style.color = color }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = `${color}30`; e.currentTarget.style.color = `${color}99` }}
+        >
+          ~ LFO Modulate ~
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="px-2 pb-2">
+      <div className="rounded p-2" style={{ background: HW.raised, border: `1px solid ${color}30` }}>
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[8px] font-bold tracking-[0.2em] uppercase" style={{ color }}>LFO ASSIGN</span>
+          <button onClick={e => { e.stopPropagation(); setOpen(false); setSelTarget(null) }}
+            className="text-[10px] cursor-pointer px-1" style={{ color: HW.textDim }}>✕</button>
+        </div>
+        {!selTarget ? (
+          <>
+            <span className="text-[7px] mb-1 block" style={{ color: HW.textDim }}>Pick a parameter:</span>
+            <div className="flex flex-wrap gap-[3px]">
+              {LFO_TARGETS.map(t => (
+                <button key={t.param}
+                  onClick={e => { e.stopPropagation(); setSelTarget(t) }}
+                  className="px-1.5 py-[2px] rounded text-[7px] font-bold uppercase cursor-pointer"
+                  style={{ background: HW.raisedLight, color: HW.text, border: `1px solid ${HW.border}` }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = color; e.currentTarget.style.color = color }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = HW.border; e.currentTarget.style.color = HW.text }}
+                >{t.label}</button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <span className="text-[7px] mb-1 block" style={{ color: HW.textDim }}>
+              Modulate <b style={{ color }}>{selTarget.label}</b> with:
+            </span>
+            <div className="flex flex-wrap gap-[3px]">
+              {LFO_PRESETS.map(lfo => (
+                <button key={lfo.label}
+                  onClick={e => {
+                    e.stopPropagation()
+                    onAssign(nodeId, selTarget.param, lfo.value, selTarget.min, selTarget.max)
+                    setSelTarget(null); setOpen(false)
+                  }}
+                  className="px-1.5 py-[2px] rounded text-[7px] font-bold cursor-pointer transition-colors"
+                  style={{ background: `${color}15`, color: `${color}cc`, border: `1px solid ${color}25` }}
+                  onMouseEnter={e => { e.currentTarget.style.background = `${color}25`; e.currentTarget.style.color = color }}
+                  onMouseLeave={e => { e.currentTarget.style.background = `${color}15`; e.currentTarget.style.color = `${color}cc` }}
+                ><span className="mr-0.5">{lfo.icon}</span>{lfo.label}</button>
+              ))}
+            </div>
+            <button onClick={e => { e.stopPropagation(); setSelTarget(null) }}
+              className="text-[7px] mt-1 cursor-pointer underline" style={{ color: HW.textDim }}>← back</button>
+          </>
+        )}
+      </div>
     </div>
   )
 }
@@ -1059,13 +1253,130 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
     const isDefault = (method === 'lpf' && value >= 20000) ||
                       (method === 'hpf' && value <= 0) ||
                       (method === 'room' && value <= 0) ||
+                      (method === 'roomsize' && Math.abs(value - 0.5) < 0.01) ||
                       (method === 'delay' && value <= 0) ||
                       (method === 'delayfeedback' && value <= 0) ||
                       (method === 'crush' && value <= 0) ||
+                      (method === 'coarse' && value <= 0) ||
                       (method === 'shape' && value <= 0) ||
-                      (method === 'pan' && Math.abs(value - 0.5) < 0.01)
+                      (method === 'distort' && value <= 0) ||
+                      (method === 'pan' && Math.abs(value - 0.5) < 0.01) ||
+                      (method === 'attack' && value <= 0.001) ||
+                      (method === 'sustain' && Math.abs(value - 0.5) < 0.01) ||
+                      (method === 'release' && Math.abs(value - 0.1) < 0.01) ||
+                      (method === 'phaser' && value <= 0) ||
+                      (method === 'phaserdepth' && Math.abs(value - 0.5) < 0.01) ||
+                      (method === 'vibmod' && value <= 0) ||
+                      (method === 'lpq' && Math.abs(value - 1) < 0.1) ||
+                      (method === 'hpq' && Math.abs(value - 1) < 0.1) ||
+                      (method === 'fmi' && value <= 0) ||
+                      (method === 'velocity' && Math.abs(value - 1) < 0.01) ||
+                      (method === 'orbit' && value <= 0)
     applyNodeEffect(nodeId, method, value, isDefault)
   }, [applyNodeEffect])
+
+  // ── Quick FX toggle (inject/remove pattern modifier) ──
+  const toggleQuickFX = useCallback((nodeId: string, fx: QuickFX) => {
+    setNodes(prev => {
+      const idx = prev.findIndex(n => n.id === nodeId)
+      if (idx === -1) return prev
+      const node = prev[idx]
+      const rawCode = node.code.replace(/\/\/ \[muted\] /g, '')
+      const isActive = fx.detect.test(rawCode)
+
+      let newCode: string
+      if (isActive) {
+        // Remove the effect — strip it from code
+        // Build a removal regex from the fx code pattern
+        const escCode = fx.code
+          .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+          .replace(/\\\\([0-9./]+)/g, '[0-9./]+') // allow numeric variation
+        const stripRe = new RegExp(`\\s*${escCode.replace(/\\\(/g, '\\(').replace(/\\\)/g, '\\)')}`)
+        newCode = rawCode.replace(fx.detect, (match) => {
+          // Find the full .method(...) expression to remove
+          const start = rawCode.indexOf(match)
+          if (start === -1) return ''
+          // Walk forward to find matching close paren
+          let depth = 0; let end = start
+          let foundOpen = false
+          for (let i = start; i < rawCode.length; i++) {
+            if (rawCode[i] === '(') { depth++; foundOpen = true }
+            if (rawCode[i] === ')') { depth-- }
+            if (foundOpen && depth === 0) { end = i + 1; break }
+          }
+          return ''
+        })
+        // Clean up: remove the .method(...) chunk including leading dot/whitespace
+        // More robust: find the actual text that matched and remove it
+        newCode = node.code
+        const matchResult = rawCode.match(fx.detect)
+        if (matchResult && matchResult.index !== undefined) {
+          const mIdx = matchResult.index
+          // Walk backward to find the starting dot
+          let start = mIdx
+          while (start > 0 && (rawCode[start - 1] === '.' || rawCode[start - 1] === ' ' || rawCode[start - 1] === '\\n')) start--
+          if (rawCode[start] === '.') { /* keep start */ } else start = mIdx
+          // Walk forward from match to find balanced parens
+          let depth2 = 0; let end2 = start; let inMatch = false
+          for (let i = start; i < rawCode.length; i++) {
+            if (rawCode[i] === '(') { depth2++; inMatch = true }
+            if (rawCode[i] === ')') { depth2-- }
+            if (inMatch && depth2 === 0) { end2 = i + 1; break }
+          }
+          const toRemove = rawCode.substring(start, end2)
+          newCode = node.code.replace(toRemove, '')
+        }
+      } else {
+        // Add the effect
+        newCode = injectBefore(node.muted ? rawCode : node.code, fx.code)
+        if (node.muted) {
+          newCode = newCode.split('\\n').map(l => `// [muted] ${l}`).join('\\n')
+        }
+      }
+
+      if (newCode === node.code) return prev
+      const updated = [...prev]
+      updated[idx] = { ...node, code: newCode }
+      const fullCode = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
+      sendToParent(fullCode)
+      return updated
+    })
+  }, [bpm, sendToParent, rebuildFullCodeFromNodes])
+
+  // ── LFO inject for a knob parameter ──
+  const injectLFO = useCallback((nodeId: string, method: string, lfoTemplate: string, min: number, max: number) => {
+    setNodes(prev => {
+      const idx = prev.findIndex(n => n.id === nodeId)
+      if (idx === -1) return prev
+      const node = prev[idx]
+      const rawCode = node.code.replace(/\/\/ \[muted\] /g, '')
+
+      // Build the LFO expression
+      const lfoExpr = lfoTemplate
+        .replace('{min}', min.toString())
+        .replace('{max}', max.toString())
+
+      // Replace existing static value or inject
+      const staticRe = new RegExp(`\\.${method}\\s*\\(\\s*[0-9.]+\\s*\\)`)
+      const dynamicRe = new RegExp(`\\.${method}\\s*\\([^)]*\\)`)
+      let newCode: string
+
+      if (staticRe.test(rawCode)) {
+        newCode = rawCode.replace(staticRe, `.${method}(${lfoExpr})`)
+      } else if (dynamicRe.test(rawCode)) {
+        newCode = rawCode.replace(dynamicRe, `.${method}(${lfoExpr})`)
+      } else {
+        newCode = injectBefore(rawCode, `.${method}(${lfoExpr})`)
+      }
+
+      if (newCode === rawCode) return prev
+      const updated = [...prev]
+      updated[idx] = { ...node, code: node.muted ? newCode.split('\\n').map(l => `// [muted] ${l}`).join('\\n') : newCode }
+      const fullCode = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
+      sendToParent(fullCode)
+      return updated
+    })
+  }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
   // ── Connection port handlers ──
   const startLink = useCallback((e: React.MouseEvent, nodeId: string, side: 'in' | 'out') => {
@@ -1390,11 +1701,11 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
                     </div>
                   </div>
 
-                  {/* KNOBS ROW 2: Reverb, Delay, DlyFB, Speed/Crush */}
+                  {/* KNOBS ROW 2: Reverb, Delay, DlyFB, Speed */}
                   <div className="px-2 pb-2">
                     <div className="flex items-center gap-1 mb-1 px-1">
                       <div className="h-px flex-1" style={{ background: HW.border }} />
-                      <span className="text-[7px] font-bold tracking-[0.2em] uppercase" style={{ color: HW.textDim }}>FX</span>
+                      <span className="text-[7px] font-bold tracking-[0.2em] uppercase" style={{ color: HW.textDim }}>SPACE</span>
                       <div className="h-px flex-1" style={{ background: HW.border }} />
                     </div>
                     <div className="flex items-start justify-center gap-0.5 flex-wrap">
@@ -1407,17 +1718,119 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
                       <RotaryKnob label="FDBK" value={node.delayfeedback} min={0} max={0.95} step={0.01} defaultValue={0}
                         onChange={v => updateKnob(node.id, 'delayfeedback', v)} onCommit={() => commitKnob(node.id, 'delayfeedback', node.delayfeedback)} color={color}
                         disabled={hasDynamic(node.code, 'delayfeedback')} />
-                      {node.type !== 'drums' ? (
-                        <RotaryKnob label="SPD" value={node.speed} min={0.25} max={8} step={0.25} defaultValue={1} suffix="x"
-                          onChange={v => updateKnob(node.id, 'slow', v)} onCommit={() => commitKnob(node.id, 'slow', node.speed)} color={color}
-                          disabled={hasDynamic(node.code, 'slow')} />
-                      ) : (
-                        <RotaryKnob label="CRSH" value={node.crush} min={0} max={16} step={1} defaultValue={0}
-                          onChange={v => updateKnob(node.id, 'crush', v)} onCommit={() => commitKnob(node.id, 'crush', node.crush)} color={color}
-                          disabled={hasDynamic(node.code, 'crush')} />
-                      )}
+                      <RotaryKnob label="SPD" value={node.speed} min={0.25} max={8} step={0.25} defaultValue={1} suffix="x"
+                        onChange={v => updateKnob(node.id, 'slow', v)} onCommit={() => commitKnob(node.id, 'slow', node.speed)} color={color}
+                        disabled={hasDynamic(node.code, 'slow')} />
                     </div>
                   </div>
+
+                  {/* KNOBS ROW 3: Distortion + Modulation */}
+                  <div className="px-2 pb-2">
+                    <div className="flex items-center gap-1 mb-1 px-1">
+                      <div className="h-px flex-1" style={{ background: HW.border }} />
+                      <span className="text-[7px] font-bold tracking-[0.2em] uppercase" style={{ color: HW.textDim }}>DRIVE</span>
+                      <div className="h-px flex-1" style={{ background: HW.border }} />
+                    </div>
+                    <div className="flex items-start justify-center gap-0.5 flex-wrap">
+                      <RotaryKnob label="DIST" value={node.distort} min={0} max={4} step={0.05} defaultValue={0}
+                        onChange={v => updateKnob(node.id, 'distort', v)} onCommit={() => commitKnob(node.id, 'distort', node.distort)} color={color}
+                        disabled={hasDynamic(node.code, 'distort')} />
+                      <RotaryKnob label="CRSH" value={node.crush} min={0} max={16} step={1} defaultValue={0}
+                        onChange={v => updateKnob(node.id, 'crush', v)} onCommit={() => commitKnob(node.id, 'crush', node.crush)} color={color}
+                        disabled={hasDynamic(node.code, 'crush')} />
+                      <RotaryKnob label="PHSR" value={node.phaser} min={0} max={20} step={0.5} defaultValue={0} suffix="Hz"
+                        onChange={v => updateKnob(node.id, 'phaser', v)} onCommit={() => commitKnob(node.id, 'phaser', node.phaser)} color={color}
+                        disabled={hasDynamic(node.code, 'phaser')} />
+                      <RotaryKnob label="COARSE" value={node.coarse} min={0} max={32} step={1} defaultValue={0}
+                        onChange={v => updateKnob(node.id, 'coarse', v)} onCommit={() => commitKnob(node.id, 'coarse', node.coarse)} color={color}
+                        disabled={hasDynamic(node.code, 'coarse')} size={36} />
+                    </div>
+                  </div>
+
+                  {/* KNOBS ROW 4: ADSR Envelope (melodic only) */}
+                  {isMelodic && (
+                    <div className="px-2 pb-2">
+                      <div className="flex items-center gap-1 mb-1 px-1">
+                        <div className="h-px flex-1" style={{ background: HW.border }} />
+                        <span className="text-[7px] font-bold tracking-[0.2em] uppercase" style={{ color: HW.textDim }}>ADSR</span>
+                        <div className="h-px flex-1" style={{ background: HW.border }} />
+                      </div>
+                      <div className="flex items-start justify-center gap-0.5 flex-wrap">
+                        <RotaryKnob label="ATK" value={node.attack} min={0} max={2} step={0.01} defaultValue={0.001} suffix="s"
+                          onChange={v => updateKnob(node.id, 'attack', v)} onCommit={() => commitKnob(node.id, 'attack', node.attack)} color={color}
+                          disabled={hasDynamic(node.code, 'attack')} />
+                        <RotaryKnob label="DEC" value={node.decay} min={0} max={2} step={0.01} defaultValue={0.1} suffix="s"
+                          onChange={v => updateKnob(node.id, 'decay', v)} onCommit={() => commitKnob(node.id, 'decay', node.decay)} color={color}
+                          disabled={hasDynamic(node.code, 'decay')} />
+                        <RotaryKnob label="SUS" value={node.sustain} min={0} max={1} step={0.01} defaultValue={0.5}
+                          onChange={v => updateKnob(node.id, 'sustain', v)} onCommit={() => commitKnob(node.id, 'sustain', node.sustain)} color={color}
+                          disabled={hasDynamic(node.code, 'sustain')} />
+                        <RotaryKnob label="REL" value={node.release} min={0} max={4} step={0.01} defaultValue={0.1} suffix="s"
+                          onChange={v => updateKnob(node.id, 'release', v)} onCommit={() => commitKnob(node.id, 'release', node.release)} color={color}
+                          disabled={hasDynamic(node.code, 'release')} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* KNOBS ROW 5: Filter resonance + FM (non-drums) */}
+                  {node.type !== 'drums' && (
+                    <div className="px-2 pb-2">
+                      <div className="flex items-center gap-1 mb-1 px-1">
+                        <div className="h-px flex-1" style={{ background: HW.border }} />
+                        <span className="text-[7px] font-bold tracking-[0.2em] uppercase" style={{ color: HW.textDim }}>RESO</span>
+                        <div className="h-px flex-1" style={{ background: HW.border }} />
+                      </div>
+                      <div className="flex items-start justify-center gap-0.5 flex-wrap">
+                        <RotaryKnob label="LPQ" value={node.lpq} min={0} max={50} step={0.5} defaultValue={1}
+                          onChange={v => updateKnob(node.id, 'lpq', v)} onCommit={() => commitKnob(node.id, 'lpq', node.lpq)} color={color}
+                          disabled={hasDynamic(node.code, 'lpq')} />
+                        <RotaryKnob label="HPQ" value={node.hpq} min={0} max={50} step={0.5} defaultValue={1}
+                          onChange={v => updateKnob(node.id, 'hpq', v)} onCommit={() => commitKnob(node.id, 'hpq', node.hpq)} color={color}
+                          disabled={hasDynamic(node.code, 'hpq')} />
+                        <RotaryKnob label="FM" value={node.fmi} min={0} max={8} step={0.1} defaultValue={0}
+                          onChange={v => updateKnob(node.id, 'fmi', v)} onCommit={() => commitKnob(node.id, 'fmi', node.fmi)} color={color}
+                          disabled={hasDynamic(node.code, 'fmi')} />
+                        <RotaryKnob label="VEL" value={node.velocity} min={0} max={1} step={0.01} defaultValue={1}
+                          onChange={v => updateKnob(node.id, 'velocity', v)} onCommit={() => commitKnob(node.id, 'velocity', node.velocity)} color={color}
+                          disabled={hasDynamic(node.code, 'velocity')} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ══════ QUICK FX CHIPS ══════ */}
+                  <div className="px-2 pb-2">
+                    <div className="flex items-center gap-1 mb-1 px-1">
+                      <div className="h-px flex-1" style={{ background: HW.border }} />
+                      <span className="text-[7px] font-bold tracking-[0.2em] uppercase" style={{ color: HW.textDim }}>QUICK FX</span>
+                      <div className="h-px flex-1" style={{ background: HW.border }} />
+                    </div>
+                    <div className="flex flex-wrap gap-[3px] px-0.5">
+                      {QUICK_FX.map(fx => {
+                        const rawCode = node.code.replace(/\/\/ \[muted\] /g, '')
+                        const isOn = fx.detect.test(rawCode)
+                        return (
+                          <button key={fx.id}
+                            onClick={e => { e.stopPropagation(); toggleQuickFX(node.id, fx) }}
+                            title={fx.desc}
+                            className="px-1.5 py-[2px] rounded text-[7px] font-bold tracking-wider uppercase transition-all cursor-pointer whitespace-nowrap"
+                            style={{
+                              background: isOn ? `${fx.color}20` : HW.raised,
+                              color: isOn ? fx.color : HW.textDim,
+                              border: `1px solid ${isOn ? `${fx.color}40` : HW.border}`,
+                              boxShadow: isOn ? `0 0 6px ${fx.color}15` : 'none',
+                            }}
+                            onMouseEnter={e => { if (!isOn) (e.currentTarget).style.borderColor = `${fx.color}30` }}
+                            onMouseLeave={e => { if (!isOn) (e.currentTarget).style.borderColor = HW.border }}
+                          >
+                            <span className="mr-0.5">{fx.icon}</span>{fx.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* ══════ LFO ASSIGN ══════ */}
+                  <QuickLFOPanel nodeId={node.id} color={color} onAssign={injectLFO} />
 
                   {/* SELECTORS */}
                   <div className="px-3 pb-2 space-y-1" style={{ overflow: 'visible' }}>
