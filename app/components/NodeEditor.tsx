@@ -566,12 +566,23 @@ function applyEffect(code: string, method: string, value: number | string, remov
 
   // Numeric effects
   const numStr = Number.isInteger(value) ? value.toString() : (value as number).toFixed(method === 'gain' || method === 'pan' ? 3 : 2)
-  const methodRe = new RegExp(`\\.${method}\\s*\\(\\s*(?:slider\\s*\\(\\s*)?[0-9.]+`)
+
+  // Handle slider(value, min, max) wrapper — preserve slider() and update only the current value
+  const sliderRe = new RegExp(`\\.${method}\\s*\\(\\s*slider\\s*\\(\\s*[0-9.]+\\s*,\\s*([0-9.]+)\\s*,\\s*([0-9.]+)\\s*\\)\\s*\\)`)
+  const sliderMatch = code.match(sliderRe)
+  if (sliderMatch && !hasDynamic(code, method)) {
+    // Preserve slider() wrapper, update only the live value
+    return code.replace(sliderRe, `.${method}(slider(${numStr}, ${sliderMatch[1]}, ${sliderMatch[2]}))`)
+  }
+
+  const methodRe = new RegExp(`\\.${method}\\s*\\(\\s*[0-9.]+`)
   const fullRe = new RegExp(`\\.${method}\\s*\\(\\s*[0-9.]+\\s*\\)`)
 
   // If value at "zero" state and user is removing, strip the effect
   if (remove) {
-    // Remove entire .method(value)
+    // Remove entire .method(value) — handle slider() wrapper and simple value
+    const stripSliderRe = new RegExp(`\\s*\\.${method}\\s*\\(\\s*slider\\s*\\([^)]*\\)\\s*\\)`)
+    if (stripSliderRe.test(code)) return code.replace(stripSliderRe, '')
     const stripRe = new RegExp(`\\s*\\.${method}\\s*\\([^)]*\\)`)
     return code.replace(stripRe, '')
   }
@@ -1079,9 +1090,12 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
   const rebuildFullCodeFromNodes = useCallback((nodeList: PatternNode[], currentBpm: number, origCode: string): string => {
     const lines = origCode.split('\n')
     const preamble: string[] = []
+    const nodeCommentRe = /^\/\/\s*[─—]+\s*.+\s*[─—]+\s*$/
     for (const line of lines) {
       const t = line.trim()
       if (t.startsWith('$:') || t.startsWith('// [muted] $:')) break
+      // Skip node name comments (they'll be re-generated from node.name)
+      if (nodeCommentRe.test(t)) continue
       if (!t.startsWith('setcps') && !t.startsWith('setbpm')) preamble.push(line)
     }
     const parts: string[] = []
