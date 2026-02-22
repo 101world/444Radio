@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
-import { Play, Square, Search, Zap, ChevronRight, Volume2, ChevronDown, Sparkles, Copy, Check, Palette, Plus, Undo2, Redo2, BookOpen, FolderOpen, Save, Download, Upload, Trash2, Pencil, Files, AlertTriangle, MessageCircle, Send, Loader2, Mic, CircleDot } from 'lucide-react'
+import { Play, Square, Search, Zap, ChevronRight, Volume2, ChevronDown, Sparkles, Copy, Check, Palette, Plus, Undo2, Redo2, BookOpen, FolderOpen, Save, Download, Upload, Trash2, Pencil, Files, AlertTriangle, MessageCircle, Send, Loader2, Mic, CircleDot, LayoutGrid } from 'lucide-react'
+import { lazy, Suspense } from 'react'
+const NodeEditor = lazy(() => import('./NodeEditor'))
 
 // ─── Saved Pattern type ───
 interface SavedPattern {
@@ -7271,6 +7273,9 @@ $: s("bd:3").bank("RolandTR808")
   const [canRedo, setCanRedo] = useState(false)
   const isUndoRedoRef = useRef(false) // flag to skip pushing during undo/redo
 
+  // Node view state
+  const [showNodes, setShowNodes] = useState(false)
+
   // Panel state
   const [activePanel, setActivePanel] = useState<'sounds' | 'examples' | 'settings' | 'learn' | 'patterns' | 'vibe'>('examples')
   const [activeFilter, setActiveFilter] = useState<SoundFilter>('samples')
@@ -8993,6 +8998,12 @@ $: s("bd:3").bank("RolandTR808")
               title="Vibe with 444">
               <MessageCircle size={15} />
             </button>
+            <div className="w-px h-4 bg-white/[0.06] mx-0.5" />
+            <button onClick={() => setShowNodes(p => !p)}
+              className={`px-2.5 py-1.5 transition-all cursor-pointer ${showNodes ? 'bg-cyan-500/15 text-cyan-400' : 'text-white/25 hover:text-white/50'}`}
+              title="Node View (visual editor)">
+              <LayoutGrid size={15} />
+            </button>
             <button onClick={() => setShowPanel(p => !p)}
               className="px-2 py-1.5 text-white/25 hover:text-white/40 transition cursor-pointer">
               <ChevronRight size={13} className={`transition-transform ${showPanel ? 'rotate-180' : ''}`} />
@@ -9001,10 +9012,10 @@ $: s("bd:3").bank("RolandTR808")
         </div>
       </div>
 
-      {/* ─── Main: Editor (max canvas) + Panel ─── */}
+      {/* ─── Main: Editor (max canvas) + Node View + Panel ─── */}
       <div className="flex-1 flex min-h-0 overflow-hidden">
-        {/* Code Editor — maximized */}
-        <div ref={editorContainerRef} className="flex-1 flex flex-col min-w-0 relative" style={{ backgroundColor: themeColors.background }}>
+        {/* Code Editor — resizes when node view is open */}
+        <div ref={editorContainerRef} className={`flex flex-col min-w-0 relative transition-all duration-300 ${showNodes ? 'w-1/2' : 'flex-1'}`} style={{ backgroundColor: themeColors.background }}>
 
           {/* Viewport wrapper — positions canvas overlay + scroll area as siblings */}
           <div className="flex-1 relative min-h-0">
@@ -9204,6 +9215,24 @@ $: s("bd:3").bank("RolandTR808")
             </div>
           </div>
         </div>
+
+        {/* ═══ NODE VIEW (split) ═══ */}
+        {showNodes && (
+          <div className="w-1/2 flex flex-col border-l border-white/[0.06] bg-black/60 min-h-0 overflow-hidden">
+            <Suspense fallback={<div className="flex-1 flex items-center justify-center text-white/20 text-xs">Loading nodes…</div>}>
+              <NodeEditor
+                code={code}
+                isPlaying={isPlaying}
+                onCodeChange={(newCode: string) => {
+                  setCode(newCode)
+                  undoStackRef.current.push(newCode)
+                  redoStackRef.current = []
+                }}
+                onUpdate={() => handleUpdate()}
+              />
+            </Suspense>
+          </div>
+        )}
 
         {/* ═══ SIDE PANEL ═══ */}
         {showPanel && (
