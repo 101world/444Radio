@@ -2464,20 +2464,23 @@ function CreatePageContent() {
                 )}
               </button>
 
-              {/* Instrumental Toggle - Transparent Pill */}
-              {selectedType === 'music' && (
-                <button
-                  onClick={() => setIsInstrumental(!isInstrumental)}
-                  className={`relative flex-shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-bold tracking-wide transition-all duration-300 ${
-                    isInstrumental
-                      ? 'bg-gradient-to-br from-purple-500 to-violet-600 text-white shadow-lg shadow-purple-500/40'
-                      : 'bg-white/5 border border-purple-400/30 text-purple-300 hover:border-purple-400/60 hover:bg-white/10'
-                  }`}
-                  title={isInstrumental ? 'Switch to Vocal Mode' : 'Switch to Instrumental Mode'}
-                >
-                  INST
-                </button>
-              )}
+              {/* Instrumental Toggle - Always Visible */}
+              <button
+                onClick={() => {
+                  if (selectedType !== 'music') {
+                    setSelectedType('music')
+                  }
+                  setIsInstrumental(!isInstrumental)
+                }}
+                className={`relative flex-shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-bold tracking-wide transition-all duration-300 ${
+                  isInstrumental
+                    ? 'bg-gradient-to-br from-purple-500 to-violet-600 text-white shadow-lg shadow-purple-500/40'
+                    : 'bg-white/5 border border-purple-400/30 text-purple-300 hover:border-purple-400/60 hover:bg-white/10'
+                }`}
+                title={isInstrumental ? 'Switch to Vocal Mode' : 'Switch to Instrumental Mode'}
+              >
+                INST
+              </button>
 
               {/* Input Field */}
               <div className="flex-1 text-center md:text-left">
@@ -2554,22 +2557,26 @@ function CreatePageContent() {
                 </div>
               </div>
 
-              {/* Prompt Suggestions - Transparent Lightbulb */}
-              {selectedType === 'music' && (
-                <div className="relative">
-                  <button
-                    onClick={() => setShowPromptSuggestions(!showPromptSuggestions)}
-                    className={`w-8 h-8 md:w-9 md:h-9 rounded-lg transition-all duration-300 flex items-center justify-center ${
-                      showPromptSuggestions
-                        ? 'bg-gradient-to-br from-yellow-400 to-orange-500 shadow-lg shadow-yellow-500/50'
-                        : 'bg-white/5 hover:bg-white/10 border border-yellow-400/30 hover:border-yellow-400/60'
-                    }`}
-                    title="Prompt Suggestions"
-                  >
-                    <svg className={`w-4 h-4 md:w-5 md:h-5 ${showPromptSuggestions ? 'text-white' : 'text-yellow-300'}`} fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
-                    </svg>
-                  </button>
+              {/* Prompt Suggestions - Always Visible */}
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    if (selectedType !== 'music') {
+                      setSelectedType('music')
+                    }
+                    setShowPromptSuggestions(!showPromptSuggestions)
+                  }}
+                  className={`w-8 h-8 md:w-9 md:h-9 rounded-lg transition-all duration-300 flex items-center justify-center ${
+                    showPromptSuggestions
+                      ? 'bg-gradient-to-br from-yellow-400 to-orange-500 shadow-lg shadow-yellow-500/50'
+                      : 'bg-white/5 hover:bg-white/10 border border-yellow-400/30 hover:border-yellow-400/60'
+                  }`}
+                  title="Prompt Suggestions & Quick Tags"
+                >
+                  <svg className={`w-4 h-4 md:w-5 md:h-5 ${showPromptSuggestions ? 'text-white' : 'text-yellow-300'}`} fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
+                  </svg>
+                </button>
 
                   {/* Suggestions Dropdown */}
                   {showPromptSuggestions && (
@@ -2801,9 +2808,7 @@ function CreatePageContent() {
                     </>
                   )}
                 </div>
-              )}
 
-              {/* Create Button */}
               {/* Premium Send Button */}
               <button
                 onClick={() => {
@@ -2846,7 +2851,7 @@ function CreatePageContent() {
                   {activeGenerations.size} generating
                 </span>
               ) : (
-                `✨ ${selectedType === 'music' ? 'Create tracks' : selectedType === 'image' ? 'Generate art' : selectedType === 'effects' ? 'Generate sounds' : 'Coming soon'}`
+                <>{'✨ '}{selectedType === 'music' ? 'Create tracks' : selectedType === 'image' ? 'Generate art' : selectedType === 'effects' ? 'Generate sounds' : 'Coming soon'}</>
               )}
             </span>
           </div>

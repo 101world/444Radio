@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import FloatingMenu from '../components/FloatingMenu'
-import { Search, Play, Pause, ArrowLeft, FileText, Radio as RadioIcon, Users, Music, X, SlidersHorizontal, Heart, TrendingUp, Disc3, Headphones, ChevronRight, Sparkles, Flame, Info } from 'lucide-react'
+import { Search, Play, Pause, ArrowLeft, FileText, Radio as RadioIcon, Users, Music, X, SlidersHorizontal, Heart, TrendingUp, Disc3, Headphones, ChevronRight, Sparkles, Flame, Info, Video } from 'lucide-react'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 import { supabase } from '@/lib/supabase'
 import { ExploreGridSkeleton } from '../components/LoadingSkeleton'
@@ -523,7 +523,7 @@ function RadioPageContent() {
   const [searchFilters, setSearchFilters] = useState({
     genre: '', mood: '', bpm_min: '', bpm_max: '', key: '', vocals: '', sort: 'relevance'
   })
-  const [activeTab, setActiveTab] = useState<'tracks' | 'genres' | 'stations'>('tracks')
+  const [activeTab, setActiveTab] = useState<'tracks' | 'genres' | 'stations' | 'lipsync'>('tracks')
   const [genres, setGenres] = useState<string[]>([])
   const [showLyricsModal, setShowLyricsModal] = useState(false)
   const [selectedLyricsId, setSelectedLyricsId] = useState<string | null>(null)
@@ -531,6 +531,9 @@ function RadioPageContent() {
   const [infoMedia, setInfoMedia] = useState<CombinedMedia | null>(null)
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null)
   const [genreTransition, setGenreTransition] = useState<'idle' | 'zooming' | 'visible'>('idle')
+  const [lipsyncVideos, setLipsyncVideos] = useState<CombinedMedia[]>([])
+  const [loadingLipsync, setLoadingLipsync] = useState(false)
+  const [hoveredVideoId, setHoveredVideoId] = useState<string | null>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   const { currentTrack: globalCurrentTrack, isPlaying: globalIsPlaying, playTrack, togglePlayPause, setPlaylist } = useAudioPlayer()
@@ -663,6 +666,22 @@ function RadioPageContent() {
     setSelectedLyricsId(media.id); setSelectedLyricsTitle(media.title); setShowLyricsModal(true)
   }
 
+  // Fetch lipsync videos when tab is selected
+  useEffect(() => {
+    if (activeTab === 'lipsync' && lipsyncVideos.length === 0 && !loadingLipsync) {
+      setLoadingLipsync(true)
+      fetch('/api/library/videos')
+        .then(res => res.json())
+        .then(data => {
+          if (data.videos && Array.isArray(data.videos)) {
+            setLipsyncVideos(data.videos)
+          }
+        })
+        .catch(console.error)
+        .finally(() => setLoadingLipsync(false))
+    }
+  }, [activeTab, lipsyncVideos.length, loadingLipsync])
+
   // ─── Derived ───
   const INTERNAL_GENRES = ['stem', 'effects', 'loop', 'sfx']
   const nonStemMedia = combinedMedia.filter(m => !INTERNAL_GENRES.includes(m.genre?.toLowerCase() || ''))
@@ -752,6 +771,7 @@ function RadioPageContent() {
                   { key: 'tracks' as const, label: 'Tracks', icon: Music },
                   { key: 'genres' as const, label: 'Genres', icon: Disc3 },
                   { key: 'stations' as const, label: 'Live', icon: RadioIcon, count: liveStations.length },
+                  { key: 'lipsync' as const, label: 'LipSync', icon: Video, count: lipsyncVideos.length },
                 ] as const).map(tab => (
                   <button
                     key={tab.key}
@@ -763,7 +783,7 @@ function RadioPageContent() {
                     <tab.icon size={12} />
                     {tab.label}
                     {'count' in tab && tab.count > 0 && (
-                      <span className="w-4 h-4 rounded-full bg-red-500/20 text-red-400 text-[9px] flex items-center justify-center">{tab.count}</span>
+                      <span className="w-4 h-4 rounded-full bg-pink-500/20 text-pink-400 text-[9px] flex items-center justify-center">{tab.count}</span>
                     )}
                   </button>
                 ))}
@@ -817,6 +837,7 @@ function RadioPageContent() {
                 { key: 'tracks' as const, label: 'Tracks', icon: Music },
                 { key: 'genres' as const, label: 'Genres', icon: Disc3 },
                 { key: 'stations' as const, label: 'Live', icon: RadioIcon, count: liveStations.length },
+                { key: 'lipsync' as const, label: 'LipSync', icon: Video, count: lipsyncVideos.length },
               ] as const).map(tab => (
                 <button key={tab.key} onClick={() => setActiveTab(tab.key)}
                   className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${
@@ -825,7 +846,7 @@ function RadioPageContent() {
                 >
                   <tab.icon size={12} />
                   {tab.label}
-                  {'count' in tab && tab.count > 0 && <span className="w-4 h-4 bg-red-500/20 text-red-400 text-[9px] rounded-full flex items-center justify-center">{tab.count}</span>}
+                  {'count' in tab && tab.count > 0 && <span className="w-4 h-4 bg-pink-500/20 text-pink-400 text-[9px] rounded-full flex items-center justify-center">{tab.count}</span>}
                 </button>
               ))}
             </div>
@@ -1121,41 +1142,112 @@ function RadioPageContent() {
               </div>
             )}
 
-            {/* ═══ STATIONS TAB ═══ */}
-            {activeTab === 'stations' && !isSearchActive && (
+            {/* ═══ LIPSYNC TAB ═══ */}
+            {activeTab === 'lipsync' && !isSearchActive && (
               <div className="px-4 md:px-6 pt-4">
-                {liveStations.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {liveStations.filter(s => s.owner.userId && s.owner.userId !== 'undefined').map(station => (
-                      <Link key={station.id} href={`/profile/${station.owner.userId}`} className="group">
-                        <div className="bg-gradient-to-br from-red-950/20 to-pink-950/10 border border-red-500/15 rounded-xl p-4 hover:border-red-400/30 transition-all">
-                          <div className="flex items-center gap-3">
-                            <div className="relative">
-                              <div className="w-12 h-12 rounded-full overflow-hidden ring-2 ring-red-500/50 ring-offset-2 ring-offset-black">
-                                {station.owner.profileImage ? (
-                                  <Image src={station.owner.profileImage} alt={station.owner.username} width={48} height={48} className="w-full h-full object-cover" unoptimized />
-                                ) : (
-                                  <div className="w-full h-full bg-gradient-to-br from-red-600/40 to-pink-600/40 flex items-center justify-center"><Users size={20} className="text-white/60" /></div>
-                                )}
-                              </div>
-                              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-red-500 text-white text-[7px] font-bold px-1.5 py-px rounded-full animate-pulse">LIVE</div>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-sm text-white truncate">{station.title}</h3>
-                              <p className="text-[11px] text-gray-600">@{station.owner.username}</p>
-                            </div>
-                            <ChevronRight size={14} className="text-gray-700 group-hover:text-red-400 transition-colors" />
-                          </div>
-                        </div>
-                      </Link>
-                    ))}
+                <style jsx>{`
+                  @keyframes videoCardEnter {
+                    0% { opacity: 0; transform: scale(0.95) translateY(10px); }
+                    100% { opacity: 1; transform: scale(1) translateY(0); }
+                  }
+                  .lipsync-video-card { animation: videoCardEnter 0.4s ease-out both; }
+                `}</style>
+                {loadingLipsync ? (
+                  <div className="flex items-center justify-center py-16">
+                    <div className="w-6 h-6 border-2 border-pink-400/30 border-t-pink-400 rounded-full animate-spin" />
+                  </div>
+                ) : lipsyncVideos.length === 0 ? (
+                  <div className="text-center py-16">
+                    <Video size={28} className="text-gray-700 mx-auto mb-3" />
+                    <h2 className="text-lg font-bold text-white mb-1">No LipSync Videos Yet</h2>
+                    <p className="text-gray-600 text-xs mb-4">Be the first to create a lipsync video!</p>
+                    <Link href="/create" className="inline-block px-4 py-2 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-full text-sm font-semibold hover:from-pink-600 hover:to-rose-600 transition-all">
+                      Create LipSync
+                    </Link>
                   </div>
                 ) : (
-                  <div className="text-center py-16">
-                    <RadioIcon size={28} className="text-gray-700 mx-auto mb-3" />
-                    <h2 className="text-lg font-bold text-white mb-1">No Live Stations</h2>
-                    <p className="text-gray-600 text-xs">No one is broadcasting right now</p>
-                  </div>
+                  <>
+                    <SectionHeader icon={Video} label="LipSync Videos" iconColor="text-pink-400" gradientFrom="from-pink-500/20" gradientTo="to-rose-500/20" count={lipsyncVideos.length} />
+                    {/* Instagram-style grid with adaptive aspect ratio */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3">
+                      {lipsyncVideos.map((video, idx) => (
+                        <div
+                          key={video.id}
+                          className="lipsync-video-card group relative rounded-lg overflow-hidden cursor-pointer"
+                          style={{ animationDelay: `${idx * 0.05}s` }}
+                          onMouseEnter={() => setHoveredVideoId(video.id)}
+                          onMouseLeave={() => setHoveredVideoId(null)}
+                          onClick={() => handlePlay(video)}
+                        >
+                          {/* Video container with adaptive aspect ratio (9:16 vertical video style) */}
+                          <div className="relative w-full pb-[133.33%] bg-gray-900">
+                            {hoveredVideoId === video.id && video.video_url ? (
+                              <video
+                                src={video.video_url}
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
+                                className="absolute inset-0 w-full h-full object-cover"
+                              />
+                            ) : video.image_url || video.imageUrl ? (
+                              <Image
+                                src={video.image_url || video.imageUrl || ''}
+                                alt={video.title}
+                                fill
+                                className="object-cover"
+                                loading="lazy"
+                                quality={70}
+                                unoptimized
+                              />
+                            ) : (
+                              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-pink-900/30 to-purple-900/30">
+                                <Video size={24} className="text-pink-400/50" />
+                              </div>
+                            )}
+                            
+                            {/* Gradient overlay */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                            
+                            {/* Play icon on hover */}
+                            <div className={`absolute inset-0 flex items-center justify-center transition-all duration-200 ${
+                              hoveredVideoId === video.id ? 'opacity-100' : 'opacity-0'
+                            }`}>
+                              <div className="w-12 h-12 rounded-full bg-pink-500/90 backdrop-blur flex items-center justify-center shadow-lg">
+                                <Play size={18} className="text-white ml-0.5" />
+                              </div>
+                            </div>
+                            
+                            {/* Live/playing indicator */}
+                            {playingId === video.id && isPlaying && (
+                              <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/70 backdrop-blur px-2 py-1 rounded-full">
+                                <div className="flex items-end gap-[2px] h-3">
+                                  <div className="w-[2px] bg-pink-400 rounded-full animate-pulse" style={{ height: '40%' }} />
+                                  <div className="w-[2px] bg-pink-400 rounded-full animate-pulse" style={{ height: '80%', animationDelay: '0.15s' }} />
+                                  <div className="w-[2px] bg-pink-400 rounded-full animate-pulse" style={{ height: '55%', animationDelay: '0.3s' }} />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Video info */}
+                          <div className="absolute bottom-0 left-0 right-0 p-2">
+                            <h3 className="text-xs font-semibold text-white truncate">{video.title}</h3>
+                            <div className="flex items-center justify-between mt-1">
+                              <span className="text-[10px] text-gray-400 truncate">
+                                {video.artist_name || video.users?.username || video.username || 'Unknown'}
+                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <span className="flex items-center gap-0.5 text-[9px] text-gray-400">
+                                  <Heart size={8} />{video.likes || 0}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
             )}

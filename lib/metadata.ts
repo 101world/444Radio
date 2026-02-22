@@ -187,9 +187,6 @@ export function generateMetadata(page: {
       shortcut: '/icon.svg',
     },
     
-    // Manifest
-    manifest: '/manifest.json',
-    
     // Additional meta tags
     other: {
       'application-name': siteConfig.name,

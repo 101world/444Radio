@@ -50,6 +50,7 @@ export default async function RootLayout({
   const headersList = await headers()
   const pathname = headersList.get('x-pathname') || ''
   const isPluginPage = pathname === '/plugin' || pathname.startsWith('/plugin/')
+  const isCreatorV2 = pathname === '/creator-v2' || pathname.startsWith('/creator-v2/') || pathname === '/input' || pathname.startsWith('/input/')
 
   if (isPluginPage) {
     return (
@@ -116,23 +117,27 @@ export default async function RootLayout({
             <CreditsProvider>
               <GenerationQueueProvider>
                 <SkipToContent />
-                {/* Notification Bell in header */}
-                <div className="w-full flex items-center justify-end px-6 py-4 sticky top-0 z-50">
-                  <div className="ml-auto flex items-center gap-4">
-                    <Suspense fallback={null}>
-                      <NotificationBell />
-                    </Suspense>
+                {/* Hide chrome for fullscreen creator-v2 */}
+                {!isCreatorV2 && (
+                  <>
+                    <div className="w-full flex items-center justify-end px-6 py-4 sticky top-0 z-50">
+                      <div className="ml-auto flex items-center gap-4">
+                        <Suspense fallback={null}>
+                          <NotificationBell />
+                        </Suspense>
+                        <CreditBadge />
+                      </div>
+                    </div>
+                    <DockedSidebar />
+                    <FloatingNavButton />
                     <CreditBadge />
-                  </div>
-                </div>
+                  </>
+                )}
                 <Toaster position="top-right" richColors closeButton />
-                <DockedSidebar />
-                <FloatingNavButton />
-                <CreditBadge />
                 <PlayerAwareMain>
                   {children}
                 </PlayerAwareMain>
-                <ConditionalGlobalPlayer />
+                {!isCreatorV2 && <ConditionalGlobalPlayer />}
                 <GenerationMonitor />
                 <GenerationRecovery />
                 <Suspense fallback={null}><PluginBackButton /></Suspense>

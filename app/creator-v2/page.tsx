@@ -1,633 +1,365 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
+import { 
+  Music, Image as ImageIcon, Sparkles, Zap, Loader2, 
+  Mic, MicOff, Rocket, Activity, 
+  Disc3,
+  Layers, Repeat, Film, Scissors, Volume2, Lightbulb, Plus, RotateCcw, Upload, Code
+} from 'lucide-react'
+import InputEditor from '@/app/components/InputEditor'
 
-// Types
-interface Message {
-  role: 'user' | 'assistant'
-  content: string
-  timestamp: Date
-}
+const FEATURES = [
+  { key: 'input', icon: Code, label: 'INPUT', description: 'Pattern live editor', color: 'green', cost: 0 },
+  { key: 'music', icon: Music, label: 'Music', description: 'Generate AI music', color: 'cyan', cost: 2 },
+  { key: 'effects', icon: Sparkles, label: 'Effects', description: 'Sound effects', color: 'cyan', cost: 2 },
+  { key: 'loops', icon: Repeat, label: 'Loops', description: 'Fixed BPM loops', color: 'cyan', cost: 6 },
+  { key: 'chords', icon: Music, label: 'Chords', description: 'Chord & rhythm', color: 'cyan', cost: 4 },
+  { key: 'coverart', icon: ImageIcon, label: 'Cover Art', description: 'AI artwork', color: 'cyan', cost: 1 },
+  { key: 'video2audio', icon: Film, label: 'Vid→Audio', description: 'Synced SFX', color: 'cyan', cost: 4 },
+  { key: 'stems', icon: Scissors, label: 'Stems', description: 'Split vocals/drums', color: 'cyan', cost: 0 },
+  { key: 'boost', icon: Volume2, label: 'Boost', description: 'Mix & master', color: 'cyan', cost: 1 },
+  { key: 'extract', icon: Layers, label: 'Extract', description: 'Extract audio', color: 'cyan', cost: 1 },
+  { key: 'autotune', icon: Mic, label: 'Autotune', description: 'Pitch correct', color: 'cyan', cost: 1 },
+  { key: 'visualizer', icon: Film, label: 'Visualizer', description: 'Text→video', color: 'cyan' },
+  { key: 'lipsync', icon: Mic, label: 'Lip-Sync', description: 'Image+Audio→video', color: 'cyan' },
+  { key: 'upload', icon: Upload, label: 'Upload', description: 'Upload media', color: 'cyan' },
+  { key: 'release', icon: Rocket, label: 'Release', description: 'Publish', color: 'cyan' },
+]
 
-interface GenerationState {
-  isGenerating: boolean
-  type: 'music' | 'image' | null
-  progress: number
-  status: string
-  result?: {
-    audioUrl?: string
-    imageUrl?: string
-    title?: string
-  }
-}
-
-// Dev mode check
-const isDev = process.env.NODE_ENV === 'development'
+const QUICK_TAGS = [
+  'upbeat', 'chill', 'energetic', 'melancholic', 'ambient',
+  'electronic', 'acoustic', 'jazz', 'rock', 'hip-hop',
+  'heavy bass', 'soft piano', 'guitar solo', 'synthwave',
+  'lo-fi beats', 'orchestral', 'dreamy', 'aggressive',
+  'trap', 'drill', 'phonk', 'vaporwave', 'future bass',
+  'drum & bass', 'dubstep', 'house', 'techno', 'trance',
+]
 
 export default function CreatorV2Page() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const chatEndRef = useRef<HTMLDivElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
   
-  // Dev mode from URL
-  const devMode = isDev && (searchParams.get('dev') === 'true' || searchParams.get('dev') === '1')
+  const [particles, setParticles] = useState<Array<{id: number, x: number, y: number, size: number, speed: number, color: string}>>([])
   
-  // State
-  const [messages, setMessages] = useState<Message[]>([])
-  const [inputValue, setInputValue] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [generation, setGeneration] = useState<GenerationState>({
-    isGenerating: false,
-    type: null,
-    progress: 0,
-    status: ''
-  })
-  const [credits, setCredits] = useState<number | null>(null)
-  const [isAuthenticated, setIsAuthenticated] = useState(!devMode) // Auto-auth in dev mode
+  const [messages, setMessages] = useState<any[]>([])
+  const [credits, setCredits] = useState<number | null>(100)
   
-  // Generation form state
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [generationProgress, setGenerationProgress] = useState(0)
+  const [generationStatus, setGenerationStatus] = useState('')
+  
+  const [selectedFeature, setSelectedFeature] = useState('input')
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
+  const [mediaRecorder, setMediaRecorder] = useState<unknown | null>(null)
+  const [isInstrumental, setIsInstrumental] = useState(false)
+  const [showIdeas, setShowIdeas] = useState(false)
+  
   const [title, setTitle] = useState('')
   const [prompt, setPrompt] = useState('')
-  const [lyrics, setLyrics] = useState('')
-  const [genre, setGenre] = useState('')
-  const [duration, setDuration] = useState<'short' | 'medium' | 'long'>('medium')
-  const [activeTab, setActiveTab] = useState<'chat' | 'create'>('create')
+  const [bpm, setBpm] = useState('')
+  const [duration, setDuration] = useState<'short' | 'medium' | 'long'>('long')
   
-  // Fetch credits on mount
-  useEffect(() => {
-    if (devMode || isAuthenticated) {
-      fetchCredits()
-    }
-  }, [devMode, isAuthenticated])
+  const [mounted, setMounted] = useState(false)
+  const [currentTime, setCurrentTime] = useState('')
   
-  // Scroll chat to bottom
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    setMounted(true)
+    setCurrentTime(new Date().toLocaleTimeString('en-US', { hour12: false }))
+    const timer = setInterval(() => {
+      setCurrentTime(new Date().toLocaleTimeString('en-US', { hour12: false }))
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
+  
+  useEffect(() => {
+    const newParticles = Array.from({ length: 40 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      size: Math.random() * 3 + 1,
+      speed: Math.random() * 0.5 + 0.1,
+      color: ['#06b6d4', '#22d3ee', '#67e8f9', '#a5f3fc', '#cffafe'][Math.floor(Math.random() * 5)]
+    }))
+    setParticles(newParticles)
+  }, [])
+  
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
-  
-  const fetchCredits = async () => {
+
+  const startRecording = async () => {
     try {
-      const url = devMode ? '/api/credits?dev=true' : '/api/credits'
-      const res = await fetch(url)
-      if (res.ok) {
-        const data = await res.json()
-        setCredits(data.credits ?? 0)
+      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        alert('Speech recognition unavailable')
+        return
       }
+      const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition
+      const recognition = new SpeechRecognition()
+      recognition.continuous = true
+      recognition.interimResults = true
+      recognition.lang = 'en-US'
+      recognition.onresult = (event: any) => {
+        let transcript = ''
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) transcript += event.results[i][0].transcript
+        }
+        if (transcript) setPrompt(prev => prev + (prev ? ' ' : '') + transcript)
+      }
+      recognition.onend = () => setIsRecording(false)
+      recognition.start()
+      setMediaRecorder(recognition)
+      setIsRecording(true)
     } catch (error) {
-      console.error('Failed to fetch credits:', error)
+      console.error('Recording error:', error)
     }
   }
-  
-  const sendMessage = useCallback(async (content: string) => {
-    if (!content.trim()) return
-    
-    const userMessage: Message = {
-      role: 'user',
-      content: content.trim(),
-      timestamp: new Date()
+
+  const stopRecording = () => {
+    if (mediaRecorder && isRecording) {
+      try { (mediaRecorder as any).stop() } catch {}
+      setIsRecording(false)
+      setMediaRecorder(null)
     }
-    
-    setMessages(prev => [...prev, userMessage])
-    setInputValue('')
-    setIsLoading(true)
-    
-    try {
-      const url = devMode ? '/api/plugin/chat?dev=true' : '/api/plugin/chat'
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: content.trim() })
-      })
-      
-      if (res.ok) {
-        const data = await res.json()
-        const assistantMessage: Message = {
-          role: 'assistant',
-          content: data.response || data.message || 'I received your message!',
-          timestamp: new Date()
-        }
-        setMessages(prev => [...prev, assistantMessage])
-      } else {
-        throw new Error('Failed to get response')
-      }
-    } catch (error) {
-      const errorMessage: Message = {
-        role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
-        timestamp: new Date()
-      }
-      setMessages(prev => [...prev, errorMessage])
-    } finally {
-      setIsLoading(false)
-    }
-  }, [devMode])
-  
+  }
+
   const generateMusic = async () => {
-    if (!title.trim() || !prompt.trim()) {
-      alert('Please provide both title and prompt')
-      return
-    }
-    
-    setGeneration({
-      isGenerating: true,
-      type: 'music',
-      progress: 0,
-      status: 'Starting music generation...'
-    })
-    
+    if (!prompt.trim()) return
+    setIsGenerating(true)
+    setGenerationProgress(0)
+    setGenerationStatus('Analyzing prompt...')
     try {
-      const url = devMode ? '/api/generate/music-only?dev=true' : '/api/generate/music-only'
-      
-      // Use streaming endpoint
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: title.trim(),
-          prompt: prompt.trim(),
-          lyrics: lyrics.trim() || undefined,
-          genre: genre.trim() || undefined,
-          duration,
-          generateCoverArt: false
-        })
-      })
-      
-      if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.error || 'Generation failed')
+      for (let i = 0; i <= 100; i += 10) {
+        await new Promise(resolve => setTimeout(resolve, 300))
+        setGenerationProgress(i)
+        setGenerationStatus(i < 30 ? 'Analyzing...' : i < 60 ? 'Generating...' : i < 90 ? 'Applying FX...' : 'Done')
       }
-      
-      // Handle streaming response
-      const reader = res.body?.getReader()
-      const decoder = new TextDecoder()
-      
-      if (reader) {
-        let buffer = ''
-        
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          
-          buffer += decoder.decode(value, { stream: true })
-          const lines = buffer.split('\n')
-          buffer = lines.pop() || ''
-          
-          for (const line of lines) {
-            if (line.trim()) {
-              try {
-                const data = JSON.parse(line)
-                
-                if (data.type === 'started') {
-                  setGeneration(prev => ({
-                    ...prev,
-                    progress: 10,
-                    status: 'Generating music...'
-                  }))
-                } else if (data.type === 'result') {
-                  if (data.success) {
-                    setGeneration(prev => ({
-                      ...prev,
-                      isGenerating: false,
-                      progress: 100,
-                      status: 'Complete!',
-                      result: {
-                        audioUrl: data.audioUrl,
-                        title: data.title
-                      }
-                    }))
-                    setCredits(data.creditsRemaining)
-                    
-                    // Add success message to chat
-                    setMessages(prev => [...prev, {
-                      role: 'assistant',
-                      content: `🎵 Generated "${data.title}" successfully! [Listen](${data.audioUrl})`,
-                      timestamp: new Date()
-                    }])
-                  } else {
-                    throw new Error(data.error || 'Generation failed')
-                  }
-                }
-              } catch (e) {
-                // Skip invalid JSON
-              }
-            }
-          }
-        }
-      }
+      setMessages(prev => [...prev, {
+        id: Date.now(), role: 'assistant',
+        content: `Generated: ${title || 'Untitled'}\nPrompt: ${prompt}\nDuration: ${duration}`,
+        timestamp: new Date()
+      }])
     } catch (error: any) {
-      console.error('Music generation error:', error)
-      setGeneration({
-        isGenerating: false,
-        type: null,
-        progress: 0,
-        status: `Error: ${error.message}`
-      })
+      setGenerationStatus(`Error: ${error.message}`)
+    } finally {
+      setIsGenerating(false)
     }
   }
-  
-  const generateImage = async () => {
-    if (!prompt.trim()) {
-      alert('Please provide a prompt')
-      return
-    }
-    
-    setGeneration({
-      isGenerating: true,
-      type: 'image',
-      progress: 0,
-      status: 'Starting image generation...'
-    })
-    
-    try {
-      const url = devMode ? '/api/generate/image-only?dev=true' : '/api/generate/image-only'
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: prompt.trim(),
-          params: {
-            width: 1024,
-            height: 1024,
-            output_format: 'jpg',
-            output_quality: 100
-          }
-        })
-      })
-      
-      if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.error || 'Generation failed')
-      }
-      
-      const data = await res.json()
-      
-      if (data.success) {
-        setGeneration({
-          isGenerating: false,
-          type: 'image',
-          progress: 100,
-          status: 'Complete!',
-          result: {
-            imageUrl: data.imageUrl
-          }
-        })
-        setCredits(data.creditsRemaining)
-        
-        // Add success message to chat
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: `🎨 Generated image successfully! [View](${data.imageUrl})`,
-          timestamp: new Date()
-        }])
-      } else {
-        throw new Error(data.error || 'Generation failed')
-      }
-    } catch (error: any) {
-      console.error('Image generation error:', error)
-      setGeneration({
-        isGenerating: false,
-        type: null,
-        progress: 0,
-        status: `Error: ${error.message}`
-      })
-    }
-  }
-  
+
+  const handleTagClick = (tag: string) => setPrompt(prev => prev + (prev ? ' ' : '') + tag)
+  const handleSubmit = () => { if (selectedFeature === 'music' || selectedFeature === 'effects') generateMusic() }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-black/50 backdrop-blur-lg border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-              Creator V2
-            </h1>
-            {devMode && (
-              <span className="px-2 py-0.5 text-xs bg-yellow-500/20 text-yellow-400 rounded-full">
-                DEV MODE
-              </span>
+    <div className="h-screen bg-black text-white overflow-hidden relative">
+      {/* Background */}
+      <div className="fixed inset-0 z-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-black via-gray-950 to-cyan-950/10" />
+        <div className="absolute inset-0 opacity-[0.07]" style={{
+          backgroundImage: `linear-gradient(to right, rgba(6,182,212,0.2) 1px, transparent 1px), linear-gradient(to bottom, rgba(6,182,212,0.2) 1px, transparent 1px)`,
+          backgroundSize: '50px 50px',
+        }} />
+        {particles.map(p => (
+          <div key={p.id} className="absolute rounded-full" style={{
+            left: `${p.x}%`, top: `${p.y}%`, width: p.size, height: p.size,
+            backgroundColor: p.color, boxShadow: `0 0 ${p.size * 4}px ${p.color}`,
+            animation: `float ${8 / p.speed}s ease-in-out infinite`, opacity: 0.5
+          }} />
+        ))}
+      </div>
+
+      <div className="relative z-10 h-screen flex flex-col">
+        {/* Main Content */}
+        <main className="flex-1 min-h-0 flex">
+          
+          {/* Sidebar Toggle */}
+          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className={`fixed top-1/2 -translate-y-1/2 z-30 p-1.5 bg-white/[0.05] hover:bg-white/[0.1] border-r border-white/[0.1] rounded-r-lg transition-all duration-300 ${isSidebarOpen ? 'left-[320px]' : 'left-0'}`}>
+            <Layers className={`w-4 h-4 text-cyan-400/60 transition-transform ${isSidebarOpen ? 'rotate-180' : ''}`} />
+          </button>
+          
+          {/* Sidebar */}
+          <div className={`${isSidebarOpen ? 'w-80' : 'w-0'} transition-all duration-300 bg-white/[0.02] backdrop-blur-2xl border-r border-white/[0.06] flex flex-col relative z-20 overflow-hidden shrink-0`}>
+            {isSidebarOpen && (
+              <>
+                <div className="px-3 py-2 border-b border-white/[0.06] flex items-center gap-2">
+                  <span className="text-xs font-bold tracking-[0.15em] text-white/40 uppercase">Features</span>
+                </div>
+                
+                {/* Vocal/Inst Toggle */}
+                <div className="px-3 py-2 border-b border-white/[0.06]">
+                  <div className="flex gap-1.5">
+                    <button onClick={() => setIsInstrumental(false)}
+                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all ${!isInstrumental ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'bg-white/[0.03] text-white/30 border border-white/[0.06]'}`}>
+                      Vocal
+                    </button>
+                    <button onClick={() => setIsInstrumental(true)}
+                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all ${isInstrumental ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'bg-white/[0.03] text-white/30 border border-white/[0.06]'}`}>
+                      Inst
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Ideas */}
+                <div className="px-3 py-2 border-b border-white/[0.06]">
+                  <button onClick={() => setShowIdeas(!showIdeas)}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border transition-all text-xs ${showIdeas ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400' : 'border-white/[0.08] text-white/40 hover:border-yellow-500/20'}`}>
+                    <Lightbulb size={14} />
+                    <span className="font-semibold">Ideas & Tags</span>
+                  </button>
+                </div>
+                
+                {showIdeas && (
+                  <div className="px-3 py-2 border-b border-white/[0.06] max-h-36 overflow-y-auto">
+                    <div className="flex flex-wrap gap-1">
+                      {QUICK_TAGS.map(tag => (
+                        <button key={tag} onClick={() => handleTagClick(tag)}
+                          className="px-2 py-0.5 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 rounded text-[10px] text-cyan-300 hover:text-white transition">
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Feature List */}
+                <div className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5">
+                  {FEATURES.map(feature => {
+                    const Icon = feature.icon
+                    const isActive = selectedFeature === feature.key
+                    const colors: Record<string, string> = {
+                      cyan: isActive ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-400' : 'border-transparent text-white/35 hover:bg-white/[0.03] hover:text-cyan-400/60',
+                      purple: isActive ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-400' : 'border-transparent text-white/35 hover:bg-white/[0.03] hover:text-cyan-400/60',
+                      orange: isActive ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-400' : 'border-transparent text-white/35 hover:bg-white/[0.03] hover:text-cyan-400/60',
+                      pink: isActive ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-400' : 'border-transparent text-white/35 hover:bg-white/[0.03] hover:text-cyan-400/60',
+                      green: isActive ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-400' : 'border-transparent text-white/35 hover:bg-white/[0.03] hover:text-cyan-400/60',
+                    }
+                    return (
+                      <button key={feature.key} onClick={() => setSelectedFeature(feature.key)}
+                        className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border transition-all ${colors[feature.color] || colors.cyan}`}>
+                        <Icon size={14} />
+                        <div className="flex-1 text-left">
+                          <div className="text-xs font-semibold">{feature.label}</div>
+                          <div className="text-[9px] text-white/20">{feature.description}</div>
+                        </div>
+                        {feature.cost !== undefined && (
+                          <span className="text-[9px] text-white/15 bg-white/[0.04] px-1.5 py-0.5 rounded">-{feature.cost}</span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+                
+                <div className="px-2 py-2 border-t border-white/[0.06]">
+                  <div className="flex gap-1.5">
+                    <button className="flex-1 p-2 rounded-lg border border-white/[0.06] text-white/25 hover:text-cyan-400/60 hover:border-cyan-500/20 transition flex items-center justify-center gap-1 text-[10px]">
+                      <RotateCcw size={11} /> NEW
+                    </button>
+                    <button className="flex-1 p-2 rounded-lg border border-white/[0.06] text-white/25 hover:text-cyan-400/60 hover:border-cyan-500/20 transition flex items-center justify-center gap-1 text-[10px]">
+                      <Plus size={11} /> HISTORY
+                    </button>
+                  </div>
+                </div>
+              </>
             )}
           </div>
           
-          <div className="flex items-center gap-4">
-            {credits !== null && (
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-full">
-                <span className="text-sm text-gray-300">Credits:</span>
-                <span className="font-semibold text-purple-400">{credits}</span>
+          {/* Main Panel */}
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            
+            {selectedFeature === 'input' ? (
+              <InputEditor />
+            ) : (
+              <>
+                {/* Prompt Area */}
+                <div className="p-3 border-b border-white/[0.06] bg-white/[0.02] backdrop-blur-xl shrink-0">
+                  <textarea value={prompt} onChange={e => setPrompt(e.target.value)}
+                    placeholder={isInstrumental ? "Describe your instrumental..." : "Describe your music..."}
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-white/80 placeholder-white/20 resize-none focus:outline-none focus:border-cyan-500/30 transition"
+                    rows={3}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit() } }} />
+                  
+                  <div className="flex items-center justify-between mt-2">
+                    <div className="flex items-center gap-2">
+                      <button onClick={isRecording ? stopRecording : startRecording}
+                        className={`p-1.5 rounded-lg transition ${isRecording ? 'bg-red-500/20 text-red-400' : 'bg-white/[0.04] text-white/30 hover:text-white/50'}`}>
+                        {isRecording ? <MicOff size={12} /> : <Mic size={12} />}
+                      </button>
+                      <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Title..."
+                        className="px-2.5 py-1 bg-white/[0.03] border border-white/[0.08] rounded-lg text-[11px] text-white/60 placeholder-white/20 focus:outline-none focus:border-cyan-500/30 w-32" />
+                      <input type="text" value={bpm} onChange={e => setBpm(e.target.value)} placeholder="BPM"
+                        className="px-2.5 py-1 bg-white/[0.03] border border-white/[0.08] rounded-lg text-[11px] text-white/60 placeholder-white/20 focus:outline-none focus:border-cyan-500/30 w-16 text-center" />
+                      <select value={duration} onChange={e => setDuration(e.target.value as any)}
+                        className="px-2.5 py-1 bg-white/[0.03] border border-white/[0.08] rounded-lg text-[11px] text-white/60 focus:outline-none cursor-pointer">
+                        <option value="short">Short</option>
+                        <option value="medium">Med</option>
+                        <option value="long">Long</option>
+                      </select>
+                    </div>
+                    
+                    <button onClick={handleSubmit} disabled={isGenerating || !prompt.trim()}
+                      className="flex items-center gap-1.5 px-5 py-1.5 bg-gradient-to-r from-cyan-600/80 to-cyan-400/80 rounded-lg text-black text-xs font-bold hover:from-cyan-500 hover:to-cyan-300 transition disabled:opacity-20 shadow-lg shadow-cyan-500/20">
+                      {isGenerating ? <><Loader2 size={12} className="animate-spin" /> GEN...</> : <><Zap size={12} /> GENERATE</>}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+            
+            {/* Progress */}
+            {isGenerating && (
+              <div className="px-4 py-2 bg-cyan-500/[0.05] border-b border-cyan-500/20 shrink-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
+                  <span className="font-mono text-[11px] text-cyan-400/70">{generationStatus}</span>
+                </div>
+                <div className="w-full bg-white/[0.04] rounded-full h-1 overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-cyan-400 to-cyan-200 transition-all duration-300" style={{ width: `${generationProgress}%` }} />
+                </div>
               </div>
             )}
-            <button
-              onClick={() => router.push('/')}
-              className="px-3 py-1.5 text-sm bg-white/10 hover:bg-white/20 rounded-lg transition"
-            >
-              Home
-            </button>
+            
+            {/* Messages */}
+            {selectedFeature !== 'input' && (
+              <div className="flex-1 overflow-y-auto p-4 font-mono text-sm">
+                {messages.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-white/20">
+                    <Activity size={40} className="text-cyan-500/20 mb-3" />
+                    <p className="text-sm font-bold text-cyan-400/40">READY</p>
+                    <p className="text-[11px] text-white/15">Select a feature and enter your prompt</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {messages.map(msg => (
+                      <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[80%] px-3 py-2 rounded-xl backdrop-blur-xl ${
+                          msg.role === 'user'
+                            ? 'bg-cyan-500/10 border border-cyan-400/20 text-cyan-200/70'
+                            : 'bg-cyan-500/[0.06] border border-cyan-500/15 text-cyan-200/70'
+                        }`}>
+                          <div className="whitespace-pre-wrap text-xs">{msg.content}</div>
+                          <p className="text-[9px] opacity-30 mt-1">{msg.timestamp.toLocaleTimeString()}</p>
+                        </div>
+                      </div>
+                    ))}
+                    <div ref={messagesEndRef} />
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* No footer — clean edge-to-edge */}
           </div>
-        </div>
-      </header>
-      
-      {/* Tab Navigation */}
-      <div className="max-w-7xl mx-auto px-4 pt-4">
-        <div className="flex gap-2">
-          <button
-            onClick={() => setActiveTab('create')}
-            className={`px-4 py-2 rounded-lg font-medium transition ${
-              activeTab === 'create'
-                ? 'bg-purple-500 text-white'
-                : 'bg-white/10 text-gray-300 hover:bg-white/20'
-            }`}
-          >
-            🎵 Create
-          </button>
-          <button
-            onClick={() => setActiveTab('chat')}
-            className={`px-4 py-2 rounded-lg font-medium transition ${
-              activeTab === 'chat'
-                ? 'bg-purple-500 text-white'
-                : 'bg-white/10 text-gray-300 hover:bg-white/20'
-            }`}
-          >
-            💬 Chat
-          </button>
-        </div>
+        </main>
       </div>
       
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        <div className="grid lg:grid-cols-2 gap-6">
-          
-          {/* Left Panel - Create or Chat */}
-          <div className="bg-white/5 rounded-2xl border border-white/10 overflow-hidden">
-            {activeTab === 'create' ? (
-              <div className="p-6 space-y-6">
-                <h2 className="text-lg font-semibold">Generate Music / Image</h2>
-                
-                {/* Title Input */}
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Title *</label>
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Enter song title (3-100 characters)"
-                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 transition"
-                    maxLength={100}
-                  />
-                </div>
-                
-                {/* Prompt Input */}
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Prompt *</label>
-                  <textarea
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="Describe what you want to generate (10-300 characters)"
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 transition resize-none"
-                    rows={3}
-                    maxLength={300}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">{prompt.length}/300</p>
-                </div>
-                
-                {/* Genre */}
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Genre</label>
-                  <input
-                    type="text"
-                    value={genre}
-                    onChange={(e) => setGenre(e.target.value)}
-                    placeholder="e.g., electronic, hip-hop, ambient"
-                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 transition"
-                  />
-                </div>
-                
-                {/* Lyrics */}
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Lyrics (optional)</label>
-                  <textarea
-                    value={lyrics}
-                    onChange={(e) => setLyrics(e.target.value)}
-                    placeholder="Leave empty for AI-generated lyrics"
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 transition resize-none"
-                    rows={4}
-                  />
-                </div>
-                
-                {/* Duration */}
-                <div>
-                  <label className="block text-sm text-gray-400 mb-2">Duration</label>
-                  <div className="flex gap-2">
-                    {(['short', 'medium', 'long'] as const).map((d) => (
-                      <button
-                        key={d}
-                        onClick={() => setDuration(d)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                          duration === d
-                            ? 'bg-purple-500 text-white'
-                            : 'bg-white/10 text-gray-300 hover:bg-white/20'
-                        }`}
-                      >
-                        {d.charAt(0).toUpperCase() + d.slice(1)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                
-                {/* Generate Buttons */}
-                <div className="flex gap-3 pt-4">
-                  <button
-                    onClick={generateMusic}
-                    disabled={generation.isGenerating || !title.trim() || !prompt.trim()}
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition"
-                  >
-                    {generation.isGenerating && generation.type === 'music' ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                        Generating...
-                      </span>
-                    ) : (
-                      '🎵 Generate Music (2 credits)'
-                    )}
-                  </button>
-                  <button
-                    onClick={generateImage}
-                    disabled={generation.isGenerating || !prompt.trim()}
-                    className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition"
-                  >
-                    {generation.isGenerating && generation.type === 'image' ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                        Generating...
-                      </span>
-                    ) : (
-                      '🎨 Image (1 credit)'
-                    )}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              /* Chat Interface */
-              <div className="flex flex-col h-[500px]">
-                {/* Chat Messages */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                  {messages.length === 0 ? (
-                    <div className="flex items-center justify-center h-full text-gray-500">
-                      <p>Start a conversation...</p>
-                    </div>
-                  ) : (
-                    messages.map((msg, idx) => (
-                      <div
-                        key={idx}
-                        className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div
-                          className={`max-w-[80%] px-4 py-2 rounded-2xl ${
-                            msg.role === 'user'
-                              ? 'bg-purple-500 text-white'
-                              : 'bg-white/10 text-gray-200'
-                          }`}
-                        >
-                          <p className="whitespace-pre-wrap">{msg.content}</p>
-                          <p className="text-xs opacity-50 mt-1">
-                            {msg.timestamp.toLocaleTimeString()}
-                          </p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                  {isLoading && (
-                    <div className="flex justify-start">
-                      <div className="bg-white/10 px-4 py-2 rounded-2xl">
-                        <div className="flex items-center gap-2">
-                          <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                          </svg>
-                          <span className="text-gray-400">Thinking...</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  <div ref={chatEndRef} />
-                </div>
-                
-                {/* Chat Input */}
-                <div className="p-4 border-t border-white/10">
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault()
-                      sendMessage(inputValue)
-                    }}
-                    className="flex gap-2"
-                  >
-                    <input
-                      type="text"
-                      value={inputValue}
-                      onChange={(e) => setInputValue(e.target.value)}
-                      placeholder="Type a message..."
-                      className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 transition"
-                      disabled={isLoading}
-                    />
-                    <button
-                      type="submit"
-                      disabled={!inputValue.trim() || isLoading}
-                      className="px-4 py-2 bg-purple-500 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-purple-600 transition"
-                    >
-                      Send
-                    </button>
-                  </form>
-                </div>
-              </div>
-            )}
-          </div>
-          
-          {/* Right Panel - Generation Status / Preview */}
-          <div className="bg-white/5 rounded-2xl border border-white/10 overflow-hidden">
-            <div className="p-6">
-              <h2 className="text-lg font-semibold mb-4">Generation Status</h2>
-              
-              {!generation.isGenerating && !generation.result ? (
-                <div className="flex items-center justify-center h-64 text-gray-500">
-                  <p>No active generation</p>
-                </div>
-              ) : generation.isGenerating ? (
-                <div className="space-y-4">
-                  {/* Progress Bar */}
-                  <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-300"
-                      style={{ width: `${generation.progress}%` }}
-                    />
-                  </div>
-                  <p className="text-sm text-gray-400">{generation.status}</p>
-                </div>
-              ) : generation.result ? (
-                <div className="space-y-4">
-                  <p className="text-green-400 font-medium">✓ {generation.status}</p>
-                  
-                  {/* Audio Preview */}
-                  {generation.result.audioUrl && (
-                    <div className="bg-white/5 rounded-lg p-4">
-                      <p className="text-sm text-gray-400 mb-2">Generated: {generation.result.title}</p>
-                      <audio
-                        controls
-                        src={generation.result.audioUrl}
-                        className="w-full"
-                      />
-                      <a
-                        href={generation.result.audioUrl}
-                        download
-                        className="inline-block mt-2 px-4 py-2 bg-purple-500 rounded-lg text-sm font-medium hover:bg-purple-600 transition"
-                      >
-                        Download
-                      </a>
-                    </div>
-                  )}
-                  
-                  {/* Image Preview */}
-                  {generation.result.imageUrl && (
-                    <div className="bg-white/5 rounded-lg p-4">
-                      <img
-                        src={generation.result.imageUrl}
-                        alt="Generated"
-                        className="w-full rounded-lg"
-                      />
-                      <a
-                        href={generation.result.imageUrl}
-                        download
-                        className="inline-block mt-2 px-4 py-2 bg-purple-500 rounded-lg text-sm font-medium hover:bg-purple-600 transition"
-                      >
-                        Download
-                      </a>
-                    </div>
-                  )}
-                  
-                  <button
-                    onClick={() => setGeneration({ isGenerating: false, type: null, progress: 0, status: '' })}
-                    className="px-4 py-2 bg-white/10 rounded-lg text-sm font-medium hover:bg-white/20 transition"
-                  >
-                    Clear
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      </main>
-      
-      {/* Dev Mode Notice */}
-      {devMode && (
-        <div className="fixed bottom-4 left-4 px-4 py-2 bg-yellow-500/20 border border-yellow-500/30 rounded-lg text-sm text-yellow-400">
-          ⚠️ Dev Mode Active - Using bypass authentication
-        </div>
-      )}
+      <style jsx>{`
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-20px); }
+        }
+      `}</style>
     </div>
   )
 }

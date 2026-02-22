@@ -24,6 +24,8 @@ const isPublicRoute = createRouteMatcher([
   '/api/upload/media',         // Used by AutotuneModal (audio upload, hybrid auth)
   '/manifest.json',
   '/radio',
+  '/creator-v2',               // Creator V2 - no Clerk auth required, dev mode enabled
+  '/input',                    // INPUT live-coding editor - no Clerk auth required
   '/sitemap.xml',
   '/robots.txt',
 ])

@@ -52,3 +52,9 @@ next-env.d.ts
 
 # Local v2 plugin distribution folder
 444 Radio Plugin v2/
+
+# Strudel source tree (local dev dependency)
+/input/
+
+# Setup docs
+INPUT-STRUDEL-SETUP.md

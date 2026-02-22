@@ -1,0 +1,29 @@
+import { MetadataRoute } from 'next'
+
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: '444 Radio Studio',
+    short_name: '444Radio',
+    description: 'AI-powered music creation and social platform',
+    start_url: '/',
+    scope: '/',
+    display: 'standalone',
+    background_color: '#000000',
+    theme_color: '#06b6d4',
+    orientation: 'any',
+    categories: ['music', 'entertainment', 'social'],
+    icons: [
+      {
+        src: '/icon.svg',
+        sizes: 'any',
+        type: 'image/svg+xml',
+        purpose: 'maskable',
+      },
+      {
+        src: '/studio/icon.png',
+        sizes: '144x144',
+        type: 'image/png',
+      },
+    ],
+  }
+}

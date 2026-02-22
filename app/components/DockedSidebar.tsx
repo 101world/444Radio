@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useUser, UserButton } from '@clerk/nextjs'
 import { usePathname } from 'next/navigation'
-import { Home, Zap, Library, Compass, User, Unlock, CreditCard, Settings, LogIn, UserPlus, LayoutGrid, DollarSign, Swords } from 'lucide-react'
+import { Home, Zap, Library, Compass, User, Unlock, CreditCard, Settings, LogIn, UserPlus, LayoutGrid, DollarSign, Swords, Terminal } from 'lucide-react'
 import { useCredits } from '@/app/contexts/CreditsContext'
 
 interface MenuItem {
@@ -80,6 +80,7 @@ export default function DockedSidebar() {
     { icon: Home, label: 'Home', href: '/', highlight: false },
     { icon: Zap, label: 'Create', href: '/create', highlight: true, badge: 'Suggested' },
     { icon: Compass, label: 'Radio', href: '/radio', highlight: false },
+    { icon: Terminal, label: 'Input', href: '/input', highlight: 'cyan', badge: 'Live' },
     { icon: Library, label: 'Library', href: '/library', highlight: false },
     { icon: Unlock, label: 'Decrypt', href: '/decrypt', highlight: 'cyan' },
     { icon: CreditCard, label: 'Pricing', href: '/pricing', highlight: false },
@@ -91,6 +92,7 @@ export default function DockedSidebar() {
     { icon: Home, label: 'Home', href: '/', highlight: false },
     { icon: Zap, label: 'Create', href: '/create', highlight: true, badge: 'Suggested' },
     { icon: Compass, label: 'Radio', href: '/radio', highlight: false },
+    { icon: Terminal, label: 'Input', href: '/input', highlight: 'cyan', badge: 'Live' },
     { icon: Library, label: 'Library', href: '/library', highlight: false },
     { icon: Unlock, label: 'Decrypt', href: '/decrypt', highlight: 'cyan' },
     { icon: CreditCard, label: 'Pricing', href: '/pricing', highlight: false },
