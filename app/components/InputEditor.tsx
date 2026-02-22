@@ -9224,9 +9224,7 @@ $: s("bd:3").bank("RolandTR808")
                 code={code}
                 isPlaying={isPlaying}
                 onCodeChange={(newCode: string) => {
-                  setCode(newCode)
-                  undoStackRef.current.push(newCode)
-                  redoStackRef.current = []
+                  setCodeWithUndo(newCode)
                 }}
                 onUpdate={() => handleUpdate()}
               />
