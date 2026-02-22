@@ -945,8 +945,28 @@ function RotaryKnob({ value, min, max, step, onChange, onCommit, color, label, s
   const angle = -135 + norm * 270
   const ptr = polarToCart(cx, cy, r * 0.55, angle)
   const isDynamic = disabled
+  const knobRef = useRef<SVGSVGElement>(null)
 
   const clamp = (v: number) => Math.max(min, Math.min(max, Math.round(v / step) * step))
+
+  // Register wheel listener imperatively with { passive: false } to allow preventDefault
+  const wheelState = useRef({ value, min, max, step, isDynamic, onChange, onCommit })
+  wheelState.current = { value, min, max, step, isDynamic, onChange, onCommit }
+  useEffect(() => {
+    const el = knobRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      const s = wheelState.current
+      if (s.isDynamic) return
+      e.preventDefault()
+      e.stopPropagation()
+      const clampV = (v: number) => Math.max(s.min, Math.min(s.max, Math.round(v / s.step) * s.step))
+      s.onChange(clampV(s.value + (-e.deltaY / 800) * (s.max - s.min)))
+      s.onCommit()
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
 
   const handleDown = (e: React.MouseEvent) => {
     if (isDynamic) return
@@ -965,13 +985,6 @@ function RotaryKnob({ value, min, max, step, onChange, onCommit, color, label, s
     document.addEventListener('mouseup', onUp)
   }
 
-  const handleWheel = (e: React.WheelEvent) => {
-    if (isDynamic) return
-    e.stopPropagation()
-    onChange(clamp(value + (-e.deltaY / 800) * (max - min)))
-    onCommit()
-  }
-
   const handleDblClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (!isDynamic && defaultValue !== undefined) { onChange(defaultValue); onCommit() }
@@ -985,8 +998,8 @@ function RotaryKnob({ value, min, max, step, onChange, onCommit, color, label, s
   return (
     <div className="flex flex-col items-center gap-0" style={{ width: size + 8 }}>
       <span className="text-[7px] font-bold uppercase tracking-[0.1em] mb-0.5" style={{ color: HW.textDim }}>{label}</span>
-      <svg width={size} height={size} className={isDynamic ? 'cursor-not-allowed opacity-50' : 'cursor-ns-resize'}
-        onMouseDown={handleDown} onWheel={handleWheel} onDoubleClick={handleDblClick}>
+      <svg ref={knobRef} width={size} height={size} className={isDynamic ? 'cursor-not-allowed opacity-50' : 'cursor-ns-resize'}
+        onMouseDown={handleDown} onDoubleClick={handleDblClick}>
         <circle cx={cx} cy={cy} r={r + 2} fill="none" stroke={HW.knobRing} strokeWidth={1} opacity={0.4} />
         <circle cx={cx} cy={cy} r={r} fill={HW.knobBg} stroke={HW.knobRing} strokeWidth={1.5} />
         <path d={arcPath(cx, cy, r - 1, -135, 135)} fill="none" stroke={HW.knobRing} strokeWidth={2.5} strokeLinecap="round" opacity={0.5} />
@@ -1822,9 +1835,16 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
     }
   }, [pan])
 
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault()
-    setZoom(z => Math.max(0.25, Math.min(2, z + e.deltaY * -0.001)))
+  // Register canvas wheel listener imperatively with { passive: false } to allow preventDefault
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      setZoom(z => Math.max(0.25, Math.min(2, z + e.deltaY * -0.001)))
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
   }, [])
 
   // ── Connected ids ──
@@ -2034,7 +2054,7 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
         className="flex-1 relative cursor-grab active:cursor-grabbing"
         style={{ overflow: 'hidden' }}
         onMouseDown={handleBgMouseDown} onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} onWheel={handleWheel}>
+        onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
 
         {/* Dot grid */}
         <div className="node-grid-bg absolute inset-0" style={{
