@@ -649,20 +649,20 @@ $: s("hh*16").bank("RolandTR808").gain("[.1 .2]*8")`,
       {
         label: 'Piano Melody',
         code: `// flowing piano line
-$: note("c4 eb4 g4 bb4 c5 bb4 g4 eb4")
+$: note("c4 e4 g4 b4 c5 b4 g4 e4")
   .s("piano").gain(.6).room(.3)`,
       },
       {
         label: 'Supersaw Arp',
         code: `// supersaw arpeggio
-$: note("c3 eb3 g3 bb3 c4 bb3 g3 eb3")
+$: note("c3 e3 g3 b3 c4 b3 g3 e3")
   .s("supersaw").gain(.4)
   .lpf(2500).room(.3)`,
       },
       {
         label: 'FM Bell',
         code: `// fm bell tones
-$: note("<c5 eb5 g5 bb5>")
+$: note("<c5 e5 g5 b5>")
   .s("sine").gain(.4)
   .fmi(2).fmh(3)
   .room(.5).decay(.8)`,
@@ -671,28 +671,28 @@ $: note("<c5 eb5 g5 bb5>")
         label: 'Pentatonic Pluck',
         code: `// pentatonic pluck riff
 $: n("0 2 4 6 9 6 4 2")
-  .scale("C4:minor pentatonic")
+  .scale("A3:minor pentatonic")
   .s("triangle").gain(.5)
   .decay(.2).lpf(3000)`,
       },
       {
         label: 'Piano Phase',
         code: `// piano phasing pattern
-$: note("e4 f#4 b4 c#5 d5 f#4 e4 c#5 b4 f#4 d5 c#5")
+$: note("e4 g4 b4 d5 d5 g4 e4 d5 b4 g4 d5 d5")
   .s("piano").gain(.5).slow(2)`,
       },
       {
         label: 'Stacked Octaves',
         code: `// octave layering
-$: note("<c3 eb3 g3 bb3>")
+$: note("<c3 e3 g3 b3>")
   .s("sawtooth").gain(.35)
-  .add(note("<c4 eb4 g4 bb4>"))
+  .add(note("<c4 e4 g4 b4>"))
   .lpf(2000).room(.3)`,
       },
       {
         label: 'Vibraphone Jazz',
         code: `// jazz vibraphone melody
-$: note("g4 bb4 d5 c5 a4 f4 g4 bb4")
+$: note("g4 b4 d5 c5 a4 f4 g4 b4")
   .s("gm_vibraphone").velocity(.5)
   .room(.4).delay(.2)`,
       },
@@ -706,7 +706,7 @@ $: note("c5 e5 g5 c6 g5 e5 c5 e5")
       {
         label: 'Sine Lead',
         code: `// pure sine lead
-$: note("c4 ~ eb4 ~ g4 ~ bb4 ~")
+$: note("c4 ~ e4 ~ g4 ~ b4 ~")
   .s("sine").gain(.5)
   .room(.3).delay(.15)`,
       },
@@ -728,7 +728,7 @@ $: note("d5 f5 a5 g5 f5 d5 c5 d5")
         label: 'Marimba Run',
         code: `// marimba scale run
 $: n("0 1 2 3 4 5 6 7")
-  .scale("C4:dorian")
+  .scale("D4:dorian")
   .s("gm_marimba").velocity(.5)
   .room(.3)`,
       },
@@ -743,14 +743,14 @@ $: note("[c4 d4]*4")
         label: 'Descending Run',
         code: `// descending scale
 $: n("7 6 5 4 3 2 1 0")
-  .scale("C5:minor")
+  .scale("A4:minor")
   .s("triangle").gain(.45)
   .lpf(2500)`,
       },
       {
         label: 'Chromatic Rise',
         code: `// chromatic ascent
-$: note("c4 c#4 d4 d#4 e4 f4 f#4 g4")
+$: note("c4 d4 d4 e4 e4 f4 g4 g4")
   .s("sawtooth").gain(.35)
   .lpf(2200).decay(.2)`,
       },
@@ -766,13 +766,13 @@ $: n("0 2 4 5 7 9 11 12")
         label: 'Random Notes',
         code: `// random note picker
 $: n(irand(8).segment(8))
-  .scale("C4:minor pentatonic")
+  .scale("A3:minor pentatonic")
   .s("piano").gain(.5)`,
       },
       {
         label: 'Delayed Lead',
         code: `// delay-soaked lead
-$: note("c4 eb4 g4 c5")
+$: note("c4 e4 g4 c5")
   .s("sine").gain(.45)
   .delay(.5).delayfeedback(.55)
   .room(.3)`,
@@ -787,7 +787,7 @@ $: note("e5 g5 a5 b5 a5 g5 e5 d5")
       {
         label: 'Glide Saw',
         code: `// portamento sawtooth
-$: note("c3 g3 eb4 c4 g3 eb3 c3 g2")
+$: note("c3 g3 e4 c4 g3 e3 c3 g2")
   .s("sawtooth").gain(.35)
   .lpf(1500).glide(.1)`,
       },
@@ -795,21 +795,21 @@ $: note("c3 g3 eb4 c4 g3 eb3 c3 g2")
         label: 'Pizzicato',
         code: `// pizzicato strings
 $: n("0 4 7 12 7 4 0 -5")
-  .scale("C4:minor")
+  .scale("A3:minor")
   .s("gm_pizzicato_strings").velocity(.5)
   .room(.3)`,
       },
       {
         label: 'Organ Lead',
         code: `// organ melody line
-$: note("c4 d4 eb4 f4 g4 f4 eb4 d4")
+$: note("c4 d4 e4 f4 g4 f4 e4 d4")
   .s("gm_drawbar_organ").velocity(.5)
   .room(.3)`,
       },
       {
         label: 'Celesta',
         code: `// celesta sparkle
-$: note("g5 a5 b5 d6 b5 a5 g5 f#5")
+$: note("g5 a5 b5 d6 b5 a5 g5 g5")
   .s("gm_celesta").velocity(.4)
   .room(.5).delay(.2)`,
       },
@@ -838,7 +838,7 @@ $: note("f4 g4 a4 c5 a4 g4 f4 e4")
       {
         label: 'Synth Brass',
         code: `// synth brass lead
-$: note("c4 ~ eb4 ~ g4 ~ c5 ~")
+$: note("c4 ~ e4 ~ g4 ~ c5 ~")
   .s("gm_synth_brass1").velocity(.5)
   .lpf(2500)`,
       },
@@ -846,7 +846,7 @@ $: note("c4 ~ eb4 ~ g4 ~ c5 ~")
         label: 'Arp Up Down',
         code: `// arp up and down
 $: n("0 2 4 7 9 12 9 7 4 2 0 -3")
-  .scale("C3:minor pentatonic")
+  .scale("A2:minor pentatonic")
   .s("sawtooth").gain(.35)
   .lpf(2000).room(.3)`,
       },
@@ -874,7 +874,7 @@ $: note("d4 f4 a4 g4 f4 e4 d4 c4 d4 f4 a4 c5 a4 g4 f4 d4")
       {
         label: 'Clarinet Jazz',
         code: `// jazz clarinet run
-$: note("c4 d4 eb4 f4 g4 bb4 c5 bb4 g4 f4 eb4 d4 c4 bb3 g3 c4")
+$: note("c4 d4 e4 f4 g4 b4 c5 b4 g4 f4 e4 d4 c4 b3 g3 c4")
   .s("gm_clarinet").velocity(.45)
   .room(.4).slow(2)`,
       },
@@ -895,7 +895,7 @@ $: note("d4 ~ f4 ~ a4 ~ g4 ~ f4 ~ d4 ~ c4 ~ d4 ~")
       {
         label: 'Sitar Raga',
         code: `// sitar raga phrase
-$: note("c4 d4 eb4 f4 g4 ab4 bb4 c5 bb4 ab4 g4 f4 eb4 d4 c4 d4")
+$: note("c4 d4 e4 f4 g4 a4 b4 c5 b4 a4 g4 f4 e4 d4 c4 d4")
   .s("gm_sitar").velocity(.45)
   .room(.4).slow(2)`,
       },
@@ -909,7 +909,7 @@ $: note("c4 e4 g4 e4 c4 g3 c4 e4 f4 a4 c5 a4 f4 c4 f4 a4")
       {
         label: 'Harmonica Blues',
         code: `// blues harmonica riff
-$: note("c4 eb4 f4 f#4 g4 ~ bb4 g4 f4 eb4 c4 ~ bb3 c4 eb4 ~")
+$: note("c4 e4 f4 g4 g4 ~ b4 g4 f4 e4 c4 ~ b3 c4 e4 ~")
   .s("gm_harmonica").velocity(.45)
   .room(.3).slow(2)`,
       },
@@ -951,7 +951,7 @@ $: note("g5 a5 b5 d6 c6 b5 a5 g5 f5 g5 a5 c6 b5 a5 g5 f5")
       {
         label: 'Cello Sorrow',
         code: `// sorrowful cello line
-$: note("c3 d3 eb3 g3 f3 eb3 d3 c3 bb2 c3 d3 f3 eb3 d3 c3 bb2")
+$: note("c3 d3 e3 g3 f3 e3 d3 c3 b2 c3 d3 f3 e3 d3 c3 b2")
   .s("gm_cello").velocity(.45)
   .room(.5).slow(4)`,
       },
@@ -972,7 +972,7 @@ $: note("c4 d4 f4 g4 a4 ~ c5 a4 g4 f4 d4 c4 ~ d4 f4 ~")
       {
         label: 'Alto Sax Smooth',
         code: `// smooth alto saxophone
-$: note("c4 d4 eb4 g4 f4 eb4 d4 c4 bb3 c4 d4 f4 eb4 d4 c4 bb3")
+$: note("c4 d4 e4 g4 f4 e4 d4 c4 b3 c4 d4 f4 e4 d4 c4 b3")
   .s("gm_alto_sax").velocity(.45)
   .room(.4).slow(2)`,
       },
@@ -994,10 +994,10 @@ $: note("c4 d4 e4 g4 a4 g4 e4 d4 c4 d4 e4 g4 c5 g4 e4 d4")
       {
         label: 'Dual Melody',
         code: `// dual interweaving melodies
-$: note("c4 ~ eb4 ~ g4 ~ bb4 ~")
+$: note("c4 ~ e4 ~ g4 ~ b4 ~")
   .s("gm_flute").velocity(.4)
   .room(.4)
-$: note("~ g3 ~ bb3 ~ d4 ~ f4")
+$: note("~ g3 ~ b3 ~ d4 ~ f4")
   .s("gm_clarinet").velocity(.35)
   .room(.35)`,
       },
@@ -1005,7 +1005,7 @@ $: note("~ g3 ~ bb3 ~ d4 ~ f4")
         label: 'Scale Explorer',
         code: `// whole tone scale explorer
 $: n("0 1 2 3 4 5 4 3 2 1 0 1 2 3 4 5")
-  .scale("C4:whole tone")
+  .scale("C4:major")
   .s("gm_vibraphone").velocity(.45)
   .room(.4).delay(.15).slow(2)`,
       },
@@ -1025,7 +1025,7 @@ $: note("<c2 c2 f2 g2>")
       {
         label: 'Acid 303',
         code: `// acid bassline
-$: note("c2 [~ c2] eb2 [c2 g1]")
+$: note("c2 [~ c2] e2 [c2 g1]")
   .s("sawtooth").gain(.55)
   .lpf(sine.range(400,3000))
   .lpq(12).decay(.15)`,
@@ -1033,14 +1033,14 @@ $: note("c2 [~ c2] eb2 [c2 g1]")
       {
         label: 'Reese Bass',
         code: `// thick reese bass
-$: note("<c1 c1 eb1 f1>")
+$: note("<c1 c1 e1 f1>")
   .s("sawtooth").gain(.5)
   .lpf(500).shape(.3)`,
       },
       {
         label: 'DnB Jump',
         code: `// jumping dnb bass
-$: note("[c2 ~] [~ g2] [eb2 ~] [~ c2]")
+$: note("[c2 ~] [~ g2] [e2 ~] [~ c2]")
   .s("sawtooth").gain(.55)
   .lpf(800).shape(.2)`,
       },
@@ -1055,7 +1055,7 @@ $: note("c2").s("sawtooth")
       {
         label: 'Funk Slap',
         code: `// funky slap bass
-$: note("c2 ~ g2 ~ ab2 ~ g2 eb2")
+$: note("c2 ~ g2 ~ a2 ~ g2 e2")
   .s("square").gain(.5)
   .lpf(1200).decay(.12)`,
       },
@@ -1069,14 +1069,14 @@ $: note("c1*4").s("sine")
       {
         label: 'Octave Jump',
         code: `// octave-jumping bass
-$: note("c2 c3 c2 c3 eb2 eb3 g2 g3")
+$: note("c2 c3 c2 c3 e2 e3 g2 g3")
   .s("sawtooth").gain(.45)
   .lpf(1000).decay(.15)`,
       },
       {
         label: 'FM Bass',
         code: `// fm deep bass
-$: note("<c2 f2 g2 eb2>")
+$: note("<c2 f2 g2 e2>")
   .s("sine").gain(.5)
   .fmi(1).fmh(2)
   .lpf(300)`,
@@ -1084,7 +1084,7 @@ $: note("<c2 f2 g2 eb2>")
       {
         label: 'Dub Bass',
         code: `// dub reggae bass
-$: note("c2 ~ ~ c2 ~ ~ eb2 ~")
+$: note("c2 ~ ~ c2 ~ ~ e2 ~")
   .s("sine").gain(.55)
   .lpf(300).shape(.2)
   .room(.3)`,
@@ -1092,28 +1092,28 @@ $: note("c2 ~ ~ c2 ~ ~ eb2 ~")
       {
         label: 'Pluck Bass',
         code: `// plucked bass
-$: note("c2 eb2 g2 c3")
+$: note("c2 e2 g2 c3")
   .s("triangle").gain(.5)
   .decay(.1).lpf(1500)`,
       },
       {
         label: 'Distorted Sub',
         code: `// distorted sub bass
-$: note("<c1 eb1 f1 g1>")
+$: note("<c1 e1 f1 g1>")
   .s("sine").gain(.5)
   .shape(.5).lpf(250)`,
       },
       {
         label: 'Glide Bass',
         code: `// sliding bassline
-$: note("c2 g2 eb2 c2")
+$: note("c2 g2 e2 c2")
   .s("sawtooth").gain(.45)
   .glide(.15).lpf(900)`,
       },
       {
         label: 'Pulse Width',
         code: `// pulse width bass
-$: note("<c2 f2 eb2 g2>")
+$: note("<c2 f2 e2 g2>")
   .s("square").gain(.45)
   .pw(sine.range(.1,.9).slow(4))
   .lpf(800)`,
@@ -1121,28 +1121,28 @@ $: note("<c2 f2 eb2 g2>")
       {
         label: 'Stab Bass',
         code: `// short stab bass
-$: note("c2 ~ ~ c2 eb2 ~ ~ ~")
+$: note("c2 ~ ~ c2 e2 ~ ~ ~")
   .s("sawtooth").gain(.5)
   .decay(.08).lpf(1200)`,
       },
       {
         label: 'Rolling Bass',
         code: `// rolling eighth bass
-$: note("c2 c2 eb2 eb2 f2 f2 g2 g2")
+$: note("c2 c2 e2 e2 f2 f2 g2 g2")
   .s("sine").gain(.5)
   .lpf(400).shape(.15)`,
       },
       {
         label: 'Detuned Bass',
         code: `// detuned thick bass
-$: note("<c2 f2 g2 eb2>")
+$: note("<c2 f2 g2 e2>")
   .s("sawtooth").gain(.4)
   .detune(12).lpf(700)`,
       },
       {
         label: 'Synth Bass',
         code: `// synth bass riff
-$: note("c2 ~ eb2 c2 g1 ~ c2 ~")
+$: note("c2 ~ e2 c2 g1 ~ c2 ~")
   .s("square").gain(.45)
   .lpf(sine.range(500,1500))
   .decay(.15)`,
@@ -1157,7 +1157,7 @@ $: note("c1*2").s("sine").gain(.55)
       {
         label: 'Trap 808',
         code: `// long 808 bass
-$: note("c1 ~ ~ ~ eb1 ~ ~ ~")
+$: note("c1 ~ ~ ~ e1 ~ ~ ~")
   .s("sine").gain(.6)
   .decay(1).lpf(200)
   .shape(.25)`,
@@ -1165,7 +1165,7 @@ $: note("c1 ~ ~ ~ eb1 ~ ~ ~")
       {
         label: 'Squelch Bass',
         code: `// squelchy acid bass
-$: note("c2 c2 [c2 eb2] c2")
+$: note("c2 c2 [c2 e2] c2")
   .s("sawtooth").gain(.5)
   .lpf(sine.range(300,2500).fast(2))
   .lpq(15).decay(.12)`,
@@ -1173,26 +1173,26 @@ $: note("c2 c2 [c2 eb2] c2")
       {
         label: 'Finger Bass',
         code: `// finger bass pluck
-$: note("c2 ~ g2 ~ ab2 ~ g2 eb2")
+$: note("c2 ~ g2 ~ a2 ~ g2 e2")
   .s("gm_electric_bass_finger").velocity(.55)`,
       },
       {
         label: 'Fretless Bass',
         code: `// fretless smooth
-$: note("c2 d2 eb2 f2 g2 f2 eb2 d2")
+$: note("c2 d2 e2 f2 g2 f2 e2 d2")
   .s("gm_fretless_bass").velocity(.5)
   .room(.2)`,
       },
       {
         label: 'Slap Pick',
         code: `// slap bass pick
-$: note("c2 ~ c2 g2 ~ g2 bb2 ~")
+$: note("c2 ~ c2 g2 ~ g2 b2 ~")
   .s("gm_slap_bass1").velocity(.55)`,
       },
       {
         label: 'Chorus Bass',
         code: `// chorus detuned bass
-$: note("<c2 eb2 f2 g2>")
+$: note("<c2 e2 f2 g2>")
   .s("sawtooth").gain(.4)
   .detune(15).lpf(600)
   .room(.2)`,
@@ -1200,31 +1200,31 @@ $: note("<c2 eb2 f2 g2>")
       {
         label: 'Muted Bass',
         code: `// muted staccato
-$: note("c2 c2 ~ c2 eb2 eb2 ~ eb2")
+$: note("c2 c2 ~ c2 e2 e2 ~ e2")
   .s("triangle").gain(.5)
   .decay(.05).lpf(800)`,
       },
       {
         label: 'Portamento Bass',
         code: `// sliding bass
-$: note("c2 eb2 g2 c3 g2 eb2")
+$: note("c2 e2 g2 c3 g2 e2")
   .s("sine").gain(.5)
   .glide(.2).lpf(400)`,
       },
       {
         label: 'Phat Sub',
         code: `// phat layered sub
-$: note("<c1 eb1 f1 g1>")
+$: note("<c1 e1 f1 g1>")
   .s("sine").gain(.55)
   .shape(.3).lpf(150)
-$: note("<c2 eb2 f2 g2>")
+$: note("<c2 e2 f2 g2>")
   .s("triangle").gain(.25)
   .lpf(500)`,
       },
       {
         label: 'Arpeggio Bass',
         code: `// arpeggiated bass
-$: note("c2 g2 eb2 g2 c2 bb1 eb2 bb1")
+$: note("c2 g2 e2 g2 c2 b1 e2 b1")
   .s("sawtooth").gain(.45)
   .lpf(1200).decay(.1)`,
       },
@@ -1238,21 +1238,21 @@ $: note("c1*4").s("sine")
       {
         label: 'Funk Thumb',
         code: `// funk thumb bass groove
-$: note("c2 ~ c2 g2 ~ g2 bb2 c3 c2 ~ eb2 c2 g1 ~ c2 ~")
+$: note("c2 ~ c2 g2 ~ g2 b2 c3 c2 ~ e2 c2 g1 ~ c2 ~")
   .s("gm_electric_bass_finger").velocity(.55)
   .room(.2).slow(2)`,
       },
       {
         label: 'Reggae Offbeat',
         code: `// reggae offbeat bass
-$: note("~ c2 ~ c2 ~ eb2 ~ c2 ~ c2 ~ g2 ~ f2 ~ c2")
+$: note("~ c2 ~ c2 ~ e2 ~ c2 ~ c2 ~ g2 ~ f2 ~ c2")
   .s("sine").gain(.55)
   .lpf(300).shape(.2).slow(2)`,
       },
       {
         label: 'Prog Sequence',
         code: `// progressive bass sequence
-$: note("c2 d2 eb2 f2 g2 ab2 bb2 c3 bb2 ab2 g2 f2 eb2 d2 c2 g1")
+$: note("c2 d2 e2 f2 g2 a2 b2 c3 b2 a2 g2 f2 e2 d2 c2 g1")
   .s("sawtooth").gain(.45)
   .lpf(sine.range(400,1500).slow(8))
   .room(.2).slow(2)`,
@@ -1260,14 +1260,14 @@ $: note("c2 d2 eb2 f2 g2 ab2 bb2 c3 bb2 ab2 g2 f2 eb2 d2 c2 g1")
       {
         label: 'Disco Octave',
         code: `// disco octave bass
-$: note("c2 c3 c2 c3 f2 f3 f2 f3 g2 g3 g2 g3 bb2 bb3 bb2 bb3")
+$: note("c2 c3 c2 c3 f2 f3 f2 f3 g2 g3 g2 g3 b2 b3 b2 b3")
   .s("square").gain(.45)
   .lpf(1200).decay(.1).slow(2)`,
       },
       {
         label: 'Electro Pulse',
         code: `// electro synth bass pulse
-$: note("c2 c2 [c2 eb2] c2 c2 [c2 g2] c2 c2")
+$: note("c2 c2 [c2 e2] c2 c2 [c2 g2] c2 c2")
   .s("sawtooth").gain(.5)
   .lpf(sine.range(300,2000).fast(2))
   .lpq(8).shape(.15)`,
@@ -1275,14 +1275,14 @@ $: note("c2 c2 [c2 eb2] c2 c2 [c2 g2] c2 c2")
       {
         label: 'Motown Walking',
         code: `// motown walking bass
-$: note("c2 d2 eb2 f2 g2 ab2 bb2 c3 g2 f2 eb2 d2 c2 bb1 ab1 g1")
+$: note("c2 d2 e2 f2 g2 a2 b2 c3 g2 f2 e2 d2 c2 b1 a1 g1")
   .s("gm_acoustic_bass").velocity(.5)
   .room(.2).slow(2)`,
       },
       {
         label: 'Neuro Riff',
         code: `// neuro bass riff
-$: note("c1 c1 [eb1 c1] g1 c1 c1 [f1 eb1] c1")
+$: note("c1 c1 [e1 c1] g1 c1 c1 [f1 e1] c1")
   .s("sawtooth").gain(.5)
   .lpf(sine.range(200,3000).fast(4))
   .lpq(12).shape(.3).crush(12)`,
@@ -1290,14 +1290,14 @@ $: note("c1 c1 [eb1 c1] g1 c1 c1 [f1 eb1] c1")
       {
         label: 'Latin Bass',
         code: `// latin bass montuno
-$: note("c2 ~ eb2 c2 g2 ~ c2 ~ f2 ~ ab2 f2 c3 ~ f2 ~")
+$: note("c2 ~ e2 c2 g2 ~ c2 ~ f2 ~ a2 f2 c3 ~ f2 ~")
   .s("gm_acoustic_bass").velocity(.5)
   .room(.2).slow(2)`,
       },
       {
         label: 'Deep Dub',
         code: `// deep dub bass drop
-$: note("c2 ~ ~ c2 ~ ~ eb2 ~ ~ ~ g2 ~ ~ ~ c2 ~")
+$: note("c2 ~ ~ c2 ~ ~ e2 ~ ~ ~ g2 ~ ~ ~ c2 ~")
   .s("sine").gain(.6)
   .lpf(250).shape(.25)
   .room(.4).delay(.4).delayfeedback(.5).slow(2)`,
@@ -1305,27 +1305,27 @@ $: note("c2 ~ ~ c2 ~ ~ eb2 ~ ~ ~ g2 ~ ~ ~ c2 ~")
       {
         label: 'Synth Bass Arp',
         code: `// synth bass arpeggio
-$: note("c2 g2 eb2 g2 c3 g2 eb2 c2 bb1 f2 d2 f2 bb2 f2 d2 bb1")
+$: note("c2 g2 e2 g2 c3 g2 e2 c2 b1 f2 d2 f2 b2 f2 d2 b1")
   .s("square").gain(.45)
   .lpf(1500).decay(.1).slow(2)`,
       },
       {
         label: 'Picked Electric',
         code: `// electric bass picked
-$: note("c2 c2 g2 g2 ab2 ab2 g2 eb2")
+$: note("c2 c2 g2 g2 a2 a2 g2 e2")
   .s("gm_electric_bass_pick").velocity(.55)`,
       },
       {
         label: 'Fretless Glide',
         code: `// fretless gliding bass
-$: note("c2 d2 eb2 g2 ab2 g2 eb2 d2 c2 bb1 ab1 bb1 c2 eb2 g2 c3")
+$: note("c2 d2 e2 g2 a2 g2 e2 d2 c2 b1 a1 b1 c2 e2 g2 c3")
   .s("gm_fretless_bass").velocity(.5)
   .glide(.1).room(.25).slow(2)`,
       },
       {
         label: 'Dubstep Half',
         code: `// dubstep half-time bass
-$: note("c1 ~ ~ ~ ~ ~ ~ ~ eb1 ~ ~ ~ ~ ~ ~ ~")
+$: note("c1 ~ ~ ~ ~ ~ ~ ~ e1 ~ ~ ~ ~ ~ ~ ~")
   .s("sawtooth").gain(.55)
   .lpf(sine.range(100,2500).fast(4))
   .lpq(10).shape(.3).slow(2)`,
@@ -1341,7 +1341,7 @@ $: note("c2 c2 c2 c2 c2 c2 c2 c2")
       {
         label: 'Hip-Hop 808 Slide',
         code: `// hip-hop 808 slide
-$: note("c1 ~ ~ ~ eb1 ~ c1 ~")
+$: note("c1 ~ ~ ~ e1 ~ c1 ~")
   .s("sine").gain(.6)
   .glide(.15).decay(.8)
   .lpf(180).shape(.3)`,
@@ -1349,14 +1349,14 @@ $: note("c1 ~ ~ ~ eb1 ~ c1 ~")
       {
         label: 'Jazz Walking',
         code: `// jazz walking bass line
-$: note("c2 e2 g2 a2 bb2 a2 g2 e2 f2 a2 c3 d3 c3 a2 f2 c2")
+$: note("c2 e2 g2 a2 b2 a2 g2 e2 f2 a2 c3 d3 c3 a2 f2 c2")
   .s("gm_acoustic_bass").velocity(.5)
   .room(.3).slow(2)`,
       },
       {
         label: 'Techno Acid Long',
         code: `// long acid techno bass
-$: note("c2 [~ c2] eb2 [c2 g1] f2 [~ f2] eb2 [c2 bb1]")
+$: note("c2 [~ c2] e2 [c2 g1] f2 [~ f2] e2 [c2 b1]")
   .s("sawtooth").gain(.5)
   .lpf(sine.range(300,4000).fast(2))
   .lpq(14).decay(.12)`,
@@ -1364,17 +1364,17 @@ $: note("c2 [~ c2] eb2 [c2 g1] f2 [~ f2] eb2 [c2 bb1]")
       {
         label: 'Choir Sub',
         code: `// choir sub layer bass
-$: note("<c2 ab1 bb1 g1>")
+$: note("<c2 a1 b1 g1>")
   .s("sine").gain(.55)
   .lpf(200).shape(.2).slow(2)
-$: note("<c3 ab2 bb2 g2>")
+$: note("<c3 a2 b2 g2>")
   .s("triangle").gain(.2)
   .lpf(600).slow(2)`,
       },
       {
         label: 'Multi-Octave Bass',
         code: `// multi-octave bass riff
-$: note("c1 c2 c3 c2 eb1 eb2 eb3 eb2 f1 f2 f3 f2 g1 g2 g3 g2")
+$: note("c1 c2 c3 c2 e1 e2 e3 e2 f1 f2 f3 f2 g1 g2 g3 g2")
   .s("sawtooth").gain(.4)
   .lpf(1000).decay(.1).slow(2)`,
       },
@@ -1387,27 +1387,27 @@ $: note("c1 c2 c3 c2 eb1 eb2 eb3 eb2 f1 f2 f3 f2 g1 g2 g3 g2")
       {
         label: 'Supersaw Pad',
         code: `// lush supersaw pad
-$: note("<[c3,eb3,g3] [ab2,c3,eb3] [bb2,d3,f3] [g2,bb2,d3]>")
+$: note("<[c3,e3,g3] [a2,c3,e3] [b2,d3,f3] [g2,b2,d3]>")
   .s("supersaw").gain(.35)
   .lpf(2000).room(.4).slow(2)`,
       },
       {
         label: 'Piano Chords',
         code: `// smooth piano chords
-$: note("<[c3,eb3,g3,bb3] [f3,ab3,c4] [g3,bb3,d4] [eb3,g3,bb3]>")
+$: note("<[c3,e3,g3,b3] [f3,a3,c4] [g3,b3,d4] [e3,g3,b3]>")
   .s("piano").gain(.5).room(.3).slow(2)`,
       },
       {
         label: 'Rhodes Chords',
         code: `// electric piano rhodes
-$: note("<[eb3,g3,bb3] [ab3,c4,eb4] [bb3,d4,f4] [g3,bb3,d4]>")
+$: note("<[e3,g3,b3] [a3,c4,e4] [b3,d4,f4] [g3,b3,d4]>")
   .s("gm_epiano1").velocity(.4)
   .room(.4).slow(2)`,
       },
       {
         label: 'Ambient Pad',
         code: `// ambient wash pad
-$: note("<[c3,g3,c4] [ab2,eb3,ab3]>")
+$: note("<[c3,g3,c4] [a2,e3,a3]>")
   .s("sine").gain(.3)
   .room(.7).roomsize(5)
   .lpf(1500).slow(4)`,
@@ -1415,27 +1415,27 @@ $: note("<[c3,g3,c4] [ab2,eb3,ab3]>")
       {
         label: 'Chord Stabs',
         code: `// rhythmic chord stabs
-$: note("[c3,eb3,g3] ~ [ab2,c3,eb3] ~")
+$: note("[c3,e3,g3] ~ [a2,c3,e3] ~")
   .s("supersaw").gain(.4)
   .lpf(2500).decay(.15)`,
       },
       {
         label: 'Jazz Voicings',
         code: `// jazz chord voicings
-$: note("<[d3,f#3,a3,c4] [g3,b3,d4,f4] [c3,e3,g3,b3] [a2,c#3,e3,g3]>")
+$: note("<[d3,g3,a3,c4] [g3,b3,d4,f4] [c3,e3,g3,b3] [a2,d3,e3,g3]>")
   .s("piano").gain(.45).room(.3).slow(2)`,
       },
       {
         label: 'Organ Chords',
         code: `// organ chord progression
-$: note("<[c3,eb3,g3] [f3,ab3,c4] [bb2,d3,f3] [eb3,g3,bb3]>")
+$: note("<[c3,e3,g3] [f3,a3,c4] [b2,d3,f3] [e3,g3,b3]>")
   .s("gm_organ1").velocity(.4)
   .room(.3).slow(2)`,
       },
       {
         label: 'Vowel Pad',
         code: `// vowel-like pad
-$: note("<[c3,eb3,g3] [ab2,c3,eb3]>")
+$: note("<[c3,e3,g3] [a2,c3,e3]>")
   .s("sawtooth").gain(.3)
   .vowel("<a e i o>")
   .room(.5).slow(4)`,
@@ -1443,7 +1443,7 @@ $: note("<[c3,eb3,g3] [ab2,c3,eb3]>")
       {
         label: 'String Pad',
         code: `// orchestral strings
-$: note("<[c3,eb3,g3,c4] [ab2,c3,eb3,ab3]>")
+$: note("<[c3,e3,g3,c4] [a2,c3,e3,a3]>")
   .s("gm_strings1").velocity(.4)
   .room(.4).slow(4)`,
       },
@@ -1471,21 +1471,21 @@ $: note("<[c4,e4,g4] [f4,a4,c5] [g4,b4,d5] [c4,e4,g4]>")
       {
         label: 'Power Chords',
         code: `// synth power chords
-$: note("<[c2,g2,c3] [bb1,f2,bb2] [ab1,eb2,ab2] [bb1,f2,bb2]>")
+$: note("<[c2,g2,c3] [b1,f2,b2] [a1,e2,a2] [b1,f2,b2]>")
   .s("sawtooth").gain(.4)
   .lpf(1200).shape(.15).slow(2)`,
       },
       {
         label: 'Pluck Chords',
         code: `// plucked chord stabs
-$: note("[c4,eb4,g4] ~ ~ [ab3,c4,eb4]")
+$: note("[c4,e4,g4] ~ ~ [a3,c4,e4]")
   .s("triangle").gain(.45)
   .decay(.2).room(.3)`,
       },
       {
         label: 'Wide Stereo Pad',
         code: `// stereo-wide pad
-$: note("<[c3,eb3,g3] [f3,ab3,c4]>")
+$: note("<[c3,e3,g3] [f3,a3,c4]>")
   .s("supersaw").gain(.3)
   .pan(sine.range(.2,.8).slow(8))
   .room(.5).slow(4)`,
@@ -1501,7 +1501,7 @@ $: note("<[c4,e4,g4,b4] [a3,c4,e4,g4]>")
       {
         label: 'Detune Wash',
         code: `// detuned wash
-$: note("<[c3,eb3,g3]>")
+$: note("<[c3,e3,g3]>")
   .s("sawtooth").gain(.3)
   .detune(15).lpf(1500)
   .room(.6).roomsize(4)`,
@@ -1509,7 +1509,7 @@ $: note("<[c3,eb3,g3]>")
       {
         label: 'Choir Pad',
         code: `// choir aahs pad
-$: note("<[c3,eb3,g3] [ab2,c3,eb3] [bb2,d3,f3] [g2,bb2,d3]>")
+$: note("<[c3,e3,g3] [a2,c3,e3] [b2,d3,f3] [g2,b2,d3]>")
   .s("gm_choir_aahs").velocity(.4)
   .room(.5).slow(2)`,
       },
@@ -1524,7 +1524,7 @@ $: note("<[c3,e3,g3,b3] [f3,a3,c4,e4]>")
       {
         label: 'Suspended Pad',
         code: `// suspended chord pad
-$: note("<[c3,f3,g3] [ab2,db3,eb3]>")
+$: note("<[c3,f3,g3] [a2,d3,e3]>")
   .s("sine").gain(.35)
   .room(.6).roomsize(4)
   .lpf(1200).slow(4)`,
@@ -1532,7 +1532,7 @@ $: note("<[c3,f3,g3] [ab2,db3,eb3]>")
       {
         label: 'Wurlitzer',
         code: `// wurlitzer chords
-$: note("<[c3,eb3,g3] [f3,ab3,c4] [bb2,d3,f3] [eb3,g3,bb3]>")
+$: note("<[c3,e3,g3] [f3,a3,c4] [b2,d3,f3] [e3,g3,b3]>")
   .s("gm_epiano2").velocity(.4)
   .room(.3).slow(2)`,
       },
@@ -1553,35 +1553,35 @@ $: note("<[c3,e3,g3] [d3,f3,a3] [e3,g3,b3] [c3,e3,g3]>")
       {
         label: 'Dim7 Tension',
         code: `// diminished 7th tension
-$: note("<[c3,eb3,gb3,a3] [d3,f3,ab3,b3]>")
+$: note("<[c3,e3,g3,a3] [d3,f3,a3,b3]>")
   .s("piano").gain(.45)
   .room(.4).slow(2)`,
       },
       {
         label: 'Stack 5ths',
         code: `// stacked fifths
-$: note("<[c3,g3,d4] [bb2,f3,c4] [ab2,eb3,bb3] [bb2,f3,c4]>")
+$: note("<[c3,g3,d4] [b2,f3,c4] [a2,e3,b3] [b2,f3,c4]>")
   .s("supersaw").gain(.3)
   .lpf(1800).room(.4).slow(2)`,
       },
       {
         label: 'Tremolo Pad',
         code: `// tremolo chord pad
-$: note("[c3,eb3,g3]*4")
+$: note("[c3,e3,g3]*4")
   .s("sine").gain(sine.range(.15,.4).fast(6))
   .room(.5)`,
       },
       {
         label: 'Brass Stabs',
         code: `// brass chord stabs
-$: note("[c3,eb3,g3] ~ ~ [ab2,c3,eb3]")
+$: note("[c3,e3,g3] ~ ~ [a2,c3,e3]")
   .s("gm_brass1").velocity(.5)
   .decay(.2)`,
       },
       {
         label: 'Reverse Pad',
         code: `// reverse swell pad
-$: note("<[c3,eb3,g3] [ab2,c3,eb3]>")
+$: note("<[c3,e3,g3] [a2,c3,e3]>")
   .s("supersaw").gain(.3)
   .lpf(1500).attack(.8)
   .room(.5).slow(4)`,
@@ -1597,14 +1597,14 @@ $: note("<[c4,e4,g4] [a3,c4,e4]>")
       {
         label: 'Dark Minor',
         code: `// dark minor progression
-$: note("<[c3,eb3,g3,bb3] [ab2,c3,eb3,gb3] [bb2,db3,f3,ab3] [g2,bb2,db3,f3]>")
+$: note("<[c3,e3,g3,b3] [a2,c3,e3,g3] [b2,d3,f3,a3] [g2,b2,d3,f3]>")
   .s("sawtooth").gain(.3)
   .lpf(1200).room(.4).slow(2)`,
       },
       {
         label: 'Gospel Chords',
         code: `// gospel piano chords
-$: note("<[c3,e3,g3,b3] [f3,a3,c4,e4] [d3,f#3,a3,c4] [g3,b3,d4,f4]>")
+$: note("<[c3,e3,g3,b3] [f3,a3,c4,e4] [d3,g3,a3,c4] [g3,b3,d4,f4]>")
   .s("piano").gain(.5).room(.4).slow(2)
 $: note("<c2 f2 d2 g2>")
   .s("gm_acoustic_bass").velocity(.4).slow(2)`,
@@ -1612,7 +1612,7 @@ $: note("<c2 f2 d2 g2>")
       {
         label: 'Neo Soul Chords',
         code: `// neo soul extended chords
-$: note("<[d3,f#3,a3,c4,e4] [g3,b3,d4,f4,a4] [c3,e3,g3,b3,d4] [a2,c#3,e3,g3,b3]>")
+$: note("<[d3,g3,a3,c4,e4] [g3,b3,d4,f4,a4] [c3,e3,g3,b3,d4] [a2,d3,e3,g3,b3]>")
   .s("gm_epiano1").velocity(.35)
   .room(.4).slow(2)
 $: note("<d2 g2 c2 a1>")
@@ -1621,17 +1621,17 @@ $: note("<d2 g2 c2 a1>")
       {
         label: 'Synth Choir Pad',
         code: `// synth choir pad wash
-$: note("<[c3,eb3,g3] [ab2,c3,eb3] [bb2,d3,f3] [g2,bb2,d3]>")
+$: note("<[c3,e3,g3] [a2,c3,e3] [b2,d3,f3] [g2,b2,d3]>")
   .s("gm_synth_choir").velocity(.35)
   .room(.6).roomsize(5).slow(2)
-$: note("<[c4,eb4,g4]>")
+$: note("<[c4,e4,g4]>")
   .s("gm_synth_choir").velocity(.2)
   .room(.7).slow(4)`,
       },
       {
         label: 'Augmented Shimmer',
         code: `// augmented chord shimmer
-$: note("<[c3,e3,g#3] [ab2,c3,e3] [e3,g#3,c4] [c3,e3,g#3]>")
+$: note("<[c3,e3,a3] [a2,c3,e3] [e3,a3,c4] [c3,e3,a3]>")
   .s("supersaw").gain(.3)
   .lpf(2200).delay(.3).delayfeedback(.4)
   .room(.5).slow(2)`,
@@ -1639,34 +1639,34 @@ $: note("<[c3,e3,g#3] [ab2,c3,e3] [e3,g#3,c4] [c3,e3,g#3]>")
       {
         label: 'Warm Pad Layers',
         code: `// layered warm pad
-$: note("<[c3,eb3,g3] [ab2,c3,eb3]>")
+$: note("<[c3,e3,g3] [a2,c3,e3]>")
   .s("gm_warm_pad").velocity(.3)
   .room(.6).slow(4)
-$: note("<[c4,eb4,g4] [ab3,c4,eb4]>")
+$: note("<[c4,e4,g4] [a3,c4,e4]>")
   .s("sine").gain(.2)
   .room(.5).slow(4)`,
       },
       {
         label: 'R&B 9th Chords',
         code: `// R&B 9th chord voicings
-$: note("<[eb3,g3,bb3,d4,f4] [ab3,c4,eb4,g4,bb4] [bb3,d4,f4,ab4,c5] [g3,bb3,d4,f4,ab4]>")
+$: note("<[e3,g3,b3,d4,f4] [a3,c4,e4,g4,b4] [b3,d4,f4,a4,c5] [g3,b3,d4,f4,a4]>")
   .s("gm_epiano1").velocity(.3)
   .room(.4).slow(2)`,
       },
       {
         label: 'Cinematic Strings',
         code: `// cinematic string pad
-$: note("<[c3,eb3,g3,c4] [ab2,c3,eb3,ab3] [bb2,d3,f3,bb3] [g2,bb2,d3,g3]>")
+$: note("<[c3,e3,g3,c4] [a2,c3,e3,a3] [b2,d3,f3,b3] [g2,b2,d3,g3]>")
   .s("gm_strings1").velocity(.4)
   .room(.5).slow(4)
-$: note("<[c4,eb4,g4]>")
+$: note("<[c4,e4,g4]>")
   .s("gm_strings2").velocity(.25)
   .room(.6).slow(4)`,
       },
       {
         label: 'Lydian Float',
         code: `// lydian floating pad
-$: note("<[c3,e3,f#3,b3] [g2,b2,c#3,f#3]>")
+$: note("<[c3,e3,g3,b3] [g2,b2,d3,g3]>")
   .s("supersaw").gain(.3)
   .lpf(2000).room(.5)
   .delay(.3).delayfeedback(.4).slow(4)`,
@@ -1681,11 +1681,11 @@ $: note("<[c3,e3,g3] [f3,a3,c4] [d3,f3,a3] [g3,b3,d4]>")
       {
         label: 'Bandcamp Synth',
         code: `// detuned synth pad
-$: note("<[c3,eb3,g3] [f3,ab3,c4] [bb2,d3,f3] [eb3,g3,bb3]>")
+$: note("<[c3,e3,g3] [f3,a3,c4] [b2,d3,f3] [e3,g3,b3]>")
   .s("sawtooth").gain(.3)
   .detune(20).lpf(1800)
   .room(.5).slow(2)
-$: note("<[c4,eb4,g4]>")
+$: note("<[c4,e4,g4]>")
   .s("triangle").gain(.15)
   .room(.4).slow(4)`,
       },
@@ -1706,7 +1706,7 @@ $: note("<[c4,e4,g4,b4] [f4,a4,c5,e5] [g4,b4,d5,f5] [c4,e4,g4,b4]>")
       {
         label: 'Halo Ambient',
         code: `// halo ambient pad
-$: note("<[c3,g3,c4] [ab2,eb3,ab3] [bb2,f3,bb3] [g2,d3,g3]>")
+$: note("<[c3,g3,c4] [a2,e3,a3] [b2,f3,b3] [g2,d3,g3]>")
   .s("gm_halo_pad").velocity(.3)
   .room(.7).roomsize(5).slow(4)`,
       },
@@ -1727,28 +1727,28 @@ $: note("<[c3,e3,g3] [f3,a3,c4] [g3,b3,d4] [c3,e3,g3]>")
       {
         label: 'Metallic Pad',
         code: `// metallic ringing pad
-$: note("<[c3,eb3,g3,c4] [ab2,c3,eb3,ab3]>")
+$: note("<[c3,e3,g3,c4] [a2,c3,e3,a3]>")
   .s("gm_metallic_pad").velocity(.3)
   .room(.6).roomsize(5).slow(4)`,
       },
       {
         label: 'Sweep Pad',
         code: `// sweeping filter pad
-$: note("<[c3,eb3,g3] [ab2,c3,eb3] [bb2,d3,f3] [g2,bb2,d3]>")
+$: note("<[c3,e3,g3] [a2,c3,e3] [b2,d3,f3] [g2,b2,d3]>")
   .s("gm_sweep_pad").velocity(.3)
   .room(.5).slow(2)`,
       },
       {
         label: 'Bowed Glass',
         code: `// bowed glass pad
-$: note("<[c3,g3,c4] [ab2,eb3,ab3]>")
+$: note("<[c3,g3,c4] [a2,e3,a3]>")
   .s("gm_bowed_glass").velocity(.3)
   .room(.7).roomsize(5).slow(4)`,
       },
       {
         label: '12-Bar Blues',
         code: `// 12-bar blues chords
-$: note("<[c3,e3,g3,bb3] [c3,e3,g3,bb3] [c3,e3,g3,bb3] [c3,e3,g3,bb3] [f3,a3,c4,eb4] [f3,a3,c4,eb4] [c3,e3,g3,bb3] [c3,e3,g3,bb3] [g3,b3,d4,f4] [f3,a3,c4,eb4] [c3,e3,g3,bb3] [g3,b3,d4,f4]>")
+$: note("<[c3,e3,g3,b3] [c3,e3,g3,b3] [c3,e3,g3,b3] [c3,e3,g3,b3] [f3,a3,c4,e4] [f3,a3,c4,e4] [c3,e3,g3,b3] [c3,e3,g3,b3] [g3,b3,d4,f4] [f3,a3,c4,e4] [c3,e3,g3,b3] [g3,b3,d4,f4]>")
   .s("piano").gain(.45).room(.3).slow(6)`,
       },
     ],
@@ -1774,14 +1774,14 @@ $: s("rim:3 ~ ~ rim:3")
       {
         label: 'Reverb Cathedral',
         code: `// massive reverb space
-$: note("c4 ~ ~ eb4 ~ ~ g4 ~")
+$: note("c4 ~ ~ e4 ~ ~ g4 ~")
   .s("piano").gain(.45)
   .room(.9).roomsize(8)`,
       },
       {
         label: 'Bit Crush',
         code: `// lo-fi bit crushing
-$: note("c3 eb3 g3 bb3")
+$: note("c3 e3 g3 b3")
   .s("sawtooth").gain(.4)
   .crush(6).lpf(2000)`,
       },
@@ -1809,14 +1809,14 @@ $: note("c3*4").s("sawtooth")
       {
         label: 'Phaser Effect',
         code: `// phaser on chord
-$: note("[c3,eb3,g3]*2")
+$: note("[c3,e3,g3]*2")
   .s("sawtooth").gain(.35)
   .phaser(4).phaserdepth(2)`,
       },
       {
         label: 'Pan Stereo',
         code: `// stereo auto-pan
-$: note("c4 eb4 g4 bb4")
+$: note("c4 e4 g4 b4")
   .s("sine").gain(.45)
   .pan(sine.range(0,1))`,
       },
@@ -1852,7 +1852,7 @@ $: s("hh*16").gain(.3)
       {
         label: 'Retro Crush',
         code: `// retro crunch FX
-$: note("c3 g3 eb3 bb3")
+$: note("c3 g3 e3 b3")
   .s("square").gain(.35)
   .crush(4).coarse(3)`,
       },
@@ -1889,7 +1889,7 @@ $: s("bd").chop(32)
       {
         label: 'Dual Delay',
         code: `// ping-pong style delay
-$: note("c4 ~ eb4 ~").s("triangle")
+$: note("c4 ~ e4 ~").s("triangle")
   .gain(.4).delay(.5)
   .delayfeedback(.6)
   .pan("<0 1>")`,
@@ -1954,7 +1954,7 @@ $: note("c3*4").s("sawtooth")
       {
         label: 'Sidechain Feel',
         code: `// sidechain pump feel
-$: note("[c3,eb3,g3]").s("supersaw")
+$: note("[c3,e3,g3]").s("supersaw")
   .gain("[.1 .3 .45 .5]*2")
   .lpf(1800).room(.3)`,
       },
@@ -1983,7 +1983,7 @@ $: note("c3 e3 g3 c4").s("piano")
       {
         label: 'Chorus Wash',
         code: `// chorus effect wash
-$: note("[c3,eb3,g3]").s("sawtooth")
+$: note("[c3,e3,g3]").s("sawtooth")
   .gain(.3).detune(sine.range(0,30).slow(4))
   .lpf(1500).room(.5)`,
       },
@@ -2031,7 +2031,7 @@ $: n(irand(12).segment(16))
       {
         label: 'Underwater',
         code: `// underwater effect
-$: note("c3 eb3 g3 bb3").s("sine")
+$: note("c3 e3 g3 b3").s("sine")
   .gain(.35).lpf(sine.range(200,800).slow(4))
   .room(.8).roomsize(8)
   .delay(.5).delayfeedback(.6)`,
@@ -2077,7 +2077,7 @@ $: note("c3 e3 g3 c4 g3 e3 c3 g2")
       {
         label: 'Wobble Gate',
         code: `// wobble gate effect
-$: note("[c3,eb3,g3]").s("supersaw")
+$: note("[c3,e3,g3]").s("supersaw")
   .gain(sine.range(0,.5).fast(8))
   .lpf(sine.range(400,3000).fast(4))
   .room(.3)`,
@@ -2085,7 +2085,7 @@ $: note("[c3,eb3,g3]").s("supersaw")
       {
         label: 'Reverse Swell',
         code: `// reverse swell buildup
-$: note("<[c3,eb3,g3]>").s("supersaw")
+$: note("<[c3,e3,g3]>").s("supersaw")
   .gain(.35).attack(1.5).decay(.1)
   .lpf(sine.range(500,3000).slow(4))
   .room(.5)`,
@@ -2117,7 +2117,7 @@ $: note("c3*4").s("sawtooth")
       {
         label: 'Multi FX Chain',
         code: `// stacked FX chain
-$: note("c3 eb3 g3 bb3").s("sawtooth")
+$: note("c3 e3 g3 b3").s("sawtooth")
   .gain(.35).crush(8)
   .lpf(sine.range(500,3000).slow(4))
   .delay(.4).delayfeedback(.5)
@@ -2135,10 +2135,10 @@ $: note("c3 eb3 g3 bb3").s("sawtooth")
 $: s("bd*4").bank("RolandTR909").gain(.85)
 $: s("~ cp ~ ~").bank("RolandTR909").gain(.6)
 $: s("[~ hh]*4").bank("RolandTR909").gain(.5)
-$: note("<c2 c2 ab1 bb1>")
+$: note("<c2 c2 a1 b1>")
   .s("sawtooth").gain(.5)
   .lpf(800).shape(.15)
-$: note("<[c3,eb3,g3] [c3,eb3,g3] [ab2,c3,eb3] [bb2,d3,f3]>")
+$: note("<[c3,e3,g3] [c3,e3,g3] [a2,c3,e3] [b2,d3,f3]>")
   .s("supersaw").gain(.3)
   .lpf(1500).room(.3).slow(2)`,
       },
@@ -2158,7 +2158,7 @@ $: note("c1*4").s("sawtooth")
 $: s("bd ~ [~ bd] ~").bank("RolandTR808").gain(.85)
 $: s("~ sd ~ sd").bank("RolandTR808").gain(.7)
 $: s("[hh hh] [hh oh] [hh hh] [hh ~]").bank("RolandTR808").gain(.4)
-$: note("<c2 f2 g2 bb1>")
+$: note("<c2 f2 g2 b1>")
   .s("sine").gain(.5).lpf(200)`,
       },
       {
@@ -2167,7 +2167,7 @@ $: note("<c2 f2 g2 bb1>")
 $: s("bd ~ [~ bd] ~").bank("RolandTR909").gain(.8)
 $: s("~ cp ~ ~").bank("RolandTR909").gain(.6)
 $: s("[hh hh hh ~]*2").bank("RolandTR909").gain(.45)
-$: note("<[eb3,g3,bb3] [ab3,c4,eb4]>")
+$: note("<[e3,g3,b3] [a3,c4,e4]>")
   .s("gm_epiano1").velocity(.35)
   .room(.4).slow(2)`,
       },
@@ -2177,10 +2177,10 @@ $: note("<[eb3,g3,bb3] [ab3,c4,eb4]>")
 $: s("bd*4").gain(.8)
 $: s("~ cp ~ ~").gain(.55)
 $: s("[~ hh]*4").gain(.4)
-$: note("<c2 f2 g2 ab2>")
+$: note("<c2 f2 g2 a2>")
   .s("sawtooth").gain(.45)
   .lpf(600).shape(.2)
-$: note("<[c4,eb4,g4] [f4,ab4,c5] [g4,bb4,d5] [ab4,c5,eb5]>")
+$: note("<[c4,e4,g4] [f4,a4,c5] [g4,b4,d5] [a4,c5,e5]>")
   .s("supersaw").gain(.3)
   .lpf(2000).room(.3).slow(2)`,
       },
@@ -2191,7 +2191,7 @@ $: s("bd ~ ~ bd ~ ~ bd ~").bank("RolandTR808").gain(.9)
 $: s("~ ~ ~ ~ ~ ~ ~ cp").bank("RolandTR808").gain(.7)
 $: s("hh*8").bank("RolandTR808")
   .gain("[.3 .5 .35 .6 .3 .5 .35 .7]")
-$: note("<c1 ~ eb1 ~>")
+$: note("<c1 ~ e1 ~>")
   .s("sine").gain(.6).decay(.8)
   .lpf(180).shape(.25)`,
       },
@@ -2201,18 +2201,18 @@ $: note("<c1 ~ eb1 ~>")
 $: s("[bd ~ bd ~] [~ ~ bd ~]").gain(.85)
 $: s("[~ ~ ~ ~] [~ sd ~ ~]").gain(.7)
 $: s("hh*8").gain("[.3 .5]*4")
-$: note("<c2 eb2 f2 g2>")
+$: note("<c2 e2 f2 g2>")
   .s("sawtooth").gain(.5)
   .lpf(800).shape(.2)`,
       },
       {
         label: 'Ambient Drift',
         code: `// ambient texture
-$: note("<[c3,g3,c4] [ab2,eb3,ab3]>")
+$: note("<[c3,g3,c4] [a2,e3,a3]>")
   .s("sine").gain(.3)
   .room(.8).roomsize(6)
   .lpf(1500).slow(4)
-$: note("<c5 eb5 g5 bb5>")
+$: note("<c5 e5 g5 b5>")
   .s("sine").gain(.2)
   .delay(.5).delayfeedback(.6)
   .room(.7).slow(4)`,
@@ -2224,7 +2224,7 @@ $: s("bd*4").gain(.85)
 $: s("~ cp ~ ~").gain(.55)
 $: s("[~ hh]*4").gain(.45)
 $: s("~ ~ ~ oh").gain(.35)
-$: note("c3 c3 eb3 g3")
+$: note("c3 c3 e3 g3")
   .s("supersaw").gain(.4)
   .lpf(sine.range(800,3000).slow(8))`,
       },
@@ -2234,7 +2234,7 @@ $: note("c3 c3 eb3 g3")
 $: s("bd ~ [bd bd] ~").gain(.85)
 $: s("~ cp ~ cp").gain(.6).room(.2)
 $: s("[~ hh]*4").gain(.45)
-$: note("<c2 c2 bb1 c2>")
+$: note("<c2 c2 b1 c2>")
   .s("sine").gain(.5)
   .lpf(200).shape(.3)`,
       },
@@ -2244,7 +2244,7 @@ $: note("<c2 c2 bb1 c2>")
 $: s("bd ~ [~ bd] ~").gain(.85)
 $: s("~ ~ ~ sd").gain(.7)
 $: s("hh*8").gain("[.25 .5 .3 .6 .25 .55 .3 .65]")
-$: note("<c2 eb2 f2 eb2>")
+$: note("<c2 e2 f2 e2>")
   .s("sine").gain(.5)
   .lpf(200).decay(.6)`,
       },
@@ -2254,7 +2254,7 @@ $: note("<c2 eb2 f2 eb2>")
 $: s("bd ~ ~ bd ~ ~ bd ~").gain(.8)
 $: s("~ ~ cp ~ ~ ~ cp ~").gain(.6)
 $: s("[~ hh]*4").gain(.4)
-$: note("<[c4,eb4,g4,bb4] [ab3,c4,eb4,g4] [bb3,d4,f4,ab4] [g3,bb3,d4,f4]>")
+$: note("<[c4,e4,g4,b4] [a3,c4,e4,g4] [b3,d4,f4,a4] [g3,b3,d4,f4]>")
   .s("supersaw").gain(.35)
   .lpf(2500).room(.3).slow(2)`,
       },
@@ -2285,10 +2285,10 @@ $: note("<c2 f2 g2 f2>")
 $: s("[bd ~] [~ bd] [bd ~] [~ ~]").gain(.75)
 $: s("~ rim ~ rim").gain(.3)
 $: s("[~ hh]*4").gain(.35)
-$: note("<[eb3,g3,bb3,d4] [ab3,c4,eb4,g4] [bb3,d4,f4,ab4] [g3,bb3,d4,f4]>")
+$: note("<[e3,g3,b3,d4] [a3,c4,e4,g4] [b3,d4,f4,a4] [g3,b3,d4,f4]>")
   .s("gm_epiano1").velocity(.35)
   .room(.4).slow(2)
-$: note("<eb2 ab2 bb2 g2>")
+$: note("<e2 a2 b2 g2>")
   .s("sine").gain(.45).lpf(200)`,
       },
       {
@@ -2297,9 +2297,9 @@ $: note("<eb2 ab2 bb2 g2>")
 $: s("[bd:3 ~] [~ bd:3] ~ ~").gain(.4).lpf(800)
 $: s("~ rim ~ rim").gain(.15).lpf(2000)
 $: s("[~ hh:2]*4").gain("[.1 .2 .12 .25]").lpf(3500)
-$: note("<[c3,eb3,g3,bb3] [ab2,c3,eb3,g3]>")
+$: note("<[c3,e3,g3,b3] [a2,c3,e3,g3]>")
   .s("piano").gain(.5).room(.4).slow(2)
-$: note("<c2 ab1>")
+$: note("<c2 a1>")
   .s("sine").gain(.5).lpf(200).slow(2)`,
       },
       {
@@ -2308,7 +2308,7 @@ $: note("<c2 ab1>")
 $: s("bd*4").gain(.85)
 $: s("~ cp ~ ~").gain(.6)
 $: s("[hh hh oh ~]*2").gain(.45)
-$: note("c2 ~ c2 g2 ~ g2 bb2 ~")
+$: note("c2 ~ c2 g2 ~ g2 b2 ~")
   .s("square").gain(.45)
   .lpf(1200).decay(.12)`,
       },
@@ -2318,7 +2318,7 @@ $: note("c2 ~ c2 g2 ~ g2 bb2 ~")
 $: s("bd(3,8)").gain(.75)
 $: s("sd(5,8,1)").gain(.55)
 $: s("hh(11,16)").gain(.35)
-$: note("c3 eb3 g3 bb3 d4 bb3 g3 eb3")
+$: note("c3 e3 g3 b3 d4 b3 g3 e3")
   .s("triangle").gain(.4)
   .chop(4).lpf(2000)`,
       },
@@ -2328,7 +2328,7 @@ $: note("c3 eb3 g3 bb3 d4 bb3 g3 eb3")
 $: s("bd ~ ~ bd ~ ~ bd ~").gain(.85)
 $: s("~ ~ cp ~ ~ ~ cp ~").gain(.6)
 $: s("[hh hh]*4").gain("[.3 .5]*4")
-$: note("<c2 f2 bb1 eb2>")
+$: note("<c2 f2 b1 e2>")
   .s("sine").gain(.5).lpf(200)`,
       },
       {
@@ -2346,7 +2346,7 @@ $: note("c2*4").s("sine")
 $: s("bd*4").gain(.9)
 $: s("~ cp ~ ~").gain(.55)
 $: s("[~ hh]*4").gain(.4)
-$: note("c2 [~ c2] eb2 [c2 g1]")
+$: note("c2 [~ c2] e2 [c2 g1]")
   .s("sawtooth").gain(.5)
   .lpf(sine.range(400,3000)).lpq(12)`,
       },
@@ -2356,7 +2356,7 @@ $: note("c2 [~ c2] eb2 [c2 g1]")
 $: s("bd ~ ~ bd ~ ~ bd ~").bank("RolandTR808").gain(.85)
 $: s("~ ~ ~ ~ ~ ~ ~ cp").bank("RolandTR808").gain(.6)
 $: s("hh*8").bank("RolandTR808").gain("[.2 .4]*4")
-$: note("<[c3,eb3,g3] [ab2,c3,eb3]>")
+$: note("<[c3,e3,g3] [a2,c3,e3]>")
   .s("piano").gain(.4).room(.4).slow(2)`,
       },
       {
@@ -2365,7 +2365,7 @@ $: note("<[c3,eb3,g3] [ab2,c3,eb3]>")
 $: s("bd*4").bank("RolandTR909").gain(.85)
 $: s("~ cp ~ ~").bank("RolandTR909").gain(.6)
 $: s("[~ hh]*4").bank("RolandTR909").gain(.5)
-$: note("[c3,eb3,g3] ~ [ab2,c3,eb3] ~")
+$: note("[c3,e3,g3] ~ [a2,c3,e3] ~")
   .s("piano").gain(.5).room(.3)`,
       },
       {
@@ -2374,7 +2374,7 @@ $: note("[c3,eb3,g3] ~ [ab2,c3,eb3] ~")
 $: s("[bd ~ bd ~] [~ bd ~ bd]").gain(.8)
 $: s("[~ sd ~ ~] [~ ~ sd ~]").gain(.7)
 $: s("hh*16").gain("[.2 .35]*8")
-$: note("<c2 eb2 f2 g2>")
+$: note("<c2 e2 f2 g2>")
   .s("sawtooth").gain(.5).lpf(600)`,
       },
       {
@@ -2383,7 +2383,7 @@ $: note("<c2 eb2 f2 g2>")
 $: s("[bd ~] [~ bd] [bd ~] ~").gain(.7)
 $: s("~ rim ~ rim").gain(.3)
 $: s("[~ hh]*4").gain(.35)
-$: note("<[d3,f#3,a3,c4] [g3,b3,d4,f4] [c3,e3,g3,b3] [a2,c#3,e3,g3]>")
+$: note("<[d3,g3,a3,c4] [g3,b3,d4,f4] [c3,e3,g3,b3] [a2,d3,e3,g3]>")
   .s("gm_epiano1").velocity(.35).room(.4).slow(2)`,
       },
       {
@@ -2392,7 +2392,7 @@ $: note("<[d3,f#3,a3,c4] [g3,b3,d4,f4] [c3,e3,g3,b3] [a2,c#3,e3,g3]>")
 $: s("bd ~ [~ bd] ~").gain(.85)
 $: s("~ cp ~ ~").gain(.6)
 $: s("[hh hh hh ~]*2").gain(.45)
-$: note("[c2 ~] [~ eb2] [c2 ~] [~ g1]")
+$: note("[c2 ~] [~ e2] [c2 ~] [~ g1]")
   .s("sawtooth").gain(.55).lpf(800).shape(.2)`,
       },
       {
@@ -2400,7 +2400,7 @@ $: note("[c2 ~] [~ eb2] [c2 ~] [~ g1]")
         code: `// downtempo chill
 $: s("[bd:3 ~] ~ [~ bd:3] ~").gain(.4).lpf(800)
 $: s("~ ~ rim ~").gain(.15)
-$: note("<[c3,eb3,g3,bb3] [ab2,c3,eb3,g3]>")
+$: note("<[c3,e3,g3,b3] [a2,c3,e3,g3]>")
   .s("gm_epiano1").velocity(.3).room(.5).slow(4)`,
       },
       {
@@ -2458,10 +2458,10 @@ $: note("<c2 a1>")
 $: s("[bd ~ bd ~] [~ ~ bd ~]").gain(.85)
 $: s("[~ ~ ~ ~] [~ sd ~ ~]").gain(.7)
 $: s("hh*16").gain("[.2 .35]*8")
-$: note("[c2 ~] [~ g2] [eb2 ~] [~ c2]")
+$: note("[c2 ~] [~ g2] [e2 ~] [~ c2]")
   .s("sawtooth").gain(.55)
   .lpf(800).shape(.2)
-$: note("<[c3,eb3,g3]>")
+$: note("<[c3,e3,g3]>")
   .s("supersaw").gain(.2)
   .lpf(1800).room(.3).slow(4)`,
       },
@@ -2471,7 +2471,7 @@ $: note("<[c3,eb3,g3]>")
 $: s("bd ~ [~ bd] ~ bd ~ [~ bd] ~").gain(.7)
 $: s("rim ~ rim ~ rim ~ rim rim").gain(.3)
 $: s("[hh hh]*4").gain("[.2 .3]*4")
-$: note("<[d3,f#3,a3,c4] [g3,b3,d4,f4] [c3,e3,g3,b3] [a2,c#3,e3,g3]>")
+$: note("<[d3,g3,a3,c4] [g3,b3,d4,f4] [c3,e3,g3,b3] [a2,d3,e3,g3]>")
   .s("gm_vibraphone").velocity(.35)
   .room(.4).slow(2)
 $: note("c2 d2 e2 g2 a2 g2 e2 d2")
@@ -2484,10 +2484,10 @@ $: s("bd ~ ~ bd ~ ~ bd ~").gain(.75)
 $: s("~ ~ cp ~ ~ ~ ~ ~").gain(.55)
   .delay(.4).delayfeedback(.55).room(.4)
 $: s("[~ hh]*4").gain(.3)
-$: note("c2 ~ ~ c2 ~ ~ eb2 ~")
+$: note("c2 ~ ~ c2 ~ ~ e2 ~")
   .s("sine").gain(.55)
   .lpf(300).shape(.2).room(.3)
-$: note("<[eb3,g3,bb3] ~ ~ [ab3,c4,eb4] ~ ~ ~ ~>")
+$: note("<[e3,g3,b3] ~ ~ [a3,c4,e4] ~ ~ ~ ~>")
   .s("gm_clean_guitar").velocity(.3)
   .room(.3)`,
       },
@@ -2498,10 +2498,10 @@ $: s("bd*4").gain(.8)
 $: s("~ rim ~ ~").gain(.25)
 $: s("hh*16").gain("[.1 .2]*8")
 $: note("c2*4").s("sine").gain(.4).lpf(200)
-$: note("<[c3,g3,c4] [ab2,eb3,ab3]>")
+$: note("<[c3,g3,c4] [a2,e3,a3]>")
   .s("sine").gain(.2)
   .room(.8).roomsize(6).slow(4)
-$: note("<c5 eb5 g5 bb5>")
+$: note("<c5 e5 g5 b5>")
   .s("sine").gain(.15)
   .delay(.5).delayfeedback(.6).room(.6).slow(4)`,
       },
@@ -2511,10 +2511,10 @@ $: note("<c5 eb5 g5 bb5>")
 $: s("bd ~ [~ bd] ~").bank("RolandTR909").gain(.8)
 $: s("~ cp ~ ~").bank("RolandTR909").gain(.55)
 $: s("[hh hh hh ~]*2").bank("RolandTR909").gain(.4)
-$: note("<[eb3,g3,bb3,d4] [ab3,c4,eb4,g4]>")
+$: note("<[e3,g3,b3,d4] [a3,c4,e4,g4]>")
   .s("gm_epiano1").velocity(.3)
   .room(.4).slow(2)
-$: note("<eb2 ab2>")
+$: note("<e2 a2>")
   .s("sine").gain(.45).lpf(200).slow(2)`,
       },
       {
@@ -2526,9 +2526,9 @@ $: s("~ ~ ~ ~ ~ ~ cp ~")
   .bank("RolandTR808").gain(.7)
 $: s("hh*8").bank("RolandTR808")
   .gain("[.3 .5 .35 .6 .3 .55 .35 .65]")
-$: note("<c2 c2 bb1 c2>")
+$: note("<c2 c2 b1 c2>")
   .s("square").gain(.5).lpf(400)
-$: note("<[c3,eb3,g3]>")
+$: note("<[c3,e3,g3]>")
   .s("supersaw").gain(.2).lpf(1200)`,
       },
       {
@@ -2538,10 +2538,10 @@ $: s("bd*4").bank("RolandTR909").gain(.85)
 $: s("~ cp ~ ~").bank("RolandTR909").gain(.55)
 $: s("[~ hh]*4").bank("RolandTR909").gain(.4)
 $: s("~ ~ ~ oh").bank("RolandTR909").gain(.3)
-$: note("<c2 c2 ab1 bb1>")
+$: note("<c2 c2 a1 b1>")
   .s("sawtooth").gain(.45)
   .lpf(sine.range(400,1500).slow(16))
-$: note("<[c3,eb3,g3] [c3,eb3,g3] [ab2,c3,eb3] [bb2,d3,f3]>")
+$: note("<[c3,e3,g3] [c3,e3,g3] [a2,c3,e3] [b2,d3,f3]>")
   .s("supersaw").gain(.25)
   .lpf(sine.range(800,2500).slow(8)).room(.3).slow(2)`,
       },
@@ -2561,14 +2561,14 @@ $: note("e3 g3 a3 e3 g3 a3 b3 a3")
       {
         label: 'Cinematic Score',
         code: `// cinematic film score
-$: note("<[c3,eb3,g3,c4] [ab2,c3,eb3,ab3] [bb2,d3,f3,bb3] [g2,bb2,d3,g3]>")
+$: note("<[c3,e3,g3,c4] [a2,c3,e3,a3] [b2,d3,f3,b3] [g2,b2,d3,g3]>")
   .s("gm_strings1").velocity(.4)
   .room(.6).roomsize(5).slow(4)
-$: note("<c5 eb5 g5 bb5>")
+$: note("<c5 e5 g5 b5>")
   .s("gm_flute").velocity(.3)
   .room(.5).slow(4)
 $: s("~ ~ ~ ~ bd ~ ~ ~").gain(.5)
-$: note("<c2 ab1 bb1 g1>")
+$: note("<c2 a1 b1 g1>")
   .s("gm_contrabass").velocity(.35).slow(4)`,
       },
       {
@@ -2577,7 +2577,7 @@ $: note("<c2 ab1 bb1 g1>")
 $: s("[bd ~] [~ bd] [bd ~] [~ ~]").gain(.75)
 $: s("~ cp ~ cp").gain(.55)
 $: s("[hh hh]*4").gain(.35)
-$: note("<[c3,e3,g3,b3] [f3,a3,c4,e4] [d3,f#3,a3,c4] [g3,b3,d4,f4]>")
+$: note("<[c3,e3,g3,b3] [f3,a3,c4,e4] [d3,g3,a3,c4] [g3,b3,d4,f4]>")
   .s("piano").gain(.5).room(.4).slow(2)
 $: note("<c2 f2 d2 g2>")
   .s("gm_acoustic_bass").velocity(.4).slow(2)
@@ -2590,9 +2590,9 @@ $: note("<[c4,e4,g4]>")
 $: s("[bd ~ bd ~] [~ bd ~ bd]").gain(.8)
 $: s("[~ sd ~ ~] [~ ~ sd ~]").gain(.65)
 $: s("hh*16").gain("[.2 .35]*8")
-$: note("c2 eb2 g2 c3 g2 eb2")
+$: note("c2 e2 g2 c3 g2 e2")
   .s("sawtooth").gain(.45).lpf(1000)
-$: note("<[c3,eb3,g3]>")
+$: note("<[c3,e3,g3]>")
   .s("supersaw").gain(.2)
   .lpf(1500).room(.3).slow(4)
 $: s("chin:0 ~ chin:1 ~").gain(.3)
@@ -2604,10 +2604,10 @@ $: s("chin:0 ~ chin:1 ~").gain(.3)
 $: s("bd ~ [~ bd] ~").gain(.8)
 $: s("~ ~ cp ~").gain(.6)
 $: s("[hh hh]*4").gain("[.25 .4]*4")
-$: note("c4 d4 eb4 f4 g4 ab4 bb4 c5")
+$: note("c4 d4 e4 f4 g4 a4 b4 c5")
   .s("gm_sitar").velocity(.4)
   .room(.3).slow(2)
-$: note("<[c3,eb3,g3] [f3,ab3,c4]>")
+$: note("<[c3,e3,g3] [f3,a3,c4]>")
   .s("gm_strings1").velocity(.3)
   .room(.4).slow(2)`,
       },
@@ -2620,7 +2620,7 @@ $: s("rim ~ rim ~ ~ rim ~ ~")
   .bank("RolandTR808").gain(.35)
 $: s("~ ~ ~ ~ cp ~ ~ ~")
   .bank("RolandTR808").gain(.5)
-$: note("c2 ~ eb2 c2 g2 ~ c2 ~")
+$: note("c2 ~ e2 c2 g2 ~ c2 ~")
   .s("gm_acoustic_bass").velocity(.5)
 $: note("<[c3,e3,g3] [f3,a3,c4]>")
   .s("piano").gain(.4).slow(2)`,
@@ -2668,9 +2668,9 @@ $: s("~ cp ~ ~").gain(.55)
 $: s("[~ hh]*4").gain(.4)
 $: note("<c2 f2 g2 c2>")
   .s("square").gain(.45).lpf(600)
-$: note("c4 d4 eb4 g4 f4 eb4 d4 c4")
+$: note("c4 d4 e4 g4 f4 e4 d4 c4")
   .s("gm_saw_lead").velocity(.35).room(.3)
-$: note("<[c3,eb3,g3] [f3,ab3,c4]>")
+$: note("<[c3,e3,g3] [f3,a3,c4]>")
   .s("supersaw").gain(.25).lpf(1500).slow(2)`,
       },
     ],
@@ -2682,9 +2682,9 @@ $: note("<[c3,eb3,g3] [f3,ab3,c4]>")
       {
         label: 'Study Session',
         code: `// warm piano study vibes
-$: note("<[c3,eb3,g3,bb3] [ab2,c3,eb3,g3] [bb2,d3,f3,ab3] [g2,bb2,d3,f3]>")
+$: note("<[c3,e3,g3,b3] [a2,c3,e3,g3] [b2,d3,f3,a3] [g2,b2,d3,f3]>")
   .s("piano").gain(.5).room(.4).slow(2)
-$: note("<c2 ab1 bb1 g1>")
+$: note("<c2 a1 b1 g1>")
   .s("sine").gain(.5).lpf(200).shape(.15).slow(2)
 $: s("[bd:3 ~] [~ bd:3] ~ ~")
   .gain(.4).lpf(800).shape(.2)
@@ -2694,10 +2694,10 @@ $: s("[~ hh:2]*4").gain("[.1 .2 .12 .25]").lpf(3500)`,
       {
         label: 'Rainy Rhodes',
         code: `// mellow rhodes in the rain
-$: note("<[eb3,g3,bb3] [f3,ab3,c4] [eb3,g3,bb3] [db3,f3,ab3]>")
+$: note("<[e3,g3,b3] [f3,a3,c4] [e3,g3,b3] [d3,f3,a3]>")
   .s("gm_epiano1").velocity(.3)
   .room(.5).delay(.3).slow(2)
-$: note("<eb2 f2 eb2 db2>")
+$: note("<e2 f2 e2 d2>")
   .s("sine").gain(.45).lpf(180).slow(2)
 $: s("[bd:3 ~] ~ [~ bd:3] ~")
   .gain(.35).lpf(600)
@@ -2706,10 +2706,10 @@ $: s("[~ hh:1]*4").gain("[.08 .15 .1 .2]").lpf(3000)`,
       {
         label: 'Night Drive',
         code: `// dreamy late-night cruise
-$: note("<[bb3,d4,f4] [eb3,g3,bb3] [f3,a3,c4] [bb3,d4,f4]>")
+$: note("<[b3,d4,f4] [e3,g3,b3] [f3,a3,c4] [b3,d4,f4]>")
   .s("piano").gain(.35).room(.5)
   .delay(.3).delayfeedback(.35).slow(2)
-$: note("<bb1 eb2 f2 bb1>")
+$: note("<b1 e2 f2 b1>")
   .s("sine").gain(.45).lpf(200).shape(.15).slow(2)
 $: s("[bd:3 ~] ~ [~ bd:3] ~")
   .gain(.35).lpf(600)
@@ -2718,9 +2718,9 @@ $: s("[~ hh:2]*4").gain("[.08 .18 .1 .2]").lpf(3000)`,
       {
         label: 'Coffee Shop',
         code: `// cozy morning coffee
-$: note("<[f3,a3,c4] [d3,f3,a3] [bb2,d3,f3] [c3,e3,g3]>")
+$: note("<[f3,a3,c4] [d3,f3,a3] [b2,d3,f3] [c3,e3,g3]>")
   .s("piano").gain(.5).room(.35).slow(2)
-$: note("<f2 d2 bb1 c2>")
+$: note("<f2 d2 b1 c2>")
   .s("sine").gain(.45).lpf(200).slow(2)
 $: s("[bd:3 ~ ~] [~ ~ bd:3] ~ ~")
   .gain(.35).lpf(600)
@@ -2730,10 +2730,10 @@ $: s("[hh:1 ~ hh:1 ~]*2")
       {
         label: 'Sunset Gold',
         code: `// golden hour warmth
-$: note("<[db3,f3,ab3,c4] [eb3,gb3,bb3] [db3,f3,ab3] [ab2,c3,eb3]>")
+$: note("<[d3,f3,a3,c4] [e3,g3,b3] [d3,f3,a3] [a2,c3,e3]>")
   .s("gm_epiano1").velocity(.25)
   .room(.5).delay(.3).delayfeedback(.35).slow(2)
-$: note("<db2 eb2 db2 ab1>")
+$: note("<d2 e2 d2 a1>")
   .s("sine").gain(.4).lpf(180).slow(2)
 $: s("[bd:3 ~] ~ ~ [~ bd:3]")
   .gain(.3).lpf(500)`,
@@ -2741,10 +2741,10 @@ $: s("[bd:3 ~] ~ ~ [~ bd:3]")
       {
         label: 'Autumn Leaves',
         code: `// falling leaves nostalgia
-$: note("<[g3,bb3,d4] [c3,eb3,g3] [d3,f3,a3] [eb3,g3,bb3]>")
+$: note("<[g3,b3,d4] [c3,e3,g3] [d3,f3,a3] [e3,g3,b3]>")
   .s("piano").gain(.5).room(.4)
   .delay(.25).delayfeedback(.3).slow(2)
-$: note("<g1 c2 d2 eb2>")
+$: note("<g1 c2 d2 e2>")
   .s("sine").gain(.45).lpf(200).slow(2)
 $: s("[bd:3 ~] ~ [~ bd:3] ~")
   .gain(.35).lpf(600)`,
@@ -2761,10 +2761,10 @@ $: note("<a1 f1 g1 e1>")
       {
         label: 'Tape Loop',
         code: `// vintage tape rhodes
-$: note("<[e3,g#3,b3] [a2,c#3,e3] [f#2,a2,c#3] [b2,d#3,f#3]>")
+$: note("<[e3,a3,b3] [a2,d3,e3] [g2,a2,d3] [b2,e3,g3]>")
   .s("gm_epiano1").velocity(.25)
   .room(.4).delay(.3).slow(2)
-$: note("<e2 a1 f#2 b1>")
+$: note("<e2 a1 g2 b1>")
   .s("sine").gain(.45).lpf(200).slow(2)
 $: s("[bd:3 ~] [~ bd:3] ~ ~")
   .gain(.35).lpf(600)`,
@@ -2772,16 +2772,16 @@ $: s("[bd:3 ~] [~ bd:3] ~ ~")
       {
         label: '3AM Thoughts',
         code: `// dark bedroom confessions
-$: note("<[c#3,e3,g#3] [a2,c#3,e3] [b2,d#3,f#3] [g#2,b2,d#3]>")
+$: note("<[d3,e3,a3] [a2,d3,e3] [b2,e3,g3] [a2,b2,e3]>")
   .s("piano").gain(.45).room(.5)
   .delay(.35).delayfeedback(.4).slow(2)
-$: note("<c#2 a1 b1 g#1>")
+$: note("<d2 a1 b1 a1>")
   .s("sine").gain(.4).lpf(180).slow(2)`,
       },
       {
         label: 'Morning Light',
         code: `// bright morning warmth
-$: note("<[d3,f#3,a3] [g2,b2,d3] [a2,c#3,e3] [d3,f#3,a3]>")
+$: note("<[d3,g3,a3] [g2,b2,d3] [a2,d3,e3] [d3,g3,a3]>")
   .s("piano").gain(.55).room(.35).slow(2)
 $: note("<d2 g1 a1 d2>")
   .s("sine").gain(.45).lpf(200).slow(2)
@@ -2791,9 +2791,9 @@ $: s("[bd:3 ~] [~ bd:3] ~ ~")
       {
         label: 'Vinyl Crackle',
         code: `// lo-fi vinyl warmth
-$: note("<[eb3,g3,bb3] [ab2,c3,eb3]>")
+$: note("<[e3,g3,b3] [a2,c3,e3]>")
   .s("piano").gain(.45).room(.4).slow(2)
-$: note("<eb2 ab1>")
+$: note("<e2 a1>")
   .s("sine").gain(.45).lpf(180).slow(2)
 $: s("[bd:3 ~] ~ [~ bd:3] ~")
   .gain(.3).lpf(600)
@@ -2843,10 +2843,10 @@ $: s("hh*16").gain("[.04 .08]*8")
         label: 'Warm Vibes',
         code: `// warm vibraphone lofi
 $: n("<[~ 0] [4 ~] [~ 7] [4 ~]>")
-  .scale("C4:minor pentatonic")
+  .scale("A3:minor pentatonic")
   .s("gm_vibraphone").velocity(.2)
   .room(.5).delay(.3).slow(2)
-$: note("<c2 ab1>")
+$: note("<c2 a1>")
   .s("sine").gain(.4).lpf(180).slow(2)
 $: s("[bd:3 ~] ~ [~ bd:3] ~")
   .gain(.3).lpf(500)`,
@@ -2854,19 +2854,19 @@ $: s("[bd:3 ~] ~ [~ bd:3] ~")
       {
         label: 'Chill Pad',
         code: `// chillout pad texture
-$: note("<[c3,eb3,g3] [ab2,c3,eb3]>")
+$: note("<[c3,e3,g3] [a2,c3,e3]>")
   .s("supersaw").gain(.2)
   .lpf(1200).room(.6).slow(4)
-$: note("<c2 ab1>")
+$: note("<c2 a1>")
   .s("sine").gain(.4).lpf(160).slow(4)`,
       },
       {
         label: 'Old Cassette',
         code: `// old cassette tape feel
-$: note("<[g3,bb3,d4] [eb3,g3,bb3] [f3,a3,c4] [d3,f3,a3]>")
+$: note("<[g3,b3,d4] [e3,g3,b3] [f3,a3,c4] [d3,f3,a3]>")
   .s("gm_epiano1").velocity(.25)
   .room(.4).slow(2)
-$: note("<g1 eb2 f2 d2>")
+$: note("<g1 e2 f2 d2>")
   .s("sine").gain(.4).lpf(180).slow(2)
 $: s("[bd:3 ~] ~ [~ bd:3] ~")
   .gain(.3).lpf(500)
@@ -2875,9 +2875,9 @@ $: s("~ rim ~ ~").gain(.1).lpf(1500)`,
       {
         label: 'Lazy Sunday',
         code: `// lazy sunday morning
-$: note("<[bb2,d3,f3,a3] [eb3,g3,bb3,d4] [f3,a3,c4,eb4] [bb2,d3,f3,a3]>")
+$: note("<[b2,d3,f3,a3] [e3,g3,b3,d4] [f3,a3,c4,e4] [b2,d3,f3,a3]>")
   .s("piano").gain(.45).room(.4).slow(2)
-$: note("<bb1 eb2 f2 bb1>")
+$: note("<b1 e2 f2 b1>")
   .s("sine").gain(.4).lpf(180).slow(2)
 $: s("[bd:3 ~] [~ bd:3] ~ ~")
   .gain(.3).lpf(500)`,
@@ -2902,16 +2902,16 @@ $: note("<a1 d2 g1 c2>")
       {
         label: 'Midnight Walk',
         code: `// midnight walk vibes
-$: note("<[f3,ab3,c4] [db3,f3,ab3] [eb3,g3,bb3] [c3,eb3,g3]>")
+$: note("<[f3,a3,c4] [d3,f3,a3] [e3,g3,b3] [c3,e3,g3]>")
   .s("gm_epiano1").velocity(.25)
   .room(.5).delay(.3).slow(2)
-$: note("<f1 db2 eb2 c2>")
+$: note("<f1 d2 e2 c2>")
   .s("sine").gain(.4).lpf(170).slow(2)`,
       },
       {
         label: 'Cloud Nine',
         code: `// floating cloud vibes
-$: note("<[g3,b3,d4,f#4] [e3,g3,b3,d4]>")
+$: note("<[g3,b3,d4,g4] [e3,g3,b3,d4]>")
   .s("piano").gain(.35).room(.5)
   .delay(.35).delayfeedback(.4).slow(4)`,
       },
@@ -2926,14 +2926,14 @@ $: note("<c2 a1 f1 g1>")
       {
         label: 'Melted Ice',
         code: `// melted ice cream mood
-$: note("<[bb2,d3,f3,a3] [g2,bb2,d3,f3]>")
+$: note("<[b2,d3,f3,a3] [g2,b2,d3,f3]>")
   .s("gm_epiano1").velocity(.25)
   .room(.5).delay(.3).slow(4)`,
       },
       {
         label: 'Warm Blanket',
         code: `// warm blanket feel
-$: note("<[d3,f3,a3] [bb2,d3,f3] [c3,e3,g3] [a2,c3,e3]>")
+$: note("<[d3,f3,a3] [b2,d3,f3] [c3,e3,g3] [a2,c3,e3]>")
   .s("piano").gain(.5).room(.4).slow(2)
 $: s("[bd:3 ~] [~ bd:3] ~ ~").gain(.3).lpf(600)
 $: s("[~ hh:1]*4").gain("[.06 .12]*4").lpf(2500)`,
@@ -2941,14 +2941,14 @@ $: s("[~ hh:1]*4").gain("[.06 .12]*4").lpf(2500)`,
       {
         label: 'Faded Photo',
         code: `// faded photograph
-$: note("<[e3,g3,b3] [c3,e3,g3] [a2,c3,e3] [b2,d3,f#3]>")
+$: note("<[e3,g3,b3] [c3,e3,g3] [a2,c3,e3] [b2,d3,g3]>")
   .s("piano").gain(.4).room(.5)
   .delay(.3).delayfeedback(.35).slow(2)`,
       },
       {
         label: 'Window Rain',
         code: `// rain on window
-$: note("<[ab2,c3,eb3,g3]>")
+$: note("<[a2,c3,e3,g3]>")
   .s("gm_epiano1").velocity(.2)
   .room(.7).roomsize(5).slow(4)
 $: s("hh*16").gain("[.03 .06]*8").lpf(2000).room(.4)`,
@@ -2956,7 +2956,7 @@ $: s("hh*16").gain("[.03 .06]*8").lpf(2000).room(.4)`,
       {
         label: 'Old Film',
         code: `// old film score feel
-$: note("<[f3,a3,c4] [d3,f3,a3] [g3,bb3,d4] [e3,g3,b3]>")
+$: note("<[f3,a3,c4] [d3,f3,a3] [g3,b3,d4] [e3,g3,b3]>")
   .s("gm_epiano1").velocity(.25)
   .room(.4).slow(2)
 $: note("<f1 d1 g1 e1>")
@@ -2965,7 +2965,7 @@ $: note("<f1 d1 g1 e1>")
       {
         label: 'Soft Landing',
         code: `// soft landing pad
-$: note("<[c3,eb3,g3,bb3]>")
+$: note("<[c3,e3,g3,b3]>")
   .s("piano").gain(.3).room(.6)
   .delay(.4).delayfeedback(.5).slow(4)
 $: note("c2").s("sine").gain(.35).lpf(140).slow(4)`,
@@ -2978,16 +2978,16 @@ $: s("[bd:3 ~] [~ bd:3] [bd:3 ~] ~")
 $: s("~ rim ~ rim").gain(.12).lpf(1800)
 $: s("[hh:2 ~ hh:2 ~]*2")
   .gain("[.06 .12 .08 .15]*2").lpf(3000)
-$: note("<[ab2,c3,eb3,g3] [db3,f3,ab3,c4] [eb3,g3,bb3,d4] [ab2,c3,eb3,g3]>")
+$: note("<[a2,c3,e3,g3] [d3,f3,a3,c4] [e3,g3,b3,d4] [a2,c3,e3,g3]>")
   .s("gm_epiano1").velocity(.25)
   .room(.5).delay(.25).delayfeedback(.3).slow(2)
-$: note("<ab1 db2 eb2 ab1>")
+$: note("<a1 d2 e2 a1>")
   .s("sine").gain(.4).lpf(170).slow(2)`,
       },
       {
         label: 'Library Study',
         code: `// quiet library study
-$: note("<[e3,g3,b3,d4] [a2,c3,e3,g3] [d3,f#3,a3,c4] [g2,b2,d3,f3]>")
+$: note("<[e3,g3,b3,d4] [a2,c3,e3,g3] [d3,g3,a3,c4] [g2,b2,d3,f3]>")
   .s("piano").gain(.4).room(.35).slow(2)
 $: note("<e2 a1 d2 g1>")
   .s("sine").gain(.4).lpf(180).slow(2)
@@ -2998,7 +2998,7 @@ $: s("[~ hh:1]*4").gain("[.05 .1 .07 .12]").lpf(2500)`,
       {
         label: 'Rooftop View',
         code: `// rooftop city view
-$: note("<[f3,a3,c4,e4] [b2,d3,f#3,a3] [e3,g3,b3,d4] [a2,c3,e3,g3]>")
+$: note("<[f3,a3,c4,e4] [b2,d3,g3,a3] [e3,g3,b3,d4] [a2,c3,e3,g3]>")
   .s("piano").gain(.45).room(.4)
   .delay(.2).delayfeedback(.3).slow(2)
 $: note("<f2 b1 e2 a1>")
@@ -3009,7 +3009,7 @@ $: s("[bd:3 ~] [~ bd:3] ~ ~")
       {
         label: 'Rainy Window',
         code: `// rainy window pane
-$: note("<[d3,f3,a3,c4] [g2,bb2,d3,f3]>")
+$: note("<[d3,f3,a3,c4] [g2,b2,d3,f3]>")
   .s("gm_epiano1").velocity(.2)
   .room(.6).delay(.3).delayfeedback(.35).slow(4)
 $: note("<d2 g1>")
@@ -3019,7 +3019,7 @@ $: s("hh*16").gain("[.02 .05]*8").lpf(1800).room(.4)`,
       {
         label: 'Bookshop Calm',
         code: `// bookshop afternoon
-$: note("<[g3,b3,d4,f#4] [c3,e3,g3,b3] [d3,f#3,a3,c4] [e3,g3,b3,d4]>")
+$: note("<[g3,b3,d4,g4] [c3,e3,g3,b3] [d3,g3,a3,c4] [e3,g3,b3,d4]>")
   .s("piano").gain(.45).room(.35).slow(2)
 $: note("<g1 c2 d2 e2>")
   .s("sine").gain(.4).lpf(180).slow(2)
@@ -3043,18 +3043,18 @@ $: s("[bd:3 ~] [~ bd:3] [bd:3 ~] ~")
   .gain(.3).lpf(650)
 $: s("~ rim ~ rim").gain(.1).lpf(1500)
 $: s("[~ hh:1]*4").gain("[.05 .1]*4").lpf(2500)
-$: note("<[bb2,d3,f3,a3] [eb3,g3,bb3,d4] [f3,a3,c4,e4] [bb2,d3,f3,a3]>")
+$: note("<[b2,d3,f3,a3] [e3,g3,b3,d4] [f3,a3,c4,e4] [b2,d3,f3,a3]>")
   .s("piano").gain(.4).room(.4).slow(2)
-$: note("<bb1 eb2 f2 bb1>")
+$: note("<b1 e2 f2 b1>")
   .s("sine").gain(.4).lpf(170).slow(2)`,
       },
       {
         label: 'Misty Morning',
         code: `// misty morning haze
-$: note("<[eb3,g3,bb3,d4] [ab2,c3,eb3,g3]>")
+$: note("<[e3,g3,b3,d4] [a2,c3,e3,g3]>")
   .s("piano").gain(.35).room(.5)
   .delay(.35).delayfeedback(.4).slow(4)
-$: note("<eb2 ab1>")
+$: note("<e2 a1>")
   .s("sine").gain(.35).lpf(150).slow(4)
 $: s("hh*16").gain("[.02 .04]*8").lpf(1500).room(.3)`,
       },
@@ -3081,7 +3081,7 @@ $: s("hh*16").gain("[.03 .06]*8").lpf(2000).room(.3)`,
       {
         label: 'Candlelight',
         code: `// candlelight dinner
-$: note("<[d3,f#3,a3,c4] [g3,b3,d4,f4] [e3,g3,b3,d4] [a2,c3,e3,g3]>")
+$: note("<[d3,g3,a3,c4] [g3,b3,d4,f4] [e3,g3,b3,d4] [a2,c3,e3,g3]>")
   .s("piano").gain(.4).room(.4)
   .delay(.2).delayfeedback(.3).slow(2)
 $: note("<d2 g2 e2 a1>")
@@ -3093,19 +3093,19 @@ $: note("<d2 g2 e2 a1>")
 $: s("[bd:3 ~] [~ bd:3] [bd:3 ~] ~")
   .gain(.3).lpf(600)
 $: s("~ rim ~ rim").gain(.1).lpf(1500)
-$: note("<[f3,a3,c4,e4] [bb2,d3,f3,a3] [c3,e3,g3,b3] [f3,a3,c4,e4]>")
+$: note("<[f3,a3,c4,e4] [b2,d3,f3,a3] [c3,e3,g3,b3] [f3,a3,c4,e4]>")
   .s("gm_epiano1").velocity(.2)
   .room(.5).delay(.25).slow(2)
-$: note("<f1 bb1 c2 f1>")
+$: note("<f1 b1 c2 f1>")
   .s("sine").gain(.35).lpf(160).slow(2)`,
       },
       {
         label: 'Twilight Zone',
         code: `// twilight zone vibes
-$: note("<[f#3,a3,c#4,e4] [b2,d3,f#3,a3]>")
+$: note("<[g3,a3,d4,e4] [b2,d3,g3,a3]>")
   .s("piano").gain(.35).room(.5)
   .delay(.35).delayfeedback(.45).slow(4)
-$: note("<f#1 b1>")
+$: note("<g1 b1>")
   .s("sine").gain(.35).lpf(150).slow(4)`,
       },
       {
@@ -3114,16 +3114,16 @@ $: note("<f#1 b1>")
 $: s("[bd:3 ~] [~ bd:3] [bd:3 ~] ~")
   .gain(.35).lpf(700)
 $: s("~ rim ~ rim").gain(.12).lpf(1800)
-$: note("<[eb3,g3,bb3,d4] [ab3,c4,eb4,g4] [bb3,d4,f4,ab4] [g3,bb3,d4,f4]>")
+$: note("<[e3,g3,b3,d4] [a3,c4,e4,g4] [b3,d4,f4,a4] [g3,b3,d4,f4]>")
   .s("gm_epiano1").velocity(.25)
   .room(.4).slow(2)
-$: note("<eb2 ab2 bb2 g2>")
+$: note("<e2 a2 b2 g2>")
   .s("sine").gain(.4).lpf(180).slow(2)`,
       },
       {
         label: 'Gentle River',
         code: `// gentle river flow
-$: note("<[g3,b3,d4] [c3,e3,g3] [d3,f#3,a3] [g3,b3,d4]>")
+$: note("<[g3,b3,d4] [c3,e3,g3] [d3,g3,a3] [g3,b3,d4]>")
   .s("piano").gain(.4).room(.45)
   .delay(.3).delayfeedback(.35).slow(2)
 $: note("<g1 c2 d2 g1>")
@@ -3143,9 +3143,9 @@ $: note("<a1 d2 e2 a1>")
       {
         label: 'Cozy Blanket',
         code: `// cozy blanket and tea
-$: note("<[db3,f3,ab3,c4] [gb2,bb2,db3,f3] [ab2,c3,eb3,gb3] [db3,f3,ab3,c4]>")
+$: note("<[d3,f3,a3,c4] [g2,b2,d3,f3] [a2,c3,e3,g3] [d3,f3,a3,c4]>")
   .s("piano").gain(.4).room(.45).slow(2)
-$: note("<db2 gb1 ab1 db2>")
+$: note("<d2 g1 a1 d2>")
   .s("sine").gain(.35).lpf(160).slow(2)
 $: s("[bd:3 ~] ~ [~ bd:3] ~").gain(.25).lpf(500)`,
       },
@@ -3162,7 +3162,7 @@ $: note("<a1 d1>")
       {
         label: 'Paper Planes',
         code: `// paper planes floating
-$: note("<[e3,g3,b3,d4] [c3,e3,g3,b3] [a2,c3,e3,g3] [b2,d3,f#3,a3]>")
+$: note("<[e3,g3,b3,d4] [c3,e3,g3,b3] [a2,c3,e3,g3] [b2,d3,g3,a3]>")
   .s("piano").gain(.4).room(.4)
   .delay(.25).delayfeedback(.3).slow(2)
 $: note("<e2 c2 a1 b1>")
@@ -3189,21 +3189,21 @@ $: s("[~ hh:1]*4").gain("[.04 .08]*4").lpf(2200)`,
       {
         label: 'Scope + Piano',
         code: `// piano melody with oscilloscope
-$: note("c4 eb4 g4 bb4 c5 bb4 g4 eb4")
+$: note("c4 e4 g4 b4 c5 b4 g4 e4")
   .s("piano").gain(.6).room(.3)
   .scope()`,
       },
       {
         label: 'Pianoroll + Chords',
         code: `// chord progression pianoroll
-$: note("<[c3,eb3,g3] [ab2,c3,eb3] [bb2,d3,f3] [g2,bb2,d3]>")
+$: note("<[c3,e3,g3] [a2,c3,e3] [b2,d3,f3] [g2,b2,d3]>")
   .s("piano").gain(.5).room(.4).slow(2)
   .pianoroll({cycles:4})`,
       },
       {
         label: 'Spiral + Arp',
         code: `// arpeggio with spiral visual
-$: note("c3 eb3 g3 bb3 c4 bb3 g3 eb3")
+$: note("c3 e3 g3 b3 c4 b3 g3 e3")
   .s("supersaw").gain(.4)
   .lpf(2500).room(.3)
   .spiral()`,
@@ -3211,7 +3211,7 @@ $: note("c3 eb3 g3 bb3 c4 bb3 g3 eb3")
       {
         label: 'Pitchwheel + Melody',
         code: `// melody with pitch wheel visual
-$: note("c4 d4 eb4 g4 f4 eb4 d4 c4")
+$: note("c4 d4 e4 g4 f4 e4 d4 c4")
   .s("gm_vibraphone").velocity(.5)
   .room(.4)
   .pitchwheel()`,
@@ -3233,7 +3233,7 @@ $: s("bd sd hh cp rim oh bd sd")
       {
         label: 'Scope Cyan Thick',
         code: `// thick cyan scope
-$: note("c3 eb3 g3 bb3")
+$: note("c3 e3 g3 b3")
   .s("sawtooth").gain(.4)
   .lpf(2000)
   .scope({color:"#22d3ee",thickness:3})`,
@@ -3256,7 +3256,7 @@ $: note("c3*4").s("sawtooth")
       {
         label: 'Fscope + Bass',
         code: `// bass frequency spectrum
-$: note("c2 eb2 g2 c3")
+$: note("c2 e2 g2 c3")
   .s("sawtooth").gain(.5)
   .lpf(1200).shape(.15)
   .fscope()`,
@@ -3265,7 +3265,7 @@ $: note("c2 eb2 g2 c3")
         label: 'Pianoroll Wide',
         code: `// wide pianoroll 8 cycles
 $: n("0 2 4 7 9 12 9 7 4 2 0 -3")
-  .scale("C3:minor pentatonic")
+  .scale("A2:minor pentatonic")
   .s("piano").gain(.5)
   .pianoroll({cycles:8})`,
       },
@@ -3274,14 +3274,14 @@ $: n("0 2 4 7 9 12 9 7 4 2 0 -3")
         code: `// multi-track with scope
 $: s("bd*4").gain(.8)
 $: s("~ cp ~ ~").gain(.6)
-$: note("c3 eb3 g3 bb3")
+$: note("c3 e3 g3 b3")
   .s("sawtooth").gain(.4).lpf(1500)
   .scope({color:"#a855f7",thickness:2})`,
       },
       {
         label: 'Spiral + Pad',
         code: `// pad with spiral visual
-$: note("<[c3,eb3,g3] [ab2,c3,eb3]>")
+$: note("<[c3,e3,g3] [a2,c3,e3]>")
   .s("supersaw").gain(.3)
   .lpf(1500).room(.4).slow(2)
   .spiral()`,
@@ -3296,7 +3296,7 @@ $: note("d5 f5 a5 g5 f5 d5 c5 d5")
       {
         label: 'Scope Orange',
         code: `// orange warm scope
-$: note("c4 eb4 g4 bb4 c5 bb4 g4 eb4")
+$: note("c4 e4 g4 b4 c5 b4 g4 e4")
   .s("gm_epiano1").velocity(.4).room(.3)
   .scope({color:"#f97316",thickness:2,smear:.8})`,
       },
@@ -3312,14 +3312,14 @@ $: note("c2*4").s("sine").gain(.4).lpf(200)
         label: 'Pianoroll + Scale',
         code: `// scale run pianoroll
 $: n("0 1 2 3 4 5 6 7 6 5 4 3 2 1 0 -1")
-  .scale("C4:dorian")
+  .scale("D4:dorian")
   .s("gm_marimba").velocity(.5).room(.3)
   .pianoroll({cycles:4})`,
       },
       {
         label: 'Scope Gold Smear',
         code: `// gold smeared scope
-$: note("c3 g3 eb4 c4 g3 eb3 c3 g2")
+$: note("c3 g3 e4 c4 g3 e3 c3 g2")
   .s("sawtooth").gain(.35).lpf(1500)
   .scope({color:"#eab308",thickness:2,smear:.9})`,
       },
@@ -3383,7 +3383,7 @@ $: s("chin:1").chop(16)
       {
         label: 'Choir Aahs',
         code: `// soft choir aahs
-$: note("<[c3,eb3,g3] [ab2,c3,eb3] [bb2,d3,f3] [g2,bb2,d3]>")
+$: note("<[c3,e3,g3] [a2,c3,e3] [b2,d3,f3] [g2,b2,d3]>")
   .s("gm_choir_aahs").velocity(.4)
   .room(.5).slow(2)`,
       },
@@ -3397,21 +3397,21 @@ $: note("<[c4,e4,g4] [a3,c4,e4]>")
       {
         label: 'Synth Voice',
         code: `// synthetic voice lead
-$: note("c4 eb4 g4 bb4 c5 bb4 g4 eb4")
+$: note("c4 e4 g4 b4 c5 b4 g4 e4")
   .s("gm_synth_voice").velocity(.45)
   .room(.3)`,
       },
       {
         label: 'Male Hum Low',
         code: `// low male humming tone
-$: note("<c2 eb2 f2 g2>")
+$: note("<c2 e2 f2 g2>")
   .s("gm_choir_aahs").velocity(.35)
   .lpf(600).room(.5).slow(2)`,
       },
       {
         label: 'Female Hum High',
         code: `// high female humming
-$: note("<c4 eb4 f4 g4>")
+$: note("<c4 e4 f4 g4>")
   .s("gm_voice_oohs").velocity(.35)
   .lpf(3000).room(.5).slow(2)`,
       },
@@ -3432,7 +3432,7 @@ $: s("chin:0 ~ chin:1 ~")
       {
         label: 'Delayed Choir',
         code: `// delayed choir wash
-$: note("<[c3,g3,c4] [ab2,eb3,ab3]>")
+$: note("<[c3,g3,c4] [a2,e3,a3]>")
   .s("gm_choir_aahs").velocity(.35)
   .delay(.4).delayfeedback(.5)
   .room(.6).slow(4)`,
@@ -3440,7 +3440,7 @@ $: note("<[c3,g3,c4] [ab2,eb3,ab3]>")
       {
         label: 'Singing Melody',
         code: `// singing melodic line
-$: note("c4 d4 eb4 g4 f4 eb4 d4 c4")
+$: note("c4 d4 e4 g4 f4 e4 d4 c4")
   .s("gm_voice_oohs").velocity(.45)
   .room(.4)`,
       },
@@ -3472,7 +3472,7 @@ $: s("east:4 east:5").gain(.35)`,
       {
         label: 'Chopped Choir',
         code: `// chopped choir stutter
-$: note("[c3,eb3,g3]")
+$: note("[c3,e3,g3]")
   .s("gm_choir_aahs").velocity(.4)
   .chop(8).room(.3)`,
       },
@@ -3500,7 +3500,7 @@ $: note("e4 g4 a4 b4 a4 g4 e4 d4")
       {
         label: 'Male Low Choir',
         code: `// deep male choir
-$: note("<[c2,g2,c3] [ab1,eb2,ab2]>")
+$: note("<[c2,g2,c3] [a1,e2,a2]>")
   .s("gm_choir_aahs").velocity(.4)
   .lpf(800).room(.6).slow(4)`,
       },
@@ -3530,10 +3530,10 @@ $: note("[c3,g3]")
       {
         label: 'Humming Duet',
         code: `// male and female hum duet
-$: note("<c3 d3 eb3 d3>")
+$: note("<c3 d3 e3 d3>")
   .s("gm_choir_aahs").velocity(.3)
   .lpf(700).room(.5).slow(2)
-$: note("<g4 a4 bb4 a4>")
+$: note("<g4 a4 b4 a4>")
   .s("gm_voice_oohs").velocity(.25)
   .lpf(2500).room(.5).slow(2)`,
       },
@@ -3557,7 +3557,7 @@ $: s("chin:0 ~ chin:1 ~").gain(.5)
       {
         label: 'Choir Swell',
         code: `// swelling choir
-$: note("<[c3,eb3,g3,bb3]>")
+$: note("<[c3,e3,g3,b3]>")
   .s("gm_choir_aahs")
   .velocity(sine.range(.15,.5).slow(4))
   .room(.6).slow(4)`,
@@ -3578,9 +3578,9 @@ $: s("chin:0 chin:1 chin:2 chin:0")
 // Every whisper pulls me closer still
 // Dancing slowly on the windowsill
 // Hold me tight until the morning light
-$: note("c4 d4 eb4 g4 f4 eb4 d4 c4").s("gm_voice_oohs")
+$: note("c4 d4 e4 g4 f4 e4 d4 c4").s("gm_voice_oohs")
   .velocity(sine.range(.3,.7).slow(8)).room(.5).delay(.15)
-$: note("c3 eb3 g3 bb3").s("gm_epiano2").velocity(.3).slow(2)
+$: note("c3 e3 g3 b3").s("gm_epiano2").velocity(.3).slow(2)
 $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.4)`,
       },
       {
@@ -3591,9 +3591,9 @@ $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.4)`,
 // Walkin' bass line groovin' down below
 // Trumpet cryin' soft and sweet and slow
 // Midnight jazz that only dreamers know
-$: note("g4 a4 bb4 d5 c5 a4 g4 f4").s("gm_choir_aahs")
+$: note("g4 a4 b4 d5 c5 a4 g4 f4").s("gm_choir_aahs")
   .velocity("<.5 .6 .7 .5>").delay(.2).room(.6)
-$: note("g2 a2 bb2 c3 d3 c3 bb2 a2").s("gm_acoustic_bass").velocity(.5)
+$: note("g2 a2 b2 c3 d3 c3 b2 a2").s("gm_acoustic_bass").velocity(.5)
 $: s("~ hh ~ hh ~ hh ~ hh").bank("RolandTR808").gain(.3)`,
       },
       {
@@ -3618,9 +3618,9 @@ $: s("bd ~ sd ~ bd bd sd ~").bank("RolandTR808").gain(.5)`,
 // Every block I walk I feel the beat
 // Concrete jungle underneath my feet
 // Mic in hand I own this midnight street
-$: note("c4 c4 eb4 f4 eb4 c4 ~ c4").s("gm_synth_voice")
+$: note("c4 c4 e4 f4 e4 c4 ~ c4").s("gm_synth_voice")
   .velocity(.6).delay(.1).room(.3)
-$: note("c2 ~ c2 ~ eb2 ~ f2 ~").s("gm_synth_bass_1").velocity(.7)
+$: note("c2 ~ c2 ~ e2 ~ f2 ~").s("gm_synth_bass_1").velocity(.7)
 $: s("bd ~ ~ bd sd ~ bd sd").bank("RolandTR808").gain(.6)
 $: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3)`,
       },
@@ -3632,7 +3632,7 @@ $: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3)`,
 // Porch light glowin' like a guiding star
 // Strummin' six string underneath the bar
 // Miles between us but you're never far
-$: note("e4 f#4 g4 a4 g4 f#4 e4 d4").s("gm_voice_oohs")
+$: note("e4 g4 g4 a4 g4 g4 e4 d4").s("gm_voice_oohs")
   .velocity(sine.range(.3,.6).slow(8)).room(.5)
 $: note("e3 a3 b3 e3 a3 b3 e3 a3").s("gm_steel_guitar").velocity(.35)
 $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
@@ -3645,9 +3645,9 @@ $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
 // Every riddim makes the people free
 // From the mountain down into the sea
 // Unity is all we need to be
-$: note("g3 bb3 c4 d4 c4 bb3 g3 ~").s("gm_choir_aahs")
+$: note("g3 b3 c4 d4 c4 b3 g3 ~").s("gm_choir_aahs")
   .velocity(.5).room(.6).delay(.25)
-$: note("~ g2 ~ g2 ~ bb2 ~ c3").s("gm_electric_bass_finger").velocity(.6)
+$: note("~ g2 ~ g2 ~ b2 ~ c3").s("gm_electric_bass_finger").velocity(.6)
 $: s("bd ~ ~ bd ~ sd ~ ~").bank("RolandTR808").gain(.5)
 $: s("~ ~ rim ~ ~ ~ rim ~").bank("RolandTR808").gain(.3)`,
       },
@@ -3659,7 +3659,7 @@ $: s("~ ~ rim ~ ~ ~ rim ~").bank("RolandTR808").gain(.3)`,
 // Guitar cryin' what my lips can't say
 // Storm clouds rollin' in to steal the day
 // Got the blues and they are here to stay
-$: note("e3 g3 a3 bb3 a3 g3 e3 ~").s("gm_voice_oohs")
+$: note("e3 g3 a3 b3 a3 g3 e3 ~").s("gm_voice_oohs")
   .velocity(sine.range(.4,.7).slow(6)).room(.5).slow(2)
 $: note("e2 a2 b2 e2 g2 a2 b2 e2").s("gm_clean_guitar").velocity(.4)
 $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
@@ -3717,7 +3717,7 @@ $: s("rim ~ rim ~ rim ~ rim ~").bank("RolandTR808").gain(.3)`,
 // Every verse a path that leads us home
 $: note("g4 a4 b4 d5 b4 a4 g4 ~").s("gm_choir_aahs")
   .velocity(.45).room(.5)
-$: note("d4 e4 f#4 a4 f#4 e4 d4 ~").s("gm_voice_oohs")
+$: note("d4 e4 g4 a4 g4 e4 d4 ~").s("gm_voice_oohs")
   .velocity(.35).room(.5)
 $: note("g3 d3 g3 d3 g3 d3 g3 d3").s("gm_nylon_guitar").velocity(.3)`,
       },
@@ -3729,9 +3729,9 @@ $: note("g3 d3 g3 d3 g3 d3 g3 d3").s("gm_nylon_guitar").velocity(.3)`,
 // Pixel stars are scattered all around
 // Binary code becomes a human sound
 // Lost between the silence and the rain
-$: note("<[c4,eb4,g4] [bb3,d4,f4] [ab3,c4,eb4] [g3,bb3,d4]>")
+$: note("<[c4,e4,g4] [b3,d4,f4] [a3,c4,e4] [g3,b3,d4]>")
   .s("gm_synth_choir").velocity(.5).room(.6).slow(4)
-$: note("c5 eb5 g5 ~ eb5 c5 ~ g4").s("gm_synth_voice")
+$: note("c5 e5 g5 ~ e5 c5 ~ g4").s("gm_synth_voice")
   .velocity(.3).delay(.3)
 $: s("bd ~ ~ ~ sd ~ ~ ~").bank("RolandTR909").gain(.35)`,
       },
@@ -3785,11 +3785,11 @@ $: note("<[c4,e4,g4] [a3,c4,e4] [f3,a3,c4] [g3,b3,d4]>")
 // Horns are blaring hot across the stage
 // Every note is turnin up the page
 // Groove so deep it echoes through the age
-$: note("c4 ~ eb4 f4 ~ eb4 c4 ~").s("gm_synth_voice")
+$: note("c4 ~ e4 f4 ~ e4 c4 ~").s("gm_synth_voice")
   .velocity(.6).room(.3)
-$: note("c2 ~ c2 eb2 f2 ~ c2 ~").s("gm_slap_bass_1").velocity(.65)
+$: note("c2 ~ c2 e2 f2 ~ c2 ~").s("gm_slap_bass_1").velocity(.65)
 $: s("bd ~ sd ~ bd bd sd ~").bank("RolandTR808").gain(.55)
-$: note("~ [eb5,g5] ~ ~ ~ [f5,ab5] ~ ~").s("gm_brass1").velocity(.4)`,
+$: note("~ [e5,g5] ~ ~ ~ [f5,a5] ~ ~").s("gm_brass1").velocity(.4)`,
       },
       {
         label: 'Choir Hymn Full',
@@ -3828,10 +3828,10 @@ $: s("bd ~ sd ~ bd bd sd ~").bank("RolandTR909").gain(.55)`,
 // Salt and mist upon the evening breeze
 // Voices carried over emerald seas
 // Peace within the silence if you please
-$: note("<c4 d4 eb4 f4 eb4 d4 c4 bb3>")
+$: note("<c4 d4 e4 f4 e4 d4 c4 b3>")
   .s("gm_voice_oohs").velocity(sine.range(.15,.4).slow(16))
   .room(.8).delay(.35).slow(4)
-$: note("<[c3,eb3,g3] [bb2,d3,f3] [ab2,c3,eb3] [g2,bb2,d3]>")
+$: note("<[c3,e3,g3] [b2,d3,f3] [a2,c3,e3] [g2,b2,d3]>")
   .s("gm_warm_pad").velocity(.2).slow(8)`,
       },
       {
@@ -3892,7 +3892,7 @@ $: note("<[e2,b2,e3] [c2,g2,c3] [d2,a2,d3] [a1,e2,a2]>")
       {
         label: 'Jazz Clean',
         code: `// jazz guitar clean
-$: note("c3 e3 g3 bb3 a3 f3 d3 g3")
+$: note("c3 e3 g3 b3 a3 f3 d3 g3")
   .s("gm_clean_guitar").velocity(.4)
   .room(.4).delay(.15)`,
       },
@@ -3920,7 +3920,7 @@ $: note("<[c3,e3,g3] [a2,c3,e3] [f2,a2,c3] [g2,b2,d3]>")
       {
         label: 'Blues Lick',
         code: `// blues guitar lick
-$: note("c4 eb4 f4 f#4 g4 bb4 g4 eb4")
+$: note("c4 e4 f4 g4 g4 b4 g4 e4")
   .s("gm_clean_guitar").velocity(.5)
   .room(.3)`,
       },
@@ -3940,7 +3940,7 @@ $: note("[e3 e3 e3 e3]*4")
       {
         label: 'Slide Guitar',
         code: `// slide guitar feel
-$: note("c3 d3 eb3 g3 c4 g3 eb3 d3")
+$: note("c3 d3 e3 g3 c4 g3 e3 d3")
   .s("gm_steel_guitar").velocity(.5)
   .glide(.15).room(.3)`,
       },
@@ -3975,7 +3975,7 @@ $: note("e3 g3 a3 e3 g3 a3 b3 a3")
       {
         label: 'Pedal Steel',
         code: `// pedal steel vibe
-$: note("e3 g#3 b3 e4 g#4 e4 b3 g#3")
+$: note("e3 a3 b3 e4 a4 e4 b3 a3")
   .s("gm_steel_guitar").velocity(.4)
   .room(.5).delay(.25).slow(2)`,
       },
@@ -4011,7 +4011,7 @@ $: note("e2 ~ e3 e2 g2 ~ a2 b2")
       {
         label: 'Octave Lead',
         code: `// octave guitar lead
-$: note("c4 c5 eb4 eb5 g4 g5 bb4 bb5")
+$: note("c4 c5 e4 e5 g4 g5 b4 b5")
   .s("gm_clean_guitar").velocity(.5)
   .room(.3)`,
       },
@@ -4072,7 +4072,7 @@ $: note("c4 ~ ~ e4 ~ ~ g4 ~")
 $: note("e3 b3 g3 d4 b3 g3 e3 b2")
   .s("gm_nylon_guitar").velocity(sine.range(.3,.55).slow(8))
   .room(.45).delay(.1)
-$: note("<[e3,b3,e4] [a2,e3,a3] [d3,a3,d4] [b2,f#3,b3]>")
+$: note("<[e3,b3,e4] [a2,e3,a3] [d3,a3,d4] [b2,g3,b3]>")
   .s("gm_nylon_guitar").velocity(.25).slow(4)`,
       },
       {
@@ -4088,7 +4088,7 @@ $: s("bd ~ ~ bd ~ ~ bd ~").bank("RolandTR808").gain(.3)`,
       {
         label: 'Texas Blues Lick',
         code: `// texas blues guitar lick
-$: note("e4 g4 a4 bb4 a4 g4 e4 d4")
+$: note("e4 g4 a4 b4 a4 g4 e4 d4")
   .s("gm_overdriven_guitar").velocity(.55).room(.35)
 $: note("[e3,b3] ~ [a3,e4] ~ [d3,a3] ~ [e3,b3] ~")
   .s("gm_clean_guitar").velocity(.3).slow(2)
@@ -4134,16 +4134,16 @@ $: s("~ rim ~ rim ~ rim ~ rim").bank("RolandTR808").gain(.25)`,
       {
         label: 'Reggae Skank',
         code: `// reggae guitar skank
-$: note("~ [bb3,d4,f4] ~ [bb3,d4,f4] ~ [a3,c4,eb4] ~ [a3,c4,eb4]")
+$: note("~ [b3,d4,f4] ~ [b3,d4,f4] ~ [a3,c4,e4] ~ [a3,c4,e4]")
   .s("gm_muted_guitar").velocity(.5).room(.2)
-$: note("~ bb2 ~ bb2 ~ a2 ~ a2").s("gm_electric_bass_finger").velocity(.55)
+$: note("~ b2 ~ b2 ~ a2 ~ a2").s("gm_electric_bass_finger").velocity(.55)
 $: s("bd ~ ~ bd ~ sd ~ ~").bank("RolandTR808").gain(.5)
 $: s("~ ~ hh ~ ~ ~ hh ~").bank("RolandTR808").gain(.3)`,
       },
       {
         label: 'Country Chicken Pick',
         code: `// country chicken pickin
-$: note("e4 g#4 a4 b4 a4 g#4 e4 c#4")
+$: note("e4 a4 a4 b4 a4 a4 e4 d4")
   .s("gm_clean_guitar").velocity("<.6 .4 .5 .6>").room(.25)
 $: note("a2 e3 a2 e3 d3 a3 e3 b3").s("gm_steel_guitar").velocity(.35)
 $: note("a2 ~ e2 ~ d2 ~ e2 ~").s("gm_acoustic_bass").velocity(.45)
@@ -4162,7 +4162,7 @@ $: s("bd ~ ~ ~ sd ~ ~ ~").bank("RolandTR909").gain(.3)`,
       {
         label: 'Jazz Comping Guitar',
         code: `// jazz guitar comping
-$: note("<[d3,f#3,a3,c4] [g3,b3,d4,f4] [c3,e3,g3,bb3] [f3,a3,c4,eb4]>")
+$: note("<[d3,g3,a3,c4] [g3,b3,d4,f4] [c3,e3,g3,b3] [f3,a3,c4,e4]>")
   .s("gm_clean_guitar").velocity(.4).room(.3).slow(2)
 $: note("d2 a2 g2 d3 c2 g2 f2 c3").s("gm_acoustic_bass").velocity(.45)
 $: s("~ hh ~ hh ~ hh ~ hh").bank("RolandTR808").gain(.2)`,
@@ -4212,9 +4212,9 @@ $: s("bd ~ sd ~ bd ~ sd bd").bank("RolandTR808").gain(.5)`,
       {
         label: 'Slide Guitar Blues',
         code: `// slide guitar blues
-$: note("e3 ~ g3 a3 ~ bb3 a3 g3")
+$: note("e3 ~ g3 a3 ~ b3 a3 g3")
   .s("gm_steel_guitar").velocity(sine.range(.35,.6).slow(4)).room(.4)
-$: note("[e3,b3] ~ [a3,e4] ~ [b3,f#4] ~ [e3,b3] ~")
+$: note("[e3,b3] ~ [a3,e4] ~ [b3,g4] ~ [e3,b3] ~")
   .s("gm_clean_guitar").velocity(.3).slow(2)
 $: note("e2 ~ a2 ~ b2 ~ e2 ~").s("gm_electric_bass_finger").velocity(.45)
 $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
@@ -4231,7 +4231,7 @@ $: note("<[c3,g3] [a2,e3] [f2,c3] [g2,d3]>")
       {
         label: 'Acoustic Folk Strum',
         code: `// acoustic folk strumming
-$: note("<[g3,b3,d4] [c3,e3,g3] [d3,f#3,a3] [g3,b3,d4]>")
+$: note("<[g3,b3,d4] [c3,e3,g3] [d3,g3,a3] [g3,b3,d4]>")
   .s("gm_steel_guitar").velocity(.5).room(.35)
 $: note("g3 b3 d4 g4 d4 b3 g3 b3")
   .s("gm_steel_guitar").velocity(.3)
@@ -4540,7 +4540,7 @@ $: s("~ ~ rim ~ ~ ~ rim ~").bank("RolandTR808").gain(.3)`,
         code: `// syncopated clap groove
 $: s("~ cp ~ [~ cp] ~ cp ~ ~").bank("RolandTR909").gain(.5)
 $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.45)
-$: note("c3 ~ eb3 ~ f3 ~ eb3 ~").s("gm_synth_bass_1").velocity(.3)`,
+$: note("c3 ~ e3 ~ f3 ~ e3 ~").s("gm_synth_bass_1").velocity(.3)`,
       },
       {
         label: 'Clap Gate',
@@ -4563,7 +4563,7 @@ $: note("~ a2 ~ a2 ~ c3 ~ a2").s("gm_acoustic_bass").velocity(.4)`,
 $: s("~ cp ~ cp").bank("RolandTR909").gain(.55).room(.2)
 $: s("bd ~ ~ ~ bd ~ ~ bd").bank("RolandTR808").gain(.45)
 $: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3)
-$: note("[c4,eb4,g4] ~ [f4,ab4,c5] ~").s("gm_strings1").velocity(.2).slow(2)`,
+$: note("[c4,e4,g4] ~ [f4,a4,c5] ~").s("gm_strings1").velocity(.2).slow(2)`,
       },
       {
         label: 'Stacked Clap Hit',
@@ -4582,7 +4582,7 @@ $: s("bd ~ ~ bd sd ~ ~ ~").bank("RolandTR808").gain(.5)`,
       {
         label: 'Cathedral Piano',
         code: `// cathedral reverb piano
-$: note("c4 ~ ~ eb4 ~ ~ g4 ~")
+$: note("c4 ~ ~ e4 ~ ~ g4 ~")
   .s("piano").gain(.45)
   .room(.95).roomsize(10)`,
       },
@@ -4596,7 +4596,7 @@ $: note("c4").s("sine").gain(.3)
       {
         label: 'Shimmer Pad',
         code: `// shimmering reverb pad
-$: note("<[c3,g3,c4] [ab2,eb3,ab3]>")
+$: note("<[c3,g3,c4] [a2,e3,a3]>")
   .s("sine").gain(.3)
   .room(.9).roomsize(8)
   .delay(.3).delayfeedback(.5).slow(4)`,
@@ -4611,7 +4611,7 @@ $: s("bd*4").gain(.8)`,
       {
         label: 'Hall Strings',
         code: `// concert hall strings
-$: note("<[c3,eb3,g3,c4] [ab2,c3,eb3,ab3]>")
+$: note("<[c3,e3,g3,c4] [a2,c3,e3,a3]>")
   .s("gm_strings1").velocity(.4)
   .room(.85).roomsize(8).slow(4)`,
       },
@@ -4625,7 +4625,7 @@ $: s("bd*4").gain(.8)`,
       {
         label: 'Ambient Bell',
         code: `// reverb bell tones
-$: note("<c5 eb5 g5 bb5>")
+$: note("<c5 e5 g5 b5>")
   .s("gm_tubular_bells").velocity(.35)
   .room(.9).roomsize(8).slow(2)`,
       },
@@ -4654,7 +4654,7 @@ $: note("e3 g3 a3 b3 e4 b3 a3 g3")
       {
         label: 'Reverse Verb',
         code: `// reverse reverb feel
-$: note("[c4,eb4,g4]").s("supersaw")
+$: note("[c4,e4,g4]").s("supersaw")
   .gain(.3).attack(.5)
   .room(.9).roomsize(8).slow(4)`,
       },
@@ -4667,7 +4667,7 @@ $: s("chin:0 ~ chin:1 ~").gain(.5)
       {
         label: 'Reverb Wash',
         code: `// pad reverb wash
-$: note("[c3,eb3,g3]").s("sawtooth")
+$: note("[c3,e3,g3]").s("sawtooth")
   .gain(.25).lpf(1500)
   .room(.9).roomsize(8)`,
       },
@@ -4688,7 +4688,7 @@ $: note("c3").s("sine").gain(.35)
       {
         label: 'Choir Hall',
         code: `// choir in concert hall
-$: note("<[c3,eb3,g3] [ab2,c3,eb3]>")
+$: note("<[c3,e3,g3] [a2,c3,e3]>")
   .s("gm_choir_aahs").velocity(.4)
   .room(.85).roomsize(7).slow(4)`,
       },
@@ -4724,14 +4724,14 @@ $: note("c4 ~ ~ ~ e4 ~ ~ ~")
       {
         label: 'Verb Piano Chord',
         code: `// reverb piano chords
-$: note("<[c3,eb3,g3,bb3] [ab2,c3,eb3,g3]>")
+$: note("<[c3,e3,g3,b3] [a2,c3,e3,g3]>")
   .s("piano").gain(.4)
   .room(.8).roomsize(6).slow(2)`,
       },
       {
         label: 'Ethereal Sine',
         code: `// ethereal sine reverb
-$: note("c5 eb5 g5 bb5")
+$: note("c5 e5 g5 b5")
   .s("sine").gain(.3)
   .room(.9).roomsize(8)
   .delay(.4).delayfeedback(.5).slow(2)`,
@@ -4761,14 +4761,14 @@ $: s("bd ~ bd ~").gain(.7)`,
       {
         label: 'Spacious Keys',
         code: `// spacious electric piano
-$: note("<[eb3,g3,bb3] [ab3,c4,eb4]>")
+$: note("<[e3,g3,b3] [a3,c4,e4]>")
   .s("gm_epiano1").velocity(.35)
   .room(.75).roomsize(5).slow(2)`,
       },
       {
         label: 'Verb Bass',
         code: `// reverb bass tone
-$: note("<c2 eb2 f2 g2>")
+$: note("<c2 e2 f2 g2>")
   .s("sine").gain(.45)
   .room(.5).roomsize(3)
   .lpf(300)`,
@@ -4783,7 +4783,7 @@ $: note("e3 g3 b3 e4")
       {
         label: 'Synth Cathedral',
         code: `// synth in cathedral
-$: note("[c3,eb3,g3]").s("supersaw")
+$: note("[c3,e3,g3]").s("supersaw")
   .gain(.25).lpf(2000)
   .room(.9).roomsize(8)`,
       },
@@ -4791,7 +4791,7 @@ $: note("[c3,eb3,g3]").s("supersaw")
         label: 'Reverb Everything',
         code: `// everything reverbed
 $: s("bd sd [~ bd] sd").bank("RolandTR808").gain(.6).room(.6)
-$: note("<[c3,eb3,g3]>")
+$: note("<[c3,e3,g3]>")
   .s("piano").gain(.4).room(.8).roomsize(6)
 $: note("c2").s("sine").gain(.4).room(.5)`,
       },
@@ -4830,10 +4830,10 @@ $: note("c3 d3 e3 c3").s("gm_cello").velocity(.3).room(.7).slow(4)`,
       {
         label: 'Ambient Verb Pad',
         code: `// ambient reverb pad
-$: note("<[c4,eb4,g4] [bb3,d4,f4]>")
+$: note("<[c4,e4,g4] [b3,d4,f4]>")
   .s("gm_warm_pad").velocity(.35)
   .room(.9).roomsize(10).slow(8)
-$: note("c5 ~ eb5 ~ g5 ~ ~ ~")
+$: note("c5 ~ e5 ~ g5 ~ ~ ~")
   .s("gm_celesta").velocity(.2).room(.8).delay(.3)`,
       },
       {
@@ -4878,7 +4878,7 @@ $: note("[c3,g3]").s("gm_church_organ").velocity(.2).room(.7).slow(4)`,
       {
         label: 'Tight Room Bass',
         code: `// tight room on bass
-$: note("c2 ~ eb2 ~ f2 ~ eb2 ~")
+$: note("c2 ~ e2 ~ f2 ~ e2 ~")
   .s("gm_electric_bass_finger").velocity(.55)
   .room(.25).roomsize(2)
 $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.45).room(.2)`,
@@ -4935,7 +4935,7 @@ $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR909").gain(.4).room(.3)`,
       {
         label: 'Frozen Verb Pad',
         code: `// frozen reverb pad texture
-$: note("<c4 eb4 g4 bb4>")
+$: note("<c4 e4 g4 b4>")
   .s("gm_bowed_glass").velocity(.3)
   .room(.95).roomsize(10).delay(.4).delayfeedback(.6).slow(4)`,
       },
@@ -4980,7 +4980,7 @@ $: note("c1").s("sawtooth")
       {
         label: 'Reese Heavyweight',
         code: `// heavyweight reese
-$: note("<c1 c1 eb1 f1>")
+$: note("<c1 c1 e1 f1>")
   .s("sawtooth").gain(.5)
   .detune(20).lpf(400)
   .shape(.4)`,
@@ -4988,14 +4988,14 @@ $: note("<c1 c1 eb1 f1>")
       {
         label: 'Distorted Sub',
         code: `// distorted sub bass
-$: note("<c1 eb1 f1 g1>")
+$: note("<c1 e1 f1 g1>")
   .s("sine").gain(.6)
   .shape(.6).lpf(200)`,
       },
       {
         label: '808 Long',
         code: `// long 808 bass
-$: note("c1 ~ ~ ~ eb1 ~ ~ ~")
+$: note("c1 ~ ~ ~ e1 ~ ~ ~")
   .s("sine").gain(.65)
   .decay(1.5).lpf(180)
   .shape(.3)`,
@@ -5025,14 +5025,14 @@ $: note("c0*2").s("sine")
       {
         label: 'Dirty Square',
         code: `// dirty square bass
-$: note("c1 ~ c1 eb1 ~ eb1 f1 ~")
+$: note("c1 ~ c1 e1 ~ e1 f1 ~")
   .s("square").gain(.5)
   .shape(.4).lpf(300)`,
       },
       {
         label: 'DnB Tear',
         code: `// tearing DnB bass
-$: note("[c1 ~] [~ g1] [eb1 ~] [~ c1]")
+$: note("[c1 ~] [~ g1] [e1 ~] [~ c1]")
   .s("sawtooth").gain(.55)
   .lpf(1000).shape(.3)`,
       },
@@ -5069,7 +5069,7 @@ $: note("c1*4").s("sine")
       {
         label: 'Neuro Bass',
         code: `// neuro bass
-$: note("c1 c1 [c1 eb1] c1")
+$: note("c1 c1 [c1 e1] c1")
   .s("sawtooth").gain(.5)
   .lpf(sine.range(200,2000).fast(4))
   .shape(.3).crush(12)`,
@@ -5077,14 +5077,14 @@ $: note("c1 c1 [c1 eb1] c1")
       {
         label: 'Phat 5ths',
         code: `// phat fifth bass
-$: note("<[c1,g1] [eb1,bb1] [f1,c2] [g1,d2]>")
+$: note("<[c1,g1] [e1,b1] [f1,c2] [g1,d2]>")
   .s("sawtooth").gain(.45)
   .shape(.35).lpf(500)`,
       },
       {
         label: 'Aggressive Saw',
         code: `// aggressive saw bass
-$: note("c1 ~ c1 c1 ~ c1 eb1 ~")
+$: note("c1 ~ c1 c1 ~ c1 e1 ~")
   .s("sawtooth").gain(.5)
   .shape(.45).lpf(600)
   .decay(.1)`,
@@ -5099,7 +5099,7 @@ $: note("c1*4").s("sine")
       {
         label: 'Trap Sub',
         code: `// deep trap 808 sub
-$: note("c1 ~ ~ ~ ~ ~ eb1 ~")
+$: note("c1 ~ ~ ~ ~ ~ e1 ~")
   .s("sine").gain(.6)
   .decay(1.2).shape(.3)
   .lpf(150)`,
@@ -5122,9 +5122,9 @@ $: note("c1").s("sawtooth")
       {
         label: 'Layered Low',
         code: `// layered low-end
-$: note("<c1 eb1 f1 g1>").s("sine")
+$: note("<c1 e1 f1 g1>").s("sine")
   .gain(.55).shape(.35).lpf(120)
-$: note("<c2 eb2 f2 g2>").s("sawtooth")
+$: note("<c2 e2 f2 g2>").s("sawtooth")
   .gain(.3).lpf(600).shape(.2)`,
       },
       {
@@ -5138,7 +5138,7 @@ $: note("c1 ~ ~ c1 ~ ~ c1 c1")
       {
         label: 'Acid Scream',
         code: `// acid scream bass
-$: note("c2 [~ c2] eb2 [c2 g1]")
+$: note("c2 [~ c2] e2 [c2 g1]")
   .s("sawtooth").gain(.5)
   .lpf(sine.range(200,5000).fast(2))
   .lpq(18).shape(.3)`,
@@ -5146,7 +5146,7 @@ $: note("c2 [~ c2] eb2 [c2 g1]")
       {
         label: 'FM Heavy',
         code: `// FM modulated heavy bass
-$: note("<c1 eb1 f1 g1>")
+$: note("<c1 e1 f1 g1>")
   .s("sine").gain(.5)
   .fmi(3).fmh(1)
   .shape(.3).lpf(300)`,
@@ -5194,25 +5194,25 @@ $: note("c3 c2 c1 c1")
       {
         label: 'Seismic Sub',
         code: `// seismic sub bass rumble
-$: note("c1 ~ c1 ~ eb1 ~ c1 ~").s("sine")
+$: note("c1 ~ c1 ~ e1 ~ c1 ~").s("sine")
   .gain(.7).lpf(80).shape(.3)
-$: note("c1 ~ c1 ~ eb1 ~ c1 ~").s("triangle")
+$: note("c1 ~ c1 ~ e1 ~ c1 ~").s("triangle")
   .gain(.3).lpf(120)
 $: s("bd ~ ~ ~ bd ~ ~ ~").bank("RolandTR808").gain(.6)`,
       },
       {
         label: 'Distorted Reese',
         code: `// distorted reese bass
-$: note("c1 ~ ~ c1 ~ eb1 ~ ~").s("sawtooth")
+$: note("c1 ~ ~ c1 ~ e1 ~ ~").s("sawtooth")
   .gain(.5).lpf(sine.range(100,800).slow(4)).shape(.5)
-$: note("c1 ~ ~ c1 ~ eb1 ~ ~").s("sawtooth")
+$: note("c1 ~ ~ c1 ~ e1 ~ ~").s("sawtooth")
   .gain(.45).detune(15).lpf(sine.range(120,700).slow(4)).shape(.4)
 $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR909").gain(.55)`,
       },
       {
         label: 'Massive 808 Slide',
         code: `// massive 808 bass slide
-$: note("c1 ~ ~ ~ eb1 ~ c1 ~").s("sine")
+$: note("c1 ~ ~ ~ e1 ~ c1 ~").s("sine")
   .gain(.65).shape(.35).lpf(150).decay(.8)
 $: s("bd ~ ~ bd ~ ~ bd ~").bank("RolandTR808").gain(.6)
 $: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3)`,
@@ -5228,7 +5228,7 @@ $: s("bd ~ sd ~ bd bd sd ~").bank("RolandTR909").gain(.55)`,
       {
         label: 'Acid Screech',
         code: `// acid screech bass
-$: note("c2 c2 eb2 c2 f2 c2 eb2 c2")
+$: note("c2 c2 e2 c2 f2 c2 e2 c2")
   .s("sawtooth").lpf(sine.range(200,4000).fast(4))
   .gain(.45).shape(.3).resonance(15)
 $: s("bd bd bd bd").bank("RolandTR909").gain(.55)
@@ -5237,9 +5237,9 @@ $: s("~ hh ~ hh ~ oh ~ hh").bank("RolandTR909").gain(.3)`,
       {
         label: 'Growl Bass',
         code: `// growl bass texture
-$: note("c1 ~ eb1 ~ f1 ~ eb1 ~").s("sawtooth")
+$: note("c1 ~ e1 ~ f1 ~ e1 ~").s("sawtooth")
   .lpf(sine.range(150,1200).fast(3)).gain(.5).shape(.45)
-$: note("c1 ~ eb1 ~ f1 ~ eb1 ~").s("square")
+$: note("c1 ~ e1 ~ f1 ~ e1 ~").s("square")
   .lpf(400).gain(.25)
 $: s("bd ~ sd ~ bd ~ sd bd").bank("RolandTR808").gain(.5)`,
       },
@@ -5254,7 +5254,7 @@ $: s("~ ~ ~ ~ ~ ~ ~ sd").bank("RolandTR808").gain(.4)`,
       {
         label: 'Dubstep Tear',
         code: `// dubstep tear-out bass
-$: note("c1 ~ c1 eb1 ~ c1 f1 ~").s("sawtooth")
+$: note("c1 ~ c1 e1 ~ c1 f1 ~").s("sawtooth")
   .lpf(sine.range(100,3000).fast(8)).gain(.5).shape(.5)
 $: s("bd ~ ~ ~ sd ~ ~ ~").bank("RolandTR909").gain(.6)
 $: s("~ hh ~ hh ~ hh ~ oh").bank("RolandTR909").gain(.3)`,
@@ -5262,9 +5262,9 @@ $: s("~ hh ~ hh ~ hh ~ oh").bank("RolandTR909").gain(.3)`,
       {
         label: 'Analog Warmth',
         code: `// warm analog bass
-$: note("c2 ~ g1 ~ c2 ~ eb2 ~").s("sawtooth")
+$: note("c2 ~ g1 ~ c2 ~ e2 ~").s("sawtooth")
   .lpf(600).gain(.45).shape(.2).room(.15)
-$: note("c2 ~ g1 ~ c2 ~ eb2 ~").s("sine")
+$: note("c2 ~ g1 ~ c2 ~ e2 ~").s("sine")
   .gain(.3).lpf(200)
 $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.45)`,
       },
@@ -5289,16 +5289,16 @@ $: s("~ ~ ~ ~ sd ~ ~ ~").bank("RolandTR808").gain(.5)`,
       {
         label: 'FM Bass Buzz',
         code: `// fm bass buzz
-$: note("c1 ~ eb1 ~ c1 ~ f1 ~").s("sine")
+$: note("c1 ~ e1 ~ c1 ~ f1 ~").s("sine")
   .gain(.5).shape(.5).lpf(300)
-$: note("c2 ~ eb2 ~ c2 ~ f2 ~").s("square")
+$: note("c2 ~ e2 ~ c2 ~ f2 ~").s("square")
   .gain(.25).lpf(500)
 $: s("bd ~ sd ~ bd bd sd ~").bank("RolandTR808").gain(.5)`,
       },
       {
         label: 'Garage Bass Thump',
         code: `// garage heavy bass thump
-$: note("c2 ~ ~ c2 ~ ~ eb2 ~").s("sine")
+$: note("c2 ~ ~ c2 ~ ~ e2 ~").s("sine")
   .gain(.6).shape(.3).lpf(150)
 $: s("bd ~ ~ bd sd ~ ~ ~").bank("RolandTR808").gain(.5)
 $: s("~ hh ~ hh ~ oh ~ hh").bank("RolandTR808").gain(.3)
@@ -5316,17 +5316,17 @@ $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR909").gain(.5)`,
       {
         label: 'Phaser Bass',
         code: `// phaser bass sweep
-$: note("c1 eb1 c1 f1 c1 eb1 c1 g1")
+$: note("c1 e1 c1 f1 c1 e1 c1 g1")
   .s("sawtooth").lpf(sine.range(200,1500).slow(2))
   .gain(.45).shape(.3)
-$: note("c1 eb1 c1 f1 c1 eb1 c1 g1")
+$: note("c1 e1 c1 f1 c1 e1 c1 g1")
   .s("sine").gain(.3).lpf(100)
 $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.45)`,
       },
       {
         label: 'Square Pulse Bass',
         code: `// square pulse bass
-$: note("c1 ~ c1 ~ eb1 ~ c1 ~").s("square")
+$: note("c1 ~ c1 ~ e1 ~ c1 ~").s("square")
   .gain(.5).lpf(300).shape(.35)
 $: s("bd bd ~ ~ sd ~ bd ~").bank("RolandTR909").gain(.5)
 $: s("hh hh hh hh hh oh hh hh").bank("RolandTR909").gain(.25)`,
@@ -5334,19 +5334,19 @@ $: s("hh hh hh hh hh oh hh hh").bank("RolandTR909").gain(.25)`,
       {
         label: 'Stacked Octave Bass',
         code: `// stacked octave bass
-$: note("c1 ~ eb1 ~ f1 ~ eb1 ~").s("sine").gain(.55).lpf(80)
-$: note("c2 ~ eb2 ~ f2 ~ eb2 ~").s("sawtooth").gain(.3).lpf(500).shape(.3)
-$: note("c3 ~ eb3 ~ f3 ~ eb3 ~").s("square").gain(.15).lpf(1000)
+$: note("c1 ~ e1 ~ f1 ~ e1 ~").s("sine").gain(.55).lpf(80)
+$: note("c2 ~ e2 ~ f2 ~ e2 ~").s("sawtooth").gain(.3).lpf(500).shape(.3)
+$: note("c3 ~ e3 ~ f3 ~ e3 ~").s("square").gain(.15).lpf(1000)
 $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.5)`,
       },
       {
         label: 'Detuned Fatness',
         code: `// detuned fat bass
-$: note("c1 ~ c1 ~ eb1 ~ c1 ~").s("sawtooth")
+$: note("c1 ~ c1 ~ e1 ~ c1 ~").s("sawtooth")
   .gain(.4).detune(20).lpf(400).shape(.3)
-$: note("c1 ~ c1 ~ eb1 ~ c1 ~").s("sawtooth")
+$: note("c1 ~ c1 ~ e1 ~ c1 ~").s("sawtooth")
   .gain(.4).detune(-20).lpf(400).shape(.3)
-$: note("c1 ~ c1 ~ eb1 ~ c1 ~").s("sine").gain(.3).lpf(80)
+$: note("c1 ~ c1 ~ e1 ~ c1 ~").s("sine").gain(.3).lpf(80)
 $: s("bd ~ sd ~ bd bd sd ~").bank("RolandTR808").gain(.5)`,
       },
       {
@@ -5386,14 +5386,14 @@ $: note("<c2 c2 f2 g2>")
       {
         label: 'Loop Chord',
         code: `// chord loop layer
-$: note("<[c3,eb3,g3] [ab2,c3,eb3]>")
+$: note("<[c3,e3,g3] [a2,c3,e3]>")
   .s("supersaw").gain(.3)
   .lpf(1500).room(.3).slow(2)`,
       },
       {
         label: 'Loop Melody',
         code: `// melody loop layer
-$: note("c4 eb4 g4 bb4 c5 bb4 g4 eb4")
+$: note("c4 e4 g4 b4 c5 b4 g4 e4")
   .s("piano").gain(.5)`,
       },
       {
@@ -5438,7 +5438,7 @@ $: s("bd sd [~ bd] sd bd [~ sd] bd sd")
       {
         label: '4-Bar Melody',
         code: `// 4-bar melody loop
-$: note("<c4 eb4 g4 bb4 c5 bb4 g4 f4 eb4 c4 bb3 c4 eb4 g4 bb4 c5>")
+$: note("<c4 e4 g4 b4 c5 b4 g4 f4 e4 c4 b3 c4 e4 g4 b4 c5>")
   .s("piano").gain(.5).slow(2)`,
       },
       {
@@ -5481,7 +5481,7 @@ $: note("c3 e3 g3 c4 g3 e3")
       {
         label: 'Rhodes Loop',
         code: `// rhodes chord loop
-$: note("<[eb3,g3,bb3] [ab3,c4,eb4]>")
+$: note("<[e3,g3,b3] [a3,c4,e4]>")
   .s("gm_epiano1").velocity(.35)
   .room(.4).slow(2)`,
       },
@@ -5515,7 +5515,7 @@ $: s("hh*12").gain("[.2 .3 .25]*4")`,
       {
         label: 'Evolving Loop',
         code: `// slowly evolving loop
-$: note("<c3 c3 eb3 g3>")
+$: note("<c3 c3 e3 g3>")
   .s("sawtooth").gain(.35)
   .lpf(sine.range(400,2000).slow(16))
   .room(.3)`,
@@ -5526,13 +5526,13 @@ $: note("<c3 c3 eb3 g3>")
 $: s("bd*4").gain(.8)
 $: s("~ cp ~ ~").gain(.6)
 $: s("[~ hh]*4").gain(.4)
-$: note("<c2 f2 g2 bb1>").s("sine").gain(.5).lpf(200)
-$: note("<[c3,eb3,g3]>").s("supersaw").gain(.25).lpf(1500)`,
+$: note("<c2 f2 g2 b1>").s("sine").gain(.5).lpf(200)
+$: note("<[c3,e3,g3]>").s("supersaw").gain(.25).lpf(1500)`,
       },
       {
         label: 'Chop Loop',
         code: `// chopped loop effect
-$: note("c3 eb3 g3 bb3")
+$: note("c3 e3 g3 b3")
   .s("piano").gain(.5)
   .chop(4)`,
       },
@@ -5570,8 +5570,8 @@ $: note("c3*4").s("sawtooth")
         code: `// complete loop stack
 $: s("bd sd:2 [~ bd] sd").bank("RolandTR808").gain(.75)
 $: s("[~ hh]*4").bank("RolandTR808").gain(.3)
-$: note("<c2 ab1 bb1 g1>").s("sine").gain(.5).lpf(200).slow(2)
-$: note("<[c3,eb3,g3,bb3] [ab2,c3,eb3,g3]>").s("piano").gain(.45).room(.4).slow(2)`,
+$: note("<c2 a1 b1 g1>").s("sine").gain(.5).lpf(200).slow(2)
+$: note("<[c3,e3,g3,b3] [a2,c3,e3,g3]>").s("piano").gain(.45).room(.4).slow(2)`,
       },
       {
         label: 'Minimal Loop Build',
@@ -5579,22 +5579,22 @@ $: note("<[c3,eb3,g3,bb3] [ab2,c3,eb3,g3]>").s("piano").gain(.45).room(.4).slow(
 $: s("bd ~ ~ ~ bd ~ ~ ~").bank("RolandTR808").gain(.55)
 $: s("~ ~ sd ~ ~ ~ sd ~").bank("RolandTR808").gain(.45)
 $: s("hh hh hh hh hh hh hh hh").bank("RolandTR808").gain(.25)
-$: note("c2 ~ c2 ~ eb2 ~ c2 ~").s("sine").gain(.4).lpf(100)`,
+$: note("c2 ~ c2 ~ e2 ~ c2 ~").s("sine").gain(.4).lpf(100)`,
       },
       {
         label: 'Groove Layer Stack',
         code: `// layered groove stack
 $: s("bd ~ sd ~ bd bd sd ~").bank("RolandTR808").gain(.55)
 $: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3)
-$: note("c2 ~ eb2 ~ f2 ~ eb2 ~").s("gm_electric_bass_finger").velocity(.5)
-$: note("<[c3,eb3,g3] [bb2,d3,f3]>").s("gm_epiano1").velocity(.3).slow(2)`,
+$: note("c2 ~ e2 ~ f2 ~ e2 ~").s("gm_electric_bass_finger").velocity(.5)
+$: note("<[c3,e3,g3] [b2,d3,f3]>").s("gm_epiano1").velocity(.3).slow(2)`,
       },
       {
         label: 'Ambient Loop',
         code: `// ambient loop layers
-$: note("<[c4,eb4,g4] [bb3,d4,f4] [ab3,c4,eb4] [g3,bb3,d3]>")
+$: note("<[c4,e4,g4] [b3,d4,f4] [a3,c4,e4] [g3,b3,d3]>")
   .s("gm_warm_pad").velocity(.3).room(.7).slow(4)
-$: note("c5 ~ eb5 ~ g5 ~ ~ ~").s("gm_celesta").velocity(.2).delay(.3)
+$: note("c5 ~ e5 ~ g5 ~ ~ ~").s("gm_celesta").velocity(.2).delay(.3)
 $: s("~ ~ ~ ~ bd ~ ~ ~").bank("RolandTR808").gain(.3).room(.4)`,
       },
       {
@@ -5602,8 +5602,8 @@ $: s("~ ~ ~ ~ bd ~ ~ ~").bank("RolandTR808").gain(.3).room(.4)`,
         code: `// funk loop kit
 $: s("bd ~ sd ~ bd bd sd ~").bank("RolandTR808").gain(.5)
 $: s("hh oh hh hh oh hh hh oh").bank("RolandTR808").gain(.3)
-$: note("c2 ~ c2 eb2 f2 ~ c2 ~").s("gm_slap_bass_1").velocity(.55)
-$: note("~ [eb4,g4] ~ ~ ~ [f4,ab4] ~ ~").s("gm_clean_guitar").velocity(.35)`,
+$: note("c2 ~ c2 e2 f2 ~ c2 ~").s("gm_slap_bass_1").velocity(.55)
+$: note("~ [e4,g4] ~ ~ ~ [f4,a4] ~ ~").s("gm_clean_guitar").velocity(.35)`,
       },
       {
         label: 'Techno Loop Stack',
@@ -5616,11 +5616,11 @@ $: note("c1 ~ c1 ~ ~ ~ c1 ~").s("sawtooth").lpf(300).gain(.45).shape(.3)`,
       {
         label: 'Lo-Fi Loop Tape',
         code: `// lo-fi tape loop
-$: note("c4 eb4 g4 bb4 g4 eb4 c4 ~")
+$: note("c4 e4 g4 b4 g4 e4 c4 ~")
   .s("gm_epiano2").velocity(.35).lpf(2000).room(.4)
 $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.4)
 $: s("hh hh hh hh").bank("RolandTR808").gain(.2)
-$: note("c2 ~ g2 ~ c2 ~ eb2 ~").s("gm_acoustic_bass").velocity(.35)`,
+$: note("c2 ~ g2 ~ c2 ~ e2 ~").s("gm_acoustic_bass").velocity(.35)`,
       },
       {
         label: 'DnB Loop Build',
@@ -5628,7 +5628,7 @@ $: note("c2 ~ g2 ~ c2 ~ eb2 ~").s("gm_acoustic_bass").velocity(.35)`,
 $: s("bd ~ sd ~ ~ bd sd ~, ~ ~ ~ bd ~ ~ sd ~")
   .bank("RolandTR909").gain(.55)
 $: s("hh hh hh hh oh hh hh hh").bank("RolandTR909").gain(.3)
-$: note("c2 ~ ~ c2 eb2 ~ c2 ~").s("gm_synth_bass_1").velocity(.55)`,
+$: note("c2 ~ ~ c2 e2 ~ c2 ~").s("gm_synth_bass_1").velocity(.55)`,
       },
       {
         label: 'Jazz Loop Cycle',
@@ -5636,7 +5636,7 @@ $: note("c2 ~ ~ c2 eb2 ~ c2 ~").s("gm_synth_bass_1").velocity(.55)`,
 $: s("bd ~ ~ bd ~ sd ~ ~").bank("RolandTR808").gain(.4)
 $: s("~ hh ~ hh ~ hh ~ hh").bank("RolandTR808").gain(.25)
 $: note("d2 a2 g2 d3 c2 g2 f2 c3").s("gm_acoustic_bass").velocity(.45)
-$: note("<[d3,f#3,a3,c4] [g3,b3,d4,f4] [c3,e3,g3,bb3] [f3,a3,c4,eb4]>")
+$: note("<[d3,g3,a3,c4] [g3,b3,d4,f4] [c3,e3,g3,b3] [f3,a3,c4,e4]>")
   .s("gm_epiano1").velocity(.3).slow(2)`,
       },
       {
@@ -5644,8 +5644,8 @@ $: note("<[d3,f#3,a3,c4] [g3,b3,d4,f4] [c3,e3,g3,bb3] [f3,a3,c4,eb4]>")
         code: `// reggae loop layers
 $: s("bd ~ ~ bd ~ sd ~ ~").bank("RolandTR808").gain(.5)
 $: s("~ ~ rim ~ ~ ~ rim ~").bank("RolandTR808").gain(.3)
-$: note("~ g2 ~ g2 ~ bb2 ~ c3").s("gm_electric_bass_finger").velocity(.5)
-$: note("~ [bb3,d4,f4] ~ [bb3,d4,f4] ~ [a3,c4,eb4] ~ [a3,c4,eb4]")
+$: note("~ g2 ~ g2 ~ b2 ~ c3").s("gm_electric_bass_finger").velocity(.5)
+$: note("~ [b3,d4,f4] ~ [b3,d4,f4] ~ [a3,c4,e4] ~ [a3,c4,e4]")
   .s("gm_muted_guitar").velocity(.35)`,
       },
       {
@@ -5654,8 +5654,8 @@ $: note("~ [bb3,d4,f4] ~ [bb3,d4,f4] ~ [a3,c4,eb4] ~ [a3,c4,eb4]")
 $: s("bd bd bd bd").bank("RolandTR909").gain(.55)
 $: s("~ cp ~ ~").bank("RolandTR909").gain(.45)
 $: s("~ hh ~ hh ~ oh ~ hh").bank("RolandTR909").gain(.3)
-$: note("c2 ~ c2 ~ eb2 ~ c2 ~").s("gm_synth_bass_2").velocity(.5)
-$: note("<[c3,eb3,g3]>").s("gm_epiano2").velocity(.25).slow(4)`,
+$: note("c2 ~ c2 ~ e2 ~ c2 ~").s("gm_synth_bass_2").velocity(.5)
+$: note("<[c3,e3,g3]>").s("gm_epiano2").velocity(.25).slow(4)`,
       },
       {
         label: 'Latin Loop Stack',
@@ -5670,18 +5670,18 @@ $: note("a4 b4 c5 d5 c5 a4 g4 a4").s("gm_trumpet").velocity(.35).room(.3)`,
         code: `// smooth R&B loop
 $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.45)
 $: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.25)
-$: note("c2 ~ eb2 ~ f2 ~ eb2 ~").s("gm_electric_bass_finger").velocity(.45)
-$: note("<[c4,eb4,g4,bb4] [f3,ab3,c4,eb4]>")
+$: note("c2 ~ e2 ~ f2 ~ e2 ~").s("gm_electric_bass_finger").velocity(.45)
+$: note("<[c4,e4,g4,b4] [f3,a3,c4,e4]>")
   .s("gm_epiano2").velocity(.3).room(.35).slow(2)`,
       },
       {
         label: 'Cinematic Loop',
         code: `// cinematic loop layers
-$: note("<[c3,g3,c4] [ab2,eb3,ab3] [bb2,f3,bb3] [g2,d3,g3]>")
+$: note("<[c3,g3,c4] [a2,e3,a3] [b2,f3,b3] [g2,d3,g3]>")
   .s("gm_strings1").velocity(.4).room(.6).slow(4)
 $: s("~ ~ ~ ~ bd ~ ~ ~").bank("RolandTR808").gain(.4).room(.4)
-$: note("c5 ~ eb5 ~ g5 ~ ~ ~").s("gm_flute").velocity(.25).room(.5)
-$: note("c2 ~ ~ ~ ab1 ~ ~ ~").s("gm_contrabass").velocity(.35).slow(2)`,
+$: note("c5 ~ e5 ~ g5 ~ ~ ~").s("gm_flute").velocity(.25).room(.5)
+$: note("c2 ~ ~ ~ a1 ~ ~ ~").s("gm_contrabass").velocity(.35).slow(2)`,
       },
       {
         label: 'Trap Loop Kit',
@@ -5705,8 +5705,8 @@ $: note("c2 d2 e2 c2 d2 e2 g2 c2").s("gm_acoustic_bass").velocity(.4)`,
         code: `// 2-step garage loop
 $: s("bd ~ ~ bd sd ~ ~ ~").bank("RolandTR808").gain(.5)
 $: s("~ hh ~ hh ~ oh ~ hh").bank("RolandTR808").gain(.3)
-$: note("c2 ~ ~ c2 ~ ~ eb2 ~").s("gm_synth_bass_1").velocity(.5)
-$: note("<[c3,eb3,g3]>").s("gm_voice_oohs").velocity(.2).room(.4).slow(4)`,
+$: note("c2 ~ ~ c2 ~ ~ e2 ~").s("gm_synth_bass_1").velocity(.5)
+$: note("<[c3,e3,g3]>").s("gm_voice_oohs").velocity(.2).room(.4).slow(4)`,
       },
       {
         label: 'Afro Loop Stack',
@@ -5730,10 +5730,10 @@ $: note("<[c4,e4,g4] [a3,c4,e4] [f3,a3,c4] [g3,b3,d4]>")
         code: `// progressive build loop
 $: s("bd ~ sd ~ bd bd sd ~").bank("RolandTR909").gain(.5)
 $: s("hh hh oh hh hh hh oh hh").bank("RolandTR909").gain(.3)
-$: note("c2 ~ c2 ~ eb2 ~ f2 ~").s("gm_synth_bass_1").velocity(.5)
-$: note("<[c4,eb4,g4] [bb3,d4,f4] [ab3,c4,eb4] [bb3,d4,f4]>")
+$: note("c2 ~ c2 ~ e2 ~ f2 ~").s("gm_synth_bass_1").velocity(.5)
+$: note("<[c4,e4,g4] [b3,d4,f4] [a3,c4,e4] [b3,d4,f4]>")
   .s("gm_warm_pad").velocity(.3).room(.5).slow(4)
-$: note("c5 eb5 g5 ~ ~ ~ ~ ~").s("gm_saw_lead").gain(.15).delay(.2)`,
+$: note("c5 e5 g5 ~ ~ ~ ~ ~").s("gm_saw_lead").gain(.15).delay(.2)`,
       },
     ],
   },
@@ -5744,21 +5744,21 @@ $: note("c5 eb5 g5 ~ ~ ~ ~ ~").s("gm_saw_lead").gain(.15).delay(.2)`,
       {
         label: 'Deep Choir',
         code: `// deep male choir
-$: note("<[c2,g2,c3] [ab1,eb2,ab2]>")
+$: note("<[c2,g2,c3] [a1,e2,a2]>")
   .s("gm_choir_aahs").velocity(.4)
   .lpf(800).room(.6).slow(4)`,
       },
       {
         label: 'Low Hum',
         code: `// low humming bass tone
-$: note("<c2 d2 eb2 d2>")
+$: note("<c2 d2 e2 d2>")
   .s("gm_choir_aahs").velocity(.3)
   .lpf(500).room(.5).slow(2)`,
       },
       {
         label: 'Baritone Melody',
         code: `// baritone singing line
-$: note("c3 d3 eb3 f3 g3 f3 eb3 d3")
+$: note("c3 d3 e3 f3 g3 f3 e3 d3")
   .s("gm_choir_aahs").velocity(.4)
   .room(.4)`,
       },
@@ -5773,7 +5773,7 @@ $: note("[c2,g2]")
       {
         label: 'Chant Low',
         code: `// low chant pattern
-$: note("c2 ~ eb2 ~ g2 ~ eb2 ~")
+$: note("c2 ~ e2 ~ g2 ~ e2 ~")
   .s("gm_choir_aahs").velocity(.35)
   .lpf(700).room(.5).slow(2)`,
       },
@@ -5794,7 +5794,7 @@ $: note("<[c2,g2,c3]>")
       {
         label: 'Deep Echo',
         code: `// deep male vocal echo
-$: note("c2 ~ ~ eb2 ~ ~ g2 ~")
+$: note("c2 ~ ~ e2 ~ ~ g2 ~")
   .s("gm_choir_aahs").velocity(.35)
   .delay(.5).delayfeedback(.6)
   .room(.5).slow(2)`,
@@ -5809,7 +5809,7 @@ $: note("c3*4").s("sawtooth")
       {
         label: 'Low Pad',
         code: `// low male pad
-$: note("<[c2,eb2,g2] [ab1,c2,eb2]>")
+$: note("<[c2,e2,g2] [a1,c2,e2]>")
   .s("gm_choir_aahs").velocity(.3)
   .room(.6).slow(4)`,
       },
@@ -5824,21 +5824,21 @@ $: note("<[c2,g2]>")
       {
         label: 'Male Staccato',
         code: `// staccato male voice
-$: note("c3 ~ c3 ~ eb3 ~ c3 ~")
+$: note("c3 ~ c3 ~ e3 ~ c3 ~")
   .s("gm_choir_aahs").velocity(.4)
   .decay(.15).lpf(1000)`,
       },
       {
         label: 'Deep Harmony Stack',
         code: `// stacked deep harmony
-$: note("<[c2,g2,c3] [bb1,f2,bb2]>")
+$: note("<[c2,g2,c3] [b1,f2,b2]>")
   .s("gm_choir_aahs").velocity(.35)
   .room(.5).slow(2)`,
       },
       {
         label: 'Male Delayed',
         code: `// delayed male vocal
-$: note("c2 ~ ~ ~ eb2 ~ ~ ~")
+$: note("c2 ~ ~ ~ e2 ~ ~ ~")
   .s("gm_choir_aahs").velocity(.35)
   .delay(.6).delayfeedback(.65)
   .room(.4)`,
@@ -5846,7 +5846,7 @@ $: note("c2 ~ ~ ~ eb2 ~ ~ ~")
       {
         label: 'Gregorian Chant',
         code: `// gregorian chant style
-$: note("c3 d3 c3 bb2 c3 d3 eb3 d3")
+$: note("c3 d3 c3 b2 c3 d3 e3 d3")
   .s("gm_choir_aahs").velocity(.35)
   .room(.8).roomsize(6).slow(2)`,
       },
@@ -5878,7 +5878,7 @@ $: s("chin:0 chin:2 chin:1 chin:3")
       {
         label: 'Low Filtered Voice',
         code: `// filtered low voice
-$: note("<c2 d2 eb2 c2>")
+$: note("<c2 d2 e2 c2>")
   .s("gm_choir_aahs").velocity(.3)
   .lpf(sine.range(300,800).slow(4))
   .room(.5).slow(2)`,
@@ -5926,7 +5926,7 @@ $: note("c2*4").s("gm_choir_aahs")
       {
         label: 'Baritone Pad',
         code: `// baritone pad wash
-$: note("<[c2,eb2,g2,bb2]>")
+$: note("<[c2,e2,g2,b2]>")
   .s("gm_choir_aahs").velocity(.3)
   .room(.7).roomsize(5).slow(4)`,
       },
@@ -5961,9 +5961,9 @@ $: note("<[c2,e2,g2] [a1,c2,e2] [f1,a1,c2] [g1,b1,d2]>")
 // Shadows dance across the bedroom wall
 // Whispered love before the curtains fall
 // Hold me close through winter spring and all
-$: note("c3 d3 eb3 g3 f3 eb3 d3 c3").s("gm_choir_aahs")
+$: note("c3 d3 e3 g3 f3 e3 d3 c3").s("gm_choir_aahs")
   .velocity(sine.range(.3,.55).slow(8)).room(.5)
-$: note("[c3,eb3,g3,bb3] ~ [f2,ab2,c3,eb3] ~")
+$: note("[c3,e3,g3,b3] ~ [f2,a2,c3,e3] ~")
   .s("gm_epiano2").velocity(.25).slow(2)
 $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.4)
 $: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.2)`,
@@ -5976,9 +5976,9 @@ $: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.2)`,
 // Streets remember every name I spoke
 // Rising from the ashes and the smoke
 // Legacy of fire never broke
-$: note("c2 c2 eb2 f2 eb2 c2 ~ c2").s("gm_choir_aahs")
+$: note("c2 c2 e2 f2 e2 c2 ~ c2").s("gm_choir_aahs")
   .velocity(.5).room(.3)
-$: note("c1 ~ c1 ~ eb1 ~ f1 ~").s("gm_synth_bass_1").velocity(.6)
+$: note("c1 ~ c1 ~ e1 ~ f1 ~").s("gm_synth_bass_1").velocity(.6)
 $: s("bd ~ ~ bd sd ~ bd sd").bank("RolandTR808").gain(.55)
 $: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3)`,
       },
@@ -5990,9 +5990,9 @@ $: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3)`,
 // Velvet voice that floats above the crowd
 // Singing soft but meaning something loud
 // In this room the lonely ones are proud
-$: note("g2 a2 bb2 d3 c3 bb2 a2 g2").s("gm_choir_aahs")
+$: note("g2 a2 b2 d3 c3 b2 a2 g2").s("gm_choir_aahs")
   .velocity(.4).room(.5).delay(.15)
-$: note("g2 d3 c3 g2 f2 c3 bb2 g2").s("gm_acoustic_bass").velocity(.45)
+$: note("g2 d3 c3 g2 f2 c3 b2 g2").s("gm_acoustic_bass").velocity(.45)
 $: s("~ hh ~ hh ~ hh ~ hh").bank("RolandTR808").gain(.2)`,
       },
       {
@@ -6018,7 +6018,7 @@ $: s("~ cp ~ cp").bank("RolandTR909").gain(.35)`,
 // Woman gone and took the car and dog
 // Sittin' here just sinkin' in the fog
 // Blues keep rollin' like a hollow log
-$: note("e2 g2 a2 bb2 a2 g2 e2 ~").s("gm_choir_aahs")
+$: note("e2 g2 a2 b2 a2 g2 e2 ~").s("gm_choir_aahs")
   .velocity(sine.range(.35,.6).slow(6)).room(.4)
 $: note("e2 a2 b2 e2 g2 a2 b2 e2").s("gm_clean_guitar").velocity(.35)
 $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
@@ -6031,9 +6031,9 @@ $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
 // Babylon can never break the chain
 // Music wash away the hurt and pain
 // Rise again like sunshine after rain
-$: note("g2 bb2 c3 d3 c3 bb2 g2 ~").s("gm_choir_aahs")
+$: note("g2 b2 c3 d3 c3 b2 g2 ~").s("gm_choir_aahs")
   .velocity(.45).room(.5).delay(.2)
-$: note("~ g2 ~ g2 ~ bb2 ~ c3").s("gm_electric_bass_finger").velocity(.5)
+$: note("~ g2 ~ g2 ~ b2 ~ c3").s("gm_electric_bass_finger").velocity(.5)
 $: s("bd ~ ~ bd ~ sd ~ ~").bank("RolandTR808").gain(.45)`,
       },
       {
@@ -6059,7 +6059,7 @@ $: s("bd ~ sd ~ bd bd sd ~").bank("RolandTR909").gain(.5)`,
 // Mama sang a lullaby so sweet
 // Daddy tapped his worn out muddy feet
 // Simple life that nothing can defeat
-$: note("g2 a2 b2 d3 b2 a2 g2 f#2").s("gm_choir_aahs")
+$: note("g2 a2 b2 d3 b2 a2 g2 g2").s("gm_choir_aahs")
   .velocity(.4).room(.45)
 $: note("g2 b2 d3 g3 d3 b2 g2 b2").s("gm_banjo").velocity(.35)
 $: note("g2 ~ d2 ~ g2 ~ d2 ~").s("gm_acoustic_bass").velocity(.4)`,
@@ -6074,7 +6074,7 @@ $: note("g2 ~ d2 ~ g2 ~ d2 ~").s("gm_acoustic_bass").velocity(.4)`,
 // Love is all that fills this empty bowl
 $: note("c3 e3 g3 c4 g3 e3 c3 ~").s("gm_voice_oohs")
   .velocity(sine.range(.25,.5).slow(8)).room(.5)
-$: note("[c3,eb3,g3,bb3] ~ [f2,ab2,c3] ~")
+$: note("[c3,e3,g3,b3] ~ [f2,a2,c3] ~")
   .s("gm_epiano1").velocity(.25).slow(2)
 $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
       },
@@ -6086,7 +6086,7 @@ $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
 // Dust cloud rising like a golden veil
 // Front porch stories over ginger ale
 // Sundown singin' down the cotton trail
-$: note("e2 f#2 g2 a2 g2 f#2 e2 d2").s("gm_choir_aahs")
+$: note("e2 g2 g2 a2 g2 g2 e2 d2").s("gm_choir_aahs")
   .velocity(.45).room(.4)
 $: note("e2 a2 b2 e2 a2 b2 e2 a2").s("gm_steel_guitar").velocity(.3)
 $: note("e2 ~ a1 ~ b1 ~ e2 ~").s("gm_acoustic_bass").velocity(.4)
@@ -6170,9 +6170,9 @@ $: note("[a2,c3,e3] ~ [d3,f3,a3] ~ [e3,g3,b3] ~ [a2,c3,e3] ~")
 // Money talk but silence golden still
 // Grinding hard on top of every hill
 // Made it out by nothing but my will
-$: note("c2 ~ eb2 ~ f2 eb2 c2 ~").s("gm_synth_voice")
+$: note("c2 ~ e2 ~ f2 e2 c2 ~").s("gm_synth_voice")
   .velocity(.5).room(.25).delay(.1)
-$: note("c1 ~ c1 ~ eb1 ~ c1 ~").s("sine").gain(.5).lpf(80).shape(.3)
+$: note("c1 ~ c1 ~ e1 ~ c1 ~").s("sine").gain(.5).lpf(80).shape(.3)
 $: s("bd ~ ~ bd sd ~ bd sd").bank("RolandTR808").gain(.55)
 $: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3)`,
       },
@@ -6211,9 +6211,9 @@ $: s("~ cp ~ ~").bank("RolandTR909").gain(.45)`,
 // Vinyl crackle memories unfold
 // Every gentle note a tale retold
 // Warmth inside when everything is cold
-$: note("c3 eb3 g3 bb3 g3 eb3 c3 ~").s("gm_choir_aahs")
+$: note("c3 e3 g3 b3 g3 e3 c3 ~").s("gm_choir_aahs")
   .velocity(sine.range(.2,.4).slow(8)).room(.45).lpf(1500)
-$: note("[c3,eb3,g3,bb3] ~ [f2,ab2,c3,eb3] ~")
+$: note("[c3,e3,g3,b3] ~ [f2,a2,c3,e3] ~")
   .s("gm_epiano2").velocity(.2).room(.35).lpf(2000).slow(2)
 $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
       },
@@ -6240,7 +6240,7 @@ $: note("e4 g4 a4 b4 a4 g4 e4 d4")
       {
         label: 'High Hum',
         code: `// high female humming
-$: note("<c4 d4 eb4 d4>")
+$: note("<c4 d4 e4 d4>")
   .s("gm_voice_oohs").velocity(.35)
   .lpf(3000).room(.5).slow(2)`,
       },
@@ -6261,7 +6261,7 @@ $: note("<[c4,g4,c5]>")
       {
         label: 'Synth Voice',
         code: `// synthetic female voice
-$: note("c4 eb4 g4 bb4 c5 bb4 g4 eb4")
+$: note("c4 e4 g4 b4 c5 b4 g4 e4")
   .s("gm_synth_voice").velocity(.45)
   .room(.3)`,
       },
@@ -6319,7 +6319,7 @@ $: note("<[c4,e4,g4]>")
       {
         label: 'Descending Line',
         code: `// descending vocal line
-$: note("c5 bb4 g4 f4 eb4 d4 c4 eb4")
+$: note("c5 b4 g4 f4 e4 d4 c4 e4")
   .s("gm_voice_oohs").velocity(.4)
   .room(.4)`,
       },
@@ -6363,7 +6363,7 @@ $: note("[c4,e4,g4]")
       {
         label: 'Angelic Pad',
         code: `// angelic pad wash
-$: note("<[c4,g4,c5] [ab3,eb4,ab4]>")
+$: note("<[c4,g4,c5] [a3,e4,a4]>")
   .s("gm_voice_oohs").velocity(.3)
   .room(.8).roomsize(6).slow(4)`,
       },
@@ -6451,9 +6451,9 @@ $: note("<[c5,e5,g5]>")
 // Touch me like the ocean meets the shore
 // Every breath is begging you for more
 // Open up the window close the door
-$: note("c5 d5 eb5 g5 f5 eb5 d5 c5").s("gm_voice_oohs")
+$: note("c5 d5 e5 g5 f5 e5 d5 c5").s("gm_voice_oohs")
   .velocity(sine.range(.3,.55).slow(8)).room(.5).delay(.12)
-$: note("[c3,eb3,g3,bb3] ~ [f2,ab2,c3,eb3] ~")
+$: note("[c3,e3,g3,b3] ~ [f2,a2,c3,e3] ~")
   .s("gm_epiano2").velocity(.25).slow(2)
 $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.4)
 $: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.2)`,
@@ -6481,9 +6481,9 @@ $: s("hh hh hh hh hh hh hh hh").bank("RolandTR909").gain(.2)`,
 // Fingers trace the rim of crystal glass
 // Every moment hoping this will last
 // Melody as smooth as polished brass
-$: note("g4 a4 bb4 d5 c5 bb4 a4 g4").s("gm_voice_oohs")
+$: note("g4 a4 b4 d5 c5 b4 a4 g4").s("gm_voice_oohs")
   .velocity(.45).room(.5).delay(.18)
-$: note("g2 d3 c3 g2 f2 c3 bb2 g2").s("gm_acoustic_bass").velocity(.45)
+$: note("g2 d3 c3 g2 f2 c3 b2 g2").s("gm_acoustic_bass").velocity(.45)
 $: s("~ hh ~ hh ~ hh ~ hh").bank("RolandTR808").gain(.2)`,
       },
       {
@@ -6509,9 +6509,9 @@ $: s("~ cp ~ cp").bank("RolandTR909").gain(.35)`,
 // Sing until the tears become a song
 // Holding on when everything goes wrong
 // Baby I have loved you all along
-$: note("c4 eb4 f4 g4 f4 eb4 c4 ~").s("gm_voice_oohs")
+$: note("c4 e4 f4 g4 f4 e4 c4 ~").s("gm_voice_oohs")
   .velocity(sine.range(.35,.6).slow(6)).room(.45)
-$: note("[c3,eb3,g3] ~ [ab2,c3,eb3] ~ [bb2,d3,f3] ~ [c3,eb3,g3] ~")
+$: note("[c3,e3,g3] ~ [a2,c3,e3] ~ [b2,d3,f3] ~ [c3,e3,g3] ~")
   .s("gm_epiano1").velocity(.25).slow(2)
 $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
       },
@@ -6536,7 +6536,7 @@ $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
 // Sang along to every song we knew
 // Summer fading into autumn blue
 // Darlin I keep coming back to you
-$: note("e4 f#4 g4 a4 g4 f#4 e4 d4").s("gm_voice_oohs")
+$: note("e4 g4 g4 a4 g4 g4 e4 d4").s("gm_voice_oohs")
   .velocity(.45).room(.4)
 $: note("e3 a3 b3 e3 a3 b3 e3 a3").s("gm_steel_guitar").velocity(.3)
 $: note("e2 ~ a1 ~ b1 ~ e2 ~").s("gm_acoustic_bass").velocity(.4)
@@ -6550,9 +6550,9 @@ $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.3)`,
 // Dancin' barefoot in the moonlit sand
 // Every riddim makes me understand
 // Love is all we need across the land
-$: note("g4 bb4 c5 d5 c5 bb4 g4 ~").s("gm_voice_oohs")
+$: note("g4 b4 c5 d5 c5 b4 g4 ~").s("gm_voice_oohs")
   .velocity(.45).room(.5).delay(.2)
-$: note("~ g2 ~ g2 ~ bb2 ~ c3").s("gm_electric_bass_finger").velocity(.5)
+$: note("~ g2 ~ g2 ~ b2 ~ c3").s("gm_electric_bass_finger").velocity(.5)
 $: s("bd ~ ~ bd ~ sd ~ ~").bank("RolandTR808").gain(.45)`,
       },
       {
@@ -6563,7 +6563,7 @@ $: s("bd ~ ~ bd ~ sd ~ ~").bank("RolandTR808").gain(.45)`,
 // Sang my heart out on a corner stage
 // Ink is bleeding through the final page
 // Blues don't care about a woman's age
-$: note("e4 g4 a4 bb4 a4 g4 e4 ~").s("gm_voice_oohs")
+$: note("e4 g4 a4 b4 a4 g4 e4 ~").s("gm_voice_oohs")
   .velocity(sine.range(.35,.6).slow(6)).room(.45)
 $: note("e2 a2 b2 e2 g2 a2 b2 e2").s("gm_clean_guitar").velocity(.35)
 $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
@@ -6631,11 +6631,11 @@ $: note("<[c4,e4,g4] [a3,c4,e4] [f3,a3,c4] [g3,b3,d4]>")
 // Slap that bass and hit the one real hard
 // Strutting through the club like a queen of cards
 // Funky diva never dropping guard
-$: note("c4 ~ eb4 f4 ~ eb4 c4 ~").s("gm_voice_oohs")
+$: note("c4 ~ e4 f4 ~ e4 c4 ~").s("gm_voice_oohs")
   .velocity(.55).room(.3)
-$: note("c2 ~ c2 eb2 f2 ~ c2 ~").s("gm_slap_bass_1").velocity(.55)
+$: note("c2 ~ c2 e2 f2 ~ c2 ~").s("gm_slap_bass_1").velocity(.55)
 $: s("bd ~ sd ~ bd bd sd ~").bank("RolandTR808").gain(.5)
-$: note("~ [eb5,g5] ~ ~ ~ [f5,ab5] ~ ~").s("gm_brass1").velocity(.35)`,
+$: note("~ [e5,g5] ~ ~ ~ [f5,a5] ~ ~").s("gm_brass1").velocity(.35)`,
       },
       {
         label: 'Female Opera Aria',
@@ -6658,9 +6658,9 @@ $: note("[c4,g4,c5] ~ [d4,a4,d5] ~ [e4,b4,e5] ~ [c4,g4,c5] ~")
 // Every bar I spit is platinum laced
 // Haters running but they can't keep pace
 // Queen of every stage that I have graced
-$: note("c4 c4 eb4 f4 eb4 c4 ~ c4").s("gm_voice_oohs")
+$: note("c4 c4 e4 f4 e4 c4 ~ c4").s("gm_voice_oohs")
   .velocity(.5).room(.25)
-$: note("c1 ~ c1 ~ eb1 ~ f1 ~").s("gm_synth_bass_1").velocity(.55)
+$: note("c1 ~ c1 ~ e1 ~ f1 ~").s("gm_synth_bass_1").velocity(.55)
 $: s("bd ~ ~ bd sd ~ bd sd").bank("RolandTR808").gain(.5)
 $: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3)`,
       },
@@ -6672,10 +6672,10 @@ $: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3)`,
 // Echo of a voice beyond the hill
 // Time is frozen and the world is still
 // Singing softly because silence fills
-$: note("<c5 d5 eb5 f5 eb5 d5 c5 bb4>")
+$: note("<c5 d5 e5 f5 e5 d5 c5 b4>")
   .s("gm_voice_oohs").velocity(sine.range(.15,.35).slow(16))
   .room(.8).delay(.35).slow(4)
-$: note("<[c3,eb3,g3] [bb2,d3,f3]>")
+$: note("<[c3,e3,g3] [b2,d3,f3]>")
   .s("gm_warm_pad").velocity(.2).room(.65).slow(8)`,
       },
       {
