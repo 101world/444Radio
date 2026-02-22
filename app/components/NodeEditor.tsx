@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import ReactDOM from 'react-dom'
-import { Volume2, VolumeX, GripHorizontal, Plus, Trash2, Copy, ChevronDown } from 'lucide-react'
+import { Volume2, VolumeX, GripHorizontal, Plus, Trash2, Copy, ChevronDown, Maximize2, Minimize2, ChevronLeft, ChevronRight } from 'lucide-react'
 
 // ═══════════════════════════════════════════════════════════════
 //  TYPES
@@ -320,6 +320,181 @@ const LFO_PRESETS = [
 ]
 
 // ═══════════════════════════════════════════════════════════════
+//  SIDEBAR LIBRARY — draggable items organized by category
+// ═══════════════════════════════════════════════════════════════
+
+interface SidebarItem {
+  id: string
+  label: string
+  icon: string
+  desc: string
+  color: string
+  dragType: 'effect' | 'pattern' | 'sound' | 'scale' | 'chord' | 'lfo'
+  /** The code/value to inject */
+  payload: string
+  /** Which method to target (for effects that modify a param) */
+  method?: string
+}
+
+const SIDEBAR_CATEGORIES: { id: string; label: string; icon: string; color: string; items: SidebarItem[] }[] = [
+  {
+    id: 'effects', label: 'Audio FX', icon: '⚡', color: '#22d3ee',
+    items: [
+      { id: 'fx_reverb', label: 'Reverb', icon: '🏛️', desc: 'Room reverb .room(0.5)', color: '#22d3ee', dragType: 'effect', payload: '.room(0.5)', method: 'room' },
+      { id: 'fx_delay', label: 'Delay', icon: '🔄', desc: 'Echo delay .delay(0.2)', color: '#22d3ee', dragType: 'effect', payload: '.delay(0.2).delayfeedback(0.4)', method: 'delay' },
+      { id: 'fx_lpf', label: 'Low-Pass Filter', icon: '📉', desc: 'Cuts highs .lpf(1200)', color: '#60a5fa', dragType: 'effect', payload: '.lpf(1200)', method: 'lpf' },
+      { id: 'fx_hpf', label: 'High-Pass Filter', icon: '📈', desc: 'Cuts lows .hpf(400)', color: '#60a5fa', dragType: 'effect', payload: '.hpf(400)', method: 'hpf' },
+      { id: 'fx_bpf', label: 'Band-Pass Filter', icon: '🔊', desc: 'Narrow band .bpf(800)', color: '#60a5fa', dragType: 'effect', payload: '.bpf(800)', method: 'bpf' },
+      { id: 'fx_vowel', label: 'Vowel Filter', icon: '🗣', desc: 'Vocal formant .vowel("a")', color: '#c084fc', dragType: 'effect', payload: '.vowel("a")', method: 'vowel' },
+      { id: 'fx_crush', label: 'Bitcrush', icon: '💎', desc: 'Lo-fi .crush(8)', color: '#ef4444', dragType: 'effect', payload: '.crush(8)', method: 'crush' },
+      { id: 'fx_shape', label: 'Waveshape', icon: '🔥', desc: 'Soft distortion .shape(0.4)', color: '#ef4444', dragType: 'effect', payload: '.shape(0.4)', method: 'shape' },
+      { id: 'fx_distort', label: 'Distortion', icon: '⚡', desc: 'Hard distort .distort(2)', color: '#ef4444', dragType: 'effect', payload: '.distort(2)', method: 'distort' },
+      { id: 'fx_coarse', label: 'Coarse', icon: '▦', desc: 'Downsample .coarse(8)', color: '#f59e0b', dragType: 'effect', payload: '.coarse(8)', method: 'coarse' },
+      { id: 'fx_phaser', label: 'Phaser', icon: '🌀', desc: 'Phase sweep .phaser(4)', color: '#a78bfa', dragType: 'effect', payload: '.phaser(4)', method: 'phaser' },
+      { id: 'fx_pan', label: 'Auto-Pan', icon: '↔️', desc: 'Stereo LFO .pan(sine.range(0,1).slow(4))', color: '#34d399', dragType: 'effect', payload: '.pan(sine.range(0,1).slow(4))', method: 'pan' },
+      { id: 'fx_fm', label: 'FM Synthesis', icon: '📡', desc: 'Frequency mod .fmi(2)', color: '#818cf8', dragType: 'effect', payload: '.fmi(2)', method: 'fmi' },
+      { id: 'fx_compress', label: 'Compressor', icon: '🔧', desc: 'Dynamic range .compressor(-20,10,4)', color: '#94a3b8', dragType: 'effect', payload: '.compressor(-20,10,4)' },
+      { id: 'fx_gain', label: 'Gain', icon: '🔈', desc: 'Volume .gain(0.5)', color: '#34d399', dragType: 'effect', payload: '.gain(0.5)', method: 'gain' },
+    ]
+  },
+  {
+    id: 'modifiers', label: 'Pattern FX', icon: '🎯', color: '#f472b6',
+    items: [
+      { id: 'mod_rev', label: 'Reverse', icon: '↩', desc: 'Reverse pattern', color: '#f472b6', dragType: 'effect', payload: '.rev()' },
+      { id: 'mod_jux', label: 'Jux (Stereo)', icon: '◐', desc: 'Function on R channel', color: '#22d3ee', dragType: 'effect', payload: '.jux(rev)' },
+      { id: 'mod_juxBy', label: 'Jux 50%', icon: '◑', desc: 'Subtle stereo split', color: '#22d3ee', dragType: 'effect', payload: '.juxBy(0.5, rev)' },
+      { id: 'mod_echo', label: 'Echo Stutter', icon: '≡', desc: 'Pattern echo 3x', color: '#fb923c', dragType: 'effect', payload: '.echo(3, 1/8, 0.5)' },
+      { id: 'mod_degrade', label: 'Degrade', icon: '░', desc: 'Drop 30% events', color: '#ef4444', dragType: 'effect', payload: '.degradeBy(0.3)' },
+      { id: 'mod_chop', label: 'Chop', icon: '✂', desc: 'Granular slices', color: '#34d399', dragType: 'effect', payload: '.chop(8)' },
+      { id: 'mod_striate', label: 'Striate', icon: '≋', desc: 'Interleaved granular', color: '#34d399', dragType: 'effect', payload: '.striate(4)' },
+      { id: 'mod_iter', label: 'Iter (Rotate)', icon: '⟳', desc: 'Shift start each cycle', color: '#22d3ee', dragType: 'effect', payload: '.iter(4)' },
+      { id: 'mod_ply', label: 'Ply (Repeat)', icon: '×2', desc: 'Double each event', color: '#f472b6', dragType: 'effect', payload: '.ply(2)' },
+      { id: 'mod_chunk', label: 'Chunk', icon: '▧', desc: 'Rotating transform', color: '#facc15', dragType: 'effect', payload: '.chunk(4, fast(2))' },
+      { id: 'mod_brak', label: 'Breakbeat', icon: '⚡', desc: 'Breakbeat transform', color: '#ef4444', dragType: 'effect', payload: '.brak()' },
+      { id: 'mod_press', label: 'Press', icon: '→', desc: 'Push to 2nd half', color: '#fb923c', dragType: 'effect', payload: '.press()' },
+      { id: 'mod_swing', label: 'Swing', icon: '♪', desc: 'Swing groove', color: '#fb923c', dragType: 'effect', payload: '.swing(0.2)' },
+      { id: 'mod_hurry', label: 'Hurry', icon: '»', desc: 'Speed + pitch up', color: '#facc15', dragType: 'effect', payload: '.hurry(2)' },
+      { id: 'mod_linger', label: 'Linger', icon: '∞', desc: 'Loop first quarter', color: '#c084fc', dragType: 'effect', payload: '.linger(0.25)' },
+      { id: 'mod_fast', label: 'Fast 2x', icon: '⇡', desc: 'Double speed', color: '#facc15', dragType: 'effect', payload: '.fast(2)' },
+      { id: 'mod_slow', label: 'Slow 2x', icon: '⇣', desc: 'Half speed', color: '#facc15', dragType: 'effect', payload: '.slow(2)' },
+      { id: 'mod_every4', label: 'Every 4', icon: '⚡', desc: 'Every 4 cycles: fast(2)', color: '#facc15', dragType: 'effect', payload: '.every(4, fast(2))' },
+      { id: 'mod_sometimes', label: 'Sometimes', icon: '?', desc: 'Random fast(2)', color: '#a78bfa', dragType: 'effect', payload: '.sometimes(fast(2))' },
+    ]
+  },
+  {
+    id: 'euclidean', label: 'Euclidean', icon: '◇', color: '#34d399',
+    items: [
+      { id: 'euc_35', label: 'E(3,5)', icon: '◇', desc: 'Afro-Cuban 3/5', color: '#34d399', dragType: 'effect', payload: '.euclid(3,5)' },
+      { id: 'euc_38', label: 'E(3,8)', icon: '◇', desc: 'Sparse 3/8', color: '#34d399', dragType: 'effect', payload: '.euclid(3,8)' },
+      { id: 'euc_58', label: 'E(5,8)', icon: '◆', desc: 'Tresillo 5/8', color: '#34d399', dragType: 'effect', payload: '.euclid(5,8)' },
+      { id: 'euc_78', label: 'E(7,8)', icon: '◆', desc: 'Dense 7/8', color: '#34d399', dragType: 'effect', payload: '.euclid(7,8)' },
+      { id: 'euc_716', label: 'E(7,16)', icon: '◈', desc: 'West African 7/16', color: '#34d399', dragType: 'effect', payload: '.euclid(7,16)' },
+      { id: 'euc_516', label: 'E(5,16)', icon: '◈', desc: 'Bossa nova 5/16', color: '#34d399', dragType: 'effect', payload: '.euclid(5,16)' },
+      { id: 'euc_912', label: 'E(9,16)', icon: '●', desc: 'Aksak 9/16', color: '#34d399', dragType: 'effect', payload: '.euclid(9,16)' },
+    ]
+  },
+  {
+    id: 'envelope', label: 'Envelopes', icon: '📐', color: '#818cf8',
+    items: [
+      { id: 'env_pluck', label: 'Pluck', icon: '🎸', desc: 'Fast attack, no sustain', color: '#818cf8', dragType: 'effect', payload: '.attack(0.001).decay(0.2).sustain(0).release(0.1)' },
+      { id: 'env_pad', label: 'Pad', icon: '☁️', desc: 'Slow attack, long release', color: '#818cf8', dragType: 'effect', payload: '.attack(0.5).decay(0.3).sustain(0.7).release(2)' },
+      { id: 'env_stab', label: 'Stab', icon: '🗡️', desc: 'Punch, short', color: '#818cf8', dragType: 'effect', payload: '.attack(0.001).decay(0.1).sustain(0).release(0.05)' },
+      { id: 'env_swell', label: 'Swell', icon: '🌊', desc: 'Slow in, slow out', color: '#818cf8', dragType: 'effect', payload: '.attack(1).decay(0.5).sustain(0.5).release(1.5)' },
+      { id: 'env_perc', label: 'Percussive', icon: '🥁', desc: 'Sharp hit, fast decay', color: '#818cf8', dragType: 'effect', payload: '.attack(0).decay(0.15).sustain(0).release(0.08)' },
+    ]
+  },
+  {
+    id: 'lfo', label: 'LFO / Modulation', icon: '∿', color: '#a78bfa',
+    items: [
+      { id: 'lfo_lpf_sine', label: 'Filter Wobble', icon: '∿', desc: 'LPF sine sweep', color: '#a78bfa', dragType: 'lfo', payload: '.lpf(sine.range(200,4000).slow(4))', method: 'lpf' },
+      { id: 'lfo_pan_sine', label: 'Auto-Pan', icon: '↔', desc: 'Stereo sweep', color: '#a78bfa', dragType: 'lfo', payload: '.pan(sine.range(0,1).slow(4))', method: 'pan' },
+      { id: 'lfo_gain_tri', label: 'Tremolo', icon: '△', desc: 'Volume flutter', color: '#a78bfa', dragType: 'lfo', payload: '.gain(tri.range(0.2,0.8).slow(2))', method: 'gain' },
+      { id: 'lfo_hpf_saw', label: 'Riser', icon: '⟋', desc: 'HPF rising saw', color: '#a78bfa', dragType: 'lfo', payload: '.hpf(saw.range(50,3000).slow(8))', method: 'hpf' },
+      { id: 'lfo_room_perlin', label: 'Space Drift', icon: '≈', desc: 'Organic reverb', color: '#a78bfa', dragType: 'lfo', payload: '.room(perlin.range(0.1,0.8).slow(8))', method: 'room' },
+      { id: 'lfo_speed_cos', label: 'Speed Wobble', icon: '∾', desc: 'Pitch warble', color: '#a78bfa', dragType: 'lfo', payload: '.speed(cosine.range(0.8,1.2).slow(4))', method: 'speed' },
+      { id: 'lfo_crush_rand', label: 'Glitch Crush', icon: '⁂', desc: 'Random bitcrush', color: '#a78bfa', dragType: 'lfo', payload: '.crush(rand.range(4,16).segment(4))', method: 'crush' },
+      { id: 'lfo_phaser_sine', label: 'Phase Sweep', icon: '🌀', desc: 'Slow phaser', color: '#a78bfa', dragType: 'lfo', payload: '.phaser(sine.range(0,12).slow(6))', method: 'phaser' },
+    ]
+  },
+  {
+    id: 'scales', label: 'Scales', icon: '🎼', color: '#f59e0b',
+    items: [
+      { id: 'sc_cmaj', label: 'C Major', icon: '🎵', desc: 'Ionian', color: '#f59e0b', dragType: 'scale', payload: 'C4:major' },
+      { id: 'sc_amin', label: 'A Minor', icon: '🎵', desc: 'Natural minor', color: '#f59e0b', dragType: 'scale', payload: 'A3:minor' },
+      { id: 'sc_aharm', label: 'A Harmonic Min', icon: '🎵', desc: 'Harmonic minor', color: '#f59e0b', dragType: 'scale', payload: 'A3:harmonic minor' },
+      { id: 'sc_cmajp', label: 'C Maj Pentatonic', icon: '🎵', desc: '5-note major', color: '#f59e0b', dragType: 'scale', payload: 'C4:major pentatonic' },
+      { id: 'sc_aminp', label: 'A Min Pentatonic', icon: '🎵', desc: '5-note minor', color: '#f59e0b', dragType: 'scale', payload: 'A3:minor pentatonic' },
+      { id: 'sc_cblues', label: 'C Blues', icon: '🎵', desc: 'Blues scale', color: '#f59e0b', dragType: 'scale', payload: 'C4:blues' },
+      { id: 'sc_ddor', label: 'D Dorian', icon: '🎵', desc: 'Jazz/funk mode', color: '#f59e0b', dragType: 'scale', payload: 'D4:dorian' },
+      { id: 'sc_ephry', label: 'E Phrygian', icon: '🎵', desc: 'Spanish/flamenco', color: '#f59e0b', dragType: 'scale', payload: 'E4:phrygian' },
+      { id: 'sc_flyd', label: 'F Lydian', icon: '🎵', desc: 'Dreamy mode', color: '#f59e0b', dragType: 'scale', payload: 'F4:lydian' },
+      { id: 'sc_gmixo', label: 'G Mixolydian', icon: '🎵', desc: 'Dominant 7th feel', color: '#f59e0b', dragType: 'scale', payload: 'G4:mixolydian' },
+      { id: 'sc_chrom', label: 'Chromatic', icon: '🎵', desc: 'All 12 notes', color: '#f59e0b', dragType: 'scale', payload: 'C4:chromatic' },
+      { id: 'sc_wholetone', label: 'Whole Tone', icon: '🎵', desc: 'Dreamy/surreal', color: '#f59e0b', dragType: 'scale', payload: 'C4:whole tone' },
+      { id: 'sc_dim', label: 'Diminished', icon: '🎵', desc: 'Spooky/tense', color: '#f59e0b', dragType: 'scale', payload: 'C4:diminished' },
+    ]
+  },
+  {
+    id: 'chords', label: 'Chord Progressions', icon: '🎹', color: '#c084fc',
+    items: [
+      { id: 'ch_1564', label: 'I-V-vi-IV (Pop)', icon: '🎹', desc: 'The hit maker', color: '#c084fc', dragType: 'chord', payload: '<[c3,e3,g3] [g2,b2,d3] [a2,c3,e3] [f2,a2,c3]>' },
+      { id: 'ch_251', label: 'ii-V-I (Jazz)', icon: '🎹', desc: 'Jazz standard', color: '#c084fc', dragType: 'chord', payload: '<[d3,f3,a3] [g2,b2,d3] [c3,e3,g3,b3]>' },
+      { id: 'ch_lofi', label: 'Lofi Cycle', icon: '🎹', desc: '8-bar lo-fi', color: '#c084fc', dragType: 'chord', payload: '<[d3,f3,a3,c4] [g2,b2,d3,f3] [c3,e3,g3,b3] [a2,c3,e3,g3] [f3,a3,c4,e4] [e3,g3,b3,d4] [d3,f3,a3,c4] [e3,gs3,b3,d4]>' },
+      { id: 'ch_12bar', label: '12-Bar Blues', icon: '🎹', desc: 'Classic blues', color: '#c084fc', dragType: 'chord', payload: '<[c3,e3,g3] [c3,e3,g3] [c3,e3,g3] [c3,e3,g3] [f2,a2,c3] [f2,a2,c3] [c3,e3,g3] [c3,e3,g3] [g2,b2,d3] [f2,a2,c3] [c3,e3,g3] [g2,b2,d3]>' },
+      { id: 'ch_dreamy', label: 'Dreamy', icon: '🎹', desc: 'Ethereal pads', color: '#c084fc', dragType: 'chord', payload: '<[c3,g3,e4] [a2,e3,c4] [f3,c4,a4] [g3,d4,b4]>' },
+      { id: 'ch_sad', label: 'Minor Sad', icon: '🎹', desc: 'Melancholic', color: '#c084fc', dragType: 'chord', payload: '<[a2,c3,e3] [f2,a2,c3] [d3,f3,a3] [e2,g2,b2]>' },
+      { id: 'ch_ambient', label: 'Ambient Pads', icon: '🎹', desc: 'Floating', color: '#c084fc', dragType: 'chord', payload: '<[d3,a3,f4] [g3,d4,b4] [c3,g3,e4] [a2,e3,c4]>' },
+      { id: 'ch_neo', label: 'Neo Soul', icon: '🎹', desc: 'Rich extensions', color: '#c084fc', dragType: 'chord', payload: '<[d3,f3,a3,c4,e4] [g2,b2,d3,f3,a3] [c3,e3,g3,b3,d4] [a2,c3,e3,g3,b3]>' },
+    ]
+  },
+  {
+    id: 'sounds', label: 'Instruments', icon: '🎸', color: '#fb923c',
+    items: [
+      { id: 'snd_piano', label: 'Piano', icon: '🎹', desc: 'GM Piano', color: '#fb923c', dragType: 'sound', payload: 'gm_piano' },
+      { id: 'snd_epiano', label: 'E-Piano / Rhodes', icon: '🎹', desc: 'GM EPiano 1', color: '#fb923c', dragType: 'sound', payload: 'gm_epiano1' },
+      { id: 'snd_organ', label: 'Organ', icon: '⛪', desc: 'Drawbar organ', color: '#fb923c', dragType: 'sound', payload: 'gm_drawbar_organ' },
+      { id: 'snd_strings', label: 'Strings', icon: '🎻', desc: 'String ensemble', color: '#fb923c', dragType: 'sound', payload: 'gm_string_ensemble_1' },
+      { id: 'snd_choir', label: 'Choir', icon: '🎤', desc: 'Choir Aahs', color: '#fb923c', dragType: 'sound', payload: 'gm_choir_aahs' },
+      { id: 'snd_flute', label: 'Flute', icon: '🎶', desc: 'Concert flute', color: '#fb923c', dragType: 'sound', payload: 'gm_flute' },
+      { id: 'snd_trumpet', label: 'Trumpet', icon: '🎺', desc: 'Bright trumpet', color: '#fb923c', dragType: 'sound', payload: 'gm_trumpet' },
+      { id: 'snd_guitar', label: 'Guitar (Nylon)', icon: '🎸', desc: 'Acoustic nylon', color: '#fb923c', dragType: 'sound', payload: 'gm_acoustic_guitar_nylon' },
+      { id: 'snd_bass_ac', label: 'Acoustic Bass', icon: '🎸', desc: 'Upright bass', color: '#fb923c', dragType: 'sound', payload: 'gm_acoustic_bass' },
+      { id: 'snd_sine', label: 'Sine', icon: '∿', desc: 'Pure sine wave', color: '#fb923c', dragType: 'sound', payload: 'sine' },
+      { id: 'snd_saw', label: 'Sawtooth', icon: '⟋', desc: 'Bright saw wave', color: '#fb923c', dragType: 'sound', payload: 'sawtooth' },
+      { id: 'snd_square', label: 'Square', icon: '□', desc: 'Hollow square', color: '#fb923c', dragType: 'sound', payload: 'square' },
+      { id: 'snd_tri', label: 'Triangle', icon: '△', desc: 'Soft triangle', color: '#fb923c', dragType: 'sound', payload: 'triangle' },
+      { id: 'snd_music_box', label: 'Music Box', icon: '🎵', desc: 'Celeste/box', color: '#fb923c', dragType: 'sound', payload: 'gm_music_box' },
+      { id: 'snd_vibes', label: 'Vibraphone', icon: '🎵', desc: 'Mellow vibes', color: '#fb923c', dragType: 'sound', payload: 'gm_vibraphone' },
+      { id: 'snd_kalimba', label: 'Kalimba', icon: '🎵', desc: 'Thumb piano', color: '#fb923c', dragType: 'sound', payload: 'gm_kalimba' },
+      { id: 'snd_sitar', label: 'Sitar', icon: '🪕', desc: 'Indian sitar', color: '#fb923c', dragType: 'sound', payload: 'gm_sitar' },
+      { id: 'snd_steel_drum', label: 'Steel Drum', icon: '🥁', desc: 'Caribbean steel', color: '#fb923c', dragType: 'sound', payload: 'gm_steel_drum' },
+    ]
+  },
+  {
+    id: 'drums', label: 'Drum Machines', icon: '🥁', color: '#f59e0b',
+    items: [
+      { id: 'dm_808', label: 'TR-808', icon: '🥁', desc: 'Roland TR-808', color: '#f59e0b', dragType: 'sound', payload: 'RolandTR808' },
+      { id: 'dm_909', label: 'TR-909', icon: '🥁', desc: 'Roland TR-909', color: '#f59e0b', dragType: 'sound', payload: 'RolandTR909' },
+    ]
+  },
+  {
+    id: 'patterns', label: 'Rhythm Patterns', icon: '🎶', color: '#f472b6',
+    items: [
+      { id: 'pat_basic', label: 'Basic 4/4', icon: '🥁', desc: 'Standard rock', color: '#f472b6', dragType: 'pattern', payload: 'bd [~ bd] ~ ~, ~ cp ~ ~, hh*8' },
+      { id: 'pat_four', label: 'Four-on-floor', icon: '🥁', desc: 'Dance/house', color: '#f472b6', dragType: 'pattern', payload: 'bd*4, ~ cp ~ cp, hh*8' },
+      { id: 'pat_trap', label: 'Trap', icon: '🥁', desc: 'Fast hats', color: '#f472b6', dragType: 'pattern', payload: '[bd ~ ~ ~] ~ [~ bd] ~, ~ [~ cp] ~ ~, hh*16' },
+      { id: 'pat_lofi', label: 'Lofi Shuffle', icon: '🥁', desc: 'Chill groove', color: '#f472b6', dragType: 'pattern', payload: '[bd ~ ~ ~] ~ [~ bd] ~, ~ [~ cp] ~ [~ ~ cp ~], [~ oh] [hh ~ ~ hh] [~ hh] [oh ~ hh ~]' },
+      { id: 'pat_break', label: 'Breakbeat', icon: '🥁', desc: 'Jungle style', color: '#f472b6', dragType: 'pattern', payload: 'bd ~ ~ bd ~ ~ [bd bd] ~, ~ ~ cp ~ ~ cp ~ ~, hh hh [hh oh] hh' },
+      { id: 'pat_jazz', label: 'Jazz Brush', icon: '🥁', desc: 'Swing feel', color: '#f472b6', dragType: 'pattern', payload: '[bd ~ bd ~] [~ bd ~ ~], ~ ~ [rim rim] ~, hh*4' },
+      { id: 'pat_mel_asc', label: 'Ascending', icon: '📈', desc: 'Scale run up', color: '#22d3ee', dragType: 'pattern', payload: '0 1 2 3 4 5 6 7' },
+      { id: 'pat_mel_arp', label: 'Arpeggio', icon: '🎵', desc: 'Chord arpeggio', color: '#22d3ee', dragType: 'pattern', payload: '0 2 4 7 4 2' },
+      { id: 'pat_mel_sparse', label: 'Sparse', icon: '·', desc: 'Minimal melody', color: '#22d3ee', dragType: 'pattern', payload: '~ 0 ~ ~ 4 ~ 2 ~' },
+      { id: 'pat_mel_jazzy', label: 'Jazzy', icon: '🎷', desc: 'Jazz intervals', color: '#22d3ee', dragType: 'pattern', payload: '0 4 7 11 9 7 4 2' },
+    ]
+  },
+]
+
+// ═══════════════════════════════════════════════════════════════
 //  SVG MATH
 // ═══════════════════════════════════════════════════════════════
 
@@ -479,7 +654,7 @@ function parseCodeToNodes(code: string, existingNodes?: PatternNode[]): PatternN
       muted: existing?.muted ?? isMuted,
       solo: existing?.solo ?? false,
       x: existing?.x ?? (idx % cols) * 340 + 40,
-      y: existing?.y ?? Math.floor(idx / cols) * 360 + 40,
+      y: existing?.y ?? Math.floor(idx / cols) * 860 + 40,
       type, sound,
       gain: detectNum(rawCode, 'gain', 0.5),
       lpf: detectNum(rawCode, 'lpf', 20000),
@@ -1002,6 +1177,11 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
   const [selectedNode, setSelectedNode] = useState<string | null>(null)
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [linking, setLinking] = useState<{ fromId: string; side: 'in' | 'out'; mx: number; my: number } | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarSearch, setSidebarSearch] = useState('')
+  const [sidebarCategory, setSidebarCategory] = useState<string | null>(null)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [dropTarget, setDropTarget] = useState<string | null>(null)
 
   const panStart = useRef({ x: 0, y: 0, px: 0, py: 0 })
   const containerRef = useRef<HTMLDivElement>(null)
@@ -1411,14 +1591,58 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
     setConnections(prev => prev.filter(c => !(c.fromId === fromId && c.toId === toId)))
   }, [])
 
-  // ── Drag & drop sound bank onto nodes ──
+  // ── Drag & drop from sidebar onto nodes ──
   const handleDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy' }, [])
+
+  const handleNodeDragEnter = useCallback((e: React.DragEvent, nodeId: string) => {
+    e.preventDefault(); e.stopPropagation()
+    setDropTarget(nodeId)
+  }, [])
+
+  const handleNodeDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation()
+    setDropTarget(null)
+  }, [])
+
   const handleDrop = useCallback((e: React.DragEvent, nodeId: string) => {
-    e.preventDefault()
+    e.preventDefault(); e.stopPropagation()
+    setDropTarget(null)
+
+    // Try JSON sidebar item first
+    const json = e.dataTransfer.getData('application/x-sidebar-item')
+    if (json) {
+      try {
+        const item: SidebarItem = JSON.parse(json)
+        if (item.dragType === 'effect' || item.dragType === 'lfo') {
+          // Inject the payload code into this node
+          setNodes(prev => {
+            const idx = prev.findIndex(n => n.id === nodeId)
+            if (idx === -1) return prev
+            const node = prev[idx]
+            const rawCode = node.code.replace(/\/\/ \[muted\] /g, '')
+            const newCode = injectBefore(rawCode, item.payload)
+            if (newCode === rawCode) return prev
+            const updated = [...prev]
+            updated[idx] = { ...node, code: node.muted ? newCode.split('\n').map(l => `// [muted] ${l}`).join('\n') : newCode }
+            const fullCode = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
+            sendToParent(fullCode)
+            return updated
+          })
+        } else if (item.dragType === 'sound') {
+          changeSoundSource(nodeId, item.payload)
+        } else if (item.dragType === 'scale') {
+          changeScale(nodeId, item.payload)
+        } else if (item.dragType === 'chord' || item.dragType === 'pattern') {
+          changePattern(nodeId, item.payload)
+        }
+      } catch {}
+      return
+    }
+
+    // Fallback: plain text (old sound bank drop)
     const data = e.dataTransfer.getData('text/plain')
-    if (!data) return
-    changeSoundSource(nodeId, data)
-  }, [changeSoundSource])
+    if (data) changeSoundSource(nodeId, data)
+  }, [changeSoundSource, changeScale, changePattern, bpm, sendToParent, rebuildFullCodeFromNodes])
 
   // ── Canvas interactions ──
   const handleMouseDown = useCallback((e: React.MouseEvent, nodeId: string) => {
@@ -1493,13 +1717,19 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
   // ════════════════════════════════════════════════════════════
 
   return (
-    <div className="flex flex-col h-full select-none" style={{ background: HW.bg, overflow: 'visible' }}>
+    <div className={`flex flex-col h-full select-none ${isFullscreen ? 'fixed inset-0 z-50' : ''}`} style={{ background: HW.bg, overflow: 'visible' }}>
 
       {/* ══════ TOP BAR ══════ */}
       <div className="flex items-center justify-between px-4 py-2 shrink-0"
         style={{ background: `linear-gradient(180deg, ${HW.surfaceAlt} 0%, ${HW.surface} 100%)`, borderBottom: `1px solid ${HW.border}` }}>
         {/* Left */}
         <div className="flex items-center gap-3">
+          <button onClick={() => setSidebarOpen(p => !p)}
+            className="w-6 h-6 flex items-center justify-center rounded cursor-pointer"
+            style={{ color: sidebarOpen ? '#22d3ee' : HW.textDim, background: sidebarOpen ? 'rgba(34,211,238,0.08)' : HW.raised, border: `1px solid ${sidebarOpen ? 'rgba(34,211,238,0.15)' : HW.border}` }}
+            title="Toggle library sidebar">
+            {sidebarOpen ? <ChevronLeft size={11} /> : <ChevronRight size={11} />}
+          </button>
           <div className="flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full" style={{ background: isPlaying ? '#22d3ee' : HW.textDim, boxShadow: isPlaying ? '0 0 8px #22d3ee50' : 'none' }} />
             <span className="text-[10px] font-bold tracking-[0.2em] uppercase" style={{ color: HW.textBright }}>NODE RACK</span>
@@ -1566,9 +1796,92 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
             <button onClick={() => { setZoom(0.85); setPan({ x: 0, y: 0 }) }}
               className="px-2 h-6 flex items-center justify-center text-[8px] font-bold tracking-wider uppercase rounded cursor-pointer"
               style={{ color: HW.textDim, background: HW.raised, border: `1px solid ${HW.border}` }}>FIT</button>
+            <button onClick={() => setIsFullscreen(p => !p)}
+              className="w-6 h-6 flex items-center justify-center rounded cursor-pointer"
+              style={{ color: isFullscreen ? '#22d3ee' : HW.textDim, background: isFullscreen ? 'rgba(34,211,238,0.08)' : HW.raised, border: `1px solid ${isFullscreen ? 'rgba(34,211,238,0.15)' : HW.border}` }}
+              title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen node grid'}>
+              {isFullscreen ? <Minimize2 size={10} /> : <Maximize2 size={10} />}
+            </button>
           </div>
         </div>
       </div>
+
+      {/* ══════ MAIN AREA: SIDEBAR + CANVAS ══════ */}
+      <div className="flex-1 flex min-h-0">
+
+      {/* ══════ SIDEBAR ══════ */}
+      {sidebarOpen && (
+        <div className="flex flex-col shrink-0 border-r overflow-hidden" style={{
+          width: 220, background: HW.surface, borderColor: HW.border,
+        }}>
+          {/* Search */}
+          <div className="px-2 py-2 shrink-0" style={{ borderBottom: `1px solid ${HW.border}` }}>
+            <input
+              type="text" value={sidebarSearch} onChange={e => setSidebarSearch(e.target.value)}
+              placeholder="Search effects, sounds..."
+              className="w-full px-2 py-1 rounded text-[10px] outline-none"
+              style={{ background: HW.raised, border: `1px solid ${HW.border}`, color: HW.textBright }}
+              onClick={e => e.stopPropagation()}
+            />
+          </div>
+          {/* Categories */}
+          <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: `${HW.raisedLight} transparent` }}>
+            {SIDEBAR_CATEGORIES.map(cat => {
+              const q = sidebarSearch.toLowerCase()
+              const filteredItems = q
+                ? cat.items.filter(item => item.label.toLowerCase().includes(q) || item.desc.toLowerCase().includes(q))
+                : cat.items
+              if (q && filteredItems.length === 0) return null
+              const isOpen = sidebarCategory === cat.id || !!q
+              return (
+                <div key={cat.id}>
+                  <button
+                    onClick={() => setSidebarCategory(p => p === cat.id ? null : cat.id)}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-[10px] font-bold tracking-wider uppercase cursor-pointer transition-colors"
+                    style={{ color: isOpen ? cat.color : HW.textDim, background: isOpen ? `${cat.color}08` : 'transparent' }}
+                    onMouseEnter={e => { if (!isOpen) e.currentTarget.style.background = `${cat.color}05` }}
+                    onMouseLeave={e => { if (!isOpen) e.currentTarget.style.background = 'transparent' }}
+                  >
+                    <span className="text-[11px]">{cat.icon}</span>
+                    <span className="flex-1 text-left">{cat.label}</span>
+                    <span className="text-[8px]" style={{ color: HW.textDim }}>{cat.items.length}</span>
+                    <ChevronDown size={10} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} style={{ color: HW.textDim }} />
+                  </button>
+                  {isOpen && (
+                    <div className="px-1.5 pb-1">
+                      {filteredItems.map(item => (
+                        <div key={item.id}
+                          draggable
+                          onDragStart={e => {
+                            e.dataTransfer.setData('application/x-sidebar-item', JSON.stringify(item))
+                            e.dataTransfer.effectAllowed = 'copy'
+                          }}
+                          className="flex items-center gap-2 px-2 py-1 rounded text-[9px] cursor-grab active:cursor-grabbing transition-colors group"
+                          style={{ color: HW.text }}
+                          onMouseEnter={e => { e.currentTarget.style.background = `${item.color}10`; e.currentTarget.style.color = item.color }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = HW.text }}
+                          title={`Drag onto a node: ${item.desc}`}
+                        >
+                          <span className="text-[10px] shrink-0 w-4 text-center">{item.icon}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium truncate">{item.label}</div>
+                            <div className="text-[7px] truncate" style={{ color: HW.textDim }}>{item.desc}</div>
+                          </div>
+                          <span className="text-[7px] opacity-0 group-hover:opacity-60 shrink-0">drag→</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          {/* Sidebar footer hint */}
+          <div className="px-3 py-1.5 shrink-0 text-[7px]" style={{ color: HW.textDim, borderTop: `1px solid ${HW.border}` }}>
+            Drag items onto nodes to apply
+          </div>
+        </div>
+      )}
 
       {/* ══════ CANVAS ══════ */}
       <div ref={containerRef}
@@ -1591,7 +1904,8 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
             const to = nodes.find(n => n.id === conn.toId)
             if (!from || !to) return null
             const x1 = (from.x + NODE_W - 16 + pan.x) * zoom
-            const y1 = (from.y + 320 + pan.y) * zoom
+            const fromH = from.type !== 'drums' && from.type !== 'fx' && from.type !== 'other' ? 780 : 520
+            const y1 = (from.y + fromH + pan.y) * zoom
             const x2 = (to.x + 16 + pan.x) * zoom
             const y2 = (to.y + pan.y) * zoom
             const mid = (y1 + y2) / 2
@@ -1618,7 +1932,8 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
             const from = nodes.find(n => n.id === linking.fromId)
             if (!from) return null
             const fx = linking.side === 'out' ? (from.x + NODE_W - 16 + pan.x) * zoom : (from.x + 16 + pan.x) * zoom
-            const fy = linking.side === 'out' ? (from.y + 320 + pan.y) * zoom : (from.y + pan.y) * zoom
+            const fromH2 = from.type !== 'drums' && from.type !== 'fx' && from.type !== 'other' ? 780 : 520
+            const fy = linking.side === 'out' ? (from.y + fromH2 + pan.y) * zoom : (from.y + pan.y) * zoom
             return <line x1={fx} y1={fy} x2={linking.mx} y2={linking.my}
               stroke="#22d3ee" strokeWidth={2} strokeDasharray="6 3" opacity={0.6} />
           })()}
@@ -1637,12 +1952,15 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
             <div key={node.id} className="absolute select-none" style={{
               left: `${(node.x + pan.x) * zoom}px`,
               top: `${(node.y + pan.y) * zoom}px`,
-              width: `${NODE_W * zoom}px`,
+              width: NODE_W,
+              transform: `scale(${zoom})`,
               transformOrigin: 'top left',
               zIndex: isSel ? 20 : dragging?.id === node.id ? 30 : 10,
             }}>
-              <div className="relative"
+              <div className={`relative ${dropTarget === node.id ? 'ring-2 ring-cyan-400/50 ring-offset-2 ring-offset-transparent rounded-xl' : ''}`}
                 onDragOver={handleDragOver}
+                onDragEnter={e => handleNodeDragEnter(e, node.id)}
+                onDragLeave={handleNodeDragLeave}
                 onDrop={e => handleDrop(e, node.id)}>
                 <Port side="in" color={color} connected={connections.some(c => c.toId === node.id)}
                   onMouseDown={startLink} onMouseUp={endLink} nodeId={node.id} />
@@ -1657,7 +1975,6 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
                   border: `1px solid ${isSel ? `${color}50` : isActive ? `${color}25` : HW.border}`,
                   boxShadow: isSel ? `0 0 30px ${color}15, 0 8px 32px rgba(0,0,0,0.6), inset 0 1px 0 ${HW.borderLight}`
                     : `0 2px 12px rgba(0,0,0,0.4), inset 0 1px 0 ${HW.borderLight}`,
-                  fontSize: `${Math.max(9, 11 * zoom)}px`,
                 }}>
 
                   {/* HEADER */}
@@ -1924,6 +2241,9 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
             </div>
           </div>
         )}
+      </div>
+
+      {/* Close sidebar+canvas flex container */}
       </div>
 
       {/* ══════ STATUS BAR ══════ */}
