@@ -346,6 +346,8 @@ const EFFECT_BADGES: { detect: RegExp; label: string; color: string }[] = [
   { detect: /\.sometimes\s*\(/, label: 'RNG', color: '#a78bfa' },
   { detect: /\.often\s*\(/, label: 'OFTN', color: '#a78bfa' },
   { detect: /\.pan\s*\(.*(?:sine|cosine|saw|tri|perlin)/, label: 'APAN', color: '#34d399' },
+  { detect: /\.csid\s*\(/, label: 'SIDE', color: '#f59e0b' },
+  { detect: /\.bpf\s*\(/, label: 'BPF', color: '#60a5fa' },
 ]
 
 function detectActiveEffects(code: string): { label: string; color: string }[] {
@@ -396,6 +398,8 @@ const QUICK_FX: QuickFX[] = [
   { id: 'euclid35', label: 'E(3,5)', icon: '◇', category: 'groove', code: '.euclid(3,5)', detect: /\.euclid\s*\(\s*3\s*,\s*5/, color: '#34d399', desc: 'Euclidean 3/5 rhythm' },
   { id: 'euclid58', label: 'E(5,8)', icon: '◆', category: 'groove', code: '.euclid(5,8)', detect: /\.euclid\s*\(\s*5\s*,\s*8/, color: '#34d399', desc: 'Euclidean 5/8 rhythm' },
   { id: 'euclid38', label: 'E(3,8)', icon: '◈', category: 'groove', code: '.euclid(3,8)', detect: /\.euclid\s*\(\s*3\s*,\s*8/, color: '#34d399', desc: 'Euclidean 3/8 rhythm' },
+  // Sidechain
+  { id: 'sidechain', label: 'SIDE', icon: '📊', category: 'groove', code: '.csid("bd",0.3,0.2)', detect: /\.csid\s*\(/, color: '#f59e0b', desc: 'Pumping sidechain compression' },
 ]
 
 // LFO presets — inject as replacement for a knob's static value
@@ -447,6 +451,7 @@ const SIDEBAR_CATEGORIES: { id: string; label: string; icon: string; color: stri
       { id: 'fx_fm', label: 'FM Synthesis', icon: '📡', desc: 'Frequency mod .fmi(2)', color: '#818cf8', dragType: 'effect', payload: '.fmi(2)', method: 'fmi' },
       { id: 'fx_compress', label: 'Compressor', icon: '🔧', desc: 'Dynamic range .compressor(-20,10,4)', color: '#94a3b8', dragType: 'effect', payload: '.compressor(-20,10,4)' },
       { id: 'fx_gain', label: 'Gain', icon: '🔈', desc: 'Volume .gain(0.5)', color: '#34d399', dragType: 'effect', payload: '.gain(0.5)', method: 'gain' },
+      { id: 'fx_sidechain', label: 'Sidechain', icon: '📊', desc: 'Pumping sidechain .csid("bd",0.3,0.2)', color: '#f59e0b', dragType: 'effect', payload: '.csid("bd",0.3,0.2)' },
     ]
   },
   {
@@ -650,6 +655,12 @@ function detectNum(code: string, method: string, fallback: number): number {
 function hasDynamic(code: string, method: string): boolean {
   const re = new RegExp(`\\.${method}\\s*\\(\\s*(?:sine|cosine|perlin|saw|square|tri|rand|irand)`)
   return re.test(code)
+}
+
+// Check if a method chain call exists in the code AT ALL (static or dynamic)
+function hasMethod(code: string, method: string): boolean {
+  const re = new RegExp(`\\.${method}\\s*\\(`)
+  return re.test(code.replace(/\/\/ \[muted\] /g, ''))
 }
 
 function detectScale(code: string): string {
@@ -2159,7 +2170,12 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
                     <MiniScope color={color} active={isActive} type={node.type} />
                   </div>
 
-                  {/* KNOBS ROW 1: Volume, LPF, HPF, Pan */}
+                  {/* ══════ CODE-DRIVEN KNOBS ══════
+                       Only show knobs for effects that EXIST in this node's code.
+                       VOL (gain) always shows. Everything else is conditional.
+                       This makes the node a true visual representation of the code. */}
+
+                  {/* ALWAYS: Volume */}
                   <div className="px-2 py-2">
                     <div className="flex items-center gap-1 mb-1 px-1">
                       <div className="h-px flex-1" style={{ background: HW.border }} />
@@ -2170,66 +2186,125 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
                       <RotaryKnob label="VOL" value={node.gain} min={0} max={1} step={0.01} defaultValue={0.5}
                         onChange={v => updateKnob(node.id, 'gain', v)} onCommit={() => commitKnob(node.id, 'gain', node.gain)} color={color}
                         disabled={hasDynamic(node.code, 'gain')} />
-                      <RotaryKnob label="LPF" value={node.lpf} min={50} max={20000} step={50} defaultValue={20000} suffix="Hz"
-                        onChange={v => updateKnob(node.id, 'lpf', v)} onCommit={() => commitKnob(node.id, 'lpf', node.lpf)} color={color}
-                        disabled={hasDynamic(node.code, 'lpf')} />
-                      <RotaryKnob label="HPF" value={node.hpf} min={0} max={8000} step={50} defaultValue={0} suffix="Hz"
-                        onChange={v => updateKnob(node.id, 'hpf', v)} onCommit={() => commitKnob(node.id, 'hpf', node.hpf)} color={color}
-                        disabled={hasDynamic(node.code, 'hpf')} />
-                      <RotaryKnob label="PAN" value={node.pan} min={0} max={1} step={0.01} defaultValue={0.5}
-                        onChange={v => updateKnob(node.id, 'pan', v)} onCommit={() => commitKnob(node.id, 'pan', node.pan)} color={color}
-                        disabled={hasDynamic(node.code, 'pan')} />
+                      {hasMethod(node.code, 'pan') && (
+                        <RotaryKnob label="PAN" value={node.pan} min={0} max={1} step={0.01} defaultValue={0.5}
+                          onChange={v => updateKnob(node.id, 'pan', v)} onCommit={() => commitKnob(node.id, 'pan', node.pan)} color={color}
+                          disabled={hasDynamic(node.code, 'pan')} />
+                      )}
+                      {hasMethod(node.code, 'velocity') && (
+                        <RotaryKnob label="VEL" value={node.velocity} min={0} max={1} step={0.01} defaultValue={1}
+                          onChange={v => updateKnob(node.id, 'velocity', v)} onCommit={() => commitKnob(node.id, 'velocity', node.velocity)} color={color}
+                          disabled={hasDynamic(node.code, 'velocity')} />
+                      )}
+                      {hasMethod(node.code, 'slow') && (
+                        <RotaryKnob label="SPD" value={node.speed} min={0.25} max={8} step={0.25} defaultValue={1} suffix="x"
+                          onChange={v => updateKnob(node.id, 'slow', v)} onCommit={() => commitKnob(node.id, 'slow', node.speed)} color={color}
+                          disabled={hasDynamic(node.code, 'slow')} />
+                      )}
                     </div>
                   </div>
 
-                  {/* KNOBS ROW 2: Reverb, Delay, DlyFB, Speed */}
-                  <div className="px-2 pb-2">
-                    <div className="flex items-center gap-1 mb-1 px-1">
-                      <div className="h-px flex-1" style={{ background: HW.border }} />
-                      <span className="text-[7px] font-bold tracking-[0.2em] uppercase" style={{ color: HW.textDim }}>SPACE</span>
-                      <div className="h-px flex-1" style={{ background: HW.border }} />
+                  {/* FILTER — only if lpf/hpf/bpf in code */}
+                  {(hasMethod(node.code, 'lpf') || hasMethod(node.code, 'hpf') || hasMethod(node.code, 'bpf')) && (
+                    <div className="px-2 pb-2">
+                      <div className="flex items-center gap-1 mb-1 px-1">
+                        <div className="h-px flex-1" style={{ background: HW.border }} />
+                        <span className="text-[7px] font-bold tracking-[0.2em] uppercase" style={{ color: HW.textDim }}>FILTER</span>
+                        <div className="h-px flex-1" style={{ background: HW.border }} />
+                      </div>
+                      <div className="flex items-start justify-center gap-0.5 flex-wrap">
+                        {hasMethod(node.code, 'lpf') && (
+                          <RotaryKnob label="LPF" value={node.lpf} min={50} max={20000} step={50} defaultValue={20000} suffix="Hz"
+                            onChange={v => updateKnob(node.id, 'lpf', v)} onCommit={() => commitKnob(node.id, 'lpf', node.lpf)} color={color}
+                            disabled={hasDynamic(node.code, 'lpf')} />
+                        )}
+                        {hasMethod(node.code, 'hpf') && (
+                          <RotaryKnob label="HPF" value={node.hpf} min={0} max={8000} step={50} defaultValue={0} suffix="Hz"
+                            onChange={v => updateKnob(node.id, 'hpf', v)} onCommit={() => commitKnob(node.id, 'hpf', node.hpf)} color={color}
+                            disabled={hasDynamic(node.code, 'hpf')} />
+                        )}
+                        {hasMethod(node.code, 'lpq') && (
+                          <RotaryKnob label="LPQ" value={node.lpq} min={0} max={50} step={0.5} defaultValue={1}
+                            onChange={v => updateKnob(node.id, 'lpq', v)} onCommit={() => commitKnob(node.id, 'lpq', node.lpq)} color={color}
+                            disabled={hasDynamic(node.code, 'lpq')} />
+                        )}
+                        {hasMethod(node.code, 'hpq') && (
+                          <RotaryKnob label="HPQ" value={node.hpq} min={0} max={50} step={0.5} defaultValue={1}
+                            onChange={v => updateKnob(node.id, 'hpq', v)} onCommit={() => commitKnob(node.id, 'hpq', node.hpq)} color={color}
+                            disabled={hasDynamic(node.code, 'hpq')} />
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-start justify-center gap-0.5 flex-wrap">
-                      <RotaryKnob label="VERB" value={node.room} min={0} max={1} step={0.01} defaultValue={0}
-                        onChange={v => updateKnob(node.id, 'room', v)} onCommit={() => commitKnob(node.id, 'room', node.room)} color={color}
-                        disabled={hasDynamic(node.code, 'room')} />
-                      <RotaryKnob label="DLY" value={node.delay} min={0} max={0.8} step={0.01} defaultValue={0}
-                        onChange={v => updateKnob(node.id, 'delay', v)} onCommit={() => commitKnob(node.id, 'delay', node.delay)} color={color}
-                        disabled={hasDynamic(node.code, 'delay')} />
-                      <RotaryKnob label="FDBK" value={node.delayfeedback} min={0} max={0.95} step={0.01} defaultValue={0}
-                        onChange={v => updateKnob(node.id, 'delayfeedback', v)} onCommit={() => commitKnob(node.id, 'delayfeedback', node.delayfeedback)} color={color}
-                        disabled={hasDynamic(node.code, 'delayfeedback')} />
-                      <RotaryKnob label="SPD" value={node.speed} min={0.25} max={8} step={0.25} defaultValue={1} suffix="x"
-                        onChange={v => updateKnob(node.id, 'slow', v)} onCommit={() => commitKnob(node.id, 'slow', node.speed)} color={color}
-                        disabled={hasDynamic(node.code, 'slow')} />
-                    </div>
-                  </div>
+                  )}
 
-                  {/* KNOBS ROW 3: Distortion + Modulation */}
-                  <div className="px-2 pb-2">
-                    <div className="flex items-center gap-1 mb-1 px-1">
-                      <div className="h-px flex-1" style={{ background: HW.border }} />
-                      <span className="text-[7px] font-bold tracking-[0.2em] uppercase" style={{ color: HW.textDim }}>DRIVE</span>
-                      <div className="h-px flex-1" style={{ background: HW.border }} />
+                  {/* SPACE — only if room/delay in code */}
+                  {(hasMethod(node.code, 'room') || hasMethod(node.code, 'delay')) && (
+                    <div className="px-2 pb-2">
+                      <div className="flex items-center gap-1 mb-1 px-1">
+                        <div className="h-px flex-1" style={{ background: HW.border }} />
+                        <span className="text-[7px] font-bold tracking-[0.2em] uppercase" style={{ color: HW.textDim }}>SPACE</span>
+                        <div className="h-px flex-1" style={{ background: HW.border }} />
+                      </div>
+                      <div className="flex items-start justify-center gap-0.5 flex-wrap">
+                        {hasMethod(node.code, 'room') && (
+                          <RotaryKnob label="VERB" value={node.room} min={0} max={1} step={0.01} defaultValue={0}
+                            onChange={v => updateKnob(node.id, 'room', v)} onCommit={() => commitKnob(node.id, 'room', node.room)} color={color}
+                            disabled={hasDynamic(node.code, 'room')} />
+                        )}
+                        {hasMethod(node.code, 'delay') && (
+                          <RotaryKnob label="DLY" value={node.delay} min={0} max={0.8} step={0.01} defaultValue={0}
+                            onChange={v => updateKnob(node.id, 'delay', v)} onCommit={() => commitKnob(node.id, 'delay', node.delay)} color={color}
+                            disabled={hasDynamic(node.code, 'delay')} />
+                        )}
+                        {hasMethod(node.code, 'delayfeedback') && (
+                          <RotaryKnob label="FDBK" value={node.delayfeedback} min={0} max={0.95} step={0.01} defaultValue={0}
+                            onChange={v => updateKnob(node.id, 'delayfeedback', v)} onCommit={() => commitKnob(node.id, 'delayfeedback', node.delayfeedback)} color={color}
+                            disabled={hasDynamic(node.code, 'delayfeedback')} />
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-start justify-center gap-0.5 flex-wrap">
-                      <RotaryKnob label="DIST" value={node.distort} min={0} max={4} step={0.05} defaultValue={0}
-                        onChange={v => updateKnob(node.id, 'distort', v)} onCommit={() => commitKnob(node.id, 'distort', node.distort)} color={color}
-                        disabled={hasDynamic(node.code, 'distort')} />
-                      <RotaryKnob label="CRSH" value={node.crush} min={0} max={16} step={1} defaultValue={0}
-                        onChange={v => updateKnob(node.id, 'crush', v)} onCommit={() => commitKnob(node.id, 'crush', node.crush)} color={color}
-                        disabled={hasDynamic(node.code, 'crush')} />
-                      <RotaryKnob label="PHSR" value={node.phaser} min={0} max={20} step={0.5} defaultValue={0} suffix="Hz"
-                        onChange={v => updateKnob(node.id, 'phaser', v)} onCommit={() => commitKnob(node.id, 'phaser', node.phaser)} color={color}
-                        disabled={hasDynamic(node.code, 'phaser')} />
-                      <RotaryKnob label="COARSE" value={node.coarse} min={0} max={32} step={1} defaultValue={0}
-                        onChange={v => updateKnob(node.id, 'coarse', v)} onCommit={() => commitKnob(node.id, 'coarse', node.coarse)} color={color}
-                        disabled={hasDynamic(node.code, 'coarse')} size={36} />
-                    </div>
-                  </div>
+                  )}
 
-                  {/* KNOBS ROW 4: ADSR Envelope (melodic only) */}
-                  {isMelodic && (
+                  {/* DRIVE — only if distort/crush/phaser/coarse/shape in code */}
+                  {(hasMethod(node.code, 'distort') || hasMethod(node.code, 'crush') || hasMethod(node.code, 'phaser') || hasMethod(node.code, 'coarse') || hasMethod(node.code, 'shape')) && (
+                    <div className="px-2 pb-2">
+                      <div className="flex items-center gap-1 mb-1 px-1">
+                        <div className="h-px flex-1" style={{ background: HW.border }} />
+                        <span className="text-[7px] font-bold tracking-[0.2em] uppercase" style={{ color: HW.textDim }}>DRIVE</span>
+                        <div className="h-px flex-1" style={{ background: HW.border }} />
+                      </div>
+                      <div className="flex items-start justify-center gap-0.5 flex-wrap">
+                        {hasMethod(node.code, 'distort') && (
+                          <RotaryKnob label="DIST" value={node.distort} min={0} max={4} step={0.05} defaultValue={0}
+                            onChange={v => updateKnob(node.id, 'distort', v)} onCommit={() => commitKnob(node.id, 'distort', node.distort)} color={color}
+                            disabled={hasDynamic(node.code, 'distort')} />
+                        )}
+                        {hasMethod(node.code, 'shape') && (
+                          <RotaryKnob label="SHPE" value={node.shape} min={0} max={1} step={0.01} defaultValue={0}
+                            onChange={v => updateKnob(node.id, 'shape', v)} onCommit={() => commitKnob(node.id, 'shape', node.shape)} color={color}
+                            disabled={hasDynamic(node.code, 'shape')} />
+                        )}
+                        {hasMethod(node.code, 'crush') && (
+                          <RotaryKnob label="CRSH" value={node.crush} min={0} max={16} step={1} defaultValue={0}
+                            onChange={v => updateKnob(node.id, 'crush', v)} onCommit={() => commitKnob(node.id, 'crush', node.crush)} color={color}
+                            disabled={hasDynamic(node.code, 'crush')} />
+                        )}
+                        {hasMethod(node.code, 'phaser') && (
+                          <RotaryKnob label="PHSR" value={node.phaser} min={0} max={20} step={0.5} defaultValue={0} suffix="Hz"
+                            onChange={v => updateKnob(node.id, 'phaser', v)} onCommit={() => commitKnob(node.id, 'phaser', node.phaser)} color={color}
+                            disabled={hasDynamic(node.code, 'phaser')} />
+                        )}
+                        {hasMethod(node.code, 'coarse') && (
+                          <RotaryKnob label="COARSE" value={node.coarse} min={0} max={32} step={1} defaultValue={0}
+                            onChange={v => updateKnob(node.id, 'coarse', v)} onCommit={() => commitKnob(node.id, 'coarse', node.coarse)} color={color}
+                            disabled={hasDynamic(node.code, 'coarse')} size={36} />
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ADSR — only if any envelope param in code */}
+                  {(hasMethod(node.code, 'attack') || hasMethod(node.code, 'decay') || hasMethod(node.code, 'sustain') || hasMethod(node.code, 'release')) && (
                     <div className="px-2 pb-2">
                       <div className="flex items-center gap-1 mb-1 px-1">
                         <div className="h-px flex-1" style={{ background: HW.border }} />
@@ -2253,27 +2328,18 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
                     </div>
                   )}
 
-                  {/* KNOBS ROW 5: Filter resonance + FM (non-drums) */}
-                  {node.type !== 'drums' && (
+                  {/* FM — only if fmi in code */}
+                  {hasMethod(node.code, 'fmi') && (
                     <div className="px-2 pb-2">
                       <div className="flex items-center gap-1 mb-1 px-1">
                         <div className="h-px flex-1" style={{ background: HW.border }} />
-                        <span className="text-[7px] font-bold tracking-[0.2em] uppercase" style={{ color: HW.textDim }}>RESO</span>
+                        <span className="text-[7px] font-bold tracking-[0.2em] uppercase" style={{ color: HW.textDim }}>FM</span>
                         <div className="h-px flex-1" style={{ background: HW.border }} />
                       </div>
                       <div className="flex items-start justify-center gap-0.5 flex-wrap">
-                        <RotaryKnob label="LPQ" value={node.lpq} min={0} max={50} step={0.5} defaultValue={1}
-                          onChange={v => updateKnob(node.id, 'lpq', v)} onCommit={() => commitKnob(node.id, 'lpq', node.lpq)} color={color}
-                          disabled={hasDynamic(node.code, 'lpq')} />
-                        <RotaryKnob label="HPQ" value={node.hpq} min={0} max={50} step={0.5} defaultValue={1}
-                          onChange={v => updateKnob(node.id, 'hpq', v)} onCommit={() => commitKnob(node.id, 'hpq', node.hpq)} color={color}
-                          disabled={hasDynamic(node.code, 'hpq')} />
                         <RotaryKnob label="FM" value={node.fmi} min={0} max={8} step={0.1} defaultValue={0}
                           onChange={v => updateKnob(node.id, 'fmi', v)} onCommit={() => commitKnob(node.id, 'fmi', node.fmi)} color={color}
                           disabled={hasDynamic(node.code, 'fmi')} />
-                        <RotaryKnob label="VEL" value={node.velocity} min={0} max={1} step={0.01} defaultValue={1}
-                          onChange={v => updateKnob(node.id, 'velocity', v)} onCommit={() => commitKnob(node.id, 'velocity', node.velocity)} color={color}
-                          disabled={hasDynamic(node.code, 'velocity')} />
                       </div>
                     </div>
                   )}
@@ -2424,7 +2490,7 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
       <div className="flex items-center justify-between px-4 py-1 shrink-0"
         style={{ background: HW.surface, borderTop: `1px solid ${HW.border}` }}>
         <span className="text-[8px] tracking-wide" style={{ color: HW.textDim }}>
-          drag knobs · shift for fine · dblclick to reset · drag ports to connect · drop sounds onto nodes
+          knobs show what&apos;s in code · drag effects to add · click sidebar with node selected · 🎲 randomize patterns
         </span>
         <div className="flex items-center gap-3 text-[8px] font-mono tabular-nums" style={{ color: HW.textDim }}>
           <span>{connections.length} links</span>
