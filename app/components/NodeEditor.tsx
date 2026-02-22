@@ -262,6 +262,98 @@ const DISTORT_TYPES = [
 ]
 
 // ═══════════════════════════════════════════════════════════════
+//  RANDOM PATTERN GENERATORS — infinite variation
+// ═══════════════════════════════════════════════════════════════
+
+function randomPick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)] }
+
+function randomDrumPattern(): string {
+  const kicks  = ['bd', 'bd*2', '[bd ~ bd ~]', '[bd ~ ~ bd]', 'bd ~ ~ ~', '[~ bd] ~ [~ bd] ~', 'bd ~ [bd bd] ~', '[bd bd ~ ~]']
+  const snares = ['~ cp ~ ~', '~ cp ~ cp', '~ [~ cp] ~ ~', '~ ~ cp ~', '~ ~ [cp cp] ~', '~ [cp ~] ~ cp', '~ cp [~ cp] ~']
+  const hats   = ['hh*4', 'hh*8', 'hh*16', '[hh ~ hh ~]*2', '[~ hh]*4', 'hh hh [hh oh] hh', '[hh hh ~ hh]*2', '[oh ~ hh hh]*2', 'hh*8']
+  const percs  = ['', '', '', `, ${randomPick(['rim*8', '~ rim ~ rim', 'rim [rim ~] rim ~', '[~ rim]*4'])}`, `, ${randomPick(['[~ oh]*2', 'oh ~ ~ oh'])}` ]
+  return `${randomPick(kicks)}, ${randomPick(snares)}, ${randomPick(hats)}${randomPick(percs)}`
+}
+
+function randomMelodyPattern(): string {
+  const len = 4 + Math.floor(Math.random() * 5)
+  const notes: string[] = []
+  for (let i = 0; i < len; i++) {
+    if (Math.random() < 0.2) notes.push('~')
+    else if (Math.random() < 0.1) notes.push(`[${Math.floor(Math.random() * 8)} ${Math.floor(Math.random() * 8)}]`)
+    else notes.push(String(Math.floor(Math.random() * 12)))
+  }
+  return notes.join(' ')
+}
+
+function randomChordProgression(): string {
+  const triads = ['[c3,e3,g3]', '[d3,f3,a3]', '[e3,g3,b3]', '[f3,a3,c4]', '[g3,b3,d4]', '[a3,c4,e4]']
+  const sevenths = ['[c3,e3,g3,b3]', '[d3,f3,a3,c4]', '[g2,b2,d3,f3]', '[a2,c3,e3,g3]', '[f2,a2,c3,e3]', '[e3,gs3,b3,d4]']
+  const pool = Math.random() < 0.5 ? triads : sevenths
+  const count = 3 + Math.floor(Math.random() * 3)
+  return `<${Array.from({ length: count }, () => randomPick(pool)).join(' ')}>`
+}
+
+function randomBassPattern(): string {
+  const roots = ['c2', 'c1', 'd2', 'e1', 'f1', 'f2', 'g1', 'g2', 'a1', 'b1', 'eb2', 'bb1']
+  const len = 4 + Math.floor(Math.random() * 4)
+  const parts: string[] = []
+  for (let i = 0; i < len; i++) {
+    if (Math.random() < 0.25) parts.push('~')
+    else if (Math.random() < 0.15) parts.push(`[${randomPick(roots)} ~]`)
+    else parts.push(randomPick(roots))
+  }
+  return `<${parts.join(' ')}>`
+}
+
+function randomPatternForType(type: NodeType): string {
+  switch (type) {
+    case 'drums': return randomDrumPattern()
+    case 'bass':  return randomBassPattern()
+    case 'chords': return randomChordProgression()
+    default:      return randomMelodyPattern()
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  EFFECT BADGE DETECTION — visual tags on nodes
+// ═══════════════════════════════════════════════════════════════
+
+const EFFECT_BADGES: { detect: RegExp; label: string; color: string }[] = [
+  { detect: /\.room\s*\(/, label: 'VERB', color: '#22d3ee' },
+  { detect: /\.delay\s*\(/, label: 'DLY', color: '#fb923c' },
+  { detect: /\.lpf\s*\(/, label: 'LPF', color: '#60a5fa' },
+  { detect: /\.hpf\s*\(/, label: 'HPF', color: '#60a5fa' },
+  { detect: /\.crush\s*\(/, label: 'CRSH', color: '#ef4444' },
+  { detect: /\.shape\s*\(/, label: 'SHPE', color: '#ef4444' },
+  { detect: /\.distort\s*\(/, label: 'DIST', color: '#ef4444' },
+  { detect: /\.phaser\s*\(/, label: 'PHSR', color: '#a78bfa' },
+  { detect: /\.vowel\s*\(/, label: 'VWL', color: '#c084fc' },
+  { detect: /\.fmi\s*\(/, label: 'FM', color: '#818cf8' },
+  { detect: /\.coarse\s*\(/, label: 'CORS', color: '#f59e0b' },
+  { detect: /\.compressor\s*\(/, label: 'COMP', color: '#94a3b8' },
+  { detect: /\.rev\s*\(/, label: 'REV', color: '#f472b6' },
+  { detect: /\.jux(By)?\s*\(/, label: 'JUX', color: '#22d3ee' },
+  { detect: /\.echo\s*\(/, label: 'ECHO', color: '#fb923c' },
+  { detect: /\.degrade/, label: 'DGRDE', color: '#ef4444' },
+  { detect: /\.euclid\s*\(/, label: 'EUCLID', color: '#34d399' },
+  { detect: /\.chop\s*\(/, label: 'CHOP', color: '#34d399' },
+  { detect: /\.striate\s*\(/, label: 'STRT', color: '#34d399' },
+  { detect: /\.swing\s*\(/, label: 'SWNG', color: '#fb923c' },
+  { detect: /\.brak\s*\(/, label: 'BRAK', color: '#ef4444' },
+  { detect: /\.iter\s*\(/, label: 'ITER', color: '#22d3ee' },
+  { detect: /\.ply\s*\(/, label: 'PLY', color: '#f472b6' },
+  { detect: /\.sometimes\s*\(/, label: 'RNG', color: '#a78bfa' },
+  { detect: /\.often\s*\(/, label: 'OFTN', color: '#a78bfa' },
+  { detect: /\.pan\s*\(.*(?:sine|cosine|saw|tri|perlin)/, label: 'APAN', color: '#34d399' },
+]
+
+function detectActiveEffects(code: string): { label: string; color: string }[] {
+  const raw = code.replace(/\/\/ \[muted\] /g, '')
+  return EFFECT_BADGES.filter(b => b.detect.test(raw)).map(b => ({ label: b.label, color: b.color }))
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  QUICK FX — one-click pattern modifiers injected into code
 // ═══════════════════════════════════════════════════════════════
 
@@ -1644,6 +1736,39 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
     if (data) changeSoundSource(nodeId, data)
   }, [changeSoundSource, changeScale, changePattern, bpm, sendToParent, rebuildFullCodeFromNodes])
 
+  // ── Apply sidebar item to a node (shared by drag-drop AND click-to-apply) ──
+  const applySidebarItemToNode = useCallback((nodeId: string, item: SidebarItem) => {
+    if (item.dragType === 'effect' || item.dragType === 'lfo') {
+      setNodes(prev => {
+        const idx = prev.findIndex(n => n.id === nodeId)
+        if (idx === -1) return prev
+        const node = prev[idx]
+        const rawCode = node.code.replace(/\/\/ \[muted\] /g, '')
+        const newCode = injectBefore(rawCode, item.payload)
+        if (newCode === rawCode) return prev
+        const updated = [...prev]
+        updated[idx] = { ...node, code: node.muted ? newCode.split('\n').map(l => `// [muted] ${l}`).join('\n') : newCode }
+        const fullCode = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
+        sendToParent(fullCode)
+        return updated
+      })
+    } else if (item.dragType === 'sound') {
+      changeSoundSource(nodeId, item.payload)
+    } else if (item.dragType === 'scale') {
+      changeScale(nodeId, item.payload)
+    } else if (item.dragType === 'chord' || item.dragType === 'pattern') {
+      changePattern(nodeId, item.payload)
+    }
+  }, [changeSoundSource, changeScale, changePattern, bpm, sendToParent, rebuildFullCodeFromNodes])
+
+  // ── Randomize pattern for a node ──
+  const randomizePattern = useCallback((nodeId: string) => {
+    const node = nodes.find(n => n.id === nodeId)
+    if (!node) return
+    const newPattern = randomPatternForType(node.type)
+    changePattern(nodeId, newPattern)
+  }, [nodes, changePattern])
+
   // ── Canvas interactions ──
   const handleMouseDown = useCallback((e: React.MouseEvent, nodeId: string) => {
     e.stopPropagation()
@@ -1856,18 +1981,25 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
                             e.dataTransfer.setData('application/x-sidebar-item', JSON.stringify(item))
                             e.dataTransfer.effectAllowed = 'copy'
                           }}
-                          className="flex items-center gap-2 px-2 py-1 rounded text-[9px] cursor-grab active:cursor-grabbing transition-colors group"
+                          onClick={() => {
+                            if (selectedNode) applySidebarItemToNode(selectedNode, item)
+                          }}
+                          className={`flex items-center gap-2 px-2 py-1 rounded text-[9px] transition-colors group ${
+                            selectedNode ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'
+                          }`}
                           style={{ color: HW.text }}
                           onMouseEnter={e => { e.currentTarget.style.background = `${item.color}10`; e.currentTarget.style.color = item.color }}
                           onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = HW.text }}
-                          title={`Drag onto a node: ${item.desc}`}
+                          title={selectedNode ? `Click to apply to selected node: ${item.desc}` : `Drag onto a node: ${item.desc}`}
                         >
                           <span className="text-[10px] shrink-0 w-4 text-center">{item.icon}</span>
                           <div className="flex-1 min-w-0">
                             <div className="font-medium truncate">{item.label}</div>
                             <div className="text-[7px] truncate" style={{ color: HW.textDim }}>{item.desc}</div>
                           </div>
-                          <span className="text-[7px] opacity-0 group-hover:opacity-60 shrink-0">drag→</span>
+                          <span className="text-[7px] opacity-0 group-hover:opacity-60 shrink-0">
+                            {selectedNode ? 'click✓' : 'drag→'}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -1878,7 +2010,10 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
           </div>
           {/* Sidebar footer hint */}
           <div className="px-3 py-1.5 shrink-0 text-[7px]" style={{ color: HW.textDim, borderTop: `1px solid ${HW.border}` }}>
-            Drag items onto nodes to apply
+            {selectedNode
+              ? <span style={{ color: '#22d3ee' }}>● Node selected — click items to apply</span>
+              : 'Drag items onto nodes · or select a node first'
+            }
           </div>
         </div>
       )}
@@ -2003,6 +2138,21 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
                       {node.muted ? <VolumeX size={10} color="#ef4444" /> : <Volume2 size={10} style={{ color: `${color}80` }} />}
                     </button>
                   </div>
+
+                  {/* EFFECT BADGES — visual tags showing active effects */}
+                  {(() => {
+                    const badges = detectActiveEffects(node.code)
+                    return badges.length > 0 ? (
+                      <div className="flex flex-wrap gap-[2px] px-2 py-1" style={{ borderBottom: `1px solid ${HW.border}`, background: `${HW.bg}60` }}>
+                        {badges.map(b => (
+                          <span key={b.label} className="px-1 py-[1px] rounded text-[6px] font-black tracking-wider uppercase"
+                            style={{ background: `${b.color}12`, color: b.color, border: `1px solid ${b.color}25` }}>
+                            {b.label}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null
+                  })()}
 
                   {/* SCOPE */}
                   <div className="px-3 pt-2" style={{ background: `${HW.bg}80` }}>
@@ -2173,17 +2323,41 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
                     <HardwareSelect label="SND" value={node.soundSource} options={presets}
                       onChange={v => changeSoundSource(node.id, v)} color={color} />
                     {node.type === 'drums' ? (
-                      <HardwareSelect label="PAT" value={node.pattern} options={DRUM_PATTERNS}
-                        onChange={v => changePattern(node.id, v)} color={color} />
+                      <div className="flex items-center gap-1">
+                        <div className="flex-1"><HardwareSelect label="PAT" value={node.pattern} options={DRUM_PATTERNS}
+                          onChange={v => changePattern(node.id, v)} color={color} /></div>
+                        <button onClick={e => { e.stopPropagation(); randomizePattern(node.id) }}
+                          className="w-6 h-6 flex items-center justify-center rounded text-[11px] cursor-pointer shrink-0 transition-all hover:scale-110"
+                          style={{ background: `${color}10`, border: `1px solid ${color}25`, color }}
+                          title="Random pattern">🎲</button>
+                      </div>
                     ) : node.type === 'chords' ? (
-                      <HardwareSelect label="CHD" value={node.pattern} options={CHORD_PROGRESSIONS}
-                        onChange={v => changePattern(node.id, v)} color={color} />
+                      <div className="flex items-center gap-1">
+                        <div className="flex-1"><HardwareSelect label="CHD" value={node.pattern} options={CHORD_PROGRESSIONS}
+                          onChange={v => changePattern(node.id, v)} color={color} /></div>
+                        <button onClick={e => { e.stopPropagation(); randomizePattern(node.id) }}
+                          className="w-6 h-6 flex items-center justify-center rounded text-[11px] cursor-pointer shrink-0 transition-all hover:scale-110"
+                          style={{ background: `${color}10`, border: `1px solid ${color}25`, color }}
+                          title="Random chords">🎲</button>
+                      </div>
                     ) : node.type === 'bass' ? (
-                      <HardwareSelect label="PAT" value={node.pattern} options={BASS_PATTERNS}
-                        onChange={v => changePattern(node.id, v)} color={color} />
+                      <div className="flex items-center gap-1">
+                        <div className="flex-1"><HardwareSelect label="PAT" value={node.pattern} options={BASS_PATTERNS}
+                          onChange={v => changePattern(node.id, v)} color={color} /></div>
+                        <button onClick={e => { e.stopPropagation(); randomizePattern(node.id) }}
+                          className="w-6 h-6 flex items-center justify-center rounded text-[11px] cursor-pointer shrink-0 transition-all hover:scale-110"
+                          style={{ background: `${color}10`, border: `1px solid ${color}25`, color }}
+                          title="Random bassline">🎲</button>
+                      </div>
                     ) : isMelodic ? (
-                      <HardwareSelect label="PAT" value={node.pattern} options={MELODY_PATTERNS}
-                        onChange={v => changePattern(node.id, v)} color={color} />
+                      <div className="flex items-center gap-1">
+                        <div className="flex-1"><HardwareSelect label="PAT" value={node.pattern} options={MELODY_PATTERNS}
+                          onChange={v => changePattern(node.id, v)} color={color} /></div>
+                        <button onClick={e => { e.stopPropagation(); randomizePattern(node.id) }}
+                          className="w-6 h-6 flex items-center justify-center rounded text-[11px] cursor-pointer shrink-0 transition-all hover:scale-110"
+                          style={{ background: `${color}10`, border: `1px solid ${color}25`, color }}
+                          title="Random melody">🎲</button>
+                      </div>
                     ) : null}
                     {isMelodic && (
                       <HardwareSelect label="KEY" value={node.scale || 'C4:major'} options={SCALE_PRESETS}
