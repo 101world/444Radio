@@ -795,6 +795,50 @@ function parseCodeToNodes(code: string, existingNodes?: PatternNode[]): PatternN
 }
 
 /**
+ * Re-parse ALL properties from node code after an injection.
+ * This ensures knobs immediately reflect the actual values in the code
+ * (e.g. after dragging `.distort(2)` onto a node, the DIST knob shows 2 not 0).
+ */
+function reparseNodeFromCode(node: PatternNode): PatternNode {
+  const rawCode = node.code.replace(/\/\/ \[muted\] /g, '')
+  return {
+    ...node,
+    type: detectType(rawCode),
+    sound: detectSound(rawCode),
+    gain: detectNum(rawCode, 'gain', 0.5),
+    lpf: detectNum(rawCode, 'lpf', 20000),
+    hpf: detectNum(rawCode, 'hpf', 0),
+    pan: detectNum(rawCode, 'pan', 0.5),
+    room: detectNum(rawCode, 'room', 0),
+    roomsize: detectNum(rawCode, 'roomsize', 0.5),
+    delay: detectNum(rawCode, 'delay', 0),
+    delayfeedback: detectNum(rawCode, 'delayfeedback', 0),
+    delaytime: detectNum(rawCode, 'delaytime', 0.25),
+    crush: detectNum(rawCode, 'crush', 0),
+    coarse: detectNum(rawCode, 'coarse', 0),
+    shape: detectNum(rawCode, 'shape', 0),
+    distort: detectNum(rawCode, 'distort', 0),
+    speed: detectNum(rawCode, 'slow', 1),
+    vowel: detectVowel(rawCode),
+    velocity: detectNum(rawCode, 'velocity', 1),
+    attack: detectNum(rawCode, 'attack', 0.001),
+    decay: detectNum(rawCode, 'decay', 0.1),
+    sustain: detectNum(rawCode, 'sustain', 0.5),
+    release: detectNum(rawCode, 'release', 0.1),
+    phaser: detectNum(rawCode, 'phaser', 0),
+    phaserdepth: detectNum(rawCode, 'phaserdepth', 0.5),
+    vibmod: detectNum(rawCode, 'vibmod', 0),
+    lpq: detectNum(rawCode, 'lpq', 1),
+    hpq: detectNum(rawCode, 'hpq', 1),
+    fmi: detectNum(rawCode, 'fmi', 0),
+    orbit: detectNum(rawCode, 'orbit', 0),
+    scale: detectScale(rawCode) || node.scale,
+    pattern: detectPattern(rawCode) || node.pattern,
+    soundSource: detectSoundSource(rawCode) || node.soundSource,
+  }
+}
+
+/**
  * Apply a single targeted change to a code block.
  * Returns the modified code. Preserves everything else.
  */
@@ -1543,10 +1587,13 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
     }
     const t = templates[template] || templates.drums
     const newCode = lastCodeRef.current.trimEnd() + '\n\n// ── New ' + template + ' ──\n' + t + '\n'
-    sendToParent(newCode)
-    // The useEffect will pick up the new code and re-parse
+    // Force re-parse on this structural change by NOT setting isInternalChange
+    lastCodeRef.current = newCode
+    onCodeChange(newCode)
+    if (commitTimer.current) clearTimeout(commitTimer.current)
+    commitTimer.current = setTimeout(() => onUpdate(), 80)
     setShowAddMenu(false)
-  }, [sendToParent])
+  }, [onCodeChange, onUpdate])
 
   // ── Knob change handler (updates local state, commits on release) ──
   const updateKnob = useCallback((nodeId: string, method: string, value: number) => {
@@ -1646,7 +1693,7 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
 
       if (newCode === node.code) return prev
       const updated = [...prev]
-      updated[idx] = { ...node, code: newCode }
+      updated[idx] = reparseNodeFromCode({ ...node, code: newCode })
       const fullCode = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
       sendToParent(fullCode)
       return updated
@@ -1681,7 +1728,8 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
 
       if (newCode === rawCode) return prev
       const updated = [...prev]
-      updated[idx] = { ...node, code: node.muted ? newCode.split('\\n').map(l => `// [muted] ${l}`).join('\\n') : newCode }
+      const finalCode = node.muted ? newCode.split('\\n').map(l => `// [muted] ${l}`).join('\\n') : newCode
+      updated[idx] = reparseNodeFromCode({ ...node, code: finalCode })
       const fullCode = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
       sendToParent(fullCode)
       return updated
@@ -1730,7 +1778,7 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
       try {
         const item: SidebarItem = JSON.parse(json)
         if (item.dragType === 'effect' || item.dragType === 'lfo') {
-          // Inject the payload code into this node
+          // Inject the payload code into this node AND re-parse properties so knobs activate
           setNodes(prev => {
             const idx = prev.findIndex(n => n.id === nodeId)
             if (idx === -1) return prev
@@ -1739,7 +1787,8 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
             const newCode = injectBefore(rawCode, item.payload)
             if (newCode === rawCode) return prev
             const updated = [...prev]
-            updated[idx] = { ...node, code: node.muted ? newCode.split('\n').map(l => `// [muted] ${l}`).join('\n') : newCode }
+            const finalCode = node.muted ? newCode.split('\n').map(l => `// [muted] ${l}`).join('\n') : newCode
+            updated[idx] = reparseNodeFromCode({ ...node, code: finalCode })
             const fullCode = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
             sendToParent(fullCode)
             return updated
@@ -1763,6 +1812,7 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
   // ── Apply sidebar item to a node (shared by drag-drop AND click-to-apply) ──
   const applySidebarItemToNode = useCallback((nodeId: string, item: SidebarItem) => {
     if (item.dragType === 'effect' || item.dragType === 'lfo') {
+      // Inject effect code AND re-parse all properties so knobs activate immediately
       setNodes(prev => {
         const idx = prev.findIndex(n => n.id === nodeId)
         if (idx === -1) return prev
@@ -1771,7 +1821,8 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
         const newCode = injectBefore(rawCode, item.payload)
         if (newCode === rawCode) return prev
         const updated = [...prev]
-        updated[idx] = { ...node, code: node.muted ? newCode.split('\n').map(l => `// [muted] ${l}`).join('\n') : newCode }
+        const finalCode = node.muted ? newCode.split('\n').map(l => `// [muted] ${l}`).join('\n') : newCode
+        updated[idx] = reparseNodeFromCode({ ...node, code: finalCode })
         const fullCode = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
         sendToParent(fullCode)
         return updated
