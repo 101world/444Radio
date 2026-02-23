@@ -147,6 +147,7 @@ function CreatePageContent() {
   const [selectedVoiceId, setSelectedVoiceId] = useState('')
   const [trainedVoices, setTrainedVoices] = useState<{ id: string; voice_id: string; name: string }[]>([])
   const [isUploadingRef, setIsUploadingRef] = useState(false)
+  const [showVoiceRefModal, setShowVoiceRefModal] = useState(false)
   // Audio recording for voice reference (actual mic capture, not speech-to-text)
   const [isAudioRecording, setIsAudioRecording] = useState(false)
   const [audioRecordingTime, setAudioRecordingTime] = useState(0)
@@ -2655,25 +2656,10 @@ function CreatePageContent() {
                   </button>
                 </div>
               )}
-              {/* Trained voice selector (if user has trained voices and no file/recording selected) */}
-              {trainedVoices.length > 0 && !voiceRefFile && !recordedVoiceBlob && !voiceRefUrl && (
-                <select
-                  value={selectedVoiceId}
-                  onChange={e => setSelectedVoiceId(e.target.value)}
-                  className="text-[11px] bg-black/40 border border-purple-500/30 rounded-lg px-2 py-1 text-purple-300 focus:outline-none focus:border-purple-400/60"
-                >
-                  <option value="">Trained Voices</option>
-                  {trainedVoices.map(v => (
-                    <option key={v.voice_id} value={v.voice_id}>{v.name}</option>
-                  ))}
-                </select>
-              )}
-              {/* Upload voice file button */}
-              {!voiceRefFile && !recordedVoiceBlob && !voiceRefUrl && !selectedVoiceId && (
-                <button onClick={() => voiceRefInputRef.current?.click()} className="flex items-center gap-1 px-2 py-1 bg-purple-500/10 border border-purple-500/20 rounded-lg text-[11px] text-purple-300 hover:bg-purple-500/20 transition-colors">
-                  <Upload size={10} /> Voice File
-                </button>
-              )}
+              {/* Change voice ref */}
+              <button onClick={() => setShowVoiceRefModal(true)} className="flex items-center gap-1 px-2 py-1 bg-purple-500/10 border border-purple-500/20 rounded-lg text-[11px] text-purple-300 hover:bg-purple-500/20 transition-colors">
+                Change
+              </button>
               <span className="text-[10px] text-cyan-400/60 font-mono">music-01 (3 cr)</span>
             </div>
           )}
@@ -2799,10 +2785,13 @@ function CreatePageContent() {
                   )}
                 </button>
 
-                {/* Voice Reference */}
+                {/* Voice Reference — opens modal */}
                 <button
-                  onClick={isAudioRecording ? stopAudioRecording : startAudioRecording}
-                  className={`flex-shrink-0 w-8 h-8 rounded-lg transition-all duration-300 flex items-center justify-center ${
+                  onClick={() => {
+                    if (isAudioRecording) { stopAudioRecording(); return }
+                    setShowVoiceRefModal(true)
+                  }}
+                  className={`relative flex-shrink-0 w-8 h-8 rounded-lg transition-all duration-300 flex items-center justify-center ${
                     isAudioRecording
                       ? 'bg-purple-500/20 border border-purple-400/40 animate-pulse'
                       : recordedVoiceBlob || voiceRefFile || voiceRefUrl || selectedVoiceId
@@ -4259,6 +4248,147 @@ function CreatePageContent() {
           }}
         />
       </Suspense>
+
+      {/* Voice Reference Modal — choose upload / voice ID / record */}
+      {showVoiceRefModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowVoiceRefModal(false)} />
+          <div className="relative w-full max-w-sm bg-gray-950/95 backdrop-blur-2xl border border-purple-500/20 rounded-2xl shadow-2xl shadow-purple-500/10 overflow-hidden">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-purple-500/15 flex items-center justify-center">
+                  <AudioLines size={16} className="text-purple-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-white">Voice Reference</h3>
+                  <p className="text-[11px] text-white/40">Clone a voice for your generation</p>
+                </div>
+              </div>
+              <button onClick={() => setShowVoiceRefModal(false)} className="p-1.5 hover:bg-white/5 rounded-lg transition-colors">
+                <X size={16} className="text-white/40" />
+              </button>
+            </div>
+
+            {/* Options */}
+            <div className="p-4 space-y-2.5">
+
+              {/* Option 1: Upload Voice File */}
+              <button
+                onClick={() => {
+                  voiceRefInputRef.current?.click()
+                  setShowVoiceRefModal(false)
+                }}
+                className="w-full flex items-center gap-3.5 px-4 py-3.5 bg-white/[0.03] hover:bg-purple-500/10 border border-white/[0.06] hover:border-purple-500/25 rounded-xl transition-all duration-200 group"
+              >
+                <div className="w-10 h-10 rounded-lg bg-purple-500/10 group-hover:bg-purple-500/20 flex items-center justify-center transition-colors">
+                  <Upload size={18} className="text-purple-400" />
+                </div>
+                <div className="text-left">
+                  <div className="text-sm font-medium text-white group-hover:text-purple-200 transition-colors">Upload Voice File</div>
+                  <div className="text-[11px] text-white/35">.wav or .mp3 — at least 15 seconds</div>
+                </div>
+              </button>
+
+              {/* Option 2: Select Trained Voice ID */}
+              {trainedVoices.length > 0 ? (
+                <div className="w-full px-4 py-3.5 bg-white/[0.03] border border-white/[0.06] rounded-xl">
+                  <div className="flex items-center gap-3.5 mb-3">
+                    <div className="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                      <Sparkles size={18} className="text-cyan-400" />
+                    </div>
+                    <div className="text-left">
+                      <div className="text-sm font-medium text-white">Trained Voice ID</div>
+                      <div className="text-[11px] text-white/35">Select from your trained voices</div>
+                    </div>
+                  </div>
+                  <select
+                    value={selectedVoiceId}
+                    onChange={e => {
+                      setSelectedVoiceId(e.target.value)
+                      if (e.target.value) {
+                        setVoiceRefFile(null)
+                        setVoiceRefUrl('')
+                        setRecordedVoiceBlob(null)
+                        setShowVoiceRefModal(false)
+                      }
+                    }}
+                    className="w-full px-3 py-2.5 bg-black/40 border border-white/10 hover:border-cyan-500/30 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-400/50 transition-colors cursor-pointer appearance-none"
+                    style={{
+                      backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(148,163,184,0.5)' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
+                      backgroundRepeat: 'no-repeat',
+                      backgroundPosition: 'right 0.6rem center',
+                      backgroundSize: '1.1em 1.1em',
+                      paddingRight: '2.2rem'
+                    }}
+                  >
+                    <option value="">Choose a voice...</option>
+                    {trainedVoices.map(v => (
+                      <option key={v.voice_id} value={v.voice_id}>{v.name}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <a
+                  href="/voice-training"
+                  className="w-full flex items-center gap-3.5 px-4 py-3.5 bg-white/[0.03] hover:bg-cyan-500/10 border border-white/[0.06] hover:border-cyan-500/25 rounded-xl transition-all duration-200 group"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-cyan-500/10 group-hover:bg-cyan-500/20 flex items-center justify-center transition-colors">
+                    <Sparkles size={18} className="text-cyan-400" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-sm font-medium text-white group-hover:text-cyan-200 transition-colors">Train a Voice</div>
+                    <div className="text-[11px] text-white/35">Create a custom AI voice clone</div>
+                  </div>
+                </a>
+              )}
+
+              {/* Option 3: Record Live */}
+              <button
+                onClick={() => {
+                  setShowVoiceRefModal(false)
+                  startAudioRecording()
+                }}
+                className="w-full flex items-center gap-3.5 px-4 py-3.5 bg-white/[0.03] hover:bg-red-500/10 border border-white/[0.06] hover:border-red-500/25 rounded-xl transition-all duration-200 group"
+              >
+                <div className="w-10 h-10 rounded-lg bg-red-500/10 group-hover:bg-red-500/20 flex items-center justify-center transition-colors">
+                  <Mic size={18} className="text-red-400" />
+                </div>
+                <div className="text-left">
+                  <div className="text-sm font-medium text-white group-hover:text-red-200 transition-colors">Record Live</div>
+                  <div className="text-[11px] text-white/35">Use your microphone to record a voice sample</div>
+                </div>
+              </button>
+            </div>
+
+            {/* Current ref status */}
+            {(voiceRefFile || recordedVoiceBlob || voiceRefUrl || selectedVoiceId) && (
+              <div className="px-4 pb-4">
+                <div className="flex items-center justify-between px-3 py-2.5 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <AudioLines size={13} className="text-purple-400" />
+                    <span className="text-xs text-purple-300 truncate max-w-[180px]">
+                      {selectedVoiceId ? `Voice ID: ${trainedVoices.find(v => v.voice_id === selectedVoiceId)?.name || selectedVoiceId.substring(0, 12)}` : voiceRefFile ? voiceRefFile.name : recordedVoiceBlob ? `Recording (${audioRecordingTime}s)` : 'Voice ref set'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => { setVoiceRefFile(null); setVoiceRefUrl(''); setRecordedVoiceBlob(null); setSelectedVoiceId('') }}
+                    className="text-[11px] text-red-400/70 hover:text-red-400 transition-colors"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Footer hint */}
+            <div className="px-5 pb-4">
+              <p className="text-[10px] text-white/25 text-center">Voice refs enable the music-01 model (3 credits per generation)</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Out of Credits Modal */}
       <Suspense fallback={null}>
