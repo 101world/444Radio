@@ -5,7 +5,7 @@ import { useUser } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import {
   Download, Search, TrendingUp, Clock, Music2,
-  X, Sparkles, ChevronDown, Users, Zap, ArrowLeft, Info
+  X, Sparkles, ChevronDown, Users, Zap, ArrowLeft, Info, AudioLines, Play, Pause, Trash2, Loader2, User, DollarSign
 } from 'lucide-react'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 import { useCredits } from '../contexts/CreditsContext'
@@ -53,6 +53,61 @@ export default function EarnPage() {
   const [successData, setSuccessData] = useState<{ track: EarnTrack; splitJobId?: string; stemStatus?: 'splitting' | 'done' | 'failed' | 'refunded' } | null>(null)
   const [showListModal, setShowListModal] = useState(false)
   const [infoTrack, setInfoTrack] = useState<EarnTrack | null>(null)
+
+  // ── Voice IDs marketplace ──
+  type MarketplaceTab = 'tracks' | 'voices'
+  const [marketplaceTab, setMarketplaceTab] = useState<MarketplaceTab>('tracks')
+
+  interface VoiceListing {
+    id: string; voice_id: string; name: string; description: string; preview_url: string | null
+    price_credits: number; total_uses: number; total_royalties_earned: number
+    clerk_user_id: string; username: string; avatar_url: string | null; is_active: boolean; created_at: string
+  }
+
+  const [voiceListings, setVoiceListings] = useState<VoiceListing[]>([])
+  const [loadingVoices, setLoadingVoices] = useState(false)
+  const [voicePreviewId, setVoicePreviewId] = useState<string | null>(null)
+  const [voicePreviewAudio, setVoicePreviewAudio] = useState<HTMLAudioElement | null>(null)
+
+  const fetchVoiceListings = useCallback(async () => {
+    setLoadingVoices(true)
+    try {
+      const res = await fetch('/api/earn/voices')
+      const data = await res.json()
+      if (data.success) setVoiceListings(data.voices || [])
+    } catch { console.error('Failed to fetch voice listings') }
+    finally { setLoadingVoices(false) }
+  }, [])
+
+  useEffect(() => {
+    if (marketplaceTab === 'voices') fetchVoiceListings()
+  }, [marketplaceTab, fetchVoiceListings])
+
+  const handleVoicePreview = (url: string, id: string) => {
+    if (voicePreviewId === id) {
+      voicePreviewAudio?.pause()
+      setVoicePreviewId(null)
+    } else {
+      voicePreviewAudio?.pause()
+      const audio = new Audio(url)
+      audio.onended = () => setVoicePreviewId(null)
+      audio.play()
+      setVoicePreviewAudio(audio)
+      setVoicePreviewId(id)
+    }
+  }
+
+  const handleUnlistVoice = async (listingId: string) => {
+    if (!confirm('Remove this voice from the marketplace?')) return
+    try {
+      const res = await fetch('/api/earn/voices', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ listingId })
+      })
+      if (res.ok) setVoiceListings(prev => prev.filter(v => v.id !== listingId))
+    } catch { console.error('Failed to unlist voice') }
+  }
 
   const fetchTracks = useCallback(async () => {
     setLoading(true)
@@ -259,6 +314,33 @@ export default function EarnPage() {
             <GlassCard icon={<Users size={14} className="text-purple-400" />} value={totalArtists} label="artists" />
           </div>
 
+          {/* ═══ MARKETPLACE TAB SWITCHER ═══ */}
+          <div className="flex gap-1 bg-white/[0.03] border border-white/[0.06] p-1 rounded-xl backdrop-blur-xl mb-4">
+            <button
+              onClick={() => setMarketplaceTab('tracks')}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+                marketplaceTab === 'tracks'
+                  ? 'bg-gradient-to-r from-emerald-600/30 to-cyan-600/30 text-cyan-300 border border-cyan-500/30'
+                  : 'text-gray-500 hover:text-gray-300'
+              }`}
+            >
+              <Music2 size={13} /> Tracks
+            </button>
+            <button
+              onClick={() => setMarketplaceTab('voices')}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+                marketplaceTab === 'voices'
+                  ? 'bg-gradient-to-r from-purple-600/30 to-pink-600/30 text-purple-300 border border-purple-500/30'
+                  : 'text-gray-500 hover:text-gray-300'
+              }`}
+            >
+              <AudioLines size={13} /> Voice IDs
+            </button>
+          </div>
+
+          {/* ═══ TRACKS TAB ═══ */}
+          {marketplaceTab === 'tracks' && (
+            <>
           {/* Filter bar */}
           <div className="flex flex-wrap items-center gap-2 mb-4">
             <div className="flex gap-1 bg-white/[0.03] border border-white/[0.06] p-1 rounded-xl backdrop-blur-xl">
@@ -288,9 +370,35 @@ export default function EarnPage() {
               {searchQuery && <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 hover:text-white"><X size={10} /></button>}
             </div>
           </div>
+            </>
+          )}
+
+          {/* ═══ VOICE IDs TAB ═══ */}
+          {marketplaceTab === 'voices' && (
+            <div className="mb-4">
+              <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4 mb-4 backdrop-blur-xl">
+                <div className="flex items-start gap-3">
+                  <AudioLines size={18} className="text-purple-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-purple-300 text-sm font-medium">Voice ID Marketplace</p>
+                    <p className="text-gray-400 text-xs mt-0.5">Use community-trained Voice IDs in your generations. Each generation earns the voice creator <strong className="text-purple-300">1 credit</strong> as royalty.</p>
+                  </div>
+                </div>
+              </div>
+              {isSignedIn && (
+                <button
+                  onClick={() => router.push('/voice-training')}
+                  className="flex items-center gap-1.5 px-4 py-2 mb-4 bg-gradient-to-r from-purple-600/80 to-pink-600/80 border border-purple-500/30 text-white text-xs font-semibold rounded-xl backdrop-blur-xl hover:from-purple-500/80 hover:to-pink-500/80 transition-all shadow-lg shadow-purple-500/10"
+                >
+                  <Sparkles size={13} /> Train & List Your Voice
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* ═══ TRACK GRID ═══ */}
+        {/* ═══ TRACK GRID (tracks tab) ═══ */}
+        {marketplaceTab === 'tracks' && (
         <div className="px-4 md:px-8">
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -330,6 +438,78 @@ export default function EarnPage() {
             </div>
           )}
         </div>
+        )}
+
+        {/* ═══ VOICE IDs GRID (voices tab) ═══ */}
+        {marketplaceTab === 'voices' && (
+        <div className="px-4 md:px-8">
+          {loadingVoices ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 backdrop-blur-xl animate-pulse">
+                  <div className="flex gap-3"><div className="w-12 h-12 rounded-xl bg-white/[0.06]" /><div className="flex-1 space-y-2"><div className="h-3 bg-white/[0.06] rounded w-3/4" /><div className="h-2.5 bg-white/[0.06] rounded w-1/2" /></div></div>
+                </div>
+              ))}
+            </div>
+          ) : voiceListings.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {voiceListings.map(voice => (
+                <div key={voice.id} className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 backdrop-blur-xl hover:border-purple-500/30 transition-colors group">
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center flex-shrink-0">
+                      {voice.avatar_url ? (
+                        <img src={voice.avatar_url} alt={voice.username} className="w-full h-full object-cover rounded-xl" />
+                      ) : (
+                        <User size={20} className="text-purple-400" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-white text-sm font-semibold truncate">{voice.name}</h3>
+                      <p className="text-gray-500 text-[11px]">by @{voice.username}</p>
+                      {voice.description && <p className="text-gray-400 text-[10px] mt-1 line-clamp-2">{voice.description}</p>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 mt-3">
+                    <span className="text-[10px] text-gray-500 flex items-center gap-1"><AudioLines size={10} className="text-purple-400" /> {voice.total_uses} uses</span>
+                    <span className="text-[10px] text-gray-500 flex items-center gap-1"><DollarSign size={10} className="text-emerald-400" /> {voice.total_royalties_earned} earned</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-3">
+                    {voice.preview_url && (
+                      <button onClick={() => handleVoicePreview(voice.preview_url!, voice.id)}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-purple-500/10 border border-purple-500/20 rounded-lg text-[11px] text-purple-300 hover:bg-purple-500/20 transition-colors">
+                        {voicePreviewId === voice.id ? <Pause size={11} /> : <Play size={11} />} Preview
+                      </button>
+                    )}
+                    <button onClick={() => { navigator.clipboard.writeText(voice.voice_id); alert('Voice ID copied! Use it in Create → MiniMax 01 → Voice Ref tab.') }}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/20 rounded-lg text-[11px] text-cyan-300 hover:bg-cyan-500/20 transition-colors">
+                      Use Voice
+                    </button>
+                    {user?.id === voice.clerk_user_id && (
+                      <button onClick={() => handleUnlistVoice(voice.id)} className="ml-auto p-1.5 hover:bg-red-500/20 rounded-lg transition-colors" title="Unlist">
+                        <Trash2 size={12} className="text-gray-500 hover:text-red-400" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="w-16 h-16 bg-white/[0.03] border border-white/[0.06] rounded-2xl flex items-center justify-center mb-4 backdrop-blur-xl">
+                <AudioLines size={28} className="text-gray-600" />
+              </div>
+              <h3 className="text-base font-semibold text-gray-300 mb-1">No Voice IDs listed yet</h3>
+              <p className="text-gray-600 text-xs max-w-sm mb-4">Train your voice and list it to earn credits every time someone uses it.</p>
+              {isSignedIn && (
+                <button onClick={() => router.push('/voice-training')}
+                  className="flex items-center gap-1.5 px-5 py-2 bg-gradient-to-r from-purple-600/80 to-pink-600/80 text-white text-xs font-semibold rounded-xl">
+                  <Sparkles size={14} /> Train Your Voice
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+        )}
       </main>
 
       {/* Modals */}

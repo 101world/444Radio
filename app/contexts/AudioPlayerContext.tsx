@@ -54,7 +54,7 @@ interface AudioPlayerContextType {
 const AudioPlayerContext = createContext<AudioPlayerContextType | undefined>(undefined)
 
 /** Shared URL resolver — CDN hosts play direct, raw R2/Replicate get proxied. */
-function computeUrl(u: string): string {
+export function computeUrl(u: string): string {
   try {
     if (u.startsWith('blob:') || u.startsWith('/')) return u
     const target = new URL(u)

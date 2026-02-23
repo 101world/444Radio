@@ -19,6 +19,7 @@ const DeletedChatsModal = lazy(() => import('../components/DeletedChatsModal'))
 const SplitStemsModal = lazy(() => import('../components/SplitStemsModal'))
 const VisualizerModal = lazy(() => import('../components/VisualizerModal'))
 const LipSyncModal = lazy(() => import('../components/LipSyncModal'))
+const MiniMax01Modal = lazy(() => import('../components/MiniMax01Modal'))
 const FeaturesSidebar = lazy(() => import('../components/FeaturesSidebar'))
 const MatrixConsole = lazy(() => import('../components/MatrixConsole'))
 const OutOfCreditsModal = lazy(() => import('../components/OutOfCreditsModal'))
@@ -103,6 +104,7 @@ function CreatePageContent() {
   const [showAutotuneModal, setShowAutotuneModal] = useState(false)
   const [showVisualizerModal, setShowVisualizerModal] = useState(false)
   const [showLipSyncModal, setShowLipSyncModal] = useState(false)
+  const [showMiniMax01Modal, setShowMiniMax01Modal] = useState(false)
   const [boostAudioUrl, setBoostAudioUrl] = useState('')
   const [boostTrackTitle, setBoostTrackTitle] = useState('')
   const [preselectedMusicId, setPreselectedMusicId] = useState<string | undefined>()
@@ -1733,6 +1735,7 @@ function CreatePageContent() {
           onShowAutotune={() => setShowAutotuneModal(true)}
           onShowVisualizer={() => setShowVisualizerModal(true)}
           onShowLipSync={() => setShowLipSyncModal(true)}
+          onShowMiniMax01={() => setShowMiniMax01Modal(true)}
           onOpenRelease={() => handleOpenRelease()}
           onTagClick={(tag: string) => {
             const newInput = input ? `${input}, ${tag}` : tag
@@ -2347,6 +2350,21 @@ function CreatePageContent() {
                         <path d="M15 9h.01"/>
                       </svg>
                       <span className="block text-xs mt-1 text-center text-white/70">Lip-Sync</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => setShowMiniMax01Modal(true)}
+                      className="group relative p-3 rounded-xl transition-all duration-200 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-purple-400/30"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/60 mx-auto group-hover:text-purple-400">
+                        <path d="M2 10v3"/>
+                        <path d="M6 6v11"/>
+                        <path d="M10 3v18"/>
+                        <path d="M14 8v7"/>
+                        <path d="M18 5v13"/>
+                        <path d="M22 10v3"/>
+                      </svg>
+                      <span className="block text-xs mt-1 text-center text-white/70">MiniMax</span>
                     </button>
                     
                     <button
@@ -3928,6 +3946,41 @@ function CreatePageContent() {
             })
             refreshCredits()
             window.dispatchEvent(new Event('credits:refresh'))
+          }}
+        />
+      </Suspense>
+
+      {/* MiniMax 01 Modal - Voice Training + Voice/Instrumental Reference */}
+      <Suspense fallback={null}>
+        <MiniMax01Modal
+          isOpen={showMiniMax01Modal}
+          onClose={() => setShowMiniMax01Modal(false)}
+          userCredits={userCredits}
+          onSuccess={(result: any) => {
+            const successMessage: Message = {
+              id: Date.now().toString(),
+              type: 'generation',
+              content: `✅ MiniMax 01 generated: ${result.title || 'Untitled'}`,
+              generationType: 'music',
+              result: {
+                audioUrl: result.audioUrl,
+                title: result.title,
+                lyrics: result.lyrics,
+              },
+              timestamp: new Date()
+            }
+            setMessages(prev => [...prev, successMessage])
+            refreshCredits()
+            window.dispatchEvent(new Event('credits:refresh'))
+          }}
+          onError={(error: string) => {
+            const errorMessage: Message = {
+              id: Date.now().toString(),
+              type: 'assistant',
+              content: `❌ ${error}`,
+              timestamp: new Date()
+            }
+            setMessages(prev => [...prev, errorMessage])
           }}
         />
       </Suspense>

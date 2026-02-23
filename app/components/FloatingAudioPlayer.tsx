@@ -1,6 +1,6 @@
 'use client'
 
-import { useAudioPlayer } from '../contexts/AudioPlayerContext'
+import { useAudioPlayer, computeUrl } from '../contexts/AudioPlayerContext'
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ChevronRight, X, Repeat, Shuffle, ChevronDown, ChevronUp, Search, List, Heart, Zap, Music, Disc3 } from 'lucide-react'
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import Image from 'next/image'
@@ -578,7 +578,7 @@ export default function FloatingAudioPlayer() {
         <div className="px-3 py-2">
           <div className="flex items-center gap-3">
             {currentTrack.videoUrl ? (
-              <video src={currentTrack.videoUrl} autoPlay loop muted playsInline
+              <video src={computeUrl(currentTrack.videoUrl)} autoPlay loop muted playsInline
                 className="w-10 h-10 rounded-lg object-cover flex-shrink-0 ring-1 ring-white/10" />
             ) : currentTrack.imageUrl ? (
               <Image src={currentTrack.imageUrl} alt={currentTrack.title} width={40} height={40}
@@ -676,7 +676,7 @@ export default function FloatingAudioPlayer() {
         <div className="mb-3 cursor-pointer group/art" onClick={() => setExpanded(true)} title="Expand player">
           <div className="relative">
             {currentTrack.videoUrl ? (
-              <video src={currentTrack.videoUrl} autoPlay loop muted playsInline
+              <video src={computeUrl(currentTrack.videoUrl)} autoPlay loop muted playsInline
                 className="w-[72px] h-[72px] rounded-2xl object-cover ring-1 ring-white/[0.08] shadow-xl shadow-black/60 group-hover/art:ring-teal-500/30 group-hover/art:shadow-teal-500/10 transition-all duration-300" />
             ) : currentTrack.imageUrl ? (
               <Image src={currentTrack.imageUrl} alt={currentTrack.title} width={72} height={72}
@@ -827,7 +827,7 @@ export default function FloatingAudioPlayer() {
           </svg>
           <div className="absolute inset-[6px] rounded-2xl overflow-hidden ring-1 ring-white/[0.06]">
             {currentTrack.videoUrl ? (
-              <video src={currentTrack.videoUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+              <video src={computeUrl(currentTrack.videoUrl)} autoPlay loop muted playsInline className="w-full h-full object-cover" />
             ) : currentTrack.imageUrl ? (
               <Image src={currentTrack.imageUrl} alt={currentTrack.title} fill className="object-cover" />
             ) : (

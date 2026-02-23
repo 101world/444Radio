@@ -8,7 +8,7 @@ import { useUser } from '@clerk/nextjs'
 import { use } from 'react'
 import { Play, Pause, Heart, MessageCircle, Radio, Grid, List as ListIcon, Upload, Edit2, Users, MapPin, Calendar, ExternalLink, Video, Mic, Send, Smile, Settings, Music, Circle, Plus, Trash2, Zap, Award, BarChart3, Clock, Disc3, Camera, ImageIcon, X as XIcon } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { useAudioPlayer } from '../../contexts/AudioPlayerContext'
+import { useAudioPlayer, computeUrl } from '../../contexts/AudioPlayerContext'
 import FloatingMenu from '../../components/FloatingMenu'
 import ProfileUploadModal from '../../components/ProfileUploadModal'
 import { ProfileHeaderSkeleton, TrackListSkeleton, LoadingPage } from '../../components/LoadingComponents'
@@ -624,7 +624,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
         {/* Banner image/video or gradient fallback */}
         {profile.banner_url ? (
           profile.banner_url.match(/\.(mp4|webm|mov)(\?.*)?$/i) ? (
-            <video src={profile.banner_url} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" />
+            <video src={computeUrl(profile.banner_url)} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" />
           ) : (
             <Image src={profile.banner_url} alt="Banner" fill className="object-cover" priority />
           )
@@ -1143,7 +1143,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                       {/* Cover */}
                       <div className="relative w-10 h-10 rounded-lg overflow-hidden border border-white/[0.05]">
                         {track.video_url ? (
-                          <video src={track.video_url} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" />
+                          <video src={computeUrl(track.video_url)} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" />
                         ) : track.image_url ? (
                           <Image src={track.image_url} alt={track.title} fill className="object-cover" loading="lazy" />
                         ) : (

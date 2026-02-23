@@ -64,6 +64,8 @@ const CREDIT_COSTS: Record<string, number | ((params: Record<string, unknown>) =
   'extract-video': 1,
   'video-to-audio': (p) => ((p.quality as string) === 'hq' ? 10 : 2),
   autotune: 1,
+  'voice-train': 120,
+  'music-01': 3,
 }
 
 function getCreditCost(type: string, params: Record<string, unknown>): number {
@@ -205,6 +207,12 @@ export async function POST(req: NextRequest) {
           break
         case 'autotune':
           result = await generateAutotune(userId, body, jobId)
+          break
+        case 'voice-train':
+          result = await generateVoiceTrain(userId, body, jobId)
+          break
+        case 'music-01':
+          result = await generateMusic01(userId, body, jobId, requestSignal)
           break
         default:
           result = { success: false, error: 'Unknown type' }
@@ -1310,4 +1318,209 @@ async function generateAutotune(userId: string, body: Record<string, unknown>, j
 
   console.log(`✅ [${jobId}] Autotune complete: ${r2.url}`)
   return { success: true, audioUrl: r2.url, title, scale, output_format }
+}
+
+// ──────────────────────────────────────────────────────────────────
+// VOICE TRAIN  (mirrors /api/generate/voice-train)
+// ──────────────────────────────────────────────────────────────────
+async function generateVoiceTrain(userId: string, body: Record<string, unknown>, jobId: string) {
+  const voiceFileUrl = body.voiceFileUrl as string
+  const name = ((body.name as string) || 'Untitled Voice').trim().substring(0, 100)
+  const noiseReduction = body.noiseReduction === true
+  const volumeNormalization = body.volumeNormalization === true
+
+  if (!voiceFileUrl) return { success: false, error: 'voiceFileUrl is required' }
+
+  await updatePluginJob(jobId, { status: 'processing' })
+
+  // Save source audio to R2
+  let permanentSourceUrl = voiceFileUrl
+  if (!voiceFileUrl.includes('444radio') && !voiceFileUrl.includes('r2.')) {
+    try {
+      const fileName = `voice-training-source-${Date.now()}.wav`
+      const r2Result = await downloadAndUploadToR2(voiceFileUrl, userId, 'music', fileName)
+      if (r2Result.success) permanentSourceUrl = r2Result.url
+    } catch (e) {
+      console.error('[plugin/voice-train] Source upload failed (non-critical):', e)
+    }
+  }
+
+  // Run voice cloning
+  const prediction = await replicate.predictions.create({
+    model: 'minimax/voice-cloning',
+    input: {
+      voice_file: voiceFileUrl,
+      model: 'speech-02-turbo',
+      accuracy: 0.7,
+      need_noise_reduction: noiseReduction,
+      need_volume_normalization: volumeNormalization,
+    }
+  })
+
+  // Poll
+  let final = prediction
+  let attempts = 0
+  while (final.status !== 'succeeded' && final.status !== 'failed' && final.status !== 'canceled' && attempts < 150) {
+    await new Promise(r => setTimeout(r, 2000))
+    final = await replicate.predictions.get(prediction.id)
+    attempts++
+  }
+
+  if (final.status !== 'succeeded') {
+    return { success: false, error: '444 radio is locking in, please try again' }
+  }
+
+  const output = final.output as any
+  const voiceId = output?.voice_id || output?.id || (typeof output === 'string' ? output : '')
+  const previewUrl = output?.preview || null
+
+  if (!voiceId) return { success: false, error: 'No voice ID returned' }
+
+  // Save to voice_trainings
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+  const insertRes = await fetch(`${supabaseUrl}/rest/v1/voice_trainings`, {
+    method: 'POST',
+    headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+    body: JSON.stringify({
+      clerk_user_id: userId,
+      voice_id: voiceId,
+      name,
+      source_audio_url: permanentSourceUrl,
+      model: 'speech-02-turbo',
+      preview_url: previewUrl,
+      status: 'ready',
+      metadata: { noise_reduction: noiseReduction, volume_normalization: volumeNormalization, replicate_prediction_id: prediction.id, source: 'plugin' },
+    })
+  })
+
+  let savedTraining: any = null
+  if (insertRes.ok) {
+    const data = await insertRes.json()
+    savedTraining = Array.isArray(data) ? data[0] : data
+  }
+
+  await updatePluginJob(jobId, { status: 'completed', output: { voiceId, name, previewUrl } })
+
+  return { success: true, voiceId, trainingId: savedTraining?.id || null, name, previewUrl }
+}
+
+// ──────────────────────────────────────────────────────────────────
+// MUSIC-01  (mirrors /api/generate/music-01)
+// ──────────────────────────────────────────────────────────────────
+async function generateMusic01(userId: string, body: Record<string, unknown>, jobId: string, signal: AbortSignal) {
+  const title = (body.title as string || '').trim()
+  const prompt = (body.prompt as string || '').trim()
+  const lyrics = body.lyrics as string | undefined
+  const duration = (body.duration as string) || 'medium'
+  const genre = body.genre as string | undefined
+  const voice_id = body.voice_id as string | undefined
+  const voice_file = body.voice_file as string | undefined
+  const song_file = body.song_file as string | undefined
+  const instrumental_file = body.instrumental_file as string | undefined
+  const instrumental_id = body.instrumental_id as string | undefined
+  const sample_rate = (body.sample_rate as number) || 44100
+  const bitrate = (body.bitrate as number) || 256000
+
+  if (!title || title.length < 3 || title.length > 100) return { success: false, error: 'Title required (3-100 chars)' }
+  if (!prompt || prompt.length < 10 || prompt.length > 300) return { success: false, error: 'Prompt required (10-300 chars)' }
+
+  // Lyrics
+  let formattedLyrics: string
+  if (!lyrics || lyrics.trim().length === 0) {
+    const matched = findBestMatchingLyrics(prompt)
+    formattedLyrics = expandLyricsForDuration(matched.lyrics, duration as any)
+  } else {
+    formattedLyrics = expandLyricsForDuration(lyrics.trim(), duration as any)
+  }
+  if (formattedLyrics.length > 400) formattedLyrics = formattedLyrics.substring(0, 397) + '...'
+
+  await updatePluginJob(jobId, { status: 'processing' })
+
+  // Build input
+  const modelInput: Record<string, unknown> = { lyrics: formattedLyrics, sample_rate, bitrate }
+  if (voice_id) modelInput.voice_id = voice_id
+  if (voice_file) modelInput.voice_file = voice_file
+  if (song_file) modelInput.song_file = song_file
+  if (instrumental_file) modelInput.instrumental_file = instrumental_file
+  if (instrumental_id) modelInput.instrumental_id = instrumental_id
+
+  const prediction = await replicate.predictions.create({ model: 'minimax/music-01', input: modelInput })
+  await updatePluginJob(jobId, { status: 'processing', replicatePredictionId: prediction.id })
+
+  let final = prediction
+  let attempts = 0
+  while (final.status !== 'succeeded' && final.status !== 'failed' && final.status !== 'canceled' && attempts < 150) {
+    if (signal.aborted) {
+      try { await replicate.predictions.cancel(prediction.id) } catch {}
+      return { success: false, error: 'Generation cancelled' }
+    }
+    await new Promise(r => setTimeout(r, 2000))
+    final = await replicate.predictions.get(prediction.id)
+    attempts++
+  }
+
+  if (final.status !== 'succeeded') return { success: false, error: SAFE_ERROR_MESSAGE }
+
+  let audioUrl = extractUrl(final.output)
+  if (!audioUrl) return { success: false, error: 'No audio in output' }
+
+  // Upload to R2
+  const fileName = `${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-m01-${Date.now()}.wav`
+  const r2 = await downloadAndUploadToR2(audioUrl, userId, 'music', fileName)
+  if (!r2.success) return { success: false, error: 'Failed to save audio' }
+  audioUrl = r2.url
+
+  // Save to music_library
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+  await fetch(`${supabaseUrl}/rest/v1/music_library`, {
+    method: 'POST',
+    headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      clerk_user_id: userId,
+      title, prompt, lyrics: formattedLyrics,
+      audio_url: audioUrl, audio_format: 'wav', bitrate, sample_rate,
+      generation_params: { model: 'minimax/music-01', voice_id, has_voice_ref: !!voice_file, has_instrumental_ref: !!instrumental_file, source: 'plugin' },
+      status: 'ready',
+    }),
+  })
+
+  // Voice royalty (if using a listed voice)
+  if (voice_id) {
+    try {
+      const listingRes = await fetch(
+        `${supabaseUrl}/rest/v1/voice_listings?voice_id=eq.${encodeURIComponent(voice_id)}&is_active=eq.true&select=id,clerk_user_id`,
+        { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+      )
+      const listings = await listingRes.json()
+      if (listings && listings.length > 0) {
+        const listing = listings[0]
+        if (listing.clerk_user_id && listing.clerk_user_id !== userId) {
+          await fetch(`${supabaseUrl}/rest/v1/rpc/deduct_credits`, {
+            method: 'POST',
+            headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ p_clerk_user_id: listing.clerk_user_id, p_amount: -1 })
+          })
+          await fetch(`${supabaseUrl}/rest/v1/voice_royalties`, {
+            method: 'POST',
+            headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ voice_listing_id: listing.id, voice_owner_id: listing.clerk_user_id, generator_user_id: userId, credits_earned: 1, generation_type: 'music-01' })
+          })
+          await fetch(`${supabaseUrl}/rest/v1/voice_listings?id=eq.${listing.id}`, {
+            method: 'PATCH',
+            headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ total_uses: (listing.total_uses || 0) + 1, total_royalties_earned: (listing.total_royalties_earned || 0) + 1, updated_at: new Date().toISOString() })
+          })
+          await logCreditTransaction({ userId: listing.clerk_user_id, amount: 1, type: 'earn_sale', description: `Plugin voice royalty: "${title}"`, metadata: { voice_id, generator_user_id: userId, source: 'plugin' } })
+        }
+      }
+    } catch (e) {
+      console.error('[plugin/music-01] Royalty processing failed:', e)
+    }
+  }
+
+  await updatePluginJob(jobId, { status: 'completed', output: { audioUrl, title, lyrics: formattedLyrics } })
+
+  return { success: true, audioUrl, title, lyrics: formattedLyrics }
 }

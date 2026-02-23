@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import FloatingMenu from '../components/FloatingMenu'
 import { Search, Play, Pause, ArrowLeft, FileText, Radio as RadioIcon, Users, Music, X, SlidersHorizontal, Heart, TrendingUp, Disc3, Headphones, ChevronRight, Sparkles, Flame, Info, Video } from 'lucide-react'
-import { useAudioPlayer } from '../contexts/AudioPlayerContext'
+import { useAudioPlayer, computeUrl } from '../contexts/AudioPlayerContext'
 import { supabase } from '@/lib/supabase'
 import { ExploreGridSkeleton } from '../components/LoadingSkeleton'
 import LikeButton from '../components/LikeButton'
@@ -255,7 +255,7 @@ function Genre3DTrackCard({ media, index, isCurrentlyPlaying, isPlaying, onPlay,
         {/* Cover art — small square */}
         <div className="aspect-square relative">
           {media.video_url ? (
-            <video src={media.video_url} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" />
+            <video src={computeUrl(media.video_url)} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" />
           ) : media.image_url || media.imageUrl ? (
             <Image src={media.image_url || media.imageUrl || ''} alt={media.title} width={120} height={120}
               className="w-full h-full object-cover" loading="lazy" quality={60} unoptimized />
@@ -471,7 +471,7 @@ function ListTrackRow({ media, index, isCurrentlyPlaying, isPlaying, onPlay, onL
       {/* Cover */}
       <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 ring-1 ring-white/[0.06] relative">
         {media.video_url ? (
-          <video src={media.video_url} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" />
+          <video src={computeUrl(media.video_url)} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" />
         ) : (media.image_url || media.imageUrl) ? (
           <Image src={media.image_url || media.imageUrl || ''} alt={media.title} width={40} height={40}
             className="w-full h-full object-cover" loading="lazy" quality={60} unoptimized />

@@ -1,6 +1,6 @@
 'use client'
 
-import { Music, Sparkles, Repeat, Image as ImageIcon, Edit3, Rocket, Upload, X, RotateCcw, Mic, Zap, Send, Film, Scissors, Lightbulb, ChevronLeft, Plus, Volume2, Layers } from 'lucide-react'
+import { Music, Sparkles, Repeat, Image as ImageIcon, Edit3, Rocket, Upload, X, RotateCcw, Mic, Zap, Send, Film, Scissors, Lightbulb, ChevronLeft, Plus, Volume2, Layers, AudioLines } from 'lucide-react'
 import { useState } from 'react'
 
 interface FeaturesSidebarProps {
@@ -29,6 +29,7 @@ interface FeaturesSidebarProps {
   onShowAutotune: () => void
   onShowVisualizer: () => void
   onShowLipSync: () => void
+  onShowMiniMax01: () => void
   onOpenRelease: () => void
   onClearChat: () => void
   onShowDeletedChats: () => void
@@ -69,6 +70,7 @@ export default function FeaturesSidebar({
   onShowAutotune,
   onShowVisualizer,
   onShowLipSync,
+  onShowMiniMax01,
   onOpenRelease,
   onClearChat,
   onShowDeletedChats,
@@ -196,6 +198,15 @@ export default function FeaturesSidebar({
       active: false,
       cost: undefined,
       onClick: onShowLipSync,
+    },
+    {
+      icon: AudioLines,
+      label: 'MiniMax 01',
+      description: 'Voice & Instrumental AI',
+      color: 'purple',
+      active: false,
+      cost: undefined,
+      onClick: onShowMiniMax01,
     },
     {
       icon: Edit3,

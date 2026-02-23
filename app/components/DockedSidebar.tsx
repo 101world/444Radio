@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useUser, UserButton } from '@clerk/nextjs'
 import { usePathname } from 'next/navigation'
-import { Home, Zap, Library, Compass, User, Unlock, CreditCard, Settings, LogIn, UserPlus, LayoutGrid, DollarSign, Swords, Terminal } from 'lucide-react'
+import { Home, Zap, Library, Compass, User, Unlock, CreditCard, Settings, LogIn, UserPlus, LayoutGrid, DollarSign, Swords, Terminal, AudioLines } from 'lucide-react'
 import { useCredits } from '@/app/contexts/CreditsContext'
 
 interface MenuItem {
@@ -89,6 +89,7 @@ export default function DockedSidebar() {
     { icon: Unlock, label: 'Decrypt', href: '/decrypt', highlight: 'cyan' },
     { icon: CreditCard, label: 'Pricing', href: '/pricing', highlight: false },
     { icon: DollarSign, label: 'Earn', href: '/earn', highlight: 'purple', badge: 'New' },
+    { icon: AudioLines, label: 'Voice Lab', href: '/voice-training', highlight: 'purple' },
     { icon: Swords, label: 'Quests', href: '/quests', highlight: 'cyan', badge: '🎮' },
     { icon: Settings, label: 'Settings', href: '/settings', highlight: false },
     { icon: User, label: 'My Profile', href: `/profile/${user.id}`, highlight: 'cyan', badge: '🎤' },
@@ -101,6 +102,7 @@ export default function DockedSidebar() {
     { icon: Unlock, label: 'Decrypt', href: '/decrypt', highlight: 'cyan' },
     { icon: CreditCard, label: 'Pricing', href: '/pricing', highlight: false },
     { icon: DollarSign, label: 'Earn', href: '/earn', highlight: 'purple', badge: 'New' },
+    { icon: AudioLines, label: 'Voice Lab', href: '/voice-training', highlight: 'purple' },
     { icon: Swords, label: 'Quests', href: '/quests', highlight: 'cyan', badge: '🎮' },
     { icon: User, label: 'Profile', href: '/profile', highlight: false },
     { icon: LogIn, label: 'Sign In', href: '/sign-in', highlight: false, divider: true },
