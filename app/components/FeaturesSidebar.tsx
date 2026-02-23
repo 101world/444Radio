@@ -201,7 +201,7 @@ export default function FeaturesSidebar({
     },
     {
       icon: AudioLines,
-      label: 'MiniMax 01',
+      label: '444 Radio',
       description: 'Voice & Instrumental AI',
       color: 'purple',
       active: false,

@@ -480,7 +480,7 @@ export default function EarnPage() {
                         {voicePreviewId === voice.id ? <Pause size={11} /> : <Play size={11} />} Preview
                       </button>
                     )}
-                    <button onClick={() => { navigator.clipboard.writeText(voice.voice_id); alert('Voice ID copied! Use it in Create → MiniMax 01 → Voice Ref tab.') }}
+                    <button onClick={() => { navigator.clipboard.writeText(voice.voice_id); alert('Voice ID copied! Use it in Create → 444 Radio → Voice Ref tab.') }}
                       className="flex items-center gap-1 px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/20 rounded-lg text-[11px] text-cyan-300 hover:bg-cyan-500/20 transition-colors">
                       Use Voice
                     </button>

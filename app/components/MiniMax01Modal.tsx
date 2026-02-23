@@ -451,7 +451,7 @@ export default function MiniMax01Modal({ isOpen, onClose, onSuccess, onError, us
               <Music size={20} className="text-white" />
             </div>
             <div>
-              <h2 className="text-white font-bold text-lg">MiniMax 01</h2>
+              <h2 className="text-white font-bold text-lg">444 Radio</h2>
               <p className="text-gray-400 text-xs">Voice Training · Voice Reference · Instrumental Reference</p>
             </div>
           </div>
@@ -953,7 +953,7 @@ export default function MiniMax01Modal({ isOpen, onClose, onSuccess, onError, us
         {/* Footer credit display */}
         <div className="px-6 py-3 border-t border-white/10 flex items-center justify-between">
           <span className="text-gray-500 text-xs">Credits: {userCredits ?? '...'}</span>
-          <span className="text-gray-600 text-xs">minimax/music-01 · minimax/voice-cloning</span>
+          <span className="text-gray-600 text-xs">Voice Training · Music Generation</span>
         </div>
       </div>
     </div>

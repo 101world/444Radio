@@ -2364,7 +2364,7 @@ function CreatePageContent() {
                         <path d="M18 5v13"/>
                         <path d="M22 10v3"/>
                       </svg>
-                      <span className="block text-xs mt-1 text-center text-white/70">MiniMax</span>
+                      <span className="block text-xs mt-1 text-center text-white/70">444 Radio</span>
                     </button>
                     
                     <button
@@ -3950,7 +3950,7 @@ function CreatePageContent() {
         />
       </Suspense>
 
-      {/* MiniMax 01 Modal - Voice Training + Voice/Instrumental Reference */}
+      {/* 444 Radio Modal - Voice Training + Voice/Instrumental Reference */}
       <Suspense fallback={null}>
         <MiniMax01Modal
           isOpen={showMiniMax01Modal}
@@ -3960,7 +3960,7 @@ function CreatePageContent() {
             const successMessage: Message = {
               id: Date.now().toString(),
               type: 'generation',
-              content: `✅ MiniMax 01 generated: ${result.title || 'Untitled'}`,
+              content: `✅ 444 Radio generated: ${result.title || 'Untitled'}`,
               generationType: 'music',
               result: {
                 audioUrl: result.audioUrl,
