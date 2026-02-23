@@ -137,24 +137,35 @@ export default function MiniMax01Modal({ isOpen, onClose, onSuccess, onError, us
     }
   }
 
-  // Upload file helper
+  // Upload file helper — presigned URL flow (bypasses Vercel 4.5 MB limit)
   const uploadReferenceFile = async (file: File, type: 'voice' | 'instrumental' | 'song'): Promise<string | null> => {
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('type', type)
-
+    // Step 1: Get presigned URL
     const res = await fetch('/api/generate/upload-reference', {
       method: 'POST',
-      body: formData
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fileName: file.name,
+        fileType: file.type || 'audio/wav',
+        fileSize: file.size,
+        type,
+      }),
     })
-
     if (!res.ok) {
       const data = await res.json()
       throw new Error(data.error || 'Upload failed')
     }
-
     const data = await res.json()
-    return data.url
+    if (!data.uploadUrl || !data.publicUrl) throw new Error('Missing presigned URL')
+
+    // Step 2: Upload directly to R2
+    const uploadRes = await fetch(data.uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type || 'audio/wav' },
+      body: file,
+    })
+    if (!uploadRes.ok) throw new Error('Direct upload to R2 failed')
+
+    return data.publicUrl
   }
 
   // ── VOICE TRAINING ──

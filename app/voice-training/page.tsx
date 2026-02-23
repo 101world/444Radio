@@ -131,16 +131,33 @@ export default function VoiceTrainingPage() {
   }
 
   const uploadReferenceFile = async (file: File): Promise<string | null> => {
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('type', 'voice')
-    const res = await fetch('/api/generate/upload-reference', { method: 'POST', body: formData })
+    // Step 1: Get presigned URL
+    const res = await fetch('/api/generate/upload-reference', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fileName: file.name,
+        fileType: file.type || 'audio/wav',
+        fileSize: file.size,
+        type: 'voice',
+      }),
+    })
     if (!res.ok) {
       const data = await res.json()
       throw new Error(data.error || 'Upload failed')
     }
     const data = await res.json()
-    return data.url
+    if (!data.uploadUrl || !data.publicUrl) throw new Error('Missing presigned URL')
+
+    // Step 2: Upload directly to R2
+    const uploadRes = await fetch(data.uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type || 'audio/wav' },
+      body: file,
+    })
+    if (!uploadRes.ok) throw new Error('Direct upload to R2 failed')
+
+    return data.publicUrl
   }
 
   const handleTrainVoice = async () => {

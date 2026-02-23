@@ -327,16 +327,37 @@ function CreatePageContent() {
     }).catch(() => {})
   }, [])
 
-  // Upload a reference file to R2
+  // Upload a reference file to R2 via presigned URL (bypasses Vercel 4.5 MB limit)
   const uploadReferenceFile = async (file: File | Blob, type: 'voice' | 'instrumental'): Promise<string | null> => {
-    const formData = new FormData()
     const fileObj = file instanceof File ? file : new File([file], `voice-recording-${Date.now()}.webm`, { type: 'audio/webm' })
-    formData.append('file', fileObj)
-    formData.append('type', type)
-    const res = await fetch('/api/generate/upload-reference', { method: 'POST', body: formData })
+
+    // Step 1: Get presigned URL from our API (small JSON request)
+    const res = await fetch('/api/generate/upload-reference', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fileName: fileObj.name,
+        fileType: fileObj.type || 'audio/wav',
+        fileSize: fileObj.size,
+        type,
+      }),
+    })
     if (!res.ok) return null
     const data = await res.json()
-    return data.url || null
+    if (!data.uploadUrl || !data.publicUrl) return null
+
+    // Step 2: Upload file directly to R2 via presigned URL
+    const uploadRes = await fetch(data.uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': fileObj.type || 'audio/wav' },
+      body: fileObj,
+    })
+    if (!uploadRes.ok) {
+      console.error('R2 direct upload failed:', uploadRes.status)
+      return null
+    }
+
+    return data.publicUrl
   }
 
   // Mic → actual audio recording (for voice reference, not speech-to-text)
