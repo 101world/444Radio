@@ -1035,10 +1035,19 @@ function CreatePageContent() {
       const capturedInstrumentalRefUrl = instrumentalRefUrl
       const capturedRecordedVoiceBlob = recordedVoiceBlob
 
-      // If a trained voice is selected, send the voice_id directly to music-01
+      // If a trained voice is selected, use its source_audio_url as voice_file for music-01
+      // voice_id from voice-cloning is ephemeral on Replicate (data_removed after prediction)
+      // so we must send the actual audio file each time
       let capturedSelectedVoiceId = selectedVoiceId
       if (capturedSelectedVoiceId) {
-        console.log('[Generation] Trained voice selected — sending voice_id to music-01:', capturedSelectedVoiceId)
+        const selectedVoice = trainedVoices.find(v => v.voice_id === capturedSelectedVoiceId)
+        if (selectedVoice?.source_audio_url) {
+          console.log('[Generation] Trained voice selected — using source_audio_url as voice_file:', selectedVoice.source_audio_url)
+          capturedVoiceRefUrl = selectedVoice.source_audio_url
+          capturedSelectedVoiceId = '' // Send voice_file, not voice_id (ephemeral)
+        } else {
+          console.warn('[Generation] Trained voice has no source_audio_url — voice_id may fail if expired')
+        }
       }
 
       // Process queue asynchronously with auto-filled or user-provided values
