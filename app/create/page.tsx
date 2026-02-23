@@ -2616,18 +2616,7 @@ function CreatePageContent() {
             </div>
           )}
           
-          {/* Credits Display - Always Visible */}
-          <div className="flex justify-center mb-3">
-            <div className="flex items-center gap-2 px-4 py-2 bg-black/20 backdrop-blur-xl border border-white/10 rounded-2xl shadow-lg">
-              <Zap size={16} className="text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.9)]" />
-              <span className="text-sm font-bold text-white">
-                {isLoadingCredits ? '...' : userCredits}
-              </span>
-              <span className="text-xs text-cyan-400/60 font-mono">
-                {selectedType === 'music' ? (hasVoiceOrInstrumentalRef ? '(-3)' : '(-2)') : selectedType === 'image' ? '(-1)' : selectedType === 'effects' ? '(-2)' : ''}
-              </span>
-            </div>
-          </div>
+          {/* Credits Display removed — now integrated into prompt bar */}
 
           {/* Instrumental Mode: Using LLM approach - no parameters needed */}
           {isInstrumental && selectedType === 'music' && (
@@ -2689,199 +2678,197 @@ function CreatePageContent() {
             </div>
           )}
 
-          {/* Main Prompt Box - Sleek Modern Design */}
+          {/* Main Prompt Box - Breathable Modern Design */}
           <div 
-            className="group relative"
+            className="group relative w-full max-w-3xl mx-auto"
           >
             {/* Ambient Glow Effect */}
-            {!isMobile && <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500/20 via-blue-500/20 to-purple-500/20 rounded-[24px] blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>}
+            {!isMobile && <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/15 via-blue-500/15 to-purple-500/15 rounded-[28px] blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>}
             
-            {/* Ultra-Slim Transparent Glass Container */}
-            <div className="relative flex gap-1.5 md:gap-2 items-center bg-black/20 backdrop-blur-xl px-3 md:px-4 py-2 md:py-2.5 rounded-2xl border border-white/10 focus-within:border-cyan-400/30 focus-within:shadow-[0_0_15px_rgba(34,211,238,0.1)] transition-all duration-300 shadow-lg shadow-black/20">
-              
-              {/* Toggle Advanced Buttons - Glowing Plus */}
-              <button
-                onClick={() => setShowAdvancedButtons(!showAdvancedButtons)}
-                className={`relative flex-shrink-0 w-8 h-8 md:w-9 md:h-9 rounded-lg transition-all duration-300 ${
-                  showAdvancedButtons
-                    ? 'bg-gradient-to-br from-cyan-400 via-cyan-500 to-blue-500 shadow-lg shadow-cyan-500/50'
-                    : 'bg-white/5 hover:bg-white/10 border border-cyan-400/40 hover:border-cyan-400/70 shadow-[0_0_12px_rgba(34,211,238,0.4)]'
-                }`}
-                title={showAdvancedButtons ? 'Hide Options' : 'Show More Options'}
-              >
-                <PlusCircle 
-                  size={16} 
-                  className={`absolute inset-0 m-auto ${showAdvancedButtons ? 'text-white rotate-45' : 'text-cyan-300'} transition-transform duration-300 drop-shadow-[0_0_6px_rgba(34,211,238,0.9)]`}
-                />
-              </button>
+            {/* Hidden file inputs */}
+            <input ref={instrumentalRefInputRef} type="file" accept=".wav,.mp3" className="hidden" onChange={e => {
+              const f = e.target.files?.[0]
+              if (f) { setInstrumentalRefFile(f); setInstrumentalRefUrl('') }
+              e.target.value = ''
+            }} />
+            <input ref={voiceRefInputRef} type="file" accept=".wav,.mp3" className="hidden" onChange={e => {
+              const f = e.target.files?.[0]
+              if (f) { setVoiceRefFile(f); setVoiceRefUrl(''); setRecordedVoiceBlob(null); setSelectedVoiceId('') }
+              e.target.value = ''
+            }} />
 
-              {/* Record Button — Speech-to-text (tap) */}
-              <button
-                onClick={isRecording ? stopRecording : startRecording}
-                className={`relative flex-shrink-0 w-8 h-8 md:w-9 md:h-9 rounded-lg transition-all duration-300 ${
-                  isRecording 
-                    ? 'bg-gradient-to-br from-red-500 to-rose-600 shadow-lg shadow-red-500/50 animate-pulse' 
-                    : 'bg-white/5 hover:bg-white/10 border border-white/10 hover:border-red-400/50'
-                }`}
-                title={isRecording ? 'Stop Recording' : 'Speech-to-Text'}
-              >
-                {isRecording ? (
-                  <div className="w-2.5 h-2.5 bg-white rounded-sm absolute inset-0 m-auto"></div>
-                ) : (
-                  <Mic 
-                    size={16} 
-                    className="absolute inset-0 m-auto text-gray-300"
-                  />
-                )}
-              </button>
+            {/* Glass Container */}
+            <div className="relative bg-black/30 backdrop-blur-2xl rounded-2xl border border-white/[0.08] focus-within:border-cyan-400/25 focus-within:shadow-[0_0_30px_rgba(34,211,238,0.08)] transition-all duration-500 shadow-2xl shadow-black/40 overflow-hidden">
 
-              {/* Voice Reference — Record mic audio as voice ref for music-01 */}
-              <button
-                onClick={isAudioRecording ? stopAudioRecording : startAudioRecording}
-                className={`relative flex-shrink-0 w-8 h-8 md:w-9 md:h-9 rounded-lg transition-all duration-300 ${
-                  isAudioRecording
-                    ? 'bg-gradient-to-br from-purple-500 to-fuchsia-600 shadow-lg shadow-purple-500/50 animate-pulse'
-                    : recordedVoiceBlob || voiceRefFile || voiceRefUrl || selectedVoiceId
-                    ? 'bg-purple-500/20 border border-purple-400/50'
-                    : 'bg-white/5 hover:bg-white/10 border border-white/10 hover:border-purple-400/50'
-                }`}
-                title={isAudioRecording ? `Recording voice ref... ${audioRecordingTime}s — Click to stop` : 'Record Voice Reference (for AI voice cloning)'}
-              >
-                {isAudioRecording ? (
-                  <div className="flex items-center justify-center absolute inset-0">
-                    <div className="w-2.5 h-2.5 bg-white rounded-sm"></div>
-                  </div>
-                ) : (
-                  <AudioLines size={16} className={`absolute inset-0 m-auto ${recordedVoiceBlob || voiceRefFile || voiceRefUrl || selectedVoiceId ? 'text-purple-400' : 'text-gray-300'}`} />
-                )}
-                {(recordedVoiceBlob || voiceRefFile || voiceRefUrl || selectedVoiceId) && !isAudioRecording && (
-                  <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-purple-400 rounded-full"></div>
-                )}
-              </button>
-
-              {/* Instrumental Reference Upload */}
-              <input ref={instrumentalRefInputRef} type="file" accept=".wav,.mp3" className="hidden" onChange={e => {
-                const f = e.target.files?.[0]
-                if (f) { setInstrumentalRefFile(f); setInstrumentalRefUrl('') }
-                e.target.value = ''
-              }} />
-              <button
-                onClick={() => instrumentalRefInputRef.current?.click()}
-                className={`relative flex-shrink-0 w-8 h-8 md:w-9 md:h-9 rounded-lg transition-all duration-300 ${
-                  instrumentalRefFile || instrumentalRefUrl
-                    ? 'bg-orange-500/20 border border-orange-400/50'
-                    : 'bg-white/5 hover:bg-white/10 border border-white/10 hover:border-orange-400/50'
-                }`}
-                title={instrumentalRefFile ? `Instrumental: ${instrumentalRefFile.name}` : 'Upload Instrumental Reference (.wav/.mp3)'}
-              >
-                <Guitar size={16} className={`absolute inset-0 m-auto ${instrumentalRefFile || instrumentalRefUrl ? 'text-orange-400' : 'text-gray-300'}`} />
-                {(instrumentalRefFile || instrumentalRefUrl) && (
-                  <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-orange-400 rounded-full"></div>
-                )}
-              </button>
-
-              {/* Voice File Upload (hidden input) */}
-              <input ref={voiceRefInputRef} type="file" accept=".wav,.mp3" className="hidden" onChange={e => {
-                const f = e.target.files?.[0]
-                if (f) { setVoiceRefFile(f); setVoiceRefUrl(''); setRecordedVoiceBlob(null); setSelectedVoiceId('') }
-                e.target.value = ''
-              }} />
-
-              {/* Instrumental Toggle - Always Visible */}
-              <button
-                onClick={() => {
-                  if (selectedType !== 'music') {
-                    setSelectedType('music')
-                  }
-                  setIsInstrumental(!isInstrumental)
-                }}
-                className={`relative flex-shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-bold tracking-wide transition-all duration-300 ${
-                  isInstrumental
-                    ? 'bg-gradient-to-br from-purple-500 to-violet-600 text-white shadow-lg shadow-purple-500/40'
-                    : 'bg-white/5 border border-purple-400/30 text-purple-300 hover:border-purple-400/60 hover:bg-white/10'
-                }`}
-                title={isInstrumental ? 'Switch to Vocal Mode' : 'Switch to Instrumental Mode'}
-              >
-                INST
-              </button>
-
-              {/* Input Field */}
-              <div className="flex-1 text-center md:text-left">
-                <textarea
-                  ref={(el) => {
-                    if (el) {
-                      // Store input ref for keyboard control
-                      (window as unknown as Record<string, HTMLTextAreaElement>).__createPageInput = el;
-                      // Auto-resize based on content
-                      el.style.height = 'auto';
-                      el.style.height = el.scrollHeight + 'px';
-                    }
-                  }}
-                  value={input}
-                  onChange={(e) => {
-                    setInput(e.target.value)
-                    // Auto-resize on content change
-                    e.target.style.height = 'auto'
-                    e.target.style.height = e.target.scrollHeight + 'px'
-                  }}
-                  onFocus={handleInputFocus}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault()
-                      // Only create if valid length
-                      if (input.trim().length >= MIN_PROMPT_LENGTH && input.trim().length <= MAX_PROMPT_LENGTH) {
-                        // Close keyboard by blurring input
-                        if (e.currentTarget) {
-                          e.currentTarget.blur()
-                        }
-                        // Small delay to let keyboard close before generating
-                        setTimeout(() => {
-                          handleGenerate()
-                        }, 100)
+              {/* ── Row 1: Textarea ── */}
+              <div className="flex items-end gap-3 px-4 md:px-5 pt-4 pb-2">
+                <div className="flex-1 min-w-0">
+                  <textarea
+                    ref={(el) => {
+                      if (el) {
+                        (window as unknown as Record<string, HTMLTextAreaElement>).__createPageInput = el;
+                        el.style.height = 'auto';
+                        el.style.height = el.scrollHeight + 'px';
                       }
+                    }}
+                    value={input}
+                    onChange={(e) => {
+                      setInput(e.target.value)
+                      e.target.style.height = 'auto'
+                      e.target.style.height = e.target.scrollHeight + 'px'
+                    }}
+                    onFocus={handleInputFocus}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        if (input.trim().length >= MIN_PROMPT_LENGTH && input.trim().length <= MAX_PROMPT_LENGTH) {
+                          if (e.currentTarget) e.currentTarget.blur()
+                          setTimeout(() => handleGenerate(), 100)
+                        }
+                      }
+                    }}
+                    placeholder={
+                      selectedType === 'music'
+                        ? 'Describe your sound... (e.g., upbeat lofi with piano and vinyl crackle)'
+                        : selectedType === 'image'
+                        ? 'Describe your cover art...'
+                        : selectedType === 'effects'
+                        ? 'Describe sound effects (up to 10s)...'
+                        : 'Coming soon...'
                     }
-                  }}
-                  placeholder={
-                    selectedType === 'music'
-                      ? 'Describe your sound... (e.g., upbeat lofi with piano and vinyl crackle)'
-                      : selectedType === 'image'
-                      ? 'Describe your cover art...'
-                      : selectedType === 'effects'
-                      ? 'Describe sound effects (up to 10s)...'
-                      : 'Coming soon...'
-                  }
-                  disabled={selectedType === 'video'}
-                  rows={1}
-                  className="w-full bg-transparent text-sm md:text-lg font-normal text-white placeholder-gray-500/70 tracking-wide focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed resize-none overflow-hidden transition-all duration-200"
-                  style={{ minHeight: '1.5rem', maxHeight: '6rem' }}
-                />
-                
-                <div className="flex items-center justify-between gap-2 mt-1">
-                  <div className="text-xs font-medium tracking-wide hidden md:block">
-                    {activeGenerations.size > 0 
-                      ? <span className="text-cyan-300/60">Creating ({activeGenerations.size})...</span>
-                      : input.trim().length >= MIN_PROMPT_LENGTH && input.trim().length <= MAX_PROMPT_LENGTH
-                      ? <span className="text-emerald-300/70">Press Enter ✨</span>
-                      : input.length === 0
-                      ? <span className="text-gray-400/50">Start typing...</span>
-                      : input.trim().length < MIN_PROMPT_LENGTH
-                      ? <span className="text-amber-300/70">{MIN_PROMPT_LENGTH - input.trim().length} more...</span>
-                      : <span className="text-red-300/70">Too long!</span>}
-                  </div>
-                  <div className={`text-xs font-bold tracking-wide px-1.5 py-0.5 rounded transition-all duration-200 ${
-                    input.length === 0 ? 'text-gray-400/60' :
-                    input.trim().length < MIN_PROMPT_LENGTH ? 'text-amber-300/90 bg-amber-500/10' :
-                    input.length > MAX_PROMPT_LENGTH ? 'text-red-300/90 bg-red-500/20 animate-pulse' :
-                    input.length > MAX_PROMPT_LENGTH * 0.9 ? 'text-yellow-300/90 bg-yellow-500/10' :
-                    'text-emerald-300/90 bg-emerald-500/10'
-                  }`}>
-                    {input.length}/{MAX_PROMPT_LENGTH}
-                  </div>
+                    disabled={selectedType === 'video'}
+                    rows={1}
+                    className="w-full bg-transparent text-base md:text-lg text-white placeholder-white/30 tracking-wide focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed resize-none overflow-hidden leading-relaxed"
+                    style={{ minHeight: '1.75rem', maxHeight: '6rem' }}
+                  />
                 </div>
+
+                {/* Send Button */}
+                <button
+                  onClick={() => {
+                    const inp = (window as unknown as Record<string, HTMLInputElement>).__createPageInput;
+                    if (inp) inp.blur();
+                    setTimeout(() => handleGenerate(), 100);
+                  }}
+                  disabled={!input.trim() || selectedType === 'video'}
+                  className="relative flex-shrink-0 w-10 h-10 md:w-11 md:h-11 bg-gradient-to-br from-cyan-400 via-cyan-500 to-blue-600 hover:from-cyan-500 hover:via-cyan-600 hover:to-blue-700 rounded-xl flex items-center justify-center transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed shadow-xl shadow-cyan-500/40 hover:shadow-cyan-500/60 hover:scale-105 active:scale-95 mb-0.5"
+                >
+                  {activeGenerations.size > 0 && (
+                    <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gradient-to-br from-red-500 to-rose-600 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-lg shadow-red-500/50 animate-pulse">
+                      {activeGenerations.size}
+                    </div>
+                  )}
+                  {activeGenerations.size > 0 ? (
+                    <Loader2 className="text-white animate-spin" size={20} />
+                  ) : (
+                    <Send className="text-white ml-0.5" size={20} />
+                  )}
+                </button>
               </div>
 
-              {/* Prompt Suggestions - Always Visible */}
-              <div className="relative">
+              {/* ── Row 2: Toolbar — spaced buttons + credits ── */}
+              <div className="flex items-center gap-1 md:gap-1.5 px-3 md:px-4 pb-3 pt-1 border-t border-white/[0.04]">
+
+                {/* Plus / Advanced */}
+                <button
+                  onClick={() => setShowAdvancedButtons(!showAdvancedButtons)}
+                  className={`flex-shrink-0 w-8 h-8 rounded-lg transition-all duration-300 flex items-center justify-center ${
+                    showAdvancedButtons
+                      ? 'bg-cyan-500/20 border border-cyan-400/40'
+                      : 'hover:bg-white/[0.06] border border-transparent hover:border-white/10'
+                  }`}
+                  title={showAdvancedButtons ? 'Hide Options' : 'More Options'}
+                >
+                  <PlusCircle size={16} className={`${showAdvancedButtons ? 'text-cyan-400 rotate-45' : 'text-white/50'} transition-all duration-300`} />
+                </button>
+
+                {/* Speech-to-text */}
+                <button
+                  onClick={isRecording ? stopRecording : startRecording}
+                  className={`flex-shrink-0 w-8 h-8 rounded-lg transition-all duration-300 flex items-center justify-center ${
+                    isRecording
+                      ? 'bg-red-500/20 border border-red-400/40 animate-pulse'
+                      : 'hover:bg-white/[0.06] border border-transparent hover:border-white/10'
+                  }`}
+                  title={isRecording ? 'Stop' : 'Speech-to-Text'}
+                >
+                  {isRecording ? (
+                    <div className="w-2.5 h-2.5 bg-red-400 rounded-sm"></div>
+                  ) : (
+                    <Mic size={16} className="text-white/50" />
+                  )}
+                </button>
+
+                {/* Voice Reference */}
+                <button
+                  onClick={isAudioRecording ? stopAudioRecording : startAudioRecording}
+                  className={`flex-shrink-0 w-8 h-8 rounded-lg transition-all duration-300 flex items-center justify-center ${
+                    isAudioRecording
+                      ? 'bg-purple-500/20 border border-purple-400/40 animate-pulse'
+                      : recordedVoiceBlob || voiceRefFile || voiceRefUrl || selectedVoiceId
+                      ? 'bg-purple-500/15 border border-purple-400/30'
+                      : 'hover:bg-white/[0.06] border border-transparent hover:border-white/10'
+                  }`}
+                  title={isAudioRecording ? `Recording... ${audioRecordingTime}s` : 'Voice Reference'}
+                >
+                  {isAudioRecording ? (
+                    <div className="w-2.5 h-2.5 bg-purple-400 rounded-sm"></div>
+                  ) : (
+                    <AudioLines size={16} className={recordedVoiceBlob || voiceRefFile || voiceRefUrl || selectedVoiceId ? 'text-purple-400' : 'text-white/50'} />
+                  )}
+                  {(recordedVoiceBlob || voiceRefFile || voiceRefUrl || selectedVoiceId) && !isAudioRecording && (
+                    <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-purple-400 rounded-full"></div>
+                  )}
+                </button>
+
+                {/* Instrumental Reference */}
+                <button
+                  onClick={() => instrumentalRefInputRef.current?.click()}
+                  className={`flex-shrink-0 w-8 h-8 rounded-lg transition-all duration-300 flex items-center justify-center ${
+                    instrumentalRefFile || instrumentalRefUrl
+                      ? 'bg-orange-500/15 border border-orange-400/30'
+                      : 'hover:bg-white/[0.06] border border-transparent hover:border-white/10'
+                  }`}
+                  title={instrumentalRefFile ? `Instrumental: ${instrumentalRefFile.name}` : 'Instrumental Reference'}
+                >
+                  <Guitar size={16} className={instrumentalRefFile || instrumentalRefUrl ? 'text-orange-400' : 'text-white/50'} />
+                  {(instrumentalRefFile || instrumentalRefUrl) && (
+                    <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-orange-400 rounded-full"></div>
+                  )}
+                </button>
+
+                {/* Instrumental Toggle */}
+                <button
+                  onClick={() => {
+                    if (selectedType !== 'music') setSelectedType('music')
+                    setIsInstrumental(!isInstrumental)
+                  }}
+                  className={`flex-shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold tracking-wider transition-all duration-300 ${
+                    isInstrumental
+                      ? 'bg-purple-500/20 border border-purple-400/40 text-purple-300'
+                      : 'hover:bg-white/[0.06] border border-transparent hover:border-white/10 text-white/40'
+                  }`}
+                  title={isInstrumental ? 'Vocal Mode' : 'Instrumental Mode'}
+                >
+                  INST
+                </button>
+
+                {/* Spacer */}
+                <div className="flex-1" />
+
+                {/* Character count */}
+                <span className={`text-[11px] font-mono tabular-nums tracking-wide mr-1 ${
+                  input.length === 0 ? 'text-white/25' :
+                  input.trim().length < MIN_PROMPT_LENGTH ? 'text-amber-400/70' :
+                  input.length > MAX_PROMPT_LENGTH ? 'text-red-400/90' :
+                  input.length > MAX_PROMPT_LENGTH * 0.9 ? 'text-yellow-400/70' :
+                  'text-emerald-400/70'
+                }`}>
+                  {input.length}/{MAX_PROMPT_LENGTH}
+                </span>
+
+                {/* Prompt Suggestions (bulb) */}
+                <div className="relative">
                 <button
                   onClick={() => {
                     if (selectedType !== 'music') {
@@ -3132,33 +3119,18 @@ function CreatePageContent() {
                   )}
                 </div>
 
-              {/* Premium Send Button */}
-              <button
-                onClick={() => {
-                  // Close keyboard if open
-                  const input = (window as unknown as Record<string, HTMLInputElement>).__createPageInput;
-                  if (input) {
-                    input.blur();
-                  }
-                  // Small delay to let keyboard close
-                  setTimeout(() => {
-                    handleGenerate();
-                  }, 100);
-                }}
-                disabled={!input.trim() || selectedType === 'video'}
-                className="relative flex-shrink-0 w-10 h-10 md:w-11 md:h-11 bg-gradient-to-br from-cyan-400 via-cyan-500 to-blue-600 hover:from-cyan-500 hover:via-cyan-600 hover:to-blue-700 rounded-xl flex items-center justify-center transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed shadow-xl shadow-cyan-500/50 hover:shadow-cyan-500/70 hover:scale-105 active:scale-95"
-              >
-                {activeGenerations.size > 0 && (
-                  <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gradient-to-br from-red-500 to-rose-600 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-lg shadow-red-500/50 animate-pulse">
-                    {activeGenerations.size}
-                  </div>
-                )}
-                {activeGenerations.size > 0 ? (
-                  <Loader2 className="text-white animate-spin" size={20} />
-                ) : (
-                  <Send className="text-white ml-0.5" size={20} />
-                )}
-              </button>
+                {/* Credits Badge — integrated */}
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.04] rounded-lg border border-white/[0.06]">
+                  <Zap size={13} className="text-cyan-400 drop-shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
+                  <span className="text-sm font-bold text-white tabular-nums">
+                    {isLoadingCredits ? '...' : userCredits}
+                  </span>
+                  <span className="text-[10px] text-cyan-400/50 font-mono">
+                    {selectedType === 'music' ? (hasVoiceOrInstrumentalRef ? '(-3)' : '(-2)') : selectedType === 'image' ? '(-1)' : selectedType === 'effects' ? '(-2)' : ''}
+                  </span>
+                </div>
+
+              </div>
             </div>
           </div>
           
