@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
 
   const action = body.action as string
   const prompt = (body.prompt as string || '').trim()
+  const language = (body.language as string || '').trim()
 
   if (!action) {
     return corsResponse(NextResponse.json({ error: 'Missing action' }, { status: 400 }))
@@ -65,7 +66,11 @@ export async function POST(req: NextRequest) {
 
       case 'lyrics': {
         if (!prompt) return corsResponse(NextResponse.json({ error: 'Missing prompt' }, { status: 400 }))
-        const fullPrompt = `Generate lyrics based on my prompt - ${prompt} and the lyrics should be structured in [intro] [verse] [chorus] [hook] [bridge] [hook] [chorus] [outro] format under 600 characters`
+        const lang = language && language !== 'English' ? language : null
+        const langInst = lang
+          ? ` The lyrics MUST be in ${lang} language but written using ROMANIZED ENGLISH LETTERS (transliteration). Do NOT use native ${lang} script — write every word phonetically in English alphabet.`
+          : ''
+        const fullPrompt = `Generate lyrics based on my prompt - ${prompt}.${langInst} The lyrics should be structured in [intro] [verse] [chorus] [hook] [bridge] [hook] [chorus] [outro] format under 600 characters`
         const output = await replicate.run("openai/gpt-5-nano", { input: { prompt: fullPrompt } })
         let lyrics = Array.isArray(output) ? output.join('') : String(output)
         if (lyrics.length > 600) {

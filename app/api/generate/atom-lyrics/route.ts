@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
 
     // Construct the full prompt for GPT-5 Nano
     const languageInstruction = lang
-      ? `The lyrics MUST be written entirely in ${lang}. Do NOT use English — write every word in ${lang}.`
+      ? `The lyrics MUST be in ${lang} language but written using ROMANIZED ENGLISH LETTERS (transliteration). Do NOT use native ${lang} script — write every word phonetically in English alphabet. For example, Hindi "मैं तुमसे प्यार करता हूँ" should be written as "Main tumse pyaar karta hoon". Japanese "さくらが咲く" should be "Sakura ga saku". Apply this romanization rule to ALL ${lang} words.`
       : ''
     const fullPrompt = `Generate lyrics based on my prompt - ${prompt}. ${languageInstruction} The lyrics should be structured in [intro] [verse] [chorus] [hook] [bridge] [hook] [chorus] [outro] format under 600 characters`
 
