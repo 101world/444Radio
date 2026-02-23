@@ -753,7 +753,9 @@ function parseCodeToNodes(code: string, existingNodes?: PatternNode[]): PatternN
     nodes.push({
       id: existing?.id ?? `node_${idx}`,
       name: block.name || sound || `Pattern ${idx + 1}`,
-      code: block.code, // ALWAYS raw code from editor
+      // ALWAYS store clean code (no // [muted] prefix). The muted FLAG tracks mute state.
+      // This prevents prefix accumulation bugs on rapid mute/unmute/re-parse cycles.
+      code: isMuted ? block.code.replace(/\/\/ \[muted\] /g, '') : block.code,
       muted: existing?.muted ?? isMuted,
       solo: existing?.solo ?? false,
       x: existing?.x ?? (idx % cols) * 340 + 40,
@@ -1369,7 +1371,10 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
   const containerRef = useRef<HTMLDivElement>(null)
   const lastCodeRef = useRef(code)
   const commitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const isInternalChange = useRef(false)
+  // Counter-based guard: each sendToParent increments, each useEffect([code]) decrements.
+  // This correctly handles rapid successive internal changes (mute A, mute B quickly)
+  // where a single boolean would be consumed by the first render, leaving the second unguarded.
+  const internalChangeCount = useRef(0)
   const prevNodeCount = useRef(0)
 
   // Stable refs for latest state — avoids stale closures in callbacks
@@ -1385,8 +1390,8 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
   // This is the ONLY place where we re-parse nodes from code.
   // It runs whenever the code prop changes AND it wasn't us who changed it.
   useEffect(() => {
-    if (isInternalChange.current) {
-      isInternalChange.current = false
+    if (internalChangeCount.current > 0) {
+      internalChangeCount.current--
       return
     }
     // External code change (user typed in editor, loaded example, etc.)
@@ -1423,7 +1428,7 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
   // ── Send code change to parent ──
   const sendToParent = useCallback((newCode: string) => {
     lastCodeRef.current = newCode
-    isInternalChange.current = true
+    internalChangeCount.current++
     onCodeChange(newCode)
     if (commitTimer.current) clearTimeout(commitTimer.current)
     commitTimer.current = setTimeout(() => onUpdate(), 80)
@@ -1524,10 +1529,18 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
   }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
   // ── Mute / Solo ──
+  // CRITICAL: When toggling mute/solo, we must also update node.code to match.
+  // node.code must ALWAYS be the "clean" version (no // [muted] prefix).
+  // rebuildFullCodeFromNodes wraps/unwraps based on the muted flag.
   const toggleMute = useCallback((id: string) => {
     let codeToSend: string | null = null
     setNodes(prev => {
-      const updated = prev.map(n => n.id === id ? { ...n, muted: !n.muted } : n)
+      const updated = prev.map(n => {
+        if (n.id !== id) return n
+        // Always normalize code to clean (prefix-free) when toggling
+        const cleanCode = n.code.replace(/\/\/ \[muted\] /g, '')
+        return { ...n, muted: !n.muted, code: cleanCode }
+      })
       codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
       return updated
     })
@@ -1539,8 +1552,15 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
     setNodes(prev => {
       const wasSolo = prev.find(n => n.id === id)?.solo
       const updated = wasSolo
-        ? prev.map(n => ({ ...n, solo: false, muted: false }))
-        : prev.map(n => n.id === id ? { ...n, solo: true, muted: false } : { ...n, solo: false, muted: true })
+        // Un-solo: unmute all, normalize all code to clean
+        ? prev.map(n => ({ ...n, solo: false, muted: false, code: n.code.replace(/\/\/ \[muted\] /g, '') }))
+        // Solo: mute all except target, normalize all code to clean
+        : prev.map(n => ({
+            ...n,
+            solo: n.id === id,
+            muted: n.id !== id,
+            code: n.code.replace(/\/\/ \[muted\] /g, ''),
+          }))
       codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
       return updated
     })
@@ -1718,11 +1738,6 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
         newCode = injectBefore(rawCode, fx.code)
       }
 
-      // Re-apply muted prefix if node is muted
-      if (node.muted) {
-        newCode = newCode.split('\n').map(l => `// [muted] ${l}`).join('\n')
-      }
-
       if (newCode === node.code) return prev
       const updated = [...prev]
       updated[idx] = reparseNodeFromCode({ ...node, code: newCode })
@@ -1761,8 +1776,8 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
 
       if (newCode === rawCode) return prev
       const updated = [...prev]
-      const finalCode = node.muted ? newCode.split('\\n').map(l => `// [muted] ${l}`).join('\\n') : newCode
-      updated[idx] = reparseNodeFromCode({ ...node, code: finalCode })
+      // Always store clean code; rebuildFullCodeFromNodes handles muted wrapping
+      updated[idx] = reparseNodeFromCode({ ...node, code: newCode })
       codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
       return updated
     })
@@ -1821,8 +1836,8 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
             const newCode = injectBefore(rawCode, item.payload)
             if (newCode === rawCode) return prev
             const updated = [...prev]
-            const finalCode = node.muted ? newCode.split('\n').map(l => `// [muted] ${l}`).join('\n') : newCode
-            updated[idx] = reparseNodeFromCode({ ...node, code: finalCode })
+            // Always store clean code; rebuildFullCodeFromNodes handles muted wrapping
+            updated[idx] = reparseNodeFromCode({ ...node, code: newCode })
             codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
             return updated
           })
@@ -1856,8 +1871,8 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
         const newCode = injectBefore(rawCode, item.payload)
         if (newCode === rawCode) return prev
         const updated = [...prev]
-        const finalCode = node.muted ? newCode.split('\n').map(l => `// [muted] ${l}`).join('\n') : newCode
-        updated[idx] = reparseNodeFromCode({ ...node, code: finalCode })
+        // Always store clean code; rebuildFullCodeFromNodes handles muted wrapping
+        updated[idx] = reparseNodeFromCode({ ...node, code: newCode })
         codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
         return updated
       })
