@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { supabase } from '@/lib/supabase'
-import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon, Heart, Scissors, ChevronDown, ChevronUp, Volume2, ShoppingBag, Layers, Repeat, Radio, Info, Mic } from 'lucide-react'
+import { Music, Music2, Image as ImageIcon, Trash2, Download, Play, Pause, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon, Heart, Scissors, ChevronDown, ChevronUp, Volume2, ShoppingBag, Layers, Repeat, Radio, Info, Mic } from 'lucide-react'
 import FloatingMenu from '../components/FloatingMenu'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 import { LibraryTabSkeleton } from '../components/LoadingSkeleton'
@@ -61,7 +61,7 @@ export default function LibraryPage() {
   const router = useRouter()
   const { user } = useUser()
   const { playTrack, currentTrack, isPlaying, togglePlayPause, setPlaylist } = useAudioPlayer()
-  const [activeTab, setActiveTab] = useState<'images' | 'music' | 'videos' | 'releases' | 'liked' | 'stems' | 'mixmaster' | 'bought' | 'extract' | 'loops' | 'effects' | 'autotune' | 'chords'>('music')
+  const [activeTab, setActiveTab] = useState<'images' | 'music' | 'videos' | 'releases' | 'liked' | 'stems' | 'mixmaster' | 'bought' | 'extract' | 'loops' | 'effects' | 'autotune' | 'chords' | 'remix'>('music')
   const [musicItems, setMusicItems] = useState<LibraryMusic[]>([])
   const [imageItems, setImageItems] = useState<LibraryImage[]>([])
   const [videoItems, setVideoItems] = useState<LibraryMusic[]>([]) // Reuse music interface for videos
@@ -75,6 +75,7 @@ export default function LibraryPage() {
   const [effectsItems, setEffectsItems] = useState<any[]>([])
   const [autotuneItems, setAutotuneItems] = useState<any[]>([])
   const [chordsItems, setChordsItems] = useState<any[]>([])
+  const [remixItems, setRemixItems] = useState<any[]>([])
   const [expandedExtracts, setExpandedExtracts] = useState<Set<number>>(new Set())
   const [expandedStems, setExpandedStems] = useState<Set<number>>(new Set())
   const [isLoading, setIsLoading] = useState(true)
@@ -113,7 +114,7 @@ export default function LibraryPage() {
     }
     try {
       // Fetch all user's content from DB, R2, and releases
-      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, videosRes, r2VideosRes, releasesRes, likedRes, stemsRes, mixmasterRes, boughtRes, extractRes, loopsRes, effectsRes, autotuneRes, chordsRes] = await Promise.all([
+      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, videosRes, r2VideosRes, releasesRes, likedRes, stemsRes, mixmasterRes, boughtRes, extractRes, loopsRes, effectsRes, autotuneRes, chordsRes, remixRes] = await Promise.all([
         fetch('/api/library/music'),
         fetch('/api/r2/list-audio'),
         fetch('/api/library/images'),
@@ -129,7 +130,8 @@ export default function LibraryPage() {
         fetch('/api/library/loops'),
         fetch('/api/library/effects'),
         fetch('/api/library/autotune'),
-        fetch('/api/library/chords')
+        fetch('/api/library/chords'),
+        fetch('/api/library/remix')
       ])
 
       const musicData = await musicRes.json()
@@ -148,6 +150,7 @@ export default function LibraryPage() {
       const effectsData = await effectsRes.json()
       const autotuneData = await autotuneRes.json()
       const chordsData = await chordsRes.json()
+      const remixData = await remixRes.json()
 
       // Use ONLY database music - it has correct titles from generation
       if (musicData.success && Array.isArray(musicData.music)) {
@@ -252,6 +255,10 @@ export default function LibraryPage() {
       if (chordsData.success && Array.isArray(chordsData.chords)) {
         setChordsItems(chordsData.chords)
         console.log('🎹 Loaded', chordsData.chords.length, 'chords tracks')
+      }
+      if (remixData.success && Array.isArray(remixData.remixes)) {
+        setRemixItems(remixData.remixes)
+        console.log('🔁 Loaded', remixData.remixes.length, 'remixes')
       }
     } catch (error) {
       console.error('Error fetching library:', error)
@@ -746,6 +753,20 @@ export default function LibraryPage() {
               <Music size={18} />
               <span>Chords</span>
               <span className="ml-1 text-xs opacity-60">({chordsItems.length})</span>
+            </button>
+
+            {/* Remix Tab */}
+            <button
+              onClick={() => setActiveTab('remix')}
+              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                activeTab === 'remix'
+                  ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/30'
+                  : 'bg-white/5 text-cyan-400/60 hover:bg-cyan-500/10 hover:text-cyan-400'
+              }`}
+            >
+              <Music2 size={18} />
+              <span>Remix</span>
+              <span className="ml-1 text-xs opacity-60">({remixItems.length})</span>
             </button>
           </div>
         </div>
@@ -2109,6 +2130,102 @@ export default function LibraryPage() {
                         >
                           <Download size={14} className="text-purple-400" />
                           <span className="text-xs text-purple-400 font-medium">MP3</span>
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Remix Tab */}
+        {!isLoading && activeTab === 'remix' && (
+          <div>
+            {remixItems.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-cyan-400/10 border border-cyan-500/30 flex items-center justify-center">
+                  <Music2 size={32} className="text-cyan-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white/80 mb-2">No remixes yet</h3>
+                <p className="text-cyan-400/50 mb-6 text-sm">Upload a beat and remix it with 444 Radio</p>
+                <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/20">
+                  <Music2 size={18} />
+                  Create Remix
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {remixItems.map((remix: any) => {
+                  const isCurrentlyPlaying = currentTrack?.id === remix.id && isPlaying
+                  return (
+                    <div
+                      key={remix.id}
+                      className="flex items-center gap-3 p-3 bg-black/40 backdrop-blur-xl rounded-xl transition-all group"
+                      style={{
+                        border: '1px solid rgba(6,182,212,0.08)',
+                        boxShadow: 'inset 0 0 30px rgba(6,182,212,0.02)',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.border = '1px solid rgba(6,182,212,0.2)'
+                        e.currentTarget.style.boxShadow = '0 0 12px rgba(6,182,212,0.06), 0 0 30px rgba(6,182,212,0.04)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.border = '1px solid rgba(6,182,212,0.08)'
+                        e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(6,182,212,0.02)'
+                      }}
+                    >
+                      {/* Play button */}
+                      <button
+                        onClick={async () => {
+                          if (!remix.audioUrl) return
+                          const t = {
+                            id: remix.id,
+                            audioUrl: remix.audioUrl,
+                            title: remix.title || 'Untitled Remix',
+                            artist: user?.firstName || 'You'
+                          }
+                          if (isCurrentlyPlaying) {
+                            togglePlayPause()
+                          } else {
+                            const allTracks = remixItems.filter((r: any) => r.audioUrl).map((r: any) => ({
+                              id: r.id,
+                              audioUrl: r.audioUrl,
+                              title: r.title || 'Untitled Remix',
+                              artist: user?.firstName || 'You'
+                            }))
+                            await setPlaylist(allTracks, allTracks.findIndex((t: any) => t.id === remix.id))
+                          }
+                        }}
+                        className="w-12 h-12 flex-shrink-0 rounded-lg bg-gradient-to-br from-cyan-500/20 to-cyan-500/10 border border-cyan-500/30 flex items-center justify-center hover:scale-105 transition-transform"
+                      >
+                        {isCurrentlyPlaying ? (
+                          <Pause size={18} className="text-cyan-400" />
+                        ) : (
+                          <Play size={18} className="text-cyan-400 ml-0.5" />
+                        )}
+                      </button>
+
+                      {/* Track info */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-white font-semibold text-sm truncate">{remix.title || 'Untitled Remix'}</h3>
+                        <p className="text-cyan-400/50 text-xs mt-0.5">
+                          {remix.prompt || 'Remix'}
+                          {remix.duration && <span className="ml-2 opacity-70">• {remix.duration}s</span>}
+                          {remix.audio_format && <span className="ml-2 opacity-70">• {remix.audio_format.toUpperCase()}</span>}
+                        </p>
+                      </div>
+
+                      {/* Download */}
+                      {remix.audioUrl && (
+                        <button
+                          onClick={() => handleDownload(remix.audioUrl, `${remix.title || 'remix'}.${remix.audio_format || 'wav'}`, remix.audio_format || 'wav')}
+                          className="px-3 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-500/20 flex items-center justify-center gap-1.5 transition-all active:scale-95"
+                          title={`Download ${(remix.audio_format || 'WAV').toUpperCase()}`}
+                        >
+                          <Download size={14} className="text-cyan-400" />
+                          <span className="text-xs text-cyan-400 font-medium">{(remix.audio_format || 'WAV').toUpperCase()}</span>
                         </button>
                       )}
                     </div>

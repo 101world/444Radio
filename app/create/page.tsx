@@ -19,6 +19,7 @@ const DeletedChatsModal = lazy(() => import('../components/DeletedChatsModal'))
 const SplitStemsModal = lazy(() => import('../components/SplitStemsModal'))
 const VisualizerModal = lazy(() => import('../components/VisualizerModal'))
 const LipSyncModal = lazy(() => import('../components/LipSyncModal'))
+const ResoundModal = lazy(() => import('../components/ResoundModal'))
 const FeaturesSidebar = lazy(() => import('../components/FeaturesSidebar'))
 const MatrixConsole = lazy(() => import('../components/MatrixConsole'))
 const OutOfCreditsModal = lazy(() => import('../components/OutOfCreditsModal'))
@@ -153,6 +154,7 @@ function CreatePageContent() {
   const [trainedVoices, setTrainedVoices] = useState<{ id: string; voice_id: string; name: string; source_audio_url?: string }[]>([])
   const [isUploadingRef, setIsUploadingRef] = useState(false)
   const [showRemakeModal, setShowRemakeModal] = useState(false)
+  const [showResoundModal, setShowResoundModal] = useState(false)
   // Audio recording for voice reference (actual mic capture, not speech-to-text)
   const [isAudioRecording, setIsAudioRecording] = useState(false)
   const [audioRecordingTime, setAudioRecordingTime] = useState(0)
@@ -1658,6 +1660,238 @@ function CreatePageContent() {
     return { error: resultData.error || 'Failed to generate music' }
   }
 
+  // Generate using meta/musicgen (Resound — beat upload + prompt)
+  const generateResound = async (
+    params: {
+      title: string
+      prompt: string
+      inputAudioUrl: string
+      duration: number
+      continuation: boolean
+      continuation_start: number
+      continuation_end: number | null
+      model_version: string
+      output_format: string
+      normalization_strategy: string
+      top_k: number
+      top_p: number
+      temperature: number
+      classifier_free_guidance: number
+      multi_band_diffusion: boolean
+      seed: number | null
+    },
+    signal?: AbortSignal,
+    messageId?: string
+  ) => {
+    const requestBody = {
+      title: params.title,
+      prompt: params.prompt,
+      input_audio: params.inputAudioUrl,
+      duration: params.duration,
+      continuation: params.continuation,
+      continuation_start: params.continuation_start,
+      continuation_end: params.continuation_end,
+      model_version: params.model_version,
+      output_format: params.output_format,
+      normalization_strategy: params.normalization_strategy,
+      top_k: params.top_k,
+      top_p: params.top_p,
+      temperature: params.temperature,
+      classifier_free_guidance: params.classifier_free_guidance,
+      multi_band_diffusion: params.multi_band_diffusion,
+      seed: params.seed,
+    }
+
+    const res = await fetch('/api/generate/resound', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody),
+      signal,
+    })
+
+    // Parse NDJSON stream (same pattern as generateMusic)
+    const reader = res.body?.getReader()
+    if (!reader) return { error: 'No response stream' }
+
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let resultData: any = null
+
+    try {
+      while (true) {
+        if (signal?.aborted) throw new DOMException('The operation was aborted.', 'AbortError')
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+        for (const line of lines) {
+          if (!line.trim()) continue
+          try {
+            const parsed = JSON.parse(line)
+            if (parsed.type === 'started' && parsed.predictionId && messageId) {
+              predictionIdsRef.current.set(messageId, parsed.predictionId)
+              if (pendingCancelsRef.current.has(messageId)) {
+                pendingCancelsRef.current.delete(messageId)
+                fetch('/api/generate/cancel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ predictionId: parsed.predictionId }) }).catch(() => {})
+                predictionIdsRef.current.delete(messageId)
+              }
+            } else if (parsed.type === 'result') {
+              resultData = parsed
+            }
+          } catch { /* skip */ }
+        }
+      }
+      if (buffer.trim()) {
+        try {
+          const parsed = JSON.parse(buffer)
+          if (parsed.type === 'result') resultData = parsed
+          else if (parsed.type === 'started' && parsed.predictionId && messageId) {
+            predictionIdsRef.current.set(messageId, parsed.predictionId)
+          }
+        } catch { /* ignore */ }
+      }
+    } finally {
+      reader.releaseLock()
+      if (messageId) predictionIdsRef.current.delete(messageId)
+    }
+
+    if (!resultData) return { error: 'No result received from generation' }
+
+    if (resultData.success) {
+      return {
+        audioUrl: resultData.audioUrl,
+        title: resultData.title || params.title,
+        prompt: params.prompt,
+        creditsRemaining: resultData.creditsRemaining,
+      }
+    }
+    return { error: resultData.error || 'Failed to generate Remix' }
+  }
+
+  // Handler called from the ResoundModal onGenerate callback
+  const handleResoundGenerate = async (resoundParams: {
+    title: string
+    prompt: string
+    inputAudioUrl: string
+    duration: number
+    continuation: boolean
+    continuation_start: number
+    continuation_end: number | null
+    model_version: string
+    output_format: string
+    normalization_strategy: string
+    top_k: number
+    top_p: number
+    temperature: number
+    classifier_free_guidance: number
+    multi_band_diffusion: boolean
+    seed: number | null
+  }) => {
+    // Close the modal
+    setShowResoundModal(false)
+
+    const generationId = Date.now().toString()
+    const userMessage: Message = {
+      id: generationId,
+      type: 'user',
+      content: `🔁 Remix: "${resoundParams.title}" — ${resoundParams.prompt.substring(0, 80)}`,
+      timestamp: new Date(),
+    }
+    const generatingMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      type: 'generation',
+      content: activeGenerations.size > 0 ? '🔁 Queued — will start soon…' : '🔁 Remixing your beat…',
+      generationType: 'music',
+      isGenerating: true,
+      timestamp: new Date(),
+    }
+
+    setMessages(prev => [...prev, userMessage, generatingMessage])
+    setGenerationQueue(prev => [...prev, generatingMessage.id])
+    setActiveGenerations(prev => new Set(prev).add(generatingMessage.id))
+
+    const abortController = new AbortController()
+    abortControllersRef.current.set(generatingMessage.id, abortController)
+
+    // Add to persistent generation queue
+    const genId = addGeneration({
+      type: 'music',
+      prompt: resoundParams.prompt,
+      title: resoundParams.title,
+    })
+    setMessages(prev => prev.map(msg =>
+      msg.id === generatingMessage.id ? { ...msg, generationId: genId } : msg
+    ))
+    updateGeneration(genId, { status: 'generating', progress: 10 })
+
+    try {
+      const result = await generateResound(resoundParams, abortController.signal, generatingMessage.id)
+
+      if (!result.error && result.creditsRemaining !== undefined) {
+        setUserCredits(result.creditsRemaining)
+      }
+      refreshCredits()
+      window.dispatchEvent(new Event('credits:refresh'))
+
+      if (result.error) {
+        updateGeneration(genId, { status: 'failed', error: result.error })
+      } else {
+        updateGeneration(genId, {
+          status: 'completed',
+          result: {
+            audioUrl: 'audioUrl' in result ? result.audioUrl : undefined,
+            title: result.title,
+          },
+        })
+      }
+
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === generatingMessage.id || msg.generationId === genId
+            ? {
+                ...msg,
+                isGenerating: false,
+                content: result.error ? '❌ 444 Radio locking in. Please try again.' : '✅ Remix track generated!',
+                result: result.error ? undefined : result,
+              }
+            : msg
+        )
+      )
+
+      if (!result.error) {
+        const assistantMessage: Message = {
+          id: (Date.now() + Math.random()).toString(),
+          type: 'assistant',
+          content: 'Your Remix track is ready! Want to create cover art or generate another?',
+          timestamp: new Date(),
+        }
+        setMessages(prev => [...prev, assistantMessage])
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return
+      console.error('Remix generation error:', error)
+      updateGeneration(genId, { status: 'failed', error: error instanceof Error ? error.message : 'Unknown error' })
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === generatingMessage.id || msg.generationId === genId
+            ? { ...msg, isGenerating: false, content: '❌ Remix generation failed. Please try again.' }
+            : msg
+        )
+      )
+      refreshCredits()
+      window.dispatchEvent(new Event('credits:refresh'))
+    } finally {
+      abortControllersRef.current.delete(generatingMessage.id)
+      setGenerationQueue(prev => prev.filter(id => id !== generatingMessage.id))
+      setActiveGenerations(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(generatingMessage.id)
+        return newSet
+      })
+    }
+  }
+
   const generateImage = async (prompt: string, signal?: AbortSignal) => {
     const res = await fetch('/api/generate/image-only', {
       method: 'POST',
@@ -2854,6 +3088,15 @@ function CreatePageContent() {
                   {hasVoiceOrInstrumentalRef && !isAudioRecording && (
                     <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-purple-400 rounded-full"></div>
                   )}
+                </button>
+
+                {/* Remix — upload beat + prompt with MusicGen */}
+                <button
+                  onClick={() => setShowResoundModal(true)}
+                  className="flex-shrink-0 w-8 h-8 rounded-lg transition-all duration-300 flex items-center justify-center hover:bg-white/[0.06] border border-transparent hover:border-white/10"
+                  title="Remix — Upload a beat & generate with 444 Radio"
+                >
+                  <Music2 size={16} className="text-white/50" />
                 </button>
 
                 {/* Instrumental Toggle */}
@@ -4463,6 +4706,16 @@ function CreatePageContent() {
           </div>
         </div>
       )}
+
+      {/* Remix Modal */}
+      <Suspense fallback={null}>
+        <ResoundModal
+          isOpen={showResoundModal}
+          onClose={() => setShowResoundModal(false)}
+          userCredits={userCredits ?? undefined}
+          onGenerate={handleResoundGenerate}
+        />
+      </Suspense>
 
       {/* Out of Credits Modal */}
       <Suspense fallback={null}>
