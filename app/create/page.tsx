@@ -2690,7 +2690,7 @@ function CreatePageContent() {
             }} />
 
             {/* Glass Container */}
-            <div className="relative bg-black/30 backdrop-blur-2xl rounded-2xl border border-white/[0.08] focus-within:border-cyan-400/25 focus-within:shadow-[0_0_30px_rgba(34,211,238,0.08)] transition-all duration-500 shadow-2xl shadow-black/40 overflow-hidden">
+            <div className="relative bg-black/30 backdrop-blur-2xl rounded-2xl border border-white/[0.08] focus-within:border-cyan-400/25 focus-within:shadow-[0_0_30px_rgba(34,211,238,0.08)] transition-all duration-500 shadow-2xl shadow-black/40">
 
               {/* ── Row 1: Textarea ── */}
               <div className="flex items-end gap-3 px-4 md:px-5 pt-4 pb-2">
