@@ -147,7 +147,7 @@ function CreatePageContent() {
   const [selectedVoiceId, setSelectedVoiceId] = useState('')
   const [trainedVoices, setTrainedVoices] = useState<{ id: string; voice_id: string; name: string }[]>([])
   const [isUploadingRef, setIsUploadingRef] = useState(false)
-  const [showVoiceRefModal, setShowVoiceRefModal] = useState(false)
+  const [showRemakeModal, setShowRemakeModal] = useState(false)
   // Audio recording for voice reference (actual mic capture, not speech-to-text)
   const [isAudioRecording, setIsAudioRecording] = useState(false)
   const [audioRecordingTime, setAudioRecordingTime] = useState(0)
@@ -2631,36 +2631,42 @@ function CreatePageContent() {
             </div>
           )}
 
-          {/* Voice/Instrumental Reference Indicators */}
+          {/* Remake Status Bar — clear, human-readable */}
           {hasVoiceOrInstrumentalRef && (
-            <div className="flex flex-wrap items-center gap-2 mb-2 px-1">
-              {(voiceRefFile || voiceRefUrl || recordedVoiceBlob || selectedVoiceId) && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-                  <AudioLines size={12} className="text-purple-400" />
-                  <span className="text-[11px] text-purple-300 max-w-[120px] truncate">
-                    {selectedVoiceId ? `Voice ID: ${selectedVoiceId.substring(0, 8)}...` : voiceRefFile ? voiceRefFile.name : recordedVoiceBlob ? `Recording (${audioRecordingTime}s)` : 'Voice ref'}
-                  </span>
-                  <button onClick={() => { setVoiceRefFile(null); setVoiceRefUrl(''); setRecordedVoiceBlob(null); setSelectedVoiceId('') }} className="p-0.5 hover:bg-white/10 rounded">
-                    <X size={10} className="text-purple-400" />
-                  </button>
+            <div className="mb-2 mx-auto w-full max-w-3xl">
+              <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-purple-500/[0.08] via-transparent to-cyan-500/[0.08] border border-purple-500/15 rounded-xl">
+                <Repeat size={14} className="text-purple-400 flex-shrink-0" />
+                <div className="flex-1 min-w-0 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                  {(instrumentalRefFile || instrumentalRefUrl) && (
+                    <span className="flex items-center gap-1.5">
+                      <span className="text-white/40">Song:</span>
+                      <span className="text-orange-300 truncate max-w-[140px]">{instrumentalRefFile?.name || 'Reference track'}</span>
+                      <button onClick={() => { setInstrumentalRefFile(null); setInstrumentalRefUrl('') }} className="p-0.5 hover:bg-white/10 rounded">
+                        <X size={10} className="text-white/30" />
+                      </button>
+                    </span>
+                  )}
+                  {(voiceRefFile || voiceRefUrl || recordedVoiceBlob || selectedVoiceId) && (
+                    <span className="flex items-center gap-1.5">
+                      <span className="text-white/40">Voice:</span>
+                      <span className="text-purple-300 truncate max-w-[140px]">
+                        {selectedVoiceId ? (trainedVoices.find(v => v.voice_id === selectedVoiceId)?.name || 'Trained voice') : voiceRefFile ? voiceRefFile.name : recordedVoiceBlob ? `Recording (${audioRecordingTime}s)` : 'Voice ref'}
+                      </span>
+                      <button onClick={() => { setVoiceRefFile(null); setVoiceRefUrl(''); setRecordedVoiceBlob(null); setSelectedVoiceId('') }} className="p-0.5 hover:bg-white/10 rounded">
+                        <X size={10} className="text-white/30" />
+                      </button>
+                    </span>
+                  )}
+                  <span className="text-white/25">→ Write new lyrics in prompt</span>
                 </div>
-              )}
-              {(instrumentalRefFile || instrumentalRefUrl) && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-orange-500/10 border border-orange-500/30 rounded-lg">
-                  <Guitar size={12} className="text-orange-400" />
-                  <span className="text-[11px] text-orange-300 max-w-[120px] truncate">
-                    {instrumentalRefFile ? instrumentalRefFile.name : 'Instrumental ref'}
-                  </span>
-                  <button onClick={() => { setInstrumentalRefFile(null); setInstrumentalRefUrl('') }} className="p-0.5 hover:bg-white/10 rounded">
-                    <X size={10} className="text-orange-400" />
-                  </button>
-                </div>
-              )}
-              {/* Change voice ref */}
-              <button onClick={() => setShowVoiceRefModal(true)} className="flex items-center gap-1 px-2 py-1 bg-purple-500/10 border border-purple-500/20 rounded-lg text-[11px] text-purple-300 hover:bg-purple-500/20 transition-colors">
-                Change
-              </button>
-              <span className="text-[10px] text-cyan-400/60 font-mono">music-01 (3 cr)</span>
+                <button onClick={() => setShowRemakeModal(true)} className="text-[11px] text-purple-300/70 hover:text-purple-200 px-2 py-1 hover:bg-white/5 rounded-lg transition-colors flex-shrink-0">
+                  Edit
+                </button>
+                <button onClick={() => { clearAllRefs() }} className="text-[11px] text-red-400/50 hover:text-red-400 px-2 py-1 hover:bg-white/5 rounded-lg transition-colors flex-shrink-0">
+                  Clear
+                </button>
+                <span className="text-[10px] text-cyan-400/40 font-mono flex-shrink-0">3 cr</span>
+              </div>
             </div>
           )}
 
@@ -2785,44 +2791,28 @@ function CreatePageContent() {
                   )}
                 </button>
 
-                {/* Voice Reference — opens modal */}
+                {/* Remake — unified voice + song reference */}
                 <button
                   onClick={() => {
                     if (isAudioRecording) { stopAudioRecording(); return }
-                    setShowVoiceRefModal(true)
+                    setShowRemakeModal(true)
                   }}
                   className={`relative flex-shrink-0 w-8 h-8 rounded-lg transition-all duration-300 flex items-center justify-center ${
                     isAudioRecording
                       ? 'bg-purple-500/20 border border-purple-400/40 animate-pulse'
-                      : recordedVoiceBlob || voiceRefFile || voiceRefUrl || selectedVoiceId
+                      : hasVoiceOrInstrumentalRef
                       ? 'bg-purple-500/15 border border-purple-400/30'
                       : 'hover:bg-white/[0.06] border border-transparent hover:border-white/10'
                   }`}
-                  title={isAudioRecording ? `Recording... ${audioRecordingTime}s` : 'Voice Reference'}
+                  title={isAudioRecording ? `Recording... ${audioRecordingTime}s` : 'Remake — Use your voice & song to create something new'}
                 >
                   {isAudioRecording ? (
                     <div className="w-2.5 h-2.5 bg-purple-400 rounded-sm"></div>
                   ) : (
-                    <AudioLines size={16} className={recordedVoiceBlob || voiceRefFile || voiceRefUrl || selectedVoiceId ? 'text-purple-400' : 'text-white/50'} />
+                    <Repeat size={16} className={hasVoiceOrInstrumentalRef ? 'text-purple-400' : 'text-white/50'} />
                   )}
-                  {(recordedVoiceBlob || voiceRefFile || voiceRefUrl || selectedVoiceId) && !isAudioRecording && (
+                  {hasVoiceOrInstrumentalRef && !isAudioRecording && (
                     <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-purple-400 rounded-full"></div>
-                  )}
-                </button>
-
-                {/* Instrumental Reference */}
-                <button
-                  onClick={() => instrumentalRefInputRef.current?.click()}
-                  className={`flex-shrink-0 w-8 h-8 rounded-lg transition-all duration-300 flex items-center justify-center ${
-                    instrumentalRefFile || instrumentalRefUrl
-                      ? 'bg-orange-500/15 border border-orange-400/30'
-                      : 'hover:bg-white/[0.06] border border-transparent hover:border-white/10'
-                  }`}
-                  title={instrumentalRefFile ? `Instrumental: ${instrumentalRefFile.name}` : 'Instrumental Reference'}
-                >
-                  <Guitar size={16} className={instrumentalRefFile || instrumentalRefUrl ? 'text-orange-400' : 'text-white/50'} />
-                  {(instrumentalRefFile || instrumentalRefUrl) && (
-                    <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-orange-400 rounded-full"></div>
                   )}
                 </button>
 
@@ -4249,142 +4239,186 @@ function CreatePageContent() {
         />
       </Suspense>
 
-      {/* Voice Reference Modal — choose upload / voice ID / record */}
-      {showVoiceRefModal && (
+      {/* Remake Modal — unified song + voice reference flow */}
+      {showRemakeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowVoiceRefModal(false)} />
-          <div className="relative w-full max-w-sm bg-gray-950/95 backdrop-blur-2xl border border-purple-500/20 rounded-2xl shadow-2xl shadow-purple-500/10 overflow-hidden">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowRemakeModal(false)} />
+          <div className="relative w-full max-w-md bg-gray-950/95 backdrop-blur-2xl border border-purple-500/15 rounded-2xl shadow-2xl shadow-purple-500/10 overflow-hidden">
             
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-purple-500/15 flex items-center justify-center">
-                  <AudioLines size={16} className="text-purple-400" />
+            <div className="px-6 pt-6 pb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/20 to-cyan-500/20 flex items-center justify-center">
+                    <Repeat size={20} className="text-purple-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-white">Remake a Song</h3>
+                    <p className="text-xs text-white/40 mt-0.5">New lyrics, same vibe — in any voice</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-white">Voice Reference</h3>
-                  <p className="text-[11px] text-white/40">Clone a voice for your generation</p>
-                </div>
+                <button onClick={() => setShowRemakeModal(false)} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
+                  <X size={16} className="text-white/40" />
+                </button>
               </div>
-              <button onClick={() => setShowVoiceRefModal(false)} className="p-1.5 hover:bg-white/5 rounded-lg transition-colors">
-                <X size={16} className="text-white/40" />
-              </button>
             </div>
 
-            {/* Options */}
-            <div className="p-4 space-y-2.5">
+            {/* How it works - subtle explainer */}
+            <div className="mx-6 mb-4 px-4 py-3 bg-white/[0.02] rounded-xl border border-white/[0.04]">
+              <div className="flex items-center gap-6 text-[11px] text-white/30">
+                <span className="flex items-center gap-1.5"><span className="w-5 h-5 rounded-full bg-orange-500/15 flex items-center justify-center text-orange-400 text-[10px] font-bold">1</span> Upload song</span>
+                <span className="text-white/10">→</span>
+                <span className="flex items-center gap-1.5"><span className="w-5 h-5 rounded-full bg-purple-500/15 flex items-center justify-center text-purple-400 text-[10px] font-bold">2</span> Pick voice</span>
+                <span className="text-white/10">→</span>
+                <span className="flex items-center gap-1.5"><span className="w-5 h-5 rounded-full bg-cyan-500/15 flex items-center justify-center text-cyan-400 text-[10px] font-bold">3</span> Write lyrics</span>
+              </div>
+            </div>
 
-              {/* Option 1: Upload Voice File */}
-              <button
-                onClick={() => {
-                  voiceRefInputRef.current?.click()
-                  setShowVoiceRefModal(false)
-                }}
-                className="w-full flex items-center gap-3.5 px-4 py-3.5 bg-white/[0.03] hover:bg-purple-500/10 border border-white/[0.06] hover:border-purple-500/25 rounded-xl transition-all duration-200 group"
-              >
-                <div className="w-10 h-10 rounded-lg bg-purple-500/10 group-hover:bg-purple-500/20 flex items-center justify-center transition-colors">
-                  <Upload size={18} className="text-purple-400" />
-                </div>
-                <div className="text-left">
-                  <div className="text-sm font-medium text-white group-hover:text-purple-200 transition-colors">Upload Voice File</div>
-                  <div className="text-[11px] text-white/35">.wav or .mp3 — at least 15 seconds</div>
-                </div>
-              </button>
-
-              {/* Option 2: Select Trained Voice ID */}
-              {trainedVoices.length > 0 ? (
-                <div className="w-full px-4 py-3.5 bg-white/[0.03] border border-white/[0.06] rounded-xl">
-                  <div className="flex items-center gap-3.5 mb-3">
-                    <div className="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center">
-                      <Sparkles size={18} className="text-cyan-400" />
-                    </div>
-                    <div className="text-left">
-                      <div className="text-sm font-medium text-white">Trained Voice ID</div>
-                      <div className="text-[11px] text-white/35">Select from your trained voices</div>
-                    </div>
+            {/* Step 1: Upload Song */}
+            <div className="px-6 pb-3">
+              <div className="text-[11px] font-medium text-white/50 uppercase tracking-wider mb-2 flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-orange-500/15 flex items-center justify-center text-orange-400 text-[10px] font-bold">1</span>
+                Upload a song to remake
+              </div>
+              {instrumentalRefFile ? (
+                <div className="flex items-center justify-between px-4 py-3 bg-orange-500/[0.08] border border-orange-500/20 rounded-xl">
+                  <div className="flex items-center gap-2.5">
+                    <Guitar size={16} className="text-orange-400" />
+                    <span className="text-sm text-orange-200 truncate max-w-[220px]">{instrumentalRefFile.name}</span>
                   </div>
-                  <select
-                    value={selectedVoiceId}
-                    onChange={e => {
-                      setSelectedVoiceId(e.target.value)
-                      if (e.target.value) {
-                        setVoiceRefFile(null)
-                        setVoiceRefUrl('')
-                        setRecordedVoiceBlob(null)
-                        setShowVoiceRefModal(false)
-                      }
-                    }}
-                    className="w-full px-3 py-2.5 bg-black/40 border border-white/10 hover:border-cyan-500/30 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-400/50 transition-colors cursor-pointer appearance-none"
-                    style={{
-                      backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(148,163,184,0.5)' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
-                      backgroundRepeat: 'no-repeat',
-                      backgroundPosition: 'right 0.6rem center',
-                      backgroundSize: '1.1em 1.1em',
-                      paddingRight: '2.2rem'
-                    }}
-                  >
-                    <option value="">Choose a voice...</option>
-                    {trainedVoices.map(v => (
-                      <option key={v.voice_id} value={v.voice_id}>{v.name}</option>
-                    ))}
-                  </select>
+                  <button onClick={() => { setInstrumentalRefFile(null); setInstrumentalRefUrl('') }} className="text-xs text-white/30 hover:text-red-400 transition-colors">Remove</button>
                 </div>
               ) : (
-                <a
-                  href="/voice-training"
-                  className="w-full flex items-center gap-3.5 px-4 py-3.5 bg-white/[0.03] hover:bg-cyan-500/10 border border-white/[0.06] hover:border-cyan-500/25 rounded-xl transition-all duration-200 group"
+                <button
+                  onClick={() => instrumentalRefInputRef.current?.click()}
+                  className="w-full flex items-center gap-3.5 px-4 py-4 bg-white/[0.03] hover:bg-orange-500/[0.08] border border-dashed border-white/10 hover:border-orange-500/30 rounded-xl transition-all duration-200 group"
                 >
-                  <div className="w-10 h-10 rounded-lg bg-cyan-500/10 group-hover:bg-cyan-500/20 flex items-center justify-center transition-colors">
-                    <Sparkles size={18} className="text-cyan-400" />
+                  <div className="w-10 h-10 rounded-lg bg-orange-500/10 group-hover:bg-orange-500/20 flex items-center justify-center transition-colors">
+                    <Upload size={18} className="text-orange-400" />
                   </div>
                   <div className="text-left">
-                    <div className="text-sm font-medium text-white group-hover:text-cyan-200 transition-colors">Train a Voice</div>
-                    <div className="text-[11px] text-white/35">Create a custom AI voice clone</div>
+                    <div className="text-sm font-medium text-white/80 group-hover:text-orange-200 transition-colors">Upload Song / Instrumental</div>
+                    <div className="text-[11px] text-white/30">.wav or .mp3 — the beat & melody you want to keep</div>
                   </div>
-                </a>
+                </button>
               )}
-
-              {/* Option 3: Record Live */}
-              <button
-                onClick={() => {
-                  setShowVoiceRefModal(false)
-                  startAudioRecording()
-                }}
-                className="w-full flex items-center gap-3.5 px-4 py-3.5 bg-white/[0.03] hover:bg-red-500/10 border border-white/[0.06] hover:border-red-500/25 rounded-xl transition-all duration-200 group"
-              >
-                <div className="w-10 h-10 rounded-lg bg-red-500/10 group-hover:bg-red-500/20 flex items-center justify-center transition-colors">
-                  <Mic size={18} className="text-red-400" />
-                </div>
-                <div className="text-left">
-                  <div className="text-sm font-medium text-white group-hover:text-red-200 transition-colors">Record Live</div>
-                  <div className="text-[11px] text-white/35">Use your microphone to record a voice sample</div>
-                </div>
-              </button>
             </div>
 
-            {/* Current ref status */}
-            {(voiceRefFile || recordedVoiceBlob || voiceRefUrl || selectedVoiceId) && (
-              <div className="px-4 pb-4">
-                <div className="flex items-center justify-between px-3 py-2.5 bg-purple-500/10 border border-purple-500/20 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <AudioLines size={13} className="text-purple-400" />
-                    <span className="text-xs text-purple-300 truncate max-w-[180px]">
-                      {selectedVoiceId ? `Voice ID: ${trainedVoices.find(v => v.voice_id === selectedVoiceId)?.name || selectedVoiceId.substring(0, 12)}` : voiceRefFile ? voiceRefFile.name : recordedVoiceBlob ? `Recording (${audioRecordingTime}s)` : 'Voice ref set'}
+            {/* Step 2: Choose Voice */}
+            <div className="px-6 pb-3">
+              <div className="text-[11px] font-medium text-white/50 uppercase tracking-wider mb-2 flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-purple-500/15 flex items-center justify-center text-purple-400 text-[10px] font-bold">2</span>
+                Choose a voice <span className="text-white/25 normal-case">(optional)</span>
+              </div>
+              
+              {/* Current voice status */}
+              {(voiceRefFile || recordedVoiceBlob || selectedVoiceId) ? (
+                <div className="flex items-center justify-between px-4 py-3 bg-purple-500/[0.08] border border-purple-500/20 rounded-xl mb-2">
+                  <div className="flex items-center gap-2.5">
+                    <AudioLines size={16} className="text-purple-400" />
+                    <span className="text-sm text-purple-200 truncate max-w-[220px]">
+                      {selectedVoiceId ? (trainedVoices.find(v => v.voice_id === selectedVoiceId)?.name || 'Trained voice') : voiceRefFile ? voiceRefFile.name : `Recording (${audioRecordingTime}s)`}
                     </span>
                   </div>
-                  <button
-                    onClick={() => { setVoiceRefFile(null); setVoiceRefUrl(''); setRecordedVoiceBlob(null); setSelectedVoiceId('') }}
-                    className="text-[11px] text-red-400/70 hover:text-red-400 transition-colors"
-                  >
-                    Remove
-                  </button>
+                  <button onClick={() => { setVoiceRefFile(null); setVoiceRefUrl(''); setRecordedVoiceBlob(null); setSelectedVoiceId('') }} className="text-xs text-white/30 hover:text-red-400 transition-colors">Remove</button>
                 </div>
-              </div>
-            )}
+              ) : null}
 
-            {/* Footer hint */}
-            <div className="px-5 pb-4">
-              <p className="text-[10px] text-white/25 text-center">Voice refs enable the music-01 model (3 credits per generation)</p>
+              <div className="space-y-2">
+                {/* Upload voice file */}
+                <button
+                  onClick={() => {
+                    voiceRefInputRef.current?.click()
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 bg-white/[0.03] hover:bg-purple-500/[0.08] border border-white/[0.06] hover:border-purple-500/25 rounded-xl transition-all duration-200 group"
+                >
+                  <div className="w-9 h-9 rounded-lg bg-purple-500/10 group-hover:bg-purple-500/20 flex items-center justify-center transition-colors">
+                    <Upload size={16} className="text-purple-400" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-sm text-white/80 group-hover:text-purple-200 transition-colors">Upload Voice File</div>
+                    <div className="text-[10px] text-white/25">.wav or .mp3 — a sample of the voice</div>
+                  </div>
+                </button>
+
+                {/* Trained voice */}
+                {trainedVoices.length > 0 ? (
+                  <div className="px-4 py-3 bg-white/[0.03] border border-white/[0.06] rounded-xl">
+                    <div className="flex items-center gap-3 mb-2.5">
+                      <div className="w-9 h-9 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                        <Sparkles size={16} className="text-cyan-400" />
+                      </div>
+                      <div className="text-sm text-white/80">Use Trained Voice</div>
+                    </div>
+                    <select
+                      value={selectedVoiceId}
+                      onChange={e => {
+                        setSelectedVoiceId(e.target.value)
+                        if (e.target.value) { setVoiceRefFile(null); setVoiceRefUrl(''); setRecordedVoiceBlob(null) }
+                      }}
+                      className="w-full px-3 py-2.5 bg-black/40 border border-white/10 hover:border-cyan-500/30 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-400/50 cursor-pointer appearance-none"
+                      style={{
+                        backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(148,163,184,0.5)' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
+                        backgroundRepeat: 'no-repeat',
+                        backgroundPosition: 'right 0.6rem center',
+                        backgroundSize: '1.1em 1.1em',
+                        paddingRight: '2.2rem'
+                      }}
+                    >
+                      <option value="">Choose a voice...</option>
+                      {trainedVoices.map(v => (
+                        <option key={v.voice_id} value={v.voice_id}>{v.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <a href="/voice-training" className="w-full flex items-center gap-3 px-4 py-3 bg-white/[0.03] hover:bg-cyan-500/[0.08] border border-white/[0.06] hover:border-cyan-500/25 rounded-xl transition-all duration-200 group">
+                    <div className="w-9 h-9 rounded-lg bg-cyan-500/10 group-hover:bg-cyan-500/20 flex items-center justify-center transition-colors">
+                      <Sparkles size={16} className="text-cyan-400" />
+                    </div>
+                    <div className="text-left">
+                      <div className="text-sm text-white/80 group-hover:text-cyan-200 transition-colors">Train a Voice</div>
+                      <div className="text-[10px] text-white/25">Create a custom AI voice clone</div>
+                    </div>
+                  </a>
+                )}
+
+                {/* Record live */}
+                <button
+                  onClick={() => { setShowRemakeModal(false); startAudioRecording() }}
+                  className="w-full flex items-center gap-3 px-4 py-3 bg-white/[0.03] hover:bg-red-500/[0.08] border border-white/[0.06] hover:border-red-500/25 rounded-xl transition-all duration-200 group"
+                >
+                  <div className="w-9 h-9 rounded-lg bg-red-500/10 group-hover:bg-red-500/20 flex items-center justify-center transition-colors">
+                    <Mic size={16} className="text-red-400" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-sm text-white/80 group-hover:text-red-200 transition-colors">Record Live</div>
+                    <div className="text-[10px] text-white/25">Sing or speak into your microphone</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Step 3 hint */}
+            <div className="px-6 pb-4 pt-1">
+              <div className="text-[11px] font-medium text-white/50 uppercase tracking-wider mb-2 flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-cyan-500/15 flex items-center justify-center text-cyan-400 text-[10px] font-bold">3</span>
+                Write your new lyrics
+              </div>
+              <div className="px-4 py-3 bg-white/[0.02] border border-white/[0.04] rounded-xl">
+                <p className="text-xs text-white/30">Type your new lyrics or prompt in the main text box, then hit create. The AI will generate the song with the same vibe and your new words.</p>
+              </div>
+            </div>
+
+            {/* Done button */}
+            <div className="px-6 pb-6 pt-2">
+              <button
+                onClick={() => setShowRemakeModal(false)}
+                className="w-full py-3 bg-gradient-to-r from-purple-500/20 to-cyan-500/20 hover:from-purple-500/30 hover:to-cyan-500/30 border border-purple-500/20 rounded-xl text-sm font-medium text-white transition-all duration-200"
+              >
+                {hasVoiceOrInstrumentalRef ? 'Done — Now write your lyrics' : 'Close'}
+              </button>
+              <p className="text-[10px] text-white/20 text-center mt-2">Uses advanced AI model • 3 credits per generation</p>
             </div>
           </div>
         </div>
