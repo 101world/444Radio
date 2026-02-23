@@ -902,10 +902,13 @@ function applyEffect(code: string, method: string, value: number | string, remov
 
   // If value at "zero" state and user is removing, strip the effect
   if (remove) {
+    // Don't remove if this method has a dynamic LFO expression
+    if (hasDynamic(code, method)) return code
     // Remove entire .method(value) — handle slider() wrapper and simple value
     const stripSliderRe = new RegExp(`\\s*\\.${method}\\s*\\(\\s*slider\\s*\\([^)]*\\)\\s*\\)`)
     if (stripSliderRe.test(code)) return code.replace(stripSliderRe, '')
-    const stripRe = new RegExp(`\\s*\\.${method}\\s*\\([^)]*\\)`)
+    // Only strip simple static values, not complex expressions
+    const stripRe = new RegExp(`\\s*\\.${method}\\s*\\(\\s*[0-9.]+\\s*\\)`)
     return code.replace(stripRe, '')
   }
 
@@ -990,27 +993,36 @@ function RotaryKnob({ value, min, max, step, onChange, onCommit, color, label, s
   const ptr = polarToCart(cx, cy, r * 0.55, angle)
   const isDynamic = disabled
   const knobRef = useRef<SVGSVGElement>(null)
+  const wheelCommitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const clamp = (v: number) => Math.max(min, Math.min(max, Math.round(v / step) * step))
 
+  // Stable ref for latest props — avoids stale closures in imperative listeners
+  const stateRef = useRef({ value, min, max, step, isDynamic, onChange, onCommit })
+  stateRef.current = { value, min, max, step, isDynamic, onChange, onCommit }
+
   // Register wheel listener imperatively with { passive: false } to allow preventDefault
-  const wheelState = useRef({ value, min, max, step, isDynamic, onChange, onCommit })
-  wheelState.current = { value, min, max, step, isDynamic, onChange, onCommit }
+  // Wheel commit is DEBOUNCED — we only commit once scrolling stops (150ms).
   useEffect(() => {
     const el = knobRef.current
     if (!el) return
     const onWheel = (e: WheelEvent) => {
-      const s = wheelState.current
+      const s = stateRef.current
       if (s.isDynamic) return
       e.preventDefault()
       e.stopPropagation()
       const clampV = (v: number) => Math.max(s.min, Math.min(s.max, Math.round(v / s.step) * s.step))
       s.onChange(clampV(s.value + (-e.deltaY / 800) * (s.max - s.min)))
-      s.onCommit()
+      // Debounce commit: only fire after user stops scrolling
+      if (wheelCommitTimer.current) clearTimeout(wheelCommitTimer.current)
+      wheelCommitTimer.current = setTimeout(() => stateRef.current.onCommit(), 150)
     }
     el.addEventListener('wheel', onWheel, { passive: false })
-    return () => el.removeEventListener('wheel', onWheel)
-  }, [])
+    return () => {
+      el.removeEventListener('wheel', onWheel)
+      if (wheelCommitTimer.current) clearTimeout(wheelCommitTimer.current)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDown = (e: React.MouseEvent) => {
     if (isDynamic) return
@@ -1018,12 +1030,13 @@ function RotaryKnob({ value, min, max, step, onChange, onCommit, color, label, s
     const startY = e.clientY, startVal = value, range = max - min
     const onMove = (ev: MouseEvent) => {
       const sens = ev.shiftKey ? 600 : 150
-      onChange(clamp(startVal + ((startY - ev.clientY) / sens) * range))
+      stateRef.current.onChange(clamp(startVal + ((startY - ev.clientY) / sens) * range))
     }
     const onUp = () => {
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mouseup', onUp)
-      onCommit()
+      // Commit with LATEST value from stateRef, not the stale closure
+      stateRef.current.onCommit()
     }
     document.addEventListener('mousemove', onMove)
     document.addEventListener('mouseup', onUp)
@@ -1350,6 +1363,12 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
   const isInternalChange = useRef(false)
   const prevNodeCount = useRef(0)
 
+  // Stable refs for latest state — avoids stale closures in callbacks
+  const nodesRef = useRef(nodes)
+  nodesRef.current = nodes
+  const panRef = useRef(pan)
+  panRef.current = pan
+
   // ── FULL SYNC from parent code ──
   // This is the ONLY place where we re-parse nodes from code.
   // It runs whenever the code prop changes AND it wasn't us who changed it.
@@ -1396,36 +1415,6 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
     commitTimer.current = setTimeout(() => onUpdate(), 80)
   }, [onCodeChange, onUpdate])
 
-  // ── Apply a targeted effect change to a single node's code block ──
-  const applyNodeEffect = useCallback((nodeId: string, method: string, value: number | string, remove?: boolean) => {
-    setNodes(prev => {
-      const idx = prev.findIndex(n => n.id === nodeId)
-      if (idx === -1) return prev
-      const old = prev[idx]
-      const newCode = applyEffect(old.code, method, value, remove)
-      if (newCode === old.code) return prev // No actual change
-
-      const updated = [...prev]
-      updated[idx] = { ...old, code: newCode }
-
-      // Re-detect the changed property from the updated code
-      const rawCode = newCode.replace(/\/\/ \[muted\] /g, '')
-      if (typeof value === 'number') {
-        const key = method === 'slow' ? 'speed' : method as keyof PatternNode
-        if (key in old) (updated[idx] as unknown as Record<string, unknown>)[key] = detectNum(rawCode, method, 0)
-      } else {
-        if (method === 'scale') updated[idx].scale = detectScale(rawCode)
-        if (method === 'vowel') updated[idx].vowel = detectVowel(rawCode)
-        if (method === 'bank' || method === 'soundDotS') updated[idx].soundSource = detectSoundSource(rawCode)
-      }
-
-      // Rebuild full code from all nodes
-      const fullCode = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
-      sendToParent(fullCode)
-      return updated
-    })
-  }, [bpm, sendToParent])
-
   /** Lightweight full code rebuild that stitches node code blocks together */
   const rebuildFullCodeFromNodes = useCallback((nodeList: PatternNode[], currentBpm: number, origCode: string): string => {
     const lines = origCode.split('\n')
@@ -1459,6 +1448,26 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
     return parts.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n'
   }, [])
 
+  // ── Apply a targeted effect change to a single node's code block ──
+  const applyNodeEffect = useCallback((nodeId: string, method: string, value: number | string, remove?: boolean) => {
+    setNodes(prev => {
+      const idx = prev.findIndex(n => n.id === nodeId)
+      if (idx === -1) return prev
+      const old = prev[idx]
+      const newCode = applyEffect(old.code, method, value, remove)
+      if (newCode === old.code) return prev // No actual change
+
+      const updated = [...prev]
+      // Full re-parse so ALL properties stay in sync with the code
+      updated[idx] = reparseNodeFromCode({ ...old, code: newCode })
+
+      // Rebuild full code from all nodes
+      const fullCode = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
+      sendToParent(fullCode)
+      return updated
+    })
+  }, [bpm, sendToParent, rebuildFullCodeFromNodes])
+
   // ── BPM Change ──
   const handleBpmChange = useCallback((v: number) => {
     const clamped = Math.max(30, Math.min(300, Math.round(v)))
@@ -1490,7 +1499,7 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
       const updated = prev.map(n => {
         if (n.type === 'drums' || n.type === 'fx' || n.type === 'other') return n
         const newCode = applyEffect(n.code, 'scale', newScale)
-        return { ...n, code: newCode, scale: newScale }
+        return reparseNodeFromCode({ ...n, code: newCode })
       })
       const fullCode = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
       sendToParent(fullCode)
@@ -1550,25 +1559,34 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
   }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
   // ── Sound / Pattern / Scale change (per node) ──
+  // Use setNodes to read current state instead of stale `nodes` closure
   const changeSoundSource = useCallback((id: string, newSource: string) => {
-    const node = nodes.find(n => n.id === id)
-    if (!node) return
-    if (node.type === 'drums') {
-      applyNodeEffect(id, 'bank', newSource)
-    } else {
-      applyNodeEffect(id, 'soundDotS', newSource)
-    }
-  }, [nodes, applyNodeEffect])
+    setNodes(prev => {
+      const node = prev.find(n => n.id === id)
+      if (!node) return prev
+      const method = node.type === 'drums' ? 'bank' : 'soundDotS'
+      const newCode = applyEffect(node.code, method, newSource)
+      if (newCode === node.code) return prev
+      const updated = prev.map(n => n.id === id ? reparseNodeFromCode({ ...n, code: newCode }) : n)
+      const fullCode = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
+      sendToParent(fullCode)
+      return updated
+    })
+  }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
   const changePattern = useCallback((id: string, newPattern: string) => {
-    const node = nodes.find(n => n.id === id)
-    if (!node) return
-    if (node.type === 'drums') {
-      applyNodeEffect(id, 'drumPattern', newPattern)
-    } else {
-      applyNodeEffect(id, 'notePattern', newPattern)
-    }
-  }, [nodes, applyNodeEffect])
+    setNodes(prev => {
+      const node = prev.find(n => n.id === id)
+      if (!node) return prev
+      const method = node.type === 'drums' ? 'drumPattern' : 'notePattern'
+      const newCode = applyEffect(node.code, method, newPattern)
+      if (newCode === node.code) return prev
+      const updated = prev.map(n => n.id === id ? reparseNodeFromCode({ ...n, code: newCode }) : n)
+      const fullCode = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
+      sendToParent(fullCode)
+      return updated
+    })
+  }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
   const changeScale = useCallback((id: string, newScale: string) => {
     applyNodeEffect(id, 'scale', newScale)
@@ -1597,7 +1615,7 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
 
   // ── Knob change handler (updates local state, commits on release) ──
   const updateKnob = useCallback((nodeId: string, method: string, value: number) => {
-    // Instant local update for smooth knob dragging
+    // Instant local update for smooth knob dragging — UI only, no code change
     setNodes(prev => prev.map(n => {
       if (n.id !== nodeId) return n
       const key = method === 'slow' ? 'speed' : method
@@ -1605,31 +1623,38 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
     }))
   }, [])
 
-  const commitKnob = useCallback((nodeId: string, method: string, value: number) => {
+  const commitKnob = useCallback((nodeId: string, method: string, _staleValue: number) => {
+    // Read the CURRENT value from nodesRef (not the stale closure value)
+    const node = nodesRef.current.find(n => n.id === nodeId)
+    if (!node) return
+    const key = method === 'slow' ? 'speed' : method
+    const v = (node as unknown as Record<string, number>)[key] ?? _staleValue
+
     // Determine if we should remove the effect (at default/neutral value)
-    const isDefault = (method === 'lpf' && value >= 20000) ||
-                      (method === 'hpf' && value <= 0) ||
-                      (method === 'room' && value <= 0) ||
-                      (method === 'roomsize' && Math.abs(value - 0.5) < 0.01) ||
-                      (method === 'delay' && value <= 0) ||
-                      (method === 'delayfeedback' && value <= 0) ||
-                      (method === 'crush' && value <= 0) ||
-                      (method === 'coarse' && value <= 0) ||
-                      (method === 'shape' && value <= 0) ||
-                      (method === 'distort' && value <= 0) ||
-                      (method === 'pan' && Math.abs(value - 0.5) < 0.01) ||
-                      (method === 'attack' && value <= 0.001) ||
-                      (method === 'sustain' && Math.abs(value - 0.5) < 0.01) ||
-                      (method === 'release' && Math.abs(value - 0.1) < 0.01) ||
-                      (method === 'phaser' && value <= 0) ||
-                      (method === 'phaserdepth' && Math.abs(value - 0.5) < 0.01) ||
-                      (method === 'vibmod' && value <= 0) ||
-                      (method === 'lpq' && Math.abs(value - 1) < 0.1) ||
-                      (method === 'hpq' && Math.abs(value - 1) < 0.1) ||
-                      (method === 'fmi' && value <= 0) ||
-                      (method === 'velocity' && Math.abs(value - 1) < 0.01) ||
-                      (method === 'orbit' && value <= 0)
-    applyNodeEffect(nodeId, method, value, isDefault)
+    const isDefault = (method === 'lpf' && v >= 20000) ||
+                      (method === 'hpf' && v <= 0) ||
+                      (method === 'room' && v <= 0) ||
+                      (method === 'roomsize' && Math.abs(v - 0.5) < 0.01) ||
+                      (method === 'delay' && v <= 0) ||
+                      (method === 'delayfeedback' && v <= 0) ||
+                      (method === 'crush' && v <= 0) ||
+                      (method === 'coarse' && v <= 0) ||
+                      (method === 'shape' && v <= 0) ||
+                      (method === 'distort' && v <= 0) ||
+                      (method === 'pan' && Math.abs(v - 0.5) < 0.01) ||
+                      (method === 'attack' && v <= 0.001) ||
+                      (method === 'sustain' && Math.abs(v - 0.5) < 0.01) ||
+                      (method === 'release' && Math.abs(v - 0.1) < 0.01) ||
+                      (method === 'phaser' && v <= 0) ||
+                      (method === 'phaserdepth' && Math.abs(v - 0.5) < 0.01) ||
+                      (method === 'vibmod' && v <= 0) ||
+                      (method === 'lpq' && Math.abs(v - 1) < 0.1) ||
+                      (method === 'hpq' && Math.abs(v - 1) < 0.1) ||
+                      (method === 'fmi' && v <= 0) ||
+                      (method === 'velocity' && Math.abs(v - 1) < 0.01) ||
+                      (method === 'orbit' && v <= 0)
+
+    applyNodeEffect(nodeId, method, v, isDefault)
   }, [applyNodeEffect])
 
   // ── Quick FX toggle (inject/remove pattern modifier) ──
@@ -1838,20 +1863,30 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
 
   // ── Randomize pattern for a node ──
   const randomizePattern = useCallback((nodeId: string) => {
-    const node = nodes.find(n => n.id === nodeId)
-    if (!node) return
-    const newPattern = randomPatternForType(node.type)
-    changePattern(nodeId, newPattern)
-  }, [nodes, changePattern])
+    setNodes(prev => {
+      const node = prev.find(n => n.id === nodeId)
+      if (!node) return prev
+      const newPattern = randomPatternForType(node.type)
+      const method = node.type === 'drums' ? 'drumPattern' : 'notePattern'
+      const newCode = applyEffect(node.code, method, newPattern)
+      if (newCode === node.code) return prev
+      const updated = prev.map(n => n.id === nodeId ? reparseNodeFromCode({ ...n, code: newCode }) : n)
+      const fullCode = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
+      sendToParent(fullCode)
+      return updated
+    })
+  }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
   // ── Canvas interactions ──
   const handleMouseDown = useCallback((e: React.MouseEvent, nodeId: string) => {
     e.stopPropagation()
     const rect = containerRef.current?.getBoundingClientRect(); if (!rect) return
-    const node = nodes.find(n => n.id === nodeId); if (!node) return
-    setDragging({ id: nodeId, ox: (e.clientX - rect.left) / zoom - pan.x - node.x, oy: (e.clientY - rect.top) / zoom - pan.y - node.y })
+    // Read from nodesRef to avoid recreating this callback on every node change
+    const node = nodesRef.current.find(n => n.id === nodeId); if (!node) return
+    const p = panRef.current
+    setDragging({ id: nodeId, ox: (e.clientX - rect.left) / zoom - p.x - node.x, oy: (e.clientY - rect.top) / zoom - p.y - node.y })
     setSelectedNode(nodeId)
-  }, [nodes, zoom, pan])
+  }, [zoom])
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (linking) {
@@ -1861,10 +1896,11 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
     }
     if (dragging) {
       const rect = containerRef.current?.getBoundingClientRect(); if (!rect) return
+      const p = panRef.current
       setNodes(prev => prev.map(n => n.id === dragging.id ? {
         ...n,
-        x: Math.round(((e.clientX - rect.left) / zoom - pan.x - dragging.ox) / 20) * 20,
-        y: Math.round(((e.clientY - rect.top) / zoom - pan.y - dragging.oy) / 20) * 20,
+        x: Math.round(((e.clientX - rect.left) / zoom - p.x - dragging.ox) / 20) * 20,
+        y: Math.round(((e.clientY - rect.top) / zoom - p.y - dragging.oy) / 20) * 20,
       } : n))
     } else if (isPanning) {
       setPan({
@@ -1872,7 +1908,7 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
         y: panStart.current.py + (e.clientY - panStart.current.y) / zoom,
       })
     }
-  }, [dragging, isPanning, zoom, pan, linking])
+  }, [dragging, isPanning, zoom, linking])
 
   const handleMouseUp = useCallback(() => {
     setDragging(null); setIsPanning(false); if (linking) setLinking(null)
@@ -1881,10 +1917,11 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
   const handleBgMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.target === containerRef.current || (e.target as HTMLElement).classList.contains('node-grid-bg')) {
       setIsPanning(true)
-      panStart.current = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y }
+      const p = panRef.current
+      panStart.current = { x: e.clientX, y: e.clientY, px: p.x, py: p.y }
       setSelectedNode(null)
     }
-  }, [pan])
+  }, [])
 
   // Register canvas wheel listener imperatively with { passive: false } to allow preventDefault
   useEffect(() => {
