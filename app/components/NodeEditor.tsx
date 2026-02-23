@@ -1371,12 +1371,10 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
   const containerRef = useRef<HTMLDivElement>(null)
   const lastCodeRef = useRef(code)
   const commitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // Track the last code string WE sent to parent via sendToParent.
-  // When useEffect([code]) fires, if code === lastSentCodeRef.current, we know
-  // this change originated from us and skip re-parsing. This is immune to React
-  // batching (unlike a boolean flag or counter, which can get out of sync when
-  // React coalesces multiple setState calls into one render).
-  const lastSentCodeRef = useRef<string | null>(null)
+  // Counter-based guard: each sendToParent increments, each useEffect([code]) decrements.
+  // This correctly handles rapid successive internal changes (mute A, mute B quickly)
+  // where a single boolean would be consumed by the first render, leaving the second unguarded.
+  const internalChangeCount = useRef(0)
   const prevNodeCount = useRef(0)
 
   // Stable refs for latest state — avoids stale closures in callbacks
@@ -1393,11 +1391,10 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
   // It runs whenever the code prop changes AND it wasn't us who changed it.
   useEffect(() => {
     // Skip re-parse if this code change originated from us (sendToParent)
-    if (lastSentCodeRef.current !== null && code === lastSentCodeRef.current) {
-      lastSentCodeRef.current = null
+    if (internalChangeCount.current > 0) {
+      internalChangeCount.current--
       return
     }
-    lastSentCodeRef.current = null
     // External code change (user typed in editor, loaded example, etc.)
     lastCodeRef.current = code
     const newBpm = extractBpm(code)
@@ -1432,7 +1429,7 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
   // ── Send code change to parent ──
   const sendToParent = useCallback((newCode: string) => {
     lastCodeRef.current = newCode
-    lastSentCodeRef.current = newCode
+    internalChangeCount.current++
     onCodeChange(newCode)
     if (commitTimer.current) clearTimeout(commitTimer.current)
     commitTimer.current = setTimeout(() => onUpdate(), 80)
