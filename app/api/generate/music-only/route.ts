@@ -261,7 +261,7 @@ export async function POST(req: NextRequest) {
       const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
       console.error('❌ Credit deduction blocked:', errorMsg)
       await logCreditTransaction({ userId, amount: -2, type: 'generation_music', status: 'failed', description: `Music: ${title}`, metadata: { prompt, genre } })
-      return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 })
+      return NextResponse.json({ error: errorMsg }, { status: 402 })
     }
     console.log(`✅ Credits deducted. Remaining: ${deductResult.new_credits}`)
     await logCreditTransaction({ userId, amount: -2, balanceAfter: deductResult.new_credits, type: 'generation_music', description: `Music: ${title}`, metadata: { prompt, genre } })

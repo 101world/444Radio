@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
       const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
       console.error('❌ Credit deduction blocked:', errorMsg)
       await logCreditTransaction({ userId, amount: -COST, type: 'other', status: 'failed', description: `Voice Training: ${trimmedName}`, metadata: { voiceFileUrl } })
-      return corsResponse(NextResponse.json({ error: 'Insufficient credits' }, { status: 402 }))
+      return corsResponse(NextResponse.json({ error: errorMsg }, { status: 402 }))
     }
     console.log(`✅ Credits deducted (${COST}). Remaining: ${deductResult.new_credits}`)
     await logCreditTransaction({ userId, amount: -COST, balanceAfter: deductResult.new_credits, type: 'other', description: `Voice Training: ${trimmedName}`, metadata: { voiceFileUrl } })

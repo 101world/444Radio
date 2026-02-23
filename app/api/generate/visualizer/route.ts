@@ -163,7 +163,7 @@ export async function POST(req: NextRequest) {
         description: `444 Visualizer FAILED (${durationSec}s ${finalResolution}) — insufficient credits`,
         metadata: { prompt: prompt.substring(0, 200), duration: durationSec },
       })
-      return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 })
+      return NextResponse.json({ error: errorMsg }, { status: 402 })
     }
 
     creditsDeducted = true
