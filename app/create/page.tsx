@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, Suspense, lazy } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices, Upload, RotateCcw, Repeat, Plus, Square } from 'lucide-react'
+import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices, Upload, RotateCcw, Repeat, Plus, Square, Guitar, AudioLines } from 'lucide-react'
 
 // Lazy load heavy modals for better performance
 const MusicGenerationModal = lazy(() => import('../components/MusicGenerationModal'))
@@ -19,7 +19,6 @@ const DeletedChatsModal = lazy(() => import('../components/DeletedChatsModal'))
 const SplitStemsModal = lazy(() => import('../components/SplitStemsModal'))
 const VisualizerModal = lazy(() => import('../components/VisualizerModal'))
 const LipSyncModal = lazy(() => import('../components/LipSyncModal'))
-const MiniMax01Modal = lazy(() => import('../components/MiniMax01Modal'))
 const FeaturesSidebar = lazy(() => import('../components/FeaturesSidebar'))
 const MatrixConsole = lazy(() => import('../components/MatrixConsole'))
 const OutOfCreditsModal = lazy(() => import('../components/OutOfCreditsModal'))
@@ -104,7 +103,6 @@ function CreatePageContent() {
   const [showAutotuneModal, setShowAutotuneModal] = useState(false)
   const [showVisualizerModal, setShowVisualizerModal] = useState(false)
   const [showLipSyncModal, setShowLipSyncModal] = useState(false)
-  const [showMiniMax01Modal, setShowMiniMax01Modal] = useState(false)
   const [boostAudioUrl, setBoostAudioUrl] = useState('')
   const [boostTrackTitle, setBoostTrackTitle] = useState('')
   const [preselectedMusicId, setPreselectedMusicId] = useState<string | undefined>()
@@ -140,6 +138,25 @@ function CreatePageContent() {
   
   // Instrumental mode (LLM approach - no API parameters needed)
   const [isInstrumental, setIsInstrumental] = useState(false)
+  
+  // Voice & Instrumental reference state (uses music-01 when present)
+  const [voiceRefFile, setVoiceRefFile] = useState<File | null>(null)
+  const [voiceRefUrl, setVoiceRefUrl] = useState('')
+  const [instrumentalRefFile, setInstrumentalRefFile] = useState<File | null>(null)
+  const [instrumentalRefUrl, setInstrumentalRefUrl] = useState('')
+  const [selectedVoiceId, setSelectedVoiceId] = useState('')
+  const [trainedVoices, setTrainedVoices] = useState<{ id: string; voice_id: string; name: string }[]>([])
+  const [isUploadingRef, setIsUploadingRef] = useState(false)
+  // Audio recording for voice reference (actual mic capture, not speech-to-text)
+  const [isAudioRecording, setIsAudioRecording] = useState(false)
+  const [audioRecordingTime, setAudioRecordingTime] = useState(0)
+  const [recordedVoiceBlob, setRecordedVoiceBlob] = useState<Blob | null>(null)
+  const audioRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
+  const audioTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const voiceRefInputRef = useRef<HTMLInputElement>(null)
+  const instrumentalRefInputRef = useRef<HTMLInputElement>(null)
+  const hasVoiceOrInstrumentalRef = !!(voiceRefUrl || voiceRefFile || recordedVoiceBlob || selectedVoiceId || instrumentalRefUrl || instrumentalRefFile)
   
   // ACE-Step parameters (for non-English)
   const [audioLengthInSeconds, setAudioLengthInSeconds] = useState(45)
@@ -298,6 +315,68 @@ function CreatePageContent() {
       setIsRecording(false)
       setMediaRecorder(null)
     }
+  }
+
+  // ── Voice & Instrumental Reference helpers ──
+
+  // Load trained voices on mount
+  useEffect(() => {
+    fetch('/api/voice-trainings').then(r => r.ok ? r.json() : null).then(d => {
+      if (d?.voices) setTrainedVoices(d.voices)
+    }).catch(() => {})
+  }, [])
+
+  // Upload a reference file to R2
+  const uploadReferenceFile = async (file: File | Blob, type: 'voice' | 'instrumental'): Promise<string | null> => {
+    const formData = new FormData()
+    const fileObj = file instanceof File ? file : new File([file], `voice-recording-${Date.now()}.webm`, { type: 'audio/webm' })
+    formData.append('file', fileObj)
+    formData.append('type', type)
+    const res = await fetch('/api/generate/upload-reference', { method: 'POST', body: formData })
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.url || null
+  }
+
+  // Mic → actual audio recording (for voice reference, not speech-to-text)
+  const startAudioRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' })
+      audioChunksRef.current = []
+      setAudioRecordingTime(0)
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data) }
+      recorder.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+        setRecordedVoiceBlob(blob)
+        stream.getTracks().forEach(t => t.stop())
+        if (audioTimerRef.current) { clearInterval(audioTimerRef.current); audioTimerRef.current = null }
+      }
+      audioRecorderRef.current = recorder
+      recorder.start(1000)
+      setIsAudioRecording(true)
+      audioTimerRef.current = setInterval(() => setAudioRecordingTime(p => p + 1), 1000)
+    } catch {
+      alert('Could not access microphone. Please check permissions.')
+    }
+  }
+
+  const stopAudioRecording = () => {
+    if (audioRecorderRef.current && audioRecorderRef.current.state === 'recording') {
+      audioRecorderRef.current.stop()
+    }
+    setIsAudioRecording(false)
+  }
+
+  // Clear all voice/instrumental references
+  const clearAllRefs = () => {
+    setVoiceRefFile(null)
+    setVoiceRefUrl('')
+    setInstrumentalRefFile(null)
+    setInstrumentalRefUrl('')
+    setSelectedVoiceId('')
+    setRecordedVoiceBlob(null)
+    setAudioRecordingTime(0)
   }
 
   useEffect(() => {
@@ -701,7 +780,8 @@ function CreatePageContent() {
     setShowTitleError(false)
 
     // Check credits before generation AND prevent multiple simultaneous generations
-    const creditsNeeded = selectedType === 'music' ? 2 : selectedType === 'image' ? 1 : selectedType === 'effects' ? 2 : 0
+    const useMusic01 = selectedType === 'music' && hasVoiceOrInstrumentalRef
+    const creditsNeeded = selectedType === 'music' ? (useMusic01 ? 3 : 2) : selectedType === 'image' ? 1 : selectedType === 'effects' ? 2 : 0
     
     // Fetch fresh credits to prevent race conditions
     const freshCreditsRes = await fetch('/api/credits')
@@ -709,7 +789,7 @@ function CreatePageContent() {
     const currentCredits = freshCreditsData.credits || 0
     
     // Also check if there are active generations that haven't deducted credits yet
-    const pendingCredits = activeGenerations.size * (selectedType === 'music' ? 2 : selectedType === 'effects' ? 2 : 1)
+    const pendingCredits = activeGenerations.size * (selectedType === 'music' ? (useMusic01 ? 3 : 2) : selectedType === 'effects' ? 2 : 1)
     const availableCredits = currentCredits - pendingCredits
     
     console.log('[Credit Check]', { currentCredits, pendingCredits, availableCredits, creditsNeeded })
@@ -921,6 +1001,14 @@ function CreatePageContent() {
         setMessages(prev => [...prev, autoFillMessage])
       }
 
+      // Capture voice/instrumental refs before clearing
+      const capturedVoiceRefFile = voiceRefFile
+      const capturedVoiceRefUrl = voiceRefUrl
+      const capturedInstrumentalRefFile = instrumentalRefFile
+      const capturedInstrumentalRefUrl = instrumentalRefUrl
+      const capturedSelectedVoiceId = selectedVoiceId
+      const capturedRecordedVoiceBlob = recordedVoiceBlob
+
       // Process queue asynchronously with auto-filled or user-provided values
       processQueue(generatingMessage.id, 'music', {
         prompt: originalPrompt,
@@ -928,7 +1016,13 @@ function CreatePageContent() {
         bpm: finalBpm,
         customTitle: finalTitle,
         customLyrics: finalLyrics,
-        songDuration
+        songDuration,
+        voiceRefFile: capturedVoiceRefFile,
+        voiceRefUrl: capturedVoiceRefUrl,
+        instrumentalRefFile: capturedInstrumentalRefFile,
+        instrumentalRefUrl: capturedInstrumentalRefUrl,
+        selectedVoiceId: capturedSelectedVoiceId,
+        recordedVoiceBlob: capturedRecordedVoiceBlob,
       })
 
       // Clear parameters so the next generation gets fresh auto-filled values
@@ -938,6 +1032,7 @@ function CreatePageContent() {
       setBpm('')
       setSongDuration('long')
       setIsInstrumental(false)
+      clearAllRefs()
       return
     }
 
@@ -986,6 +1081,12 @@ function CreatePageContent() {
       customTitle?: string
       customLyrics?: string
       songDuration?: 'short' | 'medium' | 'long'
+      voiceRefFile?: File | null
+      voiceRefUrl?: string
+      instrumentalRefFile?: File | null
+      instrumentalRefUrl?: string
+      selectedVoiceId?: string
+      recordedVoiceBlob?: Blob | null
     }
   ) => {
     console.log('[Generation] Starting generation:', { messageId, type, params })
@@ -1039,17 +1140,46 @@ function CreatePageContent() {
         const durationToUse = params.songDuration || 'long'
         const genreToUse = params.genre || undefined
         const bpmToUse = params.bpm || undefined
+
+        // Check if voice/instrumental references are provided → use music-01
+        const hasRefs = !!(params.voiceRefFile || params.voiceRefUrl || params.recordedVoiceBlob || params.selectedVoiceId || params.instrumentalRefFile || params.instrumentalRefUrl)
         
-        console.log('[Generation] Calling generateMusic with:', { 
-          prompt: params.prompt, 
-          titleToUse, 
-          lyricsToUse, 
-          durationToUse,
-          genreToUse,
-          bpmToUse
-        })
-        console.log('🔍 [TITLE DEBUG] Title being sent to generateMusic:', titleToUse)
-        result = await generateMusic(params.prompt, titleToUse, lyricsToUse, durationToUse, genreToUse, bpmToUse, abortController.signal, messageId)
+        if (hasRefs) {
+          console.log('[Generation] Using music-01 (voice/instrumental refs present)')
+          // Upload pending reference files
+          let finalVoiceRefUrl = params.voiceRefUrl || ''
+          let finalInstrumentalRefUrl = params.instrumentalRefUrl || ''
+
+          if (params.recordedVoiceBlob && !finalVoiceRefUrl) {
+            const url = await uploadReferenceFile(params.recordedVoiceBlob, 'voice')
+            if (url) finalVoiceRefUrl = url
+          }
+          if (params.voiceRefFile && !finalVoiceRefUrl) {
+            const url = await uploadReferenceFile(params.voiceRefFile, 'voice')
+            if (url) finalVoiceRefUrl = url
+          }
+          if (params.instrumentalRefFile && !finalInstrumentalRefUrl) {
+            const url = await uploadReferenceFile(params.instrumentalRefFile, 'instrumental')
+            if (url) finalInstrumentalRefUrl = url
+          }
+
+          result = await generateMusic01(
+            params.prompt, titleToUse, lyricsToUse, durationToUse, genreToUse,
+            { voiceRefUrl: finalVoiceRefUrl || undefined, instrumentalRefUrl: finalInstrumentalRefUrl || undefined, voiceId: params.selectedVoiceId || undefined },
+            abortController.signal, messageId
+          )
+        } else {
+          console.log('[Generation] Calling generateMusic with:', { 
+            prompt: params.prompt, 
+            titleToUse, 
+            lyricsToUse, 
+            durationToUse,
+            genreToUse,
+            bpmToUse
+          })
+          console.log('🔍 [TITLE DEBUG] Title being sent to generateMusic:', titleToUse)
+          result = await generateMusic(params.prompt, titleToUse, lyricsToUse, durationToUse, genreToUse, bpmToUse, abortController.signal, messageId)
+        }
         console.log('[Generation] Music generation result:', result)
       } else {
         console.log('[Generation] Calling generateImage with:', params.prompt)
@@ -1397,6 +1527,96 @@ function CreatePageContent() {
     }
   }
 
+  // Generate using minimax/music-01 (when voice or instrumental refs are provided)
+  const generateMusic01 = async (
+    prompt: string,
+    title?: string,
+    lyrics?: string,
+    duration: 'short' | 'medium' | 'long' = 'long',
+    genreParam?: string,
+    refs?: { voiceRefUrl?: string; instrumentalRefUrl?: string; voiceId?: string },
+    signal?: AbortSignal,
+    messageId?: string
+  ) => {
+    const requestBody: Record<string, unknown> = {
+      prompt: prompt.slice(0, 300),
+      title,
+      lyrics,
+      duration,
+      genre: genreParam || undefined,
+      voice_id: refs?.voiceId || undefined,
+      voice_file: refs?.voiceRefUrl || undefined,
+      instrumental_file: refs?.instrumentalRefUrl || undefined,
+    }
+
+    const res = await fetch('/api/generate/music-01', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody),
+      signal,
+    })
+
+    // Parse NDJSON stream (same pattern as generateMusic)
+    const reader = res.body?.getReader()
+    if (!reader) return { error: 'No response stream' }
+
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let resultData: any = null
+
+    try {
+      while (true) {
+        if (signal?.aborted) throw new DOMException('The operation was aborted.', 'AbortError')
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+        for (const line of lines) {
+          if (!line.trim()) continue
+          try {
+            const parsed = JSON.parse(line)
+            if (parsed.type === 'started' && parsed.predictionId && messageId) {
+              predictionIdsRef.current.set(messageId, parsed.predictionId)
+              if (pendingCancelsRef.current.has(messageId)) {
+                pendingCancelsRef.current.delete(messageId)
+                fetch('/api/generate/cancel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ predictionId: parsed.predictionId }) }).catch(() => {})
+                predictionIdsRef.current.delete(messageId)
+              }
+            } else if (parsed.type === 'result') {
+              resultData = parsed
+            }
+          } catch { /* skip */ }
+        }
+      }
+      if (buffer.trim()) {
+        try {
+          const parsed = JSON.parse(buffer)
+          if (parsed.type === 'result') resultData = parsed
+          else if (parsed.type === 'started' && parsed.predictionId && messageId) {
+            predictionIdsRef.current.set(messageId, parsed.predictionId)
+          }
+        } catch { /* ignore */ }
+      }
+    } finally {
+      reader.releaseLock()
+      if (messageId) predictionIdsRef.current.delete(messageId)
+    }
+
+    if (!resultData) return { error: 'No result received from generation' }
+
+    if (resultData.success) {
+      return {
+        audioUrl: resultData.audioUrl,
+        title: resultData.title || title || prompt.substring(0, 50),
+        prompt,
+        lyrics: resultData.lyrics || lyrics,
+        creditsRemaining: resultData.creditsRemaining,
+      }
+    }
+    return { error: resultData.error || 'Failed to generate music' }
+  }
+
   const generateImage = async (prompt: string, signal?: AbortSignal) => {
     const res = await fetch('/api/generate/image-only', {
       method: 'POST',
@@ -1735,7 +1955,7 @@ function CreatePageContent() {
           onShowAutotune={() => setShowAutotuneModal(true)}
           onShowVisualizer={() => setShowVisualizerModal(true)}
           onShowLipSync={() => setShowLipSyncModal(true)}
-          onShowMiniMax01={() => setShowMiniMax01Modal(true)}
+          onShowMiniMax01={() => {}} // Voice/instrumental refs now integrated into main prompt bar
           onOpenRelease={() => handleOpenRelease()}
           onTagClick={(tag: string) => {
             const newInput = input ? `${input}, ${tag}` : tag
@@ -2353,21 +2573,6 @@ function CreatePageContent() {
                     </button>
                     
                     <button
-                      onClick={() => setShowMiniMax01Modal(true)}
-                      className="group relative p-3 rounded-xl transition-all duration-200 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-purple-400/30"
-                    >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/60 mx-auto group-hover:text-purple-400">
-                        <path d="M2 10v3"/>
-                        <path d="M6 6v11"/>
-                        <path d="M10 3v18"/>
-                        <path d="M14 8v7"/>
-                        <path d="M18 5v13"/>
-                        <path d="M22 10v3"/>
-                      </svg>
-                      <span className="block text-xs mt-1 text-center text-white/70">444 Radio</span>
-                    </button>
-                    
-                    <button
                       onClick={() => setShowMediaUploadModal(true)}
                       className="group relative p-3 rounded-xl transition-all duration-200 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-purple-400/30"
                     >
@@ -2419,7 +2624,7 @@ function CreatePageContent() {
                 {isLoadingCredits ? '...' : userCredits}
               </span>
               <span className="text-xs text-cyan-400/60 font-mono">
-                {selectedType === 'music' ? '(-2)' : selectedType === 'image' ? '(-1)' : selectedType === 'effects' ? '(-2)' : ''}
+                {selectedType === 'music' ? (hasVoiceOrInstrumentalRef ? '(-3)' : '(-2)') : selectedType === 'image' ? '(-1)' : selectedType === 'effects' ? '(-2)' : ''}
               </span>
             </div>
           </div>
@@ -2433,6 +2638,54 @@ function CreatePageContent() {
                   💰 <span className="font-bold">2 credits</span>
                 </p>
               </div>
+            </div>
+          )}
+
+          {/* Voice/Instrumental Reference Indicators */}
+          {hasVoiceOrInstrumentalRef && (
+            <div className="flex flex-wrap items-center gap-2 mb-2 px-1">
+              {(voiceRefFile || voiceRefUrl || recordedVoiceBlob || selectedVoiceId) && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                  <AudioLines size={12} className="text-purple-400" />
+                  <span className="text-[11px] text-purple-300 max-w-[120px] truncate">
+                    {selectedVoiceId ? `Voice ID: ${selectedVoiceId.substring(0, 8)}...` : voiceRefFile ? voiceRefFile.name : recordedVoiceBlob ? `Recording (${audioRecordingTime}s)` : 'Voice ref'}
+                  </span>
+                  <button onClick={() => { setVoiceRefFile(null); setVoiceRefUrl(''); setRecordedVoiceBlob(null); setSelectedVoiceId('') }} className="p-0.5 hover:bg-white/10 rounded">
+                    <X size={10} className="text-purple-400" />
+                  </button>
+                </div>
+              )}
+              {(instrumentalRefFile || instrumentalRefUrl) && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                  <Guitar size={12} className="text-orange-400" />
+                  <span className="text-[11px] text-orange-300 max-w-[120px] truncate">
+                    {instrumentalRefFile ? instrumentalRefFile.name : 'Instrumental ref'}
+                  </span>
+                  <button onClick={() => { setInstrumentalRefFile(null); setInstrumentalRefUrl('') }} className="p-0.5 hover:bg-white/10 rounded">
+                    <X size={10} className="text-orange-400" />
+                  </button>
+                </div>
+              )}
+              {/* Trained voice selector (if user has trained voices and no file/recording selected) */}
+              {trainedVoices.length > 0 && !voiceRefFile && !recordedVoiceBlob && !voiceRefUrl && (
+                <select
+                  value={selectedVoiceId}
+                  onChange={e => setSelectedVoiceId(e.target.value)}
+                  className="text-[11px] bg-black/40 border border-purple-500/30 rounded-lg px-2 py-1 text-purple-300 focus:outline-none focus:border-purple-400/60"
+                >
+                  <option value="">Trained Voices</option>
+                  {trainedVoices.map(v => (
+                    <option key={v.voice_id} value={v.voice_id}>{v.name}</option>
+                  ))}
+                </select>
+              )}
+              {/* Upload voice file button */}
+              {!voiceRefFile && !recordedVoiceBlob && !voiceRefUrl && !selectedVoiceId && (
+                <button onClick={() => voiceRefInputRef.current?.click()} className="flex items-center gap-1 px-2 py-1 bg-purple-500/10 border border-purple-500/20 rounded-lg text-[11px] text-purple-300 hover:bg-purple-500/20 transition-colors">
+                  <Upload size={10} /> Voice File
+                </button>
+              )}
+              <span className="text-[10px] text-cyan-400/60 font-mono">music-01 (3 cr)</span>
             </div>
           )}
 
@@ -2462,7 +2715,7 @@ function CreatePageContent() {
                 />
               </button>
 
-              {/* Record Button - Transparent Mic */}
+              {/* Record Button — Speech-to-text (tap) */}
               <button
                 onClick={isRecording ? stopRecording : startRecording}
                 className={`relative flex-shrink-0 w-8 h-8 md:w-9 md:h-9 rounded-lg transition-all duration-300 ${
@@ -2470,7 +2723,7 @@ function CreatePageContent() {
                     ? 'bg-gradient-to-br from-red-500 to-rose-600 shadow-lg shadow-red-500/50 animate-pulse' 
                     : 'bg-white/5 hover:bg-white/10 border border-white/10 hover:border-red-400/50'
                 }`}
-                title={isRecording ? 'Stop Recording' : 'Start Voice Recording'}
+                title={isRecording ? 'Stop Recording' : 'Speech-to-Text'}
               >
                 {isRecording ? (
                   <div className="w-2.5 h-2.5 bg-white rounded-sm absolute inset-0 m-auto"></div>
@@ -2481,6 +2734,58 @@ function CreatePageContent() {
                   />
                 )}
               </button>
+
+              {/* Voice Reference — Record mic audio as voice ref for music-01 */}
+              <button
+                onClick={isAudioRecording ? stopAudioRecording : startAudioRecording}
+                className={`relative flex-shrink-0 w-8 h-8 md:w-9 md:h-9 rounded-lg transition-all duration-300 ${
+                  isAudioRecording
+                    ? 'bg-gradient-to-br from-purple-500 to-fuchsia-600 shadow-lg shadow-purple-500/50 animate-pulse'
+                    : recordedVoiceBlob || voiceRefFile || voiceRefUrl || selectedVoiceId
+                    ? 'bg-purple-500/20 border border-purple-400/50'
+                    : 'bg-white/5 hover:bg-white/10 border border-white/10 hover:border-purple-400/50'
+                }`}
+                title={isAudioRecording ? `Recording voice ref... ${audioRecordingTime}s — Click to stop` : 'Record Voice Reference (for AI voice cloning)'}
+              >
+                {isAudioRecording ? (
+                  <div className="flex items-center justify-center absolute inset-0">
+                    <div className="w-2.5 h-2.5 bg-white rounded-sm"></div>
+                  </div>
+                ) : (
+                  <AudioLines size={16} className={`absolute inset-0 m-auto ${recordedVoiceBlob || voiceRefFile || voiceRefUrl || selectedVoiceId ? 'text-purple-400' : 'text-gray-300'}`} />
+                )}
+                {(recordedVoiceBlob || voiceRefFile || voiceRefUrl || selectedVoiceId) && !isAudioRecording && (
+                  <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-purple-400 rounded-full"></div>
+                )}
+              </button>
+
+              {/* Instrumental Reference Upload */}
+              <input ref={instrumentalRefInputRef} type="file" accept=".wav,.mp3" className="hidden" onChange={e => {
+                const f = e.target.files?.[0]
+                if (f) { setInstrumentalRefFile(f); setInstrumentalRefUrl('') }
+                e.target.value = ''
+              }} />
+              <button
+                onClick={() => instrumentalRefInputRef.current?.click()}
+                className={`relative flex-shrink-0 w-8 h-8 md:w-9 md:h-9 rounded-lg transition-all duration-300 ${
+                  instrumentalRefFile || instrumentalRefUrl
+                    ? 'bg-orange-500/20 border border-orange-400/50'
+                    : 'bg-white/5 hover:bg-white/10 border border-white/10 hover:border-orange-400/50'
+                }`}
+                title={instrumentalRefFile ? `Instrumental: ${instrumentalRefFile.name}` : 'Upload Instrumental Reference (.wav/.mp3)'}
+              >
+                <Guitar size={16} className={`absolute inset-0 m-auto ${instrumentalRefFile || instrumentalRefUrl ? 'text-orange-400' : 'text-gray-300'}`} />
+                {(instrumentalRefFile || instrumentalRefUrl) && (
+                  <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-orange-400 rounded-full"></div>
+                )}
+              </button>
+
+              {/* Voice File Upload (hidden input) */}
+              <input ref={voiceRefInputRef} type="file" accept=".wav,.mp3" className="hidden" onChange={e => {
+                const f = e.target.files?.[0]
+                if (f) { setVoiceRefFile(f); setVoiceRefUrl(''); setRecordedVoiceBlob(null); setSelectedVoiceId('') }
+                e.target.value = ''
+              }} />
 
               {/* Instrumental Toggle - Always Visible */}
               <button
@@ -3946,41 +4251,6 @@ function CreatePageContent() {
             })
             refreshCredits()
             window.dispatchEvent(new Event('credits:refresh'))
-          }}
-        />
-      </Suspense>
-
-      {/* 444 Radio Modal - Voice Training + Voice/Instrumental Reference */}
-      <Suspense fallback={null}>
-        <MiniMax01Modal
-          isOpen={showMiniMax01Modal}
-          onClose={() => setShowMiniMax01Modal(false)}
-          userCredits={userCredits}
-          onSuccess={(result: any) => {
-            const successMessage: Message = {
-              id: Date.now().toString(),
-              type: 'generation',
-              content: `✅ 444 Radio generated: ${result.title || 'Untitled'}`,
-              generationType: 'music',
-              result: {
-                audioUrl: result.audioUrl,
-                title: result.title,
-                lyrics: result.lyrics,
-              },
-              timestamp: new Date()
-            }
-            setMessages(prev => [...prev, successMessage])
-            refreshCredits()
-            window.dispatchEvent(new Event('credits:refresh'))
-          }}
-          onError={(error: string) => {
-            const errorMessage: Message = {
-              id: Date.now().toString(),
-              type: 'assistant',
-              content: `❌ ${error}`,
-              timestamp: new Date()
-            }
-            setMessages(prev => [...prev, errorMessage])
           }}
         />
       </Suspense>
