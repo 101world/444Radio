@@ -17,8 +17,11 @@ export default function DecryptPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const router = useRouter()
   
-  // Detect mobile for performance optimization - inline to avoid render blocking
-  const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent))
+  // Detect mobile for performance optimization — deferred to avoid hydration mismatch
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent))
+  }, [])
 
   // ESC key handler to go back
   useEffect(() => {

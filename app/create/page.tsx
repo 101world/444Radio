@@ -86,9 +86,14 @@ function CreatePageContent() {
       id: '1',
       type: 'assistant',
       content: '👋 Hey! I\'m your AI music studio assistant. What would you like to create today?',
-      timestamp: new Date()
+      timestamp: new Date(0) // static epoch — real time set after mount to avoid hydration mismatch
     }
   ])
+  const [hasMounted, setHasMounted] = useState(false)
+  useEffect(() => {
+    setHasMounted(true)
+    setMessages(prev => prev.map((m, i) => i === 0 ? { ...m, timestamp: new Date() } : m))
+  }, [])
   const [input, setInput] = useState('')
   const [selectedType, setSelectedType] = useState<GenerationType>('music')
   const [isGenerating, setIsGenerating] = useState(false)
@@ -2066,7 +2071,7 @@ function CreatePageContent() {
                         message.type === 'user' ? 'text-cyan-100' : 'text-gray-200'
                       }`}>{message.content}</p>
                     </div>
-                    <p className="text-[10px] text-gray-500/80 mt-1.5 font-mono">{message.timestamp.toLocaleTimeString()}</p>
+                    <p className="text-[10px] text-gray-500/80 mt-1.5 font-mono">{hasMounted ? message.timestamp.toLocaleTimeString() : '\u00A0'}</p>
                   </div>
                 )}
 
