@@ -1036,7 +1036,6 @@ function CreatePageContent() {
       const capturedRecordedVoiceBlob = recordedVoiceBlob
 
       // If a trained voice is selected, send the voice_id directly to music-01
-      // music-01 supports voice_id from voice-cloning natively
       let capturedSelectedVoiceId = selectedVoiceId
       if (capturedSelectedVoiceId) {
         console.log('[Generation] Trained voice selected — sending voice_id to music-01:', capturedSelectedVoiceId)
