@@ -8,6 +8,7 @@ interface TrainedVoice {
   voice_id: string
   name: string
   preview_url: string | null
+  source_audio_url?: string
   status: string
   created_at: string
 }
@@ -351,11 +352,21 @@ export default function MiniMax01Modal({ isOpen, onClose, onSuccess, onError, us
         lyrics: lyrics.trim() || undefined,
         duration,
         genre: genre || undefined,
-        voice_id: selectedVoiceId || undefined,
-        voice_file: finalVoiceRefUrl || undefined,
-        song_file: finalSongRefUrl || undefined,
-        instrumental_file: finalInstrumentalUrl || undefined,
       }
+
+      // If trained voice selected, use its source audio as voice_file
+      // (voice_id from voice-cloning isn't transferable to music-01)
+      if (selectedVoiceId) {
+        const selectedVoice = trainedVoices.find(v => v.voice_id === selectedVoiceId)
+        if (selectedVoice?.source_audio_url) {
+          requestBody.voice_file = selectedVoice.source_audio_url
+        } else {
+          requestBody.voice_id = selectedVoiceId
+        }
+      }
+      if (finalVoiceRefUrl) requestBody.voice_file = finalVoiceRefUrl
+      if (finalSongRefUrl) requestBody.song_file = finalSongRefUrl
+      if (finalInstrumentalUrl) requestBody.instrumental_file = finalInstrumentalUrl
 
       const res = await fetch('/api/generate/music-01', {
         method: 'POST',

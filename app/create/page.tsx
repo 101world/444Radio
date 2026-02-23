@@ -150,7 +150,7 @@ function CreatePageContent() {
   const [instrumentalRefFile, setInstrumentalRefFile] = useState<File | null>(null)
   const [instrumentalRefUrl, setInstrumentalRefUrl] = useState('')
   const [selectedVoiceId, setSelectedVoiceId] = useState('')
-  const [trainedVoices, setTrainedVoices] = useState<{ id: string; voice_id: string; name: string }[]>([])
+  const [trainedVoices, setTrainedVoices] = useState<{ id: string; voice_id: string; name: string; source_audio_url?: string }[]>([])
   const [isUploadingRef, setIsUploadingRef] = useState(false)
   const [showRemakeModal, setShowRemakeModal] = useState(false)
   // Audio recording for voice reference (actual mic capture, not speech-to-text)
@@ -1030,11 +1030,22 @@ function CreatePageContent() {
 
       // Capture voice/instrumental refs before clearing
       const capturedVoiceRefFile = voiceRefFile
-      const capturedVoiceRefUrl = voiceRefUrl
+      let capturedVoiceRefUrl = voiceRefUrl
       const capturedInstrumentalRefFile = instrumentalRefFile
       const capturedInstrumentalRefUrl = instrumentalRefUrl
-      const capturedSelectedVoiceId = selectedVoiceId
       const capturedRecordedVoiceBlob = recordedVoiceBlob
+
+      // If a trained voice is selected, use its source_audio_url as voice_file
+      // (voice_id from voice-cloning isn't transferable to music-01 — different model sessions)
+      let capturedSelectedVoiceId = selectedVoiceId
+      if (capturedSelectedVoiceId) {
+        const selectedVoice = trainedVoices.find(v => v.voice_id === capturedSelectedVoiceId)
+        if (selectedVoice?.source_audio_url) {
+          console.log('[Generation] Trained voice selected — using source_audio_url as voice_file instead of voice_id')
+          capturedVoiceRefUrl = selectedVoice.source_audio_url
+          capturedSelectedVoiceId = '' // Don't send voice_id; send voice_file
+        }
+      }
 
       // Process queue asynchronously with auto-filled or user-provided values
       processQueue(generatingMessage.id, 'music', {
