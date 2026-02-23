@@ -1462,6 +1462,7 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
 
   // ── Apply a targeted effect change to a single node's code block ──
   const applyNodeEffect = useCallback((nodeId: string, method: string, value: number | string, remove?: boolean) => {
+    let codeToSend: string | null = null
     setNodes(prev => {
       const idx = prev.findIndex(n => n.id === nodeId)
       if (idx === -1) return prev
@@ -1473,11 +1474,11 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
       // Full re-parse so ALL properties stay in sync with the code
       updated[idx] = reparseNodeFromCode({ ...old, code: newCode })
 
-      // Rebuild full code from all nodes
-      const fullCode = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
-      sendToParent(fullCode)
+      // Capture code to send — side effect happens OUTSIDE updater
+      codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
       return updated
     })
+    if (codeToSend !== null) sendToParent(codeToSend)
   }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
   // ── BPM Change ──
@@ -1507,53 +1508,58 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
 
   // ── Global Scale Change ──
   const handleGlobalScaleChange = useCallback((newScale: string) => {
+    let codeToSend: string | null = null
     setNodes(prev => {
       const updated = prev.map(n => {
         if (n.type === 'drums' || n.type === 'fx' || n.type === 'other') return n
         const newCode = applyEffect(n.code, 'scale', newScale)
         return reparseNodeFromCode({ ...n, code: newCode })
       })
-      const fullCode = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
-      sendToParent(fullCode)
+      codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
       return updated
     })
+    if (codeToSend !== null) sendToParent(codeToSend)
   }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
   // ── Mute / Solo ──
   const toggleMute = useCallback((id: string) => {
+    let codeToSend: string | null = null
     setNodes(prev => {
       const updated = prev.map(n => n.id === id ? { ...n, muted: !n.muted } : n)
-      const fullCode = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
-      sendToParent(fullCode)
+      codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
       return updated
     })
+    if (codeToSend !== null) sendToParent(codeToSend)
   }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
   const toggleSolo = useCallback((id: string) => {
+    let codeToSend: string | null = null
     setNodes(prev => {
       const wasSolo = prev.find(n => n.id === id)?.solo
       const updated = wasSolo
         ? prev.map(n => ({ ...n, solo: false, muted: false }))
         : prev.map(n => n.id === id ? { ...n, solo: true, muted: false } : { ...n, solo: false, muted: true })
-      const fullCode = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
-      sendToParent(fullCode)
+      codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
       return updated
     })
+    if (codeToSend !== null) sendToParent(codeToSend)
   }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
   // ── Delete / Duplicate ──
   const deleteNode = useCallback((id: string) => {
+    let codeToSend: string | null = null
     setNodes(prev => {
       const updated = prev.filter(n => n.id !== id)
-      setConnections(c => c.filter(conn => conn.fromId !== id && conn.toId !== id))
-      const fullCode = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
-      sendToParent(fullCode)
+      codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
       prevNodeCount.current = updated.length
       return updated
     })
+    setConnections(c => c.filter(conn => conn.fromId !== id && conn.toId !== id))
+    if (codeToSend !== null) sendToParent(codeToSend)
   }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
   const duplicateNode = useCallback((id: string) => {
+    let codeToSend: string | null = null
     setNodes(prev => {
       const src = prev.find(n => n.id === id)
       if (!src) return prev
@@ -1563,16 +1569,17 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
         muted: false, solo: false,
       }
       const updated = [...prev, dup]
-      const fullCode = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
-      sendToParent(fullCode)
+      codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
       prevNodeCount.current = updated.length
       return updated
     })
+    if (codeToSend !== null) sendToParent(codeToSend)
   }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
   // ── Sound / Pattern / Scale change (per node) ──
   // Use setNodes to read current state instead of stale `nodes` closure
   const changeSoundSource = useCallback((id: string, newSource: string) => {
+    let codeToSend: string | null = null
     setNodes(prev => {
       const node = prev.find(n => n.id === id)
       if (!node) return prev
@@ -1580,13 +1587,14 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
       const newCode = applyEffect(node.code, method, newSource)
       if (newCode === node.code) return prev
       const updated = prev.map(n => n.id === id ? reparseNodeFromCode({ ...n, code: newCode }) : n)
-      const fullCode = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
-      sendToParent(fullCode)
+      codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
       return updated
     })
+    if (codeToSend !== null) sendToParent(codeToSend)
   }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
   const changePattern = useCallback((id: string, newPattern: string) => {
+    let codeToSend: string | null = null
     setNodes(prev => {
       const node = prev.find(n => n.id === id)
       if (!node) return prev
@@ -1594,10 +1602,10 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
       const newCode = applyEffect(node.code, method, newPattern)
       if (newCode === node.code) return prev
       const updated = prev.map(n => n.id === id ? reparseNodeFromCode({ ...n, code: newCode }) : n)
-      const fullCode = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
-      sendToParent(fullCode)
+      codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
       return updated
     })
+    if (codeToSend !== null) sendToParent(codeToSend)
   }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
   const changeScale = useCallback((id: string, newScale: string) => {
@@ -1674,6 +1682,7 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
 
   // ── Quick FX toggle (inject/remove pattern modifier) ──
   const toggleQuickFX = useCallback((nodeId: string, fx: QuickFX) => {
+    let codeToSend: string | null = null
     setNodes(prev => {
       const idx = prev.findIndex(n => n.id === nodeId)
       if (idx === -1) return prev
@@ -1734,14 +1743,15 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
       if (newCode === node.code) return prev
       const updated = [...prev]
       updated[idx] = reparseNodeFromCode({ ...node, code: newCode })
-      const fullCode = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
-      sendToParent(fullCode)
+      codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
       return updated
     })
+    if (codeToSend !== null) sendToParent(codeToSend)
   }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
   // ── LFO inject for a knob parameter ──
   const injectLFO = useCallback((nodeId: string, method: string, lfoTemplate: string, min: number, max: number) => {
+    let codeToSend: string | null = null
     setNodes(prev => {
       const idx = prev.findIndex(n => n.id === nodeId)
       if (idx === -1) return prev
@@ -1770,10 +1780,10 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
       const updated = [...prev]
       const finalCode = node.muted ? newCode.split('\\n').map(l => `// [muted] ${l}`).join('\\n') : newCode
       updated[idx] = reparseNodeFromCode({ ...node, code: finalCode })
-      const fullCode = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
-      sendToParent(fullCode)
+      codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
       return updated
     })
+    if (codeToSend !== null) sendToParent(codeToSend)
   }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
   // ── Connection port handlers ──
@@ -1819,6 +1829,7 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
         const item: SidebarItem = JSON.parse(json)
         if (item.dragType === 'effect' || item.dragType === 'lfo') {
           // Inject the payload code into this node AND re-parse properties so knobs activate
+          let codeToSend: string | null = null
           setNodes(prev => {
             const idx = prev.findIndex(n => n.id === nodeId)
             if (idx === -1) return prev
@@ -1829,10 +1840,10 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
             const updated = [...prev]
             const finalCode = node.muted ? newCode.split('\n').map(l => `// [muted] ${l}`).join('\n') : newCode
             updated[idx] = reparseNodeFromCode({ ...node, code: finalCode })
-            const fullCode = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
-            sendToParent(fullCode)
+            codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
             return updated
           })
+          if (codeToSend !== null) sendToParent(codeToSend)
         } else if (item.dragType === 'sound') {
           changeSoundSource(nodeId, item.payload)
         } else if (item.dragType === 'scale') {
@@ -1853,6 +1864,7 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
   const applySidebarItemToNode = useCallback((nodeId: string, item: SidebarItem) => {
     if (item.dragType === 'effect' || item.dragType === 'lfo') {
       // Inject effect code AND re-parse all properties so knobs activate immediately
+      let codeToSend: string | null = null
       setNodes(prev => {
         const idx = prev.findIndex(n => n.id === nodeId)
         if (idx === -1) return prev
@@ -1863,10 +1875,10 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
         const updated = [...prev]
         const finalCode = node.muted ? newCode.split('\n').map(l => `// [muted] ${l}`).join('\n') : newCode
         updated[idx] = reparseNodeFromCode({ ...node, code: finalCode })
-        const fullCode = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
-        sendToParent(fullCode)
+        codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
         return updated
       })
+      if (codeToSend !== null) sendToParent(codeToSend)
     } else if (item.dragType === 'sound') {
       changeSoundSource(nodeId, item.payload)
     } else if (item.dragType === 'scale') {
@@ -1878,6 +1890,7 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
 
   // ── Randomize pattern for a node ──
   const randomizePattern = useCallback((nodeId: string) => {
+    let codeToSend: string | null = null
     setNodes(prev => {
       const node = prev.find(n => n.id === nodeId)
       if (!node) return prev
@@ -1886,10 +1899,10 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
       const newCode = applyEffect(node.code, method, newPattern)
       if (newCode === node.code) return prev
       const updated = prev.map(n => n.id === nodeId ? reparseNodeFromCode({ ...n, code: newCode }) : n)
-      const fullCode = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
-      sendToParent(fullCode)
+      codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
       return updated
     })
+    if (codeToSend !== null) sendToParent(codeToSend)
   }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
   // ── Canvas interactions ──
