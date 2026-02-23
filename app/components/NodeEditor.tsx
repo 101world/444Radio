@@ -1371,10 +1371,10 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
   const containerRef = useRef<HTMLDivElement>(null)
   const lastCodeRef = useRef(code)
   const commitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // Counter-based guard: each sendToParent increments, each useEffect([code]) decrements.
-  // This correctly handles rapid successive internal changes (mute A, mute B quickly)
-  // where a single boolean would be consumed by the first render, leaving the second unguarded.
+  // Dual guard: counter handles rapid successive changes; string tracks last sent code.
+  // Both must agree before we allow re-parse — makes this bulletproof under React 19 batching.
   const internalChangeCount = useRef(0)
+  const lastSentCodeRef = useRef<string | null>(null)
   const prevNodeCount = useRef(0)
 
   // Stable refs for latest state — avoids stale closures in callbacks
@@ -1390,11 +1390,15 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
   // This is the ONLY place where we re-parse nodes from code.
   // It runs whenever the code prop changes AND it wasn't us who changed it.
   useEffect(() => {
-    // Skip re-parse if this code change originated from us (sendToParent)
-    if (internalChangeCount.current > 0) {
-      internalChangeCount.current--
+    // Skip re-parse if this code change originated from us (sendToParent).
+    // Dual guard: counter catches rapid successive changes, string catches React 19 batching.
+    const isInternal = internalChangeCount.current > 0 || (lastSentCodeRef.current !== null && code === lastSentCodeRef.current)
+    if (isInternal) {
+      if (internalChangeCount.current > 0) internalChangeCount.current--
+      lastSentCodeRef.current = null
       return
     }
+    lastSentCodeRef.current = null
     // External code change (user typed in editor, loaded example, etc.)
     lastCodeRef.current = code
     const newBpm = extractBpm(code)
@@ -1430,6 +1434,7 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
   const sendToParent = useCallback((newCode: string) => {
     lastCodeRef.current = newCode
     internalChangeCount.current++
+    lastSentCodeRef.current = newCode
     onCodeChange(newCode)
     if (commitTimer.current) clearTimeout(commitTimer.current)
     commitTimer.current = setTimeout(() => onUpdate(), 80)
@@ -2268,15 +2273,19 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
                       {TYPE_ICONS[node.type]}
                     </div>
                     <span className="text-[11px] font-bold truncate flex-1 tracking-wide" style={{ color }}>{node.name || 'Untitled'}</span>
-                    <button onClick={e => { e.stopPropagation(); toggleSolo(node.id) }}
-                      className="w-5 h-5 flex items-center justify-center rounded text-[8px] font-black cursor-pointer"
+                    <button
+                      onMouseDown={e => e.stopPropagation()}
+                      onClick={e => { e.stopPropagation(); toggleSolo(node.id) }}
+                      className="w-6 h-6 flex items-center justify-center rounded text-[9px] font-black cursor-pointer"
                       style={{
                         background: node.solo ? 'rgba(245,158,11,0.2)' : HW.raised,
                         color: node.solo ? '#f59e0b' : HW.textDim,
                         border: `1px solid ${node.solo ? 'rgba(245,158,11,0.3)' : HW.border}`,
                       }}>S</button>
-                    <button onClick={e => { e.stopPropagation(); toggleMute(node.id) }}
-                      className="w-5 h-5 flex items-center justify-center rounded cursor-pointer"
+                    <button
+                      onMouseDown={e => e.stopPropagation()}
+                      onClick={e => { e.stopPropagation(); toggleMute(node.id) }}
+                      className="w-6 h-6 flex items-center justify-center rounded cursor-pointer"
                       style={{
                         background: node.muted ? 'rgba(239,68,68,0.15)' : HW.raised,
                         border: `1px solid ${node.muted ? 'rgba(239,68,68,0.25)' : HW.border}`,
