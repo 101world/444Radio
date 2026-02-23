@@ -994,6 +994,11 @@ function RotaryKnob({ value, min, max, step, onChange, onCommit, color, label, s
   const isDynamic = disabled
   const knobRef = useRef<SVGSVGElement>(null)
   const wheelCommitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Local mutable value — tracks the REAL latest value between renders.
+  // This fixes wheel accumulation: React may not re-render between rapid wheel events,
+  // so stateRef.current.value (set from props) would be stale. localValueRef is always fresh.
+  const localValueRef = useRef(value)
+  localValueRef.current = value // sync with props on each render
 
   const clamp = (v: number) => Math.max(min, Math.min(max, Math.round(v / step) * step))
 
@@ -1012,7 +1017,10 @@ function RotaryKnob({ value, min, max, step, onChange, onCommit, color, label, s
       e.preventDefault()
       e.stopPropagation()
       const clampV = (v: number) => Math.max(s.min, Math.min(s.max, Math.round(v / s.step) * s.step))
-      s.onChange(clampV(s.value + (-e.deltaY / 800) * (s.max - s.min)))
+      // Use localValueRef (not s.value) so rapid wheel ticks accumulate correctly
+      const next = clampV(localValueRef.current + (-e.deltaY / 800) * (s.max - s.min))
+      localValueRef.current = next // update local tracking immediately
+      s.onChange(next)
       // Debounce commit: only fire after user stops scrolling
       if (wheelCommitTimer.current) clearTimeout(wheelCommitTimer.current)
       wheelCommitTimer.current = setTimeout(() => stateRef.current.onCommit(), 150)
@@ -1030,12 +1038,13 @@ function RotaryKnob({ value, min, max, step, onChange, onCommit, color, label, s
     const startY = e.clientY, startVal = value, range = max - min
     const onMove = (ev: MouseEvent) => {
       const sens = ev.shiftKey ? 600 : 150
-      stateRef.current.onChange(clamp(startVal + ((startY - ev.clientY) / sens) * range))
+      const next = clamp(startVal + ((startY - ev.clientY) / sens) * range)
+      localValueRef.current = next // keep local tracking in sync during drag
+      stateRef.current.onChange(next)
     }
     const onUp = () => {
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mouseup', onUp)
-      // Commit with LATEST value from stateRef, not the stale closure
       stateRef.current.onCommit()
     }
     document.addEventListener('mousemove', onMove)
@@ -1368,6 +1377,9 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
   nodesRef.current = nodes
   const panRef = useRef(pan)
   panRef.current = pan
+  // Track latest knob draft values synchronously (bypasses React render cycle)
+  // updateKnob writes here, commitKnob reads — guarantees fresh value on mouseup
+  const knobDraftRef = useRef<Map<string, number>>(new Map())
 
   // ── FULL SYNC from parent code ──
   // This is the ONLY place where we re-parse nodes from code.
@@ -1615,6 +1627,9 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
 
   // ── Knob change handler (updates local state, commits on release) ──
   const updateKnob = useCallback((nodeId: string, method: string, value: number) => {
+    // Write to draft ref SYNCHRONOUSLY so commitKnob always reads the latest value,
+    // even if React hasn't re-rendered yet after setNodes.
+    knobDraftRef.current.set(`${nodeId}:${method}`, value)
     // Instant local update for smooth knob dragging — UI only, no code change
     setNodes(prev => prev.map(n => {
       if (n.id !== nodeId) return n
@@ -1624,11 +1639,11 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
   }, [])
 
   const commitKnob = useCallback((nodeId: string, method: string, _staleValue: number) => {
-    // Read the CURRENT value from nodesRef (not the stale closure value)
-    const node = nodesRef.current.find(n => n.id === nodeId)
-    if (!node) return
-    const key = method === 'slow' ? 'speed' : method
-    const v = (node as unknown as Record<string, number>)[key] ?? _staleValue
+    // Read from knobDraftRef which is written synchronously by updateKnob.
+    // This is immune to React's batched rendering — always has the latest value.
+    const draftKey = `${nodeId}:${method}`
+    const v = knobDraftRef.current.get(draftKey) ?? _staleValue
+    knobDraftRef.current.delete(draftKey)
 
     // Determine if we should remove the effect (at default/neutral value)
     const isDefault = (method === 'lpf' && v >= 20000) ||
