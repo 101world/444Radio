@@ -1394,17 +1394,19 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
     const newBpm = extractBpm(code)
     setBpm(newBpm)
 
+    let newConnections: Connection[] | null = null
     setNodes(prev => {
       const parsed = parseCodeToNodes(code, prev.length > 0 ? prev : undefined)
       // If node count changed significantly (new project loaded), reset connections
       if (Math.abs(parsed.length - prevNodeCount.current) > 2 || prevNodeCount.current === 0) {
         const conns: Connection[] = []
         for (let i = 1; i < parsed.length; i++) conns.push({ fromId: parsed[i - 1].id, toId: parsed[i].id })
-        setConnections(conns)
+        newConnections = conns
       }
       prevNodeCount.current = parsed.length
       return parsed
     })
+    if (newConnections !== null) setConnections(newConnections)
   }, [code])
 
   // ── Init on mount ──
@@ -1692,52 +1694,33 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
 
       let newCode: string
       if (isActive) {
-        // Remove the effect — strip it from code
-        // Build a removal regex from the fx code pattern
-        const escCode = fx.code
-          .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-          .replace(/\\\\([0-9./]+)/g, '[0-9./]+') // allow numeric variation
-        const stripRe = new RegExp(`\\s*${escCode.replace(/\\\(/g, '\\(').replace(/\\\)/g, '\\)')}`)
-        newCode = rawCode.replace(fx.detect, (match) => {
-          // Find the full .method(...) expression to remove
-          const start = rawCode.indexOf(match)
-          if (start === -1) return ''
-          // Walk forward to find matching close paren
-          let depth = 0; let end = start
-          let foundOpen = false
-          for (let i = start; i < rawCode.length; i++) {
-            if (rawCode[i] === '(') { depth++; foundOpen = true }
-            if (rawCode[i] === ')') { depth-- }
-            if (foundOpen && depth === 0) { end = i + 1; break }
-          }
-          return ''
-        })
-        // Clean up: remove the .method(...) chunk including leading dot/whitespace
-        // More robust: find the actual text that matched and remove it
-        newCode = node.code
+        // Remove the effect — always work on clean code (rawCode)
+        newCode = rawCode
         const matchResult = rawCode.match(fx.detect)
         if (matchResult && matchResult.index !== undefined) {
           const mIdx = matchResult.index
           // Walk backward to find the starting dot
           let start = mIdx
-          while (start > 0 && (rawCode[start - 1] === '.' || rawCode[start - 1] === ' ' || rawCode[start - 1] === '\\n')) start--
+          while (start > 0 && (rawCode[start - 1] === '.' || rawCode[start - 1] === ' ' || rawCode[start - 1] === '\n')) start--
           if (rawCode[start] === '.') { /* keep start */ } else start = mIdx
           // Walk forward from match to find balanced parens
-          let depth2 = 0; let end2 = start; let inMatch = false
+          let depth = 0; let end = start; let inMatch = false
           for (let i = start; i < rawCode.length; i++) {
-            if (rawCode[i] === '(') { depth2++; inMatch = true }
-            if (rawCode[i] === ')') { depth2-- }
-            if (inMatch && depth2 === 0) { end2 = i + 1; break }
+            if (rawCode[i] === '(') { depth++; inMatch = true }
+            if (rawCode[i] === ')') { depth-- }
+            if (inMatch && depth === 0) { end = i + 1; break }
           }
-          const toRemove = rawCode.substring(start, end2)
-          newCode = node.code.replace(toRemove, '')
+          const toRemove = rawCode.substring(start, end)
+          newCode = rawCode.replace(toRemove, '')
         }
       } else {
-        // Add the effect
-        newCode = injectBefore(node.muted ? rawCode : node.code, fx.code)
-        if (node.muted) {
-          newCode = newCode.split('\\n').map(l => `// [muted] ${l}`).join('\\n')
-        }
+        // Add the effect — always work on clean code (rawCode)
+        newCode = injectBefore(rawCode, fx.code)
+      }
+
+      // Re-apply muted prefix if node is muted
+      if (node.muted) {
+        newCode = newCode.split('\n').map(l => `// [muted] ${l}`).join('\n')
       }
 
       if (newCode === node.code) return prev
