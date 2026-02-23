@@ -1035,16 +1035,11 @@ function CreatePageContent() {
       const capturedInstrumentalRefUrl = instrumentalRefUrl
       const capturedRecordedVoiceBlob = recordedVoiceBlob
 
-      // If a trained voice is selected, use its source_audio_url as voice_file
-      // (voice_id from voice-cloning isn't transferable to music-01 — different model sessions)
+      // If a trained voice is selected, send the voice_id directly to music-01
+      // music-01 supports voice_id from voice-cloning natively
       let capturedSelectedVoiceId = selectedVoiceId
       if (capturedSelectedVoiceId) {
-        const selectedVoice = trainedVoices.find(v => v.voice_id === capturedSelectedVoiceId)
-        if (selectedVoice?.source_audio_url) {
-          console.log('[Generation] Trained voice selected — using source_audio_url as voice_file instead of voice_id')
-          capturedVoiceRefUrl = selectedVoice.source_audio_url
-          capturedSelectedVoiceId = '' // Don't send voice_id; send voice_file
-        }
+        console.log('[Generation] Trained voice selected — sending voice_id to music-01:', capturedSelectedVoiceId)
       }
 
       // Process queue asynchronously with auto-filled or user-provided values
