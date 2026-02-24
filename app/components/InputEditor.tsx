@@ -8206,6 +8206,13 @@ $: s("bd:3").bank("RolandTR808")
     console.log(`🎵 [444 INPUT] Custom sound registered: "${name}" (${urls.length} file${urls.length > 1 ? 's' : ''})`)
   }, [])
 
+  // ─── Per-node analyser lookup (from superdough's analysers map) ───
+  const getAnalyserByIdCb = useCallback((id: string, fftSize = 256, smoothing = 0.8): AnalyserNode | null => {
+    const webaudio = webaudioRef.current
+    if (!webaudio?.getAnalyserById) return null
+    try { return webaudio.getAnalyserById(id, fftSize, smoothing) } catch { return null }
+  }, [])
+
   // ─── WAV Recording handler ───
   const handleToggleRecording = useCallback(() => {
     if (isRecording) {
@@ -9091,6 +9098,27 @@ $: s("bd:3").bank("RolandTR808")
                       <option key={ts} value={ts} className="bg-gray-900 text-white">{ts}</option>
                     ))}
                   </select>
+                  {/* Global Scale / Key */}
+                  <select
+                    value={nde.globalScale || 'C4:major'}
+                    onChange={e => { e.stopPropagation(); nde.handleGlobalScaleChange(e.target.value) }}
+                    onClick={e => e.stopPropagation()}
+                    className="px-1 py-0.5 rounded text-[9px] font-bold text-violet-400 bg-white/[0.02] border border-white/[0.06] outline-none cursor-pointer appearance-none text-center truncate"
+                    title="Global scale / key"
+                    style={{ maxWidth: 72 }}
+                  >
+                    {[
+                      { label: 'C Maj', value: 'C4:major' }, { label: 'A Min', value: 'A3:minor' },
+                      { label: 'A Harm', value: 'A3:harmonic minor' }, { label: 'C Pent', value: 'C4:major pentatonic' },
+                      { label: 'Am Pent', value: 'A3:minor pentatonic' }, { label: 'C Blues', value: 'C4:blues' },
+                      { label: 'D Dor', value: 'D4:dorian' }, { label: 'E Phry', value: 'E4:phrygian' },
+                      { label: 'F Lyd', value: 'F4:lydian' }, { label: 'G Mix', value: 'G4:mixolydian' },
+                      { label: 'Chrom', value: 'C4:chromatic' }, { label: 'D Min', value: 'D4:minor' },
+                      { label: 'G Maj', value: 'G4:major' },
+                    ].map(s => (
+                      <option key={s.value} value={s.value} className="bg-gray-900 text-white">{s.label}</option>
+                    ))}
+                  </select>
                   {/* Node count */}
                   <span className="text-[8px] font-mono text-white/20 px-1">{nde.activeCount}/{nde.nodeCount}</span>
                   {/* Collapse / Expand */}
@@ -9362,6 +9390,7 @@ $: s("bd:3").bank("RolandTR808")
                 onUpdate={() => handleUpdate()}
                 onRegisterSound={registerCustomSound}
                 analyserNode={analyserRef.current}
+                getAnalyserById={getAnalyserByIdCb}
                 headerless
               />
             </Suspense>

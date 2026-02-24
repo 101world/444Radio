@@ -969,8 +969,10 @@ function parseCodeToNodes(code: string, existingNodes?: PatternNode[]): PatternN
   blocks.forEach((block, idx) => {
     const existing = existingByIdx.get(idx)
     const isMuted = block.code.trim().startsWith('// [muted]')
+    // Strip injected .analyze("nde_N") tags — these are added by rebuildFullCodeFromNodes for per-node EQ
+    const stripAnalyze = (c: string) => c.replace(/\.analyze\s*\(\s*["']nde_\d+["']\s*\)/g, '')
     // For muted blocks, strip the prefix to detect properties
-    const rawCode = isMuted ? block.code.replace(/\/\/ \[muted\] /g, '') : block.code
+    const rawCode = stripAnalyze(isMuted ? block.code.replace(/\/\/ \[muted\] /g, '') : block.code)
     const type = detectType(rawCode)
     const sound = detectSound(rawCode)
     const isMelodic = !isSampleBased(type)
@@ -979,9 +981,9 @@ function parseCodeToNodes(code: string, existingNodes?: PatternNode[]): PatternN
     nodes.push({
       id: existing?.id ?? `node_${idx}`,
       name: block.name || sound || `Pattern ${idx + 1}`,
-      // ALWAYS store clean code (no // [muted] prefix). The muted FLAG tracks mute state.
+      // ALWAYS store clean code (no // [muted] prefix, no .analyze tags). The muted FLAG tracks mute state.
       // This prevents prefix accumulation bugs on rapid mute/unmute/re-parse cycles.
-      code: isMuted ? block.code.replace(/\/\/ \[muted\] /g, '') : block.code,
+      code: stripAnalyze(isMuted ? block.code.replace(/\/\/ \[muted\] /g, '') : block.code),
       muted: existing?.muted ?? isMuted,
       solo: existing?.solo ?? false,
       collapsed: existing?.collapsed ?? false,
@@ -1812,18 +1814,18 @@ function Port({ side, color, connected, onMouseDown, onMouseUp, nodeId }: {
   nodeId: string
 }) {
   return (
-    <div className={`absolute ${
-      side === 'out' ? 'bottom-0 right-4 translate-y-1/2' : 'top-0 left-4 -translate-y-1/2'
+    <div className={`absolute top-1/2 -translate-y-1/2 ${
+      side === 'in' ? 'left-0 -translate-x-1/2' : 'right-0 translate-x-1/2'
     } z-30 cursor-crosshair group`}
       onMouseDown={e => { e.stopPropagation(); onMouseDown(e, nodeId, side) }}
       onMouseUp={e => { e.stopPropagation(); onMouseUp(e, nodeId, side) }}>
-      <div className="w-4 h-4 rounded-full transition-all group-hover:scale-125" style={{
+      <div className="w-3.5 h-3.5 rounded-full transition-all group-hover:scale-125" style={{
         border: `2px solid ${connected ? color : HW.knobRing}`,
         backgroundColor: connected ? `${color}40` : HW.knobBg,
         boxShadow: connected ? `0 0 10px ${color}30, inset 0 0 4px ${color}20` : 'none',
       }} />
-      <span className="absolute text-[6px] font-bold uppercase tracking-wider whitespace-nowrap"
-        style={{ color: HW.textDim, ...(side === 'in' ? { left: 22, top: 2 } : { right: 22, top: 2 }) }}>
+      <span className="absolute text-[5px] font-bold uppercase tracking-wider whitespace-nowrap"
+        style={{ color: HW.textDim, top: '50%', transform: 'translateY(-50%)', ...(side === 'in' ? { right: 18 } : { left: 18 }) }}>
         {side === 'in' ? 'IN' : 'OUT'}
       </span>
     </div>
@@ -1841,6 +1843,8 @@ interface NodeEditorProps {
   onUpdate: () => void
   onRegisterSound?: (name: string, urls: string[]) => Promise<void>
   analyserNode?: AnalyserNode | null
+  /** Retrieve a per-node AnalyserNode by ID (from superdough's analysers map) */
+  getAnalyserById?: (id: string, fftSize?: number, smoothing?: number) => AnalyserNode | null
   /** When true, NDE renders without its own header — controls are in the parent */
   headerless?: boolean
 }
@@ -1870,7 +1874,7 @@ export interface NodeEditorHandle {
   selectedNode: string | null
 }
 
-const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEditor({ code, isPlaying, onCodeChange, onUpdate, onRegisterSound, analyserNode, headerless }, ref) {
+const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEditor({ code, isPlaying, onCodeChange, onUpdate, onRegisterSound, analyserNode, getAnalyserById, headerless }, ref) {
   const [nodes, setNodes] = useState<PatternNode[]>([])
   const [bpm, setBpm] = useState(0)
   const [timeSig, setTimeSig] = useState('4/4')
@@ -2017,8 +2021,11 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     if (pre) parts.push(pre)
     if (currentBpm > 0) parts.push(`setcps(${currentBpm}/60/4) // ${currentBpm} bpm`)
     parts.push('')
-    for (const node of nodeList) {
+    for (let ni = 0; ni < nodeList.length; ni++) {
+      const node = nodeList[ni]
       const commentLine = node.name ? `// ── ${node.name} ──` : ''
+      // Inject .analyze("nde_N") for per-node EQ visualization (stripped on re-parse)
+      const analyzeTag = `.analyze("nde_${ni}")`
       if (node.muted) {
         const mutedCode = node.code.split('\n')
           .map(l => l.trim().startsWith('// [muted]') ? l : `// [muted] ${l}`)
@@ -2026,7 +2033,8 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
         parts.push(commentLine ? `${commentLine}\n${mutedCode}` : mutedCode)
       } else {
         const cleanCode = node.code.replace(/\/\/ \[muted\] /g, '')
-        parts.push(commentLine ? `${commentLine}\n${cleanCode}` : cleanCode)
+        const codeWithAnalyze = injectBefore(cleanCode, analyzeTag)
+        parts.push(commentLine ? `${commentLine}\n${codeWithAnalyze}` : codeWithAnalyze)
       }
       parts.push('')
     }
@@ -2993,26 +3001,26 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
             const from = nodes.find(n => n.id === conn.fromId)
             const to = nodes.find(n => n.id === conn.toId)
             if (!from || !to) return null
-            const x1 = (from.x + NODE_W - 16 + pan.x) * zoom
             const fromH = from.collapsed ? 120 : (!isSampleBased(from.type) ? 780 : 520)
-            const y1 = (from.y + fromH + pan.y) * zoom
-            const x2 = (to.x + 16 + pan.x) * zoom
-            const y2 = (to.y + pan.y) * zoom
-            const mid = (y1 + y2) / 2
+            const toH = to.collapsed ? 120 : (!isSampleBased(to.type) ? 780 : 520)
+            // OUT port = right edge, vertically centered
+            const x1 = (from.x + NODE_W + pan.x) * zoom
+            const y1 = (from.y + fromH / 2 + pan.y) * zoom
+            // IN port = left edge, vertically centered
+            const x2 = (to.x + pan.x) * zoom
+            const y2 = (to.y + toH / 2 + pan.y) * zoom
+            const dx = Math.abs(x2 - x1) * 0.5
             const col = TYPE_COLORS[from.type]
+            const d = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`
             return (
               <g key={i}>
-                <path d={`M ${x1} ${y1} C ${x1} ${mid}, ${x2} ${mid}, ${x2} ${y2}`}
-                  fill="none" stroke="black" strokeWidth={4} strokeOpacity={0.2} />
-                <path d={`M ${x1} ${y1} C ${x1} ${mid}, ${x2} ${mid}, ${x2} ${y2}`}
-                  fill="none" stroke={col} strokeWidth={2} strokeOpacity={0.4} />
-                <path d={`M ${x1} ${y1} C ${x1} ${mid}, ${x2} ${mid}, ${x2} ${y2}`}
-                  fill="none" stroke="transparent" strokeWidth={14}
+                <path d={d} fill="none" stroke="black" strokeWidth={4} strokeOpacity={0.2} />
+                <path d={d} fill="none" stroke={col} strokeWidth={2} strokeOpacity={0.4} />
+                <path d={d} fill="none" stroke="transparent" strokeWidth={14}
                   className="cursor-pointer pointer-events-auto" onClick={() => removeConnection(conn.fromId, conn.toId)} />
                 {isPlaying && !from.muted && !to.muted && (
                   <circle r={3 * zoom} fill={col} opacity={0.7}>
-                    <animateMotion dur="1.5s" repeatCount="indefinite"
-                      path={`M ${x1} ${y1} C ${x1} ${mid}, ${x2} ${mid}, ${x2} ${y2}`} />
+                    <animateMotion dur="1.5s" repeatCount="indefinite" path={d} />
                   </circle>
                 )}
               </g>
@@ -3021,11 +3029,15 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
           {linking && (() => {
             const from = nodes.find(n => n.id === linking.fromId)
             if (!from) return null
-            const fx = linking.side === 'out' ? (from.x + NODE_W - 16 + pan.x) * zoom : (from.x + 16 + pan.x) * zoom
             const fromH2 = from.collapsed ? 120 : (!isSampleBased(from.type) ? 780 : 520)
-            const fy = linking.side === 'out' ? (from.y + fromH2 + pan.y) * zoom : (from.y + pan.y) * zoom
-            return <line x1={fx} y1={fy} x2={linking.mx} y2={linking.my}
-              stroke="#22d3ee" strokeWidth={2} strokeDasharray="6 3" opacity={0.6} />
+            // OUT = right edge center, IN = left edge center
+            const fx = linking.side === 'out' ? (from.x + NODE_W + pan.x) * zoom : (from.x + pan.x) * zoom
+            const fy = (from.y + fromH2 / 2 + pan.y) * zoom
+            const dx = Math.abs(linking.mx - fx) * 0.5
+            const cx1 = linking.side === 'out' ? fx + dx : fx - dx
+            const cx2 = linking.side === 'out' ? linking.mx - dx : linking.mx + dx
+            return <path d={`M ${fx} ${fy} C ${cx1} ${fy}, ${cx2} ${linking.my}, ${linking.mx} ${linking.my}`}
+              fill="none" stroke="#22d3ee" strokeWidth={2} strokeDasharray="6 3" opacity={0.6} />
           })()}
         </svg>
 
@@ -3066,7 +3078,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
         )}
 
         {/* ══════ NODES ══════ */}
-        {nodes.map(node => {
+        {nodes.map((node, nodeIndex) => {
           const color = TYPE_COLORS[node.type]
           const isSel = selectedNode === node.id
           const isLive = connectedIds.has(node.id)
@@ -3164,6 +3176,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                       {/* Equalizer */}
                       <div className="px-3 pt-1.5 pb-1" style={{ background: `${HW.bg}80` }}>
                         <MiniScope color={color} active={isActive} type={node.type}
+                          analyserNode={getAnalyserById?.(`nde_${nodeIndex}`, 256, 0.8) ?? analyserNode}
                           hpf={hasMethod(node.code, 'hpf') ? node.hpf : undefined}
                           lpf={hasMethod(node.code, 'lpf') ? node.lpf : undefined} />
                       </div>
@@ -3233,6 +3246,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                   {/* SCOPE */}
                   <div className="px-3 pt-2" style={{ background: `${HW.bg}80` }}>
                     <MiniScope color={color} active={isActive} type={node.type}
+                      analyserNode={getAnalyserById?.(`nde_${nodeIndex}`, 256, 0.8) ?? analyserNode}
                       hpf={hasMethod(node.code, 'hpf') ? node.hpf : undefined}
                       lpf={hasMethod(node.code, 'lpf') ? node.lpf : undefined} />
                   </div>
