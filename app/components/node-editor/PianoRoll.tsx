@@ -99,11 +99,18 @@ function playNotePreview(midi: number, durationMs = 200, sound = '') {
   const gain = audioCtx.createGain()
   osc.type = sound ? soundToOscType(sound) : 'triangle'
   osc.frequency.value = midiToFreq(midi)
-  gain.gain.setValueAtTime(0.15, audioCtx.currentTime)
-  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + durationMs / 1000)
+
+  // Nicer ADSR: quick attack → sustain → smooth release
+  const now = audioCtx.currentTime
+  const dur = durationMs / 1000
+  gain.gain.setValueAtTime(0, now)
+  gain.gain.linearRampToValueAtTime(0.12, now + 0.01)  // attack
+  gain.gain.setValueAtTime(0.12, now + dur * 0.7)       // sustain
+  gain.gain.exponentialRampToValueAtTime(0.001, now + dur) // release
+
   osc.connect(gain).connect(audioCtx.destination)
   osc.start()
-  osc.stop(audioCtx.currentTime + durationMs / 1000 + 0.05)
+  osc.stop(now + dur + 0.05)
   activeOscs.push(osc)
   osc.onended = () => { activeOscs = activeOscs.filter(o => o !== osc) }
 }
@@ -285,8 +292,15 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
 
   useEffect(() => {
     if (!isOpen) return
-    setNotes(parsePatternToNotes(currentPattern, scale, octaveRange))
+    const parsed = parsePatternToNotes(currentPattern, scale, octaveRange)
+    setNotes(parsed)
     setSelectedNotes(new Set())
+    // Auto-size grid to fit all notes
+    if (parsed.length > 0) {
+      const maxEnd = Math.max(...parsed.map(n => n.step + n.duration))
+      const needed = maxEnd <= 16 ? 16 : maxEnd <= 32 ? 32 : maxEnd <= 64 ? 64 : 128
+      setTotalSteps(needed)
+    }
   }, [isOpen, currentPattern, scale, octaveRange])
 
   useEffect(() => {
@@ -323,7 +337,12 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
 
     if (tool === 'select') {
       const id = existingNote ? nid(existingNote.midi, existingNote.step) : null
-      if (id) {
+      if (id && existingNote) {
+        // Play preview of all notes at this step (hear the chord)
+        const chordNotes = notes.filter(n => n.step === existingNote.step)
+        for (const cn of chordNotes) {
+          playNotePreview(cn.midi, 500, soundSource)
+        }
         setSelectedNotes(prev => {
           const next = new Set(prev)
           if (e.shiftKey) { next.has(id) ? next.delete(id) : next.add(id) }
@@ -491,6 +510,42 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
 
   const clearAll = useCallback(() => { setNotes([]); setSelectedNotes(new Set()) }, [])
 
+  /** Preview: play the sequence step by step to hear it */
+  const previewSequence = useCallback(() => {
+    if (notes.length === 0) return
+    // Kill any currently playing preview
+    activeOscs.forEach(o => { try { o.stop() } catch {} })
+    activeOscs.length = 0
+
+    // Group notes by their step position
+    const stepGroups = new Map<number, number[]>()
+    for (const n of notes) {
+      const arr = stepGroups.get(n.step) || []
+      arr.push(n.midi)
+      stepGroups.set(n.step, arr)
+    }
+    const sortedSteps = [...stepGroups.keys()].sort((a, b) => a - b)
+
+    // Calculate time per beat (16th note)
+    // We'll use a moderate speed: ~120bpm = 500ms/beat = 125ms per 16th
+    const msPerSixteenth = 125
+    let baseDelay = 0
+    for (let i = 0; i < sortedSteps.length; i++) {
+      const step = sortedSteps[i]
+      const nextStep = sortedSteps[i + 1]
+      const midis = stepGroups.get(step) || []
+      // Duration in 16th notes until next chord (or use note's own duration)
+      const sampleNote = notes.find(n => n.step === step)
+      const durSteps = nextStep !== undefined ? nextStep - step : (sampleNote?.duration ?? 16)
+      const durMs = Math.max(200, durSteps * msPerSixteenth)
+
+      for (const midi of midis) {
+        setTimeout(() => playNotePreview(midi, durMs, soundSource), baseDelay)
+      }
+      baseDelay += durSteps * msPerSixteenth
+    }
+  }, [notes, soundSource])
+
   const deleteSelected = useCallback(() => {
     if (selectedNotes.size === 0) return
     setNotes(prev => prev.filter(n => !selectedNotes.has(nid(n.midi, n.step))))
@@ -637,6 +692,10 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
 
           <div className="w-px h-4 mx-0.5" style={{ background: 'rgba(255,255,255,0.06)' }} />
 
+          <button onClick={previewSequence}
+            className="px-1.5 py-0.5 rounded text-[8px] font-bold cursor-pointer"
+            title="Preview sequence (hear chords)"
+            style={{ color: '#22c55e', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)' }}>▶</button>
           <button onClick={clearAll}
             className="px-1.5 py-0.5 rounded text-[8px] cursor-pointer"
             style={{ color: '#555', background: '#151518', border: '1px solid rgba(255,255,255,0.04)' }}>Clear</button>
@@ -689,7 +748,10 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
                 <div className="p-3 text-[9px] text-center" style={{ color: '#444' }}>No presets for {nodeType}</div>
               ) : filteredPresets.map(preset => {
                 const cm = PRESET_CATEGORY_META[preset.category]
-                const bar = preset.steps.length <= 16 ? '1bar' : preset.steps.length <= 32 ? '2bar' : '4bar'
+                const res = preset.resolution ?? 'sixteenth'
+                const rf = res === 'bar' ? 16 : res === 'beat' ? 4 : 1
+                const gridCells = preset.steps.length * rf
+                const bar = gridCells <= 16 ? '1bar' : gridCells <= 32 ? '2bar' : gridCells <= 64 ? '4bar' : '8bar+'
                 return (
                   <div key={preset.id} className="px-2 py-1.5 cursor-pointer transition-colors"
                     style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}
@@ -714,13 +776,13 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
 
         {/* Grid + Velocity */}
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Bar/beat ruler */}
+          {/* Bar/beat ruler — click bar number to hear that bar's chord */}
           <div className="flex shrink-0" style={{ marginLeft: PIANO_KEY_W, height: 18 }}>
             {Array.from({ length: totalSteps }, (_, i) => {
               const isBar = i % 16 === 0
               const isBeat = i % 4 === 0
               return (
-                <div key={i} className="flex items-center justify-center text-[7px] font-mono shrink-0"
+                <div key={i} className={`flex items-center justify-center text-[7px] font-mono shrink-0${isBar ? ' cursor-pointer hover:brightness-150' : ''}`}
                   style={{
                     width: CELL_W, height: 18,
                     color: isBar ? '#999' : (isBeat ? '#555' : '#2a2a2a'),
@@ -728,7 +790,16 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
                     borderRight: `1px solid ${isBar ? 'rgba(255,255,255,0.08)' : (isBeat ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.015)')}`,
                     borderBottom: '1px solid rgba(255,255,255,0.06)',
                     fontWeight: isBar ? 700 : 400,
-                  }}>
+                  }}
+                  title={isBar ? `Click to hear bar ${Math.floor(i / 16) + 1}` : undefined}
+                  onClick={isBar ? () => {
+                    // Play all notes that sound within this bar
+                    const barStart = i
+                    const barEnd = i + 16
+                    const barNotes = notes.filter(n => n.step < barEnd && n.step + n.duration > barStart)
+                    const uniqueMidis = [...new Set(barNotes.map(n => n.midi))]
+                    for (const midi of uniqueMidis) playNotePreview(midi, 600, soundSource)
+                  } : undefined}>
                   {isBar ? `${Math.floor(i / 16) + 1}` : (isBeat ? `${Math.floor(i / 16) + 1}.${(Math.floor(i / 4) % 4) + 1}` : '')}
                 </div>
               )
@@ -902,7 +973,12 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
 function parsePatternToNotes(pattern: string, scale: string, octaveRange: [number, number]): PianoRollNote[] {
   if (!pattern) return []
   const notes: PianoRollNote[] = []
-  let clean = pattern.replace(/^<\s*/, '').replace(/\s*>$/, '').trim()
+
+  // Detect <...> wrapping: each entry = 1 bar (1 cycle in Strudel)
+  const trimmed = pattern.trim()
+  const isBarLevel = trimmed.startsWith('<') && trimmed.endsWith('>')
+
+  let clean = trimmed.replace(/^<\s*/, '').replace(/\s*>$/, '').trim()
   if (!clean) return notes
 
   const steps: string[] = []
@@ -915,17 +991,22 @@ function parsePatternToNotes(pattern: string, scale: string, octaveRange: [numbe
   }
   if (current.trim()) steps.push(current.trim())
 
+  // Position & duration: bar-level (16 cells) for <...>, or 1 cell for plain patterns
+  const stepFactor = isBarLevel ? 16 : 1
+  const noteDuration = isBarLevel ? 16 : 1
+
   steps.forEach((step, idx) => {
     if (step === '~') return
+    const gridPos = idx * stepFactor
     if (step.startsWith('[') && step.endsWith(']')) {
       const inner = step.slice(1, -1)
       for (const name of inner.split(',').map(s => s.trim())) {
         const midi = noteNameToMidiFromStrudel(name)
-        if (midi >= 0) notes.push({ midi, step: idx, duration: 1, velocity: 0.8 })
+        if (midi >= 0) notes.push({ midi, step: gridPos, duration: noteDuration, velocity: 0.8 })
       }
     } else {
       const midi = noteNameToMidiFromStrudel(step)
-      if (midi >= 0) notes.push({ midi, step: idx, duration: 1, velocity: 0.8 })
+      if (midi >= 0) notes.push({ midi, step: gridPos, duration: noteDuration, velocity: 0.8 })
     }
   })
   return notes
