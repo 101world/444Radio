@@ -895,7 +895,8 @@ function detectScale(code: string): string {
 }
 
 function detectPattern(code: string): string {
-  const sm = code.match(/\bs\s*\(\s*["']([^"']+)["']/)
+  // Use negative lookbehind (?<!\.) so we only match standalone s(...) patterns, NOT .s("sound") sources
+  const sm = code.match(/(?<!\.)\bs\s*\(\s*["']([^"']+)["']/)
   if (sm && /bd|sd|cp|hh|oh/i.test(sm[1])) return sm[1]
   const nm = code.match(/\b(?:note|n)\s*\(\s*["']([^"']+)["']/)
   return nm ? nm[1] : ''
@@ -1105,12 +1106,14 @@ function applyEffect(code: string, method: string, value: number | string, remov
     if (method === 'soundDotS') {
       const re1 = /\)\.s\s*\(\s*["'][^"']*["']\s*\)/
       if (re1.test(code)) return code.replace(re1, `).s("${value}")`)
-      const re2 = /\bs\s*\(\s*["'](sine|sawtooth|square|triangle|supersaw|gm_[^"']+)["']\s*\)/
+      // Fallback: match standalone s("instrument") — negative lookbehind to avoid matching .s()
+      const re2 = /(?<!\.)\bs\s*\(\s*["'](sine|sawtooth|square|triangle|supersaw|gm_[^"']+)["']\s*\)/
       if (re2.test(code)) return code.replace(re2, `s("${value}")`)
       return code
     }
     if (method === 'drumPattern') {
-      const re = /\bs\s*\(\s*["'][^"']*["']\s*\)/
+      // Negative lookbehind: only match standalone s(...) NOT .s("sound_source")
+      const re = /(?<!\.)\bs\s*\(\s*["'][^"']*["']\s*\)/
       if (re.test(code)) return code.replace(re, `s("${value}")`)
       return code
     }
@@ -2278,8 +2281,14 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     setNodes(prev => {
       const node = prev.find(n => n.id === id)
       if (!node) return prev
-      const method = isSampleBased(node.type) ? 'bank' : 'soundDotS'
-      const newCode = applyEffect(node.code, method, newSource)
+      // For sample-based types: try .bank() first, fall back to soundDotS
+      // For melodic types: use soundDotS
+      let method = isSampleBased(node.type) ? 'bank' : 'soundDotS'
+      let newCode = applyEffect(node.code, method, newSource)
+      // If bank replacement didn't change anything (no .bank() in code), try soundDotS
+      if (newCode === node.code && method === 'bank') {
+        newCode = applyEffect(node.code, 'soundDotS', newSource)
+      }
       if (newCode === node.code) return prev
       const updated = prev.map(n => n.id === id ? reparseNodeFromCode({ ...n, code: newCode }) : n)
       codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
