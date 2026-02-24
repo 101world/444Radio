@@ -110,13 +110,13 @@ const TYPE_ICONS: Record<NodeType, string> = {
 // ═══════════════════════════════════════════════════════════════
 
 const NODE_GUIDANCE: Record<NodeType, string> = {
-  drums:  'Uses s("bd sd hh") pattern · Add reverb, delay, filters · Try echo, euclid, chop for variation',
-  bass:   'Uses note("pattern").sound("synth") · Set key & scale · Add LPF for warmth, distort for grit',
-  melody: 'Uses note("pattern").sound("synth") · Set key & scale · Try delay, reverb, jux for stereo width',
-  chords: 'Uses note("<chord>").sound("synth") · Set key & scale · Add reverb, pan for width',
-  pad:    'Uses note("pattern").sound("synth") · Long release for ambience · Add reverb, delay, phaser',
-  vocal:  'Uses s("vocal samples") · Add reverb, delay, vowel filter · Try chop for granular texture',
-  fx:     'Uses s("fx samples") · Layer effects freely · Try echo, jux, striate for texture',
+  drums:  'Sound · s("bd sd hh") drum pattern · Add reverb, delay, filters · Try echo, euclid, chop for variation',
+  bass:   'Instrument · note().s("synth") · Set key & scale · Chord patterns auto-match key · LPF for warmth',
+  melody: 'Instrument · note().s("synth") · Set key & scale · Use chord/arp patterns · delay, reverb, jux',
+  chords: 'Instrument · note("<chord>").s("synth") · Set key & scale · Chord progressions auto-match key',
+  pad:    'Instrument · note().s("synth") · Long release · Chord/arp patterns · reverb, delay, phaser',
+  vocal:  'Instrument · note().s("choir/voice") · Set key & scale · reverb, delay, vowel filter',
+  fx:     'Sound · s("fx samples") · Layer effects freely · Try echo, jux, striate for texture',
   other:  'General purpose node · Add any effects from + FX below',
 }
 
@@ -288,16 +288,23 @@ const DRUM_PATTERNS = [
 ]
 
 const MELODY_PATTERNS = [
-  { label: 'Ascending', value: '0 1 2 3 4 5 6 7' },
-  { label: 'Descending', value: '7 6 5 4 3 2 1 0' },
+  // Scale-degree patterns (work with any .scale())
+  { label: 'Ascending Scale', value: '0 1 2 3 4 5 6 7' },
+  { label: 'Descending Scale', value: '7 6 5 4 3 2 1 0' },
   { label: 'Wave', value: '0 2 4 6 4 2 0 ~' },
-  { label: 'Arpeggiate', value: '0 2 4 7 4 2' },
-  { label: 'Sparse', value: '~ 0 ~ ~ 4 ~ 2 ~' },
-  { label: 'Pentatonic Run', value: '0 2 4 7 9 12 9 7' },
-  { label: 'Jazzy', value: '0 4 7 11 9 7 4 2' },
-  { label: 'Steps', value: '0 ~ 1 ~ 2 ~ 3 ~' },
-  { label: 'Octave Jump', value: '0 ~ 7 ~ 0 7 ~ ~' },
+  { label: 'Arp Up', value: '0 2 4 7 4 2' },
+  { label: 'Arp Down', value: '7 4 2 0 2 4' },
+  { label: 'Arp Up-Down', value: '0 2 4 7 9 7 4 2' },
+  { label: 'Triad Arp', value: '<0 2 4> <2 4 6> <4 6 8> <6 8 10>' },
+  { label: 'Sparse Arp', value: '~ 0 ~ ~ 4 ~ 2 ~' },
   { label: 'Chord Tones', value: '<0 2 4> <4 5 7> <7 9 11> <4 5 7>' },
+  { label: 'Pentatonic Run', value: '0 2 4 7 9 12 9 7' },
+  { label: 'Octave Jump', value: '0 ~ 7 ~ 0 7 ~ ~' },
+  { label: 'Steps', value: '0 ~ 1 ~ 2 ~ 3 ~' },
+  { label: 'Jazzy 7ths', value: '0 4 7 11 9 7 4 2' },
+  { label: 'Broken Chord', value: '0 4 2 7 4 9 7 12' },
+  { label: 'Rhythmic Arp', value: '[0 2] 4 [7 ~] 4 [2 0] ~ 4 ~' },
+  { label: 'Legato Steps', value: '0 1 2 ~ 4 5 ~ 7' },
 ]
 
 const CHORD_PROGRESSIONS = [
@@ -355,14 +362,19 @@ function randomDrumPattern(): string {
 }
 
 function randomMelodyPattern(): string {
-  const len = 4 + Math.floor(Math.random() * 5)
-  const notes: string[] = []
-  for (let i = 0; i < len; i++) {
-    if (Math.random() < 0.2) notes.push('~')
-    else if (Math.random() < 0.1) notes.push(`[${Math.floor(Math.random() * 8)} ${Math.floor(Math.random() * 8)}]`)
-    else notes.push(String(Math.floor(Math.random() * 12)))
-  }
-  return notes.join(' ')
+  const templates = [
+    // Stepwise motion (scale degrees 0-7)
+    () => { const len = 4 + Math.floor(Math.random() * 5); const notes: string[] = []; let cur = Math.floor(Math.random() * 4); for (let i = 0; i < len; i++) { if (Math.random() < 0.15) notes.push('~'); else { notes.push(String(cur)); cur += randomPick([-1, 1, 2, -2]); cur = Math.max(0, Math.min(7, cur)) } } return notes.join(' ') },
+    // Arp patterns
+    () => randomPick(['0 2 4 7 4 2', '7 4 2 0 2 4', '0 2 4 7 9 7 4 2', '0 4 7 12 7 4']),
+    // Sparse melody
+    () => { const len = 8; const notes: string[] = []; for (let i = 0; i < len; i++) notes.push(Math.random() < 0.35 ? '~' : String(Math.floor(Math.random() * 8))); return notes.join(' ') },
+    // Triad sequence (chord tones)
+    () => { const degs = [0, 2, 4]; const ct = 4 + Math.floor(Math.random() * 3); return Array.from({ length: ct }, () => `<${degs.map(d => d + Math.floor(Math.random() * 3) * 2).join(' ')}>`).join(' ') },
+    // Rhythmic brackets
+    () => { const n = () => String(Math.floor(Math.random() * 8)); return `[${n()} ${n()}] ${n()} [${n()} ~] ${n()} [${n()} ${n()}] ~ ${n()} ~` },
+  ]
+  return randomPick(templates)()
 }
 
 function randomChordProgression(): string {
@@ -517,7 +529,7 @@ const QUICK_FX: QuickFX[] = [
   // Sidechain
   { id: 'sidechain', label: 'SIDE', icon: '📊', category: 'groove', code: '.csid("bd",0.3,0.2)', detect: /\.csid\s*\(/, color: '#f59e0b', desc: 'Pumping sidechain compression' },
   // Arpeggio & layering
-  { id: 'arp', label: 'ARP', icon: '🎵', category: 'pattern', code: '.arp("0 2 4 6")', detect: /\.arp(eggiate)?\s*\(/, color: '#22d3ee', desc: 'Arpeggiate chord notes' },
+  { id: 'arp', label: 'ARP', icon: '🎵', category: 'pattern', code: '.arp("0 2 4 7")', detect: /\.arp(eggiate)?\s*\(/, color: '#22d3ee', desc: 'Arpeggiate chord notes (triad+7th)' },
   { id: 'off', label: 'OFF', icon: '⟩', category: 'pattern', code: '.off(1/8, x => x.add(7))', detect: /\.off\s*\(/, color: '#c084fc', desc: 'Offset copy +5th' },
   { id: 'superimpose', label: 'SUPER', icon: '⊕', category: 'pattern', code: '.superimpose(x => x.add(12).slow(2))', detect: /\.superimpose\s*\(/, color: '#c084fc', desc: 'Layer with octave transform' },
   { id: 'struct', label: 'STRUCT', icon: '▣', category: 'groove', code: '.struct("t(3,8)")', detect: /\.struct\s*\(/, color: '#34d399', desc: 'Boolean rhythm structure' },
@@ -624,7 +636,10 @@ const SIDEBAR_CATEGORIES: { id: string; label: string; icon: string; color: stri
   {
     id: 'layering', label: 'Layer & Pitch', icon: '⊕', color: '#c084fc',
     items: [
-      { id: 'mod_arp', label: 'Arpeggio', icon: '🎵', desc: 'Arpeggiate chords', color: '#22d3ee', dragType: 'effect', payload: '.arp("0 2 4 6")' },
+      { id: 'mod_arp', label: 'Arp (Up)', icon: '🎵', desc: 'Arpeggiate chords upward', color: '#22d3ee', dragType: 'effect', payload: '.arp("0 2 4 7")' },
+      { id: 'mod_arp_down', label: 'Arp (Down)', icon: '🎵', desc: 'Arpeggiate chords downward', color: '#22d3ee', dragType: 'effect', payload: '.arp("7 4 2 0")' },
+      { id: 'mod_arp_updown', label: 'Arp (Up-Down)', icon: '🎵', desc: 'Arpeggiate up then down', color: '#22d3ee', dragType: 'effect', payload: '.arp("0 2 4 7 4 2")' },
+      { id: 'mod_arp_random', label: 'Arp (Random)', icon: '🎲', desc: 'Random arpeggiation', color: '#22d3ee', dragType: 'effect', payload: '.arp(rand.range(0,7).segment(8))' },
       { id: 'mod_off', label: 'Off (Canon)', icon: '⟩', desc: 'Offset copy +5th', color: '#c084fc', dragType: 'effect', payload: '.off(1/8, x => x.add(7))' },
       { id: 'mod_super', label: 'Superimpose', icon: '⊕', desc: 'Layer + octave transform', color: '#c084fc', dragType: 'effect', payload: '.superimpose(x => x.add(12).slow(2))' },
       { id: 'mod_jux', label: 'Jux (Stereo)', icon: '◐', desc: 'Function on R channel', color: '#22d3ee', dragType: 'effect', payload: '.jux(rev)' },
@@ -2899,6 +2914,23 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     ]
   }, [globalScale])
 
+  // Key-aware melody patterns: mix scale-degree patterns with key-specific note patterns
+  const keyMelodyOptions = useMemo(() => {
+    const triads = buildDiatonicChords(globalScale, 4)
+    if (triads.length < 7) return MELODY_PATTERNS
+    // Extract individual notes from triads for key-specific patterns
+    const noteNames = triads.map(t => t.notes?.match(/\w+\d/)?.[0]).filter(Boolean) as string[]
+    if (noteNames.length < 7) return MELODY_PATTERNS
+    const keyLabel = globalScale.replace(/\d:/, ' ').replace('minor', 'min').replace('major', 'maj')
+    return [
+      ...MELODY_PATTERNS,
+      { label: `${keyLabel} 1-3-5`, value: `${noteNames[0]} ${noteNames[2]} ${noteNames[4]} ~` },
+      { label: `${keyLabel} Scale Up`, value: noteNames.slice(0, 7).join(' ') },
+      { label: `${keyLabel} Triad Arp`, value: `<${noteNames[0]} ${noteNames[2]} ${noteNames[4]}> <${noteNames[1]} ${noteNames[3]} ${noteNames[5]}> <${noteNames[2]} ${noteNames[4]} ${noteNames[6]}> <${noteNames[0]} ${noteNames[2]} ${noteNames[4]}>` },
+      { label: `${keyLabel} Waltz`, value: `${noteNames[0]} ${noteNames[2]} ${noteNames[4]} ${noteNames[2]} ${noteNames[4]} ${noteNames[2]}` },
+    ]
+  }, [globalScale])
+
   const NODE_W = 300
 
   // ════════════════════════════════════════════════════════════
@@ -3610,10 +3642,10 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                   <div className="px-3 pb-2 space-y-1" style={{ overflow: 'visible' }}>
                     <div className="flex items-center gap-1 mb-1">
                       <div className="h-px flex-1" style={{ background: HW.border }} />
-                      <span className="text-[7px] font-bold tracking-[0.2em] uppercase" style={{ color: HW.textDim }}>SOURCE</span>
+                      <span className="text-[7px] font-bold tracking-[0.2em] uppercase" style={{ color: HW.textDim }}>{isSampleBased(node.type) ? 'SOUND' : 'INSTRUMENT'}</span>
                       <div className="h-px flex-1" style={{ background: HW.border }} />
                     </div>
-                    <HardwareSelect label="SND" value={node.soundSource} options={presets}
+                    <HardwareSelect label={isSampleBased(node.type) ? 'SND' : 'INST'} value={node.soundSource} options={presets}
                       onChange={v => changeSoundSource(node.id, v)} color={color} />
                     {node.type === 'drums' || node.type === 'fx' ? (
                       <div className="flex items-center gap-1">
@@ -3660,7 +3692,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                       </div>
                     ) : isMelodic ? (
                       <div className="flex items-center gap-1">
-                        <div className="flex-1"><HardwareSelect label="PAT" value={node.pattern} options={MELODY_PATTERNS}
+                        <div className="flex-1"><HardwareSelect label="PAT" value={node.pattern} options={keyMelodyOptions}
                           onChange={v => changePattern(node.id, v)} color={color} /></div>
                         <button onClick={e => { e.stopPropagation(); transposePattern(node.id, -1) }}
                           className="w-5 h-6 flex items-center justify-center rounded text-[9px] cursor-pointer shrink-0 transition-all hover:scale-110"
