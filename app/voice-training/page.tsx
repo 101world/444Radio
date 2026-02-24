@@ -328,8 +328,8 @@ export default function VoiceTrainingPage() {
                 <h3 className="text-purple-300 font-semibold text-sm mb-1">Voice Cloning — {COST} Credits</h3>
                 <p className="text-gray-400 text-xs leading-relaxed">
                   Upload an audio file (10s–5min, MP3/WAV/M4A, &lt;20MB) or record with your mic.
-                  Your trained Voice ID can be reused for <strong className="text-purple-300">unlimited</strong> music generations on the Create page.
-                  You can also list your Voice ID on the Earn marketplace for others to use.
+                  Your trained Voice ID can be used in <strong className="text-cyan-300"><a href="/voice-labs" className="underline decoration-cyan-400/30">Voice Labs</a></strong> to generate
+                  text-to-speech with your cloned voice. You can also list your Voice ID on the Earn marketplace for others to use.
                 </p>
               </div>
             </div>
@@ -497,17 +497,13 @@ export default function VoiceTrainingPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {voice.preview_url && (
-                        <button
-                          onClick={() => togglePreview(voice.preview_url!, voice.id)}
-                          className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                          title="Preview"
-                        >
-                          {previewPlayingId === voice.id
-                            ? <Pause size={14} className="text-purple-400" />
-                            : <Play size={14} className="text-gray-400 group-hover:text-purple-400" />}
-                        </button>
-                      )}
+                      <a
+                        href="/voice-labs"
+                        className="p-2 hover:bg-cyan-500/20 rounded-lg transition-colors"
+                        title="Use in Voice Labs"
+                      >
+                        <Mic size={14} className="text-gray-500 hover:text-cyan-400" />
+                      </a>
                       <button
                         onClick={() => handleListVoice(voice.id)}
                         disabled={listingVoiceId === voice.id}

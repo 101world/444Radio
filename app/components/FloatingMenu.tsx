@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useUser, UserButton } from '@clerk/nextjs'
-import { Menu, X, Home, Zap, Library, Compass, BarChart3, User, LogIn, UserPlus, Unlock, CreditCard, Settings, DollarSign } from 'lucide-react'
+import { Menu, X, Home, Zap, Library, Compass, BarChart3, User, LogIn, UserPlus, Unlock, CreditCard, Settings, DollarSign, Mic } from 'lucide-react'
 import ProfileSettingsModal from './ProfileSettingsModal'
 import { useCredits } from '@/app/contexts/CreditsContext'
 
@@ -164,6 +164,15 @@ export default function FloatingMenu() {
                       <span className="font-medium">Decrypt</span>
                     </Link>
                     <Link
+                      href="/voice-labs"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-blue-600/20 to-cyan-500/20 border border-blue-500/40 text-blue-300 hover:from-blue-600/30 hover:to-cyan-500/30 rounded-xl transition-all"
+                    >
+                      <Mic size={20} />
+                      <span className="font-semibold">Voice Labs</span>
+                      <span className="ml-auto text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded-full">New</span>
+                    </Link>
+                    <Link
                       href="/pricing"
                       onClick={() => setIsOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 rounded-xl transition-colors"
@@ -257,6 +266,15 @@ export default function FloatingMenu() {
                       <BarChart3 size={20} />
                       <span className="font-medium">Charts</span>
                     </a>
+                    <Link
+                      href="/voice-labs"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-blue-600/20 to-cyan-500/20 border border-blue-500/40 text-blue-300 hover:from-blue-600/30 hover:to-cyan-500/30 rounded-xl transition-all"
+                    >
+                      <Mic size={20} />
+                      <span className="font-semibold">Voice Labs</span>
+                      <span className="ml-auto text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded-full">New</span>
+                    </Link>
                     <Link
                       href="/pricing"
                       onClick={() => setIsOpen(false)}
