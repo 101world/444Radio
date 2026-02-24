@@ -93,6 +93,9 @@ export default function VoiceLabsPage() {
   const router = useRouter()
   const { totalCredits: credits, refreshCredits } = useCredits()
 
+  // ── Token sub-wallet ──
+  const [tokenBalance, setTokenBalance] = useState<number | null>(null)
+
   // ── Docked sidebar + ESC visibility ──
   const [sidebarHidden, setSidebarHidden] = useState(false)
   const [showEscHint, setShowEscHint] = useState(true)
@@ -161,18 +164,30 @@ export default function VoiceLabsPage() {
   const progressRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
-  // ── Computed ──
-  const estimatedTokens = Math.ceil(text.length / 4)
-  const estimatedCost = text.length > 0 ? Math.max(3, Math.ceil(estimatedTokens / 1000) * 3) : 0
-  const hasEnoughCredits = (credits ?? 0) >= estimatedCost
+  // ── Computed (1 char = 1 token, 1000 tokens = 3 credits) ──
+  const estimatedTokens = text.length
+  const tokensAvailable = (tokenBalance ?? 0) + Math.floor(((credits ?? 0) / 3)) * 1000
+  const hasEnoughCredits = tokensAvailable >= estimatedTokens || estimatedTokens === 0
   const selectedVoiceName = SYSTEM_VOICES.find(v => v.id === voiceId)?.name
     || trainedVoices.find(v => v.voice_id === voiceId)?.name
     || voiceId
 
-  // ── Load voices + sessions on mount ──
+  // ── Fetch token balance ──
+  const refreshTokenBalance = async () => {
+    try {
+      const res = await fetch('/api/voice-labs/tokens')
+      if (res.ok) {
+        const data = await res.json()
+        setTokenBalance(data.tokens ?? 0)
+      }
+    } catch { /* ignore */ }
+  }
+
+  // ── Load voices + sessions + tokens on mount ──
   useEffect(() => {
     loadTrainedVoices()
     loadSessions()
+    refreshTokenBalance()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -378,7 +393,7 @@ export default function VoiceLabsPage() {
     setGenError('')
     if (!text.trim() || text.length < 3) { setGenError('Enter at least 3 characters.'); return }
     if (text.length > 10000) { setGenError('Max 10,000 characters.'); return }
-    if (!hasEnoughCredits) { setGenError(`Need ${estimatedCost} credits. You have ${credits ?? 0}.`); return }
+    if (!hasEnoughCredits) { setGenError(`Not enough tokens. Need ${text.trim().length.toLocaleString()} tokens. Buy more credits to refill.`); return }
 
     // Auto-create session if none active
     let sessionId = activeSessionId
@@ -403,7 +418,7 @@ export default function VoiceLabsPage() {
     const tempId = `temp-${Date.now()}`
     const tempMsg: ChatMessage = {
       id: tempId, text: text.trim(), voice_id: voiceId, audio_url: null,
-      credits_cost: estimatedCost, settings: { speed, pitch, volume, emotion, audioFormat, sampleRate, bitrate, channel, languageBoost },
+      credits_cost: 0, settings: { speed, pitch, volume, emotion, audioFormat, sampleRate, bitrate, channel, languageBoost },
       status: 'generating', created_at: new Date().toISOString(),
     }
     setMessages(prev => [...prev, tempMsg])
@@ -444,6 +459,7 @@ export default function VoiceLabsPage() {
       }
 
       refreshCredits()
+      refreshTokenBalance()
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Generation failed'
       setGenError(msg)
@@ -501,7 +517,7 @@ export default function VoiceLabsPage() {
       </div>
 
       {/* ── 3-panel layout ── */}
-      <div className={`flex-1 flex overflow-hidden transition-all duration-300 ${sidebarHidden ? '' : 'md:pl-[72px]'}`}>
+      <div className="flex-1 flex overflow-hidden transition-all duration-300">
 
         {/* ══════ LEFT SIDEBAR ══════ */}
         <div className={`${leftOpen ? 'w-[280px] min-w-[280px]' : 'w-0 min-w-0 overflow-hidden'} flex flex-col border-r border-white/[0.06] bg-black/40 backdrop-blur-xl transition-all duration-200`}>
@@ -515,7 +531,11 @@ export default function VoiceLabsPage() {
                 className="p-1 rounded-md hover:bg-white/10 transition-colors" title="Toggle nav sidebar">
                 <PanelLeft size={12} className={sidebarHidden ? 'text-cyan-400' : 'text-gray-500'} />
               </button>
-              <div className="flex items-center gap-1 px-2 py-0.5 bg-cyan-500/10 rounded-full">
+              <div className="flex items-center gap-1 px-2 py-0.5 bg-cyan-500/10 rounded-full" title="Voice tokens remaining">
+                <span className="text-[9px] font-mono text-cyan-300">{tokenBalance != null ? tokenBalance.toLocaleString() : '...'}</span>
+                <span className="text-[8px] text-cyan-500">tk</span>
+              </div>
+              <div className="flex items-center gap-1 px-2 py-0.5 bg-cyan-500/10 rounded-full" title="Credits">
                 <Zap size={10} className="text-cyan-400" />
                 <span className="text-[10px] font-bold text-white">{credits ?? '...'}</span>
               </div>
@@ -804,7 +824,7 @@ export default function VoiceLabsPage() {
                 />
                 <div className="absolute right-2 bottom-2 flex items-center gap-1">
                   {text.length > 0 && (
-                    <span className="text-[9px] text-gray-500 mr-1">{estimatedCost} cr</span>
+                    <span className="text-[9px] text-gray-500 mr-1">{text.length.toLocaleString()} tk</span>
                   )}
                   <button onClick={handleGenerate} disabled={isGenerating || !text.trim() || text.length > 10000}
                     className={`p-2 rounded-lg transition-all ${isGenerating || !text.trim() ? 'text-gray-600' : 'text-cyan-400 hover:bg-cyan-500/20'}`}>
@@ -815,7 +835,7 @@ export default function VoiceLabsPage() {
             </div>
             <div className="flex items-center justify-between mt-1.5 px-1">
               <p className="text-[8px] text-gray-600">
-                {text.length.toLocaleString()}/10,000 chars • ~{estimatedTokens.toLocaleString()} tokens • {selectedVoiceName}
+                {text.length.toLocaleString()}/10,000 chars • {estimatedTokens.toLocaleString()} tokens • {selectedVoiceName}
               </p>
               <p className="text-[8px] text-gray-600">
                 Shift+Enter for newline • <code className="text-gray-500">{'<#0.5#>'}</code> for pauses
