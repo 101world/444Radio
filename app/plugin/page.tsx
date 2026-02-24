@@ -15,11 +15,11 @@ import PluginGenerationQueue from '@/app/components/PluginGenerationQueue'
 import PluginPostGenModal from '@/app/components/PluginPostGenModal'
 import SplitStemsModal from '@/app/components/SplitStemsModal'
 import VisualizerModal from '@/app/components/VisualizerModal'
+import CoverArtGenModal from '@/app/components/CoverArtGenModal'
 import type { StemType, StemAdvancedParams } from '@/app/components/SplitStemsModal'
 const LipSyncModal = lazy(() => import('@/app/components/LipSyncModal'))
 const ResoundModal = lazy(() => import('@/app/components/ResoundModal'))
 const InputEditor = lazy(() => import('@/app/components/InputEditor'))
-const CoverArtGenModal = lazy(() => import('@/app/components/CoverArtGenModal'))
 
 // ─── Types (mirrored from create page) ──────────────────────────
 type MessageType = 'user' | 'assistant' | 'generation'
@@ -1197,53 +1197,9 @@ function PluginPageInner() {
       return
     }
 
-    // ── IMAGE GENERATION ──
+    // ── IMAGE GENERATION — redirect to Cover Art modal ──
     if (selectedType === 'image') {
-      const genMsgId = (Date.now() + 1).toString()
-      setMessages(prev => [...prev,
-        { id: Date.now().toString(), type: 'user', content: input, timestamp: new Date() },
-        { id: genMsgId, type: 'generation', content: '🎨 Generating cover art...', generationType: 'image', isGenerating: true, timestamp: new Date() }
-      ])
-      setActiveGenerations(prev => new Set(prev).add(genMsgId))
-      const prompt = input
-      setInput('')
-
-      try {
-        const res = await fetch('/api/plugin/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ type: 'image', prompt })
-        })
-        let result: any = null
-        await parseNDJSON(res, () => {}, (r) => { result = r })
-
-        if (result?.success) {
-          setMessages(prev => prev.map(msg =>
-            msg.id === genMsgId ? {
-              ...msg, isGenerating: false, content: '✅ Cover art generated!',
-              result: { imageUrl: result.imageUrl, title: prompt.substring(0, 50), prompt }
-            } : msg
-          ))
-          if (result.creditsRemaining !== undefined) setUserCredits(result.creditsRemaining)
-          else refreshCredits()
-          setMessages(prev => [...prev, {
-            id: (Date.now() + 2).toString(), type: 'assistant',
-            content: 'Cover art created! Want to combine it with a track?',
-            timestamp: new Date()
-          }])
-        } else {
-          setMessages(prev => prev.map(msg =>
-            msg.id === genMsgId ? { ...msg, isGenerating: false, content: '❌ 444 Radio locking in. Please try again.' } : msg
-          ))
-          refreshCredits()
-        }
-      } catch {
-        setMessages(prev => prev.map(msg =>
-          msg.id === genMsgId ? { ...msg, isGenerating: false, content: '❌ 444 Radio locking in. Please try again.' } : msg
-        ))
-      } finally {
-        setActiveGenerations(prev => { const s = new Set(prev); s.delete(genMsgId); return s })
-      }
+      setShowCoverArtGenModal(true)
       return
     }
 
@@ -4192,16 +4148,14 @@ function PluginPageInner() {
       </Suspense>
 
       {/* ── Cover Art Generator Modal ── */}
-      <Suspense fallback={null}>
-        <CoverArtGenModal
-          isOpen={showCoverArtGenModal}
-          onClose={() => setShowCoverArtGenModal(false)}
-          userCredits={userCredits || 0}
-          onGenerate={handleCoverArtGenerate}
-          initialPrompt={input}
-          authToken={token}
-        />
-      </Suspense>
+      <CoverArtGenModal
+        isOpen={showCoverArtGenModal}
+        onClose={() => setShowCoverArtGenModal(false)}
+        userCredits={userCredits || 0}
+        onGenerate={handleCoverArtGenerate}
+        initialPrompt={input}
+        authToken={token}
+      />
 
       {/* ── Input Editor (Pattern Live Editor) — fullscreen overlay ── */}
       {showInputEditor && (
