@@ -174,6 +174,10 @@ const SOUND_PRESETS: Record<string, { label: string; value: string }[]> = {
   drums: [
     { label: 'TR-808', value: 'RolandTR808' },
     { label: 'TR-909', value: 'RolandTR909' },
+    { label: 'CR-78', value: 'RolandCR78' },
+    { label: 'CompuRhythm', value: 'RolandCompuRhythm8000' },
+    { label: 'Linn Drum', value: 'AkaiLinn' },
+    { label: 'Korg Minipops', value: 'KorgMinipops' },
   ],
   bass: [
     { label: 'Sine Bass', value: 'sine' },
@@ -234,16 +238,31 @@ const SOUND_PRESETS: Record<string, { label: string; value: string }[]> = {
     { label: 'Synth Voice', value: 'gm_synth_voice' },
     { label: 'Synth Choir', value: 'gm_synth_choir' },
     { label: 'Whistle', value: 'gm_whistle' },
+    { label: 'Flute', value: 'gm_flute' },
+    { label: 'Oboe', value: 'gm_oboe' },
+    { label: 'Sax Soprano', value: 'gm_soprano_sax' },
+    { label: 'Sine (clean)', value: 'sine' },
+    { label: 'Triangle (soft)', value: 'triangle' },
   ],
   fx: [
-    { label: 'Hi-hat Shimmer', value: 'RolandTR808' },
+    { label: 'TR-808 (percussive)', value: 'RolandTR808' },
+    { label: 'TR-909 (punchy)', value: 'RolandTR909' },
     { label: 'Sine Wash', value: 'sine' },
+    { label: 'Noise / Texture', value: 'square' },
+    { label: 'Metallic', value: 'triangle' },
+    { label: 'Wind Chime', value: 'gm_tinkle_bell' },
+    { label: 'Woodblock', value: 'gm_woodblock' },
+    { label: 'Taiko Drum', value: 'gm_taiko_drum' },
   ],
   other: [
     { label: 'Sine', value: 'sine' },
     { label: 'Sawtooth', value: 'sawtooth' },
     { label: 'Square', value: 'square' },
     { label: 'Triangle', value: 'triangle' },
+    { label: 'SuperSaw', value: 'supersaw' },
+    { label: 'Piano', value: 'gm_piano' },
+    { label: 'E-Piano', value: 'gm_epiano1' },
+    { label: 'Strings', value: 'gm_string_ensemble_1' },
   ],
 }
 
@@ -546,6 +565,19 @@ const QUICK_FX: QuickFX[] = [
   { id: 'add7', label: 'ADD+7', icon: '⇧', category: 'pattern', code: '.add(7)', detect: /\)\s*\.add\s*\(\s*7\s*\)/, color: '#c084fc', desc: 'Transpose up a 5th' },
   { id: 'add12', label: 'ADD+12', icon: '⇑', category: 'pattern', code: '.add(12)', detect: /\)\s*\.add\s*\(\s*12\s*\)/, color: '#c084fc', desc: 'Transpose up an octave' },
   { id: 'when50', label: 'WHEN', icon: '⚖', category: 'glitch', code: '.when(x => x > 0.5, rev)', detect: /\.when\s*\(/, color: '#a78bfa', desc: 'Conditional transform' },
+  // Sound sculpting
+  { id: 'crush8', label: 'CRSH8', icon: '▤', category: 'glitch', code: '.crush(8)', detect: /\.crush\s*\(\s*8/, color: '#ef4444', desc: 'Bitcrush to 8-bit' },
+  { id: 'crush4', label: 'CRSH4', icon: '▥', category: 'glitch', code: '.crush(4)', detect: /\.crush\s*\(\s*4/, color: '#ef4444', desc: 'Bitcrush to 4-bit (heavy)' },
+  { id: 'coarse16', label: 'CORS', icon: '░', category: 'glitch', code: '.coarse(16)', detect: /\.coarse\s*\(/, color: '#ef4444', desc: 'Sample rate reduction' },
+  { id: 'fast2', label: 'FAST2', icon: '⏩', category: 'time', code: '.fast(2)', detect: /\)\.fast\s*\(\s*2\s*\)/, color: '#facc15', desc: 'Double speed' },
+  { id: 'slow2', label: 'SLOW2', icon: '⏪', category: 'time', code: '.slow(2)', detect: /\)\.slow\s*\(\s*2\s*\)/, color: '#facc15', desc: 'Half speed' },
+  { id: 'slow4', label: 'SLOW4', icon: '🐢', category: 'time', code: '.slow(4)', detect: /\)\.slow\s*\(\s*4\s*\)/, color: '#facc15', desc: 'Quarter speed (ambient)' },
+  { id: 'vowelA', label: 'VWL-A', icon: '🗣', category: 'pattern', code: '.vowel("a")', detect: /\.vowel\s*\(\s*["']a["']/, color: '#c084fc', desc: 'Vowel filter: open A' },
+  { id: 'vowelE', label: 'VWL-E', icon: '🗣', category: 'pattern', code: '.vowel("e")', detect: /\.vowel\s*\(\s*["']e["']/, color: '#c084fc', desc: 'Vowel filter: bright E' },
+  { id: 'vowelO', label: 'VWL-O', icon: '🗣', category: 'pattern', code: '.vowel("o")', detect: /\.vowel\s*\(\s*["']o["']/, color: '#c084fc', desc: 'Vowel filter: dark O' },
+  // Euclid additional
+  { id: 'euclid716', label: 'E(7,16)', icon: '◇', category: 'groove', code: '.euclid(7,16)', detect: /\.euclid\s*\(\s*7\s*,\s*16/, color: '#34d399', desc: 'Euclidean 7/16 (complex groove)' },
+  { id: 'euclid916', label: 'E(9,16)', icon: '◆', category: 'groove', code: '.euclid(9,16)', detect: /\.euclid\s*\(\s*9\s*,\s*16/, color: '#34d399', desc: 'Euclidean 9/16 (dense)' },
 ]
 
 // LFO presets — inject as replacement for a knob's static value
@@ -922,14 +954,17 @@ function detectPattern(code: string): string {
 }
 
 function detectSoundSource(code: string): string {
-  const a = code.match(/\)\.s\s*\(\s*["']([^"']+)["']/)
+  // Match .s("instrument") in method chain — single-token instrument names
+  // (no spaces/brackets/commas/* — distinguishes from drum patterns in s("bd sd hh"))
+  const a = code.match(/\.s\s*\(\s*["']([^"'\s,\[\]{}*]+)["']/)
   if (a) return a[1]
+  // Match .bank("bank_name")
   const b = code.match(/\.bank\s*\(\s*["']([^"']+)["']/)
   if (b) return b[1]
-  const c2 = code.match(/\bs\s*\(\s*["'](sine|sawtooth|square|triangle|supersaw)["']/)
+  // Match standalone s("instrument") — basic waveforms (not preceded by dot)
+  const c2 = code.match(/(?<!\.)\bs\s*\(\s*["'](sine|sawtooth|square|triangle|supersaw)["']/)
   if (c2) return c2[1]
-  const d = code.match(/\.s\s*\(\s*["'](gm_[^"']+)["']/)
-  return d ? d[1] : ''
+  return ''
 }
 
 function detectVowel(code: string): string {
@@ -1120,12 +1155,17 @@ function applyEffect(code: string, method: string, value: number | string, remov
     if (method === 'bank') {
       const re = /\.bank\s*\(\s*["'][^"']*["']\s*\)/
       if (re.test(code)) return code.replace(re, `.bank("${value}")`)
+      // No .bank() found — inject .bank() after standalone s("...") for sample-based nodes
+      const sRe = /((?<!\.)\bs\s*\(\s*["'][^"']*["']\s*\))/
+      if (sRe.test(code)) return code.replace(sRe, `$1.bank("${value}")`)
       return code
     }
     if (method === 'soundDotS') {
-      const re1 = /\)\.s\s*\(\s*["'][^"']*["']\s*\)/
-      if (re1.test(code)) return code.replace(re1, `).s("${value}")`)
-      // Fallback: match standalone s("instrument") — negative lookbehind to avoid matching .s()
+      // Match .s("instrument") in a method chain — instrument names are single tokens
+      // (no spaces, brackets, commas, or *) distinguishing from drum patterns in s("bd sd hh")
+      const re1 = /\.s\s*\(\s*["']([^"'\s,\[\]{}*]+)["']\s*\)/
+      if (re1.test(code)) return code.replace(re1, `.s("${value}")`)
+      // Fallback: standalone s("instrument") at start of expression — not preceded by dot
       const re2 = /(?<!\.)\bs\s*\(\s*["'](sine|sawtooth|square|triangle|supersaw|gm_[^"']+)["']\s*\)/
       if (re2.test(code)) return code.replace(re2, `s("${value}")`)
       return code
