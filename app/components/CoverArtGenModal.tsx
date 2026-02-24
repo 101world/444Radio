@@ -116,13 +116,19 @@ export default function CoverArtGenModal({ isOpen, onClose, userCredits, onGener
     if (isEnhancingPrompt) return
     setIsEnhancingPrompt(true)
     try {
-      const res = await fetch('/api/plugin/atom', {
+      // Use plugin endpoint when authToken present (DAW plugin), otherwise website endpoint
+      const endpoint = authToken ? '/api/plugin/atom' : '/api/generate/atom-cover-art'
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`
+
+      const body = authToken
+        ? { action: 'cover-art-prompt', prompt: prompt.trim() }
+        : { prompt: prompt.trim() }
+
+      const res = await fetch(endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}),
-        },
-        body: JSON.stringify({ action: 'cover-art-prompt', prompt: prompt.trim() }),
+        headers,
+        body: JSON.stringify(body),
       })
       const data = await res.json()
       if (data.success && data.prompt) {
