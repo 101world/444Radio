@@ -8,7 +8,7 @@ import {
   Settings2, ChevronDown, ChevronUp, Copy, AlertCircle, CheckCircle2,
   SlidersHorizontal,  Trash2, User,
   Type, Plus, MessageSquare, Upload, Send,
-  ChevronLeft, ChevronRight, Edit3, PanelLeft
+  ChevronLeft, ChevronRight, Edit3, PanelLeft, Info
 } from 'lucide-react'
 import { useCredits } from '@/app/contexts/CreditsContext'
 import FloatingMenu from '@/app/components/FloatingMenu'
@@ -628,42 +628,48 @@ export default function VoiceLabsPage() {
       <FloatingMenu />
 
       {/* ESC hint — visible for 2s then fades */}
-      <div className={`fixed top-3 right-3 z-[60] flex items-center gap-1.5 px-2.5 py-1.5 bg-black/70 backdrop-blur-xl border border-white/10 rounded-lg transition-all duration-500 ${showEscHint ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'}`}>
-        <kbd className="text-[9px] font-mono text-gray-400 bg-white/10 px-1.5 py-0.5 rounded border border-white/10">ESC</kbd>
-        <span className="text-[9px] text-gray-500">Back to Create</span>
+      <div className={`fixed top-3 right-3 z-[60] flex items-center gap-2 px-3 py-2 bg-black/70 backdrop-blur-xl border border-white/10 rounded-lg transition-all duration-500 ${showEscHint ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'}`}>
+        <kbd className="text-xs font-mono text-gray-400 bg-white/10 px-2 py-0.5 rounded border border-white/10">ESC</kbd>
+        <span className="text-xs text-gray-500">Back to Create</span>
       </div>
 
       {/* ── 3-panel layout ── */}
       <div className="flex-1 flex overflow-hidden transition-all duration-300">
 
         {/* ══════ LEFT SIDEBAR ══════ */}
-        <div className={`${leftOpen ? 'w-[280px] min-w-[280px]' : 'w-0 min-w-0 overflow-hidden'} flex flex-col border-r border-white/[0.06] bg-black/40 backdrop-blur-xl transition-all duration-200`}>
+        <div className={`${leftOpen ? 'w-[300px] min-w-[300px]' : 'w-0 min-w-0 overflow-hidden'} flex flex-col border-r border-white/[0.06] bg-black/40 backdrop-blur-xl transition-all duration-200`}>
 
           {/* Sidebar header */}
-          <div className="flex items-center justify-between px-3 py-3 border-b border-white/[0.06]">
-            <h2 className="text-sm font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">VOICE LABS</h2>
-            <div className="flex items-center gap-1">
+          <div className="px-4 py-4 border-b border-white/[0.06]">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-base font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent tracking-wide">VOICE LABS</h2>
               <button
                 onClick={() => { setSidebarHidden(h => !h); window.dispatchEvent(new CustomEvent('toggle-docked-sidebar')) }}
-                className="p-1 rounded-md hover:bg-white/10 transition-colors" title="Toggle nav sidebar">
-                <PanelLeft size={12} className={sidebarHidden ? 'text-cyan-400' : 'text-gray-500'} />
+                className="p-1.5 rounded-lg hover:bg-white/10 transition-colors" title="Toggle nav sidebar">
+                <PanelLeft size={16} className={sidebarHidden ? 'text-cyan-400' : 'text-gray-500'} />
               </button>
-              <div className="flex items-center gap-1 px-2 py-0.5 bg-cyan-500/10 rounded-full" title="Voice tokens remaining">
-                <span className="text-[9px] font-mono text-cyan-300">{tokenBalance != null ? tokenBalance.toLocaleString() : '...'}</span>
-                <span className="text-[8px] text-cyan-500">tk</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-cyan-500/[0.08] border border-cyan-500/20 rounded-lg" title="Voice tokens — 1 character = 1 token">
+                <span className="text-sm font-mono font-semibold text-cyan-300">{tokenBalance != null ? tokenBalance.toLocaleString() : '...'}</span>
+                <span className="text-xs text-cyan-500/70">tokens</span>
               </div>
-              <div className="flex items-center gap-1 px-2 py-0.5 bg-cyan-500/10 rounded-full" title="Credits">
-                <Zap size={10} className="text-cyan-400" />
-                <span className="text-[10px] font-bold text-white">{credits ?? '...'}</span>
+              <div className="flex items-center gap-1.5 px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg" title="Credits balance">
+                <Zap size={14} className="text-yellow-400" />
+                <span className="text-sm font-bold text-white">{credits ?? '...'}</span>
               </div>
             </div>
+            <p className="text-[11px] text-gray-500 mt-2.5 leading-relaxed flex items-start gap-1.5">
+              <Info size={12} className="text-gray-600 flex-shrink-0 mt-px" />
+              1 char = 1 token · Auto-refills 1,000 tokens for 3 credits
+            </p>
           </div>
 
           {/* Sidebar tabs */}
           <div className="flex border-b border-white/[0.06]">
             {(['voices', 'train', 'sessions'] as const).map(tab => (
               <button key={tab} onClick={() => setLeftTab(tab)}
-                className={`flex-1 py-2 text-[10px] font-medium uppercase tracking-wider transition-all ${
+                className={`flex-1 py-2.5 text-xs font-semibold uppercase tracking-wider transition-all ${
                   leftTab === tab ? 'text-cyan-400 border-b-2 border-cyan-400 bg-cyan-500/[0.05]' : 'text-gray-500 hover:text-gray-300'
                 }`}>
                 {tab === 'voices' ? 'Voices' : tab === 'train' ? 'Clone' : 'History'}
@@ -672,61 +678,61 @@ export default function VoiceLabsPage() {
           </div>
 
           {/* Sidebar content */}
-          <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-3 space-y-1.5 custom-scrollbar">
 
             {/* ── VOICES TAB ── */}
             {leftTab === 'voices' && (
               <>
                 <div className="flex bg-black/30 rounded-lg p-0.5 mb-2">
-                  <button onClick={() => setVoiceSubTab('system')} className={`flex-1 py-1 rounded-md text-[9px] font-medium ${voiceSubTab === 'system' ? 'bg-cyan-500/20 text-cyan-300' : 'text-gray-500'}`}>System</button>
-                  <button onClick={() => setVoiceSubTab('custom')} className={`flex-1 py-1 rounded-md text-[9px] font-medium ${voiceSubTab === 'custom' ? 'bg-purple-500/20 text-purple-300' : 'text-gray-500'}`}>My Clones{trainedVoices.length > 0 && ` (${trainedVoices.length})`}</button>
+                  <button onClick={() => setVoiceSubTab('system')} className={`flex-1 py-1.5 rounded-md text-xs font-medium ${voiceSubTab === 'system' ? 'bg-cyan-500/20 text-cyan-300' : 'text-gray-500'}`}>System</button>
+                  <button onClick={() => setVoiceSubTab('custom')} className={`flex-1 py-1.5 rounded-md text-xs font-medium ${voiceSubTab === 'custom' ? 'bg-purple-500/20 text-purple-300' : 'text-gray-500'}`}>My Clones{trainedVoices.length > 0 && ` (${trainedVoices.length})`}</button>
                 </div>
 
                 {voiceSubTab === 'system' ? (
                   SYSTEM_VOICES.map(v => (
                     <button key={v.id} onClick={() => setVoiceId(v.id)}
-                      className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-left transition-all ${
+                      className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left transition-all ${
                         voiceId === v.id ? 'bg-cyan-500/10 border border-cyan-500/40' : 'hover:bg-white/[0.03] border border-transparent'
                       }`}>
-                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${voiceId === v.id ? 'bg-cyan-500/20' : 'bg-white/[0.04]'}`}>
-                        <User size={12} className={voiceId === v.id ? 'text-cyan-400' : 'text-gray-500'} />
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${voiceId === v.id ? 'bg-cyan-500/20' : 'bg-white/[0.04]'}`}>
+                        <User size={16} className={voiceId === v.id ? 'text-cyan-400' : 'text-gray-500'} />
                       </div>
                       <div className="min-w-0">
-                        <div className={`text-[11px] font-medium truncate ${voiceId === v.id ? 'text-cyan-300' : 'text-white/70'}`}>{v.name}</div>
-                        <div className="text-[8px] text-gray-600 truncate">{v.desc}</div>
+                        <div className={`text-sm font-medium truncate ${voiceId === v.id ? 'text-cyan-300' : 'text-white/70'}`}>{v.name}</div>
+                        <div className="text-xs text-gray-500 truncate">{v.desc}</div>
                       </div>
                     </button>
                   ))
                 ) : loadingVoices ? (
-                  <div className="flex items-center justify-center py-8 text-gray-500 text-xs gap-1.5"><Loader2 size={12} className="animate-spin" /> Loading...</div>
+                  <div className="flex items-center justify-center py-8 text-gray-500 text-sm gap-2"><Loader2 size={14} className="animate-spin" /> Loading...</div>
                 ) : trainedVoices.length === 0 ? (
                   <div className="flex flex-col items-center py-8 text-center">
-                    <User size={20} className="text-gray-600 mb-2" />
-                    <p className="text-gray-400 text-[11px] mb-1">No cloned voices</p>
-                    <button onClick={() => setLeftTab('train')} className="text-[10px] text-purple-400 hover:text-purple-300">Clone a voice →</button>
+                    <User size={24} className="text-gray-600 mb-2" />
+                    <p className="text-gray-400 text-sm mb-1">No cloned voices</p>
+                    <button onClick={() => setLeftTab('train')} className="text-xs text-purple-400 hover:text-purple-300">Clone a voice →</button>
                   </div>
                 ) : (
                   trainedVoices.map(v => (
                     <button key={v.voice_id} onClick={() => setVoiceId(v.voice_id)}
-                      className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-left transition-all ${
+                      className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left transition-all ${
                         voiceId === v.voice_id ? 'bg-purple-500/10 border border-purple-500/40' : 'hover:bg-white/[0.03] border border-transparent'
                       }`}>
-                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${voiceId === v.voice_id ? 'bg-purple-500/20' : 'bg-white/[0.04]'}`}>
-                        <User size={12} className={voiceId === v.voice_id ? 'text-purple-400' : 'text-gray-500'} />
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${voiceId === v.voice_id ? 'bg-purple-500/20' : 'bg-white/[0.04]'}`}>
+                        <User size={16} className={voiceId === v.voice_id ? 'text-purple-400' : 'text-gray-500'} />
                       </div>
                       <div className="min-w-0">
-                        <div className={`text-[11px] font-medium truncate ${voiceId === v.voice_id ? 'text-purple-300' : 'text-white/70'}`}>{v.name}</div>
-                        <div className="text-[8px] text-gray-600 font-mono truncate">ID: {v.voice_id.substring(0, 16)}...</div>
+                        <div className={`text-sm font-medium truncate ${voiceId === v.voice_id ? 'text-purple-300' : 'text-white/70'}`}>{v.name}</div>
+                        <div className="text-[10px] text-gray-500 font-mono truncate">ID: {v.voice_id.substring(0, 16)}...</div>
                       </div>
                     </button>
                   ))
                 )}
 
                 {/* Direct ID input */}
-                <div className="pt-2 mt-2 border-t border-white/[0.04]">
-                  <label className="text-[8px] text-gray-600 block mb-0.5">Voice ID</label>
+                <div className="pt-3 mt-3 border-t border-white/[0.06]">
+                  <label className="text-xs text-gray-500 block mb-1">Voice ID</label>
                   <input type="text" value={voiceId} onChange={e => setVoiceId(e.target.value)}
-                    className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] text-white font-mono focus:outline-none focus:border-cyan-500/50" />
+                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-cyan-500/50" />
                 </div>
               </>
             )}
@@ -734,53 +740,53 @@ export default function VoiceLabsPage() {
             {/* ── CLONE/TRAIN TAB ── */}
             {leftTab === 'train' && (
               <div className="space-y-3">
-                <div className="bg-cyan-500/[0.06] border border-cyan-500/20 rounded-xl p-2.5">
-                  <p className="text-[10px] text-cyan-300 font-semibold mb-0.5">Voice Cloning — {TRAIN_COST} Credits</p>
-                  <p className="text-[9px] text-gray-400 leading-relaxed">Upload 10s–5min audio (MP3/WAV/M4A). Your Voice ID works instantly in Voice Labs TTS.</p>
+                <div className="bg-cyan-500/[0.06] border border-cyan-500/20 rounded-xl p-3">
+                  <p className="text-sm text-cyan-300 font-semibold mb-1">Voice Cloning — {TRAIN_COST} Credits</p>
+                  <p className="text-xs text-gray-400 leading-relaxed">Upload 10s–5min audio (MP3/WAV/M4A). Your Voice ID works instantly in Voice Labs TTS.</p>
                 </div>
 
                 <div>
-                  <label className="text-[10px] text-gray-400 block mb-1">Voice Name</label>
+                  <label className="text-xs text-gray-400 block mb-1.5">Voice Name</label>
                   <input type="text" value={trainName} onChange={e => setTrainName(e.target.value)} placeholder="My Voice..."
-                    maxLength={100} className="w-full bg-black/40 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50" />
+                    maxLength={100} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50" />
                 </div>
 
                 <div>
-                  <label className="text-[10px] text-gray-400 block mb-1">Audio Source</label>
+                  <label className="text-xs text-gray-400 block mb-1.5">Audio Source</label>
                   <input ref={trainFileInputRef} type="file" accept=".mp3,.wav,.m4a" className="hidden"
                     onChange={e => { const f = e.target.files?.[0]; if (f) { setTrainFile(f); setTrainFileUrl(''); setRecordedBlob(null) } }} />
-                  <div className="grid grid-cols-2 gap-1">
+                  <div className="grid grid-cols-2 gap-1.5">
                     <button onClick={() => trainFileInputRef.current?.click()}
-                      className="flex items-center justify-center gap-1 bg-black/40 border border-white/10 rounded-lg px-2 py-2 text-[10px] text-gray-300 hover:border-cyan-500/30 transition-colors truncate">
-                      <Upload size={10} /> {trainFile ? trainFile.name.substring(0, 12) : 'Upload'}
+                      className="flex items-center justify-center gap-1.5 bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-xs text-gray-300 hover:border-cyan-500/30 transition-colors truncate">
+                      <Upload size={14} /> {trainFile ? trainFile.name.substring(0, 12) : 'Upload'}
                     </button>
                     <button onClick={isRecordingMic ? stopMicRecording : startMicRecording}
-                      className={`flex items-center justify-center gap-1 rounded-lg px-2 py-2 text-[10px] font-medium transition-all ${isRecordingMic ? 'bg-red-500/20 border border-red-500/50 text-red-400 animate-pulse' : 'bg-black/40 border border-white/10 text-gray-300 hover:border-cyan-500/30'}`}>
-                      {isRecordingMic ? <><MicOff size={10} />{fmtTime(recordingTime)}</> : <><Mic size={10} />Record</>}
+                      className={`flex items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-xs font-medium transition-all ${isRecordingMic ? 'bg-red-500/20 border border-red-500/50 text-red-400 animate-pulse' : 'bg-black/40 border border-white/10 text-gray-300 hover:border-cyan-500/30'}`}>
+                      {isRecordingMic ? <><MicOff size={14} />{fmtTime(recordingTime)}</> : <><Mic size={14} />Record</>}
                     </button>
                   </div>
-                  {recordedBlob && !isRecordingMic && <div className="flex items-center gap-1 mt-1 text-green-400 text-[9px]"><CheckCircle2 size={10} /> Recording ready ({fmtTime(recordingTime)})</div>}
+                  {recordedBlob && !isRecordingMic && <div className="flex items-center gap-1.5 mt-1.5 text-green-400 text-xs"><CheckCircle2 size={14} /> Recording ready ({fmtTime(recordingTime)})</div>}
                   {!trainFile && !recordedBlob && (
                     <input type="url" value={trainFileUrl} onChange={e => setTrainFileUrl(e.target.value)} placeholder="Or paste URL..."
-                      className="w-full mt-1 bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 text-[10px] text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50" />
+                      className="w-full mt-1.5 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50" />
                   )}
                 </div>
 
-                <div className="flex gap-3">
-                  <label className="flex items-center gap-1 text-[9px] text-gray-400 cursor-pointer">
-                    <input type="checkbox" checked={noiseReduction} onChange={e => setNoiseReduction(e.target.checked)} className="accent-cyan-500 w-3 h-3" /> Noise Reduction
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer">
+                    <input type="checkbox" checked={noiseReduction} onChange={e => setNoiseReduction(e.target.checked)} className="accent-cyan-500 w-3.5 h-3.5" /> Noise Reduction
                   </label>
-                  <label className="flex items-center gap-1 text-[9px] text-gray-400 cursor-pointer">
-                    <input type="checkbox" checked={volumeNormalization} onChange={e => setVolumeNormalization(e.target.checked)} className="accent-cyan-500 w-3 h-3" /> Volume Norm
+                  <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer">
+                    <input type="checkbox" checked={volumeNormalization} onChange={e => setVolumeNormalization(e.target.checked)} className="accent-cyan-500 w-3.5 h-3.5" /> Volume Norm
                   </label>
                 </div>
 
-                {trainError && <div className="flex items-start gap-1 text-red-400 text-[10px] bg-red-500/10 border border-red-500/20 rounded-lg p-2"><AlertCircle size={10} className="flex-shrink-0 mt-0.5" />{trainError}</div>}
-                {trainSuccess && <div className="flex items-start gap-1 text-green-400 text-[10px] bg-green-500/10 border border-green-500/20 rounded-lg p-2"><CheckCircle2 size={10} className="flex-shrink-0 mt-0.5" />{trainSuccess}</div>}
+                {trainError && <div className="flex items-start gap-1.5 text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg p-2.5"><AlertCircle size={14} className="flex-shrink-0 mt-0.5" />{trainError}</div>}
+                {trainSuccess && <div className="flex items-start gap-1.5 text-green-400 text-xs bg-green-500/10 border border-green-500/20 rounded-lg p-2.5"><CheckCircle2 size={14} className="flex-shrink-0 mt-0.5" />{trainSuccess}</div>}
 
                 <button onClick={handleTrainVoice} disabled={isTraining || (!trainFile && !trainFileUrl && !recordedBlob)}
-                  className="w-full flex items-center justify-center gap-1.5 bg-gradient-to-r from-cyan-600 to-blue-500 text-white font-semibold py-2.5 rounded-lg text-xs hover:from-cyan-500 hover:to-blue-400 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
-                  {isTraining ? <><Loader2 size={12} className="animate-spin" />Training...</> : <><Zap size={12} />Clone — {TRAIN_COST} Cr</>}
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-500 text-white font-semibold py-3 rounded-lg text-sm hover:from-cyan-500 hover:to-blue-400 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                  {isTraining ? <><Loader2 size={16} className="animate-spin" />Training...</> : <><Zap size={16} />Clone — {TRAIN_COST} Cr</>}
                 </button>
               </div>
             )}
@@ -788,34 +794,34 @@ export default function VoiceLabsPage() {
             {/* ── SESSIONS TAB ── */}
             {leftTab === 'sessions' && (
               <>
-                <button onClick={createSession} className="w-full flex items-center justify-center gap-1.5 bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 rounded-lg py-2 text-[10px] font-medium hover:bg-cyan-500/20 transition-colors mb-2">
-                  <Plus size={12} /> New Session
+                <button onClick={createSession} className="w-full flex items-center justify-center gap-2 bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 rounded-lg py-2.5 text-xs font-semibold hover:bg-cyan-500/20 transition-colors mb-2">
+                  <Plus size={14} /> New Session
                 </button>
                 {loadingSessions ? (
-                  <div className="flex items-center justify-center py-8 text-gray-500 text-xs gap-1.5"><Loader2 size={12} className="animate-spin" /> Loading...</div>
+                  <div className="flex items-center justify-center py-8 text-gray-500 text-sm gap-2"><Loader2 size={14} className="animate-spin" /> Loading...</div>
                 ) : sessions.length === 0 ? (
                   <div className="flex flex-col items-center py-8 text-center">
-                    <MessageSquare size={20} className="text-gray-600 mb-2" />
-                    <p className="text-gray-400 text-[11px]">No sessions yet</p>
-                    <p className="text-gray-600 text-[9px]">Generate speech to auto-create one</p>
+                    <MessageSquare size={24} className="text-gray-600 mb-2" />
+                    <p className="text-gray-400 text-sm">No sessions yet</p>
+                    <p className="text-gray-500 text-xs">Generate speech to auto-create one</p>
                   </div>
                 ) : sessions.map(s => (
                   <div key={s.id} onClick={() => switchSession(s.id)}
-                    className={`group flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer transition-all ${
+                    className={`group flex items-center gap-2.5 px-3 py-2.5 rounded-lg cursor-pointer transition-all ${
                       activeSessionId === s.id ? 'bg-cyan-500/10 border border-cyan-500/30' : 'hover:bg-white/[0.03] border border-transparent'
                     }`}>
-                    <MessageSquare size={12} className={activeSessionId === s.id ? 'text-cyan-400' : 'text-gray-600'} />
+                    <MessageSquare size={14} className={activeSessionId === s.id ? 'text-cyan-400' : 'text-gray-600'} />
                     {renamingSessionId === s.id ? (
                       <input autoFocus value={renameValue} onChange={e => setRenameValue(e.target.value)}
                         onBlur={() => renameSession(s.id, renameValue)}
                         onKeyDown={e => { if (e.key === 'Enter') renameSession(s.id, renameValue) }}
-                        className="flex-1 bg-transparent text-[11px] text-white outline-none border-b border-cyan-500/50" />
+                        className="flex-1 bg-transparent text-sm text-white outline-none border-b border-cyan-500/50" />
                     ) : (
-                      <span className={`flex-1 text-[11px] truncate ${activeSessionId === s.id ? 'text-cyan-300' : 'text-white/60'}`}>{s.title}</span>
+                      <span className={`flex-1 text-sm truncate ${activeSessionId === s.id ? 'text-cyan-300' : 'text-white/60'}`}>{s.title}</span>
                     )}
-                    <div className="hidden group-hover:flex items-center gap-0.5">
-                      <button onClick={e => { e.stopPropagation(); setRenamingSessionId(s.id); setRenameValue(s.title) }} className="p-0.5 hover:bg-white/10 rounded"><Edit3 size={10} className="text-gray-500" /></button>
-                      <button onClick={e => { e.stopPropagation(); deleteSession(s.id) }} className="p-0.5 hover:bg-red-500/20 rounded"><Trash2 size={10} className="text-gray-500 hover:text-red-400" /></button>
+                    <div className="hidden group-hover:flex items-center gap-1">
+                      <button onClick={e => { e.stopPropagation(); setRenamingSessionId(s.id); setRenameValue(s.title) }} className="p-1 hover:bg-white/10 rounded"><Edit3 size={12} className="text-gray-500" /></button>
+                      <button onClick={e => { e.stopPropagation(); deleteSession(s.id) }} className="p-1 hover:bg-red-500/20 rounded"><Trash2 size={12} className="text-gray-500 hover:text-red-400" /></button>
                     </div>
                   </div>
                 ))}
@@ -828,51 +834,51 @@ export default function VoiceLabsPage() {
         <div className="flex-1 flex flex-col min-w-0">
 
           {/* Chat header */}
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.06] bg-black/20 backdrop-blur-xl">
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.06] bg-black/20 backdrop-blur-xl">
             <button onClick={() => setLeftOpen(!leftOpen)} className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors md:block hidden">
-              {leftOpen ? <ChevronLeft size={14} className="text-gray-400" /> : <ChevronRight size={14} className="text-gray-400" />}
+              {leftOpen ? <ChevronLeft size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />}
             </button>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-white truncate">
+                <span className="text-sm font-semibold text-white truncate">
                   {activeSessionId ? sessions.find(s => s.id === activeSessionId)?.title || 'Session' : 'Voice Labs'}
                 </span>
-                <span className="text-[9px] text-gray-500">•</span>
-                <span className="text-[9px] text-cyan-400/70">{selectedVoiceName}</span>
+                <span className="text-xs text-gray-500">•</span>
+                <span className="text-xs text-cyan-400/70">{selectedVoiceName}</span>
               </div>
             </div>
-            <button onClick={createSession} className="flex items-center gap-1 px-2 py-1 bg-cyan-500/10 border border-cyan-500/30 rounded-lg text-[10px] text-cyan-300 hover:bg-cyan-500/20 transition-colors">
-              <Plus size={10} /> New
+            <button onClick={createSession} className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/30 rounded-lg text-xs text-cyan-300 hover:bg-cyan-500/20 transition-colors">
+              <Plus size={12} /> New
             </button>
           </div>
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 custom-scrollbar">
             {messages.length === 0 && !loadingMessages && (
-              <div className="flex flex-col items-center justify-center h-full text-center">
-                <div className="w-16 h-16 bg-white/[0.03] border border-white/[0.06] rounded-2xl flex items-center justify-center mb-3">
-                  <Mic size={28} className="text-gray-600" />
+              <div className="flex flex-col items-center justify-center h-full text-center px-4">
+                <div className="w-20 h-20 bg-white/[0.03] border border-white/[0.06] rounded-2xl flex items-center justify-center mb-4">
+                  <Mic size={36} className="text-gray-600" />
                 </div>
-                <h3 className="text-white/60 text-sm font-medium mb-1">Voice Labs</h3>
-                <p className="text-gray-600 text-xs max-w-xs">Type text below and press Enter to generate speech. Select a voice from the sidebar.</p>
-                <p className="text-gray-600 text-[10px] mt-2">Use <code className="text-cyan-400/60 bg-cyan-500/10 px-1 rounded">{'<#0.5#>'}</code> for pauses</p>
+                <h3 className="text-white/60 text-lg font-medium mb-2">Voice Labs</h3>
+                <p className="text-gray-500 text-sm max-w-sm leading-relaxed">Type text below and press Enter to generate speech. Select a voice from the sidebar.</p>
+                <p className="text-gray-500 text-xs mt-3">Use <code className="text-cyan-400/60 bg-cyan-500/10 px-1.5 py-0.5 rounded text-xs">{'<#0.5#>'}</code> for pauses</p>
               </div>
             )}
             {loadingMessages && (
-              <div className="flex items-center justify-center py-12 text-gray-500 text-xs gap-2">
-                <Loader2 size={14} className="animate-spin" /> Loading messages...
+              <div className="flex items-center justify-center py-12 text-gray-500 text-sm gap-2">
+                <Loader2 size={16} className="animate-spin" /> Loading messages...
               </div>
             )}
             {messages.map(msg => (
               <div key={msg.id} className="group">
                 {/* User text */}
-                <div className="flex items-start gap-2 mb-2">
-                  <div className="w-6 h-6 rounded-lg bg-cyan-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Type size={10} className="text-cyan-400" />
+                <div className="flex items-start gap-3 mb-2">
+                  <div className="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Type size={14} className="text-cyan-400" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-white/80 text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
-                    <div className="flex items-center gap-2 mt-1 text-[9px] text-gray-600">
+                    <p className="text-white/80 text-base leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                    <div className="flex items-center gap-2 mt-1.5 text-xs text-gray-500">
                       <span>{msg.voice_id === voiceId ? selectedVoiceName : msg.voice_id.substring(0, 16)}</span>
                       <span>•</span>
                       <span>{msg.credits_cost} credits</span>
@@ -883,20 +889,20 @@ export default function VoiceLabsPage() {
                 {/* Audio response */}
                 <div className="ml-8">
                   {msg.status === 'generating' ? (
-                    <div className="flex items-center gap-2 bg-cyan-500/[0.06] border border-cyan-500/20 rounded-xl px-3 py-2.5">
-                      <Loader2 size={14} className="text-cyan-400 animate-spin" />
-                      <span className="text-cyan-300 text-xs">Generating audio...</span>
+                    <div className="flex items-center gap-2 bg-cyan-500/[0.06] border border-cyan-500/20 rounded-xl px-4 py-3">
+                      <Loader2 size={16} className="text-cyan-400 animate-spin" />
+                      <span className="text-cyan-300 text-sm">Generating audio...</span>
                     </div>
                   ) : msg.status === 'failed' ? (
-                    <div className="flex items-center gap-2 bg-red-500/[0.06] border border-red-500/20 rounded-xl px-3 py-2.5">
-                      <AlertCircle size={14} className="text-red-400" />
-                      <span className="text-red-300 text-xs">Generation failed</span>
+                    <div className="flex items-center gap-2 bg-red-500/[0.06] border border-red-500/20 rounded-xl px-4 py-3">
+                      <AlertCircle size={16} className="text-red-400" />
+                      <span className="text-red-300 text-sm">Generation failed</span>
                     </div>
                   ) : msg.audio_url ? (
-                    <div className="flex items-center gap-2 bg-white/[0.03] border border-white/[0.06] rounded-xl px-3 py-2 hover:border-cyan-500/20 transition-colors">
+                    <div className="flex items-center gap-3 bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3 hover:border-cyan-500/20 transition-colors">
                       <button onClick={() => togglePlay(msg)}
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${playingId === msg.id ? 'bg-cyan-500/20 border border-cyan-500/40' : 'bg-black/40 border border-white/[0.08] hover:border-cyan-500/30'}`}>
-                        {playingId === msg.id ? <Pause size={12} className="text-cyan-400" /> : <Play size={12} className="text-gray-400 ml-0.5" />}
+                        className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${playingId === msg.id ? 'bg-cyan-500/20 border border-cyan-500/40' : 'bg-black/40 border border-white/[0.08] hover:border-cyan-500/30'}`}>
+                        {playingId === msg.id ? <Pause size={16} className="text-cyan-400" /> : <Play size={16} className="text-gray-400 ml-0.5" />}
                       </button>
                       <div className="flex-1 min-w-0">
                         {playingId === msg.id ? (
@@ -907,9 +913,9 @@ export default function VoiceLabsPage() {
                           <div className="w-full bg-white/[0.06] rounded-full h-1.5" />
                         )}
                       </div>
-                      <div className="hidden group-hover:flex items-center gap-0.5 flex-shrink-0">
-                        <button onClick={() => downloadAudio(msg.audio_url!, `voice-labs-${msg.id}.${audioFormat}`)} className="p-1 hover:bg-white/10 rounded" title="Download"><Download size={12} className="text-gray-500 hover:text-cyan-400" /></button>
-                        <button onClick={() => navigator.clipboard.writeText(msg.audio_url!)} className="p-1 hover:bg-white/10 rounded" title="Copy URL"><Copy size={12} className="text-gray-500 hover:text-cyan-400" /></button>
+                      <div className="hidden group-hover:flex items-center gap-1 flex-shrink-0">
+                        <button onClick={() => downloadAudio(msg.audio_url!, `voice-labs-${msg.id}.${audioFormat}`)} className="p-1.5 hover:bg-white/10 rounded" title="Download"><Download size={14} className="text-gray-500 hover:text-cyan-400" /></button>
+                        <button onClick={() => navigator.clipboard.writeText(msg.audio_url!)} className="p-1.5 hover:bg-white/10 rounded" title="Copy URL"><Copy size={14} className="text-gray-500 hover:text-cyan-400" /></button>
                       </div>
                     </div>
                   ) : null}
@@ -922,8 +928,8 @@ export default function VoiceLabsPage() {
           {/* Input bar */}
           <div className="border-t border-white/[0.06] bg-black/30 backdrop-blur-xl px-4 py-3">
             {genError && (
-              <div className="flex items-center gap-1.5 text-red-400 text-[10px] mb-2 bg-red-500/10 border border-red-500/20 rounded-lg px-2.5 py-1.5">
-                <AlertCircle size={10} /> {genError}
+              <div className="flex items-center gap-2 text-red-400 text-xs mb-2 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                <AlertCircle size={14} /> {genError}
               </div>
             )}
             <div className="flex items-end gap-2">
@@ -957,9 +963,9 @@ export default function VoiceLabsPage() {
                   style={{ minHeight: '48px', maxHeight: '160px' }}
                   onInput={(e) => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 160) + 'px' }}
                 />
-                <div className="absolute right-2 bottom-2 flex items-center gap-1">
+                <div className="absolute right-2 bottom-2 flex items-center gap-1.5">
                   {text.length > 0 && (
-                    <span className="text-[9px] text-gray-500 mr-1">{text.length.toLocaleString()} tk</span>
+                    <span className="text-xs text-gray-500 mr-1">{text.length.toLocaleString()} tk</span>
                   )}
                   <button onClick={handleGenerate} disabled={isGenerating || !text.trim() || text.length > 10000}
                     className={`p-2 rounded-lg transition-all ${isGenerating || !text.trim() ? 'text-gray-600' : 'text-cyan-400 hover:bg-cyan-500/20'}`}>
@@ -968,35 +974,35 @@ export default function VoiceLabsPage() {
                 </div>
               </div>
             </div>
-            <div className="flex items-center justify-between mt-1.5 px-1">
-              <p className="text-[8px] text-gray-600">
-                {text.length.toLocaleString()}/10,000 chars • {estimatedTokens.toLocaleString()} tokens • {selectedVoiceName}
+            <div className="flex items-center justify-between mt-2 px-1">
+              <p className="text-xs text-gray-500">
+                {text.length.toLocaleString()}/10,000 chars · {estimatedTokens.toLocaleString()} tokens · {selectedVoiceName}
               </p>
-              <p className="text-[8px] text-gray-600">
-                Shift+Enter for newline • <code className="text-gray-500">{'<#0.5#>'}</code> for pauses
+              <p className="text-xs text-gray-500">
+                Shift+Enter for newline · <code className="text-gray-500">{'<#0.5#>'}</code> for pauses
               </p>
             </div>
           </div>
         </div>
 
         {/* ══════ RIGHT SIDEBAR — CONTROLS ══════ */}
-        <div className="hidden lg:flex w-[240px] min-w-[240px] flex-col border-l border-white/[0.06] bg-black/40 backdrop-blur-xl overflow-y-auto custom-scrollbar">
+        <div className="hidden lg:flex w-[260px] min-w-[260px] flex-col border-l border-white/[0.06] bg-black/40 backdrop-blur-xl overflow-y-auto custom-scrollbar">
 
-          <div className="p-3 border-b border-white/[0.06]">
-            <h3 className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider flex items-center gap-1">
-              <SlidersHorizontal size={10} /> Voice Controls
+          <div className="p-4 border-b border-white/[0.06]">
+            <h3 className="text-xs text-gray-400 font-semibold uppercase tracking-wider flex items-center gap-1.5">
+              <SlidersHorizontal size={14} /> Voice Controls
             </h3>
           </div>
 
-          <div className="p-3 space-y-4">
+          <div className="p-4 space-y-5">
 
             {/* Emotion */}
             <div>
-              <label className="text-[9px] text-gray-500 block mb-1.5">Emotion</label>
-              <div className="grid grid-cols-2 gap-0.5">
+              <label className="text-xs text-gray-400 block mb-2">Emotion</label>
+              <div className="grid grid-cols-2 gap-1">
                 {EMOTIONS.map(e => (
                   <button key={e.value} onClick={() => setEmotion(e.value)}
-                    className={`px-1.5 py-1 rounded-md text-[9px] transition-all ${
+                    className={`px-2 py-1.5 rounded-lg text-xs transition-all ${
                       emotion === e.value ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/40' : 'text-gray-500 hover:text-gray-300 border border-transparent'
                     }`}>{e.label}</button>
                 ))}
@@ -1005,94 +1011,94 @@ export default function VoiceLabsPage() {
 
             {/* Speed */}
             <div>
-              <div className="flex items-center justify-between mb-0.5">
-                <label className="text-[9px] text-gray-500">Speed</label>
-                <span className="text-[9px] font-mono text-white/50">{speed.toFixed(1)}x</span>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs text-gray-400">Speed</label>
+                <span className="text-xs font-mono text-white/50">{speed.toFixed(1)}x</span>
               </div>
-              <input type="range" min="0.5" max="2" step="0.1" value={speed} onChange={e => setSpeed(parseFloat(e.target.value))} className="w-full accent-cyan-500 h-1" />
+              <input type="range" min="0.5" max="2" step="0.1" value={speed} onChange={e => setSpeed(parseFloat(e.target.value))} className="w-full accent-cyan-500 h-1.5" />
             </div>
 
             {/* Volume */}
             <div>
-              <div className="flex items-center justify-between mb-0.5">
-                <label className="text-[9px] text-gray-500">Volume</label>
-                <span className="text-[9px] font-mono text-white/50">{volume.toFixed(1)}</span>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs text-gray-400">Volume</label>
+                <span className="text-xs font-mono text-white/50">{volume.toFixed(1)}</span>
               </div>
-              <input type="range" min="0" max="10" step="0.1" value={volume} onChange={e => setVolume(parseFloat(e.target.value))} className="w-full accent-cyan-500 h-1" />
+              <input type="range" min="0" max="10" step="0.1" value={volume} onChange={e => setVolume(parseFloat(e.target.value))} className="w-full accent-cyan-500 h-1.5" />
             </div>
 
             {/* Pitch */}
             <div>
-              <div className="flex items-center justify-between mb-0.5">
-                <label className="text-[9px] text-gray-500">Pitch</label>
-                <span className="text-[9px] font-mono text-white/50">{pitch > 0 ? '+' : ''}{pitch}st</span>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs text-gray-400">Pitch</label>
+                <span className="text-xs font-mono text-white/50">{pitch > 0 ? '+' : ''}{pitch}st</span>
               </div>
-              <input type="range" min="-12" max="12" step="1" value={pitch} onChange={e => setPitch(parseInt(e.target.value))} className="w-full accent-cyan-500 h-1" />
+              <input type="range" min="-12" max="12" step="1" value={pitch} onChange={e => setPitch(parseInt(e.target.value))} className="w-full accent-cyan-500 h-1.5" />
             </div>
 
             {/* Language */}
             <div>
-              <label className="text-[9px] text-gray-500 block mb-1">Language Boost</label>
+              <label className="text-xs text-gray-400 block mb-1.5">Language Boost</label>
               <select value={languageBoost} onChange={e => setLanguageBoost(e.target.value)}
-                className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] text-white focus:outline-none focus:border-cyan-500/50 appearance-none">
+                className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/50 appearance-none">
                 {LANGUAGES.map(l => <option key={l} value={l}>{l === 'None' ? 'None (auto)' : l}</option>)}
               </select>
             </div>
 
             {/* Advanced toggle */}
-            <button onClick={() => setShowAdvanced(!showAdvanced)} className="w-full flex items-center justify-between text-[9px] text-gray-500 hover:text-gray-300 transition-colors py-1.5 border-t border-white/[0.04] mt-2">
-              <span className="flex items-center gap-1"><Settings2 size={10} /> Advanced</span>
-              {showAdvanced ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+            <button onClick={() => setShowAdvanced(!showAdvanced)} className="w-full flex items-center justify-between text-xs text-gray-500 hover:text-gray-300 transition-colors py-2 border-t border-white/[0.06] mt-2">
+              <span className="flex items-center gap-1.5"><Settings2 size={14} /> Advanced</span>
+              {showAdvanced ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
             </button>
 
             {showAdvanced && (
-              <div className="space-y-3 pt-1">
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input type="checkbox" checked={englishNormalization} onChange={e => setEnglishNormalization(e.target.checked)} className="accent-cyan-500 w-3 h-3" />
-                  <span className="text-[9px] text-gray-400">English Normalization</span>
+              <div className="space-y-4 pt-1">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={englishNormalization} onChange={e => setEnglishNormalization(e.target.checked)} className="accent-cyan-500 w-3.5 h-3.5" />
+                  <span className="text-xs text-gray-400">English Normalization</span>
                 </label>
 
                 <div>
-                  <label className="text-[9px] text-gray-500 block mb-0.5">Format</label>
-                  <div className="grid grid-cols-2 gap-0.5">
+                  <label className="text-xs text-gray-400 block mb-1">Format</label>
+                  <div className="grid grid-cols-2 gap-1">
                     {AUDIO_FORMATS.map(f => (
                       <button key={f} onClick={() => setAudioFormat(f)}
-                        className={`py-1 rounded-md text-[9px] ${audioFormat === f ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/40' : 'text-gray-500 border border-transparent hover:text-gray-300'}`}>{f.toUpperCase()}</button>
+                        className={`py-1.5 rounded-lg text-xs ${audioFormat === f ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/40' : 'text-gray-500 border border-transparent hover:text-gray-300'}`}>{f.toUpperCase()}</button>
                     ))}
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-[9px] text-gray-500 block mb-0.5">Sample Rate</label>
+                  <label className="text-xs text-gray-400 block mb-1">Sample Rate</label>
                   <select value={sampleRate} onChange={e => setSampleRate(Number(e.target.value))}
-                    className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-[9px] text-white focus:outline-none focus:border-cyan-500/50">
+                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/50">
                     {SAMPLE_RATES.map(sr => <option key={sr} value={sr}>{(sr / 1000).toFixed(sr % 1000 ? 2 : 0)} kHz</option>)}
                   </select>
                 </div>
 
                 {audioFormat === 'mp3' && (
                   <div>
-                    <label className="text-[9px] text-gray-500 block mb-0.5">Bitrate</label>
+                    <label className="text-xs text-gray-400 block mb-1">Bitrate</label>
                     <select value={bitrate} onChange={e => setBitrate(Number(e.target.value))}
-                      className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-[9px] text-white focus:outline-none focus:border-cyan-500/50">
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/50">
                       {BITRATES.map(br => <option key={br} value={br}>{br / 1000} kbps</option>)}
                     </select>
                   </div>
                 )}
 
                 <div>
-                  <label className="text-[9px] text-gray-500 block mb-0.5">Channel</label>
-                  <div className="grid grid-cols-2 gap-0.5">
+                  <label className="text-xs text-gray-400 block mb-1">Channel</label>
+                  <div className="grid grid-cols-2 gap-1">
                     {CHANNELS.map(ch => (
                       <button key={ch} onClick={() => setChannel(ch)}
-                        className={`py-1 rounded-md text-[9px] capitalize ${channel === ch ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/40' : 'text-gray-500 border border-transparent hover:text-gray-300'}`}>{ch}</button>
+                        className={`py-1.5 rounded-lg text-xs capitalize ${channel === ch ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/40' : 'text-gray-500 border border-transparent hover:text-gray-300'}`}>{ch}</button>
                     ))}
                   </div>
                 </div>
 
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input type="checkbox" checked={subtitleEnable} onChange={e => setSubtitleEnable(e.target.checked)} className="accent-cyan-500 w-3 h-3" />
-                  <span className="text-[9px] text-gray-400">Generate Subtitles</span>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={subtitleEnable} onChange={e => setSubtitleEnable(e.target.checked)} className="accent-cyan-500 w-3.5 h-3.5" />
+                  <span className="text-xs text-gray-400">Generate Subtitles</span>
                 </label>
               </div>
             )}
