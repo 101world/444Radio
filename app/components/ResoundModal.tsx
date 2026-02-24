@@ -101,7 +101,8 @@ export default function ResoundModal({ isOpen, onClose, userCredits, onGenerate 
     audio.addEventListener('loadedmetadata', () => {
       const dur = Math.ceil(audio.duration)
       setDetectedDuration(dur)
-      setDuration(dur) // Adapt generation duration to input length
+      // Set duration longer than input to avoid "Prompt is longer than audio to generate"
+      setDuration(Math.max(dur + 5, Math.ceil(dur * 1.5)))
       URL.revokeObjectURL(url)
     })
     audio.addEventListener('error', () => {
@@ -200,13 +201,15 @@ export default function ResoundModal({ isOpen, onClose, userCredits, onGenerate 
   }, [isOpen])
 
   // Validation
+  const durationTooShort = continuation && detectedDuration !== null && duration <= detectedDuration
   const canGenerate =
     title.trim().length >= 1 &&
     effectivePrompt.length >= 3 &&
     effectivePrompt.length <= MAX_PROMPT_LENGTH &&
     inputAudioUrl &&
     !isUploading &&
-    !isGenerating
+    !isGenerating &&
+    !durationTooShort
 
   const handleSubmit = () => {
     if (!canGenerate) return
@@ -396,9 +399,18 @@ export default function ResoundModal({ isOpen, onClose, userCredits, onGenerate 
               max={300}
               value={duration}
               onChange={e => setDuration(Math.max(1, Math.min(300, parseInt(e.target.value) || 8)))}
-              className="w-full px-4 py-2.5 bg-white/[0.04] border border-white/10 hover:border-cyan-500/30 focus:border-cyan-400/50 rounded-xl text-sm text-white outline-none transition-colors"
+              className={`w-full px-4 py-2.5 bg-white/[0.04] border ${durationTooShort ? 'border-red-500/50' : 'border-white/10'} hover:border-cyan-500/30 focus:border-cyan-400/50 rounded-xl text-sm text-white outline-none transition-colors`}
             />
-            <p className="text-[10px] text-white/20 mt-1">Default: 8. Max recommended: ~300s.</p>
+            {durationTooShort ? (
+              <p className="text-[10px] text-red-400 mt-1">
+                Duration must be longer than the input audio ({detectedDuration}s) when continuation is on.
+                <button onClick={() => setDuration(Math.ceil(detectedDuration! * 1.5))} className="ml-1 underline text-cyan-400 hover:text-cyan-300">
+                  Set to {Math.ceil(detectedDuration! * 1.5)}s
+                </button>
+              </p>
+            ) : (
+              <p className="text-[10px] text-white/20 mt-1">Default: 8. Max recommended: ~300s.</p>
+            )}
           </div>
 
           {/* ── Output Format ── */}

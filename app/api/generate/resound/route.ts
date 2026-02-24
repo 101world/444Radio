@@ -71,6 +71,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'An input audio file URL is required' }, { status: 400 })
     }
 
+    // When continuation is enabled, MusicGen requires duration > input audio length
+    // Add a buffer to prevent "Prompt is longer than audio to generate" errors
+    const safeDuration = typeof duration === 'number' ? duration : 8
+    if (typeof continuation === 'boolean' && continuation && safeDuration < 10) {
+      console.log('⚠️ Duration too short for continuation mode, bumping to 10s')
+    }
+
     console.log('🔁 Remix Generation Parameters:')
     console.log('  Title:', title)
     console.log('  Prompt:', prompt)
@@ -117,11 +124,11 @@ export async function POST(req: NextRequest) {
     if (!deductRes.ok || !deductResult?.success) {
       const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
       console.error('❌ Credit deduction blocked:', errorMsg)
-      await logCreditTransaction({ userId, amount: -10, type: 'generation_resound', status: 'failed', description: `Remix: ${title}`, metadata: { prompt } })
+      await logCreditTransaction({ userId, amount: -10, type: 'generation_music', status: 'failed', description: `Remix: ${title}`, metadata: { prompt, model: 'musicgen' } })
       return NextResponse.json({ error: errorMsg }, { status: 402 })
     }
     console.log(`✅ Credits deducted. Remaining: ${deductResult.new_credits}`)
-    await logCreditTransaction({ userId, amount: -10, balanceAfter: deductResult.new_credits, type: 'generation_resound', description: `Remix: ${title}`, metadata: { prompt } })
+    await logCreditTransaction({ userId, amount: -10, balanceAfter: deductResult.new_credits, type: 'generation_music', description: `Remix: ${title}`, metadata: { prompt, model: 'musicgen' } })
 
     // ----- NDJSON streaming response -----
     const encoder = new TextEncoder()
@@ -207,16 +214,20 @@ export async function POST(req: NextRequest) {
 
         if (finalPrediction.status === 'canceled') {
           console.log('⏹ Remix prediction cancelled:', prediction.id)
-          await refundCredits({ userId, amount: 10, type: 'generation_resound', reason: `Cancelled: ${title}`, metadata: { prompt, reason: 'user_cancelled' } })
+          await refundCredits({ userId, amount: 10, type: 'generation_music', reason: `Cancelled: ${title}`, metadata: { prompt, model: 'musicgen', reason: 'user_cancelled' } })
           await sendLine({ type: 'result', success: false, error: 'Generation cancelled', creditsRemaining: deductResult!.new_credits })
           await writer.close().catch(() => {})
           return
         }
 
         if (finalPrediction.status !== 'succeeded') {
-          const errMsg = finalPrediction.error || `Generation ${finalPrediction.status === 'failed' ? 'failed' : 'timed out'}`
+          let errMsg = finalPrediction.error || `Generation ${finalPrediction.status === 'failed' ? 'failed' : 'timed out'}`
+          // Make the "prompt longer than audio" error user-friendly
+          if (typeof errMsg === 'string' && errMsg.includes('Prompt is longer than audio')) {
+            errMsg = 'Duration must be longer than your input audio. Please increase the duration and try again.'
+          }
           console.error('❌ Remix prediction failed:', errMsg)
-          await refundCredits({ userId, amount: 10, type: 'generation_resound', reason: `Failed: ${title}`, metadata: { prompt, error: String(errMsg).substring(0, 200) } })
+          await refundCredits({ userId, amount: 10, type: 'generation_music', reason: `Remix failed: ${title}`, metadata: { prompt, model: 'musicgen', error: String(errMsg).substring(0, 200) } })
           await sendLine({ type: 'result', success: false, error: sanitizeError(errMsg), creditsRemaining: deductResult!.new_credits })
           await writer.close().catch(() => {})
           return
@@ -297,7 +308,7 @@ export async function POST(req: NextRequest) {
         trackModelUsage(userId, 'musicgen').catch(() => {})
         trackGenerationStreak(userId).catch(() => {})
 
-        updateTransactionMedia({ userId, type: 'generation_resound', mediaUrl: audioUrl, mediaType: 'audio', title, extraMeta: { model: 'musicgen' } }).catch(() => {})
+        updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: audioUrl, mediaType: 'audio', title, extraMeta: { model: 'musicgen' } }).catch(() => {})
 
         await sendLine({
           type: 'result',
@@ -310,7 +321,7 @@ export async function POST(req: NextRequest) {
         })
       } catch (err: any) {
         console.error('❌ Resound generation error:', err)
-        await refundCredits({ userId, amount: 10, type: 'generation_resound', reason: `Error: ${title}`, metadata: { prompt, error: String(err).substring(0, 200) } })
+        await refundCredits({ userId, amount: 10, type: 'generation_music', reason: `Remix error: ${title}`, metadata: { prompt, model: 'musicgen', error: String(err).substring(0, 200) } })
         await sendLine({ type: 'result', success: false, error: sanitizeError(err), creditsRemaining: deductResult!.new_credits })
       } finally {
         await writer.close().catch(() => {})
