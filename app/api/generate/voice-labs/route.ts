@@ -5,6 +5,7 @@ import { corsResponse, handleOptions } from '@/lib/cors'
 import { logCreditTransaction } from '@/lib/credit-transactions'
 import { refundCredits } from '@/lib/refund-credits'
 import { downloadAndUploadToR2 } from '@/lib/storage'
+import { headers } from 'next/headers'
 
 // Allow up to 3 minutes for TTS generation
 export const maxDuration = 180
@@ -25,6 +26,35 @@ export function OPTIONS() {
  * 1 character = 1 token.  1,000 tokens are purchased at a time for 3 credits.
  * The consume_voice_tokens RPC auto-refills the sub-wallet.
  */
+
+/** Fire-and-forget: log to voice_labs_activity table */
+async function logVoiceLabsActivity(
+  userId: string, eventType: string, extra: Record<string, unknown> = {}
+) {
+  try {
+    const h = await headers()
+    const ip = h.get('x-forwarded-for')?.split(',')[0].trim()
+      || h.get('x-real-ip') || h.get('cf-connecting-ip') || 'unknown'
+    const ua = h.get('user-agent') || 'unknown'
+
+    await fetch(`${supabaseUrl}/rest/v1/voice_labs_activity`, {
+      method: 'POST',
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        event_type: eventType,
+        ip_address: ip,
+        user_agent: ua,
+        ...extra,
+      }),
+    })
+  } catch { /* never block generation */ }
+}
 
 /**
  * POST /api/generate/voice-labs
@@ -171,6 +201,17 @@ export async function POST(req: NextRequest) {
     }
 
     console.log('🎙️ Starting Voice Labs TTS with minimax/speech-2.8-turbo...')
+    const genStartTime = Date.now()
+
+    // Log generation start (server-side for admin)
+    logVoiceLabsActivity(userId, 'generation_start', {
+      text_length: text.length,
+      text_snapshot: text.substring(0, 2000),
+      tokens_consumed: tokenCount,
+      voice_id,
+      settings: { speed, pitch, volume, emotion, audio_format, sample_rate, bitrate, channel, language_boost },
+    })
+
     const prediction = await replicate.predictions.create({
       model: 'minimax/speech-2.8-turbo',
       input: replicateInput,
@@ -219,6 +260,17 @@ export async function POST(req: NextRequest) {
           body: JSON.stringify({ voice_labs_tokens: consumeResult.tokens_remaining + tokenCount }),
         })
       } catch { /* non-critical */ }
+
+      logVoiceLabsActivity(userId, 'generation_failed', {
+        text_length: text.length,
+        text_snapshot: text.substring(0, 2000),
+        tokens_consumed: tokenCount,
+        credits_spent: creditsUsed,
+        generation_duration_ms: Date.now() - genStartTime,
+        voice_id,
+        metadata: { error: String(errMsg).substring(0, 500), prediction_id: prediction.id },
+      })
+
       return corsResponse(NextResponse.json({
         error: 'Generation failed. Credits have been refunded.',
         creditsRefunded: true,
@@ -255,6 +307,16 @@ export async function POST(req: NextRequest) {
           body: JSON.stringify({ voice_labs_tokens: consumeResult.tokens_remaining + tokenCount }),
         })
       } catch { /* non-critical */ }
+
+      logVoiceLabsActivity(userId, 'generation_failed', {
+        text_length: text.length,
+        tokens_consumed: tokenCount,
+        credits_spent: creditsUsed,
+        generation_duration_ms: Date.now() - genStartTime,
+        voice_id,
+        metadata: { error: 'No audio URL in output', prediction_id: prediction.id },
+      })
+
       return corsResponse(NextResponse.json({
         error: 'No audio returned from generation. Credits refunded.',
         creditsRefunded: true,
@@ -322,6 +384,19 @@ export async function POST(req: NextRequest) {
     } catch (e) {
       console.error('⚠️ Failed to save generation record (non-critical):', e)
     }
+
+    // Log generation complete (server-side for admin)
+    logVoiceLabsActivity(userId, 'generation_complete', {
+      text_length: text.length,
+      text_snapshot: text.substring(0, 2000),
+      tokens_consumed: tokenCount,
+      credits_spent: creditsUsed,
+      generation_duration_ms: Date.now() - genStartTime,
+      audio_url: permanentUrl,
+      voice_id,
+      settings: { speed, pitch, volume, emotion, audio_format, sample_rate, bitrate, channel, language_boost },
+      metadata: { prediction_id: prediction.id },
+    })
 
     return corsResponse(NextResponse.json({
       success: true,

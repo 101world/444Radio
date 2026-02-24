@@ -164,6 +164,16 @@ export default function VoiceLabsPage() {
   const progressRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
+  // ── Activity Tracking (admin analytics) ──
+  const inputStartTimeRef = useRef<number | null>(null)
+  const keystrokeCountRef = useRef(0)
+  const pasteCountRef = useRef(0)
+  const deleteCountRef = useRef(0)
+  const revisionCountRef = useRef(0)
+  const inputIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastTextLengthRef = useRef(0)
+  const pageOpenTimeRef = useRef(Date.now())
+
   // ── Computed (1 char = 1 token, 1000 tokens = 3 credits) ──
   const estimatedTokens = text.length
   const tokensAvailable = (tokenBalance ?? 0) + Math.floor(((credits ?? 0) / 3)) * 1000
@@ -171,6 +181,42 @@ export default function VoiceLabsPage() {
   const selectedVoiceName = SYSTEM_VOICES.find(v => v.id === voiceId)?.name
     || trainedVoices.find(v => v.voice_id === voiceId)?.name
     || voiceId
+
+  // ── Activity logging (fire-and-forget) ──
+  const logVoiceActivity = (eventType: string, extra: Record<string, unknown> = {}) => {
+    try {
+      fetch('/api/voice-labs/activity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event_type: eventType,
+          session_id: activeSessionId,
+          voice_id: voiceId,
+          settings: { speed, pitch, volume, emotion, audioFormat, sampleRate, bitrate, channel, languageBoost },
+          ...extra,
+        }),
+      }).catch(() => {})
+    } catch { /* never block UI */ }
+  }
+
+  const flushInputSession = () => {
+    if (inputStartTimeRef.current) {
+      const duration = Date.now() - inputStartTimeRef.current
+      logVoiceActivity('input_end', {
+        text_length: lastTextLengthRef.current,
+        input_duration_ms: duration,
+        keystroke_count: keystrokeCountRef.current,
+        paste_count: pasteCountRef.current,
+        delete_count: deleteCountRef.current,
+        revision_count: revisionCountRef.current,
+      })
+      inputStartTimeRef.current = null
+      keystrokeCountRef.current = 0
+      pasteCountRef.current = 0
+      deleteCountRef.current = 0
+      revisionCountRef.current = 0
+    }
+  }
 
   // ── Fetch token balance ──
   const refreshTokenBalance = async () => {
@@ -183,11 +229,18 @@ export default function VoiceLabsPage() {
     } catch { /* ignore */ }
   }
 
-  // ── Load voices + sessions + tokens on mount ──
+  // ── Load voices + sessions + tokens on mount + log session_open ──
   useEffect(() => {
     loadTrainedVoices()
     loadSessions()
     refreshTokenBalance()
+    // Log page open
+    pageOpenTimeRef.current = Date.now()
+    fetch('/api/voice-labs/activity', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event_type: 'session_open' }),
+    }).catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -195,6 +248,19 @@ export default function VoiceLabsPage() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // ── Track voice changes ──
+  const prevVoiceRef = useRef(voiceId)
+  useEffect(() => {
+    if (voiceId !== prevVoiceRef.current) {
+      logVoiceActivity('voice_change', {
+        voice_id: voiceId,
+        metadata: { previous_voice: prevVoiceRef.current },
+      })
+      prevVoiceRef.current = voiceId
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voiceId])
 
   // ── Hide ESC hint after 2s ──
   useEffect(() => {
@@ -216,12 +282,32 @@ export default function VoiceLabsPage() {
     return () => window.removeEventListener('keydown', handleEsc)
   }, [router])
 
-  // ── Cleanup ──
+  // ── Cleanup + log session_close ──
   useEffect(() => {
     return () => {
       if (audioRef.current) audioRef.current.pause()
       if (progressRef.current) clearInterval(progressRef.current)
       if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
+      if (inputIdleTimerRef.current) clearTimeout(inputIdleTimerRef.current)
+      // Flush any pending input session
+      if (inputStartTimeRef.current) {
+        const duration = Date.now() - inputStartTimeRef.current
+        navigator.sendBeacon('/api/voice-labs/activity', JSON.stringify({
+          event_type: 'input_end',
+          input_duration_ms: duration,
+          text_length: lastTextLengthRef.current,
+          keystroke_count: keystrokeCountRef.current,
+          paste_count: pasteCountRef.current,
+          delete_count: deleteCountRef.current,
+          revision_count: revisionCountRef.current,
+        }))
+      }
+      // Log page close
+      const pageTime = Date.now() - pageOpenTimeRef.current
+      navigator.sendBeacon('/api/voice-labs/activity', JSON.stringify({
+        event_type: 'session_close',
+        metadata: { page_duration_ms: pageTime },
+      }))
     }
   }, [])
 
@@ -395,6 +481,18 @@ export default function VoiceLabsPage() {
     if (text.length > 10000) { setGenError('Max 10,000 characters.'); return }
     if (!hasEnoughCredits) { setGenError(`Not enough tokens. Need ${text.trim().length.toLocaleString()} tokens. Buy more credits to refill.`); return }
 
+    // Flush any open input session before generation
+    flushInputSession()
+    if (inputIdleTimerRef.current) { clearTimeout(inputIdleTimerRef.current); inputIdleTimerRef.current = null }
+
+    // Log generation start
+    const genStartTime = Date.now()
+    logVoiceActivity('generation_start', {
+      text_length: text.trim().length,
+      text_snapshot: text.trim().substring(0, 2000),
+      tokens_consumed: text.trim().length,
+    })
+
     // Auto-create session if none active
     let sessionId = activeSessionId
     if (!sessionId) {
@@ -460,10 +558,29 @@ export default function VoiceLabsPage() {
 
       refreshCredits()
       refreshTokenBalance()
+
+      // Log generation complete
+      logVoiceActivity('generation_complete', {
+        text_length: inputText.length,
+        text_snapshot: inputText.substring(0, 2000),
+        tokens_consumed: data.tokensConsumed || inputText.length,
+        credits_spent: data.creditsDeducted || 0,
+        generation_duration_ms: Date.now() - genStartTime,
+        audio_url: data.audioUrl,
+      })
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Generation failed'
       setGenError(msg)
       setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' as const } : m))
+
+      // Log generation failed
+      logVoiceActivity('generation_failed', {
+        text_length: inputText.length,
+        text_snapshot: inputText.substring(0, 2000),
+        tokens_consumed: inputText.length,
+        generation_duration_ms: Date.now() - genStartTime,
+        metadata: { error: msg },
+      })
     } finally { setIsGenerating(false) }
   }
 
@@ -813,8 +930,26 @@ export default function VoiceLabsPage() {
               <div className="flex-1 relative">
                 <textarea
                   value={text}
-                  onChange={e => setText(e.target.value)}
-                  onKeyDown={handleKeyDown}
+                  onChange={e => {
+                    const val = e.target.value
+                    setText(val)
+                    lastTextLengthRef.current = val.length
+                    revisionCountRef.current++
+                    // Start input session on first keystroke
+                    if (!inputStartTimeRef.current && val.length > 0) {
+                      inputStartTimeRef.current = Date.now()
+                      logVoiceActivity('input_start', { text_length: val.length })
+                    }
+                    // Reset idle timer — flush after 5s of inactivity
+                    if (inputIdleTimerRef.current) clearTimeout(inputIdleTimerRef.current)
+                    inputIdleTimerRef.current = setTimeout(flushInputSession, 5000)
+                  }}
+                  onKeyDown={(e) => {
+                    keystrokeCountRef.current++
+                    if (e.key === 'Backspace' || e.key === 'Delete') deleteCountRef.current++
+                    handleKeyDown(e)
+                  }}
+                  onPaste={() => { pasteCountRef.current++ }}
                   placeholder="Enter text to generate speech..."
                   maxLength={10000}
                   rows={1}
