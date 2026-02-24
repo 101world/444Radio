@@ -93,6 +93,9 @@ export default function VoiceLabsPage() {
   const router = useRouter()
   const { totalCredits: credits, refreshCredits } = useCredits()
 
+  // ── Character meter (cumulative usage toward next 1K billing) ──
+  const [charMeter, setCharMeter] = useState(0)
+
   // ── Docked sidebar + ESC visibility ──
   const [sidebarHidden, setSidebarHidden] = useState(false)
   const [showEscHint, setShowEscHint] = useState(true)
@@ -171,9 +174,13 @@ export default function VoiceLabsPage() {
   const lastTextLengthRef = useRef(0)
   const pageOpenTimeRef = useRef(Date.now())
 
-  // ── Computed: ceil(chars / 1000) × 3 credits, minimum 3 ──
-  const estimatedCost = text.trim().length > 0 ? Math.max(3, Math.ceil(text.trim().length / 1000) * 3) : 0
-  const hasEnoughCredits = (credits ?? 0) >= estimatedCost || estimatedCost === 0
+  // ── Computed: meter-aware cost ──
+  // New meter after this generation
+  const charsToAdd = text.trim().length
+  const projectedMeter = charMeter + charsToAdd
+  const estimatedCost = Math.floor(projectedMeter / 1000) * 3
+  const hasEnoughCredits = (credits ?? 0) >= estimatedCost || charsToAdd === 0
+  const meterAfter = projectedMeter % 1000
   const selectedVoiceName = SYSTEM_VOICES.find(v => v.id === voiceId)?.name
     || trainedVoices.find(v => v.voice_id === voiceId)?.name
     || voiceId
@@ -214,10 +221,22 @@ export default function VoiceLabsPage() {
     }
   }
 
-  // ── Load voices + sessions on mount + log session_open ──
+  // ── Fetch character meter ──
+  const refreshMeter = async () => {
+    try {
+      const res = await fetch('/api/voice-labs/tokens')
+      if (res.ok) {
+        const data = await res.json()
+        setCharMeter(data.tokens ?? 0)
+      }
+    } catch { /* ignore */ }
+  }
+
+  // ── Load voices + sessions + meter on mount + log session_open ──
   useEffect(() => {
     loadTrainedVoices()
     loadSessions()
+    refreshMeter()
     // Log page open
     pageOpenTimeRef.current = Date.now()
     fetch('/api/voice-labs/activity', {
@@ -463,7 +482,7 @@ export default function VoiceLabsPage() {
     setGenError('')
     if (!text.trim() || text.length < 3) { setGenError('Enter at least 3 characters.'); return }
     if (text.length > 10000) { setGenError('Max 10,000 characters.'); return }
-    if (!hasEnoughCredits) { setGenError(`Need ${estimatedCost} credits for ${text.trim().length.toLocaleString()} chars. You have ${credits ?? 0}.`); return }
+    if (!hasEnoughCredits) { setGenError(`This would push your meter to ${projectedMeter.toLocaleString()} chars, costing ${estimatedCost} credits. You have ${credits ?? 0}.`); return }
 
     // Flush any open input session before generation
     flushInputSession()
@@ -541,6 +560,8 @@ export default function VoiceLabsPage() {
       }
 
       refreshCredits()
+      // Update character meter from API response
+      if (typeof data.meterAt === 'number') setCharMeter(data.meterAt)
 
       // Log generation complete
       logVoiceActivity('generation_complete', {
@@ -639,16 +660,33 @@ export default function VoiceLabsPage() {
                 <span className="text-xs text-gray-500">credits</span>
               </div>
             </div>
-            <div className="mt-2.5 px-2.5 py-2 bg-white/[0.02] border border-white/[0.06] rounded-lg">
-              <p className="text-[11px] text-gray-400 leading-relaxed flex items-start gap-1.5">
-                <Info size={12} className="text-gray-500 flex-shrink-0 mt-px" />
-                3 credits per 1,000 characters · Min 3 per generation
-              </p>
-              {estimatedCost > 0 && (
-                <p className="text-xs text-cyan-400 font-medium mt-1.5 pl-[18px]">
-                  This generation: {estimatedCost} credits ({text.trim().length.toLocaleString()} chars)
-                </p>
+
+            {/* Character meter progress */}
+            <div className="mt-2.5 px-2.5 py-2.5 bg-white/[0.02] border border-white/[0.06] rounded-lg">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[11px] text-gray-400 font-medium">Character Meter</span>
+                <span className="text-[11px] text-gray-500">{charMeter.toLocaleString()} / 1,000</span>
+              </div>
+              <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    charMeter >= 800 ? 'bg-amber-400' : 'bg-cyan-500/70'
+                  }`}
+                  style={{ width: `${Math.min(100, (charMeter / 1000) * 100)}%` }}
+                />
+              </div>
+              {charsToAdd > 0 && (
+                <div className="mt-1.5 flex items-center justify-between">
+                  <span className="text-[11px] text-gray-500">After this gen:</span>
+                  <span className={`text-[11px] font-medium ${estimatedCost > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                    {estimatedCost > 0 ? `${estimatedCost} cr (meter resets to ${meterAfter.toLocaleString()})` : `${projectedMeter.toLocaleString()} / 1,000 · free`}
+                  </span>
+                </div>
               )}
+              <p className="text-[10px] text-gray-500 mt-1.5 flex items-start gap-1.5">
+                <Info size={10} className="text-gray-600 flex-shrink-0 mt-px" />
+                3 credits charged every 1,000 characters used
+              </p>
             </div>
           </div>
 
@@ -951,8 +989,10 @@ export default function VoiceLabsPage() {
                   onInput={(e) => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 160) + 'px' }}
                 />
                 <div className="absolute right-2 bottom-2 flex items-center gap-1.5">
-                  {estimatedCost > 0 && (
-                    <span className={`text-xs mr-1 ${hasEnoughCredits ? 'text-gray-500' : 'text-red-400'}`}>{estimatedCost} cr</span>
+                  {charsToAdd > 0 && (
+                    <span className={`text-xs mr-1 ${!hasEnoughCredits ? 'text-red-400' : estimatedCost > 0 ? 'text-amber-400' : 'text-emerald-400/70'}`}>
+                      {estimatedCost > 0 ? `${estimatedCost} cr` : 'free'}
+                    </span>
                   )}
                   <button onClick={handleGenerate} disabled={isGenerating || !text.trim() || text.length > 10000}
                     className={`p-2 rounded-lg transition-all ${isGenerating || !text.trim() ? 'text-gray-600' : 'text-cyan-400 hover:bg-cyan-500/20'}`}>
@@ -963,7 +1003,7 @@ export default function VoiceLabsPage() {
             </div>
             <div className="flex items-center justify-between mt-2 px-1">
               <p className="text-xs text-gray-500">
-                {text.length.toLocaleString()}/10,000 chars · {estimatedCost > 0 ? `${estimatedCost} credits` : '0 credits'} · {selectedVoiceName}
+                {text.length.toLocaleString()}/10,000 chars · meter {charMeter}/{projectedMeter > 1000 ? `1,000 → ${estimatedCost} cr` : `1,000`} · {selectedVoiceName}
               </p>
               <p className="text-xs text-gray-500">
                 Shift+Enter for newline · <code className="text-gray-500">{'<#0.5#>'}</code> for pauses
