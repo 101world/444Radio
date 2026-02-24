@@ -2,12 +2,13 @@
 
 import { useState, useRef, useEffect, lazy, Suspense } from 'react'
 import { useUser } from '@clerk/nextjs'
+import { useRouter } from 'next/navigation'
 import {
   Mic, MicOff, Zap, Loader2, Play, Pause, Download,
   Settings2, ChevronDown, ChevronUp, Copy, AlertCircle, CheckCircle2,
   SlidersHorizontal,  Trash2, User,
   Type, Plus, MessageSquare, Upload, Send,
-  ChevronLeft, ChevronRight, Edit3
+  ChevronLeft, ChevronRight, Edit3, PanelLeft
 } from 'lucide-react'
 import { useCredits } from '@/app/contexts/CreditsContext'
 import FloatingMenu from '@/app/components/FloatingMenu'
@@ -89,7 +90,12 @@ interface ChatMessage {
 
 export default function VoiceLabsPage() {
   const { user } = useUser()
+  const router = useRouter()
   const { totalCredits: credits, refreshCredits } = useCredits()
+
+  // ── Docked sidebar + ESC visibility ──
+  const [sidebarHidden, setSidebarHidden] = useState(false)
+  const [showEscHint, setShowEscHint] = useState(true)
 
   // ── Left Panel State ──
   const [leftTab, setLeftTab] = useState<'voices' | 'train' | 'sessions'>('voices')
@@ -174,6 +180,26 @@ export default function VoiceLabsPage() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // ── Hide ESC hint after 2s ──
+  useEffect(() => {
+    const timer = setTimeout(() => setShowEscHint(false), 2000)
+    return () => clearTimeout(timer)
+  }, [])
+
+  // ── ESC key → navigate to /create (always active) ──
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        // Don't navigate if user is typing in an input/textarea
+        const tag = (e.target as HTMLElement)?.tagName
+        if (tag === 'INPUT' || tag === 'TEXTAREA') return
+        router.push('/create')
+      }
+    }
+    window.addEventListener('keydown', handleEsc)
+    return () => window.removeEventListener('keydown', handleEsc)
+  }, [router])
 
   // ── Cleanup ──
   useEffect(() => {
@@ -468,8 +494,14 @@ export default function VoiceLabsPage() {
 
       <FloatingMenu />
 
+      {/* ESC hint — visible for 2s then fades */}
+      <div className={`fixed top-3 right-3 z-[60] flex items-center gap-1.5 px-2.5 py-1.5 bg-black/70 backdrop-blur-xl border border-white/10 rounded-lg transition-all duration-500 ${showEscHint ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'}`}>
+        <kbd className="text-[9px] font-mono text-gray-400 bg-white/10 px-1.5 py-0.5 rounded border border-white/10">ESC</kbd>
+        <span className="text-[9px] text-gray-500">Back to Create</span>
+      </div>
+
       {/* ── 3-panel layout ── */}
-      <div className="flex-1 flex md:pl-[72px] overflow-hidden">
+      <div className={`flex-1 flex overflow-hidden transition-all duration-300 ${sidebarHidden ? '' : 'md:pl-[72px]'}`}>
 
         {/* ══════ LEFT SIDEBAR ══════ */}
         <div className={`${leftOpen ? 'w-[280px] min-w-[280px]' : 'w-0 min-w-0 overflow-hidden'} flex flex-col border-r border-white/[0.06] bg-black/40 backdrop-blur-xl transition-all duration-200`}>
@@ -478,6 +510,11 @@ export default function VoiceLabsPage() {
           <div className="flex items-center justify-between px-3 py-3 border-b border-white/[0.06]">
             <h2 className="text-sm font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">VOICE LABS</h2>
             <div className="flex items-center gap-1">
+              <button
+                onClick={() => { setSidebarHidden(h => !h); window.dispatchEvent(new CustomEvent('toggle-docked-sidebar')) }}
+                className="p-1 rounded-md hover:bg-white/10 transition-colors" title="Toggle nav sidebar">
+                <PanelLeft size={12} className={sidebarHidden ? 'text-cyan-400' : 'text-gray-500'} />
+              </button>
               <div className="flex items-center gap-1 px-2 py-0.5 bg-cyan-500/10 rounded-full">
                 <Zap size={10} className="text-cyan-400" />
                 <span className="text-[10px] font-bold text-white">{credits ?? '...'}</span>

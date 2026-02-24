@@ -25,6 +25,26 @@ export default function DockedSidebar() {
   const { totalCredits } = useCredits()
   const [username, setUsername] = useState<string>('')
   const [avatarUrl, setAvatarUrl] = useState<string>('')
+  const [forceHidden, setForceHidden] = useState(false)
+
+  const isVoiceLabs = pathname === '/voice-labs'
+
+  // Auto-hide on voice-labs after 2 seconds
+  useEffect(() => {
+    if (isVoiceLabs) {
+      const timer = setTimeout(() => setForceHidden(true), 2000)
+      return () => clearTimeout(timer)
+    } else {
+      setForceHidden(false)
+    }
+  }, [isVoiceLabs])
+
+  // Listen for toggle-docked-sidebar events from voice-labs page
+  useEffect(() => {
+    const handler = () => setForceHidden(prev => !prev)
+    window.addEventListener('toggle-docked-sidebar', handler)
+    return () => window.removeEventListener('toggle-docked-sidebar', handler)
+  }, [])
 
   // Fetch user profile
   useEffect(() => {
@@ -89,7 +109,7 @@ export default function DockedSidebar() {
     { icon: Unlock, label: 'Decrypt', href: '/decrypt', highlight: 'cyan' },
     { icon: CreditCard, label: 'Pricing', href: '/pricing', highlight: false },
     { icon: DollarSign, label: 'Earn', href: '/earn', highlight: 'purple', badge: 'New' },
-    { icon: AudioLines, label: 'Voice Lab', href: '/voice-training', highlight: 'purple' },
+    { icon: AudioLines, label: 'Voice Labs', href: '/voice-labs', highlight: 'purple' },
     { icon: Swords, label: 'Quests', href: '/quests', highlight: 'cyan', badge: '🎮' },
     { icon: Settings, label: 'Settings', href: '/settings', highlight: false },
     { icon: User, label: 'My Profile', href: `/profile/${user.id}`, highlight: 'cyan', badge: '🎤' },
@@ -102,7 +122,7 @@ export default function DockedSidebar() {
     { icon: Unlock, label: 'Decrypt', href: '/decrypt', highlight: 'cyan' },
     { icon: CreditCard, label: 'Pricing', href: '/pricing', highlight: false },
     { icon: DollarSign, label: 'Earn', href: '/earn', highlight: 'purple', badge: 'New' },
-    { icon: AudioLines, label: 'Voice Lab', href: '/voice-training', highlight: 'purple' },
+    { icon: AudioLines, label: 'Voice Labs', href: '/voice-labs', highlight: 'purple' },
     { icon: Swords, label: 'Quests', href: '/quests', highlight: 'cyan', badge: '🎮' },
     { icon: User, label: 'Profile', href: '/profile', highlight: false },
     { icon: LogIn, label: 'Sign In', href: '/sign-in', highlight: false, divider: true },
@@ -114,7 +134,7 @@ export default function DockedSidebar() {
   return (
     <aside 
       className={`hidden md:flex fixed left-0 top-0 h-screen bg-black/95 backdrop-blur-2xl border-r border-white/10 transition-all duration-300 ease-in-out z-50 flex-col ${
-        isExpanded ? 'w-64' : 'w-20'
+        forceHidden ? '-translate-x-full opacity-0 pointer-events-none' : isExpanded ? 'w-64' : 'w-20'
       }`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
