@@ -1168,6 +1168,9 @@ function applyEffect(code: string, method: string, value: number | string, remov
       // Fallback: standalone s("instrument") at start of expression — not preceded by dot
       const re2 = /(?<!\.)\bs\s*\(\s*["'](sine|sawtooth|square|triangle|supersaw|gm_[^"']+)["']\s*\)/
       if (re2.test(code)) return code.replace(re2, `s("${value}")`)
+      // Fallback: inject .s() after note()/n() if no .s() exists yet
+      const noteInject = /((?:note|n)\s*\(\s*["'][^"']*["']\s*\))/
+      if (noteInject.test(code)) return code.replace(noteInject, `$1\n  .s("${value}")`)
       return code
     }
     if (method === 'drumPattern') {
@@ -1516,13 +1519,18 @@ function HardwareSelect({ label, value, options, onChange, color }: {
 
   useEffect(() => {
     if (!open) return
-    const close = (e: MouseEvent) => {
-      if (menuRef.current?.contains(e.target as Node)) return
-      if (btnRef.current?.contains(e.target as Node)) return
+    const close = (e: Event) => {
+      const target = (e instanceof TouchEvent ? e.touches[0]?.target ?? e.target : e.target) as Node
+      if (menuRef.current?.contains(target)) return
+      if (btnRef.current?.contains(target)) return
       setOpen(false)
     }
     document.addEventListener('mousedown', close)
-    return () => document.removeEventListener('mousedown', close)
+    document.addEventListener('touchstart', close, { passive: true })
+    return () => {
+      document.removeEventListener('mousedown', close)
+      document.removeEventListener('touchstart', close)
+    }
   }, [open])
 
   const handleOpen = (e: React.MouseEvent) => {
@@ -1547,6 +1555,7 @@ function HardwareSelect({ label, value, options, onChange, color }: {
       {options.map(opt => (
         <button key={opt.value}
           onClick={e => { e.stopPropagation(); onChange(opt.value); setOpen(false) }}
+          onTouchEnd={e => { e.stopPropagation(); e.preventDefault(); onChange(opt.value); setOpen(false) }}
           className="w-full text-left px-3 py-[6px] text-[10px] transition-colors cursor-pointer flex items-center gap-2"
           style={{
             color: opt.value === value ? color : HW.text,
