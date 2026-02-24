@@ -106,6 +106,40 @@ const TYPE_ICONS: Record<NodeType, string> = {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  SMART GUIDANCE — contextual hints per node type
+// ═══════════════════════════════════════════════════════════════
+
+const NODE_GUIDANCE: Record<NodeType, string> = {
+  drums:  'Uses s("bd sd hh") pattern · Add reverb, delay, filters · Try echo, euclid, chop for variation',
+  bass:   'Uses note("pattern").sound("synth") · Set key & scale · Add LPF for warmth, distort for grit',
+  melody: 'Uses note("pattern").sound("synth") · Set key & scale · Try delay, reverb, jux for stereo width',
+  chords: 'Uses note("<chord>").sound("synth") · Set key & scale · Add reverb, pan for width',
+  pad:    'Uses note("pattern").sound("synth") · Long release for ambience · Add reverb, delay, phaser',
+  vocal:  'Uses s("vocal samples") · Add reverb, delay, vowel filter · Try chop for granular texture',
+  fx:     'Uses s("fx samples") · Layer effects freely · Try echo, jux, striate for texture',
+  other:  'General purpose node · Add any effects from + FX below',
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  QUICK-ADD FX — audio effects that create knobs when added
+// ═══════════════════════════════════════════════════════════════
+
+const QUICK_ADD_FX: { id: string; label: string; method: string; defaultVal: number | string; desc: string; color: string }[] = [
+  { id: 'room', label: 'VERB', method: 'room', defaultVal: 0.3, desc: 'Add reverb', color: '#22d3ee' },
+  { id: 'delay', label: 'DLY', method: 'delay', defaultVal: 0.5, desc: 'Add delay', color: '#fb923c' },
+  { id: 'lpf', label: 'LPF', method: 'lpf', defaultVal: 8000, desc: 'Low pass filter', color: '#60a5fa' },
+  { id: 'hpf', label: 'HPF', method: 'hpf', defaultVal: 200, desc: 'High pass filter', color: '#60a5fa' },
+  { id: 'distort', label: 'DIST', method: 'distort', defaultVal: 1, desc: 'Distortion', color: '#ef4444' },
+  { id: 'crush', label: 'CRSH', method: 'crush', defaultVal: 8, desc: 'Bitcrush', color: '#ef4444' },
+  { id: 'shape', label: 'SHPE', method: 'shape', defaultVal: 0.5, desc: 'Waveshaper', color: '#ef4444' },
+  { id: 'phaser', label: 'PHSR', method: 'phaser', defaultVal: 4, desc: 'Phaser', color: '#a78bfa' },
+  { id: 'pan', label: 'PAN', method: 'pan', defaultVal: 0.5, desc: 'Stereo pan', color: '#34d399' },
+  { id: 'fmi', label: 'FM', method: 'fmi', defaultVal: 2, desc: 'FM synthesis', color: '#818cf8' },
+  { id: 'coarse', label: 'COARSE', method: 'coarse', defaultVal: 8, desc: 'Coarse', color: '#f59e0b' },
+  { id: 'velocity', label: 'VEL', method: 'velocity', defaultVal: 1, desc: 'Velocity', color: '#94a3b8' },
+]
+
+// ═══════════════════════════════════════════════════════════════
 //  PRESETS
 // ═══════════════════════════════════════════════════════════════
 
@@ -1309,7 +1343,7 @@ function HardwareSelect({ label, value, options, onChange, color }: {
  * Uses Web Audio AnalyserNode when available, falls back to animated waveform.
  * Click to cycle: equalizer → waveform → type animation.
  */
-function MiniScope({ color, active, type, analyserNode }: { color: string; active: boolean; type: NodeType; analyserNode?: AnalyserNode | null }) {
+function MiniScope({ color, active, type, analyserNode, hpf, lpf }: { color: string; active: boolean; type: NodeType; analyserNode?: AnalyserNode | null; hpf?: number; lpf?: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rafRef = useRef(0)
   const phaseRef = useRef(Math.random() * Math.PI * 2)
@@ -1355,6 +1389,43 @@ function MiniScope({ color, active, type, analyserNode }: { color: string; activ
             const alpha = 0.3 + val * 0.6
             ctx.fillStyle = `${color}${Math.round(alpha * 255).toString(16).padStart(2, '0')}`
             ctx.fillRect(i * barW + 1, H - barH, barW - 2, barH)
+          }
+
+          // ── Filter overlay: HPF/LPF curves on frequency bars ──
+          if ((hpf && hpf > 20) || (lpf && lpf < 19000)) {
+            const maxFreq = 20000
+            ctx.save()
+            // HPF: blocks low frequencies (left side slope rising)
+            if (hpf && hpf > 20) {
+              const hpfX = Math.min(W, (Math.log(hpf / 20) / Math.log(maxFreq / 20)) * W)
+              const grad = ctx.createLinearGradient(0, 0, hpfX, 0)
+              grad.addColorStop(0, `${color}30`)
+              grad.addColorStop(1, `${color}00`)
+              ctx.fillStyle = grad
+              ctx.fillRect(0, 0, hpfX, H)
+              // Cutoff line
+              ctx.strokeStyle = `${color}60`
+              ctx.lineWidth = 1.5
+              ctx.setLineDash([2, 2])
+              ctx.beginPath(); ctx.moveTo(hpfX, 0); ctx.lineTo(hpfX, H); ctx.stroke()
+              ctx.setLineDash([])
+            }
+            // LPF: blocks high frequencies (right side slope falling)
+            if (lpf && lpf < 19000) {
+              const lpfX = Math.max(0, (Math.log(lpf / 20) / Math.log(maxFreq / 20)) * W)
+              const grad = ctx.createLinearGradient(lpfX, 0, W, 0)
+              grad.addColorStop(0, `${color}00`)
+              grad.addColorStop(1, `${color}30`)
+              ctx.fillStyle = grad
+              ctx.fillRect(lpfX, 0, W - lpfX, H)
+              // Cutoff line
+              ctx.strokeStyle = `${color}60`
+              ctx.lineWidth = 1.5
+              ctx.setLineDash([2, 2])
+              ctx.beginPath(); ctx.moveTo(lpfX, 0); ctx.lineTo(lpfX, H); ctx.stroke()
+              ctx.setLineDash([])
+            }
+            ctx.restore()
           }
         } else {
           // WAVEFORM MODE — time-domain data
@@ -1403,7 +1474,7 @@ function MiniScope({ color, active, type, analyserNode }: { color: string; activ
     }
     rafRef.current = requestAnimationFrame(draw)
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
-  }, [color, active, type, analyserNode, displayMode])
+  }, [color, active, type, analyserNode, displayMode, hpf, lpf])
 
   return (
     <canvas
@@ -1668,6 +1739,8 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   const [pianoRollOpen, setPianoRollOpen] = useState<{ nodeId: string } | null>(null)
   const [soundUploaderOpen, setSoundUploaderOpen] = useState(false)
   const [currentCycle, setCurrentCycle] = useState(0)
+  const [fxDropdownNodeId, setFxDropdownNodeId] = useState<string | null>(null)
+  const [fxSearchQuery, setFxSearchQuery] = useState('')
 
   const panStart = useRef({ x: 0, y: 0, px: 0, py: 0 })
   const containerRef = useRef<HTMLDivElement>(null)
@@ -2792,7 +2865,9 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                     <>
                       {/* Equalizer */}
                       <div className="px-3 pt-1.5 pb-1" style={{ background: `${HW.bg}80` }}>
-                        <MiniScope color={color} active={isActive} type={node.type} analyserNode={analyserNode} />
+                        <MiniScope color={color} active={isActive} type={node.type} analyserNode={analyserNode}
+                          hpf={hasMethod(node.code, 'hpf') ? node.hpf : undefined}
+                          lpf={hasMethod(node.code, 'lpf') ? node.lpf : undefined} />
                       </div>
                       {/* Pattern display */}
                       {node.pattern && (
@@ -2862,18 +2937,18 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                     <MiniScope color={color} active={isActive} type={node.type} analyserNode={analyserNode} />
                   </div>
 
-                  {/* ══════ CODE-DRIVEN KNOBS ══════
-                       Only show knobs for effects that EXIST in this node's code.
-                       VOL (gain) always shows. Everything else is conditional.
-                       This makes the node a true visual representation of the code. */}
-
-                  {/* ALWAYS: Volume */}
-                  <div className="px-2 py-2">
-                    <div className="flex items-center gap-1 mb-1 px-1">
-                      <div className="h-px flex-1" style={{ background: HW.border }} />
-                      <span className="text-[7px] font-bold tracking-[0.2em] uppercase" style={{ color: HW.textDim }}>MIX</span>
-                      <div className="h-px flex-1" style={{ background: HW.border }} />
+                  {/* ══════ SMART GUIDANCE ══════ */}
+                  <div className="px-3 py-1.5" style={{ borderBottom: `1px solid ${HW.border}`, background: `${color}04` }}>
+                    <div className="flex items-start gap-1.5">
+                      <span className="text-[8px] shrink-0 mt-[1px]">💡</span>
+                      <span className="text-[7px] leading-relaxed" style={{ color: `${color}70` }}>
+                        {NODE_GUIDANCE[node.type]}
+                      </span>
                     </div>
+                  </div>
+
+                  {/* ══════ ALL KNOBS — one row, code-driven ══════ */}
+                  <div className="px-2 py-2">
                     <div className="flex items-start justify-center gap-0.5 flex-wrap">
                       <RotaryKnob label="VOL" value={node.gain} min={0} max={1} step={0.01} defaultValue={0.5}
                         onChange={v => updateKnob(node.id, 'gain', v)} onCommit={() => commitKnob(node.id, 'gain', node.gain)} color={color}
@@ -2893,179 +2968,186 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                           onChange={v => updateKnob(node.id, 'slow', v)} onCommit={() => commitKnob(node.id, 'slow', node.speed)} color={color}
                           disabled={hasDynamic(node.code, 'slow')} />
                       )}
-                    </div>
-                  </div>
-
-                  {/* FILTER — only if lpf/hpf/bpf in code */}
-                  {(hasMethod(node.code, 'lpf') || hasMethod(node.code, 'hpf') || hasMethod(node.code, 'bpf')) && (
-                    <div className="px-2 pb-2">
-                      <div className="flex items-center gap-1 mb-1 px-1">
-                        <div className="h-px flex-1" style={{ background: HW.border }} />
-                        <span className="text-[7px] font-bold tracking-[0.2em] uppercase" style={{ color: HW.textDim }}>FILTER</span>
-                        <div className="h-px flex-1" style={{ background: HW.border }} />
-                      </div>
-                      <div className="flex items-start justify-center gap-0.5 flex-wrap">
-                        {hasMethod(node.code, 'lpf') && (
-                          <RotaryKnob label="LPF" value={node.lpf} min={50} max={20000} step={50} defaultValue={20000} suffix="Hz"
-                            onChange={v => updateKnob(node.id, 'lpf', v)} onCommit={() => commitKnob(node.id, 'lpf', node.lpf)} color={color}
-                            disabled={hasDynamic(node.code, 'lpf')} />
-                        )}
-                        {hasMethod(node.code, 'hpf') && (
-                          <RotaryKnob label="HPF" value={node.hpf} min={0} max={8000} step={50} defaultValue={0} suffix="Hz"
-                            onChange={v => updateKnob(node.id, 'hpf', v)} onCommit={() => commitKnob(node.id, 'hpf', node.hpf)} color={color}
-                            disabled={hasDynamic(node.code, 'hpf')} />
-                        )}
-                        {hasMethod(node.code, 'lpq') && (
-                          <RotaryKnob label="LPQ" value={node.lpq} min={0} max={50} step={0.5} defaultValue={1}
-                            onChange={v => updateKnob(node.id, 'lpq', v)} onCommit={() => commitKnob(node.id, 'lpq', node.lpq)} color={color}
-                            disabled={hasDynamic(node.code, 'lpq')} />
-                        )}
-                        {hasMethod(node.code, 'hpq') && (
-                          <RotaryKnob label="HPQ" value={node.hpq} min={0} max={50} step={0.5} defaultValue={1}
-                            onChange={v => updateKnob(node.id, 'hpq', v)} onCommit={() => commitKnob(node.id, 'hpq', node.hpq)} color={color}
-                            disabled={hasDynamic(node.code, 'hpq')} />
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* SPACE — only if room/delay in code */}
-                  {(hasMethod(node.code, 'room') || hasMethod(node.code, 'delay')) && (
-                    <div className="px-2 pb-2">
-                      <div className="flex items-center gap-1 mb-1 px-1">
-                        <div className="h-px flex-1" style={{ background: HW.border }} />
-                        <span className="text-[7px] font-bold tracking-[0.2em] uppercase" style={{ color: HW.textDim }}>SPACE</span>
-                        <div className="h-px flex-1" style={{ background: HW.border }} />
-                      </div>
-                      <div className="flex items-start justify-center gap-0.5 flex-wrap">
-                        {hasMethod(node.code, 'room') && (
-                          <RotaryKnob label="VERB" value={node.room} min={0} max={1} step={0.01} defaultValue={0}
-                            onChange={v => updateKnob(node.id, 'room', v)} onCommit={() => commitKnob(node.id, 'room', node.room)} color={color}
-                            disabled={hasDynamic(node.code, 'room')} />
-                        )}
-                        {hasMethod(node.code, 'delay') && (
-                          <RotaryKnob label="DLY" value={node.delay} min={0} max={0.8} step={0.01} defaultValue={0}
-                            onChange={v => updateKnob(node.id, 'delay', v)} onCommit={() => commitKnob(node.id, 'delay', node.delay)} color={color}
-                            disabled={hasDynamic(node.code, 'delay')} />
-                        )}
-                        {hasMethod(node.code, 'delayfeedback') && (
-                          <RotaryKnob label="FDBK" value={node.delayfeedback} min={0} max={0.95} step={0.01} defaultValue={0}
-                            onChange={v => updateKnob(node.id, 'delayfeedback', v)} onCommit={() => commitKnob(node.id, 'delayfeedback', node.delayfeedback)} color={color}
-                            disabled={hasDynamic(node.code, 'delayfeedback')} />
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* DRIVE — only if distort/crush/phaser/coarse/shape in code */}
-                  {(hasMethod(node.code, 'distort') || hasMethod(node.code, 'crush') || hasMethod(node.code, 'phaser') || hasMethod(node.code, 'coarse') || hasMethod(node.code, 'shape')) && (
-                    <div className="px-2 pb-2">
-                      <div className="flex items-center gap-1 mb-1 px-1">
-                        <div className="h-px flex-1" style={{ background: HW.border }} />
-                        <span className="text-[7px] font-bold tracking-[0.2em] uppercase" style={{ color: HW.textDim }}>DRIVE</span>
-                        <div className="h-px flex-1" style={{ background: HW.border }} />
-                      </div>
-                      <div className="flex items-start justify-center gap-0.5 flex-wrap">
-                        {hasMethod(node.code, 'distort') && (
-                          <RotaryKnob label="DIST" value={node.distort} min={0} max={4} step={0.05} defaultValue={0}
-                            onChange={v => updateKnob(node.id, 'distort', v)} onCommit={() => commitKnob(node.id, 'distort', node.distort)} color={color}
-                            disabled={hasDynamic(node.code, 'distort')} />
-                        )}
-                        {hasMethod(node.code, 'shape') && (
-                          <RotaryKnob label="SHPE" value={node.shape} min={0} max={1} step={0.01} defaultValue={0}
-                            onChange={v => updateKnob(node.id, 'shape', v)} onCommit={() => commitKnob(node.id, 'shape', node.shape)} color={color}
-                            disabled={hasDynamic(node.code, 'shape')} />
-                        )}
-                        {hasMethod(node.code, 'crush') && (
-                          <RotaryKnob label="CRSH" value={node.crush} min={0} max={16} step={1} defaultValue={0}
-                            onChange={v => updateKnob(node.id, 'crush', v)} onCommit={() => commitKnob(node.id, 'crush', node.crush)} color={color}
-                            disabled={hasDynamic(node.code, 'crush')} />
-                        )}
-                        {hasMethod(node.code, 'phaser') && (
-                          <RotaryKnob label="PHSR" value={node.phaser} min={0} max={20} step={0.5} defaultValue={0} suffix="Hz"
-                            onChange={v => updateKnob(node.id, 'phaser', v)} onCommit={() => commitKnob(node.id, 'phaser', node.phaser)} color={color}
-                            disabled={hasDynamic(node.code, 'phaser')} />
-                        )}
-                        {hasMethod(node.code, 'coarse') && (
-                          <RotaryKnob label="COARSE" value={node.coarse} min={0} max={32} step={1} defaultValue={0}
-                            onChange={v => updateKnob(node.id, 'coarse', v)} onCommit={() => commitKnob(node.id, 'coarse', node.coarse)} color={color}
-                            disabled={hasDynamic(node.code, 'coarse')} size={36} />
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ADSR — only if any envelope param in code */}
-                  {(hasMethod(node.code, 'attack') || hasMethod(node.code, 'decay') || hasMethod(node.code, 'sustain') || hasMethod(node.code, 'release')) && (
-                    <div className="px-2 pb-2">
-                      <div className="flex items-center gap-1 mb-1 px-1">
-                        <div className="h-px flex-1" style={{ background: HW.border }} />
-                        <span className="text-[7px] font-bold tracking-[0.2em] uppercase" style={{ color: HW.textDim }}>ADSR</span>
-                        <div className="h-px flex-1" style={{ background: HW.border }} />
-                      </div>
-                      <div className="flex items-start justify-center gap-0.5 flex-wrap">
+                      {hasMethod(node.code, 'lpf') && (
+                        <RotaryKnob label="LPF" value={node.lpf} min={50} max={20000} step={50} defaultValue={20000} suffix="Hz"
+                          onChange={v => updateKnob(node.id, 'lpf', v)} onCommit={() => commitKnob(node.id, 'lpf', node.lpf)} color={color}
+                          disabled={hasDynamic(node.code, 'lpf')} />
+                      )}
+                      {hasMethod(node.code, 'hpf') && (
+                        <RotaryKnob label="HPF" value={node.hpf} min={0} max={8000} step={50} defaultValue={0} suffix="Hz"
+                          onChange={v => updateKnob(node.id, 'hpf', v)} onCommit={() => commitKnob(node.id, 'hpf', node.hpf)} color={color}
+                          disabled={hasDynamic(node.code, 'hpf')} />
+                      )}
+                      {hasMethod(node.code, 'lpq') && (
+                        <RotaryKnob label="LPQ" value={node.lpq} min={0} max={50} step={0.5} defaultValue={1}
+                          onChange={v => updateKnob(node.id, 'lpq', v)} onCommit={() => commitKnob(node.id, 'lpq', node.lpq)} color={color}
+                          disabled={hasDynamic(node.code, 'lpq')} />
+                      )}
+                      {hasMethod(node.code, 'hpq') && (
+                        <RotaryKnob label="HPQ" value={node.hpq} min={0} max={50} step={0.5} defaultValue={1}
+                          onChange={v => updateKnob(node.id, 'hpq', v)} onCommit={() => commitKnob(node.id, 'hpq', node.hpq)} color={color}
+                          disabled={hasDynamic(node.code, 'hpq')} />
+                      )}
+                      {hasMethod(node.code, 'room') && (
+                        <RotaryKnob label="VERB" value={node.room} min={0} max={1} step={0.01} defaultValue={0}
+                          onChange={v => updateKnob(node.id, 'room', v)} onCommit={() => commitKnob(node.id, 'room', node.room)} color={color}
+                          disabled={hasDynamic(node.code, 'room')} />
+                      )}
+                      {hasMethod(node.code, 'delay') && (
+                        <RotaryKnob label="DLY" value={node.delay} min={0} max={0.8} step={0.01} defaultValue={0}
+                          onChange={v => updateKnob(node.id, 'delay', v)} onCommit={() => commitKnob(node.id, 'delay', node.delay)} color={color}
+                          disabled={hasDynamic(node.code, 'delay')} />
+                      )}
+                      {hasMethod(node.code, 'delayfeedback') && (
+                        <RotaryKnob label="FDBK" value={node.delayfeedback} min={0} max={0.95} step={0.01} defaultValue={0}
+                          onChange={v => updateKnob(node.id, 'delayfeedback', v)} onCommit={() => commitKnob(node.id, 'delayfeedback', node.delayfeedback)} color={color}
+                          disabled={hasDynamic(node.code, 'delayfeedback')} />
+                      )}
+                      {hasMethod(node.code, 'distort') && (
+                        <RotaryKnob label="DIST" value={node.distort} min={0} max={4} step={0.05} defaultValue={0}
+                          onChange={v => updateKnob(node.id, 'distort', v)} onCommit={() => commitKnob(node.id, 'distort', node.distort)} color={color}
+                          disabled={hasDynamic(node.code, 'distort')} />
+                      )}
+                      {hasMethod(node.code, 'shape') && (
+                        <RotaryKnob label="SHPE" value={node.shape} min={0} max={1} step={0.01} defaultValue={0}
+                          onChange={v => updateKnob(node.id, 'shape', v)} onCommit={() => commitKnob(node.id, 'shape', node.shape)} color={color}
+                          disabled={hasDynamic(node.code, 'shape')} />
+                      )}
+                      {hasMethod(node.code, 'crush') && (
+                        <RotaryKnob label="CRSH" value={node.crush} min={0} max={16} step={1} defaultValue={0}
+                          onChange={v => updateKnob(node.id, 'crush', v)} onCommit={() => commitKnob(node.id, 'crush', node.crush)} color={color}
+                          disabled={hasDynamic(node.code, 'crush')} />
+                      )}
+                      {hasMethod(node.code, 'phaser') && (
+                        <RotaryKnob label="PHSR" value={node.phaser} min={0} max={20} step={0.5} defaultValue={0} suffix="Hz"
+                          onChange={v => updateKnob(node.id, 'phaser', v)} onCommit={() => commitKnob(node.id, 'phaser', node.phaser)} color={color}
+                          disabled={hasDynamic(node.code, 'phaser')} />
+                      )}
+                      {hasMethod(node.code, 'coarse') && (
+                        <RotaryKnob label="COARSE" value={node.coarse} min={0} max={32} step={1} defaultValue={0}
+                          onChange={v => updateKnob(node.id, 'coarse', v)} onCommit={() => commitKnob(node.id, 'coarse', node.coarse)} color={color}
+                          disabled={hasDynamic(node.code, 'coarse')} />
+                      )}
+                      {hasMethod(node.code, 'attack') && (
                         <RotaryKnob label="ATK" value={node.attack} min={0} max={2} step={0.01} defaultValue={0.001} suffix="s"
                           onChange={v => updateKnob(node.id, 'attack', v)} onCommit={() => commitKnob(node.id, 'attack', node.attack)} color={color}
                           disabled={hasDynamic(node.code, 'attack')} />
+                      )}
+                      {hasMethod(node.code, 'decay') && (
                         <RotaryKnob label="DEC" value={node.decay} min={0} max={2} step={0.01} defaultValue={0.1} suffix="s"
                           onChange={v => updateKnob(node.id, 'decay', v)} onCommit={() => commitKnob(node.id, 'decay', node.decay)} color={color}
                           disabled={hasDynamic(node.code, 'decay')} />
+                      )}
+                      {hasMethod(node.code, 'sustain') && (
                         <RotaryKnob label="SUS" value={node.sustain} min={0} max={1} step={0.01} defaultValue={0.5}
                           onChange={v => updateKnob(node.id, 'sustain', v)} onCommit={() => commitKnob(node.id, 'sustain', node.sustain)} color={color}
                           disabled={hasDynamic(node.code, 'sustain')} />
+                      )}
+                      {hasMethod(node.code, 'release') && (
                         <RotaryKnob label="REL" value={node.release} min={0} max={4} step={0.01} defaultValue={0.1} suffix="s"
                           onChange={v => updateKnob(node.id, 'release', v)} onCommit={() => commitKnob(node.id, 'release', node.release)} color={color}
                           disabled={hasDynamic(node.code, 'release')} />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* FM — only if fmi in code */}
-                  {hasMethod(node.code, 'fmi') && (
-                    <div className="px-2 pb-2">
-                      <div className="flex items-center gap-1 mb-1 px-1">
-                        <div className="h-px flex-1" style={{ background: HW.border }} />
-                        <span className="text-[7px] font-bold tracking-[0.2em] uppercase" style={{ color: HW.textDim }}>FM</span>
-                        <div className="h-px flex-1" style={{ background: HW.border }} />
-                      </div>
-                      <div className="flex items-start justify-center gap-0.5 flex-wrap">
+                      )}
+                      {hasMethod(node.code, 'fmi') && (
                         <RotaryKnob label="FM" value={node.fmi} min={0} max={8} step={0.1} defaultValue={0}
                           onChange={v => updateKnob(node.id, 'fmi', v)} onCommit={() => commitKnob(node.id, 'fmi', node.fmi)} color={color}
                           disabled={hasDynamic(node.code, 'fmi')} />
-                      </div>
+                      )}
                     </div>
-                  )}
+                  </div>
 
-                  {/* ══════ QUICK FX CHIPS ══════ */}
+                  {/* ══════ + FX — Quick-add & Searchable ══════ */}
                   <div className="px-2 pb-2">
                     <div className="flex items-center gap-1 mb-1 px-1">
                       <div className="h-px flex-1" style={{ background: HW.border }} />
-                      <span className="text-[7px] font-bold tracking-[0.2em] uppercase" style={{ color: HW.textDim }}>QUICK FX</span>
+                      <span className="text-[7px] font-bold tracking-[0.2em] uppercase" style={{ color: HW.textDim }}>+ FX</span>
                       <div className="h-px flex-1" style={{ background: HW.border }} />
                     </div>
-                    <div className="flex flex-wrap gap-[3px] px-0.5">
-                      {QUICK_FX.map(fx => {
-                        const rawCode = node.code.replace(/\/\/ \[muted\] /g, '')
-                        const isOn = fx.detect.test(rawCode)
-                        return (
-                          <button key={fx.id}
-                            onClick={e => { e.stopPropagation(); toggleQuickFX(node.id, fx) }}
-                            title={fx.desc}
-                            className="px-1.5 py-[2px] rounded text-[7px] font-bold tracking-wider uppercase transition-all cursor-pointer whitespace-nowrap"
-                            style={{
-                              background: isOn ? `${fx.color}20` : HW.raised,
-                              color: isOn ? fx.color : HW.textDim,
-                              border: `1px solid ${isOn ? `${fx.color}40` : HW.border}`,
-                              boxShadow: isOn ? `0 0 6px ${fx.color}15` : 'none',
-                            }}
-                            onMouseEnter={e => { if (!isOn) (e.currentTarget).style.borderColor = `${fx.color}30` }}
-                            onMouseLeave={e => { if (!isOn) (e.currentTarget).style.borderColor = HW.border }}
-                          >
-                            <span className="mr-0.5">{fx.icon}</span>{fx.label}
-                          </button>
-                        )
-                      })}
+                    {/* Quick-add: common audio effects not yet in code */}
+                    <div className="flex flex-wrap gap-[3px] mb-1.5">
+                      {QUICK_ADD_FX.filter(fx => !hasMethod(node.code, fx.method)).slice(0, 8).map(fx => (
+                        <button key={fx.id}
+                          onClick={e => { e.stopPropagation(); applyNodeEffect(node.id, fx.method, fx.defaultVal) }}
+                          title={fx.desc}
+                          className="px-1.5 py-[2px] rounded text-[7px] font-bold tracking-wider uppercase transition-all cursor-pointer whitespace-nowrap"
+                          style={{ background: `${fx.color}08`, color: `${fx.color}90`, border: `1px solid ${fx.color}20` }}>
+                          + {fx.label}
+                        </button>
+                      ))}
                     </div>
+                    {/* Toggle search dropdown */}
+                    <button
+                      onClick={e => { e.stopPropagation(); setFxDropdownNodeId(prev => prev === node.id ? null : node.id); setFxSearchQuery('') }}
+                      className="w-full px-2 py-1 rounded text-[7px] font-bold tracking-wider uppercase transition-all cursor-pointer mb-1"
+                      style={{
+                        background: fxDropdownNodeId === node.id ? `${color}15` : HW.raised,
+                        color: fxDropdownNodeId === node.id ? color : HW.textDim,
+                        border: `1px solid ${fxDropdownNodeId === node.id ? `${color}30` : HW.border}`,
+                      }}>
+                      {fxDropdownNodeId === node.id ? '▲ CLOSE FX' : '▼ MORE FX & PATTERNS'}
+                    </button>
+                    {/* Searchable dropdown */}
+                    {fxDropdownNodeId === node.id && (
+                      <div className="mt-1 rounded overflow-hidden" style={{ background: HW.surface, border: `1px solid ${HW.borderLight}` }}>
+                        <input
+                          type="text" value={fxSearchQuery} placeholder="Search effects..."
+                          onChange={e => setFxSearchQuery(e.target.value)}
+                          onClick={e => e.stopPropagation()}
+                          className="w-full px-2 py-1 text-[8px] outline-none"
+                          style={{ background: HW.raised, color: HW.textBright, border: 'none', borderBottom: `1px solid ${HW.border}` }}
+                          autoFocus
+                        />
+                        <div className="max-h-[180px] overflow-y-auto p-1">
+                          {(['pattern', 'groove', 'time', 'stereo', 'glitch'] as const).map(cat => {
+                            const fxInCat = QUICK_FX.filter(fx => fx.category === cat && (fxSearchQuery === '' || fx.label.toLowerCase().includes(fxSearchQuery.toLowerCase()) || fx.desc.toLowerCase().includes(fxSearchQuery.toLowerCase())))
+                            if (fxInCat.length === 0) return null
+                            return (
+                              <div key={cat} className="mb-1">
+                                <div className="text-[6px] font-bold uppercase tracking-wider px-1 py-0.5" style={{ color: HW.textDim }}>{cat}</div>
+                                <div className="flex flex-wrap gap-[3px]">
+                                  {fxInCat.map(fx => {
+                                    const rawCode = node.code.replace(/\/\/ \[muted\] /g, '')
+                                    const isOn = fx.detect.test(rawCode)
+                                    return (
+                                      <button key={fx.id}
+                                        onClick={e => { e.stopPropagation(); toggleQuickFX(node.id, fx) }}
+                                        title={fx.desc}
+                                        className="px-1.5 py-[2px] rounded text-[7px] font-bold tracking-wider uppercase transition-all cursor-pointer whitespace-nowrap"
+                                        style={{
+                                          background: isOn ? `${fx.color}20` : HW.raised,
+                                          color: isOn ? fx.color : HW.textDim,
+                                          border: `1px solid ${isOn ? `${fx.color}40` : HW.border}`,
+                                          boxShadow: isOn ? `0 0 6px ${fx.color}15` : 'none',
+                                        }}>
+                                        <span className="mr-0.5">{fx.icon}</span>{fx.label}{isOn ? ' ✕' : ''}
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    {/* Active pattern FX chips — quick removal */}
+                    {(() => {
+                      const rawCode = node.code.replace(/\/\/ \[muted\] /g, '')
+                      const activeFX = QUICK_FX.filter(fx => fx.detect.test(rawCode))
+                      return activeFX.length > 0 ? (
+                        <div className="flex flex-wrap gap-[3px] mt-1.5">
+                          {activeFX.map(fx => (
+                            <button key={fx.id}
+                              onClick={e => { e.stopPropagation(); toggleQuickFX(node.id, fx) }}
+                              title={`Remove ${fx.desc}`}
+                              className="px-1.5 py-[2px] rounded text-[7px] font-bold tracking-wider uppercase transition-all cursor-pointer whitespace-nowrap group"
+                              style={{ background: `${fx.color}20`, color: fx.color, border: `1px solid ${fx.color}40`, boxShadow: `0 0 6px ${fx.color}15` }}>
+                              <span className="mr-0.5">{fx.icon}</span>{fx.label} <span className="opacity-50 group-hover:opacity-100">✕</span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : null
+                    })()}
                   </div>
 
                   {/* ══════ LFO ASSIGN ══════ */}
