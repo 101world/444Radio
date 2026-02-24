@@ -866,24 +866,119 @@ const SIDEBAR_CATEGORIES: { id: string; label: string; icon: string; color: stri
   {
     id: 'sounds', label: 'Instruments', icon: '🎸', color: '#fb923c',
     items: [
-      { id: 'snd_piano', label: 'Piano', icon: '🎹', desc: 'GM Piano', color: '#fb923c', dragType: 'sound', payload: 'gm_piano' },
-      { id: 'snd_epiano', label: 'E-Piano / Rhodes', icon: '🎹', desc: 'GM EPiano 1', color: '#fb923c', dragType: 'sound', payload: 'gm_epiano1' },
-      { id: 'snd_organ', label: 'Organ', icon: '⛪', desc: 'Drawbar organ', color: '#fb923c', dragType: 'sound', payload: 'gm_drawbar_organ' },
-      { id: 'snd_strings', label: 'Strings', icon: '🎻', desc: 'String ensemble', color: '#fb923c', dragType: 'sound', payload: 'gm_string_ensemble_1' },
-      { id: 'snd_choir', label: 'Choir', icon: '🎤', desc: 'Choir Aahs', color: '#fb923c', dragType: 'sound', payload: 'gm_choir_aahs' },
-      { id: 'snd_flute', label: 'Flute', icon: '🎶', desc: 'Concert flute', color: '#fb923c', dragType: 'sound', payload: 'gm_flute' },
-      { id: 'snd_trumpet', label: 'Trumpet', icon: '🎺', desc: 'Bright trumpet', color: '#fb923c', dragType: 'sound', payload: 'gm_trumpet' },
-      { id: 'snd_guitar', label: 'Guitar (Nylon)', icon: '🎸', desc: 'Acoustic nylon', color: '#fb923c', dragType: 'sound', payload: 'gm_acoustic_guitar_nylon' },
+      // ── Pianos & Keys ──
+      { id: 'snd_piano', label: 'Piano', icon: '🎹', desc: 'Acoustic Grand Piano', color: '#fb923c', dragType: 'sound', payload: 'gm_piano' },
+      { id: 'snd_bright_piano', label: 'Bright Piano', icon: '🎹', desc: 'Bright Acoustic Piano', color: '#fb923c', dragType: 'sound', payload: 'gm_bright_acoustic_piano' },
+      { id: 'snd_epiano', label: 'E-Piano / Rhodes', icon: '🎹', desc: 'Electric Piano 1', color: '#fb923c', dragType: 'sound', payload: 'gm_epiano1' },
+      { id: 'snd_epiano2', label: 'E-Piano 2', icon: '🎹', desc: 'Electric Piano 2 / FM', color: '#fb923c', dragType: 'sound', payload: 'gm_epiano2' },
+      { id: 'snd_honkytonk', label: 'Honky-Tonk', icon: '🎹', desc: 'Honky-tonk Piano', color: '#fb923c', dragType: 'sound', payload: 'gm_honkytonk_piano' },
+      { id: 'snd_harpsichord', label: 'Harpsichord', icon: '🎹', desc: 'Baroque keyboard', color: '#fb923c', dragType: 'sound', payload: 'gm_harpsichord' },
+      { id: 'snd_clavinet', label: 'Clavinet', icon: '🎹', desc: 'Funky clavinet', color: '#fb923c', dragType: 'sound', payload: 'gm_clavinet' },
+      { id: 'snd_celesta', label: 'Celesta', icon: '✨', desc: 'Sparkling celesta', color: '#fb923c', dragType: 'sound', payload: 'gm_celesta' },
+      { id: 'snd_music_box', label: 'Music Box', icon: '🎵', desc: 'Celeste/music box', color: '#fb923c', dragType: 'sound', payload: 'gm_music_box' },
+      // ── Organs ──
+      { id: 'snd_organ', label: 'Drawbar Organ', icon: '⛪', desc: 'Hammond-style organ', color: '#fb923c', dragType: 'sound', payload: 'gm_drawbar_organ' },
+      { id: 'snd_perc_organ', label: 'Perc Organ', icon: '⛪', desc: 'Percussive organ', color: '#fb923c', dragType: 'sound', payload: 'gm_percussive_organ' },
+      { id: 'snd_rock_organ', label: 'Rock Organ', icon: '⛪', desc: 'Distorted organ', color: '#fb923c', dragType: 'sound', payload: 'gm_rock_organ' },
+      { id: 'snd_church_organ', label: 'Church Organ', icon: '⛪', desc: 'Pipe organ', color: '#fb923c', dragType: 'sound', payload: 'gm_church_organ' },
+      { id: 'snd_accordion', label: 'Accordion', icon: '🪗', desc: 'French accordion', color: '#fb923c', dragType: 'sound', payload: 'gm_accordion' },
+      { id: 'snd_harmonica', label: 'Harmonica', icon: '🎵', desc: 'Blues harmonica', color: '#fb923c', dragType: 'sound', payload: 'gm_harmonica' },
+      // ── Guitars ──
+      { id: 'snd_guitar', label: 'Nylon Guitar', icon: '🎸', desc: 'Acoustic nylon', color: '#fb923c', dragType: 'sound', payload: 'gm_acoustic_guitar_nylon' },
+      { id: 'snd_steel_guitar', label: 'Steel Guitar', icon: '🎸', desc: 'Acoustic steel', color: '#fb923c', dragType: 'sound', payload: 'gm_acoustic_guitar_steel' },
+      { id: 'snd_jazz_guitar', label: 'Jazz Guitar', icon: '🎸', desc: 'Clean jazz guitar', color: '#fb923c', dragType: 'sound', payload: 'gm_electric_guitar_jazz' },
+      { id: 'snd_clean_guitar', label: 'Clean Guitar', icon: '🎸', desc: 'Electric clean', color: '#fb923c', dragType: 'sound', payload: 'gm_electric_guitar_clean' },
+      { id: 'snd_muted_guitar', label: 'Muted Guitar', icon: '🎸', desc: 'Palm muted', color: '#fb923c', dragType: 'sound', payload: 'gm_electric_guitar_muted' },
+      { id: 'snd_overdrive', label: 'Overdrive Guitar', icon: '🎸', desc: 'Overdriven', color: '#fb923c', dragType: 'sound', payload: 'gm_overdriven_guitar' },
+      { id: 'snd_dist_guitar', label: 'Distortion Guitar', icon: '🎸', desc: 'Heavy dist', color: '#fb923c', dragType: 'sound', payload: 'gm_distortion_guitar' },
+      // ── Bass ──
       { id: 'snd_bass_ac', label: 'Acoustic Bass', icon: '🎸', desc: 'Upright bass', color: '#fb923c', dragType: 'sound', payload: 'gm_acoustic_bass' },
+      { id: 'snd_finger_bass', label: 'Finger Bass', icon: '🎸', desc: 'Electric finger bass', color: '#fb923c', dragType: 'sound', payload: 'gm_electric_bass_finger' },
+      { id: 'snd_pick_bass', label: 'Pick Bass', icon: '🎸', desc: 'Electric pick bass', color: '#fb923c', dragType: 'sound', payload: 'gm_electric_bass_pick' },
+      { id: 'snd_fretless_bass', label: 'Fretless Bass', icon: '🎸', desc: 'Smooth fretless', color: '#fb923c', dragType: 'sound', payload: 'gm_fretless_bass' },
+      { id: 'snd_slap_bass1', label: 'Slap Bass', icon: '🎸', desc: 'Funky slap', color: '#fb923c', dragType: 'sound', payload: 'gm_slap_bass_1' },
+      { id: 'snd_synth_bass1', label: 'Synth Bass 1', icon: '🎸', desc: 'Analog synth bass', color: '#fb923c', dragType: 'sound', payload: 'gm_synth_bass_1' },
+      { id: 'snd_synth_bass2', label: 'Synth Bass 2', icon: '🎸', desc: 'Digital synth bass', color: '#fb923c', dragType: 'sound', payload: 'gm_synth_bass_2' },
+      // ── Strings & Orchestra ──
+      { id: 'snd_violin', label: 'Violin', icon: '🎻', desc: 'Solo violin', color: '#fb923c', dragType: 'sound', payload: 'gm_violin' },
+      { id: 'snd_viola', label: 'Viola', icon: '🎻', desc: 'Solo viola', color: '#fb923c', dragType: 'sound', payload: 'gm_viola' },
+      { id: 'snd_cello', label: 'Cello', icon: '🎻', desc: 'Solo cello', color: '#fb923c', dragType: 'sound', payload: 'gm_cello' },
+      { id: 'snd_contrabass', label: 'Contrabass', icon: '🎻', desc: 'Double bass', color: '#fb923c', dragType: 'sound', payload: 'gm_contrabass' },
+      { id: 'snd_strings', label: 'String Ensemble', icon: '🎻', desc: 'Lush strings', color: '#fb923c', dragType: 'sound', payload: 'gm_string_ensemble_1' },
+      { id: 'snd_strings2', label: 'Slow Strings', icon: '🎻', desc: 'Slow attack strings', color: '#fb923c', dragType: 'sound', payload: 'gm_string_ensemble_2' },
+      { id: 'snd_synth_strings', label: 'Synth Strings', icon: '🎻', desc: 'Analog string pad', color: '#fb923c', dragType: 'sound', payload: 'gm_synth_strings_1' },
+      { id: 'snd_pizzicato', label: 'Pizzicato', icon: '🎻', desc: 'Plucked strings', color: '#fb923c', dragType: 'sound', payload: 'gm_pizzicato_strings' },
+      { id: 'snd_harp', label: 'Harp', icon: '🎵', desc: 'Orchestral harp', color: '#fb923c', dragType: 'sound', payload: 'gm_orchestral_harp' },
+      { id: 'snd_timpani', label: 'Timpani', icon: '🥁', desc: 'Orchestral timpani', color: '#fb923c', dragType: 'sound', payload: 'gm_timpani' },
+      // ── Choir & Voices ──
+      { id: 'snd_choir', label: 'Choir Aahs', icon: '🎤', desc: 'Choir Aahs', color: '#fb923c', dragType: 'sound', payload: 'gm_choir_aahs' },
+      { id: 'snd_voice_oohs', label: 'Voice Oohs', icon: '🎤', desc: 'Voice Oohs', color: '#fb923c', dragType: 'sound', payload: 'gm_voice_oohs' },
+      { id: 'snd_synth_voice', label: 'Synth Voice', icon: '🎤', desc: 'Synth choir', color: '#fb923c', dragType: 'sound', payload: 'gm_synth_choir' },
+      // ── Brass ──
+      { id: 'snd_trumpet', label: 'Trumpet', icon: '🎺', desc: 'Bright trumpet', color: '#fb923c', dragType: 'sound', payload: 'gm_trumpet' },
+      { id: 'snd_trombone', label: 'Trombone', icon: '🎺', desc: 'Jazz trombone', color: '#fb923c', dragType: 'sound', payload: 'gm_trombone' },
+      { id: 'snd_tuba', label: 'Tuba', icon: '🎺', desc: 'Deep tuba', color: '#fb923c', dragType: 'sound', payload: 'gm_tuba' },
+      { id: 'snd_muted_trumpet', label: 'Muted Trumpet', icon: '🎺', desc: 'Harmon mute', color: '#fb923c', dragType: 'sound', payload: 'gm_muted_trumpet' },
+      { id: 'snd_french_horn', label: 'French Horn', icon: '🎺', desc: 'Warm horn', color: '#fb923c', dragType: 'sound', payload: 'gm_french_horn' },
+      { id: 'snd_brass', label: 'Brass Section', icon: '🎺', desc: 'Brass ensemble', color: '#fb923c', dragType: 'sound', payload: 'gm_brass_section' },
+      { id: 'snd_synth_brass', label: 'Synth Brass', icon: '🎺', desc: 'Analog brass', color: '#fb923c', dragType: 'sound', payload: 'gm_synth_brass_1' },
+      // ── Woodwinds & Reeds ──
+      { id: 'snd_soprano_sax', label: 'Soprano Sax', icon: '🎷', desc: 'Soprano saxophone', color: '#fb923c', dragType: 'sound', payload: 'gm_soprano_sax' },
+      { id: 'snd_alto_sax', label: 'Alto Sax', icon: '🎷', desc: 'Alto saxophone', color: '#fb923c', dragType: 'sound', payload: 'gm_alto_sax' },
+      { id: 'snd_tenor_sax', label: 'Tenor Sax', icon: '🎷', desc: 'Tenor saxophone', color: '#fb923c', dragType: 'sound', payload: 'gm_tenor_sax' },
+      { id: 'snd_bari_sax', label: 'Bari Sax', icon: '🎷', desc: 'Baritone saxophone', color: '#fb923c', dragType: 'sound', payload: 'gm_baritone_sax' },
+      { id: 'snd_oboe', label: 'Oboe', icon: '🎶', desc: 'Classical oboe', color: '#fb923c', dragType: 'sound', payload: 'gm_oboe' },
+      { id: 'snd_english_horn', label: 'English Horn', icon: '🎶', desc: 'Cor anglais', color: '#fb923c', dragType: 'sound', payload: 'gm_english_horn' },
+      { id: 'snd_bassoon', label: 'Bassoon', icon: '🎶', desc: 'Double reed bass', color: '#fb923c', dragType: 'sound', payload: 'gm_bassoon' },
+      { id: 'snd_clarinet', label: 'Clarinet', icon: '🎶', desc: 'Bb clarinet', color: '#fb923c', dragType: 'sound', payload: 'gm_clarinet' },
+      { id: 'snd_flute', label: 'Flute', icon: '🎶', desc: 'Concert flute', color: '#fb923c', dragType: 'sound', payload: 'gm_flute' },
+      { id: 'snd_piccolo', label: 'Piccolo', icon: '🎶', desc: 'High piccolo', color: '#fb923c', dragType: 'sound', payload: 'gm_piccolo' },
+      { id: 'snd_recorder', label: 'Recorder', icon: '🎶', desc: 'Alto recorder', color: '#fb923c', dragType: 'sound', payload: 'gm_recorder' },
+      { id: 'snd_pan_flute', label: 'Pan Flute', icon: '🎶', desc: 'Airy pan flute', color: '#fb923c', dragType: 'sound', payload: 'gm_pan_flute' },
+      { id: 'snd_shakuhachi', label: 'Shakuhachi', icon: '🎶', desc: 'Japanese bamboo', color: '#fb923c', dragType: 'sound', payload: 'gm_shakuhachi' },
+      { id: 'snd_whistle', label: 'Whistle', icon: '🎶', desc: 'Clean whistle', color: '#fb923c', dragType: 'sound', payload: 'gm_whistle' },
+      { id: 'snd_ocarina', label: 'Ocarina', icon: '🎶', desc: 'Ceramic ocarina', color: '#fb923c', dragType: 'sound', payload: 'gm_ocarina' },
+      // ── Synth Leads ──
+      { id: 'snd_square_lead', label: 'Square Lead', icon: '🎹', desc: 'GM Square Lead', color: '#fb923c', dragType: 'sound', payload: 'gm_lead_1_square' },
+      { id: 'snd_saw_lead', label: 'Saw Lead', icon: '🎹', desc: 'GM Saw Lead', color: '#fb923c', dragType: 'sound', payload: 'gm_lead_2_sawtooth' },
+      { id: 'snd_calliope_lead', label: 'Calliope', icon: '🎹', desc: 'Steam organ lead', color: '#fb923c', dragType: 'sound', payload: 'gm_lead_3_calliope' },
+      { id: 'snd_chiff_lead', label: 'Chiff Lead', icon: '🎹', desc: 'Breathy lead', color: '#fb923c', dragType: 'sound', payload: 'gm_lead_4_chiff' },
+      { id: 'snd_charang_lead', label: 'Charang', icon: '🎹', desc: 'Distorted lead', color: '#fb923c', dragType: 'sound', payload: 'gm_lead_5_charang' },
+      // ── Synth Pads ──
+      { id: 'snd_new_age_pad', label: 'New Age Pad', icon: '🌌', desc: 'Warm new age', color: '#fb923c', dragType: 'sound', payload: 'gm_pad_1_new_age' },
+      { id: 'snd_warm_pad', label: 'Warm Pad', icon: '🌌', desc: 'Analog warmth', color: '#fb923c', dragType: 'sound', payload: 'gm_pad_2_warm' },
+      { id: 'snd_polysynth_pad', label: 'Polysynth', icon: '🌌', desc: 'Rich poly pad', color: '#fb923c', dragType: 'sound', payload: 'gm_pad_3_polysynth' },
+      { id: 'snd_choir_pad', label: 'Choir Pad', icon: '🌌', desc: 'Synth choir pad', color: '#fb923c', dragType: 'sound', payload: 'gm_pad_4_choir' },
+      { id: 'snd_bowed_pad', label: 'Bowed Pad', icon: '🌌', desc: 'Glass bowed', color: '#fb923c', dragType: 'sound', payload: 'gm_pad_5_bowed' },
+      { id: 'snd_metallic_pad', label: 'Metallic Pad', icon: '🌌', desc: 'Metallic texture', color: '#fb923c', dragType: 'sound', payload: 'gm_pad_6_metallic' },
+      { id: 'snd_halo_pad', label: 'Halo Pad', icon: '🌌', desc: 'Ethereal halo', color: '#fb923c', dragType: 'sound', payload: 'gm_pad_7_halo' },
+      { id: 'snd_sweep_pad', label: 'Sweep Pad', icon: '🌌', desc: 'Filter sweep pad', color: '#fb923c', dragType: 'sound', payload: 'gm_pad_8_sweep' },
+      // ── Ethnic & World ──
+      { id: 'snd_sitar', label: 'Sitar', icon: '🪕', desc: 'Indian sitar', color: '#fb923c', dragType: 'sound', payload: 'gm_sitar' },
+      { id: 'snd_banjo', label: 'Banjo', icon: '🪕', desc: 'Bluegrass banjo', color: '#fb923c', dragType: 'sound', payload: 'gm_banjo' },
+      { id: 'snd_shamisen', label: 'Shamisen', icon: '🪕', desc: 'Japanese shamisen', color: '#fb923c', dragType: 'sound', payload: 'gm_shamisen' },
+      { id: 'snd_koto', label: 'Koto', icon: '🪕', desc: 'Japanese koto', color: '#fb923c', dragType: 'sound', payload: 'gm_koto' },
+      { id: 'snd_kalimba', label: 'Kalimba', icon: '🎵', desc: 'African thumb piano', color: '#fb923c', dragType: 'sound', payload: 'gm_kalimba' },
+      { id: 'snd_bagpipe', label: 'Bagpipe', icon: '🎵', desc: 'Scottish bagpipe', color: '#fb923c', dragType: 'sound', payload: 'gm_bagpipe' },
+      { id: 'snd_fiddle', label: 'Fiddle', icon: '🎻', desc: 'Country fiddle', color: '#fb923c', dragType: 'sound', payload: 'gm_fiddle' },
+      { id: 'snd_steel_drum', label: 'Steel Drum', icon: '🥁', desc: 'Caribbean steel', color: '#fb923c', dragType: 'sound', payload: 'gm_steel_drum' },
+      // ── Mallet & Percussion ──
+      { id: 'snd_glocken', label: 'Glockenspiel', icon: '🔔', desc: 'Bright bells', color: '#fb923c', dragType: 'sound', payload: 'gm_glockenspiel' },
+      { id: 'snd_vibes', label: 'Vibraphone', icon: '🎵', desc: 'Mellow vibraphone', color: '#fb923c', dragType: 'sound', payload: 'gm_vibraphone' },
+      { id: 'snd_marimba', label: 'Marimba', icon: '🎵', desc: 'Wooden marimba', color: '#fb923c', dragType: 'sound', payload: 'gm_marimba' },
+      { id: 'snd_xylophone', label: 'Xylophone', icon: '🎵', desc: 'Bright xylophone', color: '#fb923c', dragType: 'sound', payload: 'gm_xylophone' },
+      { id: 'snd_tubular_bells', label: 'Tubular Bells', icon: '🔔', desc: 'Church bells', color: '#fb923c', dragType: 'sound', payload: 'gm_tubular_bells' },
+      // ── Synth FX ──
+      { id: 'snd_fx_rain', label: 'Rain FX', icon: '🌧️', desc: 'Synth rain', color: '#fb923c', dragType: 'sound', payload: 'gm_fx_1_rain' },
+      { id: 'snd_fx_soundtrack', label: 'Soundtrack FX', icon: '🎬', desc: 'Cinematic pad', color: '#fb923c', dragType: 'sound', payload: 'gm_fx_2_soundtrack' },
+      { id: 'snd_fx_crystal', label: 'Crystal FX', icon: '💎', desc: 'Sparkly texture', color: '#fb923c', dragType: 'sound', payload: 'gm_fx_3_crystal' },
+      { id: 'snd_fx_atmosphere', label: 'Atmosphere FX', icon: '🌌', desc: 'Ambient texture', color: '#fb923c', dragType: 'sound', payload: 'gm_fx_4_atmosphere' },
+      { id: 'snd_fx_brightness', label: 'Brightness FX', icon: '✨', desc: 'Bright shimmer', color: '#fb923c', dragType: 'sound', payload: 'gm_fx_5_brightness' },
+      // ── Basic Waveforms ──
       { id: 'snd_sine', label: 'Sine', icon: '∿', desc: 'Pure sine wave', color: '#fb923c', dragType: 'sound', payload: 'sine' },
       { id: 'snd_saw', label: 'Sawtooth', icon: '⟋', desc: 'Bright saw wave', color: '#fb923c', dragType: 'sound', payload: 'sawtooth' },
-      { id: 'snd_square', label: 'Square', icon: '□', desc: 'Hollow square', color: '#fb923c', dragType: 'sound', payload: 'square' },
-      { id: 'snd_tri', label: 'Triangle', icon: '△', desc: 'Soft triangle', color: '#fb923c', dragType: 'sound', payload: 'triangle' },
-      { id: 'snd_music_box', label: 'Music Box', icon: '🎵', desc: 'Celeste/box', color: '#fb923c', dragType: 'sound', payload: 'gm_music_box' },
-      { id: 'snd_vibes', label: 'Vibraphone', icon: '🎵', desc: 'Mellow vibes', color: '#fb923c', dragType: 'sound', payload: 'gm_vibraphone' },
-      { id: 'snd_kalimba', label: 'Kalimba', icon: '🎵', desc: 'Thumb piano', color: '#fb923c', dragType: 'sound', payload: 'gm_kalimba' },
-      { id: 'snd_sitar', label: 'Sitar', icon: '🪕', desc: 'Indian sitar', color: '#fb923c', dragType: 'sound', payload: 'gm_sitar' },
-      { id: 'snd_steel_drum', label: 'Steel Drum', icon: '🥁', desc: 'Caribbean steel', color: '#fb923c', dragType: 'sound', payload: 'gm_steel_drum' },
+      { id: 'snd_square', label: 'Square', icon: '□', desc: 'Hollow square wave', color: '#fb923c', dragType: 'sound', payload: 'square' },
+      { id: 'snd_tri', label: 'Triangle', icon: '△', desc: 'Soft triangle wave', color: '#fb923c', dragType: 'sound', payload: 'triangle' },
     ]
   },
   {
@@ -2203,13 +2298,17 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Send code change to parent ──
+  // Using 500ms debounce to prevent Strudel from re-evaluating on every
+  // parameter tweak / knob drag / note toggle.  The code text is pushed
+  // to the parent immediately (so Undo history stays current), but the
+  // expensive Strudel evaluate() only fires after the user settles.
   const sendToParent = useCallback((newCode: string) => {
     lastCodeRef.current = newCode
     internalChangeCount.current++
     lastSentCodeRef.current = newCode
     onCodeChange(newCode)
     if (commitTimer.current) clearTimeout(commitTimer.current)
-    commitTimer.current = setTimeout(() => onUpdate(), 80)
+    commitTimer.current = setTimeout(() => onUpdate(), 500)
   }, [onCodeChange, onUpdate])
 
   /** Lightweight full code rebuild that stitches node code blocks together */
