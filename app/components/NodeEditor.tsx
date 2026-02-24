@@ -1305,15 +1305,15 @@ function HardwareSelect({ label, value, options, onChange, color }: {
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * Real-time waveform visualizer — uses Web Audio AnalyserNode when available,
- * falls back to type-specific animated waveform when no analyser is connected.
- * Click the waveform to cycle through display modes: waveform → frequency bars → off.
+ * Equalizer visualizer — real-time frequency bar display.
+ * Uses Web Audio AnalyserNode when available, falls back to animated waveform.
+ * Click to cycle: equalizer → waveform → type animation.
  */
 function MiniScope({ color, active, type, analyserNode }: { color: string; active: boolean; type: NodeType; analyserNode?: AnalyserNode | null }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rafRef = useRef(0)
   const phaseRef = useRef(Math.random() * Math.PI * 2)
-  // 0 = waveform, 1 = frequency bars, 2 = type-specific (fallback)
+  // 0 = frequency bars (EQ), 1 = waveform, 2 = type-specific (fallback)
   const [displayMode, setDisplayMode] = useState(0)
   const bufRef = useRef<Uint8Array<ArrayBuffer> | null>(null)
 
@@ -1343,6 +1343,20 @@ function MiniScope({ color, active, type, analyserNode }: { color: string; activ
       // ── Real analyser data available ──
       if (analyserNode && bufRef.current && displayMode < 2) {
         if (displayMode === 0) {
+          // FREQUENCY BARS / EQUALIZER MODE (default)
+          const freqBuf = bufRef.current
+          analyserNode.getByteFrequencyData(freqBuf)
+          const barCount = Math.min(32, freqBuf.length)
+          const barW = W / barCount
+
+          for (let i = 0; i < barCount; i++) {
+            const val = freqBuf[i] / 255
+            const barH = val * H * 0.9
+            const alpha = 0.3 + val * 0.6
+            ctx.fillStyle = `${color}${Math.round(alpha * 255).toString(16).padStart(2, '0')}`
+            ctx.fillRect(i * barW + 1, H - barH, barW - 2, barH)
+          }
+        } else {
           // WAVEFORM MODE — time-domain data
           analyserNode.getByteTimeDomainData(bufRef.current)
           const buf = bufRef.current
@@ -1361,20 +1375,6 @@ function MiniScope({ color, active, type, analyserNode }: { color: string; activ
           // Fill under the waveform
           ctx.lineTo(W, H / 2); ctx.lineTo(0, H / 2); ctx.closePath()
           ctx.fillStyle = `${color}08`; ctx.fill()
-        } else {
-          // FREQUENCY BARS MODE
-          const freqBuf = bufRef.current
-          analyserNode.getByteFrequencyData(freqBuf)
-          const barCount = Math.min(32, freqBuf.length)
-          const barW = W / barCount
-
-          for (let i = 0; i < barCount; i++) {
-            const val = freqBuf[i] / 255
-            const barH = val * H * 0.9
-            const alpha = 0.3 + val * 0.6
-            ctx.fillStyle = `${color}${Math.round(alpha * 255).toString(16).padStart(2, '0')}`
-            ctx.fillRect(i * barW + 1, H - barH, barW - 2, barH)
-          }
         }
       } else {
         // ── Fallback: type-specific animated waveform ──
@@ -1413,8 +1413,170 @@ function MiniScope({ color, active, type, analyserNode }: { color: string; activ
       className="w-full rounded cursor-pointer"
       style={{ height: 24 }}
       onClick={(e) => { e.stopPropagation(); setDisplayMode(m => (m + 1) % 3) }}
-      title="Click to cycle: waveform → frequency → animated"
+      title="Click to cycle: equalizer → waveform → animated"
     />
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MASTER VISUALIZER — pinned on the grid, shows master output
+// ═══════════════════════════════════════════════════════════════
+
+const MASTER_VIZ_PRESETS = [
+  { id: 'eq_bars', label: 'EQ Bars' },
+  { id: 'waveform', label: 'Waveform' },
+  { id: 'mirror_bars', label: 'Mirror Bars' },
+  { id: 'spectrum_line', label: 'Spectrum Line' },
+  { id: 'circle_eq', label: 'Circle EQ' },
+] as const
+
+function MasterVisualizer({ analyserNode, isPlaying }: { analyserNode?: AnalyserNode | null; isPlaying: boolean }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const rafRef = useRef(0)
+  const [preset, setPreset] = useState(0)
+  const bufRef = useRef<Uint8Array<ArrayBuffer> | null>(null)
+  const timeBufRef = useRef<Uint8Array<ArrayBuffer> | null>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    const W = canvas.width, H = canvas.height
+
+    if (analyserNode) {
+      if (!bufRef.current) bufRef.current = new Uint8Array(analyserNode.frequencyBinCount) as Uint8Array<ArrayBuffer>
+      if (!timeBufRef.current) timeBufRef.current = new Uint8Array(analyserNode.fftSize) as Uint8Array<ArrayBuffer>
+    }
+
+    const accentColor = '#22d3ee'
+
+    const draw = () => {
+      ctx.clearRect(0, 0, W, H)
+
+      if (!isPlaying || !analyserNode || !bufRef.current || !timeBufRef.current) {
+        // Idle state
+        ctx.fillStyle = '#ffffff06'
+        ctx.fillRect(0, 0, W, H)
+        ctx.fillStyle = '#ffffff15'
+        ctx.font = '10px monospace'
+        ctx.textAlign = 'center'
+        ctx.fillText('MASTER', W / 2, H / 2 + 4)
+        rafRef.current = requestAnimationFrame(draw)
+        return
+      }
+
+      analyserNode.getByteFrequencyData(bufRef.current)
+      analyserNode.getByteTimeDomainData(timeBufRef.current)
+      const freq = bufRef.current
+      const time = timeBufRef.current
+
+      const presetId = MASTER_VIZ_PRESETS[preset].id
+
+      if (presetId === 'eq_bars') {
+        const barCount = Math.min(48, freq.length)
+        const barW = W / barCount
+        for (let i = 0; i < barCount; i++) {
+          const val = freq[i] / 255
+          const barH = val * H * 0.85
+          const hue = 180 + (i / barCount) * 40
+          const alpha = 0.3 + val * 0.7
+          ctx.fillStyle = `hsla(${hue}, 80%, 60%, ${alpha})`
+          ctx.fillRect(i * barW + 1, H - barH, barW - 2, barH)
+        }
+      } else if (presetId === 'waveform') {
+        const sliceW = W / time.length
+        ctx.shadowColor = accentColor; ctx.shadowBlur = 8
+        ctx.beginPath(); ctx.strokeStyle = `${accentColor}90`; ctx.lineWidth = 2
+        for (let i = 0; i < time.length; i++) {
+          const v = time[i] / 128.0
+          const y = (v * H) / 2
+          i === 0 ? ctx.moveTo(0, y) : ctx.lineTo(i * sliceW, y)
+        }
+        ctx.stroke(); ctx.shadowBlur = 0
+        ctx.lineTo(W, H / 2); ctx.lineTo(0, H / 2); ctx.closePath()
+        ctx.fillStyle = `${accentColor}06`; ctx.fill()
+      } else if (presetId === 'mirror_bars') {
+        const barCount = Math.min(48, freq.length)
+        const barW = W / barCount
+        for (let i = 0; i < barCount; i++) {
+          const val = freq[i] / 255
+          const barH = val * H * 0.42
+          const hue = 180 + (i / barCount) * 50
+          const alpha = 0.3 + val * 0.6
+          ctx.fillStyle = `hsla(${hue}, 75%, 60%, ${alpha})`
+          ctx.fillRect(i * barW + 1, H / 2 - barH, barW - 2, barH)
+          ctx.fillStyle = `hsla(${hue}, 75%, 60%, ${alpha * 0.5})`
+          ctx.fillRect(i * barW + 1, H / 2, barW - 2, barH)
+        }
+      } else if (presetId === 'spectrum_line') {
+        const barCount = Math.min(64, freq.length)
+        const stepW = W / barCount
+        ctx.shadowColor = accentColor; ctx.shadowBlur = 6
+        ctx.beginPath(); ctx.strokeStyle = accentColor; ctx.lineWidth = 1.5
+        for (let i = 0; i < barCount; i++) {
+          const y = H - (freq[i] / 255) * H * 0.85
+          i === 0 ? ctx.moveTo(0, y) : ctx.lineTo(i * stepW, y)
+        }
+        ctx.stroke(); ctx.shadowBlur = 0
+        ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath()
+        ctx.fillStyle = `${accentColor}08`; ctx.fill()
+      } else if (presetId === 'circle_eq') {
+        const cx = W / 2, cy = H / 2, baseR = Math.min(W, H) * 0.25
+        const barCount = 32
+        for (let i = 0; i < barCount; i++) {
+          const angle = (i / barCount) * Math.PI * 2 - Math.PI / 2
+          const val = freq[Math.floor(i * freq.length / barCount)] / 255
+          const len = val * baseR * 1.2
+          const x1 = cx + Math.cos(angle) * baseR
+          const y1 = cy + Math.sin(angle) * baseR
+          const x2 = cx + Math.cos(angle) * (baseR + len)
+          const y2 = cy + Math.sin(angle) * (baseR + len)
+          const hue = 180 + (i / barCount) * 60
+          ctx.beginPath(); ctx.strokeStyle = `hsla(${hue}, 80%, 60%, ${0.4 + val * 0.6})`
+          ctx.lineWidth = 2; ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke()
+        }
+        ctx.beginPath(); ctx.arc(cx, cy, baseR, 0, Math.PI * 2)
+        ctx.strokeStyle = `${accentColor}30`; ctx.lineWidth = 1; ctx.stroke()
+      }
+
+      rafRef.current = requestAnimationFrame(draw)
+    }
+    rafRef.current = requestAnimationFrame(draw)
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
+  }, [analyserNode, isPlaying, preset])
+
+  return (
+    <div className="rounded-xl overflow-hidden" style={{
+      background: '#0a0a0c',
+      border: '1px solid rgba(34,211,238,0.12)',
+      boxShadow: '0 4px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.03)',
+      width: 240,
+    }}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-2.5 py-1.5"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(34,211,238,0.03)' }}>
+        <div className="flex items-center gap-1.5">
+          <div className="w-1.5 h-1.5 rounded-full" style={{
+            background: isPlaying ? '#22d3ee' : '#333',
+            boxShadow: isPlaying ? '0 0 6px #22d3ee50' : 'none',
+          }} />
+          <span className="text-[8px] font-bold tracking-[0.15em] uppercase" style={{ color: '#22d3ee' }}>MASTER</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <button className="px-1.5 py-0.5 rounded text-[7px] font-bold cursor-pointer"
+            style={{ background: 'rgba(34,211,238,0.06)', color: '#22d3ee80', border: '1px solid rgba(34,211,238,0.1)' }}
+            onClick={() => setPreset(p => (p + 1) % MASTER_VIZ_PRESETS.length)}>
+            {MASTER_VIZ_PRESETS[preset].label}
+          </button>
+        </div>
+      </div>
+      {/* Canvas */}
+      <canvas ref={canvasRef} width={240} height={80}
+        className="w-full cursor-pointer" style={{ height: 80 }}
+        onClick={() => setPreset(p => (p + 1) % MASTER_VIZ_PRESETS.length)}
+      />
+    </div>
   )
 }
 
@@ -1741,6 +1903,31 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
           }))
       codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
       return updated
+    })
+    if (codeToSend !== null) sendToParent(codeToSend)
+  }, [bpm, sendToParent, rebuildFullCodeFromNodes])
+
+  /** Additive solo — right-click toggles solo on a node without affecting others.
+   *  Multiple nodes can be soloed simultaneously. Muting applies only to non-soloed nodes. */
+  const toggleAdditiveSolo = useCallback((id: string) => {
+    let codeToSend: string | null = null
+    setNodes(prev => {
+      const target = prev.find(n => n.id === id)
+      if (!target) return prev
+      const willSolo = !target.solo
+      const updated = prev.map(n => {
+        const newSolo = n.id === id ? willSolo : n.solo
+        return {
+          ...n,
+          solo: newSolo,
+          code: n.code.replace(/\/\/ \[muted\] /g, ''),
+        }
+      })
+      // If ANY node is soloed, mute all non-soloed nodes
+      const anySoloed = updated.some(n => n.solo)
+      const final = updated.map(n => ({ ...n, muted: anySoloed ? !n.solo : false }))
+      codeToSend = rebuildFullCodeFromNodes(final, bpm, lastCodeRef.current)
+      return final
     })
     if (codeToSend !== null) sendToParent(codeToSend)
   }, [bpm, sendToParent, rebuildFullCodeFromNodes])
@@ -2502,6 +2689,11 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
           })()}
         </svg>
 
+        {/* ══════ MASTER VISUALIZER (pinned bottom-left of canvas) ══════ */}
+        <div className="absolute z-[5] pointer-events-auto" style={{ bottom: 12, left: 12 }}>
+          <MasterVisualizer analyserNode={analyserNode} isPlaying={isPlaying} />
+        </div>
+
         {/* ══════ NODES ══════ */}
         {nodes.map(node => {
           const color = TYPE_COLORS[node.type]
@@ -2543,6 +2735,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                   {/* HEADER */}
                   <div className="flex items-center gap-2 px-3 py-2 cursor-grab active:cursor-grabbing rounded-t-xl"
                     onMouseDown={e => handleMouseDown(e, node.id)}
+                    onContextMenu={e => { e.preventDefault(); e.stopPropagation(); toggleAdditiveSolo(node.id) }}
                     style={{ background: `linear-gradient(180deg, ${color}08 0%, transparent 100%)`, borderBottom: `1px solid ${HW.border}` }}>
                     <GripHorizontal size={10} style={{ color: HW.textDim }} className="shrink-0" />
                     <div className="w-5 h-5 rounded-md flex items-center justify-center text-[10px]"
@@ -2597,29 +2790,26 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                   {/* ═══════ COLLAPSED VIEW ═══════ */}
                   {node.collapsed ? (
                     <>
-                      {/* Waveform */}
+                      {/* Equalizer */}
                       <div className="px-3 pt-1.5 pb-1" style={{ background: `${HW.bg}80` }}>
                         <MiniScope color={color} active={isActive} type={node.type} analyserNode={analyserNode} />
                       </div>
-                      {/* Chord pattern chip (if present) */}
+                      {/* Pattern display */}
                       {node.pattern && (
-                        <div className="px-3 py-1" style={{ borderTop: `1px solid ${HW.border}` }}>
-                          <span className="text-[7px] font-mono truncate block" style={{ color: `${color}80` }}>
-                            {node.pattern.length > 40 ? node.pattern.slice(0, 40) + '…' : node.pattern}
-                          </span>
+                        <div className="px-2.5 py-1" style={{ borderTop: `1px solid ${HW.border}`, background: `${color}03` }}>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[6px] font-bold uppercase tracking-wider shrink-0" style={{ color: `${color}50` }}>PAT</span>
+                            <span className="text-[7px] font-mono truncate block" style={{ color: `${color}90` }}>
+                              {node.pattern.length > 50 ? node.pattern.slice(0, 50) + '…' : node.pattern}
+                            </span>
+                          </div>
                         </div>
                       )}
-                      {/* Compact knobs row: VOL / VERB / DLY / HPF / LPF */}
-                      <div className="flex items-start justify-center gap-0 px-1 py-1" style={{ borderTop: `1px solid ${HW.border}` }}>
+                      {/* Filter knobs: HPF / LPF + VOL */}
+                      <div className="flex items-start justify-center gap-1 px-2 py-1" style={{ borderTop: `1px solid ${HW.border}` }}>
                         <RotaryKnob label="VOL" value={node.gain} min={0} max={1} step={0.01} defaultValue={0.5} size={34}
                           onChange={v => updateKnob(node.id, 'gain', v)} onCommit={() => commitKnob(node.id, 'gain', node.gain)} color={color}
                           disabled={hasDynamic(node.code, 'gain')} />
-                        <RotaryKnob label="VERB" value={hasMethod(node.code, 'room') ? node.room : 0} min={0} max={1} step={0.01} defaultValue={0} size={34}
-                          onChange={v => updateKnob(node.id, 'room', v)} onCommit={() => commitKnob(node.id, 'room', node.room)} color={color}
-                          disabled={hasDynamic(node.code, 'room')} />
-                        <RotaryKnob label="DLY" value={hasMethod(node.code, 'delay') ? node.delay : 0} min={0} max={0.8} step={0.01} defaultValue={0} size={34}
-                          onChange={v => updateKnob(node.id, 'delay', v)} onCommit={() => commitKnob(node.id, 'delay', node.delay)} color={color}
-                          disabled={hasDynamic(node.code, 'delay')} />
                         <RotaryKnob label="HPF" value={hasMethod(node.code, 'hpf') ? node.hpf : 0} min={0} max={8000} step={50} defaultValue={0} size={34}
                           onChange={v => updateKnob(node.id, 'hpf', v)} onCommit={() => commitKnob(node.id, 'hpf', node.hpf)} color={color}
                           disabled={hasDynamic(node.code, 'hpf')} />
