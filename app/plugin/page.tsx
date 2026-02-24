@@ -19,6 +19,7 @@ import type { StemType, StemAdvancedParams } from '@/app/components/SplitStemsMo
 const LipSyncModal = lazy(() => import('@/app/components/LipSyncModal'))
 const ResoundModal = lazy(() => import('@/app/components/ResoundModal'))
 const InputEditor = lazy(() => import('@/app/components/InputEditor'))
+const CoverArtGenModal = lazy(() => import('@/app/components/CoverArtGenModal'))
 
 // ─── Types (mirrored from create page) ──────────────────────────
 type MessageType = 'user' | 'assistant' | 'generation'
@@ -312,6 +313,7 @@ function PluginPageInner() {
   const [showLipSyncModal, setShowLipSyncModal] = useState(false)
   const [showResoundModal, setShowResoundModal] = useState(false)
   const [showInputEditor, setShowInputEditor] = useState(false)
+  const [showCoverArtGenModal, setShowCoverArtGenModal] = useState(false)
   const [uploadMode, setUploadMode] = useState<'video-to-audio' | 'stem-split' | 'audio-boost' | 'extract-video' | 'extract-audio' | 'autotune' | null>(null)
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [uploadFilePreview, setUploadFilePreview] = useState<string | null>(null)
@@ -1941,6 +1943,51 @@ function PluginPageInner() {
     }
   }
 
+  // ── Cover Art Generation (from modal) ──
+  const handleCoverArtGenerate = async (coverParams: { prompt: string; params: { width: number; height: number; output_format: string; output_quality: number; guidance_scale: number; num_inference_steps: number; go_fast: boolean } }) => {
+    setShowCoverArtGenModal(false)
+    const genMsgId = (Date.now() + 1).toString()
+    setMessages(prev => [...prev,
+      { id: Date.now().toString(), type: 'user' as MessageType, content: `🎨 Generate cover art: "${coverParams.prompt.substring(0, 80)}" (${coverParams.params.width}×${coverParams.params.height})`, timestamp: new Date() },
+      { id: genMsgId, type: 'generation' as MessageType, content: '🎨 Generating cover art...', generationType: 'image', isGenerating: true, timestamp: new Date() },
+    ])
+    setActiveGenerations(prev => new Set(prev).add(genMsgId))
+    try {
+      const res = await fetch('/api/plugin/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ type: 'image', prompt: coverParams.prompt, params: coverParams.params })
+      })
+      let result: any = null
+      await parseNDJSON(res, () => {}, (r: any) => { result = r })
+      if (result?.success) {
+        setMessages(prev => prev.map(msg =>
+          msg.id === genMsgId ? {
+            ...msg, isGenerating: false, content: '✅ Cover art generated!',
+            result: { imageUrl: result.imageUrl, title: coverParams.prompt.substring(0, 50), prompt: coverParams.prompt },
+          } : msg
+        ))
+        if (result.creditsRemaining !== undefined) setUserCredits(result.creditsRemaining)
+        else refreshCredits()
+        // Save to local library
+        try {
+          const lib = JSON.parse(localStorage.getItem(LIBRARY_KEY) || '[]')
+          lib.unshift({ id: Date.now(), type: 'image', title: coverParams.prompt.substring(0, 50), imageUrl: result.imageUrl, prompt: coverParams.prompt, createdAt: new Date().toISOString() })
+          localStorage.setItem(LIBRARY_KEY, JSON.stringify(lib.slice(0, 200)))
+        } catch {}
+      } else {
+        throw new Error(result?.error || 'Image generation failed')
+      }
+    } catch (e) {
+      setMessages(prev => prev.map(msg =>
+        msg.id === genMsgId ? { ...msg, isGenerating: false, content: `❌ Cover art failed: ${e instanceof Error ? e.message : 'Please try again.'}` } : msg
+      ))
+    } finally {
+      setActiveGenerations(prev => { const s = new Set(prev); s.delete(genMsgId); return s })
+      refreshCredits()
+    }
+  }
+
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file && fileUploadType) {
@@ -2509,7 +2556,7 @@ function PluginPageInner() {
                   return true
                 }).map(f => {
                   const Icon = f.icon
-                  const isActive = f.key === selectedType || (f.key === 'lyrics' && !!(customTitle || genre || customLyrics || bpm)) || (f.key === 'input' && showInputEditor) || (f.key === 'lipsync' && showLipSyncModal) || (f.key === 'remix' && showResoundModal)
+                  const isActive = f.key === selectedType || (f.key === 'lyrics' && !!(customTitle || genre || customLyrics || bpm)) || (f.key === 'input' && showInputEditor) || (f.key === 'lipsync' && showLipSyncModal) || (f.key === 'remix' && showResoundModal) || (f.key === 'image' && showCoverArtGenModal)
                   const colorMap: Record<string, { active: React.CSSProperties; inactive: React.CSSProperties }> = {
                     cyan: {
                       active: {background:'linear-gradient(135deg, rgba(6,182,212,0.18), rgba(20,184,166,0.12))',border:'1px solid rgba(200,200,220,0.45)',color:'rgba(220,240,245,1)',boxShadow:'0 0 24px rgba(6,182,212,0.2), inset 0 1px 0 rgba(6,182,212,0.25)'},
@@ -2546,6 +2593,9 @@ function PluginPageInner() {
                         setShowFeaturesSidebar(false)
                       } else if (f.key === 'input') {
                         setShowInputEditor(true)
+                        setShowFeaturesSidebar(false)
+                      } else if (f.key === 'image') {
+                        setShowCoverArtGenModal(true)
                         setShowFeaturesSidebar(false)
                       } else {
                         setSelectedType(f.key as GenerationType)
@@ -2994,9 +3044,9 @@ function PluginPageInner() {
                 style={(selectedType as string) === 'loops' ? { background: 'linear-gradient(135deg, rgba(6,182,212,0.12), rgba(20,184,166,0.06))', border: '1px solid rgba(200,200,220,0.35)', color: '#22d3ee', boxShadow: '0 0 20px rgba(6,182,212,0.15), 0 0 40px rgba(6,182,212,0.05), inset 0 1px 0 rgba(6,182,212,0.15)' } : { border: '1px solid rgba(200,200,220,0.04)' }}
                 title="Loops"><Repeat size={18} /></button>
               {/* Image */}
-              <button onClick={() => setSelectedType('image')}
-                className={`p-2.5 rounded-xl transition-all duration-200 ${selectedType === 'image' ? '' : 'text-gray-600 hover:text-teal-400/70'}`}
-                style={selectedType === 'image' ? { background: 'linear-gradient(135deg, rgba(20,184,166,0.12), rgba(6,182,212,0.06))', border: '1px solid rgba(20,184,166,0.35)', color: '#2dd4bf', boxShadow: '0 0 20px rgba(20,184,166,0.15), 0 0 40px rgba(20,184,166,0.05), inset 0 1px 0 rgba(20,184,166,0.15)' } : { border: '1px solid rgba(200,200,220,0.04)' }}
+              <button onClick={() => setShowCoverArtGenModal(true)}
+                className={`p-2.5 rounded-xl transition-all duration-200 ${selectedType === 'image' || showCoverArtGenModal ? '' : 'text-gray-600 hover:text-teal-400/70'}`}
+                style={selectedType === 'image' || showCoverArtGenModal ? { background: 'linear-gradient(135deg, rgba(20,184,166,0.12), rgba(6,182,212,0.06))', border: '1px solid rgba(20,184,166,0.35)', color: '#2dd4bf', boxShadow: '0 0 20px rgba(20,184,166,0.15), 0 0 40px rgba(20,184,166,0.05), inset 0 1px 0 rgba(20,184,166,0.15)' } : { border: '1px solid rgba(200,200,220,0.04)' }}
                 title="Cover Art"><ImageIcon size={18} /></button>
               
               <div className="w-px h-6 mx-1" style={{background:'linear-gradient(to bottom, transparent, rgba(6,182,212,0.1), transparent)'}} />
@@ -4131,6 +4181,17 @@ function PluginPageInner() {
           onClose={() => setShowResoundModal(false)}
           userCredits={userCredits || 0}
           onGenerate={handleResoundGenerate}
+        />
+      </Suspense>
+
+      {/* ── Cover Art Generator Modal ── */}
+      <Suspense fallback={null}>
+        <CoverArtGenModal
+          isOpen={showCoverArtGenModal}
+          onClose={() => setShowCoverArtGenModal(false)}
+          userCredits={userCredits || 0}
+          onGenerate={handleCoverArtGenerate}
+          initialPrompt={input}
         />
       </Suspense>
 
