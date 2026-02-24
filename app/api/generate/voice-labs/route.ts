@@ -154,7 +154,7 @@ export async function POST(req: NextRequest) {
       console.error('❌ Credit deduction blocked:', errorMsg)
       await logCreditTransaction({
         userId, amount: -cost, type: 'other', status: 'failed',
-        description: `Voice Labs TTS: ${title}`,
+        description: `Voice Labs - ${voice_id} - Generation`,
         metadata: { text_length: text.length, voice_id },
       })
       return corsResponse(NextResponse.json({ error: errorMsg }, { status: 402 }))
@@ -164,7 +164,7 @@ export async function POST(req: NextRequest) {
     await logCreditTransaction({
       userId, amount: -cost, balanceAfter: deductResult.new_credits,
       type: 'other',
-      description: `Voice Labs TTS: ${title}`,
+      description: `Voice Labs - ${voice_id} - Generation`,
       metadata: { text_length: text.length, voice_id, emotion, audio_format, estimated_tokens: Math.ceil(text.length / 4) },
     })
 

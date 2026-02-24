@@ -1,26 +1,26 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react'
+import { useState, useRef, useEffect, lazy, Suspense } from 'react'
 import { useUser } from '@clerk/nextjs'
-import { useRouter } from 'next/navigation'
 import {
-  ArrowLeft, Mic, Volume2, Zap, Loader2, Play, Pause, Download,
+  Mic, MicOff, Zap, Loader2, Play, Pause, Download,
   Settings2, ChevronDown, ChevronUp, Copy, AlertCircle, CheckCircle2,
-  Sparkles, Globe, Music2, SlidersHorizontal, RefreshCw, Trash2, User,
-  FileAudio, Hash, Type, Gauge
+  SlidersHorizontal,  Trash2, User,
+  Type, Plus, MessageSquare, Upload, Send,
+  ChevronLeft, ChevronRight, Edit3
 } from 'lucide-react'
 import { useCredits } from '@/app/contexts/CreditsContext'
 import FloatingMenu from '@/app/components/FloatingMenu'
 
 const HolographicBackgroundClient = lazy(() => import('../components/HolographicBackgroundClient'))
 
-// ── Voice Constants ──
+// ── Constants ──
 
 const SYSTEM_VOICES = [
   { id: 'Wise_Woman', name: 'Wise Woman', desc: 'Calm, authoritative female' },
-  { id: 'Friendly_Person', name: 'Friendly Person', desc: 'Warm, approachable tone' },
-  { id: 'Inspirational_girl', name: 'Inspirational Girl', desc: 'Uplifting, youthful female' },
-  { id: 'Deep_Voice_Man', name: 'Deep Voice Man', desc: 'Rich, deep male voice' },
+  { id: 'Friendly_Person', name: 'Friendly Person', desc: 'Warm, approachable' },
+  { id: 'Inspirational_girl', name: 'Inspirational Girl', desc: 'Uplifting, youthful' },
+  { id: 'Deep_Voice_Man', name: 'Deep Voice Man', desc: 'Rich, deep male' },
   { id: 'Calm_Woman', name: 'Calm Woman', desc: 'Gentle, soothing female' },
   { id: 'Casual_Guy', name: 'Casual Guy', desc: 'Relaxed, everyday male' },
   { id: 'Lively_Girl', name: 'Lively Girl', desc: 'Energetic, bright female' },
@@ -31,99 +31,110 @@ const SYSTEM_VOICES = [
   { id: 'Decent_Boy', name: 'Decent Boy', desc: 'Polite, youthful male' },
   { id: 'Imposing_Manner', name: 'Imposing Manner', desc: 'Commanding, powerful' },
   { id: 'Gentle_Woman', name: 'Gentle Woman', desc: 'Soft, nurturing female' },
-  { id: 'Emotional_Narrator_Woman', name: 'Emotional Narrator', desc: 'Expressive female narrator' },
+  { id: 'Emotional_Narrator_Woman', name: 'Emotional Narrator', desc: 'Expressive narrator' },
   { id: 'Serious_Girl', name: 'Serious Girl', desc: 'Focused, clear female' },
 ]
 
 const EMOTIONS = [
-  { value: 'auto', label: 'Auto', desc: 'Let AI choose the best delivery' },
-  { value: 'happy', label: 'Happy', desc: 'Joyful, upbeat tone' },
-  { value: 'sad', label: 'Sad', desc: 'Somber, melancholic' },
-  { value: 'angry', label: 'Angry', desc: 'Intense, forceful' },
-  { value: 'fearful', label: 'Fearful', desc: 'Anxious, worried' },
-  { value: 'disgusted', label: 'Disgusted', desc: 'Repulsed, disapproving' },
-  { value: 'surprised', label: 'Surprised', desc: 'Astonished, amazed' },
-  { value: 'calm', label: 'Calm', desc: 'Serene, peaceful' },
-  { value: 'fluent', label: 'Fluent', desc: 'Smooth, natural flow' },
-  { value: 'neutral', label: 'Neutral', desc: 'Flat, matter-of-fact' },
+  { value: 'auto', label: 'Auto' }, { value: 'happy', label: 'Happy' },
+  { value: 'sad', label: 'Sad' }, { value: 'angry', label: 'Angry' },
+  { value: 'fearful', label: 'Fearful' }, { value: 'disgusted', label: 'Disgusted' },
+  { value: 'surprised', label: 'Surprised' }, { value: 'calm', label: 'Calm' },
+  { value: 'fluent', label: 'Fluent' }, { value: 'neutral', label: 'Neutral' },
 ]
 
-const SAMPLE_RATES = [
-  { value: 8000, label: '8 kHz', desc: 'Telephone quality' },
-  { value: 16000, label: '16 kHz', desc: 'Wideband' },
-  { value: 22050, label: '22.05 kHz', desc: 'FM Radio' },
-  { value: 24000, label: '24 kHz', desc: 'Standard' },
-  { value: 32000, label: '32 kHz', desc: 'Default' },
-  { value: 44100, label: '44.1 kHz', desc: 'CD Quality' },
-]
-
-const BITRATES = [
-  { value: 32000, label: '32 kbps', desc: 'Low bandwidth' },
-  { value: 64000, label: '64 kbps', desc: 'Acceptable' },
-  { value: 128000, label: '128 kbps', desc: 'Standard (default)' },
-  { value: 256000, label: '256 kbps', desc: 'High quality' },
-]
-
-const AUDIO_FORMATS = [
-  { value: 'mp3', label: 'MP3', desc: 'Universal, compressed' },
-  { value: 'wav', label: 'WAV', desc: 'Lossless, larger file' },
-  { value: 'flac', label: 'FLAC', desc: 'Lossless, compressed' },
-  { value: 'pcm', label: 'PCM', desc: 'Raw audio bytes' },
-]
-
-const CHANNELS = [
-  { value: 'mono', label: 'Mono', desc: '1 channel' },
-  { value: 'stereo', label: 'Stereo', desc: '2 channels' },
-]
-
+const SAMPLE_RATES = [8000, 16000, 22050, 24000, 32000, 44100]
+const BITRATES = [32000, 64000, 128000, 256000]
+const AUDIO_FORMATS = ['mp3', 'wav', 'flac', 'pcm']
+const CHANNELS = ['mono', 'stereo']
 const LANGUAGES = [
-  'None', 'Automatic', 'English', 'Chinese', 'Chinese,Yue', 'Cantonese',
-  'Japanese', 'Korean', 'Spanish', 'French', 'Portuguese', 'German',
-  'Italian', 'Russian', 'Arabic', 'Hindi', 'Tamil', 'Thai', 'Vietnamese',
-  'Indonesian', 'Turkish', 'Dutch', 'Polish', 'Ukrainian', 'Romanian',
-  'Greek', 'Czech', 'Finnish', 'Bulgarian', 'Danish', 'Hebrew', 'Malay',
-  'Persian', 'Slovak', 'Swedish', 'Croatian', 'Filipino', 'Hungarian',
-  'Norwegian', 'Slovenian', 'Catalan', 'Nynorsk', 'Afrikaans',
+  'None', 'Automatic', 'English', 'Chinese', 'Japanese', 'Korean', 'Spanish',
+  'French', 'Portuguese', 'German', 'Italian', 'Russian', 'Arabic', 'Hindi',
+  'Tamil', 'Thai', 'Vietnamese', 'Indonesian', 'Turkish', 'Dutch', 'Polish',
+  'Ukrainian', 'Romanian', 'Greek', 'Czech', 'Finnish', 'Bulgarian', 'Danish',
+  'Hebrew', 'Malay', 'Persian', 'Slovak', 'Swedish', 'Croatian', 'Filipino',
+  'Hungarian', 'Norwegian', 'Slovenian', 'Catalan', 'Nynorsk', 'Afrikaans',
 ]
+
+const TRAIN_COST = 120
 
 interface TrainedVoice {
   id: string
   voice_id: string
   name: string
+  preview_url: string | null
   status: string
+  created_at: string
 }
 
-interface GenerationResult {
+interface Session {
   id: string
-  audioUrl: string
   title: string
-  creditsDeducted: number
-  format: string
-  timestamp: number
+  voice_id: string | null
+  settings: Record<string, unknown>
+  created_at: string
+  updated_at: string
+}
+
+interface ChatMessage {
+  id: string
+  text: string
+  voice_id: string
+  audio_url: string | null
+  credits_cost: number
+  settings: Record<string, unknown>
+  status: 'generating' | 'completed' | 'failed'
+  created_at: string
 }
 
 export default function VoiceLabsPage() {
-  const { user, isSignedIn } = useUser()
-  const router = useRouter()
+  const { user } = useUser()
   const { totalCredits: credits, refreshCredits } = useCredits()
 
-  // ── Text Input ──
-  const [text, setText] = useState('')
-  const [title, setTitle] = useState('')
+  // ── Left Panel State ──
+  const [leftTab, setLeftTab] = useState<'voices' | 'train' | 'sessions'>('voices')
+  const [leftOpen, setLeftOpen] = useState(true)
 
   // ── Voice Selection ──
   const [voiceId, setVoiceId] = useState('Wise_Woman')
-  const [voiceTab, setVoiceTab] = useState<'system' | 'custom'>('system')
+  const [voiceSubTab, setVoiceSubTab] = useState<'system' | 'custom'>('system')
   const [trainedVoices, setTrainedVoices] = useState<TrainedVoice[]>([])
   const [loadingVoices, setLoadingVoices] = useState(false)
 
-  // ── Core Parameters ──
+  // ── Training Form ──
+  const [trainName, setTrainName] = useState('')
+  const [trainFile, setTrainFile] = useState<File | null>(null)
+  const [trainFileUrl, setTrainFileUrl] = useState('')
+  const [noiseReduction, setNoiseReduction] = useState(false)
+  const [volumeNormalization, setVolumeNormalization] = useState(false)
+  const [isTraining, setIsTraining] = useState(false)
+  const [trainError, setTrainError] = useState('')
+  const [trainSuccess, setTrainSuccess] = useState('')
+  const [isRecordingMic, setIsRecordingMic] = useState(false)
+  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null)
+  const [recordingTime, setRecordingTime] = useState(0)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const recordingChunksRef = useRef<Blob[]>([])
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const trainFileInputRef = useRef<HTMLInputElement>(null)
+
+  // ── Sessions ──
+  const [sessions, setSessions] = useState<Session[]>([])
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
+  const [loadingSessions, setLoadingSessions] = useState(false)
+  const [renamingSessionId, setRenamingSessionId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
+
+  // ── Chat Messages ──
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [loadingMessages, setLoadingMessages] = useState(false)
+
+  // ── TTS Params ──
+  const [text, setText] = useState('')
   const [speed, setSpeed] = useState(1)
   const [volume, setVolume] = useState(1)
   const [pitch, setPitch] = useState(0)
   const [emotion, setEmotion] = useState('auto')
-
-  // ── Advanced Parameters ──
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [englishNormalization, setEnglishNormalization] = useState(false)
   const [sampleRate, setSampleRate] = useState(32000)
@@ -133,28 +144,47 @@ export default function VoiceLabsPage() {
   const [subtitleEnable, setSubtitleEnable] = useState(false)
   const [languageBoost, setLanguageBoost] = useState('None')
 
-  // ── Generation State ──
+  // ── Generation ──
   const [isGenerating, setIsGenerating] = useState(false)
-  const [error, setError] = useState('')
-  const [generations, setGenerations] = useState<GenerationResult[]>([])
+  const [genError, setGenError] = useState('')
 
-  // ── Audio Playback ──
+  // ── Playback ──
   const [playingId, setPlayingId] = useState<string | null>(null)
   const [playbackProgress, setPlaybackProgress] = useState(0)
-  const [playbackDuration, setPlaybackDuration] = useState(0)
   const audioRef = useRef<HTMLAudioElement | null>(null)
-  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const progressRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const chatEndRef = useRef<HTMLDivElement>(null)
 
-  // ── Token/Cost estimation ──
+  // ── Computed ──
   const estimatedTokens = Math.ceil(text.length / 4)
-  const estimatedCost = Math.max(3, Math.ceil(estimatedTokens / 1000) * 3)
-  const charCount = text.length
+  const estimatedCost = text.length > 0 ? Math.max(3, Math.ceil(estimatedTokens / 1000) * 3) : 0
   const hasEnoughCredits = (credits ?? 0) >= estimatedCost
+  const selectedVoiceName = SYSTEM_VOICES.find(v => v.id === voiceId)?.name
+    || trainedVoices.find(v => v.voice_id === voiceId)?.name
+    || voiceId
 
-  // ── Load trained voices ──
+  // ── Load voices + sessions on mount ──
   useEffect(() => {
     loadTrainedVoices()
+    loadSessions()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // ── Auto-scroll chat ──
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  // ── Cleanup ──
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) audioRef.current.pause()
+      if (progressRef.current) clearInterval(progressRef.current)
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
+    }
+  }, [])
+
+  // ── API Helpers ──
 
   const loadTrainedVoices = async () => {
     setLoadingVoices(true)
@@ -164,173 +194,270 @@ export default function VoiceLabsPage() {
         const data = await res.json()
         setTrainedVoices((data.voices || []).filter((v: TrainedVoice) => v.status === 'ready'))
       }
-    } catch (e) {
-      console.error('Failed to load trained voices:', e)
-    } finally {
-      setLoadingVoices(false)
+    } catch {
+      // ignore
+    } finally { setLoadingVoices(false) }
+  }
+
+  const loadSessions = async () => {
+    setLoadingSessions(true)
+    try {
+      const res = await fetch('/api/voice-labs/sessions')
+      if (res.ok) {
+        const data = await res.json()
+        setSessions(data.sessions || [])
+      }
+    } catch {
+      // ignore
+    } finally { setLoadingSessions(false) }
+  }
+
+  const loadMessages = async (sessionId: string) => {
+    setLoadingMessages(true)
+    try {
+      const res = await fetch(`/api/voice-labs/messages?sessionId=${sessionId}`)
+      if (res.ok) {
+        const data = await res.json()
+        setMessages(data.messages || [])
+      }
+    } catch {
+      // ignore
+    } finally { setLoadingMessages(false) }
+  }
+
+  const createSession = async () => {
+    try {
+      const res = await fetch('/api/voice-labs/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: `Session ${sessions.length + 1}`, voice_id: voiceId }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        const s = data.session
+        setSessions(prev => [s, ...prev])
+        setActiveSessionId(s.id)
+        setMessages([])
+        setLeftTab('sessions')
+      }
+    } catch {
+      // ignore
     }
   }
 
-  // ── Cleanup on unmount ──
-  useEffect(() => {
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause()
-        audioRef.current = null
+  const deleteSession = async (sessionId: string) => {
+    if (!confirm('Delete this session and all its generations?')) return
+    try {
+      await fetch('/api/voice-labs/sessions', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      })
+      setSessions(prev => prev.filter(s => s.id !== sessionId))
+      if (activeSessionId === sessionId) {
+        setActiveSessionId(null)
+        setMessages([])
       }
-      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current)
+    } catch {
+      // ignore
     }
-  }, [])
+  }
+
+  const renameSession = async (sessionId: string, title: string) => {
+    try {
+      await fetch('/api/voice-labs/sessions', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, title }),
+      })
+      setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, title } : s))
+    } catch {
+      // ignore
+    }
+    setRenamingSessionId(null)
+  }
+
+  const switchSession = (sessionId: string) => {
+    setActiveSessionId(sessionId)
+    loadMessages(sessionId)
+  }
+
+  // ── Training ──
+
+  const uploadReferenceFile = async (file: File): Promise<string | null> => {
+    const res = await fetch('/api/generate/upload-reference', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fileName: file.name, fileType: file.type || 'audio/wav', fileSize: file.size, type: 'voice' }),
+    })
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Upload failed') }
+    const data = await res.json()
+    if (!data.uploadUrl || !data.publicUrl) throw new Error('Missing presigned URL')
+    const uploadRes = await fetch(data.uploadUrl, { method: 'PUT', headers: { 'Content-Type': file.type || 'audio/wav' }, body: file })
+    if (!uploadRes.ok) throw new Error('Upload failed')
+    return data.publicUrl
+  }
+
+  const handleTrainVoice = async () => {
+    setTrainError(''); setTrainSuccess('')
+    if (!trainFile && !trainFileUrl && !recordedBlob) { setTrainError('Upload audio, paste a URL, or record.'); return }
+    if ((credits ?? 0) < TRAIN_COST) { setTrainError(`Need ${TRAIN_COST} credits. You have ${credits ?? 0}.`); return }
+    setIsTraining(true)
+    try {
+      let fileUrl = trainFileUrl
+      if (recordedBlob && !trainFile && !trainFileUrl) {
+        const f = new File([recordedBlob], `voice-rec-${Date.now()}.webm`, { type: 'audio/webm' })
+        fileUrl = (await uploadReferenceFile(f)) || ''
+      }
+      if (trainFile && !trainFileUrl) { fileUrl = (await uploadReferenceFile(trainFile)) || '' }
+      const res = await fetch('/api/generate/voice-train', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voiceFileUrl: fileUrl, name: trainName.trim() || 'Untitled Voice', noiseReduction, volumeNormalization }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error || 'Training failed')
+      setTrainSuccess(`"${data.name}" trained! ID: ${data.voiceId}`)
+      setTrainFile(null); setTrainFileUrl(''); setTrainName(''); setRecordedBlob(null); setRecordingTime(0)
+      refreshCredits(); await loadTrainedVoices()
+      setVoiceId(data.voiceId)
+      setLeftTab('voices'); setVoiceSubTab('custom')
+    } catch (e) { setTrainError(e instanceof Error ? e.message : 'Training failed') }
+    finally { setIsTraining(false) }
+  }
+
+  const startMicRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' })
+      recordingChunksRef.current = []; setRecordingTime(0)
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) recordingChunksRef.current.push(e.data) }
+      recorder.onstop = () => {
+        setRecordedBlob(new Blob(recordingChunksRef.current, { type: 'audio/webm' }))
+        stream.getTracks().forEach(t => t.stop())
+        if (recordingTimerRef.current) { clearInterval(recordingTimerRef.current); recordingTimerRef.current = null }
+      }
+      mediaRecorderRef.current = recorder; recorder.start(1000); setIsRecordingMic(true)
+      recordingTimerRef.current = setInterval(() => setRecordingTime(p => p + 1), 1000)
+    } catch { setTrainError('Microphone access denied.') }
+  }
+
+  const stopMicRecording = () => {
+    if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop()
+    setIsRecordingMic(false)
+  }
 
   // ── Generate TTS ──
+
   const handleGenerate = async () => {
-    setError('')
+    setGenError('')
+    if (!text.trim() || text.length < 3) { setGenError('Enter at least 3 characters.'); return }
+    if (text.length > 10000) { setGenError('Max 10,000 characters.'); return }
+    if (!hasEnoughCredits) { setGenError(`Need ${estimatedCost} credits. You have ${credits ?? 0}.`); return }
 
-    if (!text.trim()) {
-      setError('Please enter text to generate speech.')
-      return
+    // Auto-create session if none active
+    let sessionId = activeSessionId
+    if (!sessionId) {
+      try {
+        const res = await fetch('/api/voice-labs/sessions', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: text.substring(0, 40).trim() + '...', voice_id: voiceId }),
+        })
+        if (res.ok) {
+          const data = await res.json()
+          sessionId = data.session.id
+          setSessions(prev => [data.session, ...prev])
+          setActiveSessionId(sessionId)
+        }
+      } catch {
+        // ignore
+      }
     }
 
-    if (text.length < 3) {
-      setError('Text must be at least 3 characters.')
-      return
+    // Optimistic message
+    const tempId = `temp-${Date.now()}`
+    const tempMsg: ChatMessage = {
+      id: tempId, text: text.trim(), voice_id: voiceId, audio_url: null,
+      credits_cost: estimatedCost, settings: { speed, pitch, volume, emotion, audioFormat, sampleRate, bitrate, channel, languageBoost },
+      status: 'generating', created_at: new Date().toISOString(),
     }
-
-    if (text.length > 10000) {
-      setError('Text must be 10,000 characters or less.')
-      return
-    }
-
-    if (!hasEnoughCredits) {
-      setError(`Insufficient credits. This generation requires ${estimatedCost} credits. You have ${credits ?? 0}.`)
-      return
-    }
-
+    setMessages(prev => [...prev, tempMsg])
+    const inputText = text.trim()
+    setText('')
     setIsGenerating(true)
 
     try {
       const res = await fetch('/api/generate/voice-labs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text: text.trim(),
-          title: title.trim() || `Voice Generation ${new Date().toLocaleTimeString()}`,
-          voice_id: voiceId,
-          speed,
-          volume,
-          pitch,
-          emotion,
-          english_normalization: englishNormalization,
-          sample_rate: sampleRate,
-          bitrate,
-          audio_format: audioFormat,
-          channel,
-          subtitle_enable: subtitleEnable,
-          language_boost: languageBoost,
+          text: inputText, title: inputText.substring(0, 60),
+          voice_id: voiceId, speed, volume, pitch, emotion,
+          english_normalization: englishNormalization, sample_rate: sampleRate,
+          bitrate, audio_format: audioFormat, channel, subtitle_enable: subtitleEnable, language_boost: languageBoost,
         }),
       })
-
       const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error || 'Generation failed')
 
-      if (!res.ok || data.error) {
-        throw new Error(data.error || 'Generation failed')
+      // Update message
+      setMessages(prev => prev.map(m => m.id === tempId ? {
+        ...m, id: data.predictionId || tempId, audio_url: data.audioUrl,
+        credits_cost: data.creditsDeducted, status: 'completed' as const,
+      } : m))
+
+      // Save to server
+      if (sessionId) {
+        await fetch('/api/voice-labs/messages', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId, text: inputText, voice_id: voiceId, audio_url: data.audioUrl,
+            credits_cost: data.creditsDeducted,
+            settings: { speed, pitch, volume, emotion, audioFormat, sampleRate, bitrate, channel, languageBoost },
+            status: 'completed',
+          }),
+        })
       }
 
-      const result: GenerationResult = {
-        id: data.predictionId || `gen-${Date.now()}`,
-        audioUrl: data.audioUrl,
-        title: data.title,
-        creditsDeducted: data.creditsDeducted,
-        format: data.format,
-        timestamp: Date.now(),
-      }
-
-      setGenerations(prev => [result, ...prev])
       refreshCredits()
-
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Generation failed'
-      setError(msg)
-    } finally {
-      setIsGenerating(false)
-    }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Generation failed'
+      setGenError(msg)
+      setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' as const } : m))
+    } finally { setIsGenerating(false) }
   }
 
-  // ── Audio playback ──
-  const togglePlayback = (gen: GenerationResult) => {
-    if (playingId === gen.id) {
-      audioRef.current?.pause()
-      setPlayingId(null)
-      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current)
+  // ── Playback ──
+
+  const togglePlay = (msg: ChatMessage) => {
+    if (!msg.audio_url) return
+    if (playingId === msg.id) {
+      audioRef.current?.pause(); setPlayingId(null)
+      if (progressRef.current) clearInterval(progressRef.current)
       return
     }
-
-    // Stop current
-    if (audioRef.current) {
-      audioRef.current.pause()
-      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current)
-    }
-
-    const audio = new Audio(gen.audioUrl)
-    audioRef.current = audio
-    setPlayingId(gen.id)
-    setPlaybackProgress(0)
-    setPlaybackDuration(0)
-
-    audio.onloadedmetadata = () => {
-      setPlaybackDuration(audio.duration)
-    }
-    audio.onended = () => {
-      setPlayingId(null)
-      setPlaybackProgress(0)
-      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current)
-    }
-    audio.onerror = () => {
-      setPlayingId(null)
-      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current)
-    }
-
+    if (audioRef.current) { audioRef.current.pause(); if (progressRef.current) clearInterval(progressRef.current) }
+    const audio = new Audio(msg.audio_url)
+    audioRef.current = audio; setPlayingId(msg.id); setPlaybackProgress(0)
+    audio.onended = () => { setPlayingId(null); setPlaybackProgress(0); if (progressRef.current) clearInterval(progressRef.current) }
     audio.play()
-    progressIntervalRef.current = setInterval(() => {
-      if (audio.currentTime && audio.duration) {
-        setPlaybackProgress((audio.currentTime / audio.duration) * 100)
-      }
+    progressRef.current = setInterval(() => {
+      if (audio.currentTime && audio.duration) setPlaybackProgress((audio.currentTime / audio.duration) * 100)
     }, 100)
   }
 
-  const downloadAudio = (url: string, fileName: string) => {
-    const a = document.createElement('a')
-    a.href = url
-    a.download = fileName
-    a.target = '_blank'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
+  const downloadAudio = (url: string, name: string) => {
+    const a = document.createElement('a'); a.href = url; a.download = name; a.target = '_blank'; document.body.appendChild(a); a.click(); document.body.removeChild(a)
   }
 
-  const formatTime = (seconds: number) => {
-    if (!seconds || isNaN(seconds)) return '0:00'
-    const m = Math.floor(seconds / 60)
-    const s = Math.floor(seconds % 60)
-    return `${m}:${s.toString().padStart(2, '0')}`
+  const fmtTime = (s: number) => { const m = Math.floor(s / 60); return `${m}:${(s % 60).toString().padStart(2, '0')}` }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleGenerate() }
   }
 
-  const getCharCountColor = () => {
-    if (charCount > 10000) return 'text-red-400'
-    if (charCount > 9000) return 'text-yellow-400'
-    return 'text-gray-500'
-  }
-
-  const getSelectedVoiceName = () => {
-    const sys = SYSTEM_VOICES.find(v => v.id === voiceId)
-    if (sys) return sys.name
-    const custom = trainedVoices.find(v => v.voice_id === voiceId)
-    if (custom) return custom.name
-    return voiceId
-  }
+  // ── Render ──
 
   return (
-    <div className="min-h-screen text-white">
+    <div className="h-screen text-white flex flex-col overflow-hidden">
       {/* Background */}
       <div className="fixed inset-0 -z-10">
         <Suspense fallback={<div className="w-full h-full bg-gradient-to-b from-gray-950 via-gray-900 to-black" />}>
@@ -341,628 +468,451 @@ export default function VoiceLabsPage() {
 
       <FloatingMenu />
 
-      <main className="relative z-10 md:pl-[72px] pb-32 pt-4">
-        <div className="px-4 md:px-8 max-w-4xl mx-auto">
+      {/* ── 3-panel layout ── */}
+      <div className="flex-1 flex md:pl-[72px] overflow-hidden">
 
-          {/* ── Header ── */}
-          <div className="flex items-center gap-3 mb-6">
-            <button onClick={() => router.push('/create')} className="p-2 rounded-xl bg-white/[0.04] border border-white/[0.06] backdrop-blur-xl hover:bg-white/[0.08] transition">
-              <ArrowLeft size={18} className="text-gray-400" />
-            </button>
-            <div className="flex-1">
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
-                VOICE LABS
-              </h1>
-              <p className="text-[10px] text-gray-500 tracking-wider">444 RADIO — AI TEXT TO SPEECH</p>
-            </div>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.04] border border-cyan-500/20 rounded-xl backdrop-blur-xl">
-              <Zap size={12} className="text-cyan-400" />
-              <span className="text-xs font-semibold text-white">{credits ?? '...'}</span>
-              <span className="text-[9px] text-gray-500">credits</span>
-            </div>
-          </div>
+        {/* ══════ LEFT SIDEBAR ══════ */}
+        <div className={`${leftOpen ? 'w-[280px] min-w-[280px]' : 'w-0 min-w-0 overflow-hidden'} flex flex-col border-r border-white/[0.06] bg-black/40 backdrop-blur-xl transition-all duration-200`}>
 
-          {/* ── Cost Info Banner ── */}
-          <div className="bg-cyan-500/[0.06] border border-cyan-500/20 rounded-2xl p-4 mb-6 backdrop-blur-xl">
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-xl bg-cyan-500/20 flex items-center justify-center flex-shrink-0">
-                <Mic size={18} className="text-cyan-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-cyan-300 font-semibold text-sm mb-0.5">Text-to-Speech Generation</h3>
-                <p className="text-gray-400 text-xs leading-relaxed">
-                  3 credits per 1,000 input tokens (minimum 3 credits). Use system voices or your{' '}
-                  <a href="/voice-training" className="text-cyan-400 hover:text-cyan-300 underline decoration-cyan-400/30">trained voice clones</a>.
-                  Insert pauses with <code className="text-cyan-300 bg-cyan-500/10 px-1 rounded text-[10px]">{'<#0.5#>'}</code> markers.
-                </p>
+          {/* Sidebar header */}
+          <div className="flex items-center justify-between px-3 py-3 border-b border-white/[0.06]">
+            <h2 className="text-sm font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">VOICE LABS</h2>
+            <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 px-2 py-0.5 bg-cyan-500/10 rounded-full">
+                <Zap size={10} className="text-cyan-400" />
+                <span className="text-[10px] font-bold text-white">{credits ?? '...'}</span>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Sidebar tabs */}
+          <div className="flex border-b border-white/[0.06]">
+            {(['voices', 'train', 'sessions'] as const).map(tab => (
+              <button key={tab} onClick={() => setLeftTab(tab)}
+                className={`flex-1 py-2 text-[10px] font-medium uppercase tracking-wider transition-all ${
+                  leftTab === tab ? 'text-cyan-400 border-b-2 border-cyan-400 bg-cyan-500/[0.05]' : 'text-gray-500 hover:text-gray-300'
+                }`}>
+                {tab === 'voices' ? 'Voices' : tab === 'train' ? 'Clone' : 'History'}
+              </button>
+            ))}
+          </div>
 
-            {/* ── LEFT: Text + Voice + Controls ── */}
-            <div className="lg:col-span-2 space-y-4">
+          {/* Sidebar content */}
+          <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
 
-              {/* Title */}
-              <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 backdrop-blur-xl">
-                <label className="text-xs text-gray-400 font-medium mb-1.5 block">
-                  <Type size={12} className="inline mr-1" />
-                  Generation Title
-                </label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={e => setTitle(e.target.value)}
-                  placeholder="e.g., Podcast Intro, Audiobook Chapter 1..."
-                  maxLength={200}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50 transition-colors"
-                />
-              </div>
-
-              {/* Text Input */}
-              <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 backdrop-blur-xl">
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs text-gray-400 font-medium">
-                    <FileAudio size={12} className="inline mr-1" />
-                    Text to Speech
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[10px] font-mono ${getCharCountColor()}`}>
-                      {charCount.toLocaleString()} / 10,000
-                    </span>
-                    {charCount > 0 && (
-                      <span className="text-[10px] text-gray-600">
-                        ~{estimatedTokens.toLocaleString()} tokens
-                      </span>
-                    )}
-                  </div>
+            {/* ── VOICES TAB ── */}
+            {leftTab === 'voices' && (
+              <>
+                <div className="flex bg-black/30 rounded-lg p-0.5 mb-2">
+                  <button onClick={() => setVoiceSubTab('system')} className={`flex-1 py-1 rounded-md text-[9px] font-medium ${voiceSubTab === 'system' ? 'bg-cyan-500/20 text-cyan-300' : 'text-gray-500'}`}>System</button>
+                  <button onClick={() => setVoiceSubTab('custom')} className={`flex-1 py-1 rounded-md text-[9px] font-medium ${voiceSubTab === 'custom' ? 'bg-purple-500/20 text-purple-300' : 'text-gray-500'}`}>My Clones{trainedVoices.length > 0 && ` (${trainedVoices.length})`}</button>
                 </div>
-                <textarea
-                  value={text}
-                  onChange={e => setText(e.target.value)}
-                  placeholder="Enter the text you want to convert to speech...
-                  
-Use markers like <#0.5#> to insert pauses in seconds.
 
-Example: Hello! <#1.0#> Welcome to 444 Radio."
-                  maxLength={10000}
-                  rows={8}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50 transition-colors resize-none leading-relaxed"
-                />
-                <div className="flex items-center justify-between mt-2">
-                  <p className="text-[10px] text-gray-600">
-                    Tip: Use <code className="text-gray-500">{'<#0.5#>'}</code> for a 0.5s pause, <code className="text-gray-500">{'<#2.0#>'}</code> for 2s
-                  </p>
-                  {charCount > 0 && (
-                    <div className="flex items-center gap-1">
-                      <Zap size={10} className="text-cyan-400" />
-                      <span className="text-[10px] text-cyan-400 font-semibold">{estimatedCost} credits</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Voice Selection */}
-              <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 backdrop-blur-xl">
-                <div className="flex items-center justify-between mb-3">
-                  <label className="text-xs text-gray-400 font-medium">
-                    <User size={12} className="inline mr-1" />
-                    Voice — <span className="text-white">{getSelectedVoiceName()}</span>
-                  </label>
-                  <div className="flex bg-black/40 rounded-lg p-0.5 border border-white/[0.06]">
-                    <button
-                      onClick={() => setVoiceTab('system')}
-                      className={`px-3 py-1 rounded-md text-[10px] font-medium transition-all ${
-                        voiceTab === 'system'
-                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
-                          : 'text-gray-500 hover:text-gray-300'
-                      }`}
-                    >
-                      System Voices
+                {voiceSubTab === 'system' ? (
+                  SYSTEM_VOICES.map(v => (
+                    <button key={v.id} onClick={() => setVoiceId(v.id)}
+                      className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-left transition-all ${
+                        voiceId === v.id ? 'bg-cyan-500/10 border border-cyan-500/40' : 'hover:bg-white/[0.03] border border-transparent'
+                      }`}>
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${voiceId === v.id ? 'bg-cyan-500/20' : 'bg-white/[0.04]'}`}>
+                        <User size={12} className={voiceId === v.id ? 'text-cyan-400' : 'text-gray-500'} />
+                      </div>
+                      <div className="min-w-0">
+                        <div className={`text-[11px] font-medium truncate ${voiceId === v.id ? 'text-cyan-300' : 'text-white/70'}`}>{v.name}</div>
+                        <div className="text-[8px] text-gray-600 truncate">{v.desc}</div>
+                      </div>
                     </button>
-                    <button
-                      onClick={() => setVoiceTab('custom')}
-                      className={`px-3 py-1 rounded-md text-[10px] font-medium transition-all ${
-                        voiceTab === 'custom'
-                          ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                          : 'text-gray-500 hover:text-gray-300'
-                      }`}
-                    >
-                      My Voices {trainedVoices.length > 0 && `(${trainedVoices.length})`}
-                    </button>
-                  </div>
-                </div>
-
-                {voiceTab === 'system' ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-[240px] overflow-y-auto pr-1 custom-scrollbar">
-                    {SYSTEM_VOICES.map(v => (
-                      <button
-                        key={v.id}
-                        onClick={() => setVoiceId(v.id)}
-                        className={`flex flex-col items-start px-3 py-2.5 rounded-xl border transition-all text-left ${
-                          voiceId === v.id
-                            ? 'bg-cyan-500/10 border-cyan-500/40 shadow-lg shadow-cyan-500/5'
-                            : 'bg-black/20 border-white/[0.06] hover:border-cyan-500/20 hover:bg-white/[0.02]'
-                        }`}
-                      >
-                        <span className={`text-xs font-medium ${voiceId === v.id ? 'text-cyan-300' : 'text-white/80'}`}>
-                          {v.name}
-                        </span>
-                        <span className="text-[9px] text-gray-500 mt-0.5">{v.desc}</span>
-                      </button>
-                    ))}
+                  ))
+                ) : loadingVoices ? (
+                  <div className="flex items-center justify-center py-8 text-gray-500 text-xs gap-1.5"><Loader2 size={12} className="animate-spin" /> Loading...</div>
+                ) : trainedVoices.length === 0 ? (
+                  <div className="flex flex-col items-center py-8 text-center">
+                    <User size={20} className="text-gray-600 mb-2" />
+                    <p className="text-gray-400 text-[11px] mb-1">No cloned voices</p>
+                    <button onClick={() => setLeftTab('train')} className="text-[10px] text-purple-400 hover:text-purple-300">Clone a voice →</button>
                   </div>
                 ) : (
-                  <div>
-                    {loadingVoices ? (
-                      <div className="flex items-center justify-center py-8 text-gray-500 text-sm gap-2">
-                        <Loader2 size={14} className="animate-spin" /> Loading voices...
+                  trainedVoices.map(v => (
+                    <button key={v.voice_id} onClick={() => setVoiceId(v.voice_id)}
+                      className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-left transition-all ${
+                        voiceId === v.voice_id ? 'bg-purple-500/10 border border-purple-500/40' : 'hover:bg-white/[0.03] border border-transparent'
+                      }`}>
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${voiceId === v.voice_id ? 'bg-purple-500/20' : 'bg-white/[0.04]'}`}>
+                        <User size={12} className={voiceId === v.voice_id ? 'text-purple-400' : 'text-gray-500'} />
                       </div>
-                    ) : trainedVoices.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-8 text-center">
-                        <div className="w-12 h-12 bg-white/[0.03] border border-white/[0.06] rounded-xl flex items-center justify-center mb-2">
-                          <User size={20} className="text-gray-600" />
-                        </div>
-                        <p className="text-gray-400 text-sm font-medium mb-1">No trained voices</p>
-                        <p className="text-gray-600 text-xs mb-3">Clone a voice to use it here</p>
-                        <a
-                          href="/voice-training"
-                          className="text-xs text-purple-400 hover:text-purple-300 underline decoration-purple-500/30"
-                        >
-                          Go to Voice Training →
-                        </a>
+                      <div className="min-w-0">
+                        <div className={`text-[11px] font-medium truncate ${voiceId === v.voice_id ? 'text-purple-300' : 'text-white/70'}`}>{v.name}</div>
+                        <div className="text-[8px] text-gray-600 font-mono truncate">ID: {v.voice_id.substring(0, 16)}...</div>
                       </div>
-                    ) : (
-                      <div className="space-y-1.5">
-                        {trainedVoices.map(v => (
-                          <button
-                            key={v.voice_id}
-                            onClick={() => setVoiceId(v.voice_id)}
-                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all text-left ${
-                              voiceId === v.voice_id
-                                ? 'bg-purple-500/10 border-purple-500/40 shadow-lg shadow-purple-500/5'
-                                : 'bg-black/20 border-white/[0.06] hover:border-purple-500/20 hover:bg-white/[0.02]'
-                            }`}
-                          >
-                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center flex-shrink-0">
-                              <User size={14} className="text-purple-400" />
-                            </div>
-                            <div className="min-w-0">
-                              <span className={`text-xs font-medium ${voiceId === v.voice_id ? 'text-purple-300' : 'text-white/80'}`}>
-                                {v.name}
-                              </span>
-                              <span className="block text-[9px] text-gray-500 font-mono truncate">
-                                ID: {v.voice_id.substring(0, 20)}...
-                              </span>
-                            </div>
-                          </button>
-                        ))}
-                        <a
-                          href="/voice-training"
-                          className="block text-center text-[10px] text-purple-400/60 hover:text-purple-400 mt-2 transition-colors"
-                        >
-                          + Train a new voice
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Custom Voice ID input */}
-                <div className="mt-3 pt-3 border-t border-white/[0.04]">
-                  <label className="text-[10px] text-gray-500 block mb-1">Or enter a Voice ID directly:</label>
-                  <input
-                    type="text"
-                    value={voiceId}
-                    onChange={e => setVoiceId(e.target.value)}
-                    placeholder="Paste a voice_id..."
-                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-mono placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50 transition-colors"
-                  />
-                </div>
-              </div>
-
-              {/* Emotion */}
-              <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 backdrop-blur-xl">
-                <label className="text-xs text-gray-400 font-medium mb-2 block">
-                  <Sparkles size={12} className="inline mr-1" />
-                  Emotion / Delivery Style
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
-                  {EMOTIONS.map(e => (
-                    <button
-                      key={e.value}
-                      onClick={() => setEmotion(e.value)}
-                      className={`flex flex-col items-center px-2 py-2 rounded-xl border transition-all ${
-                        emotion === e.value
-                          ? 'bg-cyan-500/10 border-cyan-500/40'
-                          : 'bg-black/20 border-white/[0.06] hover:border-cyan-500/20'
-                      }`}
-                    >
-                      <span className={`text-[10px] font-medium ${emotion === e.value ? 'text-cyan-300' : 'text-white/70'}`}>
-                        {e.label}
-                      </span>
-                      <span className="text-[8px] text-gray-500 mt-0.5">{e.desc}</span>
                     </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* ── RIGHT: Parameters + Generate ── */}
-            <div className="space-y-4">
-
-              {/* Core Sliders */}
-              <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 backdrop-blur-xl space-y-4">
-                <h3 className="text-xs text-gray-400 font-medium flex items-center gap-1.5">
-                  <SlidersHorizontal size={12} />
-                  Voice Controls
-                </h3>
-
-                {/* Speed */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[10px] text-gray-500">Speed</label>
-                    <span className="text-[10px] font-mono text-white/60">{speed.toFixed(1)}x</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0.5"
-                    max="2"
-                    step="0.1"
-                    value={speed}
-                    onChange={e => setSpeed(parseFloat(e.target.value))}
-                    className="w-full accent-cyan-500 h-1.5"
-                  />
-                  <div className="flex justify-between text-[8px] text-gray-600 mt-0.5">
-                    <span>0.5x (Slow)</span>
-                    <span>2.0x (Fast)</span>
-                  </div>
-                </div>
-
-                {/* Volume */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[10px] text-gray-500">Volume</label>
-                    <span className="text-[10px] font-mono text-white/60">{volume.toFixed(1)}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="10"
-                    step="0.1"
-                    value={volume}
-                    onChange={e => setVolume(parseFloat(e.target.value))}
-                    className="w-full accent-cyan-500 h-1.5"
-                  />
-                  <div className="flex justify-between text-[8px] text-gray-600 mt-0.5">
-                    <span>0 (Silent)</span>
-                    <span>10 (Max)</span>
-                  </div>
-                </div>
-
-                {/* Pitch */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[10px] text-gray-500">Pitch</label>
-                    <span className="text-[10px] font-mono text-white/60">{pitch > 0 ? '+' : ''}{pitch} st</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="-12"
-                    max="12"
-                    step="1"
-                    value={pitch}
-                    onChange={e => setPitch(parseInt(e.target.value))}
-                    className="w-full accent-cyan-500 h-1.5"
-                  />
-                  <div className="flex justify-between text-[8px] text-gray-600 mt-0.5">
-                    <span>-12 (Lower)</span>
-                    <span>+12 (Higher)</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Language */}
-              <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 backdrop-blur-xl">
-                <label className="text-xs text-gray-400 font-medium mb-1.5 block">
-                  <Globe size={12} className="inline mr-1" />
-                  Language Boost
-                </label>
-                <select
-                  value={languageBoost}
-                  onChange={e => setLanguageBoost(e.target.value)}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500/50 appearance-none cursor-pointer"
-                  style={{
-                    backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(148,163,184,0.5)' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'right 0.6rem center',
-                    backgroundSize: '1.1em 1.1em',
-                    paddingRight: '2.2rem',
-                  }}
-                >
-                  {LANGUAGES.map(lang => (
-                    <option key={lang} value={lang}>
-                      {lang === 'None' ? 'None (auto-detect)' : lang === 'Automatic' ? 'Automatic' : lang}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[9px] text-gray-600 mt-1">Hint the primary language for better pronunciation</p>
-              </div>
-
-              {/* Advanced Settings */}
-              <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl backdrop-blur-xl overflow-hidden">
-                <button
-                  onClick={() => setShowAdvanced(!showAdvanced)}
-                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/[0.02] transition-colors"
-                >
-                  <span className="text-xs text-gray-400 font-medium flex items-center gap-1.5">
-                    <Settings2 size={12} />
-                    Advanced Settings
-                  </span>
-                  {showAdvanced ? <ChevronUp size={14} className="text-gray-500" /> : <ChevronDown size={14} className="text-gray-500" />}
-                </button>
-
-                {showAdvanced && (
-                  <div className="px-4 pb-4 space-y-3 border-t border-white/[0.04] pt-3">
-
-                    {/* English Normalization */}
-                    <label className="flex items-center gap-2 cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        checked={englishNormalization}
-                        onChange={e => setEnglishNormalization(e.target.checked)}
-                        className="accent-cyan-500 rounded w-3.5 h-3.5"
-                      />
-                      <div>
-                        <span className="text-[10px] text-gray-300 group-hover:text-white transition-colors">English Normalization</span>
-                        <p className="text-[8px] text-gray-600">Better number/date reading (adds slight latency)</p>
-                      </div>
-                    </label>
-
-                    {/* Audio Format */}
-                    <div>
-                      <label className="text-[10px] text-gray-500 block mb-1">Audio Format</label>
-                      <div className="grid grid-cols-2 gap-1">
-                        {AUDIO_FORMATS.map(f => (
-                          <button
-                            key={f.value}
-                            onClick={() => setAudioFormat(f.value)}
-                            className={`px-2 py-1.5 rounded-lg border text-[10px] transition-all ${
-                              audioFormat === f.value
-                                ? 'bg-cyan-500/10 border-cyan-500/40 text-cyan-300'
-                                : 'bg-black/20 border-white/[0.06] text-gray-500 hover:border-cyan-500/20'
-                            }`}
-                          >
-                            <span className="font-medium">{f.label}</span>
-                            <span className="block text-[8px] text-gray-600">{f.desc}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Sample Rate */}
-                    <div>
-                      <label className="text-[10px] text-gray-500 block mb-1">Sample Rate</label>
-                      <select
-                        value={sampleRate}
-                        onChange={e => setSampleRate(Number(e.target.value))}
-                        className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] text-white focus:outline-none focus:border-cyan-500/50"
-                      >
-                        {SAMPLE_RATES.map(sr => (
-                          <option key={sr.value} value={sr.value}>
-                            {sr.label} — {sr.desc}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Bitrate (only for MP3) */}
-                    {audioFormat === 'mp3' && (
-                      <div>
-                        <label className="text-[10px] text-gray-500 block mb-1">Bitrate (MP3 only)</label>
-                        <select
-                          value={bitrate}
-                          onChange={e => setBitrate(Number(e.target.value))}
-                          className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] text-white focus:outline-none focus:border-cyan-500/50"
-                        >
-                          {BITRATES.map(br => (
-                            <option key={br.value} value={br.value}>
-                              {br.label} — {br.desc}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-
-                    {/* Channel */}
-                    <div>
-                      <label className="text-[10px] text-gray-500 block mb-1">Channel</label>
-                      <div className="grid grid-cols-2 gap-1">
-                        {CHANNELS.map(ch => (
-                          <button
-                            key={ch.value}
-                            onClick={() => setChannel(ch.value)}
-                            className={`px-2 py-1.5 rounded-lg border text-[10px] transition-all ${
-                              channel === ch.value
-                                ? 'bg-cyan-500/10 border-cyan-500/40 text-cyan-300'
-                                : 'bg-black/20 border-white/[0.06] text-gray-500 hover:border-cyan-500/20'
-                            }`}
-                          >
-                            <span className="font-medium">{ch.label}</span>
-                            <span className="block text-[8px] text-gray-600">{ch.desc}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Subtitle Enable */}
-                    <label className="flex items-center gap-2 cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        checked={subtitleEnable}
-                        onChange={e => setSubtitleEnable(e.target.checked)}
-                        className="accent-cyan-500 rounded w-3.5 h-3.5"
-                      />
-                      <div>
-                        <span className="text-[10px] text-gray-300 group-hover:text-white transition-colors">Subtitles / Timestamps</span>
-                        <p className="text-[8px] text-gray-600">Return sentence-level timestamp metadata</p>
-                      </div>
-                    </label>
-                  </div>
-                )}
-              </div>
-
-              {/* Generate Button */}
-              <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 backdrop-blur-xl">
-                {error && (
-                  <div className="flex items-start gap-2 text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-xl p-3 mb-3">
-                    <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
-                    <span>{error}</span>
-                  </div>
+                  ))
                 )}
 
-                {/* Cost summary */}
-                {charCount > 0 && (
-                  <div className="flex items-center justify-between mb-3 px-1">
-                    <div className="text-[10px] text-gray-500 space-y-0.5">
-                      <div>Characters: <span className="text-white/60">{charCount.toLocaleString()}</span></div>
-                      <div>Est. tokens: <span className="text-white/60">~{estimatedTokens.toLocaleString()}</span></div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm font-bold text-cyan-400">{estimatedCost} credits</div>
-                      <div className="text-[9px] text-gray-500">3 credits / 1K tokens</div>
-                    </div>
-                  </div>
-                )}
+                {/* Direct ID input */}
+                <div className="pt-2 mt-2 border-t border-white/[0.04]">
+                  <label className="text-[8px] text-gray-600 block mb-0.5">Voice ID</label>
+                  <input type="text" value={voiceId} onChange={e => setVoiceId(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] text-white font-mono focus:outline-none focus:border-cyan-500/50" />
+                </div>
+              </>
+            )}
 
-                <button
-                  onClick={handleGenerate}
-                  disabled={isGenerating || !text.trim() || charCount > 10000 || !hasEnoughCredits}
-                  className={`w-full flex items-center justify-center gap-2 font-semibold py-3.5 rounded-xl transition-all shadow-lg ${
-                    isGenerating || !text.trim() || !hasEnoughCredits
-                      ? 'bg-gray-700/50 text-gray-400 cursor-not-allowed shadow-none'
-                      : 'bg-gradient-to-r from-cyan-600 to-blue-500 text-white hover:from-cyan-500 hover:to-blue-400 shadow-cyan-500/20'
-                  }`}
-                >
-                  {isGenerating ? (
-                    <>
-                      <Loader2 size={18} className="animate-spin" />
-                      Generating Speech...
-                    </>
-                  ) : (
-                    <>
-                      <Mic size={18} />
-                      Generate — {charCount > 0 ? `${estimatedCost} Credits` : '...'}
-                    </>
+            {/* ── CLONE/TRAIN TAB ── */}
+            {leftTab === 'train' && (
+              <div className="space-y-3">
+                <div className="bg-cyan-500/[0.06] border border-cyan-500/20 rounded-xl p-2.5">
+                  <p className="text-[10px] text-cyan-300 font-semibold mb-0.5">Voice Cloning — {TRAIN_COST} Credits</p>
+                  <p className="text-[9px] text-gray-400 leading-relaxed">Upload 10s–5min audio (MP3/WAV/M4A). Your Voice ID works instantly in Voice Labs TTS.</p>
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-gray-400 block mb-1">Voice Name</label>
+                  <input type="text" value={trainName} onChange={e => setTrainName(e.target.value)} placeholder="My Voice..."
+                    maxLength={100} className="w-full bg-black/40 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50" />
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-gray-400 block mb-1">Audio Source</label>
+                  <input ref={trainFileInputRef} type="file" accept=".mp3,.wav,.m4a" className="hidden"
+                    onChange={e => { const f = e.target.files?.[0]; if (f) { setTrainFile(f); setTrainFileUrl(''); setRecordedBlob(null) } }} />
+                  <div className="grid grid-cols-2 gap-1">
+                    <button onClick={() => trainFileInputRef.current?.click()}
+                      className="flex items-center justify-center gap-1 bg-black/40 border border-white/10 rounded-lg px-2 py-2 text-[10px] text-gray-300 hover:border-cyan-500/30 transition-colors truncate">
+                      <Upload size={10} /> {trainFile ? trainFile.name.substring(0, 12) : 'Upload'}
+                    </button>
+                    <button onClick={isRecordingMic ? stopMicRecording : startMicRecording}
+                      className={`flex items-center justify-center gap-1 rounded-lg px-2 py-2 text-[10px] font-medium transition-all ${isRecordingMic ? 'bg-red-500/20 border border-red-500/50 text-red-400 animate-pulse' : 'bg-black/40 border border-white/10 text-gray-300 hover:border-cyan-500/30'}`}>
+                      {isRecordingMic ? <><MicOff size={10} />{fmtTime(recordingTime)}</> : <><Mic size={10} />Record</>}
+                    </button>
+                  </div>
+                  {recordedBlob && !isRecordingMic && <div className="flex items-center gap-1 mt-1 text-green-400 text-[9px]"><CheckCircle2 size={10} /> Recording ready ({fmtTime(recordingTime)})</div>}
+                  {!trainFile && !recordedBlob && (
+                    <input type="url" value={trainFileUrl} onChange={e => setTrainFileUrl(e.target.value)} placeholder="Or paste URL..."
+                      className="w-full mt-1 bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 text-[10px] text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50" />
                   )}
+                </div>
+
+                <div className="flex gap-3">
+                  <label className="flex items-center gap-1 text-[9px] text-gray-400 cursor-pointer">
+                    <input type="checkbox" checked={noiseReduction} onChange={e => setNoiseReduction(e.target.checked)} className="accent-cyan-500 w-3 h-3" /> Noise Reduction
+                  </label>
+                  <label className="flex items-center gap-1 text-[9px] text-gray-400 cursor-pointer">
+                    <input type="checkbox" checked={volumeNormalization} onChange={e => setVolumeNormalization(e.target.checked)} className="accent-cyan-500 w-3 h-3" /> Volume Norm
+                  </label>
+                </div>
+
+                {trainError && <div className="flex items-start gap-1 text-red-400 text-[10px] bg-red-500/10 border border-red-500/20 rounded-lg p-2"><AlertCircle size={10} className="flex-shrink-0 mt-0.5" />{trainError}</div>}
+                {trainSuccess && <div className="flex items-start gap-1 text-green-400 text-[10px] bg-green-500/10 border border-green-500/20 rounded-lg p-2"><CheckCircle2 size={10} className="flex-shrink-0 mt-0.5" />{trainSuccess}</div>}
+
+                <button onClick={handleTrainVoice} disabled={isTraining || (!trainFile && !trainFileUrl && !recordedBlob)}
+                  className="w-full flex items-center justify-center gap-1.5 bg-gradient-to-r from-cyan-600 to-blue-500 text-white font-semibold py-2.5 rounded-lg text-xs hover:from-cyan-500 hover:to-blue-400 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                  {isTraining ? <><Loader2 size={12} className="animate-spin" />Training...</> : <><Zap size={12} />Clone — {TRAIN_COST} Cr</>}
                 </button>
-
-                {!hasEnoughCredits && charCount > 0 && (
-                  <p className="text-red-400/80 text-[10px] text-center mt-2">
-                    Need {estimatedCost - (credits ?? 0)} more credits.{' '}
-                    <a href="/pricing" className="text-cyan-400 underline">Get credits →</a>
-                  </p>
-                )}
               </div>
-            </div>
-          </div>
+            )}
 
-          {/* ── Generation Results ── */}
-          {generations.length > 0 && (
-            <div className="mt-6">
-              <h2 className="text-white font-bold text-base mb-3 flex items-center gap-2">
-                <Music2 size={16} className="text-cyan-400" />
-                Generated Audio
-                <span className="text-[10px] text-gray-500 font-normal">({generations.length})</span>
-              </h2>
-              <div className="space-y-2">
-                {generations.map(gen => (
-                  <div
-                    key={gen.id}
-                    className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 backdrop-blur-xl hover:border-cyan-500/20 transition-all group"
-                  >
-                    <div className="flex items-center gap-3">
-                      {/* Play button */}
-                      <button
-                        onClick={() => togglePlayback(gen)}
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${
-                          playingId === gen.id
-                            ? 'bg-cyan-500/20 border border-cyan-500/40'
-                            : 'bg-black/40 border border-white/[0.08] hover:border-cyan-500/30'
-                        }`}
-                      >
-                        {playingId === gen.id
-                          ? <Pause size={16} className="text-cyan-400" />
-                          : <Play size={16} className="text-gray-400 group-hover:text-cyan-400 ml-0.5" />
-                        }
-                      </button>
-
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-white text-sm font-medium truncate">{gen.title}</p>
-                        <div className="flex items-center gap-2 text-[10px] text-gray-500">
-                          <span>{gen.format.toUpperCase()}</span>
-                          <span>•</span>
-                          <span>{gen.creditsDeducted} credits</span>
-                          <span>•</span>
-                          <span>{new Date(gen.timestamp).toLocaleTimeString()}</span>
-                        </div>
-
-                        {/* Progress bar */}
-                        {playingId === gen.id && (
-                          <div className="mt-1.5 w-full bg-white/[0.06] rounded-full h-1 overflow-hidden">
-                            <div
-                              className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all duration-100"
-                              style={{ width: `${playbackProgress}%` }}
-                            />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <button
-                          onClick={() => downloadAudio(gen.audioUrl, `${gen.title}.${gen.format}`)}
-                          className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-                          title="Download"
-                        >
-                          <Download size={14} className="text-gray-500 hover:text-cyan-400" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(gen.audioUrl)
-                          }}
-                          className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-                          title="Copy URL"
-                        >
-                          <Copy size={14} className="text-gray-500 hover:text-cyan-400" />
-                        </button>
-                      </div>
+            {/* ── SESSIONS TAB ── */}
+            {leftTab === 'sessions' && (
+              <>
+                <button onClick={createSession} className="w-full flex items-center justify-center gap-1.5 bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 rounded-lg py-2 text-[10px] font-medium hover:bg-cyan-500/20 transition-colors mb-2">
+                  <Plus size={12} /> New Session
+                </button>
+                {loadingSessions ? (
+                  <div className="flex items-center justify-center py-8 text-gray-500 text-xs gap-1.5"><Loader2 size={12} className="animate-spin" /> Loading...</div>
+                ) : sessions.length === 0 ? (
+                  <div className="flex flex-col items-center py-8 text-center">
+                    <MessageSquare size={20} className="text-gray-600 mb-2" />
+                    <p className="text-gray-400 text-[11px]">No sessions yet</p>
+                    <p className="text-gray-600 text-[9px]">Generate speech to auto-create one</p>
+                  </div>
+                ) : sessions.map(s => (
+                  <div key={s.id} onClick={() => switchSession(s.id)}
+                    className={`group flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer transition-all ${
+                      activeSessionId === s.id ? 'bg-cyan-500/10 border border-cyan-500/30' : 'hover:bg-white/[0.03] border border-transparent'
+                    }`}>
+                    <MessageSquare size={12} className={activeSessionId === s.id ? 'text-cyan-400' : 'text-gray-600'} />
+                    {renamingSessionId === s.id ? (
+                      <input autoFocus value={renameValue} onChange={e => setRenameValue(e.target.value)}
+                        onBlur={() => renameSession(s.id, renameValue)}
+                        onKeyDown={e => { if (e.key === 'Enter') renameSession(s.id, renameValue) }}
+                        className="flex-1 bg-transparent text-[11px] text-white outline-none border-b border-cyan-500/50" />
+                    ) : (
+                      <span className={`flex-1 text-[11px] truncate ${activeSessionId === s.id ? 'text-cyan-300' : 'text-white/60'}`}>{s.title}</span>
+                    )}
+                    <div className="hidden group-hover:flex items-center gap-0.5">
+                      <button onClick={e => { e.stopPropagation(); setRenamingSessionId(s.id); setRenameValue(s.title) }} className="p-0.5 hover:bg-white/10 rounded"><Edit3 size={10} className="text-gray-500" /></button>
+                      <button onClick={e => { e.stopPropagation(); deleteSession(s.id) }} className="p-0.5 hover:bg-red-500/20 rounded"><Trash2 size={10} className="text-gray-500 hover:text-red-400" /></button>
                     </div>
                   </div>
                 ))}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* ══════ CENTER — CHAT AREA ══════ */}
+        <div className="flex-1 flex flex-col min-w-0">
+
+          {/* Chat header */}
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.06] bg-black/20 backdrop-blur-xl">
+            <button onClick={() => setLeftOpen(!leftOpen)} className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors md:block hidden">
+              {leftOpen ? <ChevronLeft size={14} className="text-gray-400" /> : <ChevronRight size={14} className="text-gray-400" />}
+            </button>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-white truncate">
+                  {activeSessionId ? sessions.find(s => s.id === activeSessionId)?.title || 'Session' : 'Voice Labs'}
+                </span>
+                <span className="text-[9px] text-gray-500">•</span>
+                <span className="text-[9px] text-cyan-400/70">{selectedVoiceName}</span>
               </div>
             </div>
-          )}
+            <button onClick={createSession} className="flex items-center gap-1 px-2 py-1 bg-cyan-500/10 border border-cyan-500/30 rounded-lg text-[10px] text-cyan-300 hover:bg-cyan-500/20 transition-colors">
+              <Plus size={10} /> New
+            </button>
+          </div>
 
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 custom-scrollbar">
+            {messages.length === 0 && !loadingMessages && (
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <div className="w-16 h-16 bg-white/[0.03] border border-white/[0.06] rounded-2xl flex items-center justify-center mb-3">
+                  <Mic size={28} className="text-gray-600" />
+                </div>
+                <h3 className="text-white/60 text-sm font-medium mb-1">Voice Labs</h3>
+                <p className="text-gray-600 text-xs max-w-xs">Type text below and press Enter to generate speech. Select a voice from the sidebar.</p>
+                <p className="text-gray-600 text-[10px] mt-2">Use <code className="text-cyan-400/60 bg-cyan-500/10 px-1 rounded">{'<#0.5#>'}</code> for pauses</p>
+              </div>
+            )}
+            {loadingMessages && (
+              <div className="flex items-center justify-center py-12 text-gray-500 text-xs gap-2">
+                <Loader2 size={14} className="animate-spin" /> Loading messages...
+              </div>
+            )}
+            {messages.map(msg => (
+              <div key={msg.id} className="group">
+                {/* User text */}
+                <div className="flex items-start gap-2 mb-2">
+                  <div className="w-6 h-6 rounded-lg bg-cyan-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Type size={10} className="text-cyan-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white/80 text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                    <div className="flex items-center gap-2 mt-1 text-[9px] text-gray-600">
+                      <span>{msg.voice_id === voiceId ? selectedVoiceName : msg.voice_id.substring(0, 16)}</span>
+                      <span>•</span>
+                      <span>{msg.credits_cost} credits</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Audio response */}
+                <div className="ml-8">
+                  {msg.status === 'generating' ? (
+                    <div className="flex items-center gap-2 bg-cyan-500/[0.06] border border-cyan-500/20 rounded-xl px-3 py-2.5">
+                      <Loader2 size={14} className="text-cyan-400 animate-spin" />
+                      <span className="text-cyan-300 text-xs">Generating audio...</span>
+                    </div>
+                  ) : msg.status === 'failed' ? (
+                    <div className="flex items-center gap-2 bg-red-500/[0.06] border border-red-500/20 rounded-xl px-3 py-2.5">
+                      <AlertCircle size={14} className="text-red-400" />
+                      <span className="text-red-300 text-xs">Generation failed</span>
+                    </div>
+                  ) : msg.audio_url ? (
+                    <div className="flex items-center gap-2 bg-white/[0.03] border border-white/[0.06] rounded-xl px-3 py-2 hover:border-cyan-500/20 transition-colors">
+                      <button onClick={() => togglePlay(msg)}
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${playingId === msg.id ? 'bg-cyan-500/20 border border-cyan-500/40' : 'bg-black/40 border border-white/[0.08] hover:border-cyan-500/30'}`}>
+                        {playingId === msg.id ? <Pause size={12} className="text-cyan-400" /> : <Play size={12} className="text-gray-400 ml-0.5" />}
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        {playingId === msg.id ? (
+                          <div className="w-full bg-white/[0.06] rounded-full h-1.5 overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all duration-100" style={{ width: `${playbackProgress}%` }} />
+                          </div>
+                        ) : (
+                          <div className="w-full bg-white/[0.06] rounded-full h-1.5" />
+                        )}
+                      </div>
+                      <div className="hidden group-hover:flex items-center gap-0.5 flex-shrink-0">
+                        <button onClick={() => downloadAudio(msg.audio_url!, `voice-labs-${msg.id}.${audioFormat}`)} className="p-1 hover:bg-white/10 rounded" title="Download"><Download size={12} className="text-gray-500 hover:text-cyan-400" /></button>
+                        <button onClick={() => navigator.clipboard.writeText(msg.audio_url!)} className="p-1 hover:bg-white/10 rounded" title="Copy URL"><Copy size={12} className="text-gray-500 hover:text-cyan-400" /></button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+            <div ref={chatEndRef} />
+          </div>
+
+          {/* Input bar */}
+          <div className="border-t border-white/[0.06] bg-black/30 backdrop-blur-xl px-4 py-3">
+            {genError && (
+              <div className="flex items-center gap-1.5 text-red-400 text-[10px] mb-2 bg-red-500/10 border border-red-500/20 rounded-lg px-2.5 py-1.5">
+                <AlertCircle size={10} /> {genError}
+              </div>
+            )}
+            <div className="flex items-end gap-2">
+              <div className="flex-1 relative">
+                <textarea
+                  value={text}
+                  onChange={e => setText(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Enter text to generate speech..."
+                  maxLength={10000}
+                  rows={1}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 pr-20 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50 resize-none leading-relaxed"
+                  style={{ minHeight: '48px', maxHeight: '160px' }}
+                  onInput={(e) => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 160) + 'px' }}
+                />
+                <div className="absolute right-2 bottom-2 flex items-center gap-1">
+                  {text.length > 0 && (
+                    <span className="text-[9px] text-gray-500 mr-1">{estimatedCost} cr</span>
+                  )}
+                  <button onClick={handleGenerate} disabled={isGenerating || !text.trim() || text.length > 10000}
+                    className={`p-2 rounded-lg transition-all ${isGenerating || !text.trim() ? 'text-gray-600' : 'text-cyan-400 hover:bg-cyan-500/20'}`}>
+                    {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-between mt-1.5 px-1">
+              <p className="text-[8px] text-gray-600">
+                {text.length.toLocaleString()}/10,000 chars • ~{estimatedTokens.toLocaleString()} tokens • {selectedVoiceName}
+              </p>
+              <p className="text-[8px] text-gray-600">
+                Shift+Enter for newline • <code className="text-gray-500">{'<#0.5#>'}</code> for pauses
+              </p>
+            </div>
+          </div>
         </div>
-      </main>
+
+        {/* ══════ RIGHT SIDEBAR — CONTROLS ══════ */}
+        <div className="hidden lg:flex w-[240px] min-w-[240px] flex-col border-l border-white/[0.06] bg-black/40 backdrop-blur-xl overflow-y-auto custom-scrollbar">
+
+          <div className="p-3 border-b border-white/[0.06]">
+            <h3 className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+              <SlidersHorizontal size={10} /> Voice Controls
+            </h3>
+          </div>
+
+          <div className="p-3 space-y-4">
+
+            {/* Emotion */}
+            <div>
+              <label className="text-[9px] text-gray-500 block mb-1.5">Emotion</label>
+              <div className="grid grid-cols-2 gap-0.5">
+                {EMOTIONS.map(e => (
+                  <button key={e.value} onClick={() => setEmotion(e.value)}
+                    className={`px-1.5 py-1 rounded-md text-[9px] transition-all ${
+                      emotion === e.value ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/40' : 'text-gray-500 hover:text-gray-300 border border-transparent'
+                    }`}>{e.label}</button>
+                ))}
+              </div>
+            </div>
+
+            {/* Speed */}
+            <div>
+              <div className="flex items-center justify-between mb-0.5">
+                <label className="text-[9px] text-gray-500">Speed</label>
+                <span className="text-[9px] font-mono text-white/50">{speed.toFixed(1)}x</span>
+              </div>
+              <input type="range" min="0.5" max="2" step="0.1" value={speed} onChange={e => setSpeed(parseFloat(e.target.value))} className="w-full accent-cyan-500 h-1" />
+            </div>
+
+            {/* Volume */}
+            <div>
+              <div className="flex items-center justify-between mb-0.5">
+                <label className="text-[9px] text-gray-500">Volume</label>
+                <span className="text-[9px] font-mono text-white/50">{volume.toFixed(1)}</span>
+              </div>
+              <input type="range" min="0" max="10" step="0.1" value={volume} onChange={e => setVolume(parseFloat(e.target.value))} className="w-full accent-cyan-500 h-1" />
+            </div>
+
+            {/* Pitch */}
+            <div>
+              <div className="flex items-center justify-between mb-0.5">
+                <label className="text-[9px] text-gray-500">Pitch</label>
+                <span className="text-[9px] font-mono text-white/50">{pitch > 0 ? '+' : ''}{pitch}st</span>
+              </div>
+              <input type="range" min="-12" max="12" step="1" value={pitch} onChange={e => setPitch(parseInt(e.target.value))} className="w-full accent-cyan-500 h-1" />
+            </div>
+
+            {/* Language */}
+            <div>
+              <label className="text-[9px] text-gray-500 block mb-1">Language Boost</label>
+              <select value={languageBoost} onChange={e => setLanguageBoost(e.target.value)}
+                className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] text-white focus:outline-none focus:border-cyan-500/50 appearance-none">
+                {LANGUAGES.map(l => <option key={l} value={l}>{l === 'None' ? 'None (auto)' : l}</option>)}
+              </select>
+            </div>
+
+            {/* Advanced toggle */}
+            <button onClick={() => setShowAdvanced(!showAdvanced)} className="w-full flex items-center justify-between text-[9px] text-gray-500 hover:text-gray-300 transition-colors py-1.5 border-t border-white/[0.04] mt-2">
+              <span className="flex items-center gap-1"><Settings2 size={10} /> Advanced</span>
+              {showAdvanced ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+            </button>
+
+            {showAdvanced && (
+              <div className="space-y-3 pt-1">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" checked={englishNormalization} onChange={e => setEnglishNormalization(e.target.checked)} className="accent-cyan-500 w-3 h-3" />
+                  <span className="text-[9px] text-gray-400">English Normalization</span>
+                </label>
+
+                <div>
+                  <label className="text-[9px] text-gray-500 block mb-0.5">Format</label>
+                  <div className="grid grid-cols-2 gap-0.5">
+                    {AUDIO_FORMATS.map(f => (
+                      <button key={f} onClick={() => setAudioFormat(f)}
+                        className={`py-1 rounded-md text-[9px] ${audioFormat === f ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/40' : 'text-gray-500 border border-transparent hover:text-gray-300'}`}>{f.toUpperCase()}</button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[9px] text-gray-500 block mb-0.5">Sample Rate</label>
+                  <select value={sampleRate} onChange={e => setSampleRate(Number(e.target.value))}
+                    className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-[9px] text-white focus:outline-none focus:border-cyan-500/50">
+                    {SAMPLE_RATES.map(sr => <option key={sr} value={sr}>{(sr / 1000).toFixed(sr % 1000 ? 2 : 0)} kHz</option>)}
+                  </select>
+                </div>
+
+                {audioFormat === 'mp3' && (
+                  <div>
+                    <label className="text-[9px] text-gray-500 block mb-0.5">Bitrate</label>
+                    <select value={bitrate} onChange={e => setBitrate(Number(e.target.value))}
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-[9px] text-white focus:outline-none focus:border-cyan-500/50">
+                      {BITRATES.map(br => <option key={br} value={br}>{br / 1000} kbps</option>)}
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-[9px] text-gray-500 block mb-0.5">Channel</label>
+                  <div className="grid grid-cols-2 gap-0.5">
+                    {CHANNELS.map(ch => (
+                      <button key={ch} onClick={() => setChannel(ch)}
+                        className={`py-1 rounded-md text-[9px] capitalize ${channel === ch ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/40' : 'text-gray-500 border border-transparent hover:text-gray-300'}`}>{ch}</button>
+                    ))}
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" checked={subtitleEnable} onChange={e => setSubtitleEnable(e.target.checked)} className="accent-cyan-500 w-3 h-3" />
+                  <span className="text-[9px] text-gray-400">Generate Subtitles</span>
+                </label>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       <style jsx>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 2px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.2);
-        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
       `}</style>
     </div>
   )
