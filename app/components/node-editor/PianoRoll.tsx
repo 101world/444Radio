@@ -70,13 +70,33 @@ function midiToFreq(midi: number): number {
 let audioCtx: AudioContext | null = null
 let activeOscs: OscillatorNode[] = []
 
-function playNotePreview(midi: number, durationMs = 200) {
+// Map known sound sources to oscillator types for preview
+function soundToOscType(sound: string): OscillatorType {
+  const s = sound.toLowerCase()
+  if (s === 'sine') return 'sine'
+  if (s === 'sawtooth' || s === 'saw') return 'sawtooth'
+  if (s === 'square') return 'square'
+  if (s === 'triangle') return 'triangle'
+  // GM sounds → best-fit oscillator
+  if (s.includes('bass') || s.includes('synth_bass')) return 'sawtooth'
+  if (s.includes('organ') || s.includes('accordion')) return 'square'
+  if (s.includes('string') || s.includes('violin') || s.includes('cello')) return 'sawtooth'
+  if (s.includes('flute') || s.includes('whistle') || s.includes('ocarina')) return 'sine'
+  if (s.includes('trumpet') || s.includes('brass') || s.includes('trombone')) return 'sawtooth'
+  if (s.includes('piano') || s.includes('epiano') || s.includes('rhodes')) return 'triangle'
+  if (s.includes('choir') || s.includes('voice') || s.includes('vocal')) return 'sine'
+  if (s.includes('pad') || s.includes('sweep') || s.includes('halo')) return 'sine'
+  if (s.includes('guitar')) return 'triangle'
+  return 'triangle' // default
+}
+
+function playNotePreview(midi: number, durationMs = 200, sound = '') {
   if (!audioCtx) audioCtx = new AudioContext()
   if (audioCtx.state === 'suspended') audioCtx.resume()
 
   const osc = audioCtx.createOscillator()
   const gain = audioCtx.createGain()
-  osc.type = 'triangle'
+  osc.type = sound ? soundToOscType(sound) : 'triangle'
   osc.frequency.value = midiToFreq(midi)
   gain.gain.setValueAtTime(0.15, audioCtx.currentTime)
   gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + durationMs / 1000)
@@ -108,6 +128,7 @@ interface PianoRollProps {
   currentPattern: string
   nodeType: 'melody' | 'chords' | 'bass' | 'pad' | 'vocal' | 'other'
   nodeColor: string
+  soundSource?: string
   onPatternChange: (newPattern: string) => void
 }
 
@@ -117,7 +138,7 @@ const PIANO_KEY_W = 52
 const TOTAL_STEPS = 16
 const DOCK_HEIGHT = 320
 
-export default function PianoRoll({ isOpen, onClose, scale, currentPattern, nodeType, nodeColor, onPatternChange }: PianoRollProps) {
+export default function PianoRoll({ isOpen, onClose, scale, currentPattern, nodeType, nodeColor, soundSource, onPatternChange }: PianoRollProps) {
   const [notes, setNotes] = useState<PianoRollNote[]>([])
   const [tool, setTool] = useState<'draw' | 'erase'>('draw')
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -164,11 +185,11 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
       if (existing >= 0) {
         return prev.filter((_, i) => i !== existing)
       } else {
-        playNotePreview(midi, 180)
+        playNotePreview(midi, 180, soundSource)
         return [...prev, { midi, step, duration: 1, velocity: 0.8 }]
       }
     })
-  }, [])
+  }, [soundSource])
 
   const handleCellMouseDown = useCallback((midi: number, step: number) => {
     isDrawing.current = true
@@ -185,8 +206,8 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
   }, [])
 
   const handleKeyClick = useCallback((midi: number) => {
-    playNotePreview(midi, 350)
-  }, [])
+    playNotePreview(midi, 350, soundSource)
+  }, [soundSource])
 
   const generatePattern = useCallback(() => {
     if (notes.length === 0) {

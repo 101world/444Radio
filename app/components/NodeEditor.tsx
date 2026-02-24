@@ -125,16 +125,43 @@ const NODE_GUIDANCE: Record<NodeType, string> = {
 // ═══════════════════════════════════════════════════════════════
 
 const QUICK_ADD_FX: { id: string; label: string; method: string; defaultVal: number | string; desc: string; color: string }[] = [
+  // ── Mix Essentials (always needed) ──
+  { id: 'gain', label: 'GAIN', method: 'gain', defaultVal: 0.8, desc: 'Volume gain', color: '#34d399' },
+  { id: 'pan', label: 'PAN', method: 'pan', defaultVal: 0.5, desc: 'Stereo pan', color: '#34d399' },
+  // ── Space (reverb + delay) ──
   { id: 'room', label: 'VERB', method: 'room', defaultVal: 0.3, desc: 'Add reverb', color: '#22d3ee' },
+  { id: 'size', label: 'SIZE', method: 'size', defaultVal: 0.5, desc: 'Reverb size (pairs with room)', color: '#22d3ee' },
   { id: 'delay', label: 'DLY', method: 'delay', defaultVal: 0.5, desc: 'Add delay', color: '#fb923c' },
+  { id: 'delaytime', label: 'DLTM', method: 'delaytime', defaultVal: 0.25, desc: 'Delay time', color: '#fb923c' },
+  { id: 'delayfeedback', label: 'DLFB', method: 'delayfeedback', defaultVal: 0.4, desc: 'Delay feedback amount', color: '#fb923c' },
+  // ── Filters ──
   { id: 'lpf', label: 'LPF', method: 'lpf', defaultVal: 8000, desc: 'Low pass filter', color: '#60a5fa' },
   { id: 'hpf', label: 'HPF', method: 'hpf', defaultVal: 200, desc: 'High pass filter', color: '#60a5fa' },
+  { id: 'djf', label: 'DJF', method: 'djf', defaultVal: 0.5, desc: 'DJ filter (0→LP, 0.5→off, 1→HP)', color: '#60a5fa' },
+  { id: 'lpq', label: 'RES', method: 'lpq', defaultVal: 5, desc: 'Filter resonance', color: '#60a5fa' },
+  // ── Distortion & Character ──
   { id: 'distort', label: 'DIST', method: 'distort', defaultVal: 1, desc: 'Distortion', color: '#ef4444' },
   { id: 'crush', label: 'CRSH', method: 'crush', defaultVal: 8, desc: 'Bitcrush', color: '#ef4444' },
   { id: 'shape', label: 'SHPE', method: 'shape', defaultVal: 0.5, desc: 'Waveshaper', color: '#ef4444' },
+  { id: 'squiz', label: 'SQUZ', method: 'squiz', defaultVal: 2, desc: 'Squiz distortion', color: '#ef4444' },
+  { id: 'waveloss', label: 'WLSS', method: 'waveloss', defaultVal: 40, desc: 'Random sample loss', color: '#ef4444' },
+  // ── Modulation ──
   { id: 'phaser', label: 'PHSR', method: 'phaser', defaultVal: 4, desc: 'Phaser', color: '#a78bfa' },
-  { id: 'pan', label: 'PAN', method: 'pan', defaultVal: 0.5, desc: 'Stereo pan', color: '#34d399' },
+  { id: 'leslie', label: 'LSLE', method: 'leslie', defaultVal: 1, desc: 'Leslie rotary speaker', color: '#a78bfa' },
+  { id: 'vib', label: 'VIB', method: 'vib', defaultVal: 4, desc: 'Vibrato depth', color: '#a78bfa' },
+  // ── FM Synthesis ──
   { id: 'fmi', label: 'FM', method: 'fmi', defaultVal: 2, desc: 'FM synthesis', color: '#818cf8' },
+  { id: 'fmh', label: 'FMH', method: 'fmh', defaultVal: 1, desc: 'FM harmonicity ratio', color: '#818cf8' },
+  { id: 'noise', label: 'NOIZ', method: 'noise', defaultVal: 0.5, desc: 'Noise mix', color: '#94a3b8' },
+  // ── Envelope (ADSR) ──
+  { id: 'attack', label: 'ATK', method: 'attack', defaultVal: 0.01, desc: 'Attack time', color: '#818cf8' },
+  { id: 'decay', label: 'DCY', method: 'decay', defaultVal: 0.2, desc: 'Decay time', color: '#818cf8' },
+  { id: 'sustain', label: 'SUS', method: 'sustain', defaultVal: 0.5, desc: 'Sustain level', color: '#818cf8' },
+  { id: 'release', label: 'REL', method: 'release', defaultVal: 0.3, desc: 'Release time', color: '#818cf8' },
+  // ── Playback / Sample ──
+  { id: 'speed', label: 'SPD', method: 'speed', defaultVal: 1, desc: 'Playback speed / pitch', color: '#fb923c' },
+  { id: 'n', label: 'N', method: 'n', defaultVal: 0, desc: 'Sample variation / note index', color: '#f59e0b' },
+  { id: 'octave', label: 'OCT', method: 'octave', defaultVal: 4, desc: 'Octave shift', color: '#c084fc' },
   { id: 'coarse', label: 'COARSE', method: 'coarse', defaultVal: 8, desc: 'Coarse', color: '#f59e0b' },
   { id: 'velocity', label: 'VEL', method: 'velocity', defaultVal: 1, desc: 'Velocity', color: '#94a3b8' },
 ]
@@ -219,6 +246,18 @@ const SOUND_PRESETS: Record<string, { label: string; value: string }[]> = {
     { label: 'Triangle', value: 'triangle' },
   ],
 }
+
+// Time signatures: label for display, beatsPerBar for setcps calculation
+const TIME_SIGNATURES: { label: string; value: string; beatsPerBar: number }[] = [
+  { label: '4/4', value: '4/4', beatsPerBar: 4 },
+  { label: '3/4', value: '3/4', beatsPerBar: 3 },
+  { label: '2/4', value: '2/4', beatsPerBar: 2 },
+  { label: '6/8', value: '6/8', beatsPerBar: 6 },
+  { label: '5/4', value: '5/4', beatsPerBar: 5 },
+  { label: '7/8', value: '7/8', beatsPerBar: 7 },
+  { label: '12/8', value: '12/8', beatsPerBar: 12 },
+  { label: '9/8', value: '9/8', beatsPerBar: 9 },
+]
 
 const SCALE_PRESETS = [
   { label: 'C Major', value: 'C4:major' },
@@ -366,7 +405,7 @@ function randomPatternForType(type: NodeType): string {
     case 'drums': return randomDrumPattern()
     case 'bass':  return randomBassPattern()
     case 'chords': return randomChordProgression()
-    case 'vocal': return randomVocalPattern()
+    case 'vocal': return randomMelodyPattern()  // vocal is now melodic
     case 'fx':    return randomVocalPattern() // sparse for fx too
     default:      return randomMelodyPattern()
   }
@@ -405,6 +444,26 @@ const EFFECT_BADGES: { detect: RegExp; label: string; color: string }[] = [
   { detect: /\.pan\s*\(.*(?:sine|cosine|saw|tri|perlin)/, label: 'APAN', color: '#34d399' },
   { detect: /\.csid\s*\(/, label: 'SIDE', color: '#f59e0b' },
   { detect: /\.bpf\s*\(/, label: 'BPF', color: '#60a5fa' },
+  { detect: /\.arp(eggiate)?\s*\(/, label: 'ARP', color: '#22d3ee' },
+  { detect: /\.off\s*\(/, label: 'OFF', color: '#c084fc' },
+  { detect: /\.superimpose\s*\(/, label: 'SUPR', color: '#c084fc' },
+  { detect: /\.struct\s*\(/, label: 'STRC', color: '#34d399' },
+  { detect: /\.mask\s*\(/, label: 'MASK', color: '#34d399' },
+  { detect: /\.squiz\s*\(/, label: 'SQUZ', color: '#ef4444' },
+  { detect: /\.leslie\s*\(/, label: 'LSLE', color: '#a78bfa' },
+  { detect: /\.waveloss\s*\(/, label: 'WLSS', color: '#ef4444' },
+  { detect: /\.djf\s*\(/, label: 'DJF', color: '#60a5fa' },
+  { detect: /\.noise\s*\(/, label: 'NOIZ', color: '#94a3b8' },
+  { detect: /\.vib\s*\(/, label: 'VIB', color: '#a78bfa' },
+  { detect: /\.loopAt\s*\(/, label: 'LOOP', color: '#fb923c' },
+  { detect: /\.segment\s*\(/, label: 'SEG', color: '#22d3ee' },
+  { detect: /\.density\s*\(/, label: 'DENS', color: '#22d3ee' },
+  { detect: /\.rotate\s*\(/, label: 'ROT', color: '#f472b6' },
+  { detect: /\.size\s*\(/, label: 'SIZE', color: '#22d3ee' },
+  { detect: /\.n\s*\(/, label: 'N', color: '#f59e0b' },
+  { detect: /\.octave\s*\(/, label: 'OCT', color: '#c084fc' },
+  { detect: /\.when\s*\(/, label: 'WHEN', color: '#a78bfa' },
+  { detect: /\.add\s*\(/, label: 'ADD', color: '#c084fc' },
 ]
 
 function detectActiveEffects(code: string): { label: string; color: string }[] {
@@ -433,7 +492,7 @@ const QUICK_FX: QuickFX[] = [
   { id: 'palindrome', label: 'PALIN', icon: '↔', category: 'pattern', code: '.every(2, rev)', detect: /\.every\s*\(\s*2\s*,\s*rev/, color: '#c084fc', desc: 'Forward then backward' },
   { id: 'jux', label: 'JUX', icon: '◐', category: 'stereo', code: '.jux(rev)', detect: /\.jux\s*\(/, color: '#22d3ee', desc: 'Apply function to right channel' },
   { id: 'juxBy', label: 'JUX.5', icon: '◑', category: 'stereo', code: '.juxBy(0.5, rev)', detect: /\.juxBy\s*\(/, color: '#22d3ee', desc: 'Subtle stereo split' },
-  { id: 'echo3', label: 'ECHO', icon: '≡', category: 'pattern', code: '.echo(3, 1/8, 0.5)', detect: /\.echo\s*\(/, color: '#fb923c', desc: 'Stutter echo 3x' },
+  { id: 'echo3', label: 'ECHO', icon: '≡', category: 'pattern', code: '.echo(3, 1/8, 0.5)', detect: /\.echo\s*\(\s*3/, color: '#fb923c', desc: 'Stutter echo 3x' },
   { id: 'echo6', label: 'ECHO6', icon: '≡≡', category: 'pattern', code: '.echo(6, 1/16, 0.4)', detect: /\.echo\s*\(\s*6/, color: '#fb923c', desc: 'Rapid 6x stutter' },
   { id: 'degrade', label: 'DGRDE', icon: '░', category: 'glitch', code: '.degradeBy(0.3)', detect: /\.degrade/, color: '#ef4444', desc: 'Randomly drop 30% events' },
   { id: 'every4fast', label: 'E4⇡', icon: '⚡', category: 'time', code: '.every(4, fast(2))', detect: /\.every\s*\(\s*4\s*,\s*fast/, color: '#facc15', desc: 'Double speed every 4 cycles' },
@@ -457,6 +516,24 @@ const QUICK_FX: QuickFX[] = [
   { id: 'euclid38', label: 'E(3,8)', icon: '◈', category: 'groove', code: '.euclid(3,8)', detect: /\.euclid\s*\(\s*3\s*,\s*8/, color: '#34d399', desc: 'Euclidean 3/8 rhythm' },
   // Sidechain
   { id: 'sidechain', label: 'SIDE', icon: '📊', category: 'groove', code: '.csid("bd",0.3,0.2)', detect: /\.csid\s*\(/, color: '#f59e0b', desc: 'Pumping sidechain compression' },
+  // Arpeggio & layering
+  { id: 'arp', label: 'ARP', icon: '🎵', category: 'pattern', code: '.arp("0 2 4 6")', detect: /\.arp(eggiate)?\s*\(/, color: '#22d3ee', desc: 'Arpeggiate chord notes' },
+  { id: 'off', label: 'OFF', icon: '⟩', category: 'pattern', code: '.off(1/8, x => x.add(7))', detect: /\.off\s*\(/, color: '#c084fc', desc: 'Offset copy +5th' },
+  { id: 'superimpose', label: 'SUPER', icon: '⊕', category: 'pattern', code: '.superimpose(x => x.add(12).slow(2))', detect: /\.superimpose\s*\(/, color: '#c084fc', desc: 'Layer with octave transform' },
+  { id: 'struct', label: 'STRUCT', icon: '▣', category: 'groove', code: '.struct("t(3,8)")', detect: /\.struct\s*\(/, color: '#34d399', desc: 'Boolean rhythm structure' },
+  { id: 'mask', label: 'MASK', icon: '◧', category: 'groove', code: '.mask("t f t f t f t f")', detect: /\.mask\s*\(/, color: '#34d399', desc: 'Mask events on/off' },
+  { id: 'early', label: 'ERLY', icon: '←', category: 'time', code: '.early(1/8)', detect: /\.early\s*\(/, color: '#facc15', desc: 'Shift earlier in time' },
+  { id: 'late', label: 'LATE', icon: '→', category: 'time', code: '.late(1/8)', detect: /\.late\s*\(/, color: '#facc15', desc: 'Shift later in time' },
+  { id: 'segment', label: 'SEG', icon: '⊞', category: 'pattern', code: '.segment(8)', detect: /\.segment\s*\(/, color: '#22d3ee', desc: 'Segment into N events' },
+  { id: 'loopAt', label: 'LOOP', icon: '⟳', category: 'time', code: '.loopAt(2)', detect: /\.loopAt\s*\(/, color: '#fb923c', desc: 'Loop sample at N bars' },
+  { id: 'almostNever', label: 'ANVR', icon: '·', category: 'glitch', code: '.almostNever(x => x.crush(4))', detect: /\.almostNever\s*\(/, color: '#a78bfa', desc: '10% chance transform' },
+  { id: 'almostAlways', label: 'AALW', icon: '●', category: 'glitch', code: '.almostAlways(x => x.add(12))', detect: /\.almostAlways\s*\(/, color: '#a78bfa', desc: '90% chance transform' },
+  // Density & rotation
+  { id: 'density', label: 'DENS', icon: '▓', category: 'pattern', code: '.density(4)', detect: /\.density\s*\(/, color: '#22d3ee', desc: 'Increase rhythmic density' },
+  { id: 'rotate', label: 'ROT', icon: '↻', category: 'pattern', code: '.rotate(1)', detect: /\.rotate\s*\(/, color: '#f472b6', desc: 'Rotate pattern steps' },
+  { id: 'add7', label: 'ADD+7', icon: '⇧', category: 'pattern', code: '.add(7)', detect: /\)\s*\.add\s*\(\s*7\s*\)/, color: '#c084fc', desc: 'Transpose up a 5th' },
+  { id: 'add12', label: 'ADD+12', icon: '⇑', category: 'pattern', code: '.add(12)', detect: /\)\s*\.add\s*\(\s*12\s*\)/, color: '#c084fc', desc: 'Transpose up an octave' },
+  { id: 'when50', label: 'WHEN', icon: '⚖', category: 'glitch', code: '.when(x => x > 0.5, rev)', detect: /\.when\s*\(/, color: '#a78bfa', desc: 'Conditional transform' },
 ]
 
 // LFO presets — inject as replacement for a knob's static value
@@ -493,46 +570,118 @@ const SIDEBAR_CATEGORIES: { id: string; label: string; icon: string; color: stri
   {
     id: 'effects', label: 'Audio FX', icon: '⚡', color: '#22d3ee',
     items: [
+      // Essentials
+      { id: 'fx_gain', label: 'Gain', icon: '🔈', desc: 'Volume .gain(0.5)', color: '#34d399', dragType: 'effect', payload: '.gain(0.5)', method: 'gain' },
+      { id: 'fx_pan', label: 'Auto-Pan', icon: '↔️', desc: 'Stereo LFO .pan(sine.range(0,1).slow(4))', color: '#34d399', dragType: 'effect', payload: '.pan(sine.range(0,1).slow(4))', method: 'pan' },
+      // Space
       { id: 'fx_reverb', label: 'Reverb', icon: '🏛️', desc: 'Room reverb .room(0.5)', color: '#22d3ee', dragType: 'effect', payload: '.room(0.5)', method: 'room' },
       { id: 'fx_delay', label: 'Delay', icon: '🔄', desc: 'Echo delay .delay(0.2)', color: '#22d3ee', dragType: 'effect', payload: '.delay(0.2).delayfeedback(0.4)', method: 'delay' },
+      // Filters
       { id: 'fx_lpf', label: 'Low-Pass Filter', icon: '📉', desc: 'Cuts highs .lpf(1200)', color: '#60a5fa', dragType: 'effect', payload: '.lpf(1200)', method: 'lpf' },
       { id: 'fx_hpf', label: 'High-Pass Filter', icon: '📈', desc: 'Cuts lows .hpf(400)', color: '#60a5fa', dragType: 'effect', payload: '.hpf(400)', method: 'hpf' },
       { id: 'fx_bpf', label: 'Band-Pass Filter', icon: '🔊', desc: 'Narrow band .bpf(800)', color: '#60a5fa', dragType: 'effect', payload: '.bpf(800)', method: 'bpf' },
       { id: 'fx_vowel', label: 'Vowel Filter', icon: '🗣', desc: 'Vocal formant .vowel("a")', color: '#c084fc', dragType: 'effect', payload: '.vowel("a")', method: 'vowel' },
+      // Distortion
+      { id: 'fx_distort', label: 'Distortion', icon: '⚡', desc: 'Hard distort .distort(2)', color: '#ef4444', dragType: 'effect', payload: '.distort(2)', method: 'distort' },
       { id: 'fx_crush', label: 'Bitcrush', icon: '💎', desc: 'Lo-fi .crush(8)', color: '#ef4444', dragType: 'effect', payload: '.crush(8)', method: 'crush' },
       { id: 'fx_shape', label: 'Waveshape', icon: '🔥', desc: 'Soft distortion .shape(0.4)', color: '#ef4444', dragType: 'effect', payload: '.shape(0.4)', method: 'shape' },
-      { id: 'fx_distort', label: 'Distortion', icon: '⚡', desc: 'Hard distort .distort(2)', color: '#ef4444', dragType: 'effect', payload: '.distort(2)', method: 'distort' },
       { id: 'fx_coarse', label: 'Coarse', icon: '▦', desc: 'Downsample .coarse(8)', color: '#f59e0b', dragType: 'effect', payload: '.coarse(8)', method: 'coarse' },
+      // Modulation
       { id: 'fx_phaser', label: 'Phaser', icon: '🌀', desc: 'Phase sweep .phaser(4)', color: '#a78bfa', dragType: 'effect', payload: '.phaser(4)', method: 'phaser' },
-      { id: 'fx_pan', label: 'Auto-Pan', icon: '↔️', desc: 'Stereo LFO .pan(sine.range(0,1).slow(4))', color: '#34d399', dragType: 'effect', payload: '.pan(sine.range(0,1).slow(4))', method: 'pan' },
       { id: 'fx_fm', label: 'FM Synthesis', icon: '📡', desc: 'Frequency mod .fmi(2)', color: '#818cf8', dragType: 'effect', payload: '.fmi(2)', method: 'fmi' },
+      // Dynamics
       { id: 'fx_compress', label: 'Compressor', icon: '🔧', desc: 'Dynamic range .compressor(-20,10,4)', color: '#94a3b8', dragType: 'effect', payload: '.compressor(-20,10,4)' },
-      { id: 'fx_gain', label: 'Gain', icon: '🔈', desc: 'Volume .gain(0.5)', color: '#34d399', dragType: 'effect', payload: '.gain(0.5)', method: 'gain' },
       { id: 'fx_sidechain', label: 'Sidechain', icon: '📊', desc: 'Pumping sidechain .csid("bd",0.3,0.2)', color: '#f59e0b', dragType: 'effect', payload: '.csid("bd",0.3,0.2)' },
     ]
   },
   {
     id: 'modifiers', label: 'Pattern FX', icon: '🎯', color: '#f472b6',
     items: [
-      { id: 'mod_rev', label: 'Reverse', icon: '↩', desc: 'Reverse pattern', color: '#f472b6', dragType: 'effect', payload: '.rev()' },
-      { id: 'mod_jux', label: 'Jux (Stereo)', icon: '◐', desc: 'Function on R channel', color: '#22d3ee', dragType: 'effect', payload: '.jux(rev)' },
-      { id: 'mod_juxBy', label: 'Jux 50%', icon: '◑', desc: 'Subtle stereo split', color: '#22d3ee', dragType: 'effect', payload: '.juxBy(0.5, rev)' },
-      { id: 'mod_echo', label: 'Echo Stutter', icon: '≡', desc: 'Pattern echo 3x', color: '#fb923c', dragType: 'effect', payload: '.echo(3, 1/8, 0.5)' },
-      { id: 'mod_degrade', label: 'Degrade', icon: '░', desc: 'Drop 30% events', color: '#ef4444', dragType: 'effect', payload: '.degradeBy(0.3)' },
-      { id: 'mod_chop', label: 'Chop', icon: '✂', desc: 'Granular slices', color: '#34d399', dragType: 'effect', payload: '.chop(8)' },
-      { id: 'mod_striate', label: 'Striate', icon: '≋', desc: 'Interleaved granular', color: '#34d399', dragType: 'effect', payload: '.striate(4)' },
-      { id: 'mod_iter', label: 'Iter (Rotate)', icon: '⟳', desc: 'Shift start each cycle', color: '#22d3ee', dragType: 'effect', payload: '.iter(4)' },
-      { id: 'mod_ply', label: 'Ply (Repeat)', icon: '×2', desc: 'Double each event', color: '#f472b6', dragType: 'effect', payload: '.ply(2)' },
-      { id: 'mod_chunk', label: 'Chunk', icon: '▧', desc: 'Rotating transform', color: '#facc15', dragType: 'effect', payload: '.chunk(4, fast(2))' },
-      { id: 'mod_brak', label: 'Breakbeat', icon: '⚡', desc: 'Breakbeat transform', color: '#ef4444', dragType: 'effect', payload: '.brak()' },
-      { id: 'mod_press', label: 'Press', icon: '→', desc: 'Push to 2nd half', color: '#fb923c', dragType: 'effect', payload: '.press()' },
-      { id: 'mod_swing', label: 'Swing', icon: '♪', desc: 'Swing groove', color: '#fb923c', dragType: 'effect', payload: '.swing(0.2)' },
-      { id: 'mod_hurry', label: 'Hurry', icon: '»', desc: 'Speed + pitch up', color: '#facc15', dragType: 'effect', payload: '.hurry(2)' },
-      { id: 'mod_linger', label: 'Linger', icon: '∞', desc: 'Loop first quarter', color: '#c084fc', dragType: 'effect', payload: '.linger(0.25)' },
+      // Speed & Time
       { id: 'mod_fast', label: 'Fast 2x', icon: '⇡', desc: 'Double speed', color: '#facc15', dragType: 'effect', payload: '.fast(2)' },
       { id: 'mod_slow', label: 'Slow 2x', icon: '⇣', desc: 'Half speed', color: '#facc15', dragType: 'effect', payload: '.slow(2)' },
-      { id: 'mod_every4', label: 'Every 4', icon: '⚡', desc: 'Every 4 cycles: fast(2)', color: '#facc15', dragType: 'effect', payload: '.every(4, fast(2))' },
+      { id: 'mod_hurry', label: 'Hurry', icon: '»', desc: 'Speed + pitch up', color: '#facc15', dragType: 'effect', payload: '.hurry(2)' },
+      { id: 'mod_early', label: 'Early', icon: '←', desc: 'Shift earlier', color: '#facc15', dragType: 'effect', payload: '.early(1/8)' },
+      { id: 'mod_late', label: 'Late', icon: '→', desc: 'Shift later', color: '#facc15', dragType: 'effect', payload: '.late(1/8)' },
+      // Groove
+      { id: 'mod_swing', label: 'Swing', icon: '♪', desc: 'Swing groove', color: '#fb923c', dragType: 'effect', payload: '.swing(0.2)' },
+      { id: 'mod_press', label: 'Press', icon: '→', desc: 'Push to 2nd half', color: '#fb923c', dragType: 'effect', payload: '.press()' },
+      { id: 'mod_brak', label: 'Breakbeat', icon: '⚡', desc: 'Breakbeat transform', color: '#ef4444', dragType: 'effect', payload: '.brak()' },
+      { id: 'mod_density', label: 'Density', icon: '▓', desc: 'Rhythmic density', color: '#22d3ee', dragType: 'effect', payload: '.density(4)' },
+      { id: 'mod_struct', label: 'Struct', icon: '▣', desc: 'Boolean rhythm', color: '#34d399', dragType: 'effect', payload: '.struct("t(3,8)")' },
+      { id: 'mod_mask', label: 'Mask', icon: '◧', desc: 'Mask events', color: '#34d399', dragType: 'effect', payload: '.mask("t f t f t f t f")' },
+      // Transform
+      { id: 'mod_rev', label: 'Reverse', icon: '↩', desc: 'Reverse pattern', color: '#f472b6', dragType: 'effect', payload: '.rev()' },
+      { id: 'mod_iter', label: 'Iter (Rotate)', icon: '⟳', desc: 'Shift start each cycle', color: '#22d3ee', dragType: 'effect', payload: '.iter(4)' },
+      { id: 'mod_rotate', label: 'Rotate', icon: '↻', desc: 'Rotate steps', color: '#f472b6', dragType: 'effect', payload: '.rotate(1)' },
+      { id: 'mod_ply', label: 'Ply (Repeat)', icon: '×2', desc: 'Double each event', color: '#f472b6', dragType: 'effect', payload: '.ply(2)' },
+      { id: 'mod_chunk', label: 'Chunk', icon: '▧', desc: 'Rotating transform', color: '#facc15', dragType: 'effect', payload: '.chunk(4, fast(2))' },
+      { id: 'mod_linger', label: 'Linger', icon: '∞', desc: 'Loop first quarter', color: '#c084fc', dragType: 'effect', payload: '.linger(0.25)' },
+      { id: 'mod_segment', label: 'Segment', icon: '⊞', desc: 'Split into N events', color: '#22d3ee', dragType: 'effect', payload: '.segment(8)' },
+      { id: 'mod_loopAt', label: 'Loop At', icon: '⟳', desc: 'Loop at N bars', color: '#fb923c', dragType: 'effect', payload: '.loopAt(2)' },
+    ]
+  },
+  {
+    id: 'layering', label: 'Layer & Pitch', icon: '⊕', color: '#c084fc',
+    items: [
+      { id: 'mod_arp', label: 'Arpeggio', icon: '🎵', desc: 'Arpeggiate chords', color: '#22d3ee', dragType: 'effect', payload: '.arp("0 2 4 6")' },
+      { id: 'mod_off', label: 'Off (Canon)', icon: '⟩', desc: 'Offset copy +5th', color: '#c084fc', dragType: 'effect', payload: '.off(1/8, x => x.add(7))' },
+      { id: 'mod_super', label: 'Superimpose', icon: '⊕', desc: 'Layer + octave transform', color: '#c084fc', dragType: 'effect', payload: '.superimpose(x => x.add(12).slow(2))' },
+      { id: 'mod_jux', label: 'Jux (Stereo)', icon: '◐', desc: 'Function on R channel', color: '#22d3ee', dragType: 'effect', payload: '.jux(rev)' },
+      { id: 'mod_juxBy', label: 'Jux 50%', icon: '◑', desc: 'Subtle stereo split', color: '#22d3ee', dragType: 'effect', payload: '.juxBy(0.5, rev)' },
+      { id: 'mod_add7', label: 'Add +7 (5th)', icon: '⇧', desc: 'Transpose up a 5th', color: '#c084fc', dragType: 'effect', payload: '.add(7)' },
+      { id: 'mod_add12', label: 'Add +12 (Oct)', icon: '⇑', desc: 'Transpose up octave', color: '#c084fc', dragType: 'effect', payload: '.add(12)' },
+      { id: 'mod_echo', label: 'Echo Stutter', icon: '≡', desc: 'Pattern echo 3x', color: '#fb923c', dragType: 'effect', payload: '.echo(3, 1/8, 0.5)' },
+    ]
+  },
+  {
+    id: 'random', label: 'Random & Glitch', icon: '🎲', color: '#a78bfa',
+    items: [
+      { id: 'mod_degrade', label: 'Degrade', icon: '░', desc: 'Drop 30% events', color: '#ef4444', dragType: 'effect', payload: '.degradeBy(0.3)' },
       { id: 'mod_sometimes', label: 'Sometimes', icon: '?', desc: 'Random fast(2)', color: '#a78bfa', dragType: 'effect', payload: '.sometimes(fast(2))' },
+      { id: 'mod_every4', label: 'Every 4', icon: '⚡', desc: 'Every 4 cycles: fast(2)', color: '#facc15', dragType: 'effect', payload: '.every(4, fast(2))' },
+      { id: 'mod_when', label: 'When (Cond)', icon: '⚖', desc: 'Conditional transform', color: '#a78bfa', dragType: 'effect', payload: '.when(x => x > 0.5, rev)' },
+      { id: 'mod_chop', label: 'Chop', icon: '✂', desc: 'Granular slices', color: '#34d399', dragType: 'effect', payload: '.chop(8)' },
+      { id: 'mod_striate', label: 'Striate', icon: '≋', desc: 'Interleaved granular', color: '#34d399', dragType: 'effect', payload: '.striate(4)' },
+    ]
+  },
+  {
+    id: 'synth', label: 'Synth & Sample', icon: '🎛️', color: '#818cf8',
+    items: [
+      // Filters (most used)
+      { id: 'syn_djf', label: 'DJ Filter', icon: '🎚️', desc: 'One-knob filter .djf(0.5)', color: '#60a5fa', dragType: 'effect', payload: '.djf(0.5)', method: 'djf' },
+      { id: 'syn_lpq', label: 'Resonance', icon: '◎', desc: 'Filter resonance .lpq(5)', color: '#60a5fa', dragType: 'effect', payload: '.lpq(5)', method: 'lpq' },
+      // FM Synthesis
+      { id: 'syn_fmi', label: 'FM Index', icon: '📡', desc: 'FM modulation .fmi(2)', color: '#818cf8', dragType: 'effect', payload: '.fmi(2)', method: 'fmi' },
+      { id: 'syn_fmh', label: 'FM Harmonicity', icon: '📡', desc: 'FM ratio .fmh(2)', color: '#818cf8', dragType: 'effect', payload: '.fmh(2)', method: 'fmh' },
+      // Modulation
+      { id: 'syn_noise', label: 'Noise', icon: '📻', desc: 'Noise mix .noise(0.5)', color: '#94a3b8', dragType: 'effect', payload: '.noise(0.5)', method: 'noise' },
+      { id: 'syn_vib', label: 'Vibrato', icon: '∿', desc: 'Vibrato depth .vib(4)', color: '#a78bfa', dragType: 'effect', payload: '.vib(4)', method: 'vib' },
+      { id: 'syn_vibmod', label: 'Vib Rate', icon: '∿', desc: 'Vibrato rate .vibmod(0.5)', color: '#a78bfa', dragType: 'effect', payload: '.vibmod(0.5)', method: 'vibmod' },
+      // Distortion / Character
+      { id: 'syn_squiz', label: 'Squiz', icon: '🔧', desc: 'Pitch squiz .squiz(2)', color: '#ef4444', dragType: 'effect', payload: '.squiz(2)', method: 'squiz' },
+      { id: 'syn_leslie', label: 'Leslie', icon: '🌀', desc: 'Rotary speaker .leslie(1)', color: '#a78bfa', dragType: 'effect', payload: '.leslie(1)', method: 'leslie' },
+      { id: 'syn_waveloss', label: 'Wave Loss', icon: '⚡', desc: 'Random sample drop .waveloss(40)', color: '#ef4444', dragType: 'effect', payload: '.waveloss(40)', method: 'waveloss' },
+    ]
+  },
+  {
+    id: 'sample_ctrl', label: 'Sample Control', icon: '⏩', color: '#f59e0b',
+    items: [
+      { id: 'syn_speed', label: 'Speed', icon: '⏩', desc: 'Playback speed .speed(1.5)', color: '#fb923c', dragType: 'effect', payload: '.speed(1.5)', method: 'speed' },
+      { id: 'syn_begin', label: 'Begin', icon: '▶️', desc: 'Sample start .begin(0.25)', color: '#f59e0b', dragType: 'effect', payload: '.begin(0.25)', method: 'begin' },
+      { id: 'syn_end', label: 'End', icon: '⏹️', desc: 'Sample end .end(0.75)', color: '#f59e0b', dragType: 'effect', payload: '.end(0.75)', method: 'end' },
+      { id: 'syn_n', label: 'N (Variation)', icon: '#️⃣', desc: 'Sample/note index .n(2)', color: '#f59e0b', dragType: 'effect', payload: '.n(2)', method: 'n' },
+      { id: 'syn_octave', label: 'Octave', icon: '🎼', desc: 'Octave shift .octave(4)', color: '#c084fc', dragType: 'effect', payload: '.octave(4)', method: 'octave' },
+      { id: 'syn_cut', label: 'Cut Group', icon: '✂️', desc: 'Monophonic cut .cut(1)', color: '#94a3b8', dragType: 'effect', payload: '.cut(1)' },
+      { id: 'syn_legato', label: 'Legato', icon: '🎶', desc: 'Note overlap .legato(0.8)', color: '#818cf8', dragType: 'effect', payload: '.legato(0.8)' },
+      { id: 'syn_orbit', label: 'Orbit', icon: '🔄', desc: 'Effect bus .orbit(1)', color: '#94a3b8', dragType: 'effect', payload: '.orbit(1)' },
+      // Envelope params
+      { id: 'syn_decay', label: 'Decay', icon: '📐', desc: 'Decay time .decay(0.2)', color: '#818cf8', dragType: 'effect', payload: '.decay(0.2)', method: 'decay' },
+      { id: 'syn_sustain', label: 'Sustain', icon: '📐', desc: 'Sustain level .sustain(0.5)', color: '#818cf8', dragType: 'effect', payload: '.sustain(0.5)', method: 'sustain' },
+      // Send effects
+      { id: 'syn_size', label: 'Reverb Size', icon: '🏛️', desc: 'Reverb size .size(0.5)', color: '#22d3ee', dragType: 'effect', payload: '.size(0.5)', method: 'size' },
+      { id: 'syn_delayfb', label: 'Delay Feedback', icon: '🔄', desc: 'Feedback amt .delayfeedback(0.4)', color: '#fb923c', dragType: 'effect', payload: '.delayfeedback(0.4)', method: 'delayfeedback' },
+      { id: 'syn_delaytime', label: 'Delay Time', icon: '⏱️', desc: 'Delay time .delaytime(0.25)', color: '#fb923c', dragType: 'effect', payload: '.delaytime(0.25)', method: 'delaytime' },
     ]
   },
   {
@@ -678,7 +827,8 @@ function extractBpm(code: string): number {
 }
 
 // Sounds that are sample-based (use s() patterns, not note() patterns)
-const SAMPLE_BASED_TYPES = new Set<NodeType>(['drums', 'vocal', 'fx', 'other'])
+// Vocal is melodic — uses note() with .s() so it can use scales, chords, and MIDI
+const SAMPLE_BASED_TYPES = new Set<NodeType>(['drums', 'fx', 'other'])
 
 /** Check if a node type operates on samples (rhythmic patterns) rather than pitched notes */
 function isSampleBased(type: NodeType): boolean {
@@ -1701,6 +1851,7 @@ export interface NodeEditorHandle {
   toggleAllCollapsed: () => void
   allCollapsed: boolean
   bpm: number
+  timeSig: string
   globalScale: string
   nodeCount: number
   activeCount: number
@@ -1714,6 +1865,7 @@ export interface NodeEditorHandle {
   toggleSidebar: () => void
   sidebarOpen: boolean
   handleBpmChange: (v: number) => void
+  handleTimeSigChange: (v: string) => void
   handleGlobalScaleChange: (v: string) => void
   selectedNode: string | null
 }
@@ -1721,6 +1873,7 @@ export interface NodeEditorHandle {
 const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEditor({ code, isPlaying, onCodeChange, onUpdate, onRegisterSound, analyserNode, headerless }, ref) {
   const [nodes, setNodes] = useState<PatternNode[]>([])
   const [bpm, setBpm] = useState(0)
+  const [timeSig, setTimeSig] = useState('4/4')
   const [connections, setConnections] = useState<Connection[]>([])
   const [dragging, setDragging] = useState<{ id: string; ox: number; oy: number } | null>(null)
   const [zoom, setZoom] = useState(0.85)
@@ -1741,6 +1894,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   const [currentCycle, setCurrentCycle] = useState(0)
   const [fxDropdownNodeId, setFxDropdownNodeId] = useState<string | null>(null)
   const [fxSearchQuery, setFxSearchQuery] = useState('')
+  const [codeGenerating, setCodeGenerating] = useState(false)
 
   const panStart = useRef({ x: 0, y: 0, px: 0, py: 0 })
   const containerRef = useRef<HTMLDivElement>(null)
@@ -1751,6 +1905,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   const internalChangeCount = useRef(0)
   const lastSentCodeRef = useRef<string | null>(null)
   const prevNodeCount = useRef(0)
+  const codeGenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Stable refs for latest state — avoids stale closures in callbacks
   const nodesRef = useRef(nodes)
@@ -1768,6 +1923,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     toggleAllCollapsed,
     allCollapsed,
     bpm,
+    timeSig,
     globalScale,
     nodeCount: nodes.length,
     activeCount: nodes.filter(n => !n.muted).length,
@@ -1781,6 +1937,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     toggleSidebar: () => setSidebarOpen(p => !p),
     sidebarOpen,
     handleBpmChange,
+    handleTimeSigChange,
     handleGlobalScaleChange,
     selectedNode,
   }))
@@ -1802,6 +1959,10 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     lastCodeRef.current = code
     const newBpm = extractBpm(code)
     setBpm(newBpm)
+    // Flash "generating" indicator on glass panel
+    if (codeGenTimerRef.current) clearTimeout(codeGenTimerRef.current)
+    setCodeGenerating(true)
+    codeGenTimerRef.current = setTimeout(() => setCodeGenerating(false), 1200)
 
     let newConnections: Connection[] | null = null
     setNodes(prev => {
@@ -1893,18 +2054,23 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     if (codeToSend !== null) sendToParent(codeToSend)
   }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
-  // ── BPM Change ──
+  // ── BPM Change (respects time signature) ──
   const handleBpmChange = useCallback((v: number) => {
     const clamped = Math.max(30, Math.min(300, Math.round(v)))
     setBpm(clamped)
+    const sig = TIME_SIGNATURES.find(t => t.value === timeSig) || TIME_SIGNATURES[0]
+    const beatsPerBar = sig.beatsPerBar
     // Replace ALL setcps lines in current code (prevents duplicate accumulation)
     const lines = lastCodeRef.current.split('\n')
     let replaced = false
     const cleaned: string[] = []
+    const cpsLine = beatsPerBar === 4
+      ? `setcps(${clamped}/60/4) // ${clamped} bpm`
+      : `setcps(${clamped}/60/${beatsPerBar}) // ${clamped} bpm (${timeSig})`
     for (const line of lines) {
       if (/^\s*setcps\s*\(/.test(line) || /^\s*setbpm\s*\(/.test(line)) {
         if (!replaced) {
-          cleaned.push(`setcps(${clamped}/60/4) // ${clamped} bpm`)
+          cleaned.push(cpsLine)
           replaced = true
         }
         // skip duplicate setcps lines
@@ -1921,10 +2087,41 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
         if (t === '' || t.startsWith('//')) insertIdx = i + 1
         else { insertIdx = i; break }
       }
-      cleaned.splice(insertIdx, 0, `setcps(${clamped}/60/4) // ${clamped} bpm`)
+      cleaned.splice(insertIdx, 0, cpsLine)
     }
     sendToParent(cleaned.join('\n'))
-  }, [sendToParent])
+  }, [sendToParent, timeSig])
+
+  // ── Time Signature Change ──
+  const handleTimeSigChange = useCallback((newSig: string) => {
+    setTimeSig(newSig)
+    // Re-apply BPM with the new time signature
+    const sig = TIME_SIGNATURES.find(t => t.value === newSig) || TIME_SIGNATURES[0]
+    const beatsPerBar = sig.beatsPerBar
+    const currentBpm = bpm || 72
+    const lines = lastCodeRef.current.split('\n')
+    let replaced = false
+    const cleaned: string[] = []
+    const cpsLine = beatsPerBar === 4
+      ? `setcps(${currentBpm}/60/4) // ${currentBpm} bpm`
+      : `setcps(${currentBpm}/60/${beatsPerBar}) // ${currentBpm} bpm (${newSig})`
+    for (const line of lines) {
+      if (/^\s*setcps\s*\(/.test(line) || /^\s*setbpm\s*\(/.test(line)) {
+        if (!replaced) { cleaned.push(cpsLine); replaced = true }
+      } else { cleaned.push(line) }
+    }
+    if (!replaced) {
+      let insertIdx = 0
+      for (let i = 0; i < cleaned.length; i++) {
+        const t = cleaned[i].trim()
+        if (t.startsWith('$:') || t.startsWith('// [muted]')) break
+        if (t === '' || t.startsWith('//')) insertIdx = i + 1
+        else { insertIdx = i; break }
+      }
+      cleaned.splice(insertIdx, 0, cpsLine)
+    }
+    sendToParent(cleaned.join('\n'))
+  }, [sendToParent, bpm])
 
   // ── Global Scale Change ──
   const handleGlobalScaleChange = useCallback((newScale: string) => {
@@ -2123,7 +2320,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
       melody: `$: n("0 2 4 7 4 2").scale("C4:major")\n  .s("gm_piano").gain(0.3)\n  .room(0.4).delay(0.15)\n  .scope({color:"${tc.melody}",thickness:1,smear:.91})`,
       chords: `$: note("<[c4,e4,g4] [a3,c4,e4] [f3,a3,c4] [g3,b3,d4]>")\n  .s("gm_epiano1").gain(0.25).scale("C4:major")\n  .lpf(1800).room(0.5)\n  .slow(2)\n  .scope({color:"${tc.chords}",thickness:1,smear:.93})`,
       pad: `$: note("<[c3,g3,e4] [a2,e3,c4]>")\n  .s("sawtooth").lpf(800).gain(0.08).scale("C4:major")\n  .room(0.9).delay(0.3).delayfeedback(0.5)\n  .slow(4)\n  .fscope()`,
-      vocal: `$: s("gm_choir_aahs").gain(0.3)\n  .room(0.5).lpf(3000)\n  .slow(2)\n  .scope({color:"${tc.vocal}",thickness:1,smear:.93})`,
+      vocal: `$: note("<c4 e4 g4 c5>").s("gm_choir_aahs").gain(0.3)\n  .scale("C4:major")\n  .room(0.5).lpf(3000)\n  .slow(2)\n  .scope({color:"${tc.vocal}",thickness:1,smear:.93})`,
       fx: `$: s("hh*16").gain(0.06)\n  .delay(0.25).delayfeedback(0.5)\n  .room(0.6).lpf(2000).speed(2.5)\n  .scope({color:"${tc.fx}",thickness:1,smear:.95})`,
     }
     const t = templates[template] || templates.drums
@@ -2389,6 +2586,54 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     if (codeToSend !== null) sendToParent(codeToSend)
   }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
+  // ── Transpose pattern for a node (shift note numbers up/down) ──
+  const transposePattern = useCallback((nodeId: string, direction: 1 | -1) => {
+    let codeToSend: string | null = null
+    setNodes(prev => {
+      const node = prev.find(n => n.id === nodeId)
+      if (!node || !node.pattern) return prev
+      const pat = node.pattern
+      // For note-number patterns (e.g. "0 2 4 7"), shift by 1
+      // For named-note patterns (e.g. "<c4 e4 g4>"), shift by semitone
+      let newPat: string
+      if (/\b[a-g][sb]?\d\b/i.test(pat)) {
+        // Named notes: shift octave or semitone
+        const noteNames = ['c', 'cs', 'db', 'd', 'ds', 'eb', 'e', 'f', 'fs', 'gb', 'g', 'gs', 'ab', 'a', 'as', 'bb', 'b']
+        newPat = pat.replace(/\b([a-g])([sb]?)(\d)\b/gi, (_match, n: string, acc: string, oct: string) => {
+          const baseName = (n.toLowerCase() + acc.toLowerCase()).replace('s', 's').replace('b', 'b')
+          let idx = noteNames.indexOf(baseName)
+          if (idx === -1) {
+            // Try simple sharp/flat mapping
+            const sharpMap: Record<string, string> = { cs: 'cs', db: 'cs', ds: 'ds', eb: 'ds', fs: 'fs', gb: 'fs', gs: 'gs', ab: 'gs', as: 'as', bb: 'as' }
+            idx = noteNames.indexOf(sharpMap[baseName] || baseName)
+          }
+          if (idx === -1) return _match
+          let newIdx = idx + direction
+          let newOct = parseInt(oct)
+          if (newIdx >= 17) { newIdx -= 12; newOct++ }
+          if (newIdx < 0) { newIdx += 12; newOct-- }
+          // Map back to simple note name
+          const simple = ['c', 'cs', 'db', 'd', 'ds', 'eb', 'e', 'f', 'fs', 'gb', 'g', 'gs', 'ab', 'a', 'as', 'bb', 'b']
+          return (simple[newIdx] || n + acc) + newOct
+        })
+      } else {
+        // Numeric pattern: shift all numbers
+        newPat = pat.replace(/\b(\d+)\b/g, (_m, num: string) => {
+          const v = parseInt(num) + direction
+          return Math.max(0, v).toString()
+        })
+      }
+      if (newPat === pat) return prev
+      const method = isSampleBased(node.type) ? 'drumPattern' : 'notePattern'
+      const newCode = applyEffect(node.code, method, newPat)
+      if (newCode === node.code) return prev
+      const updated = prev.map(n => n.id === nodeId ? reparseNodeFromCode({ ...n, code: newCode }) : n)
+      codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
+      return updated
+    })
+    if (codeToSend !== null) sendToParent(codeToSend)
+  }, [bpm, sendToParent, rebuildFullCodeFromNodes])
+
   // ── Canvas interactions ──
   const handleMouseDown = useCallback((e: React.MouseEvent, nodeId: string) => {
     e.stopPropagation()
@@ -2447,13 +2692,35 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     return () => el.removeEventListener('wheel', onWheel)
   }, [])
 
-  // ── Connected ids ──
+  // ── Connected ids — all nodes are always "live" (each is an independent $: block) ──
   const connectedIds = useMemo(() => {
     const ids = new Set<string>()
-    connections.forEach(c => { ids.add(c.fromId); ids.add(c.toId) })
-    if (connections.length === 0) nodes.forEach(n => ids.add(n.id))
+    nodes.forEach(n => ids.add(n.id))
     return ids
-  }, [connections, nodes])
+  }, [nodes])
+
+  // ── Auto-clean stale connections (remove refs to deleted nodes) ──
+  useEffect(() => {
+    const nodeIds = new Set(nodes.map(n => n.id))
+    setConnections(prev => {
+      const valid = prev.filter(c => nodeIds.has(c.fromId) && nodeIds.has(c.toId))
+      // Auto-connect any orphan nodes to the nearest preceding node
+      const connected = new Set<string>()
+      valid.forEach(c => { connected.add(c.fromId); connected.add(c.toId) })
+      const newConns = [...valid]
+      nodes.forEach((node, idx) => {
+        if (!connected.has(node.id) && idx > 0) {
+          newConns.push({ fromId: nodes[idx - 1].id, toId: node.id })
+          connected.add(node.id)
+          connected.add(nodes[idx - 1].id)
+        }
+      })
+      if (newConns.length !== prev.length || newConns.some((c, i) => prev[i]?.fromId !== c.fromId || prev[i]?.toId !== c.toId)) {
+        return newConns
+      }
+      return prev
+    })
+  }, [nodes])
 
   // ── Current global scale (detected from majority of nodes) ──
   const globalScale = useMemo(() => {
@@ -2494,7 +2761,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   // ════════════════════════════════════════════════════════════
 
   return (
-    <div className={`flex flex-col h-full select-none ${isFullscreen ? 'fixed inset-0 z-50' : ''}`} style={{ background: HW.bg, overflow: 'visible' }}>
+    <div className={`flex flex-col h-full select-none ${isFullscreen ? (headerless ? 'fixed left-0 right-0 bottom-0 z-50' : 'fixed inset-0 z-50') : ''}`} style={{ background: HW.bg, overflow: 'visible', ...(isFullscreen && headerless ? { top: 36 } : {}) }}>
 
       {/* ══════ TOP BAR (hidden in headerless mode) ══════ */}
       {!headerless && (
@@ -2767,6 +3034,37 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
           <MasterVisualizer analyserNode={analyserNode} isPlaying={isPlaying} />
         </div>
 
+        {/* ══════ GLASS CODE PANEL (fullscreen only) ══════ */}
+        {isFullscreen && headerless && (
+          <div
+            className="absolute z-[15] pointer-events-auto group cursor-pointer"
+            style={{ bottom: 16, right: 16, width: 280, maxHeight: 120 }}
+            onClick={() => setIsFullscreen(false)}
+            title="Click to expand code editor (split view)"
+          >
+            <div className="relative rounded-xl overflow-hidden border border-white/[0.08] shadow-2xl"
+              style={{ backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', background: 'rgba(10,10,12,0.55)' }}>
+              {/* Glass header */}
+              <div className="flex items-center justify-between px-3 py-1.5 border-b border-white/[0.06]">
+                <div className="flex items-center gap-2">
+                  <div className={`w-1.5 h-1.5 rounded-full ${codeGenerating ? 'bg-amber-400 animate-pulse' : 'bg-cyan-400/60 animate-pulse'}`} />
+                  <span className={`text-[9px] font-bold tracking-[0.15em] uppercase ${codeGenerating ? 'text-amber-400/80' : 'text-cyan-400/60'}`}>
+                    {codeGenerating ? 'generating your code…' : 'CODE'}
+                  </span>
+                </div>
+                <span className="text-[8px] text-white/20 group-hover:text-cyan-400/50 transition-colors">click to expand ↗</span>
+              </div>
+              {/* Code preview (blurred) */}
+              <div className="px-3 py-2 max-h-[72px] overflow-hidden relative">
+                <pre className="text-[8px] leading-[1.4] font-mono text-white/25 group-hover:text-white/35 transition-colors whitespace-pre-wrap break-all">
+                  {code.slice(0, 400)}{code.length > 400 ? '…' : ''}
+                </pre>
+                <div className="absolute inset-x-0 bottom-0 h-6" style={{ background: 'linear-gradient(transparent, rgba(10,10,12,0.8))' }} />
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ══════ NODES ══════ */}
         {nodes.map(node => {
           const color = TYPE_COLORS[node.type]
@@ -2865,7 +3163,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                     <>
                       {/* Equalizer */}
                       <div className="px-3 pt-1.5 pb-1" style={{ background: `${HW.bg}80` }}>
-                        <MiniScope color={color} active={isActive} type={node.type} analyserNode={analyserNode}
+                        <MiniScope color={color} active={isActive} type={node.type}
                           hpf={hasMethod(node.code, 'hpf') ? node.hpf : undefined}
                           lpf={hasMethod(node.code, 'lpf') ? node.lpf : undefined} />
                       </div>
@@ -2934,7 +3232,9 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
 
                   {/* SCOPE */}
                   <div className="px-3 pt-2" style={{ background: `${HW.bg}80` }}>
-                    <MiniScope color={color} active={isActive} type={node.type} analyserNode={analyserNode} />
+                    <MiniScope color={color} active={isActive} type={node.type}
+                      hpf={hasMethod(node.code, 'hpf') ? node.hpf : undefined}
+                      lpf={hasMethod(node.code, 'lpf') ? node.lpf : undefined} />
                   </div>
 
                   {/* ══════ SMART GUIDANCE ══════ */}
@@ -3065,7 +3365,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                     </div>
                     {/* Quick-add: common audio effects not yet in code */}
                     <div className="flex flex-wrap gap-[3px] mb-1.5">
-                      {QUICK_ADD_FX.filter(fx => !hasMethod(node.code, fx.method)).slice(0, 8).map(fx => (
+                      {QUICK_ADD_FX.filter(fx => !hasMethod(node.code, fx.method)).slice(0, 12).map(fx => (
                         <button key={fx.id}
                           onClick={e => { e.stopPropagation(); applyNodeEffect(node.id, fx.method, fx.defaultVal) }}
                           title={fx.desc}
@@ -3098,7 +3398,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                           autoFocus
                         />
                         <div className="max-h-[180px] overflow-y-auto p-1">
-                          {(['pattern', 'groove', 'time', 'stereo', 'glitch'] as const).map(cat => {
+                          {(['pattern', 'groove', 'time', 'stereo', 'glitch', 'lfo'] as const).map(cat => {
                             const fxInCat = QUICK_FX.filter(fx => fx.category === cat && (fxSearchQuery === '' || fx.label.toLowerCase().includes(fxSearchQuery.toLowerCase()) || fx.desc.toLowerCase().includes(fxSearchQuery.toLowerCase())))
                             if (fxInCat.length === 0) return null
                             return (
@@ -3162,7 +3462,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                     </div>
                     <HardwareSelect label="SND" value={node.soundSource} options={presets}
                       onChange={v => changeSoundSource(node.id, v)} color={color} />
-                    {node.type === 'drums' || node.type === 'vocal' || node.type === 'fx' ? (
+                    {node.type === 'drums' || node.type === 'fx' ? (
                       <div className="flex items-center gap-1">
                         <div className="flex-1"><HardwareSelect label="PAT" value={node.pattern} options={DRUM_PATTERNS}
                           onChange={v => changePattern(node.id, v)} color={color} /></div>
@@ -3175,6 +3475,14 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                       <div className="flex items-center gap-1">
                         <div className="flex-1"><HardwareSelect label="CHD" value={node.pattern} options={keyChordOptions}
                           onChange={v => changePattern(node.id, v)} color={color} /></div>
+                        <button onClick={e => { e.stopPropagation(); transposePattern(node.id, -1) }}
+                          className="w-5 h-6 flex items-center justify-center rounded text-[9px] cursor-pointer shrink-0 transition-all hover:scale-110"
+                          style={{ background: `${color}10`, border: `1px solid ${color}25`, color }}
+                          title="Transpose down">▼</button>
+                        <button onClick={e => { e.stopPropagation(); transposePattern(node.id, 1) }}
+                          className="w-5 h-6 flex items-center justify-center rounded text-[9px] cursor-pointer shrink-0 transition-all hover:scale-110"
+                          style={{ background: `${color}10`, border: `1px solid ${color}25`, color }}
+                          title="Transpose up">▲</button>
                         <button onClick={e => { e.stopPropagation(); randomizePattern(node.id) }}
                           className="w-6 h-6 flex items-center justify-center rounded text-[11px] cursor-pointer shrink-0 transition-all hover:scale-110"
                           style={{ background: `${color}10`, border: `1px solid ${color}25`, color }}
@@ -3184,6 +3492,14 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                       <div className="flex items-center gap-1">
                         <div className="flex-1"><HardwareSelect label="PAT" value={node.pattern} options={keyBassOptions}
                           onChange={v => changePattern(node.id, v)} color={color} /></div>
+                        <button onClick={e => { e.stopPropagation(); transposePattern(node.id, -1) }}
+                          className="w-5 h-6 flex items-center justify-center rounded text-[9px] cursor-pointer shrink-0 transition-all hover:scale-110"
+                          style={{ background: `${color}10`, border: `1px solid ${color}25`, color }}
+                          title="Transpose down">▼</button>
+                        <button onClick={e => { e.stopPropagation(); transposePattern(node.id, 1) }}
+                          className="w-5 h-6 flex items-center justify-center rounded text-[9px] cursor-pointer shrink-0 transition-all hover:scale-110"
+                          style={{ background: `${color}10`, border: `1px solid ${color}25`, color }}
+                          title="Transpose up">▲</button>
                         <button onClick={e => { e.stopPropagation(); randomizePattern(node.id) }}
                           className="w-6 h-6 flex items-center justify-center rounded text-[11px] cursor-pointer shrink-0 transition-all hover:scale-110"
                           style={{ background: `${color}10`, border: `1px solid ${color}25`, color }}
@@ -3193,6 +3509,14 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                       <div className="flex items-center gap-1">
                         <div className="flex-1"><HardwareSelect label="PAT" value={node.pattern} options={MELODY_PATTERNS}
                           onChange={v => changePattern(node.id, v)} color={color} /></div>
+                        <button onClick={e => { e.stopPropagation(); transposePattern(node.id, -1) }}
+                          className="w-5 h-6 flex items-center justify-center rounded text-[9px] cursor-pointer shrink-0 transition-all hover:scale-110"
+                          style={{ background: `${color}10`, border: `1px solid ${color}25`, color }}
+                          title="Transpose down">▼</button>
+                        <button onClick={e => { e.stopPropagation(); transposePattern(node.id, 1) }}
+                          className="w-5 h-6 flex items-center justify-center rounded text-[9px] cursor-pointer shrink-0 transition-all hover:scale-110"
+                          style={{ background: `${color}10`, border: `1px solid ${color}25`, color }}
+                          title="Transpose up">▲</button>
                         <button onClick={e => { e.stopPropagation(); randomizePattern(node.id) }}
                           className="w-6 h-6 flex items-center justify-center rounded text-[11px] cursor-pointer shrink-0 transition-all hover:scale-110"
                           style={{ background: `${color}10`, border: `1px solid ${color}25`, color }}
@@ -3275,6 +3599,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                 currentPattern={targetNode.pattern}
                 nodeType={prNodeType}
                 nodeColor={prColor}
+                soundSource={targetNode.soundSource || targetNode.sound || ''}
                 onPatternChange={(newPattern) => handlePianoRollPatternChange(targetNode.id, newPattern)}
               />
             </Suspense>

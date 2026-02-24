@@ -8922,7 +8922,7 @@ $: s("bd:3").bank("RolandTR808")
   return (
     <div className="flex flex-col h-full bg-black/30 text-gray-200 font-mono select-none">
       {/* ─── Compact Top Bar ─── */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-white/[0.02] border-b border-white/[0.06] backdrop-blur-2xl shrink-0">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-white/[0.02] border-b border-white/[0.06] backdrop-blur-2xl shrink-0 relative z-[60]">
         <div className="flex items-center gap-2">
           <div className={`w-1.5 h-1.5 rounded-full ${isPlaying ? 'bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.5)]' : status === 'loading' ? 'bg-cyan-300 animate-pulse' : 'bg-white/15'}`} />
           <span className="text-[10px] font-bold tracking-[0.2em] text-white/40 uppercase">INPUT</span>
@@ -9057,18 +9057,40 @@ $: s("bd:3").bank("RolandTR808")
               return (
                 <>
                   <div className="w-px h-4 bg-white/[0.06] mx-0.5" />
-                  {/* BPM display */}
-                  <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md border border-white/[0.06] bg-white/[0.02]">
-                    <span className="text-[8px] font-bold uppercase tracking-wider text-white/20">BPM</span>
+                  {/* BPM display — tap to type, scroll to adjust, ± buttons */}
+                  <div className="flex items-center gap-0 px-1 py-0.5 rounded-md border border-white/[0.06] bg-white/[0.02] select-none">
+                    <span className="text-[8px] font-bold uppercase tracking-wider text-white/20 mr-1">BPM</span>
+                    <button
+                      onClick={e => { e.stopPropagation(); nde.handleBpmChange((nde.bpm || 72) - 1) }}
+                      className="w-4 h-5 flex items-center justify-center text-[10px] text-white/30 hover:text-cyan-400 cursor-pointer transition-colors rounded-l"
+                      title="Decrease BPM">−</button>
                     <input
                       type="number"
                       min={30} max={300}
                       value={nde.bpm || 72}
                       onChange={e => nde.handleBpmChange(parseInt(e.target.value) || 72)}
-                      className="w-8 bg-transparent text-[10px] font-mono text-cyan-400 text-center outline-none"
-                      onClick={e => e.stopPropagation()}
+                      onWheel={e => { e.preventDefault(); nde.handleBpmChange((nde.bpm || 72) + (e.deltaY < 0 ? 1 : -1)) }}
+                      className="w-8 bg-transparent text-[11px] font-mono text-cyan-400 text-center outline-none font-bold tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      onClick={e => { e.stopPropagation(); (e.target as HTMLInputElement).select() }}
                     />
+                    <button
+                      onClick={e => { e.stopPropagation(); nde.handleBpmChange((nde.bpm || 72) + 1) }}
+                      className="w-4 h-5 flex items-center justify-center text-[10px] text-white/30 hover:text-cyan-400 cursor-pointer transition-colors rounded-r"
+                      title="Increase BPM">+</button>
                   </div>
+                  {/* Time signature selector */}
+                  <select
+                    value={nde.timeSig || '4/4'}
+                    onChange={e => { e.stopPropagation(); nde.handleTimeSigChange(e.target.value) }}
+                    onClick={e => e.stopPropagation()}
+                    className="px-1 py-0.5 rounded text-[9px] font-mono font-bold text-purple-400 bg-white/[0.02] border border-white/[0.06] outline-none cursor-pointer appearance-none text-center"
+                    title="Time signature"
+                    style={{ width: 36 }}
+                  >
+                    {['4/4', '3/4', '2/4', '6/8', '5/4', '7/8', '12/8', '9/8'].map(ts => (
+                      <option key={ts} value={ts} className="bg-gray-900 text-white">{ts}</option>
+                    ))}
+                  </select>
                   {/* Node count */}
                   <span className="text-[8px] font-mono text-white/20 px-1">{nde.activeCount}/{nde.nodeCount}</span>
                   {/* Collapse / Expand */}
