@@ -2,189 +2,122 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { supabase } from '@/lib/supabase'
 import { corsResponse, handleOptions } from '@/lib/cors'
+import {
+  fetchMessages, insertMessage, deleteAllMessages, updateMessage,
+  bulkReplace, transformRow,
+  type ChatInsertPayload,
+} from '@/lib/chat'
 
-/**
- * GET /api/chat/messages
- * Get all chat messages for the authenticated user
- */
-export async function GET() {
-  try {
-    const { userId } = await auth()
+// ── Shared helpers ──
+type ApiHandler = (userId: string, request?: NextRequest) => Promise<NextResponse>
 
-    if (!userId) {
-      return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
-    }
-
-    const { data: messages, error } = await supabase
-      .from('chat_messages')
-      .select('*')
-      .eq('clerk_user_id', userId)
-      .order('timestamp', { ascending: true })
-
-    if (error) {
-      console.error('Error fetching chat messages:', error)
-      return corsResponse(NextResponse.json({ error: 'Failed to fetch chat messages' }, { status: 500 }))
-    }
-
-    // Transform the data to match the frontend Message interface
-    const transformedMessages = messages.map(msg => ({
-      id: msg.id,
-      type: msg.message_type,
-      content: msg.content,
-      generationType: msg.generation_type,
-      generationId: msg.generation_id,
-      result: msg.result,
-      timestamp: new Date(msg.timestamp),
-      isGenerating: false // This will be set by the frontend based on generation queue
-    }))
-
-    return corsResponse(NextResponse.json({
-      success: true,
-      messages: transformedMessages
-    }))
-
-  } catch (error) {
-    console.error('Error in chat messages API:', error)
-    return corsResponse(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
-  }
-}
-
-/**
- * POST /api/chat/messages
- * Save a new chat message
- */
-export async function POST(request: NextRequest) {
-  try {
-    const { userId } = await auth()
-
-    if (!userId) {
-      return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
-    }
-
-    const body = await request.json()
-    const { type, content, generationType, generationId, result } = body
-
-    if (!type || !content) {
-      return corsResponse(NextResponse.json({ error: 'Missing required fields: type and content' }, { status: 400 }))
-    }
-
-    const { data, error } = await supabase
-      .from('chat_messages')
-      .insert({
-        clerk_user_id: userId,
-        message_type: type,
-        content,
-        generation_type: generationType,
-        generation_id: generationId,
-        result
-      })
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Error saving chat message:', error)
-      return corsResponse(NextResponse.json({ error: 'Failed to save chat message' }, { status: 500 }))
-    }
-
-    return corsResponse(NextResponse.json({
-      success: true,
-      message: data
-    }))
-
-  } catch (error) {
-    console.error('Error in chat messages API:', error)
-    return corsResponse(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
-  }
-}
-
-/**
- * DELETE /api/chat/messages
- * Clear all chat messages for the user
- */
-export async function DELETE() {
-  try {
-    const { userId } = await auth()
-
-    if (!userId) {
-      return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
-    }
-
-    const { error } = await supabase
-      .from('chat_messages')
-      .delete()
-      .eq('clerk_user_id', userId)
-
-    if (error) {
-      console.error('Error clearing chat messages:', error)
-      return corsResponse(NextResponse.json({ error: 'Failed to clear chat messages' }, { status: 500 }))
-    }
-
-    return corsResponse(NextResponse.json({ success: true }))
-
-  } catch (error) {
-    console.error('Error in chat messages API:', error)
-    return corsResponse(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
-  }
-}
-
-/**
- * PUT /api/chat/messages
- * Bulk sync: replace all chat messages with the provided array
- * Body: { messages: Array<{ type, content, generationType?, generationId?, result?, timestamp? }> }
- */
-export async function PUT(request: NextRequest) {
-  try {
-    const { userId } = await auth()
-    if (!userId) {
-      return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
-    }
-
-    const body = await request.json()
-    const { messages } = body
-
-    if (!Array.isArray(messages)) {
-      return corsResponse(NextResponse.json({ error: 'messages must be an array' }, { status: 400 }))
-    }
-
-    // Delete existing messages
-    const { error: deleteError } = await supabase
-      .from('chat_messages')
-      .delete()
-      .eq('clerk_user_id', userId)
-
-    if (deleteError) {
-      console.error('Error clearing old messages:', deleteError)
-      return corsResponse(NextResponse.json({ error: 'Failed to clear old messages' }, { status: 500 }))
-    }
-
-    // Insert all new messages
-    if (messages.length > 0) {
-      const rows = messages.map((msg: { type: string; content: string; generationType?: string; generationId?: string; result?: Record<string, unknown>; timestamp?: string }) => ({
-        clerk_user_id: userId,
-        message_type: msg.type,
-        content: msg.content,
-        generation_type: msg.generationType || null,
-        generation_id: msg.generationId || null,
-        result: msg.result || null,
-        timestamp: msg.timestamp || new Date().toISOString()
-      }))
-
-      const { error: insertError } = await supabase
-        .from('chat_messages')
-        .insert(rows)
-
-      if (insertError) {
-        console.error('Error inserting messages:', insertError)
-        return corsResponse(NextResponse.json({ error: 'Failed to save messages' }, { status: 500 }))
+/** Wraps auth check + try/catch + CORS for every handler */
+function withAuth(handler: ApiHandler) {
+  return async (request?: NextRequest) => {
+    try {
+      const { userId } = await auth()
+      if (!userId) {
+        return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
       }
+      return corsResponse(await handler(userId, request))
+    } catch (error) {
+      console.error('Chat messages API error:', error)
+      return corsResponse(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
     }
-
-    return corsResponse(NextResponse.json({ success: true, count: messages.length }))
-  } catch (error) {
-    console.error('Error in chat messages PUT:', error)
-    return corsResponse(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
   }
 }
+
+// ── GET /api/chat/messages?limit=200&before=<ISO>&after=<ISO> ──
+export const GET = withAuth(async (userId, request) => {
+  const url = request ? new URL(request.url) : null
+  const limit = Number(url?.searchParams.get('limit')) || 200
+  const before = url?.searchParams.get('before') || null
+  const after = url?.searchParams.get('after') || null
+
+  const { data, error, hasMore } = await fetchMessages(supabase, userId, { limit, before, after })
+  if (error) {
+    console.error('Fetch messages error:', error)
+    return NextResponse.json({ error: 'Failed to fetch chat messages' }, { status: 500 })
+  }
+
+  return NextResponse.json({
+    success: true,
+    messages: (data ?? []).map(transformRow),
+    hasMore,
+  })
+})
+
+// ── POST /api/chat/messages — append a single message ──
+export const POST = withAuth(async (userId, request) => {
+  const body = await request!.json()
+  const { type, content, generationType, generationId, result } = body
+
+  if (!type || !content) {
+    return NextResponse.json({ error: 'Missing required fields: type and content' }, { status: 400 })
+  }
+
+  const { data, error } = await insertMessage(supabase, userId, {
+    type, content,
+    generationType: generationType ?? null,
+    generationId: generationId ?? null,
+    result: result ?? null,
+  })
+
+  if (error) {
+    console.error('Save message error:', error)
+    return NextResponse.json({ error: 'Failed to save chat message' }, { status: 500 })
+  }
+
+  return NextResponse.json({ success: true, message: data ? transformRow(data) : null })
+})
+
+// ── PATCH /api/chat/messages — update a single message by id ──
+export const PATCH = withAuth(async (userId, request) => {
+  const { id: messageId, ...patch } = await request!.json()
+  if (!messageId) {
+    return NextResponse.json({ error: 'Missing message id' }, { status: 400 })
+  }
+
+  const { data, error } = await updateMessage(supabase, userId, messageId, patch)
+  if (error) {
+    console.error('Update message error:', error)
+    return NextResponse.json({ error: 'Failed to update message' }, { status: 500 })
+  }
+
+  return NextResponse.json({ success: true, message: data ? transformRow(data) : null })
+})
+
+// ── DELETE /api/chat/messages — clear all ──
+export const DELETE = withAuth(async (userId) => {
+  const { error } = await deleteAllMessages(supabase, userId)
+  if (error) {
+    console.error('Clear messages error:', error)
+    return NextResponse.json({ error: 'Failed to clear chat messages' }, { status: 500 })
+  }
+
+  return NextResponse.json({ success: true })
+})
+
+// ── PUT /api/chat/messages — bulk sync (plugin compat + legacy) ──
+export const PUT = withAuth(async (userId, request) => {
+  const { messages } = await request!.json()
+
+  if (!Array.isArray(messages)) {
+    return NextResponse.json({ error: 'messages must be an array' }, { status: 400 })
+  }
+
+  const { error, rolledBack } = await bulkReplace(
+    supabase, userId,
+    messages as ChatInsertPayload[]
+  )
+
+  if (error) {
+    const msg = rolledBack ? 'Failed to save messages (rolled back)' : (error as { message?: string }).message || 'Sync failed'
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
+
+  return NextResponse.json({ success: true, count: messages.length })
+})
 
 export function OPTIONS() {
   return handleOptions()

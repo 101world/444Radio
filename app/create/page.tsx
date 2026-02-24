@@ -414,64 +414,120 @@ function CreatePageContent() {
     scrollToBottom()
   }, [messages])
 
-  // Load chat from localStorage on mount, then try server sync
+  // Load chat: server is source of truth, localStorage is offline fallback
   useEffect(() => {
-    try {
-      const savedChat = localStorage.getItem('444radio-chat-messages')
-      if (savedChat) {
-        const parsedMessages = JSON.parse(savedChat)
-        // Convert timestamp strings back to Date objects
-        const messagesWithDates = parsedMessages.map((msg: Message) => ({
-          ...msg,
-          timestamp: new Date(msg.timestamp)
-        }))
-        setMessages(messagesWithDates)
-      }
-    } catch (error) {
-      console.error('Failed to load chat from localStorage:', error)
-    }
-    // Also try loading from server (for plugin<->website sync)
-    fetch('/api/chat/messages').then(r => r.json()).then(data => {
-      if (data.success && data.messages && data.messages.length > 0) {
-        const localCount = JSON.parse(localStorage.getItem('444radio-chat-messages') || '[]').length
-        // Use server data if it has more messages (plugin may have synced)
-        if (data.messages.length > localCount) {
+    let cancelled = false
+
+    // 1. Try server first
+    fetch('/api/chat/messages')
+      .then(r => r.json())
+      .then(data => {
+        if (cancelled) return
+        if (data.success && data.messages && data.messages.length > 0) {
           const serverMessages = data.messages.map((msg: Message) => ({
             ...msg,
             timestamp: new Date(msg.timestamp)
           }))
           setMessages(serverMessages)
+          // Update localStorage cache from server truth
+          try {
+            localStorage.setItem('444radio-chat-messages', JSON.stringify(serverMessages))
+          } catch { /* ignore */ }
+          return
         }
+        // Server has no messages — fall back to localStorage
+        loadFromLocalStorage()
+      })
+      .catch(() => {
+        // Offline — fall back to localStorage
+        if (!cancelled) loadFromLocalStorage()
+      })
+
+    function loadFromLocalStorage() {
+      try {
+        const savedChat = localStorage.getItem('444radio-chat-messages')
+        if (savedChat) {
+          const parsed = JSON.parse(savedChat)
+          const messagesWithDates = parsed.map((msg: Message) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+          }))
+          setMessages(messagesWithDates)
+        }
+      } catch (error) {
+        console.error('Failed to load chat from localStorage:', error)
       }
-    }).catch(() => {/* ignore fetch errors */})
+    }
+
+    return () => { cancelled = true }
   }, [])
 
-  // Save chat to localStorage + debounced server sync whenever messages change
+  // Track messages that have been persisted to the server (by local id)
+  const syncedIdsRef = useRef<Set<string>>(new Set())
+  const prevMessageCountRef = useRef<number>(1) // welcome message
+  const dirtySyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Persist messages: incremental POST for new final messages + localStorage cache
   const chatSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
+    // Always update localStorage cache
     try {
       localStorage.setItem('444radio-chat-messages', JSON.stringify(messages))
     } catch (error) {
       console.error('Failed to save chat to localStorage:', error)
     }
-    // Debounced server sync (3s after last message change)
-    if (chatSyncTimerRef.current) clearTimeout(chatSyncTimerRef.current)
-    chatSyncTimerRef.current = setTimeout(() => {
-      if (messages.length <= 1) return // Don't sync just the welcome message
-      const syncPayload = messages.map(m => ({
-        type: m.type,
-        content: m.content,
-        generationType: m.generationType || null,
-        generationId: m.generationId || null,
-        result: m.result || null,
-        timestamp: m.timestamp instanceof Date ? m.timestamp.toISOString() : m.timestamp
-      }))
+
+    // Skip if only the welcome message
+    if (messages.length <= 1) {
+      prevMessageCountRef.current = messages.length
+      return
+    }
+
+    // Detect new messages (appended since last render)
+    const prevCount = prevMessageCountRef.current
+    const newMessages = messages.slice(prevCount)
+    prevMessageCountRef.current = messages.length
+
+    // POST each new "final" message (user messages + completed assistant messages)
+    // Skip transient generation placeholders (isGenerating=true) — they'll be synced when they complete
+    for (const msg of newMessages) {
+      if (msg.isGenerating) continue
+      if (syncedIdsRef.current.has(msg.id)) continue
+
+      syncedIdsRef.current.add(msg.id)
       fetch('/api/chat/messages', {
-        method: 'PUT',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: syncPayload })
-      }).catch(() => {/* ignore sync errors */})
-    }, 3000)
+        body: JSON.stringify({
+          type: msg.type,
+          content: msg.content,
+          generationType: msg.generationType || null,
+          generationId: msg.generationId || null,
+          result: msg.result || null,
+        })
+      }).catch(() => { syncedIdsRef.current.delete(msg.id) }) // retry on next cycle if failed
+    }
+
+    // Debounced full sync for in-place updates (generation completes, content changes)
+    // Only fire if no new messages were appended (pure mutation)
+    if (newMessages.length === 0 && messages.length > 1) {
+      if (dirtySyncTimerRef.current) clearTimeout(dirtySyncTimerRef.current)
+      dirtySyncTimerRef.current = setTimeout(() => {
+        const syncPayload = messages.map(m => ({
+          type: m.type,
+          content: m.content,
+          generationType: m.generationType || null,
+          generationId: m.generationId || null,
+          result: m.result || null,
+          timestamp: m.timestamp instanceof Date ? m.timestamp.toISOString() : m.timestamp
+        }))
+        fetch('/api/chat/messages', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: syncPayload })
+        }).catch(() => {/* ignore sync errors */})
+      }, 10000) // 10s debounce for mutations (was 3s for everything)
+    }
   }, [messages])
 
   // Centralized clear-chat handler: archive → reset messages → purge completed generations
@@ -492,6 +548,11 @@ function CreatePageContent() {
     } catch (error) {
       console.error('Failed to archive chat:', error)
     }
+    // Clear server-side messages
+    fetch('/api/chat/messages', { method: 'DELETE' }).catch(() => {})
+    // Reset tracked state
+    syncedIdsRef.current = new Set()
+    prevMessageCountRef.current = 1
     // Reset messages to welcome
     setMessages([{
       id: '1',
