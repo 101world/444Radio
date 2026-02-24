@@ -50,7 +50,7 @@ export default async function RootLayout({
   const headersList = await headers()
   const pathname = headersList.get('x-pathname') || ''
   const isPluginPage = pathname === '/plugin' || pathname.startsWith('/plugin/')
-  const isCreatorV2 = pathname === '/creator-v2' || pathname.startsWith('/creator-v2/') || pathname === '/input' || pathname.startsWith('/input/')
+  const isCreatorV2 = pathname === '/creator-v2' || pathname.startsWith('/creator-v2/') || pathname === '/input' || pathname.startsWith('/input/') || pathname === '/voice-labs' || pathname.startsWith('/voice-labs/')
 
   if (isPluginPage) {
     return (
