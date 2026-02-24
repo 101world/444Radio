@@ -143,6 +143,8 @@ interface PianoRollProps {
   currentPattern: string
   nodeType: 'melody' | 'chords' | 'bass' | 'pad' | 'vocal' | 'other'
   nodeColor: string
+  /** Detected bar count from the pattern + .slow() (provided by NodeEditor) */
+  patternBars?: number
   soundSource?: string
   onPatternChange: (newPattern: string) => void
 }
@@ -216,7 +218,7 @@ function presetToNotes(
   return notes
 }
 
-export default function PianoRoll({ isOpen, onClose, scale, currentPattern, nodeType, nodeColor, soundSource, onPatternChange }: PianoRollProps) {
+export default function PianoRoll({ isOpen, onClose, scale, currentPattern, nodeType, nodeColor, patternBars, soundSource, onPatternChange }: PianoRollProps) {
   const [notes, setNotes] = useState<PianoRollNote[]>([])
   const [tool, setTool] = useState<'draw' | 'erase' | 'select'>('draw')
   const [totalSteps, setTotalSteps] = useState(16)
@@ -295,13 +297,14 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
     const parsed = parsePatternToNotes(currentPattern, scale, octaveRange)
     setNotes(parsed)
     setSelectedNotes(new Set())
-    // Auto-size grid to fit all notes
-    if (parsed.length > 0) {
-      const maxEnd = Math.max(...parsed.map(n => n.step + n.duration))
-      const needed = maxEnd <= 16 ? 16 : maxEnd <= 32 ? 32 : maxEnd <= 64 ? 64 : 128
-      setTotalSteps(needed)
-    }
-  }, [isOpen, currentPattern, scale, octaveRange])
+    // Auto-size grid: prefer patternBars (respects .slow()), else measure notes
+    const barsFromProp = patternBars && patternBars > 0 ? patternBars : 0
+    const barsFromNotes = parsed.length > 0 ? Math.ceil(Math.max(...parsed.map(n => n.step + n.duration)) / 16) : 0
+    const targetBars = Math.max(barsFromProp, barsFromNotes, 1)
+    const needed = targetBars * 16
+    const snapped = needed <= 16 ? 16 : needed <= 32 ? 32 : needed <= 64 ? 64 : needed <= 128 ? 128 : 128
+    setTotalSteps(snapped)
+  }, [isOpen, currentPattern, scale, octaveRange, patternBars])
 
   useEffect(() => {
     if (isOpen && scrollRef.current) {

@@ -512,6 +512,46 @@ function randomPatternForType(type: NodeType): string {
   }
 }
 
+/**
+ * Calculate how many bars a pattern occupies.
+ *
+ * Strudel rules:
+ * - `<a b c d>` means 4 cycles (entries). At setcps(bpm/60/4), 1 cycle = 1 bar.
+ *   So count entries in `<...>` to get bars.
+ * - Patterns WITHOUT `<...>` = 1 bar (repeats each cycle).
+ * - `.slow(N)` multiplies the bar count by N.
+ * - `.fast(N)` divides bars by N.
+ *
+ * Returns a human-readable label e.g. "4 bars", "8 bars".
+ */
+function getPatternBarCount(pattern: string, code: string): number {
+  let bars = 1
+  const trimmed = pattern.trim()
+  if (trimmed.startsWith('<') && trimmed.endsWith('>')) {
+    // Count entries inside <...> (space-separated, respecting brackets)
+    const inner = trimmed.slice(1, -1).trim()
+    let depth = 0, count = 0, inEntry = false
+    for (const ch of inner) {
+      if (ch === '[') { depth++; inEntry = true }
+      else if (ch === ']') { depth-- }
+      else if (ch === ' ' && depth === 0) { if (inEntry) count++; inEntry = false }
+      else { inEntry = true }
+    }
+    if (inEntry) count++
+    bars = Math.max(1, count)
+  } else {
+    // Drum or inline patterns: count commas at depth 0 to detect layers, but it's 1 bar
+    bars = 1
+  }
+  // Check for .slow(N) which multiplies cycle length
+  const slowM = code.match(/\.slow\s*\(\s*([0-9.]+)\s*\)/)
+  if (slowM) bars = Math.round(bars * parseFloat(slowM[1]))
+  // Check for .fast(N) which halves cycle length
+  const fastM = code.match(/\.fast\s*\(\s*["']?([0-9.]+)/)
+  if (fastM) bars = Math.max(1, Math.round(bars / parseFloat(fastM[1])))
+  return bars
+}
+
 // ═══════════════════════════════════════════════════════════════
 //  EFFECT BADGE DETECTION — visual tags on nodes
 // ═══════════════════════════════════════════════════════════════
@@ -3270,6 +3310,17 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
             <span className="text-[10px] font-bold tracking-[0.2em] uppercase" style={{ color: HW.textBright }}>NODE RACK</span>
           </div>
           <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ color: HW.textDim, background: HW.raised }}>{nodes.length} CH</span>
+          {/* Loop length indicator — max bars across all active nodes */}
+          {(() => {
+            const maxBars = nodes.filter(n => !n.muted && n.pattern).reduce((max, n) => Math.max(max, getPatternBarCount(n.pattern, n.code)), 1)
+            return (
+              <span className="text-[9px] px-1.5 py-0.5 rounded font-bold tabular-nums" style={{
+                color: maxBars <= 1 ? HW.textDim : '#a78bfa',
+                background: maxBars <= 1 ? HW.raised : 'rgba(167,139,250,0.08)',
+                border: maxBars > 1 ? '1px solid rgba(167,139,250,0.15)' : `1px solid ${HW.border}`,
+              }}>⟳ {maxBars} bar{maxBars !== 1 ? 's' : ''}</span>
+            )
+          })()}
         </div>
 
         {/* Center: BPM + Scale */}
@@ -3687,17 +3738,24 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                           hpf={hasMethod(node.code, 'hpf') ? node.hpf : undefined}
                           lpf={hasMethod(node.code, 'lpf') ? node.lpf : undefined} />
                       </div>
-                      {/* Pattern display */}
-                      {node.pattern && (
+                      {/* Pattern display — with bar count */}
+                      {node.pattern && (() => {
+                        const bars = getPatternBarCount(node.pattern, node.code)
+                        return (
                         <div className="px-2.5 py-1" style={{ borderTop: `1px solid ${HW.border}`, background: `${color}03` }}>
                           <div className="flex items-center gap-1.5">
                             <span className="text-[6px] font-bold uppercase tracking-wider shrink-0" style={{ color: `${color}50` }}>PAT</span>
+                            <span className="px-1 py-px rounded text-[6px] font-bold shrink-0" style={{
+                              color: bars <= 1 ? '#9ca3af' : bars <= 4 ? '#22d3ee' : '#a78bfa',
+                              background: bars <= 1 ? 'rgba(156,163,175,0.08)' : bars <= 4 ? 'rgba(34,211,238,0.08)' : 'rgba(167,139,250,0.08)',
+                            }}>{bars} bar{bars !== 1 ? 's' : ''}</span>
                             <span className="text-[7px] font-mono truncate block" style={{ color: `${color}90` }}>
-                              {node.pattern.length > 50 ? node.pattern.slice(0, 50) + '…' : node.pattern}
+                              {node.pattern.length > 40 ? node.pattern.slice(0, 40) + '…' : node.pattern}
                             </span>
                           </div>
                         </div>
-                      )}
+                        )
+                      })()}
                       {/* Filter knobs: HPF / LPF + VOL */}
                       <div className="flex items-start justify-center gap-1 px-2 py-1" style={{ borderTop: `1px solid ${HW.border}` }}>
                         <RotaryKnob label="VOL" value={node.gain} min={0} max={1} step={0.01} defaultValue={0.5} size={34}
@@ -4111,6 +4169,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
           const prNodeType = (['melody', 'chords', 'bass', 'pad', 'vocal'].includes(targetNode.type)
             ? targetNode.type : 'other') as 'melody' | 'chords' | 'bass' | 'pad' | 'vocal' | 'other'
           const prColor = TYPE_COLORS[targetNode.type] || '#94a3b8'
+          const prBars = getPatternBarCount(targetNode.pattern, targetNode.code)
           return (
             <Suspense fallback={<div className="absolute bottom-0 left-0 right-0 h-[320px] bg-black/90 flex items-center justify-center text-white/40 z-[100]">Loading Piano Roll…</div>}>
               <PianoRoll
@@ -4120,6 +4179,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                 currentPattern={targetNode.pattern}
                 nodeType={prNodeType}
                 nodeColor={prColor}
+                patternBars={prBars}
                 soundSource={targetNode.soundSource || targetNode.sound || ''}
                 onPatternChange={(newPattern) => handlePianoRollPatternChange(targetNode.id, newPattern)}
               />
