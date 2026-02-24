@@ -164,6 +164,18 @@ const QUICK_ADD_FX: { id: string; label: string; method: string; defaultVal: num
   { id: 'octave', label: 'OCT', method: 'octave', defaultVal: 4, desc: 'Octave shift', color: '#c084fc' },
   { id: 'coarse', label: 'COARSE', method: 'coarse', defaultVal: 8, desc: 'Coarse', color: '#f59e0b' },
   { id: 'velocity', label: 'VEL', method: 'velocity', defaultVal: 1, desc: 'Velocity', color: '#94a3b8' },
+  // ── Tremolo (amplitude modulation) ──
+  { id: 'tremolosync', label: 'TREM', method: 'tremolosync', defaultVal: 4, desc: 'Tremolo speed (cycles)', color: '#a78bfa' },
+  { id: 'tremolodepth', label: 'TRMD', method: 'tremolodepth', defaultVal: 0.5, desc: 'Tremolo depth', color: '#a78bfa' },
+  // ── Filter Envelope ──
+  { id: 'lpenv', label: 'LPE', method: 'lpenv', defaultVal: 4, desc: 'LP filter envelope depth', color: '#60a5fa' },
+  { id: 'lpattack', label: 'LPA', method: 'lpattack', defaultVal: 0.1, desc: 'LP envelope attack', color: '#60a5fa' },
+  { id: 'lpdecay', label: 'LPD', method: 'lpdecay', defaultVal: 0.2, desc: 'LP envelope decay', color: '#60a5fa' },
+  // ── Pitch Envelope ──
+  { id: 'penv', label: 'PENV', method: 'penv', defaultVal: 12, desc: 'Pitch envelope (semitones)', color: '#c084fc' },
+  // ── Post Processing ──
+  { id: 'postgain', label: 'POST', method: 'postgain', defaultVal: 1, desc: 'Gain after all effects', color: '#34d399' },
+  { id: 'orbit', label: 'ORBT', method: 'orbit', defaultVal: 1, desc: 'Effect bus (isolates delay/reverb)', color: '#94a3b8' },
 ]
 
 // ═══════════════════════════════════════════════════════════════
@@ -739,6 +751,27 @@ const SIDEBAR_CATEGORIES: { id: string; label: string; icon: string; color: stri
       { id: 'syn_size', label: 'Reverb Size', icon: '🏛️', desc: 'Reverb size .size(0.5)', color: '#22d3ee', dragType: 'effect', payload: '.size(0.5)', method: 'size' },
       { id: 'syn_delayfb', label: 'Delay Feedback', icon: '🔄', desc: 'Feedback amt .delayfeedback(0.4)', color: '#fb923c', dragType: 'effect', payload: '.delayfeedback(0.4)', method: 'delayfeedback' },
       { id: 'syn_delaytime', label: 'Delay Time', icon: '⏱️', desc: 'Delay time .delaytime(0.25)', color: '#fb923c', dragType: 'effect', payload: '.delaytime(0.25)', method: 'delaytime' },
+      // Orbit / bus routing
+      { id: 'syn_orbit', label: 'Orbit', icon: '🔄', desc: 'Effect bus .orbit(2)', color: '#94a3b8', dragType: 'effect', payload: '.orbit(2)', method: 'orbit' },
+      { id: 'syn_postgain', label: 'Postgain', icon: '📢', desc: 'Post-FX gain .postgain(1.5)', color: '#34d399', dragType: 'effect', payload: '.postgain(1.5)', method: 'postgain' },
+    ]
+  },
+  {
+    id: 'tremolo', label: 'Tremolo & Envelopes', icon: '∿', color: '#a78bfa',
+    items: [
+      // Tremolo (amplitude modulation)
+      { id: 'trem_sync', label: 'Tremolo', icon: '∿', desc: 'Amplitude mod .tremolosync(4)', color: '#a78bfa', dragType: 'effect', payload: '.tremolosync(4)', method: 'tremolosync' },
+      { id: 'trem_depth', label: 'Trem Depth', icon: '∿', desc: 'Mod depth .tremolodepth(0.5)', color: '#a78bfa', dragType: 'effect', payload: '.tremolodepth(0.5)', method: 'tremolodepth' },
+      // Filter envelope (lpf modulation)
+      { id: 'fenv_lpenv', label: 'LP Env Depth', icon: '📐', desc: 'Filter envelope .lpenv(4)', color: '#60a5fa', dragType: 'effect', payload: '.lpenv(4)', method: 'lpenv' },
+      { id: 'fenv_lpa', label: 'LP Env Attack', icon: '📐', desc: 'Filter env attack .lpattack(0.1)', color: '#60a5fa', dragType: 'effect', payload: '.lpattack(0.1)', method: 'lpattack' },
+      { id: 'fenv_lpd', label: 'LP Env Decay', icon: '📐', desc: 'Filter env decay .lpdecay(0.2)', color: '#60a5fa', dragType: 'effect', payload: '.lpdecay(0.2)', method: 'lpdecay' },
+      { id: 'fenv_lps', label: 'LP Env Sustain', icon: '📐', desc: 'Filter env sustain .lpsustain(0.5)', color: '#60a5fa', dragType: 'effect', payload: '.lpsustain(0.5)', method: 'lpsustain' },
+      { id: 'fenv_lpr', label: 'LP Env Release', icon: '📐', desc: 'Filter env release .lprelease(0.5)', color: '#60a5fa', dragType: 'effect', payload: '.lprelease(0.5)', method: 'lprelease' },
+      // Pitch envelope
+      { id: 'penv_depth', label: 'Pitch Env', icon: '🎵', desc: 'Pitch envelope .penv(12)', color: '#c084fc', dragType: 'effect', payload: '.penv(12)', method: 'penv' },
+      { id: 'penv_att', label: 'Pitch Att', icon: '🎵', desc: 'Pitch env attack .pattack(0.01)', color: '#c084fc', dragType: 'effect', payload: '.pattack(0.01)', method: 'pattack' },
+      { id: 'penv_dec', label: 'Pitch Dec', icon: '🎵', desc: 'Pitch env decay .pdecay(0.1)', color: '#c084fc', dragType: 'effect', payload: '.pdecay(0.1)', method: 'pdecay' },
     ]
   },
   {
@@ -835,21 +868,42 @@ const SIDEBAR_CATEGORIES: { id: string; label: string; icon: string; color: stri
     items: [
       { id: 'dm_808', label: 'TR-808', icon: '🥁', desc: 'Roland TR-808', color: '#f59e0b', dragType: 'sound', payload: 'RolandTR808' },
       { id: 'dm_909', label: 'TR-909', icon: '🥁', desc: 'Roland TR-909', color: '#f59e0b', dragType: 'sound', payload: 'RolandTR909' },
+      { id: 'dm_cr78', label: 'CR-78', icon: '🥁', desc: 'Roland CR-78', color: '#f59e0b', dragType: 'sound', payload: 'RolandCR78' },
+      { id: 'dm_compurhy', label: 'CompuRhythm', icon: '🥁', desc: 'Roland CR-8000', color: '#f59e0b', dragType: 'sound', payload: 'RolandCompuRhythm8000' },
+      { id: 'dm_linn', label: 'Linn Drum', icon: '🥁', desc: 'Akai LinnDrum', color: '#f59e0b', dragType: 'sound', payload: 'AkaiLinn' },
+      { id: 'dm_minipops', label: 'Korg Minipops', icon: '🥁', desc: 'Korg Minipops', color: '#f59e0b', dragType: 'sound', payload: 'KorgMinipops' },
+      { id: 'dm_dr55', label: 'Boss DR-55', icon: '🥁', desc: 'Boss DR-55', color: '#f59e0b', dragType: 'sound', payload: 'BossDR55' },
+      { id: 'dm_spacedrum', label: 'Space Drum', icon: '🥁', desc: 'Visco Space Drum', color: '#f59e0b', dragType: 'sound', payload: 'ViscoSpaceDrum' },
+      { id: 'dm_xr10', label: 'Akai XR10', icon: '🥁', desc: 'Akai XR10', color: '#f59e0b', dragType: 'sound', payload: 'AkaiXR10' },
+      { id: 'dm_rhythmace', label: 'Rhythm Ace', icon: '🥁', desc: 'Ace Tone Rhythm Ace', color: '#f59e0b', dragType: 'sound', payload: 'RhythmAce' },
     ]
   },
   {
-    id: 'patterns', label: 'Rhythm Patterns', icon: '🎶', color: '#f472b6',
+    id: 'drum_patterns', label: 'Drum Patterns', icon: '🥁', color: '#f59e0b',
     items: [
-      { id: 'pat_basic', label: 'Basic 4/4', icon: '🥁', desc: 'Standard rock', color: '#f472b6', dragType: 'pattern', payload: 'bd [~ bd] ~ ~, ~ cp ~ ~, hh*8' },
-      { id: 'pat_four', label: 'Four-on-floor', icon: '🥁', desc: 'Dance/house', color: '#f472b6', dragType: 'pattern', payload: 'bd*4, ~ cp ~ cp, hh*8' },
-      { id: 'pat_trap', label: 'Trap', icon: '🥁', desc: 'Fast hats', color: '#f472b6', dragType: 'pattern', payload: '[bd ~ ~ ~] ~ [~ bd] ~, ~ [~ cp] ~ ~, hh*16' },
-      { id: 'pat_lofi', label: 'Lofi Shuffle', icon: '🥁', desc: 'Chill groove', color: '#f472b6', dragType: 'pattern', payload: '[bd ~ ~ ~] ~ [~ bd] ~, ~ [~ cp] ~ [~ ~ cp ~], [~ oh] [hh ~ ~ hh] [~ hh] [oh ~ hh ~]' },
-      { id: 'pat_break', label: 'Breakbeat', icon: '🥁', desc: 'Jungle style', color: '#f472b6', dragType: 'pattern', payload: 'bd ~ ~ bd ~ ~ [bd bd] ~, ~ ~ cp ~ ~ cp ~ ~, hh hh [hh oh] hh' },
-      { id: 'pat_jazz', label: 'Jazz Brush', icon: '🥁', desc: 'Swing feel', color: '#f472b6', dragType: 'pattern', payload: '[bd ~ bd ~] [~ bd ~ ~], ~ ~ [rim rim] ~, hh*4' },
-      { id: 'pat_mel_asc', label: 'Ascending', icon: '📈', desc: 'Scale run up', color: '#22d3ee', dragType: 'pattern', payload: '0 1 2 3 4 5 6 7' },
-      { id: 'pat_mel_arp', label: 'Arpeggio', icon: '🎵', desc: 'Chord arpeggio', color: '#22d3ee', dragType: 'pattern', payload: '0 2 4 7 4 2' },
+      { id: 'pat_kicks', label: '4 Kicks', icon: '🥁', desc: 'Simple kick pattern', color: '#f59e0b', dragType: 'pattern', payload: 'bd*4' },
+      { id: 'pat_basic', label: 'Basic 4/4', icon: '🥁', desc: 'Standard rock', color: '#f59e0b', dragType: 'pattern', payload: 'bd [~ bd] ~ ~, ~ cp ~ ~, hh*8' },
+      { id: 'pat_four', label: 'Four-on-floor', icon: '🥁', desc: 'Dance/house', color: '#f59e0b', dragType: 'pattern', payload: 'bd*4, ~ cp ~ cp, hh*8' },
+      { id: 'pat_trap', label: 'Trap', icon: '🥁', desc: 'Fast hats', color: '#f59e0b', dragType: 'pattern', payload: '[bd ~ ~ ~] ~ [~ bd] ~, ~ [~ cp] ~ ~, hh*16' },
+      { id: 'pat_lofi', label: 'Lofi Shuffle', icon: '🥁', desc: 'Chill groove', color: '#f59e0b', dragType: 'pattern', payload: '[bd ~ ~ ~] ~ [~ bd] ~, ~ [~ cp] ~ [~ ~ cp ~], [~ oh] [hh ~ ~ hh] [~ hh] [oh ~ hh ~]' },
+      { id: 'pat_break', label: 'Breakbeat', icon: '🥁', desc: 'Jungle style', color: '#f59e0b', dragType: 'pattern', payload: 'bd ~ ~ bd ~ ~ [bd bd] ~, ~ ~ cp ~ ~ cp ~ ~, hh hh [hh oh] hh' },
+      { id: 'pat_jazz', label: 'Jazz Brush', icon: '🥁', desc: 'Swing feel', color: '#f59e0b', dragType: 'pattern', payload: '[bd ~ bd ~] [~ bd ~ ~], ~ ~ [rim rim] ~, hh*4' },
+      { id: 'pat_minimal', label: 'Minimal', icon: '🥁', desc: 'Stripped back', color: '#f59e0b', dragType: 'pattern', payload: 'bd ~ ~ ~, ~ ~ cp ~, ~ hh ~ hh' },
+      { id: 'pat_halftime', label: 'Half-time', icon: '🥁', desc: 'Slow heavy', color: '#f59e0b', dragType: 'pattern', payload: 'bd ~ ~ ~, ~ ~ ~ cp, hh*4' },
+    ]
+  },
+  {
+    id: 'melody_patterns', label: 'Melody Patterns', icon: '🎵', color: '#22d3ee',
+    items: [
+      { id: 'pat_mel_asc', label: 'Ascending', icon: '📈', desc: 'Scale run up (needs .scale())', color: '#22d3ee', dragType: 'pattern', payload: '0 1 2 3 4 5 6 7' },
+      { id: 'pat_mel_desc', label: 'Descending', icon: '📉', desc: 'Scale run down', color: '#22d3ee', dragType: 'pattern', payload: '7 6 5 4 3 2 1 0' },
+      { id: 'pat_mel_arp', label: 'Arpeggio Up', icon: '🎵', desc: 'Chord arpeggio', color: '#22d3ee', dragType: 'pattern', payload: '0 2 4 7 4 2' },
+      { id: 'pat_mel_arpdown', label: 'Arp Down', icon: '🎵', desc: 'Descending arp', color: '#22d3ee', dragType: 'pattern', payload: '7 4 2 0 2 4' },
+      { id: 'pat_mel_wave', label: 'Wave', icon: '〰️', desc: 'Up and down', color: '#22d3ee', dragType: 'pattern', payload: '0 2 4 6 4 2 0 ~' },
       { id: 'pat_mel_sparse', label: 'Sparse', icon: '·', desc: 'Minimal melody', color: '#22d3ee', dragType: 'pattern', payload: '~ 0 ~ ~ 4 ~ 2 ~' },
-      { id: 'pat_mel_jazzy', label: 'Jazzy', icon: '🎷', desc: 'Jazz intervals', color: '#22d3ee', dragType: 'pattern', payload: '0 4 7 11 9 7 4 2' },
+      { id: 'pat_mel_jazzy', label: 'Jazzy 7ths', icon: '🎷', desc: 'Jazz intervals', color: '#22d3ee', dragType: 'pattern', payload: '0 4 7 11 9 7 4 2' },
+      { id: 'pat_mel_penta', label: 'Pentatonic', icon: '🎵', desc: 'Pentatonic run', color: '#22d3ee', dragType: 'pattern', payload: '0 2 4 7 9 12 9 7' },
+      { id: 'pat_mel_steps', label: 'Steps', icon: '🪜', desc: 'Gentle steps', color: '#22d3ee', dragType: 'pattern', payload: '0 ~ 1 ~ 2 ~ 3 ~' },
     ]
   },
 ]
@@ -899,12 +953,13 @@ function detectType(code: string): NodeType {
   // which would wrongly match drum sound abbreviations.
   // Vocal is melodic — uses note().s("instrument") with scales.
   if (c.includes('vocal') || c.includes('voice') || c.includes('choir') || c.includes('sing') || c.includes('oohs') || c.includes('aahs')) return 'vocal'
-  // Drum detection: explicit drum sounds or drum banks without note()
+  // Drum detection: all standard Strudel drum abbreviations + drum banks
   // Word boundaries (\b) prevent false positives like "choir" matching "ch"
-  if (/\bs\s*\(\s*["'].*?\b(bd|cp|sd|hh|oh|ch|rim|tom|clap|clave|ride|crash)\b/i.test(code)) return 'drums'
+  // Standard: bd sd rim cp hh oh cr rd ht mt lt sh cb tb perc misc fx
+  if (/\bs\s*\(\s*["'].*?\b(bd|cp|sd|hh|oh|rim|cr|rd|ht|mt|lt|sh|cb|tb|perc)\b/i.test(code)) return 'drums'
   if (/\.bank\s*\(/.test(code) && !/note\s*\(/.test(code)) return 'drums'
   // Drum machine banks
-  if (/RolandTR|cr78|KorgMinipops|AkaiLinn|RolandCompuRhythm/i.test(code)) return 'drums'
+  if (/RolandTR|cr78|KorgMinipops|AkaiLinn|RolandCompuRhythm|BossDR|ViscoSpace|AkaiXR|RhythmAce/i.test(code)) return 'drums'
   // Bass detection: low octave notes with bass sounds
   if (/note\s*\(.*?[12]\b/.test(code) && /bass|sub|sine/i.test(code)) return 'bass'
   if (c.includes('bass') || c.includes('sub')) return 'bass'
@@ -2152,7 +2207,11 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
         parts.push(commentLine ? `${commentLine}\n${mutedCode}` : mutedCode)
       } else {
         const cleanCode = node.code.replace(/\/\/ \[muted\] /g, '')
-        const codeWithAnalyze = injectBefore(cleanCode, analyzeTag)
+        // Auto-assign orbit per node to isolate delay/reverb/phaser (Strudel global effects)
+        // Only inject if node doesn't already specify .orbit()
+        const orbitTag = /\.orbit\s*\(/.test(cleanCode) ? '' : `.orbit(${ni + 1})`
+        const codeWithOrbit = orbitTag ? injectBefore(cleanCode, orbitTag) : cleanCode
+        const codeWithAnalyze = injectBefore(codeWithOrbit, analyzeTag)
         parts.push(commentLine ? `${commentLine}\n${codeWithAnalyze}` : codeWithAnalyze)
       }
       parts.push('')
