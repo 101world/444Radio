@@ -164,7 +164,7 @@ const CHORD_PROGRESSIONS: MusicalPreset[] = [
       [1, 3, 5, 0+7],       // ii7
       [4, 6, 1+7, 3+7],     // V7
       [0, 2, 4, 6],          // Imaj7
-      [5, 0+7, 2+7, 4+7],   // vi9
+      [5, 0+7, 2+7, 4+7],   // vi7
     ],
   },
   {
@@ -177,9 +177,9 @@ const CHORD_PROGRESSIONS: MusicalPreset[] = [
     tags: ['neo-soul', 'rnb', 'rich', 'extended', '4-bar'],
     steps: [
       [1, 3, 5, 0+7, 2+7],       // ii9
-      [4, 6, 1+7, 3+7, 5+7],     // V13
+      [4, 6, 1+7, 3+7, 5+7],     // V9
       [0, 2, 4, 6, 1+7],          // Imaj9
-      [5, 0+7, 2+7, 4+7, 6+7],   // vi11
+      [5, 0+7, 2+7, 4+7, 6+7],   // vi9
     ],
   },
   {
