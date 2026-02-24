@@ -417,23 +417,73 @@ function randomMelodyPattern(): string {
 }
 
 function randomChordProgression(): string {
-  const triads = ['[c3,e3,g3]', '[d3,f3,a3]', '[e3,g3,b3]', '[f3,a3,c4]', '[g3,b3,d4]', '[a3,c4,e4]']
-  const sevenths = ['[c3,e3,g3,b3]', '[d3,f3,a3,c4]', '[g2,b2,d3,f3]', '[a2,c3,e3,g3]', '[f2,a2,c3,e3]', '[e3,gs3,b3,d4]']
-  const pool = Math.random() < 0.5 ? triads : sevenths
-  const count = 3 + Math.floor(Math.random() * 3)
-  return `<${Array.from({ length: count }, () => randomPick(pool)).join(' ')}>`
+  // Musically-correct progressions: always 4 or 8 bars (= 4 or 8 chords in <...>)
+  const fourBarTriads = [
+    // I-V-vi-IV (Pop)
+    '<[c3,e3,g3] [g2,b2,d3] [a2,c3,e3] [f2,a2,c3]>',
+    // I-vi-IV-V (50s Doo-wop)
+    '<[c3,e3,g3] [a2,c3,e3] [f2,a2,c3] [g2,b2,d3]>',
+    // I-IV-V-I (Rock)
+    '<[c3,e3,g3] [f2,a2,c3] [g2,b2,d3] [c3,e3,g3]>',
+    // vi-IV-I-V (Axis)
+    '<[a2,c3,e3] [f2,a2,c3] [c3,e3,g3] [g2,b2,d3]>',
+    // i-iv-v-i (Minor)
+    '<[a2,c3,e3] [d3,f3,a3] [e3,g3,b3] [a2,c3,e3]>',
+    // I-IV-vi-V
+    '<[c3,e3,g3] [f2,a2,c3] [a2,c3,e3] [g2,b2,d3]>',
+    // i-VI-III-VII (Sad)
+    '<[a2,c3,e3] [f2,a2,c3] [c3,e3,g3] [g2,b2,d3]>',
+    // IV-V-iii-vi (Royal)
+    '<[f2,a2,c3] [g2,b2,d3] [e3,g3,b3] [a2,c3,e3]>',
+  ]
+  const fourBarSevenths = [
+    // ii7-V7-Imaj7-Imaj7 (Jazz)
+    '<[d3,f3,a3,c4] [g2,b2,d3,f3] [c3,e3,g3,b3] [c3,e3,g3,b3]>',
+    // Imaj7-vi7-ii7-V7 (Smooth)
+    '<[c3,e3,g3,b3] [a2,c3,e3,g3] [d3,f3,a3,c4] [g2,b2,d3,f3]>',
+    // ii9-V7-Imaj7-vi7 (Neo-Soul)
+    '<[d3,f3,a3,c4,e4] [g2,b2,d3,f3] [c3,e3,g3,b3] [a2,c3,e3,g3]>',
+    // IVmaj7-iii7-vi7-ii7 (Lofi)
+    '<[f2,a2,c3,e3] [e3,g3,b3,d4] [a2,c3,e3,g3] [d3,f3,a3,c4]>',
+  ]
+  const eightBar = [
+    // I-V-vi-IV repeated with variation
+    '<[c3,e3,g3] [g2,b2,d3] [a2,c3,e3] [f2,a2,c3] [c3,e3,g3] [f2,a2,c3] [a2,c3,e3] [g2,b2,d3]>',
+    // 7th cycle
+    '<[d3,f3,a3,c4] [g2,b2,d3,f3] [c3,e3,g3,b3] [a2,c3,e3,g3] [f2,a2,c3,e3] [e3,g3,b3,d4] [d3,f3,a3,c4] [g2,b2,d3,f3]>',
+  ]
+  const r = Math.random()
+  if (r < 0.45) return randomPick(fourBarTriads)
+  if (r < 0.8) return randomPick(fourBarSevenths)
+  return randomPick(eightBar)
 }
 
 function randomBassPattern(): string {
-  const roots = ['c2', 'c1', 'd2', 'e1', 'f1', 'f2', 'g1', 'g2', 'a1', 'b1', 'eb2', 'bb1']
-  const len = 4 + Math.floor(Math.random() * 4)
-  const parts: string[] = []
-  for (let i = 0; i < len; i++) {
-    if (Math.random() < 0.25) parts.push('~')
-    else if (Math.random() < 0.15) parts.push(`[${randomPick(roots)} ~]`)
-    else parts.push(randomPick(roots))
-  }
-  return `<${parts.join(' ')}>`
+  // Bass patterns that fit in 1 bar (4 beats). Clean rhythmic patterns.
+  const patterns = [
+    // Root on 1 and 3
+    'c2 ~ c2 ~',
+    'c2 ~ ~ c2',
+    // Walking bass (4 beats)
+    'c2 e2 g2 e2',
+    'c2 d2 e2 g2',
+    'a1 c2 e2 c2',
+    // Syncopated
+    'c2 ~ [~ c2] ~',
+    '[c2 ~] e2 [~ g2] c2',
+    '~ c2 ~ [c2 e2]',
+    // Octave jumps
+    'c2 c1 c2 c1',
+    'c2 ~ c1 ~',
+    // 808-style
+    'c1 ~ ~ ~',
+    'c1 ~ [~ c1] ~',
+    '[c1 ~] ~ c1 [~ c1]',
+    // Driving
+    'c2 c2 c2 c2',
+    'c2 [c2 c2] c2 ~',
+  ]
+  return randomPick(patterns)
 }
 
 function randomVocalPattern(): string {
@@ -853,14 +903,21 @@ const SIDEBAR_CATEGORIES: { id: string; label: string; icon: string; color: stri
   {
     id: 'chords', label: 'Chord Progressions', icon: '🎹', color: '#c084fc',
     items: [
-      { id: 'ch_1564', label: 'I-V-vi-IV (Pop)', icon: '🎹', desc: 'The hit maker', color: '#c084fc', dragType: 'chord', payload: '<[c3,e3,g3] [g2,b2,d3] [a2,c3,e3] [f2,a2,c3]>' },
-      { id: 'ch_251', label: 'ii-V-I (Jazz)', icon: '🎹', desc: 'Jazz standard', color: '#c084fc', dragType: 'chord', payload: '<[d3,f3,a3] [g2,b2,d3] [c3,e3,g3,b3]>' },
-      { id: 'ch_lofi', label: 'Lofi Cycle', icon: '🎹', desc: '8-bar lo-fi', color: '#c084fc', dragType: 'chord', payload: '<[d3,f3,a3,c4] [g2,b2,d3,f3] [c3,e3,g3,b3] [a2,c3,e3,g3] [f3,a3,c4,e4] [e3,g3,b3,d4] [d3,f3,a3,c4] [e3,gs3,b3,d4]>' },
-      { id: 'ch_12bar', label: '12-Bar Blues', icon: '🎹', desc: 'Classic blues', color: '#c084fc', dragType: 'chord', payload: '<[c3,e3,g3] [c3,e3,g3] [c3,e3,g3] [c3,e3,g3] [f2,a2,c3] [f2,a2,c3] [c3,e3,g3] [c3,e3,g3] [g2,b2,d3] [f2,a2,c3] [c3,e3,g3] [g2,b2,d3]>' },
-      { id: 'ch_dreamy', label: 'Dreamy', icon: '🎹', desc: 'Ethereal pads', color: '#c084fc', dragType: 'chord', payload: '<[c3,g3,e4] [a2,e3,c4] [f3,c4,a4] [g3,d4,b4]>' },
-      { id: 'ch_sad', label: 'Minor Sad', icon: '🎹', desc: 'Melancholic', color: '#c084fc', dragType: 'chord', payload: '<[a2,c3,e3] [f2,a2,c3] [d3,f3,a3] [e2,g2,b2]>' },
-      { id: 'ch_ambient', label: 'Ambient Pads', icon: '🎹', desc: 'Floating', color: '#c084fc', dragType: 'chord', payload: '<[d3,a3,f4] [g3,d4,b4] [c3,g3,e4] [a2,e3,c4]>' },
-      { id: 'ch_neo', label: 'Neo Soul', icon: '🎹', desc: 'Rich extensions', color: '#c084fc', dragType: 'chord', payload: '<[d3,f3,a3,c4,e4] [g2,b2,d3,f3,a3] [c3,e3,g3,b3,d4] [a2,c3,e3,g3,b3]>' },
+      // ── 4-bar progressions (4 chords = 1 chord per bar) ──
+      { id: 'ch_1564', label: 'I-V-vi-IV (Pop)', icon: '🎹', desc: '4 bars · The hit maker', color: '#c084fc', dragType: 'chord', payload: '<[c3,e3,g3] [g2,b2,d3] [a2,c3,e3] [f2,a2,c3]>' },
+      { id: 'ch_1645', label: 'I-vi-IV-V (50s)', icon: '🎹', desc: '4 bars · Doo-wop classic', color: '#c084fc', dragType: 'chord', payload: '<[c3,e3,g3] [a2,c3,e3] [f2,a2,c3] [g2,b2,d3]>' },
+      { id: 'ch_1451', label: 'I-IV-V-I (Rock)', icon: '🎹', desc: '4 bars · Rock/country staple', color: '#c084fc', dragType: 'chord', payload: '<[c3,e3,g3] [f2,a2,c3] [g2,b2,d3] [c3,e3,g3]>' },
+      { id: 'ch_sad', label: 'i-VI-III-VII (Sad)', icon: '🎹', desc: '4 bars · Emotional minor', color: '#c084fc', dragType: 'chord', payload: '<[a2,c3,e3] [f2,a2,c3] [c3,e3,g3] [g2,b2,d3]>' },
+      { id: 'ch_minor_14', label: 'i-iv-v-i (Dark)', icon: '🎹', desc: '4 bars · Pure minor', color: '#c084fc', dragType: 'chord', payload: '<[a2,c3,e3] [d3,f3,a3] [e3,g3,b3] [a2,c3,e3]>' },
+      { id: 'ch_dreamy', label: 'Dreamy (Open)', icon: '🎹', desc: '4 bars · Ethereal open voicing', color: '#c084fc', dragType: 'chord', payload: '<[c3,g3,e4] [a2,e3,c4] [f3,c4,a4] [g3,d4,b4]>' },
+      { id: 'ch_251', label: 'ii-V-I-I (Jazz)', icon: '🎹', desc: '4 bars · Jazz resolution', color: '#c084fc', dragType: 'chord', payload: '<[d3,f3,a3,c4] [g2,b2,d3,f3] [c3,e3,g3,b3] [c3,e3,g3,b3]>' },
+      { id: 'ch_neo', label: 'Neo Soul (9ths)', icon: '🎹', desc: '4 bars · Rich extended harmony', color: '#c084fc', dragType: 'chord', payload: '<[d3,f3,a3,c4,e4] [g2,b2,d3,f3,a3] [c3,e3,g3,b3,d4] [a2,c3,e3,g3,b3]>' },
+      { id: 'ch_ambient', label: 'Ambient Float', icon: '🎹', desc: '4 bars · Spacious pads', color: '#c084fc', dragType: 'chord', payload: '<[d3,a3,f4] [g3,d4,b4] [c3,g3,e4] [a2,e3,c4]>' },
+      // ── 8-bar progressions (8 chords = 1 chord per bar) ──
+      { id: 'ch_8bar_pop', label: '8-Bar Pop Verse', icon: '🎹', desc: '8 bars · I-V-vi-IV x2 varied', color: '#c084fc', dragType: 'chord', payload: '<[c3,e3,g3] [g2,b2,d3] [a2,c3,e3] [f2,a2,c3] [c3,e3,g3] [f2,a2,c3] [a2,c3,e3] [g2,b2,d3]>' },
+      { id: 'ch_lofi', label: '8-Bar Lofi', icon: '🎹', desc: '8 bars · Warm 7th chill cycle', color: '#c084fc', dragType: 'chord', payload: '<[d3,f3,a3,c4] [g2,b2,d3,f3] [c3,e3,g3,b3] [a2,c3,e3,g3] [f3,a3,c4,e4] [e3,g3,b3,d4] [d3,f3,a3,c4] [g2,b2,d3,f3]>' },
+      { id: 'ch_12bar', label: '12-Bar Blues', icon: '🎹', desc: '12 bars · I-I-I-I IV-IV-I-I V-IV-I-V', color: '#c084fc', dragType: 'chord', payload: '<[c3,e3,g3] [c3,e3,g3] [c3,e3,g3] [c3,e3,g3] [f2,a2,c3] [f2,a2,c3] [c3,e3,g3] [c3,e3,g3] [g2,b2,d3] [f2,a2,c3] [c3,e3,g3] [g2,b2,d3]>' },
+      { id: 'ch_rnb8', label: '8-Bar R&B', icon: '🎹', desc: '8 bars · Smooth groove', color: '#c084fc', dragType: 'chord', payload: '<[c3,e3,g3,b3] [a2,c3,e3,g3] [f2,a2,c3,e3] [g2,b2,d3,f3] [c3,e3,g3,b3] [d3,f3,a3,c4] [e3,g3,b3,d4] [g2,b2,d3,f3]>' },
     ]
   },
   {

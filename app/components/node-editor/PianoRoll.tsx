@@ -167,7 +167,7 @@ const STEP_OPTIONS = [
   { label: '8 bars', value: 128, desc: '128 steps' },
 ] as const
 
-/** Convert scale-degree presets to MIDI notes */
+/** Convert scale-degree presets to MIDI notes, respecting resolution */
 function presetToNotes(
   preset: MusicalPreset,
   scaleStr: string,
@@ -181,6 +181,10 @@ function presetToNotes(
   const centerOct = Math.floor((octaveRange[0] + octaveRange[1]) / 2)
   const baseOctMidi = (centerOct + 1) * 12 + rootMidi + (preset.octaveOffset ? preset.octaveOffset * 12 : 0)
 
+  // Resolution → how many 16th-note grid cells per preset step
+  const res = preset.resolution ?? 'sixteenth'
+  const resFactor = res === 'bar' ? 16 : res === 'beat' ? 4 : 1
+
   function degreeToMidi(deg: number): number {
     const octShift = Math.floor(deg / 7)
     const degInScale = ((deg % 7) + 7) % 7
@@ -191,14 +195,15 @@ function presetToNotes(
   const notes: PianoRollNote[] = []
   preset.steps.forEach((step, idx) => {
     if (step === null) return
+    const gridPos = idx * resFactor
     if (Array.isArray(step)) {
       for (const deg of step) {
         const midi = degreeToMidi(deg)
-        if (midi >= 0 && midi <= 127) notes.push({ midi, step: idx, duration: 1, velocity: 0.8 })
+        if (midi >= 0 && midi <= 127) notes.push({ midi, step: gridPos, duration: resFactor, velocity: 0.8 })
       }
     } else {
       const midi = degreeToMidi(step)
-      if (midi >= 0 && midi <= 127) notes.push({ midi, step: idx, duration: 1, velocity: 0.8 })
+      if (midi >= 0 && midi <= 127) notes.push({ midi, step: gridPos, duration: resFactor, velocity: 0.8 })
     }
   })
   return notes
@@ -245,10 +250,14 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
     const pNotes = presetToNotes(preset, scale, octaveRange)
     setNotes(pNotes)
     setSelectedNotes(new Set())
-    if (preset.steps.length > totalSteps) {
-      setTotalSteps(preset.steps.length <= 16 ? 16 : preset.steps.length <= 32 ? 32 : preset.steps.length <= 64 ? 64 : 128)
-    }
-  }, [scale, octaveRange, totalSteps])
+    // Calculate actual grid cells needed based on resolution
+    const res = preset.resolution ?? 'sixteenth'
+    const resFactor = res === 'bar' ? 16 : res === 'beat' ? 4 : 1
+    const neededSteps = preset.steps.length * resFactor
+    // Snap to the nearest valid grid length (16/32/64/128)
+    const newTotalSteps = neededSteps <= 16 ? 16 : neededSteps <= 32 ? 32 : neededSteps <= 64 ? 64 : 128
+    setTotalSteps(newTotalSteps)
+  }, [scale, octaveRange])
 
   const scaleNotes = useMemo(() => getScaleNotes(scale, octaveRange), [scale, octaveRange])
   const allMidiNotes = useMemo(() => {
@@ -390,6 +399,70 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
   const generatePattern = useCallback(() => {
     if (notes.length === 0) { onPatternChange('~ ~ ~ ~'); return }
 
+    // ── For chord/pad nodes: produce CLEAN bar-level or beat-level patterns ──
+    // Strudel <...> = one entry per cycle. We want exactly 1/2/4/8 bars
+    // worth of items (not 16/32/64/128 16th-note steps).
+    if (nodeType === 'chords' || nodeType === 'pad') {
+      // Determine beat grouping: 4 steps = 1 beat, 16 steps = 1 bar
+      const STEPS_PER_BEAT = 4
+      const totalBeats = Math.floor(totalSteps / STEPS_PER_BEAT)
+
+      // Collect which notes are active at each beat boundary
+      const beatChords: string[] = []
+      for (let beat = 0; beat < totalBeats; beat++) {
+        const beatStart = beat * STEPS_PER_BEAT
+        // Find all notes that are sounding at this beat start
+        const sounding: number[] = []
+        for (const n of notes) {
+          const noteEnd = n.step + n.duration
+          if (n.step <= beatStart && noteEnd > beatStart) sounding.push(n.midi)
+          else if (n.step === beatStart) sounding.push(n.midi)
+        }
+        // Deduplicate
+        const unique = [...new Set(sounding)].sort((a, b) => a - b)
+        if (unique.length === 0) {
+          beatChords.push('~')
+        } else if (unique.length === 1) {
+          beatChords.push(midiToNoteName(unique[0]))
+        } else {
+          beatChords.push(`[${unique.map(m => midiToNoteName(m)).join(',')}]`)
+        }
+      }
+
+      // Consolidate: merge consecutive identical chords into one entry
+      // per bar (4 beats) when all beats in a bar are the same chord.
+      // This turns 16 beats into 4 bars when chords hold for full bars.
+      const BEATS_PER_BAR = 4
+      const totalBars = Math.floor(totalBeats / BEATS_PER_BAR)
+      const barChords: string[] = []
+      let allBarsIdentical = true
+
+      for (let bar = 0; bar < totalBars; bar++) {
+        const barStart = bar * BEATS_PER_BAR
+        const barBeats = beatChords.slice(barStart, barStart + BEATS_PER_BAR)
+        const allSame = barBeats.every(b => b === barBeats[0])
+        if (allSame) {
+          barChords.push(barBeats[0])
+        } else {
+          allBarsIdentical = false
+        }
+      }
+
+      // Use bar-level output if all bars had uniform chords
+      if (allBarsIdentical && barChords.length > 0) {
+        // Remove trailing rests
+        while (barChords.length > 1 && barChords[barChords.length - 1] === '~') barChords.pop()
+        onPatternChange(`<${barChords.join(' ')}>`)
+      } else {
+        // Fall back to beat-level output but trim trailing rests
+        const trimmed = [...beatChords]
+        while (trimmed.length > 1 && trimmed[trimmed.length - 1] === '~') trimmed.pop()
+        onPatternChange(`<${trimmed.join(' ')}>`)
+      }
+      return
+    }
+
+    // ── For melody/bass/other: 16th-note resolution ──
     const stepMap = new Map<number, { midi: number; dur: number }[]>()
     for (const n of notes) {
       const arr = stepMap.get(n.step) || []
@@ -413,7 +486,7 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
       else parts.push(`[${mns.map(m => midiToNoteName(m.midi)).join(',')}]`)
     }
 
-    onPatternChange(nodeType === 'chords' ? `<${parts.join(' ')}>` : parts.join(' '))
+    onPatternChange(parts.join(' '))
   }, [notes, nodeType, onPatternChange, totalSteps])
 
   const clearAll = useCallback(() => { setNotes([]); setSelectedNotes(new Set()) }, [])

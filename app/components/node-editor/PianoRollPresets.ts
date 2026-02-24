@@ -26,6 +26,13 @@ export interface MusicalPreset {
   steps: PresetStep[]
   /** Octave offset from the node type's default range center */
   octaveOffset?: number
+  /**
+   * Step resolution — how each step index maps to the 16th-note grid:
+   * - 'bar'       : 1 step = 1 bar  = 16 grid cells  (chord progs)
+   * - 'beat'      : 1 step = 1 beat = 4  grid cells  (slow arps)
+   * - 'sixteenth' : 1 step = 1 cell                   (melodies, default)
+   */
+  resolution?: 'bar' | 'beat' | 'sixteenth'
   /** Tags for search */
   tags: string[]
 }
@@ -48,162 +55,264 @@ export const PRESET_CATEGORY_META: Record<PresetCategory, { label: string; icon:
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  CHORD PROGRESSIONS (4-bar and 8-bar)
-//  Each step = 1 beat (quarter note). 16 steps = 4 bars.
+//  CHORD PROGRESSIONS — bar-level resolution
+//  Each step = 1 BAR. 4 steps = 4 bars. 8 steps = 8 bars.
+//  The Piano Roll maps these to the 16th-note grid automatically.
 // ═══════════════════════════════════════════════════════════════
 
 const CHORD_PROGRESSIONS: MusicalPreset[] = [
-  // ── 4-BAR PROGRESSIONS (16 steps at quarter-note resolution) ──
+  // ── 4-BAR PROGRESSIONS (4 steps, resolution: 'bar') ──
   {
     id: 'prog_pop',
-    name: 'Pop (I-V-vi-IV)',
-    desc: 'The hit maker — used in thousands of pop songs',
+    name: 'I-V-vi-IV (Pop)',
+    desc: '4 bars · The hit maker — thousands of pop songs',
     category: 'chord-progression',
     forTypes: ['chords', 'pad'],
+    resolution: 'bar',
     tags: ['pop', 'happy', 'major', '4-bar'],
     steps: [
-      [0, 2, 4], [0, 2, 4], [0, 2, 4], [0, 2, 4],       // I
-      [4, 6, 1+7], [4, 6, 1+7], [4, 6, 1+7], [4, 6, 1+7], // V
-      [5, 0+7, 2+7], [5, 0+7, 2+7], [5, 0+7, 2+7], [5, 0+7, 2+7], // vi
-      [3, 5, 0+7], [3, 5, 0+7], [3, 5, 0+7], [3, 5, 0+7], // IV
+      [0, 2, 4],       // Bar 1: I
+      [4, 6, 1+7],     // Bar 2: V
+      [5, 0+7, 2+7],   // Bar 3: vi
+      [3, 5, 0+7],     // Bar 4: IV
+    ],
+  },
+  {
+    id: 'prog_1645',
+    name: 'I-vi-IV-V (50s)',
+    desc: '4 bars · Doo-wop / oldies classic',
+    category: 'chord-progression',
+    forTypes: ['chords', 'pad'],
+    resolution: 'bar',
+    tags: ['50s', 'doowop', 'oldies', '4-bar'],
+    steps: [
+      [0, 2, 4],       // I
+      [5, 0+7, 2+7],   // vi
+      [3, 5, 0+7],     // IV
+      [4, 6, 1+7],     // V
+    ],
+  },
+  {
+    id: 'prog_1451',
+    name: 'I-IV-V-I (Rock)',
+    desc: '4 bars · Rock & country staple',
+    category: 'chord-progression',
+    forTypes: ['chords', 'pad'],
+    resolution: 'bar',
+    tags: ['rock', 'country', 'classic', '4-bar'],
+    steps: [
+      [0, 2, 4],       // I
+      [3, 5, 0+7],     // IV
+      [4, 6, 1+7],     // V
+      [0, 2, 4],       // I
     ],
   },
   {
     id: 'prog_sad',
-    name: 'Sad Minor (i-VI-III-VII)',
-    desc: 'Emotional minor key — ballads, indie, emo',
+    name: 'i-VI-III-VII (Sad)',
+    desc: '4 bars · Emotional minor — ballads, indie',
     category: 'chord-progression',
     forTypes: ['chords', 'pad'],
+    resolution: 'bar',
     tags: ['sad', 'minor', 'emotional', '4-bar'],
     steps: [
-      [0, 2, 4], [0, 2, 4], [0, 2, 4], [0, 2, 4],           // i
-      [5, 0+7, 2+7], [5, 0+7, 2+7], [5, 0+7, 2+7], [5, 0+7, 2+7], // VI
-      [2, 4, 6], [2, 4, 6], [2, 4, 6], [2, 4, 6],             // III
-      [6, 1+7, 3+7], [6, 1+7, 3+7], [6, 1+7, 3+7], [6, 1+7, 3+7], // VII
+      [0, 2, 4],       // i
+      [5, 0+7, 2+7],   // VI
+      [2, 4, 6],        // III
+      [6, 1+7, 3+7],   // VII
+    ],
+  },
+  {
+    id: 'prog_minor',
+    name: 'i-iv-v-i (Dark Minor)',
+    desc: '4 bars · Pure minor — dark, moody',
+    category: 'chord-progression',
+    forTypes: ['chords', 'pad'],
+    resolution: 'bar',
+    tags: ['minor', 'dark', 'moody', '4-bar'],
+    steps: [
+      [0, 2, 4],       // i
+      [3, 5, 0+7],     // iv
+      [4, 6, 1+7],     // v
+      [0, 2, 4],       // i
     ],
   },
   {
     id: 'prog_jazz_251',
-    name: 'Jazz ii-V-I',
-    desc: 'The most important jazz progression — smooth resolution',
+    name: 'ii7-V7-Imaj7 (Jazz)',
+    desc: '4 bars · The most important jazz progression',
     category: 'chord-progression',
     forTypes: ['chords', 'pad'],
+    resolution: 'bar',
     tags: ['jazz', 'smooth', 'sophisticated', '4-bar'],
     steps: [
-      [1, 3, 5, 0+7], [1, 3, 5, 0+7], [1, 3, 5, 0+7], [1, 3, 5, 0+7], // ii7
-      [4, 6, 1+7, 3+7], [4, 6, 1+7, 3+7], [4, 6, 1+7, 3+7], [4, 6, 1+7, 3+7], // V7
-      [0, 2, 4, 6], [0, 2, 4, 6], [0, 2, 4, 6], [0, 2, 4, 6], // Imaj7
-      [0, 2, 4, 6], [0, 2, 4, 6], [0, 2, 4, 6], [0, 2, 4, 6], // Imaj7 (hold)
+      [1, 3, 5, 0+7],     // Bar 1: ii7
+      [4, 6, 1+7, 3+7],   // Bar 2: V7
+      [0, 2, 4, 6],        // Bar 3: Imaj7
+      [0, 2, 4, 6],        // Bar 4: Imaj7 (hold)
     ],
   },
   {
     id: 'prog_lofi',
-    name: 'Lofi Chill',
-    desc: '7th chords — downtempo beats, study music',
+    name: 'Lofi Chill (7ths)',
+    desc: '4 bars · Warm 7th chords — study beats',
     category: 'chord-progression',
     forTypes: ['chords', 'pad'],
+    resolution: 'bar',
     tags: ['lofi', 'chill', 'jazzy', 'relaxed', '4-bar'],
     steps: [
-      [1, 3, 5, 0+7], [1, 3, 5, 0+7], [1, 3, 5, 0+7], [1, 3, 5, 0+7], // ii7
-      [4, 6, 1+7, 3+7], [4, 6, 1+7, 3+7], [4, 6, 1+7, 3+7], [4, 6, 1+7, 3+7], // V7
-      [0, 2, 4, 6], [0, 2, 4, 6], [0, 2, 4, 6], [0, 2, 4, 6], // Imaj7
-      [5, 0+7, 2+7, 4+7], [5, 0+7, 2+7, 4+7], [5, 0+7, 2+7, 4+7], [5, 0+7, 2+7, 4+7], // vi9
-    ],
-  },
-  {
-    id: 'prog_blues',
-    name: '12-Bar Blues',
-    desc: 'The foundation of rock, blues, and R&B',
-    category: 'chord-progression',
-    forTypes: ['chords', 'pad'],
-    tags: ['blues', 'rock', 'classic', '4-bar'],
-    steps: [
-      // Standard 12-bar shortened to 16 steps (triads only)
-      [0, 2, 4], [0, 2, 4], [0, 2, 4], [0, 2, 4],     // I  I  I  I
-      [3, 5, 0+7], [3, 5, 0+7], [0, 2, 4], [0, 2, 4],   // IV IV I  I
-      [4, 6, 1+7], [3, 5, 0+7], [0, 2, 4], [0, 2, 4],   // V  IV I  I
-      [4, 6, 1+7], [4, 6, 1+7], [0, 2, 4], [4, 6, 1+7], // V  V  I  V(turnaround)
-    ],
-  },
-  {
-    id: 'prog_dreamy',
-    name: 'Dreamy Wash',
-    desc: 'Ethereal — ambient, shoegaze, dream pop',
-    category: 'chord-progression',
-    forTypes: ['chords', 'pad'],
-    tags: ['dreamy', 'ambient', 'ethereal', 'spacey', '4-bar'],
-    steps: [
-      [0, 4, 2+7], [0, 4, 2+7], [0, 4, 2+7], [0, 4, 2+7],   // I(sus-ish open voicing)
-      [5, 2+7, 0+14], [5, 2+7, 0+14], [5, 2+7, 0+14], [5, 2+7, 0+14], // vi(open)
-      [3, 0+7, 5+7], [3, 0+7, 5+7], [3, 0+7, 5+7], [3, 0+7, 5+7], // IV(open)
-      [4, 1+7, 4+7], [4, 1+7, 4+7], [4, 1+7, 4+7], [4, 1+7, 4+7], // V(open)
+      [1, 3, 5, 0+7],       // ii7
+      [4, 6, 1+7, 3+7],     // V7
+      [0, 2, 4, 6],          // Imaj7
+      [5, 0+7, 2+7, 4+7],   // vi9
     ],
   },
   {
     id: 'prog_neosoul',
-    name: 'Neo Soul',
-    desc: 'Rich extended chords — D\'Angelo, Erykah Badu vibes',
+    name: 'Neo Soul (9ths)',
+    desc: '4 bars · Rich extended chords — D\'Angelo vibes',
     category: 'chord-progression',
     forTypes: ['chords', 'pad'],
+    resolution: 'bar',
     tags: ['neo-soul', 'rnb', 'rich', 'extended', '4-bar'],
     steps: [
-      [1, 3, 5, 0+7, 2+7], [1, 3, 5, 0+7, 2+7], [1, 3, 5, 0+7, 2+7], [1, 3, 5, 0+7, 2+7], // ii9
-      [4, 6, 1+7, 3+7, 5+7], [4, 6, 1+7, 3+7, 5+7], [4, 6, 1+7, 3+7, 5+7], [4, 6, 1+7, 3+7, 5+7], // V13
-      [0, 2, 4, 6, 1+7], [0, 2, 4, 6, 1+7], [0, 2, 4, 6, 1+7], [0, 2, 4, 6, 1+7], // Imaj9
-      [5, 0+7, 2+7, 4+7, 6+7], [5, 0+7, 2+7, 4+7, 6+7], [5, 0+7, 2+7, 4+7, 6+7], [5, 0+7, 2+7, 4+7, 6+7], // vi11
+      [1, 3, 5, 0+7, 2+7],       // ii9
+      [4, 6, 1+7, 3+7, 5+7],     // V13
+      [0, 2, 4, 6, 1+7],          // Imaj9
+      [5, 0+7, 2+7, 4+7, 6+7],   // vi11
+    ],
+  },
+  {
+    id: 'prog_dreamy',
+    name: 'Dreamy Wash (Open)',
+    desc: '4 bars · Ethereal — ambient, shoegaze, dream pop',
+    category: 'chord-progression',
+    forTypes: ['chords', 'pad'],
+    resolution: 'bar',
+    tags: ['dreamy', 'ambient', 'ethereal', 'spacey', '4-bar'],
+    steps: [
+      [0, 4, 2+7],     // I (open voicing)
+      [5, 2+7, 0+14],  // vi (open)
+      [3, 0+7, 5+7],   // IV (open)
+      [4, 1+7, 4+7],   // V (open)
     ],
   },
   {
     id: 'prog_edm',
     name: 'EDM Anthem',
-    desc: 'Big room / festival — power chords, simple & wide',
+    desc: '4 bars · Big room festival — power chords',
     category: 'chord-progression',
     forTypes: ['chords', 'pad'],
+    resolution: 'bar',
     tags: ['edm', 'dance', 'festival', 'big', '4-bar'],
     steps: [
-      [0, 4, 0+7], [0, 4, 0+7], [0, 4, 0+7], [0, 4, 0+7],       // I (root + 5th + oct)
-      [5, 2+7, 5+7], [5, 2+7, 5+7], [5, 2+7, 5+7], [5, 2+7, 5+7], // vi
-      [3, 0+7, 3+7], [3, 0+7, 3+7], [3, 0+7, 3+7], [3, 0+7, 3+7], // IV
-      [4, 1+7, 4+7], [4, 1+7, 4+7], [4, 1+7, 4+7], [4, 1+7, 4+7], // V
+      [0, 4, 0+7],     // I (root + 5th + octave)
+      [5, 2+7, 5+7],   // vi
+      [3, 0+7, 3+7],   // IV
+      [4, 1+7, 4+7],   // V
+    ],
+  },
+  {
+    id: 'prog_andalusian',
+    name: 'Andalusian Cadence',
+    desc: '4 bars · Flamenco/Mediterranean — i-VII-VI-V',
+    category: 'chord-progression',
+    forTypes: ['chords', 'pad'],
+    resolution: 'bar',
+    tags: ['flamenco', 'spanish', 'mediterranean', '4-bar'],
+    steps: [
+      [0, 2, 4],       // i
+      [6, 1+7, 3+7],   // VII
+      [5, 0+7, 2+7],   // VI
+      [4, 6, 1+7],     // V
+    ],
+  },
+  {
+    id: 'prog_gospel',
+    name: 'Gospel Shout',
+    desc: '4 bars · IV-V-iii-vi — uplifting, churchy',
+    category: 'chord-progression',
+    forTypes: ['chords', 'pad'],
+    resolution: 'bar',
+    tags: ['gospel', 'church', 'uplifting', '4-bar'],
+    steps: [
+      [3, 5, 0+7],     // IV
+      [4, 6, 1+7],     // V
+      [2, 4, 6],        // iii
+      [5, 0+7, 2+7],   // vi
     ],
   },
 
-  // ── 8-BAR PROGRESSIONS (32 steps) ──
+  // ── 8-BAR PROGRESSIONS (8 steps, resolution: 'bar') ──
   {
     id: 'prog_8bar_pop',
     name: '8-Bar Pop Verse',
-    desc: 'Full verse — I-V-vi-IV twice with variation',
+    desc: '8 bars · I-V-vi-IV twice with variation',
     category: 'chord-progression',
     forTypes: ['chords', 'pad'],
+    resolution: 'bar',
     tags: ['pop', '8-bar', 'verse', 'full'],
     steps: [
-      [0, 2, 4], [0, 2, 4], [0, 2, 4], [0, 2, 4],
-      [4, 6, 1+7], [4, 6, 1+7], [4, 6, 1+7], [4, 6, 1+7],
-      [5, 0+7, 2+7], [5, 0+7, 2+7], [5, 0+7, 2+7], [5, 0+7, 2+7],
-      [3, 5, 0+7], [3, 5, 0+7], [3, 5, 0+7], [3, 5, 0+7],
-      // Bar 5-8: variation
-      [0, 2, 4], [0, 2, 4], [0, 2, 4], [0, 2, 4],
-      [3, 5, 0+7], [3, 5, 0+7], [3, 5, 0+7], [3, 5, 0+7],
-      [5, 0+7, 2+7], [5, 0+7, 2+7], [5, 0+7, 2+7], [5, 0+7, 2+7],
-      [4, 6, 1+7], [4, 6, 1+7], [4, 6, 1+7], [4, 6, 1+7],
+      [0, 2, 4],       // Bar 1: I
+      [4, 6, 1+7],     // Bar 2: V
+      [5, 0+7, 2+7],   // Bar 3: vi
+      [3, 5, 0+7],     // Bar 4: IV
+      [0, 2, 4],       // Bar 5: I
+      [3, 5, 0+7],     // Bar 6: IV (variation)
+      [5, 0+7, 2+7],   // Bar 7: vi
+      [4, 6, 1+7],     // Bar 8: V
     ],
   },
   {
     id: 'prog_8bar_lofi',
     name: '8-Bar Lofi Study',
-    desc: 'Warm 7th chord cycle — perfect for study beats',
+    desc: '8 bars · Warm 7th chord cycle — study beats',
     category: 'chord-progression',
     forTypes: ['chords', 'pad'],
+    resolution: 'bar',
     tags: ['lofi', '8-bar', 'chill', 'study'],
     steps: [
-      [1, 3, 5, 0+7], [1, 3, 5, 0+7], [1, 3, 5, 0+7], [1, 3, 5, 0+7],
-      [4, 6, 1+7, 3+7], [4, 6, 1+7, 3+7], [4, 6, 1+7, 3+7], [4, 6, 1+7, 3+7],
-      [0, 2, 4, 6], [0, 2, 4, 6], [0, 2, 4, 6], [0, 2, 4, 6],
-      [5, 0+7, 2+7, 4+7], [5, 0+7, 2+7, 4+7], [5, 0+7, 2+7, 4+7], [5, 0+7, 2+7, 4+7],
-      [3, 5, 0+7, 2+7], [3, 5, 0+7, 2+7], [3, 5, 0+7, 2+7], [3, 5, 0+7, 2+7],
-      [2, 4, 6, 1+7], [2, 4, 6, 1+7], [2, 4, 6, 1+7], [2, 4, 6, 1+7],
-      [1, 3, 5, 0+7], [1, 3, 5, 0+7], [1, 3, 5, 0+7], [1, 3, 5, 0+7],
-      [2, 4+7-7, 6, 1+7], [2, 4+7-7, 6, 1+7], [2, 4+7-7, 6, 1+7], [2, 4+7-7, 6, 1+7],
+      [1, 3, 5, 0+7],       // Bar 1: ii7
+      [4, 6, 1+7, 3+7],     // Bar 2: V7
+      [0, 2, 4, 6],          // Bar 3: Imaj7
+      [5, 0+7, 2+7, 4+7],   // Bar 4: vi9
+      [3, 5, 0+7, 2+7],     // Bar 5: IVmaj7
+      [2, 4, 6, 1+7],        // Bar 6: iii7
+      [1, 3, 5, 0+7],        // Bar 7: ii7
+      [4, 6, 1+7, 3+7],     // Bar 8: V7
+    ],
+  },
+  {
+    id: 'prog_8bar_rnb',
+    name: '8-Bar R&B',
+    desc: '8 bars · Smooth groove — Usher / SZA vibes',
+    category: 'chord-progression',
+    forTypes: ['chords', 'pad'],
+    resolution: 'bar',
+    tags: ['rnb', '8-bar', 'smooth', 'groove'],
+    steps: [
+      [0, 2, 4, 6],          // Imaj7
+      [5, 0+7, 2+7, 4+7],   // vi9
+      [3, 5, 0+7, 2+7],     // IVmaj7
+      [4, 6, 1+7, 3+7],     // V7
+      [0, 2, 4, 6],          // Imaj7
+      [1, 3, 5, 0+7],        // ii7
+      [2, 4, 6, 1+7],        // iii7
+      [4, 6, 1+7, 3+7],     // V7
+    ],
+  },
+  {
+    id: 'prog_blues12',
+    name: '12-Bar Blues',
+    desc: '12 bars · The foundation of rock, blues, R&B',
+    category: 'chord-progression',
+    forTypes: ['chords', 'pad'],
+    resolution: 'bar',
+    tags: ['blues', 'rock', 'classic', '12-bar'],
+    steps: [
+      [0, 2, 4], [0, 2, 4], [0, 2, 4], [0, 2, 4],     // I I I I
+      [3, 5, 0+7], [3, 5, 0+7], [0, 2, 4], [0, 2, 4],   // IV IV I I
+      [4, 6, 1+7], [3, 5, 0+7], [0, 2, 4], [4, 6, 1+7], // V IV I V(turnaround)
     ],
   },
 ]
@@ -529,46 +638,60 @@ const PADS: MusicalPreset[] = [
   {
     id: 'pad_simple_hold',
     name: 'Simple Triad Hold',
-    desc: 'One sustained chord — fundamental pad',
+    desc: '1 bar · One sustained chord — fundamental pad',
     category: 'pad',
     forTypes: ['pad', 'chords'],
+    resolution: 'bar',
     tags: ['pad', 'simple', 'hold', '1-bar'],
-    steps: [[0, 2, 4], [0, 2, 4], [0, 2, 4], [0, 2, 4], [0, 2, 4], [0, 2, 4], [0, 2, 4], [0, 2, 4],
-            [0, 2, 4], [0, 2, 4], [0, 2, 4], [0, 2, 4], [0, 2, 4], [0, 2, 4], [0, 2, 4], [0, 2, 4]],
+    steps: [[0, 2, 4]],
   },
   {
     id: 'pad_7th_hold',
     name: 'Maj7 Pad',
-    desc: 'Rich seventh chord — warm and full',
+    desc: '1 bar · Rich seventh chord — warm and full',
     category: 'pad',
     forTypes: ['pad', 'chords'],
+    resolution: 'bar',
     tags: ['pad', '7th', 'warm', '1-bar'],
-    steps: [[0, 2, 4, 6], [0, 2, 4, 6], [0, 2, 4, 6], [0, 2, 4, 6], [0, 2, 4, 6], [0, 2, 4, 6], [0, 2, 4, 6], [0, 2, 4, 6],
-            [0, 2, 4, 6], [0, 2, 4, 6], [0, 2, 4, 6], [0, 2, 4, 6], [0, 2, 4, 6], [0, 2, 4, 6], [0, 2, 4, 6], [0, 2, 4, 6]],
+    steps: [[0, 2, 4, 6]],
   },
   {
     id: 'pad_swell_2bar',
     name: 'Chord Swell (2-bar)',
-    desc: 'Two chords — slow alternation like breathing',
+    desc: '2 bars · Two chords — slow alternation like breathing',
     category: 'pad',
     forTypes: ['pad', 'chords'],
+    resolution: 'bar',
     tags: ['pad', 'swell', '2-bar', 'breathing'],
     steps: [
-      [0, 2, 4], [0, 2, 4], [0, 2, 4], [0, 2, 4], [0, 2, 4], [0, 2, 4], [0, 2, 4], [0, 2, 4],
-      [0, 2, 4], [0, 2, 4], [0, 2, 4], [0, 2, 4], [0, 2, 4], [0, 2, 4], [0, 2, 4], [0, 2, 4],
-      [3, 5, 0+7], [3, 5, 0+7], [3, 5, 0+7], [3, 5, 0+7], [3, 5, 0+7], [3, 5, 0+7], [3, 5, 0+7], [3, 5, 0+7],
-      [3, 5, 0+7], [3, 5, 0+7], [3, 5, 0+7], [3, 5, 0+7], [3, 5, 0+7], [3, 5, 0+7], [3, 5, 0+7], [3, 5, 0+7],
+      [0, 2, 4],       // Bar 1: I
+      [3, 5, 0+7],     // Bar 2: IV
     ],
   },
   {
     id: 'pad_open_voicing',
     name: 'Open Voicing Pad',
-    desc: 'Spread across octaves — cinematic feel',
+    desc: '1 bar · Spread across octaves — cinematic feel',
     category: 'pad',
     forTypes: ['pad', 'chords'],
+    resolution: 'bar',
     tags: ['pad', 'open', 'cinematic', '1-bar'],
-    steps: [[0, 4, 2+7], [0, 4, 2+7], [0, 4, 2+7], [0, 4, 2+7], [0, 4, 2+7], [0, 4, 2+7], [0, 4, 2+7], [0, 4, 2+7],
-            [0, 4, 2+7], [0, 4, 2+7], [0, 4, 2+7], [0, 4, 2+7], [0, 4, 2+7], [0, 4, 2+7], [0, 4, 2+7], [0, 4, 2+7]],
+    steps: [[0, 4, 2+7]],
+  },
+  {
+    id: 'pad_4bar_drift',
+    name: '4-Bar Pad Drift',
+    desc: '4 bars · Slow chord movement — ambient mood',
+    category: 'pad',
+    forTypes: ['pad', 'chords'],
+    resolution: 'bar',
+    tags: ['pad', 'ambient', 'drift', '4-bar'],
+    steps: [
+      [0, 4, 2+7],     // I (open)
+      [5, 2+7, 0+14],  // vi (open)
+      [3, 0+7, 5+7],   // IV (open)
+      [4, 1+7, 4+7],   // V (open)
+    ],
   },
 ]
 
