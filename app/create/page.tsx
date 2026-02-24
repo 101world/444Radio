@@ -3090,13 +3090,13 @@ function CreatePageContent() {
                   )}
                 </button>
 
-                {/* Remix — upload beat + prompt with MusicGen */}
+                {/* Remix — upload beat + prompt with 444 Radio */}
                 <button
                   onClick={() => setShowResoundModal(true)}
-                  className="flex-shrink-0 w-8 h-8 rounded-lg transition-all duration-300 flex items-center justify-center hover:bg-white/[0.06] border border-transparent hover:border-white/10"
+                  className="flex-shrink-0 w-8 h-8 rounded-lg transition-all duration-300 flex items-center justify-center hover:bg-cyan-500/20 border border-cyan-500/20 hover:border-cyan-400/40 bg-cyan-500/10"
                   title="Remix — Upload a beat & generate with 444 Radio"
                 >
-                  <Music2 size={16} className="text-white/50" />
+                  <Music2 size={16} className="text-cyan-400" />
                 </button>
 
                 {/* Instrumental Toggle */}
