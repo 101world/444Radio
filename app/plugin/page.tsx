@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback, Suspense } from 'react'
+import { useState, useRef, useEffect, useCallback, Suspense, lazy } from 'react'
 import {
   Music, Image as ImageIcon, Send, Loader2, Download, Play, Pause,
   Sparkles, Zap, X, Rocket, PlusCircle, Globe, Mic, MicOff,
   Edit3, Dices, Upload, RotateCcw, Repeat, Plus, Square, FileText,
   Layers, Film, Scissors, Volume2, ChevronLeft, ChevronDown, ChevronUp, Lightbulb, Settings,
   RotateCw, Save, RefreshCw, AlertCircle, Compass, ExternalLink, Home,
-  BookOpen, ArrowDownToLine, Pin, PinOff
+  BookOpen, ArrowDownToLine, Pin, PinOff, Code
 } from 'lucide-react'
 import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLanguage } from '@/lib/language-hooks'
 import PluginAudioPlayer from '@/app/components/PluginAudioPlayer'
@@ -16,6 +16,9 @@ import PluginPostGenModal from '@/app/components/PluginPostGenModal'
 import SplitStemsModal from '@/app/components/SplitStemsModal'
 import VisualizerModal from '@/app/components/VisualizerModal'
 import type { StemType, StemAdvancedParams } from '@/app/components/SplitStemsModal'
+const LipSyncModal = lazy(() => import('@/app/components/LipSyncModal'))
+const ResoundModal = lazy(() => import('@/app/components/ResoundModal'))
+const InputEditor = lazy(() => import('@/app/components/InputEditor'))
 
 // ─── Types (mirrored from create page) ──────────────────────────
 type MessageType = 'user' | 'assistant' | 'generation'
@@ -172,10 +175,13 @@ const GENRE_OPTIONS = [
 
 // ─── Features list (same as FeaturesSidebar) ───────────────────
 const FEATURES = [
+  { key: 'input', icon: Code, label: 'Input', desc: 'Pattern live editor', color: 'cyan', cost: 0 },
   { key: 'music', icon: Music, label: 'Music', desc: 'Generate AI music', color: 'cyan', cost: 2 },
   { key: 'effects', icon: Sparkles, label: 'Effects', desc: 'Sound effects', color: 'purple', cost: 2 },
   { key: 'loops', icon: Repeat, label: 'Loops', desc: 'Fixed BPM loops', color: 'cyan', cost: 6 },
   { key: 'image', icon: ImageIcon, label: 'Cover Art', desc: 'AI album artwork', color: 'cyan', cost: 1 },
+  { key: 'remix', icon: RotateCw, label: 'Remix', desc: 'Beat upload + AI remix', color: 'purple', cost: 2 },
+  { key: 'lipsync', icon: Mic, label: 'Lip-Sync', desc: 'Image+Audio→video', color: 'cyan', cost: -1 },
   { key: 'video-to-audio', icon: Film, label: 'Video to Audio', desc: 'Synced SFX from video', color: 'cyan', cost: 4 },
   { key: 'stems', icon: Scissors, label: 'Split Stems', desc: 'Vocals, drums, bass & more', color: 'purple', cost: 0 },
   { key: 'audio-boost', icon: Volume2, label: 'Audio Boost', desc: 'Mix & master your track', color: 'orange', cost: 1 },
@@ -303,6 +309,9 @@ function PluginPageInner() {
   // ── Upload Media Modal (mirrors MediaUploadModal from create page) ──
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [showVisualizerModal, setShowVisualizerModal] = useState(false)
+  const [showLipSyncModal, setShowLipSyncModal] = useState(false)
+  const [showResoundModal, setShowResoundModal] = useState(false)
+  const [showInputEditor, setShowInputEditor] = useState(false)
   const [uploadMode, setUploadMode] = useState<'video-to-audio' | 'stem-split' | 'audio-boost' | 'extract-video' | 'extract-audio' | 'autotune' | null>(null)
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [uploadFilePreview, setUploadFilePreview] = useState<string | null>(null)
@@ -1845,6 +1854,93 @@ function PluginPageInner() {
     openUploadModal(modeMap[featureType] || null)
   }
 
+  // ═══ REMIX (Resound) — Beat upload + prompt via MusicGen ═══
+  const generateResound = async (
+    params: {
+      title: string; prompt: string; inputAudioUrl: string; duration: number;
+      continuation: boolean; continuation_start: number; continuation_end: number | null;
+      model_version: string; output_format: string; normalization_strategy: string;
+      top_k: number; top_p: number; temperature: number;
+      classifier_free_guidance: number; multi_band_diffusion: boolean; seed: number | null;
+    },
+    signal?: AbortSignal,
+    messageId?: string
+  ) => {
+    const res = await fetch('/api/generate/resound', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: params.title, prompt: params.prompt, input_audio: params.inputAudioUrl,
+        duration: params.duration, continuation: params.continuation,
+        continuation_start: params.continuation_start, continuation_end: params.continuation_end,
+        model_version: params.model_version, output_format: params.output_format,
+        normalization_strategy: params.normalization_strategy, top_k: params.top_k,
+        top_p: params.top_p, temperature: params.temperature,
+        classifier_free_guidance: params.classifier_free_guidance,
+        multi_band_diffusion: params.multi_band_diffusion, seed: params.seed,
+      }),
+      signal,
+    })
+    const reader = res.body?.getReader()
+    if (!reader) return { error: 'No response stream' }
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let resultData: Record<string, unknown> | null = null
+    try {
+      while (true) {
+        if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n'); buffer = lines.pop() || ''
+        for (const line of lines) {
+          if (!line.trim()) continue
+          try { const p = JSON.parse(line); if (p.type === 'result') resultData = p } catch { /* skip */ }
+        }
+      }
+      if (buffer.trim()) { try { const p = JSON.parse(buffer); if (p.type === 'result') resultData = p } catch { /* skip */ } }
+    } finally { reader.releaseLock() }
+    if (!resultData) return { error: 'No result received' }
+    if (resultData.success) return { audioUrl: resultData.audioUrl as string, title: (resultData.title as string) || params.title, prompt: params.prompt, creditsRemaining: resultData.creditsRemaining as number }
+    return { error: (resultData.error as string) || 'Remix failed' }
+  }
+
+  const handleResoundGenerate = async (resoundParams: {
+    title: string; prompt: string; inputAudioUrl: string; duration: number;
+    continuation: boolean; continuation_start: number; continuation_end: number | null;
+    model_version: string; output_format: string; normalization_strategy: string;
+    top_k: number; top_p: number; temperature: number;
+    classifier_free_guidance: number; multi_band_diffusion: boolean; seed: number | null;
+  }) => {
+    setShowResoundModal(false)
+    const genMsgId = (Date.now() + 1).toString()
+    setMessages(prev => [...prev,
+      { id: Date.now().toString(), type: 'user' as MessageType, content: `🔁 Remix: "${resoundParams.title}" — ${resoundParams.prompt.substring(0, 80)}`, timestamp: new Date() },
+      { id: genMsgId, type: 'generation' as MessageType, content: '🔁 Remixing your beat…', generationType: 'music', isGenerating: true, timestamp: new Date() },
+    ])
+    setActiveGenerations(prev => new Set(prev).add(genMsgId))
+    try {
+      const result = await generateResound(resoundParams)
+      if ('error' in result && result.error) throw new Error(result.error as string)
+      setMessages(prev => prev.map(m => m.id === genMsgId ? {
+        ...m, isGenerating: false, content: '✅ Remix complete!',
+        result: { audioUrl: result.audioUrl, title: result.title, prompt: result.prompt },
+      } : m))
+      if (typeof result.creditsRemaining === 'number') setUserCredits(result.creditsRemaining)
+      // Save to local library
+      try {
+        const lib = JSON.parse(localStorage.getItem(LIBRARY_KEY) || '[]')
+        lib.unshift({ id: Date.now(), type: 'music', title: result.title, audioUrl: result.audioUrl, prompt: result.prompt, createdAt: new Date().toISOString() })
+        localStorage.setItem(LIBRARY_KEY, JSON.stringify(lib.slice(0, 200)))
+      } catch {}
+    } catch (e) {
+      setMessages(prev => prev.map(m => m.id === genMsgId ? { ...m, isGenerating: false, content: `❌ Remix failed: ${e instanceof Error ? e.message : 'Unknown error'}` } : m))
+    } finally {
+      setActiveGenerations(prev => { const s = new Set(prev); s.delete(genMsgId); return s })
+      refreshCredits()
+    }
+  }
+
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file && fileUploadType) {
@@ -2413,7 +2509,7 @@ function PluginPageInner() {
                   return true
                 }).map(f => {
                   const Icon = f.icon
-                  const isActive = f.key === selectedType || (f.key === 'lyrics' && !!(customTitle || genre || customLyrics || bpm))
+                  const isActive = f.key === selectedType || (f.key === 'lyrics' && !!(customTitle || genre || customLyrics || bpm)) || (f.key === 'input' && showInputEditor) || (f.key === 'lipsync' && showLipSyncModal) || (f.key === 'remix' && showResoundModal)
                   const colorMap: Record<string, { active: React.CSSProperties; inactive: React.CSSProperties }> = {
                     cyan: {
                       active: {background:'linear-gradient(135deg, rgba(6,182,212,0.18), rgba(20,184,166,0.12))',border:'1px solid rgba(200,200,220,0.45)',color:'rgba(220,240,245,1)',boxShadow:'0 0 24px rgba(6,182,212,0.2), inset 0 1px 0 rgba(6,182,212,0.25)'},
@@ -2441,6 +2537,15 @@ function PluginPageInner() {
                         handleOpenRelease()
                       } else if (f.key === 'visualizer') {
                         setShowVisualizerModal(true)
+                        setShowFeaturesSidebar(false)
+                      } else if (f.key === 'lipsync') {
+                        setShowLipSyncModal(true)
+                        setShowFeaturesSidebar(false)
+                      } else if (f.key === 'remix') {
+                        setShowResoundModal(true)
+                        setShowFeaturesSidebar(false)
+                      } else if (f.key === 'input') {
+                        setShowInputEditor(true)
                         setShowFeaturesSidebar(false)
                       } else {
                         setSelectedType(f.key as GenerationType)
@@ -3989,6 +4094,62 @@ function PluginPageInner() {
           refreshCredits()
         }}
       />
+
+      {/* ── Lip-Sync Modal — Image+Audio→Video ── */}
+      <Suspense fallback={null}>
+        <LipSyncModal
+          isOpen={showLipSyncModal}
+          onClose={() => setShowLipSyncModal(false)}
+          userCredits={userCredits || 0}
+          onGenerationStart={(prompt: string, generationId: string) => {
+            const userMsgId = Date.now().toString()
+            const genMsgId = (Date.now() + 1).toString()
+            setMessages(prev => [...prev,
+              { id: userMsgId, type: 'user' as MessageType, content: `🎤 Generate lip-sync video: ${prompt}`, timestamp: new Date() },
+              { id: genMsgId, type: 'generation' as MessageType, content: '🎤 Generating lip-sync video...', generationType: 'video', generationId, isGenerating: true, timestamp: new Date() },
+            ])
+          }}
+          onSuccess={(videoUrl: string, prompt: string, mediaId: string | null) => {
+            setMessages(prev => {
+              const filtered = prev.filter(m => !m.isGenerating || m.generationType !== 'video')
+              return [...filtered, {
+                id: Date.now().toString(), type: 'generation' as MessageType,
+                content: '✅ Lip-sync video generated!', generationType: 'video' as const,
+                result: { url: videoUrl, title: prompt || 'Lip-Sync Video' },
+                timestamp: new Date(),
+              }]
+            })
+            refreshCredits()
+          }}
+        />
+      </Suspense>
+
+      {/* ── Remix (Resound) Modal — Beat Upload + AI Remix ── */}
+      <Suspense fallback={null}>
+        <ResoundModal
+          isOpen={showResoundModal}
+          onClose={() => setShowResoundModal(false)}
+          userCredits={userCredits || 0}
+          onGenerate={handleResoundGenerate}
+        />
+      </Suspense>
+
+      {/* ── Input Editor (Pattern Live Editor) — fullscreen overlay ── */}
+      {showInputEditor && (
+        <div className="fixed inset-0 z-[60] bg-[#080810] flex flex-col">
+          <div className="flex items-center justify-between px-4 py-2 border-b border-white/[0.06]">
+            <span className="text-xs font-bold uppercase tracking-widest" style={{color:'rgba(6,182,212,0.7)'}}>Input — Pattern Editor</span>
+            <button onClick={() => setShowInputEditor(false)} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
+              <X size={16} className="text-gray-400" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader2 size={24} className="animate-spin text-cyan-400" /></div>}>
+              <InputEditor />
+            </Suspense>
+          </div>
+        </div>
+      )}
 
       {/* ── Global Styles (no style jsx — regular style tag) ── */}
       <style dangerouslySetInnerHTML={{ __html: `
