@@ -118,9 +118,17 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
-  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="white" d="M5.5 3.21V20.8c0 .45.54.67.85.35l4.86-4.86a.5.5 0 01.35-.15h6.87a.5.5 0 00.35-.85L6.35 2.85a.5.5 0 00-.85.35z"/></svg>') 4 4, auto;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Custom cursors — only for mouse/trackpad devices, not touch */
+@media (pointer: fine) {
+  body {
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="white" d="M5.5 3.21V20.8c0 .45.54.67.85.35l4.86-4.86a.5.5 0 01.35-.15h6.87a.5.5 0 00.35-.85L6.35 2.85a.5.5 0 00-.85.35z"/></svg>') 4 4, auto;
+  }
 }
 
 /* Studio viewport constraints - prevent infinite scrolling */
@@ -177,7 +185,47 @@ img {
   
   body {
     overscroll-behavior: none;
-    touch-action: pan-y;
+    touch-action: manipulation;
+  }
+}
+
+/* Touch device optimizations — covers iPad, phones, and all touch screens */
+@media (pointer: coarse) {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  
+  body {
+    touch-action: manipulation;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Disable custom cursors on touch devices */
+  body, * {
+    cursor: auto !important;
+  }
+  
+  /* Ensure minimum 16px font on inputs to prevent iOS auto-zoom */
+  input, textarea, select {
+    font-size: max(16px, 1em) !important;
+    touch-action: manipulation;
+  }
+  
+  /* Better touch targets */
+  button, a, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+    touch-action: manipulation;
+  }
+  
+  /* Smooth scrolling in scroll containers */
+  [style*="overflow"], .overflow-y-auto, .overflow-x-auto, .overflow-auto {
+    -webkit-overflow-scrolling: touch;
   }
 }
 
@@ -201,12 +249,15 @@ img {
   }
 }
 
-* {
-  cursor: inherit;
-}
+/* Cursor inheritance — mouse/trackpad only */
+@media (pointer: fine) {
+  * {
+    cursor: inherit;
+  }
 
-input, textarea, button, a {
-  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="white" d="M8 6.5v11c0 .28.22.5.5.5h7a.5.5 0 00.5-.5v-11a.5.5 0 00-.5-.5h-7a.5.5 0 00-.5.5z"/></svg>') 12 12, pointer;
+  input, textarea, button, a {
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="white" d="M8 6.5v11c0 .28.22.5.5.5h7a.5.5 0 00.5-.5v-11a.5.5 0 00-.5-.5h-7a.5.5 0 00-.5.5z"/></svg>') 12 12, pointer;
+  }
 }
 
 /* White blinking caret/cursor in input fields */

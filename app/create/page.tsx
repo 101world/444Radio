@@ -2974,7 +2974,7 @@ function CreatePageContent() {
             }} />
 
             {/* Glass Container */}
-            <div className="relative bg-black/30 backdrop-blur-2xl rounded-2xl border border-white/[0.08] focus-within:border-cyan-400/25 focus-within:shadow-[0_0_30px_rgba(34,211,238,0.08)] transition-all duration-500 shadow-2xl shadow-black/40">
+            <div className="relative bg-black/30 backdrop-blur-2xl rounded-2xl border border-white/[0.08] focus-within:border-cyan-400/25 focus-within:shadow-[0_0_30px_rgba(34,211,238,0.08)] transition-all duration-500 shadow-2xl shadow-black/40" style={{ touchAction: 'manipulation' }}>
 
               {/* ── Row 1: Textarea ── */}
               <div className="flex items-end gap-2 sm:gap-3 px-3 sm:px-4 md:px-5 pt-3 sm:pt-4 pb-2">
@@ -3015,8 +3015,8 @@ function CreatePageContent() {
                     }
                     disabled={selectedType === 'video'}
                     rows={1}
-                    className="w-full bg-transparent text-[15px] sm:text-base md:text-lg text-white placeholder-white/30 tracking-wide focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed resize-none overflow-hidden leading-relaxed"
-                    style={{ minHeight: '2.5rem', maxHeight: '6rem', WebkitAppearance: 'none' }}
+                    className="w-full bg-transparent text-base md:text-lg text-white placeholder-white/30 tracking-wide focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed resize-none overflow-hidden leading-relaxed"
+                    style={{ minHeight: '2.5rem', maxHeight: '6rem', WebkitAppearance: 'none', touchAction: 'manipulation' }}
                   />
                 </div>
 
