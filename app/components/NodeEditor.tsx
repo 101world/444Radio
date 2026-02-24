@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense, forwardRef, useImperativeHandle } from 'react'
 import ReactDOM from 'react-dom'
-import { Volume2, VolumeX, GripHorizontal, Plus, Trash2, Copy, ChevronDown, Maximize2, Minimize2, ChevronLeft, ChevronRight, Piano, LayoutList, Columns, Upload } from 'lucide-react'
+import { Volume2, VolumeX, GripHorizontal, Plus, Trash2, Copy, ChevronDown, Maximize2, Minimize2, ChevronLeft, ChevronRight, Piano, LayoutList, Columns, Upload, SlidersHorizontal } from 'lucide-react'
 import { useKeyChords, buildDiatonicChords } from './node-editor/KeyChords'
 
 const PianoRoll = lazy(() => import('./node-editor/PianoRoll'))
@@ -686,14 +686,37 @@ const SIDEBAR_CATEGORIES: { id: string; label: string; icon: string; color: stri
     ]
   },
   {
-    id: 'layering', label: 'Layer & Pitch', icon: '⊕', color: '#c084fc',
+    id: 'layering', label: 'Arpeggiator & Layers', icon: '🎵', color: '#c084fc',
     items: [
-      { id: 'mod_arp', label: 'Arp (Up)', icon: '🎵', desc: 'Arpeggiate up: cycles through chord notes ascending', color: '#22d3ee', dragType: 'effect', payload: '.arp("0 1 2 3")' },
-      { id: 'mod_arp_down', label: 'Arp (Down)', icon: '🎵', desc: 'Arpeggiate down: cycles through chord notes descending', color: '#22d3ee', dragType: 'effect', payload: '.arp("3 2 1 0")' },
-      { id: 'mod_arp_updown', label: 'Arp (Up-Down)', icon: '🎵', desc: 'Arpeggiate up then down', color: '#22d3ee', dragType: 'effect', payload: '.arp("0 1 2 3 2 1")' },
-      { id: 'mod_arp_random', label: 'Arp (Random)', icon: '🎲', desc: 'Random arpeggiation of chord notes', color: '#22d3ee', dragType: 'effect', payload: '.arp(rand.range(0,3).segment(8))' },
-      { id: 'mod_arp_fast', label: 'Arp (Fast)', icon: '⚡', desc: 'Fast 16th-note arpeggio', color: '#22d3ee', dragType: 'effect', payload: '.arp("0 1 2 3").fast(4)' },
-      { id: 'mod_arp_slow', label: 'Arp (Slow)', icon: '🐢', desc: 'Slow half-note arpeggio', color: '#22d3ee', dragType: 'effect', payload: '.arp("0 1 2").slow(2)' },
+      // ── Tempo-synced Arpeggiator ──
+      // In Strudel: 1 cycle = 1 bar. A 4-note arp pattern at .fast(1) = quarter notes (1/4).
+      // .fast(2) = eighth notes (1/8), .fast(3) = eighth triplets (1/8T),
+      // .fast(4) = sixteenth notes (1/16), .fast(6) = sixteenth triplets (1/16T), .fast(8) = thirty-second notes (1/32).
+      // Direction: up "0 1 2 3", down "3 2 1 0", updown "0 1 2 3 2 1", random = rand.range(0,3).segment(N)
+
+      // ── Up direction at all divisions ──
+      { id: 'arp_up_4', label: 'Arp Up 1/4', icon: '↑', desc: 'Up quarter notes — 1 note per beat', color: '#22d3ee', dragType: 'effect', payload: '.arp("0 1 2 3")' },
+      { id: 'arp_up_8', label: 'Arp Up 1/8', icon: '↑', desc: 'Up eighth notes — 2 notes per beat', color: '#22d3ee', dragType: 'effect', payload: '.arp("0 1 2 3").fast(2)' },
+      { id: 'arp_up_8t', label: 'Arp Up 1/8T', icon: '↑', desc: 'Up eighth triplets — 3 notes per beat', color: '#22d3ee', dragType: 'effect', payload: '.arp("0 1 2 3").fast(3)' },
+      { id: 'arp_up_16', label: 'Arp Up 1/16', icon: '↑', desc: 'Up sixteenth notes — 4 notes per beat', color: '#22d3ee', dragType: 'effect', payload: '.arp("0 1 2 3").fast(4)' },
+      { id: 'arp_up_16t', label: 'Arp Up 1/16T', icon: '↑', desc: 'Up sixteenth triplets — 6 notes per beat', color: '#22d3ee', dragType: 'effect', payload: '.arp("0 1 2 3").fast(6)' },
+      { id: 'arp_up_32', label: 'Arp Up 1/32', icon: '↑', desc: 'Up thirty-second notes — 8 per beat', color: '#22d3ee', dragType: 'effect', payload: '.arp("0 1 2 3").fast(8)' },
+
+      // ── Down direction at all divisions ──
+      { id: 'arp_dn_4', label: 'Arp Down 1/4', icon: '↓', desc: 'Down quarter notes', color: '#60a5fa', dragType: 'effect', payload: '.arp("3 2 1 0")' },
+      { id: 'arp_dn_8', label: 'Arp Down 1/8', icon: '↓', desc: 'Down eighth notes', color: '#60a5fa', dragType: 'effect', payload: '.arp("3 2 1 0").fast(2)' },
+      { id: 'arp_dn_16', label: 'Arp Down 1/16', icon: '↓', desc: 'Down sixteenth notes', color: '#60a5fa', dragType: 'effect', payload: '.arp("3 2 1 0").fast(4)' },
+      { id: 'arp_dn_16t', label: 'Arp Down 1/16T', icon: '↓', desc: 'Down sixteenth triplets', color: '#60a5fa', dragType: 'effect', payload: '.arp("3 2 1 0").fast(6)' },
+
+      // ── Up-Down (bounce) at key divisions ──
+      { id: 'arp_ud_4', label: 'Arp UpDn 1/4', icon: '↕', desc: 'Up-down quarter notes', color: '#a78bfa', dragType: 'effect', payload: '.arp("0 1 2 3 2 1")' },
+      { id: 'arp_ud_8', label: 'Arp UpDn 1/8', icon: '↕', desc: 'Up-down eighth notes', color: '#a78bfa', dragType: 'effect', payload: '.arp("0 1 2 3 2 1").fast(2)' },
+      { id: 'arp_ud_16', label: 'Arp UpDn 1/16', icon: '↕', desc: 'Up-down sixteenth notes', color: '#a78bfa', dragType: 'effect', payload: '.arp("0 1 2 3 2 1").fast(4)' },
+
+      // ── Random arp at key divisions ──
+      { id: 'arp_rnd_8', label: 'Arp Rand 1/8', icon: '🎲', desc: 'Random eighth notes', color: '#f472b6', dragType: 'effect', payload: '.arp(rand.range(0,3).segment(8))' },
+      { id: 'arp_rnd_16', label: 'Arp Rand 1/16', icon: '🎲', desc: 'Random sixteenth notes', color: '#f472b6', dragType: 'effect', payload: '.arp(rand.range(0,3).segment(16))' },
+      { id: 'arp_rnd_16t', label: 'Arp Rand 1/16T', icon: '🎲', desc: 'Random sixteenth triplets', color: '#f472b6', dragType: 'effect', payload: '.arp(rand.range(0,3).segment(24))' },
       { id: 'mod_off', label: 'Off (Canon)', icon: '⟩', desc: 'Offset copy +5th', color: '#c084fc', dragType: 'effect', payload: '.off(1/8, x => x.add(7))' },
       { id: 'mod_super', label: 'Superimpose', icon: '⊕', desc: 'Layer + octave transform', color: '#c084fc', dragType: 'effect', payload: '.superimpose(x => x.add(12).slow(2))' },
       { id: 'mod_jux', label: 'Jux (Stereo)', icon: '◐', desc: 'Function on R channel', color: '#22d3ee', dragType: 'effect', payload: '.jux(rev)' },
@@ -907,6 +930,14 @@ const SIDEBAR_CATEGORIES: { id: string; label: string; icon: string; color: stri
     ]
   },
 ]
+
+// Split sidebar into Sounds panel (left) vs FX panel (right)
+const FX_CATEGORY_IDS = new Set([
+  'effects', 'modifiers', 'layering', 'random', 'synth', 'sample_ctrl',
+  'tremolo', 'euclidean', 'envelope', 'lfo',
+])
+const SIDEBAR_SOUNDS = SIDEBAR_CATEGORIES.filter(c => !FX_CATEGORY_IDS.has(c.id))
+const SIDEBAR_FX = SIDEBAR_CATEGORIES.filter(c => FX_CATEGORY_IDS.has(c.id))
 
 // ═══════════════════════════════════════════════════════════════
 //  SVG MATH
@@ -2061,6 +2092,9 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   const [dropTarget, setDropTarget] = useState<string | null>(null)
   const [allCollapsed, setAllCollapsed] = useState(false)
   const [timelineOpen, setTimelineOpen] = useState(false)
+  const [fxPanelOpen, setFxPanelOpen] = useState(false)
+  const [fxPanelSearch, setFxPanelSearch] = useState('')
+  const [fxPanelCategory, setFxPanelCategory] = useState<string | null>(null)
   const [pianoRollOpen, setPianoRollOpen] = useState<{ nodeId: string } | null>(null)
   const [soundUploaderOpen, setSoundUploaderOpen] = useState(false)
   const [currentCycle, setCurrentCycle] = useState(0)
@@ -3130,6 +3164,17 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
             title="Upload custom samples">
             <Upload size={10} /> SAMPLES
           </button>
+          {/* FX Panel toggle */}
+          <button onClick={() => setFxPanelOpen(p => !p)}
+            className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[9px] font-bold tracking-wider transition-all cursor-pointer"
+            style={{
+              background: fxPanelOpen ? 'rgba(167,139,250,0.08)' : HW.raised,
+              border: `1px solid ${fxPanelOpen ? 'rgba(167,139,250,0.2)' : HW.border}`,
+              color: fxPanelOpen ? '#a78bfa' : HW.textDim,
+            }}
+            title="Toggle effects panel">
+            <SlidersHorizontal size={10} /> FX
+          </button>
           {/* Timeline toggle */}
           <button onClick={() => setTimelineOpen(p => !p)}
             className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[9px] font-bold tracking-wider transition-all cursor-pointer"
@@ -3189,16 +3234,21 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
       {/* ══════ MAIN AREA: SIDEBAR + CANVAS ══════ */}
       <div className="flex-1 flex min-h-0">
 
-      {/* ══════ SIDEBAR ══════ */}
+      {/* ══════ SIDEBAR (Sounds & Patterns) ══════ */}
       {sidebarOpen && (
         <div className="flex flex-col shrink-0 border-r overflow-hidden" style={{
           width: 220, background: HW.surface, borderColor: HW.border,
         }}>
+          {/* Header */}
+          <div className="px-3 py-1.5 shrink-0 flex items-center gap-1.5" style={{ borderBottom: `1px solid ${HW.border}` }}>
+            <span className="text-[10px]">🎸</span>
+            <span className="text-[9px] font-bold tracking-[0.15em] uppercase" style={{ color: HW.textBright }}>SOUNDS</span>
+          </div>
           {/* Search */}
           <div className="px-2 py-2 shrink-0" style={{ borderBottom: `1px solid ${HW.border}` }}>
             <input
               type="text" value={sidebarSearch} onChange={e => setSidebarSearch(e.target.value)}
-              placeholder="Search effects, sounds..."
+              placeholder="Search sounds, patterns..."
               className="w-full px-2 py-1 rounded text-[10px] outline-none"
               style={{ background: HW.raised, border: `1px solid ${HW.border}`, color: HW.textBright }}
               onClick={e => e.stopPropagation()}
@@ -3206,7 +3256,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
           </div>
           {/* Categories */}
           <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: `${HW.raisedLight} transparent` }}>
-            {SIDEBAR_CATEGORIES.map(cat => {
+            {SIDEBAR_SOUNDS.map(cat => {
               const q = sidebarSearch.toLowerCase()
               const filteredItems = q
                 ? cat.items.filter(item => item.label.toLowerCase().includes(q) || item.desc.toLowerCase().includes(q))
@@ -3921,6 +3971,101 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
           )
         })()}
       </div>
+
+      {/* ══════ FX PANEL (right side) ══════ */}
+      {fxPanelOpen && (
+        <div className="flex flex-col shrink-0 border-l overflow-hidden" style={{
+          width: 240, background: HW.surface, borderColor: HW.border,
+        }}>
+          {/* Header */}
+          <div className="px-3 py-1.5 shrink-0 flex items-center gap-1.5" style={{ borderBottom: `1px solid ${HW.border}` }}>
+            <SlidersHorizontal size={11} style={{ color: '#a78bfa' }} />
+            <span className="text-[9px] font-bold tracking-[0.15em] uppercase" style={{ color: HW.textBright }}>EFFECTS</span>
+            <span className="text-[8px] ml-auto" style={{ color: HW.textDim }}>{SIDEBAR_FX.reduce((n, c) => n + c.items.length, 0)}</span>
+          </div>
+          {/* Search */}
+          <div className="px-2 py-2 shrink-0" style={{ borderBottom: `1px solid ${HW.border}` }}>
+            <input
+              type="text" value={fxPanelSearch} onChange={e => setFxPanelSearch(e.target.value)}
+              placeholder="Search effects, filters..."
+              className="w-full px-2 py-1 rounded text-[10px] outline-none"
+              style={{ background: HW.raised, border: `1px solid ${HW.border}`, color: HW.textBright }}
+              onClick={e => e.stopPropagation()}
+            />
+          </div>
+          {/* FX Categories */}
+          <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: `${HW.raisedLight} transparent` }}>
+            {SIDEBAR_FX.map(cat => {
+              const q = fxPanelSearch.toLowerCase()
+              const filteredItems = q
+                ? cat.items.filter(item => item.label.toLowerCase().includes(q) || item.desc.toLowerCase().includes(q))
+                : cat.items
+              if (q && filteredItems.length === 0) return null
+              const isOpen = fxPanelCategory === cat.id || !!q
+              return (
+                <div key={cat.id}>
+                  <button
+                    onClick={() => setFxPanelCategory(p => p === cat.id ? null : cat.id)}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-[10px] font-bold tracking-wider uppercase cursor-pointer transition-colors"
+                    style={{ color: isOpen ? cat.color : HW.textDim, background: isOpen ? `${cat.color}08` : 'transparent' }}
+                    onMouseEnter={e => { if (!isOpen) e.currentTarget.style.background = `${cat.color}05` }}
+                    onMouseLeave={e => { if (!isOpen) e.currentTarget.style.background = 'transparent' }}
+                  >
+                    <span className="text-[11px]">{cat.icon}</span>
+                    <span className="flex-1 text-left">{cat.label}</span>
+                    <span className="text-[8px]" style={{ color: HW.textDim }}>{cat.items.length}</span>
+                    <ChevronDown size={10} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} style={{ color: HW.textDim }} />
+                  </button>
+                  {isOpen && (
+                    <div className="px-1.5 pb-1">
+                      {filteredItems.map(item => (
+                        <div key={item.id}
+                          draggable
+                          onDragStart={e => {
+                            e.dataTransfer.setData('application/x-sidebar-item', JSON.stringify(item))
+                            e.dataTransfer.effectAllowed = 'copy'
+                          }}
+                          onClick={() => {
+                            if (selectedNode) {
+                              applySidebarItemToNode(selectedNode, item)
+                            } else {
+                              setSidebarHint('⚠ Select a node first — click any node on canvas')
+                              setTimeout(() => setSidebarHint(''), 2500)
+                            }
+                          }}
+                          className={`flex items-center gap-2 px-2 py-1 rounded text-[9px] transition-colors group ${
+                            selectedNode ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'
+                          }`}
+                          style={{ color: HW.text }}
+                          onMouseEnter={e => { e.currentTarget.style.background = `${item.color}10`; e.currentTarget.style.color = item.color }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = HW.text }}
+                          title={selectedNode ? `Click to apply to selected node: ${item.desc}` : `Drag onto a node: ${item.desc}`}
+                        >
+                          <span className="text-[10px] shrink-0 w-4 text-center">{item.icon}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium truncate">{item.label}</div>
+                            <div className="text-[7px] truncate" style={{ color: HW.textDim }}>{item.desc}</div>
+                          </div>
+                          <span className="text-[7px] opacity-0 group-hover:opacity-60 shrink-0">
+                            {selectedNode ? 'click✓' : 'drag→'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          {/* FX panel footer */}
+          <div className="px-3 py-1.5 shrink-0 text-[7px]" style={{ color: HW.textDim, borderTop: `1px solid ${HW.border}` }}>
+            {selectedNode
+              ? <span style={{ color: '#a78bfa' }}>● Node selected — click FX to apply</span>
+              : 'Select a node or drag FX onto canvas'
+            }
+          </div>
+        </div>
+      )}
 
       {/* Close sidebar+canvas flex container */}
       </div>
