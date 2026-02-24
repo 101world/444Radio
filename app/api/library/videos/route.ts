@@ -15,11 +15,7 @@ export async function GET() {
         user_id,
         likes,
         plays,
-        created_at,
-        users!inner (
-          username,
-          avatar_url
-        )
+        created_at
       `)
       .not('video_url', 'is', null)
       .eq('is_public', true)
@@ -31,9 +27,24 @@ export async function GET() {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 })
     }
 
+    // Collect unique user IDs and fetch usernames in one query
+    const userIds = [...new Set((videos || []).map((v: Record<string, unknown>) => v.user_id as string))]
+    const userMap: Record<string, { username: string; avatar_url: string | null }> = {}
+
+    if (userIds.length > 0) {
+      const { data: users } = await supabase
+        .from('users')
+        .select('clerk_user_id, username, avatar_url')
+        .in('clerk_user_id', userIds)
+
+      for (const u of users || []) {
+        userMap[u.clerk_user_id] = { username: u.username || 'Unknown', avatar_url: u.avatar_url || null }
+      }
+    }
+
     // Transform the data to match expected format
     const transformedVideos = (videos || []).map((video: Record<string, unknown>) => {
-      const users = video.users as { username?: string; avatar_url?: string } | undefined
+      const user = userMap[video.user_id as string]
       return {
         id: video.id,
         title: video.title,
@@ -41,8 +52,8 @@ export async function GET() {
         image_url: video.image_url,
         video_url: video.video_url,
         user_id: video.user_id,
-        username: users?.username || 'Unknown',
-        avatar_url: users?.avatar_url || null,
+        username: user?.username || 'Unknown',
+        avatar_url: user?.avatar_url || null,
         likes: video.likes || 0,
         plays: video.plays || 0,
         created_at: video.created_at,
