@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense, forwardRef, useImperativeHandle } from 'react'
 import ReactDOM from 'react-dom'
 import { Volume2, VolumeX, GripHorizontal, Plus, Trash2, Copy, ChevronDown, Maximize2, Minimize2, ChevronLeft, ChevronRight, Piano, LayoutList, Columns, Upload } from 'lucide-react'
 import { useKeyChords, buildDiatonicChords } from './node-editor/KeyChords'
@@ -651,8 +651,8 @@ function detectSound(code: string): string {
 
 // Numeric parameter detector — matches both static values AND dynamic expressions
 function detectNum(code: string, method: string, fallback: number): number {
-  // Match .method( followed by a number (may be preceded by slider(, etc.)
-  const re = new RegExp(`\\.${method}\\s*\\(\\s*(?:slider\\s*\\(\\s*)?([0-9.]+)`)
+  // Match .method( followed by a number (may be preceded by slider(, etc.), supports negative numbers
+  const re = new RegExp(`\\.${method}\\s*\\(\\s*(?:slider\\s*\\(\\s*)?(-?[0-9.]+)`)
   const m = code.match(re)
   return m ? parseFloat(m[1]) : fallback
 }
@@ -1268,10 +1268,18 @@ function HardwareSelect({ label, value, options, onChange, color }: {
 //  MINI SCOPE
 // ═══════════════════════════════════════════════════════════════
 
-function MiniScope({ color, active, type }: { color: string; active: boolean; type: NodeType }) {
+/**
+ * Real-time waveform visualizer — uses Web Audio AnalyserNode when available,
+ * falls back to type-specific animated waveform when no analyser is connected.
+ * Click the waveform to cycle through display modes: waveform → frequency bars → off.
+ */
+function MiniScope({ color, active, type, analyserNode }: { color: string; active: boolean; type: NodeType; analyserNode?: AnalyserNode | null }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rafRef = useRef(0)
   const phaseRef = useRef(Math.random() * Math.PI * 2)
+  // 0 = waveform, 1 = frequency bars, 2 = type-specific (fallback)
+  const [displayMode, setDisplayMode] = useState(0)
+  const bufRef = useRef<Uint8Array<ArrayBuffer> | null>(null)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -1279,42 +1287,99 @@ function MiniScope({ color, active, type }: { color: string; active: boolean; ty
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     const W = canvas.width, H = canvas.height
+
+    // Allocate typed arrays once
+    if (analyserNode && !bufRef.current) {
+      bufRef.current = new Uint8Array(analyserNode.fftSize || 256) as Uint8Array<ArrayBuffer>
+    }
+
     const draw = () => {
       ctx.clearRect(0, 0, W, H)
+
+      // ── Inactive: dim flat line ──
       if (!active) {
-        ctx.beginPath(); ctx.strokeStyle = `${color}10`; ctx.lineWidth = 1
+        ctx.beginPath(); ctx.strokeStyle = `${color}15`; ctx.lineWidth = 1
+        ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2)
+        ctx.stroke()
+        return
+      }
+
+      // ── Real analyser data available ──
+      if (analyserNode && bufRef.current && displayMode < 2) {
+        if (displayMode === 0) {
+          // WAVEFORM MODE — time-domain data
+          analyserNode.getByteTimeDomainData(bufRef.current)
+          const buf = bufRef.current
+          const sliceW = W / buf.length
+
+          // Glow
+          ctx.shadowColor = color; ctx.shadowBlur = 6
+          ctx.beginPath(); ctx.strokeStyle = `${color}90`; ctx.lineWidth = 1.5
+          for (let i = 0; i < buf.length; i++) {
+            const v = buf[i] / 128.0
+            const y = (v * H) / 2
+            i === 0 ? ctx.moveTo(0, y) : ctx.lineTo(i * sliceW, y)
+          }
+          ctx.stroke(); ctx.shadowBlur = 0
+
+          // Fill under the waveform
+          ctx.lineTo(W, H / 2); ctx.lineTo(0, H / 2); ctx.closePath()
+          ctx.fillStyle = `${color}08`; ctx.fill()
+        } else {
+          // FREQUENCY BARS MODE
+          const freqBuf = bufRef.current
+          analyserNode.getByteFrequencyData(freqBuf)
+          const barCount = Math.min(32, freqBuf.length)
+          const barW = W / barCount
+
+          for (let i = 0; i < barCount; i++) {
+            const val = freqBuf[i] / 255
+            const barH = val * H * 0.9
+            const alpha = 0.3 + val * 0.6
+            ctx.fillStyle = `${color}${Math.round(alpha * 255).toString(16).padStart(2, '0')}`
+            ctx.fillRect(i * barW + 1, H - barH, barW - 2, barH)
+          }
+        }
+      } else {
+        // ── Fallback: type-specific animated waveform ──
+        phaseRef.current += 0.05
+        ctx.beginPath(); ctx.strokeStyle = `${color}60`; ctx.lineWidth = 1.5
+        ctx.shadowColor = color; ctx.shadowBlur = 8
         for (let x = 0; x < W; x++) {
-          const y = H / 2 + Math.sin(x / W * Math.PI * 4 + phaseRef.current) * H * 0.1
+          const t = x / W
+          let y = H / 2
+          switch (type) {
+            case 'drums': y = H / 2 + (Math.random() - 0.5) * H * 0.5 * Math.pow(Math.sin(t * Math.PI * 8 + phaseRef.current), 8); break
+            case 'bass': y = H / 2 + Math.sin(t * Math.PI * 2 + phaseRef.current * 0.5) * H * 0.35; break
+            case 'melody': y = H / 2 + Math.sin(t * Math.PI * 6 + phaseRef.current) * H * 0.25; break
+            case 'chords': y = H / 2 + (Math.sin(t * Math.PI * 3 + phaseRef.current) + Math.sin(t * Math.PI * 5 + phaseRef.current * 1.3) * 0.5) * H * 0.18; break
+            case 'pad': y = H / 2 + Math.sin(t * Math.PI * 1.5 + phaseRef.current * 0.3) * H * 0.3; break
+            case 'vocal': y = H / 2 + Math.sin(t * Math.PI * 5 + phaseRef.current) * H * 0.22 * (0.5 + 0.5 * Math.sin(t * Math.PI * 2 + phaseRef.current * 0.5)); break
+            case 'fx': y = H / 2 + (Math.random() - 0.5) * H * 0.25 + Math.sin(t * Math.PI * 10 + phaseRef.current * 2) * H * 0.1; break
+            default: y = H / 2 + Math.sin(t * Math.PI * 4 + phaseRef.current) * H * 0.2
+          }
           x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
         }
-        ctx.stroke(); return
+        ctx.stroke(); ctx.shadowBlur = 0
       }
-      phaseRef.current += 0.05
-      ctx.beginPath(); ctx.strokeStyle = `${color}60`; ctx.lineWidth = 1.5
-      ctx.shadowColor = color; ctx.shadowBlur = 8
-      for (let x = 0; x < W; x++) {
-        const t = x / W
-        let y = H / 2
-        switch (type) {
-          case 'drums': y = H / 2 + (Math.random() - 0.5) * H * 0.5 * Math.pow(Math.sin(t * Math.PI * 8 + phaseRef.current), 8); break
-          case 'bass': y = H / 2 + Math.sin(t * Math.PI * 2 + phaseRef.current * 0.5) * H * 0.35; break
-          case 'melody': y = H / 2 + Math.sin(t * Math.PI * 6 + phaseRef.current) * H * 0.25; break
-          case 'chords': y = H / 2 + (Math.sin(t * Math.PI * 3 + phaseRef.current) + Math.sin(t * Math.PI * 5 + phaseRef.current * 1.3) * 0.5) * H * 0.18; break
-          case 'pad': y = H / 2 + Math.sin(t * Math.PI * 1.5 + phaseRef.current * 0.3) * H * 0.3; break
-          case 'vocal': y = H / 2 + Math.sin(t * Math.PI * 5 + phaseRef.current) * H * 0.22 * (0.5 + 0.5 * Math.sin(t * Math.PI * 2 + phaseRef.current * 0.5)); break
-          case 'fx': y = H / 2 + (Math.random() - 0.5) * H * 0.25 + Math.sin(t * Math.PI * 10 + phaseRef.current * 2) * H * 0.1; break
-          default: y = H / 2 + Math.sin(t * Math.PI * 4 + phaseRef.current) * H * 0.2
-        }
-        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
-      }
-      ctx.stroke(); ctx.shadowBlur = 0
+
       rafRef.current = requestAnimationFrame(draw)
     }
     rafRef.current = requestAnimationFrame(draw)
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
-  }, [color, active, type])
+  }, [color, active, type, analyserNode, displayMode])
 
-  return <canvas ref={canvasRef} width={260} height={24} className="w-full rounded" style={{ height: 24 }} />
+  return (
+    <canvas
+      ref={canvasRef}
+      width={260}
+      height={24}
+      className="w-full rounded cursor-pointer"
+      style={{ height: 24 }}
+      onClick={(e) => { e.stopPropagation(); setDisplayMode(m => (m + 1) % 3) }}
+      title="Click to cycle: waveform → frequency → animated"
+    />
+  )
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1356,9 +1421,35 @@ interface NodeEditorProps {
   onCodeChange: (newCode: string) => void
   onUpdate: () => void
   onRegisterSound?: (name: string, urls: string[]) => Promise<void>
+  analyserNode?: AnalyserNode | null
+  /** When true, NDE renders without its own header — controls are in the parent */
+  headerless?: boolean
 }
 
-export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate, onRegisterSound }: NodeEditorProps) {
+/** Imperative handle exposed to parent for headerless control */
+export interface NodeEditorHandle {
+  addNode: (type: string) => void
+  toggleAllCollapsed: () => void
+  allCollapsed: boolean
+  bpm: number
+  globalScale: string
+  nodeCount: number
+  activeCount: number
+  zoom: number
+  setZoom: (z: number | ((z: number) => number)) => void
+  resetView: () => void
+  toggleFullscreen: () => void
+  isFullscreen: boolean
+  openSoundUploader: () => void
+  toggleTimeline: () => void
+  toggleSidebar: () => void
+  sidebarOpen: boolean
+  handleBpmChange: (v: number) => void
+  handleGlobalScaleChange: (v: string) => void
+  selectedNode: string | null
+}
+
+const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEditor({ code, isPlaying, onCodeChange, onUpdate, onRegisterSound, analyserNode, headerless }, ref) {
   const [nodes, setNodes] = useState<PatternNode[]>([])
   const [bpm, setBpm] = useState(0)
   const [connections, setConnections] = useState<Connection[]>([])
@@ -1398,6 +1489,30 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate, on
   // Track latest knob draft values synchronously (bypasses React render cycle)
   // updateKnob writes here, commitKnob reads — guarantees fresh value on mouseup
   const knobDraftRef = useRef<Map<string, number>>(new Map())
+
+  // ── Expose imperative handle to parent (for headerless mode) ──
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useImperativeHandle(ref, () => ({
+    addNode,
+    toggleAllCollapsed,
+    allCollapsed,
+    bpm,
+    globalScale,
+    nodeCount: nodes.length,
+    activeCount: nodes.filter(n => !n.muted).length,
+    zoom,
+    setZoom,
+    resetView: () => { setZoom(0.85); setPan({ x: 0, y: 0 }) },
+    toggleFullscreen: () => setIsFullscreen(p => !p),
+    isFullscreen,
+    openSoundUploader: () => setSoundUploaderOpen(true),
+    toggleTimeline: () => setTimelineOpen(p => !p),
+    toggleSidebar: () => setSidebarOpen(p => !p),
+    sidebarOpen,
+    handleBpmChange,
+    handleGlobalScaleChange,
+    selectedNode,
+  }))
 
   // ── FULL SYNC from parent code ──
   // This is the ONLY place where we re-parse nodes from code.
@@ -1708,13 +1823,18 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate, on
     }
     const t = templates[template] || templates.drums
     const newCode = lastCodeRef.current.trimEnd() + '\n\n// ── New ' + template + ' ──\n' + t + '\n'
-    // Force re-parse on this structural change by NOT setting isInternalChange
-    lastCodeRef.current = newCode
-    onCodeChange(newCode)
-    if (commitTimer.current) clearTimeout(commitTimer.current)
-    commitTimer.current = setTimeout(() => onUpdate(), 80)
+    // Parse and add new node locally, then send rebuilt code to parent via sendToParent
+    // This prevents the dual-guard from re-parsing and resetting positions
+    const parsed = parseCodeToNodes(newCode)
+    setNodes(parsed)
+    prevNodeCount.current = parsed.length
+    // Auto-connect new node
+    const conns: Connection[] = []
+    for (let i = 1; i < parsed.length; i++) conns.push({ fromId: parsed[i - 1].id, toId: parsed[i].id })
+    setConnections(conns)
+    sendToParent(newCode)
     setShowAddMenu(false)
-  }, [onCodeChange, onUpdate])
+  }, [sendToParent])
 
   // ── Knob change handler (updates local state, commits on release) ──
   const updateKnob = useCallback((nodeId: string, method: string, value: number) => {
@@ -2071,7 +2191,8 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate, on
   return (
     <div className={`flex flex-col h-full select-none ${isFullscreen ? 'fixed inset-0 z-50' : ''}`} style={{ background: HW.bg, overflow: 'visible' }}>
 
-      {/* ══════ TOP BAR ══════ */}
+      {/* ══════ TOP BAR (hidden in headerless mode) ══════ */}
+      {!headerless && (
       <div className="flex items-center justify-between px-4 py-2 shrink-0"
         style={{ background: `linear-gradient(180deg, ${HW.surfaceAlt} 0%, ${HW.surface} 100%)`, borderBottom: `1px solid ${HW.border}` }}>
         {/* Left */}
@@ -2191,12 +2312,13 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate, on
           </div>
         </div>
       </div>
+      )}
 
       {/* ══════ MAIN AREA: SIDEBAR + CANVAS ══════ */}
       <div className="flex-1 flex min-h-0">
 
-      {/* ══════ SIDEBAR ══════ */}
-      {sidebarOpen && (
+      {/* ══════ SIDEBAR (hidden in headerless mode — parent manages it) ══════ */}
+      {!headerless && sidebarOpen && (
         <div className="flex flex-col shrink-0 border-r overflow-hidden" style={{
           width: 220, background: HW.surface, borderColor: HW.border,
         }}>
@@ -2432,7 +2554,7 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate, on
                     <>
                       {/* Waveform */}
                       <div className="px-3 pt-1.5 pb-1" style={{ background: `${HW.bg}80` }}>
-                        <MiniScope color={color} active={isActive} type={node.type} />
+                        <MiniScope color={color} active={isActive} type={node.type} analyserNode={analyserNode} />
                       </div>
                       {/* Chord pattern chip (if present) */}
                       {node.pattern && (
@@ -2502,7 +2624,7 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate, on
 
                   {/* SCOPE */}
                   <div className="px-3 pt-2" style={{ background: `${HW.bg}80` }}>
-                    <MiniScope color={color} active={isActive} type={node.type} />
+                    <MiniScope color={color} active={isActive} type={node.type} analyserNode={analyserNode} />
                   </div>
 
                   {/* ══════ CODE-DRIVEN KNOBS ══════
@@ -2824,7 +2946,8 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate, on
       {/* Close sidebar+canvas flex container */}
       </div>
 
-      {/* ══════ STATUS BAR ══════ */}
+      {/* ══════ STATUS BAR (hidden in headerless mode) ══════ */}
+      {!headerless && (
       <div className="flex items-center justify-between px-4 py-1 shrink-0"
         style={{ background: HW.surface, borderTop: `1px solid ${HW.border}` }}>
         <span className="text-[8px] tracking-wide" style={{ color: HW.textDim }}>
@@ -2837,6 +2960,7 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate, on
           <span style={{ color: '#a78bfa80' }}>{SCALE_PRESETS.find(s => s.value === globalScale)?.label || globalScale}</span>
         </div>
       </div>
+      )}
 
       {/* ══════ PIANO ROLL MODAL ══════ */}
       {pianoRollOpen && (() => {
@@ -2894,4 +3018,6 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate, on
       )}
     </div>
   )
-}
+})
+
+export default NodeEditor

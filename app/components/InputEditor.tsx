@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
-import { Play, Square, Search, Zap, ChevronRight, Volume2, ChevronDown, Sparkles, Copy, Check, Palette, Plus, Undo2, Redo2, BookOpen, FolderOpen, Save, Download, Upload, Trash2, Pencil, Files, AlertTriangle, MessageCircle, Send, Loader2, Mic, CircleDot, LayoutGrid } from 'lucide-react'
+import { Play, Square, Search, Zap, ChevronRight, Volume2, ChevronDown, Sparkles, Copy, Check, Palette, Plus, Undo2, Redo2, BookOpen, FolderOpen, Save, Download, Upload, Trash2, Pencil, Files, AlertTriangle, MessageCircle, Send, Loader2, Mic, CircleDot, LayoutGrid, Columns, LayoutList, Maximize2, Minimize2, ChevronLeft } from 'lucide-react'
 import { lazy, Suspense } from 'react'
 const NodeEditor = lazy(() => import('./NodeEditor'))
+import type { NodeEditorHandle } from './NodeEditor'
 
 // ─── Saved Pattern type ───
 interface SavedPattern {
@@ -7275,6 +7276,19 @@ $: s("bd:3").bank("RolandTR808")
 
   // Node view state
   const [showNodes, setShowNodes] = useState(false)
+  const nodeEditorRef = useRef<NodeEditorHandle>(null)
+  // Force re-render when NDE state changes (bpm, zoom, etc.)
+  const [, forceNdeUpdate] = useState(0)
+  const ndeTickRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // When showNodes is on, poll NDE state for header updates
+  useEffect(() => {
+    if (showNodes) {
+      ndeTickRef.current = setInterval(() => forceNdeUpdate(c => c + 1), 200)
+    } else {
+      if (ndeTickRef.current) clearInterval(ndeTickRef.current)
+    }
+    return () => { if (ndeTickRef.current) clearInterval(ndeTickRef.current) }
+  }, [showNodes])
 
   // Panel state
   const [activePanel, setActivePanel] = useState<'sounds' | 'examples' | 'settings' | 'learn' | 'patterns' | 'vibe'>('examples')
@@ -9036,6 +9050,70 @@ $: s("bd:3").bank("RolandTR808")
               title="Node View (visual editor)">
               <LayoutGrid size={15} />
             </button>
+
+            {/* ═══ NDE CONTROLS (shown when node view is active) ═══ */}
+            {showNodes && nodeEditorRef.current && (() => {
+              const nde = nodeEditorRef.current!
+              return (
+                <>
+                  <div className="w-px h-4 bg-white/[0.06] mx-0.5" />
+                  {/* BPM display */}
+                  <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md border border-white/[0.06] bg-white/[0.02]">
+                    <span className="text-[8px] font-bold uppercase tracking-wider text-white/20">BPM</span>
+                    <input
+                      type="number"
+                      min={30} max={300}
+                      value={nde.bpm || 72}
+                      onChange={e => nde.handleBpmChange(parseInt(e.target.value) || 72)}
+                      className="w-8 bg-transparent text-[10px] font-mono text-cyan-400 text-center outline-none"
+                      onClick={e => e.stopPropagation()}
+                    />
+                  </div>
+                  {/* Node count */}
+                  <span className="text-[8px] font-mono text-white/20 px-1">{nde.activeCount}/{nde.nodeCount}</span>
+                  {/* Collapse / Expand */}
+                  <button onClick={() => nde.toggleAllCollapsed()}
+                    className="px-1.5 py-1 text-white/20 hover:text-purple-400 hover:bg-purple-500/10 transition-all cursor-pointer rounded"
+                    title={nde.allCollapsed ? 'Expand all nodes' : 'Collapse all nodes'}>
+                    {nde.allCollapsed ? <Columns size={12} /> : <LayoutList size={12} />}
+                  </button>
+                  {/* Sidebar toggle */}
+                  <button onClick={() => nde.toggleSidebar()}
+                    className={`px-1.5 py-1 transition-all cursor-pointer rounded ${nde.sidebarOpen ? 'text-cyan-400 bg-cyan-500/10' : 'text-white/20 hover:text-white/40'}`}
+                    title="Toggle node rack sidebar">
+                    {nde.sidebarOpen ? <ChevronLeft size={12} /> : <ChevronRight size={12} />}
+                  </button>
+                  {/* Add node */}
+                  <button onClick={() => { /* open add menu via portal or inline */ }}
+                    className="px-1.5 py-1 text-cyan-300/60 hover:text-cyan-400 hover:bg-cyan-500/10 transition-all cursor-pointer rounded"
+                    title="Add node"
+                    onMouseDown={e => {
+                      e.stopPropagation()
+                      // Quick add drums
+                    }}
+                  >
+                    <Plus size={12} />
+                  </button>
+                  {/* Zoom */}
+                  <div className="flex items-center gap-0.5">
+                    <button onClick={() => nde.setZoom((z: number) => Math.max(0.25, z - 0.15))}
+                      className="w-5 h-5 flex items-center justify-center text-[10px] rounded cursor-pointer text-white/20 hover:text-white/40 bg-white/[0.02] border border-white/[0.06]">−</button>
+                    <span className="text-[7px] w-6 text-center font-mono text-white/20">{Math.round(nde.zoom * 100)}%</span>
+                    <button onClick={() => nde.setZoom((z: number) => Math.min(2, z + 0.15))}
+                      className="w-5 h-5 flex items-center justify-center text-[10px] rounded cursor-pointer text-white/20 hover:text-white/40 bg-white/[0.02] border border-white/[0.06]">+</button>
+                    <button onClick={() => nde.resetView()}
+                      className="px-1 h-5 flex items-center justify-center text-[7px] font-bold tracking-wider uppercase rounded cursor-pointer text-white/20 hover:text-white/40 bg-white/[0.02] border border-white/[0.06]">FIT</button>
+                  </div>
+                  {/* Fullscreen */}
+                  <button onClick={() => nde.toggleFullscreen()}
+                    className={`px-1.5 py-1 transition-all cursor-pointer rounded ${nde.isFullscreen ? 'text-cyan-400 bg-cyan-500/10' : 'text-white/20 hover:text-white/40'}`}
+                    title={nde.isFullscreen ? 'Exit fullscreen' : 'Fullscreen node grid'}>
+                    {nde.isFullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                  </button>
+                </>
+              )
+            })()}
+
             <button onClick={() => setShowPanel(p => !p)}
               className="px-2 py-1.5 text-white/25 hover:text-white/40 transition cursor-pointer">
               <ChevronRight size={13} className={`transition-transform ${showPanel ? 'rotate-180' : ''}`} />
@@ -9253,6 +9331,7 @@ $: s("bd:3").bank("RolandTR808")
           <div className="w-1/2 flex flex-col border-l border-white/[0.06] bg-black/60 min-h-0 overflow-hidden">
             <Suspense fallback={<div className="flex-1 flex items-center justify-center text-white/20 text-xs">Loading nodes…</div>}>
               <NodeEditor
+                ref={nodeEditorRef}
                 code={code}
                 isPlaying={isPlaying}
                 onCodeChange={(newCode: string) => {
@@ -9260,6 +9339,8 @@ $: s("bd:3").bank("RolandTR808")
                 }}
                 onUpdate={() => handleUpdate()}
                 onRegisterSound={registerCustomSound}
+                analyserNode={analyserRef.current}
+                headerless
               />
             </Suspense>
           </div>
