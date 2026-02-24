@@ -1,8 +1,12 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense } from 'react'
 import ReactDOM from 'react-dom'
-import { Volume2, VolumeX, GripHorizontal, Plus, Trash2, Copy, ChevronDown, Maximize2, Minimize2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Volume2, VolumeX, GripHorizontal, Plus, Trash2, Copy, ChevronDown, Maximize2, Minimize2, ChevronLeft, ChevronRight, Piano, LayoutList, Columns } from 'lucide-react'
+import { useKeyChords, buildDiatonicChords } from './node-editor/KeyChords'
+
+const PianoRoll = lazy(() => import('./node-editor/PianoRoll'))
+const TimelineSidebar = lazy(() => import('./node-editor/TimelineSidebar'))
 
 // ═══════════════════════════════════════════════════════════════
 //  TYPES
@@ -14,6 +18,7 @@ interface PatternNode {
   code: string       // raw code block as it appears in the editor
   muted: boolean
   solo: boolean
+  collapsed: boolean  // collapsed mode: waveform + name + chord + solo/mute only
   x: number
   y: number
   type: NodeType
@@ -758,6 +763,7 @@ function parseCodeToNodes(code: string, existingNodes?: PatternNode[]): PatternN
       code: isMuted ? block.code.replace(/\/\/ \[muted\] /g, '') : block.code,
       muted: existing?.muted ?? isMuted,
       solo: existing?.solo ?? false,
+      collapsed: existing?.collapsed ?? false,
       x: existing?.x ?? (idx % cols) * 340 + 40,
       y: existing?.y ?? Math.floor(idx / cols) * 860 + 40,
       type, sound,
@@ -1366,6 +1372,10 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
   const [sidebarCategory, setSidebarCategory] = useState<string | null>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [dropTarget, setDropTarget] = useState<string | null>(null)
+  const [allCollapsed, setAllCollapsed] = useState(false)
+  const [timelineOpen, setTimelineOpen] = useState(false)
+  const [pianoRollOpen, setPianoRollOpen] = useState<{ nodeId: string } | null>(null)
+  const [currentCycle, setCurrentCycle] = useState(0)
 
   const panStart = useRef({ x: 0, y: 0, px: 0, py: 0 })
   const containerRef = useRef<HTMLDivElement>(null)
@@ -1573,6 +1583,31 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
     if (codeToSend !== null) sendToParent(codeToSend)
   }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
+  // ── Collapse / Expand single node ──
+  const toggleCollapsed = useCallback((id: string) => {
+    setNodes(prev => prev.map(n => n.id === id ? { ...n, collapsed: !n.collapsed } : n))
+  }, [])
+
+  // ── Collapse / Expand all nodes ──
+  const toggleAllCollapsed = useCallback(() => {
+    setAllCollapsed(prev => {
+      const newVal = !prev
+      setNodes(ns => ns.map(n => ({ ...n, collapsed: newVal })))
+      return newVal
+    })
+  }, [])
+
+  // ── Cycle tracker (approximate) ──
+  useEffect(() => {
+    if (!isPlaying) { setCurrentCycle(0); return }
+    const cps = bpm > 0 ? bpm / 60 / 4 : 72 / 60 / 4
+    const msPerCycle = 1000 / cps
+    const interval = setInterval(() => {
+      setCurrentCycle(prev => prev + 1)
+    }, msPerCycle)
+    return () => clearInterval(interval)
+  }, [isPlaying, bpm])
+
   // ── Delete / Duplicate ──
   const deleteNode = useCallback((id: string) => {
     let codeToSend: string | null = null
@@ -1594,7 +1629,7 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
       const dup: PatternNode = {
         ...src, id: `node_dup_${Date.now()}`,
         name: `${src.name} copy`, x: src.x + 40, y: src.y + 40,
-        muted: false, solo: false,
+        muted: false, solo: false, collapsed: false,
       }
       const updated = [...prev, dup]
       codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
@@ -1639,6 +1674,23 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
   const changeScale = useCallback((id: string, newScale: string) => {
     applyNodeEffect(id, 'scale', newScale)
   }, [applyNodeEffect])
+
+  // ── Piano Roll pattern change ──
+  const handlePianoRollPatternChange = useCallback((nodeId: string, newPattern: string) => {
+    let codeToSend: string | null = null
+    setNodes(prev => {
+      const node = prev.find(n => n.id === nodeId)
+      if (!node) return prev
+      // Determine if it's note() or n() based pattern
+      const method = node.type === 'chords' ? 'notePattern' : 'notePattern'
+      const newCode = applyEffect(node.code, method, newPattern)
+      if (newCode === node.code) return prev
+      const updated = prev.map(n => n.id === nodeId ? reparseNodeFromCode({ ...n, code: newCode }) : n)
+      codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
+      return updated
+    })
+    if (codeToSend !== null) sendToParent(codeToSend)
+  }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
   // ── Quick Add ──
   const addNode = useCallback((template: string) => {
@@ -1986,6 +2038,27 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
     return best
   }, [nodes])
 
+  // Key-aware chord progressions based on global scale
+  const { progressions: keyProgressions } = useKeyChords(globalScale)
+  const keyChordOptions = useMemo(() =>
+    keyProgressions.map(p => ({ label: `${p.label} (${p.chordLabels})`, value: p.value })),
+    [keyProgressions]
+  )
+  // Merge key-aware bass patterns from the current key
+  const keyBassOptions = useMemo(() => {
+    const triads = buildDiatonicChords(globalScale, 2)
+    if (triads.length < 7) return BASS_PATTERNS
+    const rootNote = triads[0]?.notes?.match(/\w+\d/)?.[0] || 'c2'
+    const fifthNote = triads[4]?.notes?.match(/\w+\d/)?.[0] || 'g1'
+    const fourthNote = triads[3]?.notes?.match(/\w+\d/)?.[0] || 'f1'
+    return [
+      ...BASS_PATTERNS,
+      { label: `Root (${rootNote})`, value: `<${rootNote} ~ ${rootNote} ~>` },
+      { label: `Root-Fifth`, value: `<${rootNote} ${fifthNote} ${rootNote} ${fifthNote}>` },
+      { label: `Root-Fourth-Fifth`, value: `<${rootNote} ${fourthNote} ${fifthNote} ${rootNote}>` },
+    ]
+  }, [globalScale])
+
   const NODE_W = 300
 
   // ════════════════════════════════════════════════════════════
@@ -2038,6 +2111,29 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
 
         {/* Right */}
         <div className="flex items-center gap-2">
+          {/* Collapse/Expand All toggle */}
+          <button onClick={toggleAllCollapsed}
+            className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[9px] font-bold tracking-wider transition-all cursor-pointer"
+            style={{
+              background: allCollapsed ? 'rgba(167,139,250,0.08)' : HW.raised,
+              border: `1px solid ${allCollapsed ? 'rgba(167,139,250,0.2)' : HW.border}`,
+              color: allCollapsed ? '#a78bfa' : HW.textDim,
+            }}
+            title={allCollapsed ? 'Expand all nodes' : 'Collapse all nodes'}>
+            {allCollapsed ? <Columns size={10} /> : <LayoutList size={10} />}
+            <span>{allCollapsed ? 'EXPAND' : 'COLLAPSE'}</span>
+          </button>
+          {/* Timeline toggle */}
+          <button onClick={() => setTimelineOpen(p => !p)}
+            className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[9px] font-bold tracking-wider transition-all cursor-pointer"
+            style={{
+              background: timelineOpen ? 'rgba(34,211,238,0.08)' : HW.raised,
+              border: `1px solid ${timelineOpen ? 'rgba(34,211,238,0.2)' : HW.border}`,
+              color: timelineOpen ? '#22d3ee' : HW.textDim,
+            }}
+            title="Toggle timeline sidebar">
+            ▤ TIMELINE
+          </button>
           <div className="relative">
             <button onClick={() => setShowAddMenu(p => !p)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-wider transition-all cursor-pointer"
@@ -2190,7 +2286,7 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
             const to = nodes.find(n => n.id === conn.toId)
             if (!from || !to) return null
             const x1 = (from.x + NODE_W - 16 + pan.x) * zoom
-            const fromH = from.type !== 'drums' && from.type !== 'fx' && from.type !== 'other' ? 780 : 520
+            const fromH = from.collapsed ? 120 : (from.type !== 'drums' && from.type !== 'fx' && from.type !== 'other' ? 780 : 520)
             const y1 = (from.y + fromH + pan.y) * zoom
             const x2 = (to.x + 16 + pan.x) * zoom
             const y2 = (to.y + pan.y) * zoom
@@ -2218,7 +2314,7 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
             const from = nodes.find(n => n.id === linking.fromId)
             if (!from) return null
             const fx = linking.side === 'out' ? (from.x + NODE_W - 16 + pan.x) * zoom : (from.x + 16 + pan.x) * zoom
-            const fromH2 = from.type !== 'drums' && from.type !== 'fx' && from.type !== 'other' ? 780 : 520
+            const fromH2 = from.collapsed ? 120 : (from.type !== 'drums' && from.type !== 'fx' && from.type !== 'other' ? 780 : 520)
             const fy = linking.side === 'out' ? (from.y + fromH2 + pan.y) * zoom : (from.y + pan.y) * zoom
             return <line x1={fx} y1={fy} x2={linking.mx} y2={linking.my}
               stroke="#22d3ee" strokeWidth={2} strokeDasharray="6 3" opacity={0.6} />
@@ -2273,6 +2369,29 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
                       {TYPE_ICONS[node.type]}
                     </div>
                     <span className="text-[11px] font-bold truncate flex-1 tracking-wide" style={{ color }}>{node.name || 'Untitled'}</span>
+                    {/* Collapse/Expand toggle */}
+                    <button
+                      onMouseDown={e => e.stopPropagation()}
+                      onClick={e => { e.stopPropagation(); toggleCollapsed(node.id) }}
+                      className="w-5 h-5 flex items-center justify-center rounded text-[8px] cursor-pointer"
+                      style={{ background: HW.raised, color: HW.textDim, border: `1px solid ${HW.border}` }}
+                      title={node.collapsed ? 'Expand' : 'Collapse'}>
+                      {node.collapsed ? '▼' : '▲'}
+                    </button>
+                    {/* MIDI button (melodic nodes only) */}
+                    {isMelodic && (
+                      <button
+                        onMouseDown={e => e.stopPropagation()}
+                        onClick={e => { e.stopPropagation(); setPianoRollOpen({ nodeId: node.id }) }}
+                        className="w-6 h-6 flex items-center justify-center rounded text-[8px] font-bold cursor-pointer"
+                        style={{
+                          background: 'rgba(167,139,250,0.08)', color: '#a78bfa',
+                          border: '1px solid rgba(167,139,250,0.2)',
+                        }}
+                        title="Open Piano Roll (MIDI override)">
+                        🎹
+                      </button>
+                    )}
                     <button
                       onMouseDown={e => e.stopPropagation()}
                       onClick={e => { e.stopPropagation(); toggleSolo(node.id) }}
@@ -2293,6 +2412,64 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
                       {node.muted ? <VolumeX size={10} color="#ef4444" /> : <Volume2 size={10} style={{ color: `${color}80` }} />}
                     </button>
                   </div>
+
+                  {/* ═══════ COLLAPSED VIEW ═══════ */}
+                  {node.collapsed ? (
+                    <>
+                      {/* Waveform */}
+                      <div className="px-3 pt-1.5 pb-1" style={{ background: `${HW.bg}80` }}>
+                        <MiniScope color={color} active={isActive} type={node.type} />
+                      </div>
+                      {/* Chord pattern chip (if present) */}
+                      {node.pattern && (
+                        <div className="px-3 py-1" style={{ borderTop: `1px solid ${HW.border}` }}>
+                          <span className="text-[7px] font-mono truncate block" style={{ color: `${color}80` }}>
+                            {node.pattern.length > 40 ? node.pattern.slice(0, 40) + '…' : node.pattern}
+                          </span>
+                        </div>
+                      )}
+                      {/* Compact knobs row: VOL / VERB / DLY / HPF / LPF */}
+                      <div className="flex items-start justify-center gap-0 px-1 py-1" style={{ borderTop: `1px solid ${HW.border}` }}>
+                        <RotaryKnob label="VOL" value={node.gain} min={0} max={1} step={0.01} defaultValue={0.5} size={34}
+                          onChange={v => updateKnob(node.id, 'gain', v)} onCommit={() => commitKnob(node.id, 'gain', node.gain)} color={color}
+                          disabled={hasDynamic(node.code, 'gain')} />
+                        <RotaryKnob label="VERB" value={hasMethod(node.code, 'room') ? node.room : 0} min={0} max={1} step={0.01} defaultValue={0} size={34}
+                          onChange={v => updateKnob(node.id, 'room', v)} onCommit={() => commitKnob(node.id, 'room', node.room)} color={color}
+                          disabled={hasDynamic(node.code, 'room')} />
+                        <RotaryKnob label="DLY" value={hasMethod(node.code, 'delay') ? node.delay : 0} min={0} max={0.8} step={0.01} defaultValue={0} size={34}
+                          onChange={v => updateKnob(node.id, 'delay', v)} onCommit={() => commitKnob(node.id, 'delay', node.delay)} color={color}
+                          disabled={hasDynamic(node.code, 'delay')} />
+                        <RotaryKnob label="HPF" value={hasMethod(node.code, 'hpf') ? node.hpf : 0} min={0} max={8000} step={50} defaultValue={0} size={34}
+                          onChange={v => updateKnob(node.id, 'hpf', v)} onCommit={() => commitKnob(node.id, 'hpf', node.hpf)} color={color}
+                          disabled={hasDynamic(node.code, 'hpf')} />
+                        <RotaryKnob label="LPF" value={hasMethod(node.code, 'lpf') ? node.lpf : 20000} min={50} max={20000} step={50} defaultValue={20000} size={34}
+                          onChange={v => updateKnob(node.id, 'lpf', v)} onCommit={() => commitKnob(node.id, 'lpf', node.lpf)} color={color}
+                          disabled={hasDynamic(node.code, 'lpf')} />
+                      </div>
+                      {/* Compact footer */}
+                      <div className="flex items-center justify-between px-3 py-1 rounded-b-xl"
+                        style={{ borderTop: `1px solid ${HW.border}`, background: `${HW.bg}40` }}>
+                        <div className="flex items-center gap-1">
+                          {isActive && <div className="w-1.5 h-1.5 rounded-full" style={{ background: color, boxShadow: `0 0 6px ${color}50` }} />}
+                          <span className="text-[7px]" style={{ color: `${color}60` }}>{node.sound || node.soundSource}</span>
+                        </div>
+                        <div className="flex items-center gap-0.5">
+                          <button onClick={e => { e.stopPropagation(); duplicateNode(node.id) }}
+                            className="w-4 h-4 flex items-center justify-center rounded cursor-pointer"
+                            style={{ color: HW.textDim, background: HW.raised, border: `1px solid ${HW.border}` }}>
+                            <Copy size={7} />
+                          </button>
+                          <button onClick={e => { e.stopPropagation(); deleteNode(node.id) }}
+                            className="w-4 h-4 flex items-center justify-center rounded cursor-pointer"
+                            style={{ color: '#ef444480', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.1)' }}>
+                            <Trash2 size={7} />
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                  {/* ═══════ EXPANDED VIEW (original) ═══════ */}
 
                   {/* EFFECT BADGES — visual tags showing active effects */}
                   {(() => {
@@ -2543,7 +2720,7 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
                       </div>
                     ) : node.type === 'chords' ? (
                       <div className="flex items-center gap-1">
-                        <div className="flex-1"><HardwareSelect label="CHD" value={node.pattern} options={CHORD_PROGRESSIONS}
+                        <div className="flex-1"><HardwareSelect label="CHD" value={node.pattern} options={keyChordOptions}
                           onChange={v => changePattern(node.id, v)} color={color} /></div>
                         <button onClick={e => { e.stopPropagation(); randomizePattern(node.id) }}
                           className="w-6 h-6 flex items-center justify-center rounded text-[11px] cursor-pointer shrink-0 transition-all hover:scale-110"
@@ -2552,7 +2729,7 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
                       </div>
                     ) : node.type === 'bass' ? (
                       <div className="flex items-center gap-1">
-                        <div className="flex-1"><HardwareSelect label="PAT" value={node.pattern} options={BASS_PATTERNS}
+                        <div className="flex-1"><HardwareSelect label="PAT" value={node.pattern} options={keyBassOptions}
                           onChange={v => changePattern(node.id, v)} color={color} /></div>
                         <button onClick={e => { e.stopPropagation(); randomizePattern(node.id) }}
                           className="w-6 h-6 flex items-center justify-center rounded text-[11px] cursor-pointer shrink-0 transition-all hover:scale-110"
@@ -2609,6 +2786,9 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
                       </button>
                     </div>
                   </div>
+                    </>
+                  )}
+                  {/* END collapsed/expanded ternary */}
                 </div>
               </div>
             </div>
@@ -2643,6 +2823,50 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
           <span style={{ color: '#a78bfa80' }}>{SCALE_PRESETS.find(s => s.value === globalScale)?.label || globalScale}</span>
         </div>
       </div>
+
+      {/* ══════ PIANO ROLL MODAL ══════ */}
+      {pianoRollOpen && (() => {
+        const targetNode = nodes.find(n => n.id === pianoRollOpen.nodeId)
+        if (!targetNode) return null
+        const prNodeType = (['melody', 'chords', 'bass', 'pad', 'vocal'].includes(targetNode.type)
+          ? targetNode.type : 'other') as 'melody' | 'chords' | 'bass' | 'pad' | 'vocal' | 'other'
+        const prColor = TYPE_COLORS[targetNode.type] || '#94a3b8'
+        return (
+          <Suspense fallback={<div className="fixed inset-0 z-[200] bg-black/80 flex items-center justify-center text-white/40">Loading Piano Roll…</div>}>
+            <PianoRoll
+              isOpen={true}
+              onClose={() => setPianoRollOpen(null)}
+              scale={targetNode.scale || globalScale}
+              currentPattern={targetNode.pattern}
+              nodeType={prNodeType}
+              nodeColor={prColor}
+              onPatternChange={(newPattern) => handlePianoRollPatternChange(targetNode.id, newPattern)}
+            />
+          </Suspense>
+        )
+      })()}
+
+      {/* ══════ TIMELINE SIDEBAR ══════ */}
+      <Suspense fallback={null}>
+        <TimelineSidebar
+          isOpen={timelineOpen}
+          onToggle={() => setTimelineOpen(p => !p)}
+          nodes={nodes.map(n => ({
+            id: n.id,
+            name: n.name,
+            type: n.type,
+            muted: n.muted,
+            solo: n.solo,
+            pattern: n.pattern,
+            speed: n.speed ?? 1,
+          }))}
+          bpm={bpm || 72}
+          isPlaying={isPlaying}
+          currentCycle={currentCycle}
+          onNodeSelect={(nodeId) => setSelectedNode(nodeId)}
+          selectedNodeId={selectedNode}
+        />
+      </Suspense>
     </div>
   )
 }
