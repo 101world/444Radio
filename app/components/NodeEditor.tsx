@@ -852,8 +852,14 @@ function isSampleBased(type: NodeType): boolean {
 
 function detectType(code: string): NodeType {
   const c = code.toLowerCase()
+  // ── Vocal detection FIRST (before drums) to avoid false positives ──
+  // Vocal keywords like "choir" contain "ch" and "oohs" contains "oh"
+  // which would wrongly match drum sound abbreviations.
+  // Vocal is melodic — uses note().s("instrument") with scales.
+  if (c.includes('vocal') || c.includes('voice') || c.includes('choir') || c.includes('sing') || c.includes('oohs') || c.includes('aahs')) return 'vocal'
   // Drum detection: explicit drum sounds or drum banks without note()
-  if (/\bs\s*\(\s*["'].*?(bd|cp|sd|hh|oh|ch|rim|tom|clap|clave|ride|crash)/i.test(code)) return 'drums'
+  // Word boundaries (\b) prevent false positives like "choir" matching "ch"
+  if (/\bs\s*\(\s*["'].*?\b(bd|cp|sd|hh|oh|ch|rim|tom|clap|clave|ride|crash)\b/i.test(code)) return 'drums'
   if (/\.bank\s*\(/.test(code) && !/note\s*\(/.test(code)) return 'drums'
   // Drum machine banks
   if (/RolandTR|cr78|KorgMinipops|AkaiLinn|RolandCompuRhythm/i.test(code)) return 'drums'
@@ -865,8 +871,6 @@ function detectType(code: string): NodeType {
   if (c.includes('chord') || c.includes('rhodes')) return 'chords'
   // Pad detection
   if (c.includes('pad') || c.includes('ambient') || c.includes('drone') || c.includes('haze')) return 'pad'
-  // Vocal/sample detection: voice oohs, choir, etc. — these are SAMPLE-BASED (not melodic)
-  if (c.includes('vocal') || c.includes('voice') || c.includes('choir') || c.includes('sing') || c.includes('oohs') || c.includes('aahs')) return 'vocal'
   // FX detection
   if (/crackle|rumble|noise|texture/i.test(code)) return 'fx'
   // If it uses s() with a custom sound name but NO note(), it's a sample (drums-like)
