@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { X, Image as ImageIcon, Sparkles, Zap, Loader2 } from 'lucide-react'
 
 interface CoverArtGenModalProps {
@@ -69,8 +70,23 @@ export default function CoverArtGenModal({ isOpen, onClose, userCredits, onGener
   const [customSteps, setCustomSteps] = useState(8)
   const [customGuidance, setCustomGuidance] = useState(0)
   const [isEnhancingPrompt, setIsEnhancingPrompt] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  const portalRoot = useRef<HTMLElement | null>(null)
 
-  if (!isOpen) return null
+  // Ensure portal target exists (client-only)
+  useEffect(() => {
+    portalRoot.current = document.body
+    setMounted(true)
+  }, [])
+
+  // Sync initialPrompt when modal opens
+  useEffect(() => {
+    if (isOpen && initialPrompt) {
+      setPrompt(initialPrompt)
+    }
+  }, [isOpen, initialPrompt])
+
+  if (!isOpen || !mounted || !portalRoot.current) return null
 
   const ratio = ASPECT_RATIOS[selectedRatio]
   const preset = QUALITY_PRESETS[qualityPreset]
@@ -119,8 +135,8 @@ export default function CoverArtGenModal({ isOpen, onClose, userCredits, onGener
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+  return createPortal(
+    <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 9999, position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
 
       <div className="relative w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto rounded-2xl"
@@ -315,6 +331,7 @@ export default function CoverArtGenModal({ isOpen, onClose, userCredits, onGener
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    portalRoot.current,
   )
 }
