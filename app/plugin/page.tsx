@@ -314,6 +314,7 @@ function PluginPageInner() {
   const [showResoundModal, setShowResoundModal] = useState(false)
   const [showInputEditor, setShowInputEditor] = useState(false)
   const [showCoverArtGenModal, setShowCoverArtGenModal] = useState(false)
+  const [pendingLipSyncImageUrl, setPendingLipSyncImageUrl] = useState<string | null>(null)
   const [uploadMode, setUploadMode] = useState<'video-to-audio' | 'stem-split' | 'audio-boost' | 'extract-video' | 'extract-audio' | 'autotune' | null>(null)
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [uploadFilePreview, setUploadFilePreview] = useState<string | null>(null)
@@ -2865,7 +2866,7 @@ function PluginPageInner() {
                       </div>
                     </div>
                     {msg.result.prompt && <p className="text-xs text-gray-400">{msg.result.prompt}</p>}
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       <a href={msg.result.imageUrl} download={`${msg.result.title || 'cover-art'}.jpg`}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-300 hover:text-white transition-all">
                         <Download size={12} /> Save
@@ -2876,6 +2877,11 @@ function PluginPageInner() {
                           <Download size={12} /> Import to Premiere
                         </button>
                       )}
+                      <button onClick={() => { setPendingLipSyncImageUrl(msg.result!.imageUrl!); setShowLipSyncModal(true) }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all"
+                        style={{background:'rgba(168,85,247,0.06)',border:'1px solid rgba(168,85,247,0.2)',color:'rgba(200,180,255,0.85)'}}>
+                        <Mic size={12} /> Lip Sync
+                      </button>
                       <button onClick={() => window.open('https://444radio.co.in/library?host=juce', '_blank')}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-300 hover:text-white transition-all">
                         <Layers size={12} /> Library
@@ -4149,8 +4155,9 @@ function PluginPageInner() {
       <Suspense fallback={null}>
         <LipSyncModal
           isOpen={showLipSyncModal}
-          onClose={() => setShowLipSyncModal(false)}
+          onClose={() => { setShowLipSyncModal(false); setPendingLipSyncImageUrl(null) }}
           userCredits={userCredits || 0}
+          initialImageUrl={pendingLipSyncImageUrl}
           onGenerationStart={(prompt: string, generationId: string) => {
             const userMsgId = Date.now().toString()
             const genMsgId = (Date.now() + 1).toString()
@@ -4192,6 +4199,7 @@ function PluginPageInner() {
           userCredits={userCredits || 0}
           onGenerate={handleCoverArtGenerate}
           initialPrompt={input}
+          authToken={token}
         />
       </Suspense>
 

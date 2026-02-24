@@ -12,6 +12,8 @@ interface LipSyncModalProps {
   onSuccess?: (videoUrl: string, prompt: string, mediaId: string | null) => void
   onGenerationStart?: (prompt: string, generationId: string) => void
   authToken?: string
+  /** Pre-load an image URL (e.g. from cover art generation) */
+  initialImageUrl?: string | null
 }
 
 /**
@@ -58,6 +60,7 @@ export default function LipSyncModal({
   onSuccess,
   onGenerationStart,
   authToken,
+  initialImageUrl,
 }: LipSyncModalProps) {
   const { addGeneration, updateGeneration } = useGenerationQueue()
 
@@ -68,6 +71,25 @@ export default function LipSyncModal({
   const [audioPreview, setAudioPreview] = useState<string | null>(null)
   const [resolution, setResolution] = useState<'720p' | '1080p'>('720p')
   const [duration, setDuration] = useState<DurationOption>(5)
+
+  // Auto-load initial image URL when provided
+  useEffect(() => {
+    if (!initialImageUrl || !isOpen) return
+    if (imageFile) return // don't overwrite if user already picked one
+    ;(async () => {
+      try {
+        const res = await fetch(initialImageUrl)
+        const blob = await res.blob()
+        const ext = initialImageUrl.split('.').pop()?.split('?')[0] || 'jpg'
+        const file = new File([blob], `cover-art.${ext}`, { type: blob.type || 'image/jpeg' })
+        setImageFile(file)
+        setImagePreview(URL.createObjectURL(file))
+      } catch {
+        // silent — user can still pick manually
+      }
+    })()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialImageUrl, isOpen])
 
   // Trimming state (for audio cutting only)
   const [audioDuration, setAudioDuration] = useState(0)
