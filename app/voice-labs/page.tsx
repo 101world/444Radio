@@ -93,9 +93,6 @@ export default function VoiceLabsPage() {
   const router = useRouter()
   const { totalCredits: credits, refreshCredits } = useCredits()
 
-  // ── Token sub-wallet ──
-  const [tokenBalance, setTokenBalance] = useState<number | null>(null)
-
   // ── Docked sidebar + ESC visibility ──
   const [sidebarHidden, setSidebarHidden] = useState(false)
   const [showEscHint, setShowEscHint] = useState(true)
@@ -174,10 +171,9 @@ export default function VoiceLabsPage() {
   const lastTextLengthRef = useRef(0)
   const pageOpenTimeRef = useRef(Date.now())
 
-  // ── Computed (1 char = 1 token, 1000 tokens = 3 credits) ──
-  const estimatedTokens = text.length
-  const tokensAvailable = (tokenBalance ?? 0) + Math.floor(((credits ?? 0) / 3)) * 1000
-  const hasEnoughCredits = tokensAvailable >= estimatedTokens || estimatedTokens === 0
+  // ── Computed: ceil(chars / 1000) × 3 credits, minimum 3 ──
+  const estimatedCost = text.trim().length > 0 ? Math.max(3, Math.ceil(text.trim().length / 1000) * 3) : 0
+  const hasEnoughCredits = (credits ?? 0) >= estimatedCost || estimatedCost === 0
   const selectedVoiceName = SYSTEM_VOICES.find(v => v.id === voiceId)?.name
     || trainedVoices.find(v => v.voice_id === voiceId)?.name
     || voiceId
@@ -218,22 +214,10 @@ export default function VoiceLabsPage() {
     }
   }
 
-  // ── Fetch token balance ──
-  const refreshTokenBalance = async () => {
-    try {
-      const res = await fetch('/api/voice-labs/tokens')
-      if (res.ok) {
-        const data = await res.json()
-        setTokenBalance(data.tokens ?? 0)
-      }
-    } catch { /* ignore */ }
-  }
-
-  // ── Load voices + sessions + tokens on mount + log session_open ──
+  // ── Load voices + sessions on mount + log session_open ──
   useEffect(() => {
     loadTrainedVoices()
     loadSessions()
-    refreshTokenBalance()
     // Log page open
     pageOpenTimeRef.current = Date.now()
     fetch('/api/voice-labs/activity', {
@@ -479,7 +463,7 @@ export default function VoiceLabsPage() {
     setGenError('')
     if (!text.trim() || text.length < 3) { setGenError('Enter at least 3 characters.'); return }
     if (text.length > 10000) { setGenError('Max 10,000 characters.'); return }
-    if (!hasEnoughCredits) { setGenError(`Not enough tokens. Need ${text.trim().length.toLocaleString()} tokens. Buy more credits to refill.`); return }
+    if (!hasEnoughCredits) { setGenError(`Need ${estimatedCost} credits for ${text.trim().length.toLocaleString()} chars. You have ${credits ?? 0}.`); return }
 
     // Flush any open input session before generation
     flushInputSession()
@@ -490,7 +474,7 @@ export default function VoiceLabsPage() {
     logVoiceActivity('generation_start', {
       text_length: text.trim().length,
       text_snapshot: text.trim().substring(0, 2000),
-      tokens_consumed: text.trim().length,
+      credits_estimated: estimatedCost,
     })
 
     // Auto-create session if none active
@@ -557,13 +541,12 @@ export default function VoiceLabsPage() {
       }
 
       refreshCredits()
-      refreshTokenBalance()
 
       // Log generation complete
       logVoiceActivity('generation_complete', {
         text_length: inputText.length,
         text_snapshot: inputText.substring(0, 2000),
-        tokens_consumed: data.tokensConsumed || inputText.length,
+        tokens_consumed: data.chars || inputText.length,
         credits_spent: data.creditsDeducted || 0,
         generation_duration_ms: Date.now() - genStartTime,
         audio_url: data.audioUrl,
@@ -650,19 +633,23 @@ export default function VoiceLabsPage() {
               </button>
             </div>
             <div className="flex items-center gap-2">
-              <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-cyan-500/[0.08] border border-cyan-500/20 rounded-lg" title="Voice tokens — 1 character = 1 token">
-                <span className="text-sm font-mono font-semibold text-cyan-300">{tokenBalance != null ? tokenBalance.toLocaleString() : '...'}</span>
-                <span className="text-xs text-cyan-500/70">tokens</span>
-              </div>
-              <div className="flex items-center gap-1.5 px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg" title="Credits balance">
-                <Zap size={14} className="text-yellow-400" />
-                <span className="text-sm font-bold text-white">{credits ?? '...'}</span>
+              <div className="flex-1 flex items-center gap-2 px-3 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-lg" title="Credits balance">
+                <Zap size={16} className="text-yellow-400" />
+                <span className="text-lg font-bold text-white">{credits ?? '...'}</span>
+                <span className="text-xs text-gray-500">credits</span>
               </div>
             </div>
-            <p className="text-[11px] text-gray-500 mt-2.5 leading-relaxed flex items-start gap-1.5">
-              <Info size={12} className="text-gray-600 flex-shrink-0 mt-px" />
-              1 char = 1 token · Auto-refills 1,000 tokens for 3 credits
-            </p>
+            <div className="mt-2.5 px-2.5 py-2 bg-white/[0.02] border border-white/[0.06] rounded-lg">
+              <p className="text-[11px] text-gray-400 leading-relaxed flex items-start gap-1.5">
+                <Info size={12} className="text-gray-500 flex-shrink-0 mt-px" />
+                3 credits per 1,000 characters · Min 3 per generation
+              </p>
+              {estimatedCost > 0 && (
+                <p className="text-xs text-cyan-400 font-medium mt-1.5 pl-[18px]">
+                  This generation: {estimatedCost} credits ({text.trim().length.toLocaleString()} chars)
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Sidebar tabs */}
@@ -964,8 +951,8 @@ export default function VoiceLabsPage() {
                   onInput={(e) => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 160) + 'px' }}
                 />
                 <div className="absolute right-2 bottom-2 flex items-center gap-1.5">
-                  {text.length > 0 && (
-                    <span className="text-xs text-gray-500 mr-1">{text.length.toLocaleString()} tk</span>
+                  {estimatedCost > 0 && (
+                    <span className={`text-xs mr-1 ${hasEnoughCredits ? 'text-gray-500' : 'text-red-400'}`}>{estimatedCost} cr</span>
                   )}
                   <button onClick={handleGenerate} disabled={isGenerating || !text.trim() || text.length > 10000}
                     className={`p-2 rounded-lg transition-all ${isGenerating || !text.trim() ? 'text-gray-600' : 'text-cyan-400 hover:bg-cyan-500/20'}`}>
@@ -976,7 +963,7 @@ export default function VoiceLabsPage() {
             </div>
             <div className="flex items-center justify-between mt-2 px-1">
               <p className="text-xs text-gray-500">
-                {text.length.toLocaleString()}/10,000 chars · {estimatedTokens.toLocaleString()} tokens · {selectedVoiceName}
+                {text.length.toLocaleString()}/10,000 chars · {estimatedCost > 0 ? `${estimatedCost} credits` : '0 credits'} · {selectedVoiceName}
               </p>
               <p className="text-xs text-gray-500">
                 Shift+Enter for newline · <code className="text-gray-500">{'<#0.5#>'}</code> for pauses

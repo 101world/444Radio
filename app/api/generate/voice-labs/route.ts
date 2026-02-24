@@ -22,9 +22,9 @@ export function OPTIONS() {
 }
 
 /**
- * Token-based billing for Voice Labs.
- * 1 character = 1 token.  1,000 tokens are purchased at a time for 3 credits.
- * The consume_voice_tokens RPC auto-refills the sub-wallet.
+ * Direct credit billing for Voice Labs.
+ * Cost: ceil(chars / 1000) × 3 credits per generation (minimum 3).
+ * API cost: $0.06/1K input tokens. We charge $0.105/1K (3 credits), ~1.75× markup.
  */
 
 /** Fire-and-forget: log to voice_labs_activity table */
@@ -135,53 +135,62 @@ export async function POST(req: NextRequest) {
 
     const title = (body.title || 'Untitled Voice Generation').trim().substring(0, 200)
 
-    // ── Token billing: 1 char = 1 token ──
+    // ── Credit billing: ceil(chars / 1000) × 3
+    //    API costs $0.06/1K tokens; we charge 3 credits ($0.105/1K) ──
     const tokenCount = text.length
-    console.log(`🎙️ Voice Labs: ${tokenCount} tokens (chars) for "${title.substring(0, 40)}…"`)
+    const creditsNeeded = Math.max(3, Math.ceil(tokenCount / 1000) * 3)
+    console.log(`🎙️ Voice Labs: ${tokenCount} chars → ${creditsNeeded} credits for "${title.substring(0, 40)}…"`)
 
-    // ── Consume tokens (auto-purchases 1000-token blocks at 3 credits each) ──
-    const consumeRes = await fetch(`${supabaseUrl}/rest/v1/rpc/consume_voice_tokens`, {
-      method: 'POST',
-      headers: {
-        apikey: supabaseKey,
-        Authorization: `Bearer ${supabaseKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ p_clerk_user_id: userId, p_token_count: tokenCount }),
-    })
-    let consumeResult: {
-      success: boolean; tokens_remaining: number; tokens_consumed: number;
-      credits_deducted: number; new_credits: number; error_message?: string
-    } | null = null
-    if (consumeRes.ok) {
-      const raw = await consumeRes.json()
-      consumeResult = Array.isArray(raw) ? raw[0] ?? null : raw
-    }
-    if (!consumeRes.ok || !consumeResult?.success) {
-      const errorMsg = consumeResult?.error_message || 'Insufficient credits for token purchase'
-      console.error('❌ Token consumption blocked:', errorMsg)
+    // ── Read current credits ──
+    const userRes = await fetch(
+      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits`,
+      { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+    )
+    const users = await userRes.json()
+    const currentCredits = users?.[0]?.credits ?? 0
+
+    if (currentCredits < creditsNeeded) {
+      console.error(`❌ Insufficient credits: have ${currentCredits}, need ${creditsNeeded}`)
       await logCreditTransaction({
         userId, amount: 0, type: 'other', status: 'failed',
-        description: `Voice Labs - ${voice_id} - Token Purchase Failed`,
-        metadata: { text_length: text.length, voice_id, tokens_requested: tokenCount },
+        description: `Voice Labs - ${voice_id} - Insufficient Credits`,
+        metadata: { text_length: text.length, voice_id, credits_needed: creditsNeeded, credits_available: currentCredits },
       })
       return corsResponse(NextResponse.json({
-        error: errorMsg,
-        tokensNeeded: tokenCount,
+        error: `Need ${creditsNeeded} credits (${tokenCount.toLocaleString()} chars). You have ${currentCredits}.`,
+        creditsNeeded,
+        creditsAvailable: currentCredits,
       }, { status: 402 }))
     }
 
-    const creditsUsed = consumeResult.credits_deducted
-    console.log(`✅ Tokens consumed: ${consumeResult.tokens_consumed}. Remaining tokens: ${consumeResult.tokens_remaining}. Credits spent: ${creditsUsed}. Credits left: ${consumeResult.new_credits}`)
+    // ── Deduct credits atomically ──
+    const newCredits = currentCredits - creditsNeeded
+    const deductRes = await fetch(
+      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}`,
+      {
+        method: 'PATCH',
+        headers: {
+          apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json', Prefer: 'return=minimal',
+        },
+        body: JSON.stringify({ credits: newCredits }),
+      }
+    )
 
-    if (creditsUsed > 0) {
-      await logCreditTransaction({
-        userId, amount: -creditsUsed, balanceAfter: consumeResult.new_credits,
-        type: 'other',
-        description: `Voice Labs - ${voice_id} - Token Purchase (${Math.ceil(creditsUsed / 3) * 1000} tokens)`,
-        metadata: { text_length: text.length, voice_id, emotion, audio_format, tokens_consumed: tokenCount, tokens_purchased: Math.ceil(creditsUsed / 3) * 1000 },
-      })
+    if (!deductRes.ok) {
+      console.error('❌ Failed to deduct credits:', deductRes.status)
+      return corsResponse(NextResponse.json({ error: 'Billing error. Try again.' }, { status: 500 }))
     }
+
+    const creditsUsed = creditsNeeded
+    console.log(`✅ Charged ${creditsUsed} credits. Remaining: ${newCredits}`)
+
+    await logCreditTransaction({
+      userId, amount: -creditsUsed, balanceAfter: newCredits,
+      type: 'other',
+      description: `Voice Labs TTS - ${voice_id} - ${tokenCount.toLocaleString()} chars`,
+      metadata: { text_length: text.length, voice_id, emotion, audio_format, chars: tokenCount },
+    })
 
     // ── Build Replicate input ──
     const replicateInput: Record<string, unknown> = {
@@ -241,25 +250,12 @@ export async function POST(req: NextRequest) {
     if (finalPrediction.status !== 'succeeded') {
       const errMsg = finalPrediction.error || `TTS ${finalPrediction.status === 'failed' ? 'failed' : 'timed out'}`
       console.error('❌ Voice Labs TTS failed:', errMsg)
-      // Refund any credits that were auto-purchased for tokens
-      if (creditsUsed > 0) {
-        await refundCredits({
-          userId, amount: creditsUsed, type: 'other',
-          reason: `Voice Labs TTS failed: ${title}`,
-          metadata: { error: String(errMsg).substring(0, 200), tokens_refunded: tokenCount },
-        })
-      }
-      // Return tokens to the sub-wallet
-      try {
-        await fetch(`${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}`, {
-          method: 'PATCH',
-          headers: {
-            apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json', Prefer: 'return=minimal',
-          },
-          body: JSON.stringify({ voice_labs_tokens: consumeResult.tokens_remaining + tokenCount }),
-        })
-      } catch { /* non-critical */ }
+      // Refund credits
+      await refundCredits({
+        userId, amount: creditsUsed, type: 'other',
+        reason: `Voice Labs TTS failed: ${title}`,
+        metadata: { error: String(errMsg).substring(0, 200), chars: tokenCount },
+      })
 
       logVoiceLabsActivity(userId, 'generation_failed', {
         text_length: text.length,
@@ -290,23 +286,11 @@ export async function POST(req: NextRequest) {
 
     if (!audioUrl) {
       console.error('❌ No audio URL in output:', output)
-      if (creditsUsed > 0) {
-        await refundCredits({
-          userId, amount: creditsUsed, type: 'other',
-          reason: `Voice Labs no output: ${title}`,
-          metadata: { output: JSON.stringify(output).substring(0, 200) },
-        })
-      }
-      try {
-        await fetch(`${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}`, {
-          method: 'PATCH',
-          headers: {
-            apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json', Prefer: 'return=minimal',
-          },
-          body: JSON.stringify({ voice_labs_tokens: consumeResult.tokens_remaining + tokenCount }),
-        })
-      } catch { /* non-critical */ }
+      await refundCredits({
+        userId, amount: creditsUsed, type: 'other',
+        reason: `Voice Labs no output: ${title}`,
+        metadata: { output: JSON.stringify(output).substring(0, 200) },
+      })
 
       logVoiceLabsActivity(userId, 'generation_failed', {
         text_length: text.length,
@@ -402,10 +386,9 @@ export async function POST(req: NextRequest) {
       success: true,
       audioUrl: permanentUrl,
       title,
-      tokensConsumed: tokenCount,
-      tokensRemaining: consumeResult.tokens_remaining,
       creditsDeducted: creditsUsed,
-      creditsRemaining: consumeResult.new_credits,
+      creditsRemaining: newCredits,
+      chars: tokenCount,
       format: audio_format,
       predictionId: prediction.id,
     }))
