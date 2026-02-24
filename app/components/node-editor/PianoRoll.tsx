@@ -116,6 +116,144 @@ function playNotePreview(midi: number, durationMs = 200, sound = '') {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  SCALE DEGREE ↔ MIDI HELPERS
+// ═══════════════════════════════════════════════════════════════
+
+/** Detect if a pattern uses scale degrees (n()) vs absolute note names (note()) */
+function isScaleDegreePattern(pattern: string): boolean {
+  // Remove structural chars, if only digits remain → scale-degree based
+  const clean = pattern.replace(/[<>\[\],~*\s.\-]/g, '')
+  if (!clean) return false
+  return !/[a-g]/i.test(clean) && /\d/.test(clean)
+}
+
+/** Convert a scale degree to MIDI note number (matches Strudel n().scale() behaviour) */
+function scaleDegreeToMidi(degree: number, scaleStr: string): number {
+  const { root, octave, mode } = parseScale(scaleStr)
+  const intervals = SCALE_INTERVALS[mode] || SCALE_INTERVALS['major']
+  const rootIdx = NOTE_NAMES.indexOf(root)
+  if (rootIdx < 0) return 60
+  const baseMidi = (octave + 1) * 12 + rootIdx
+  const scaleLen = intervals.length
+  const octShift = degree >= 0 ? Math.floor(degree / scaleLen) : Math.ceil(degree / scaleLen) - (degree % scaleLen === 0 ? 0 : 1)
+  const degInScale = ((degree % scaleLen) + scaleLen) % scaleLen
+  return baseMidi + octShift * 12 + (intervals[degInScale] ?? 0)
+}
+
+/** Convert MIDI back to the closest scale degree, or null if not in scale */
+function midiToScaleDegree(midi: number, scaleStr: string): number | null {
+  const { root, octave, mode } = parseScale(scaleStr)
+  const intervals = SCALE_INTERVALS[mode] || SCALE_INTERVALS['major']
+  const rootIdx = NOTE_NAMES.indexOf(root)
+  if (rootIdx < 0) return null
+  const baseMidi = (octave + 1) * 12 + rootIdx
+  const offset = midi - baseMidi
+  const octShift = Math.floor(offset / 12)
+  const semitone = ((offset % 12) + 12) % 12
+  const degIdx = intervals.indexOf(semitone)
+  if (degIdx === -1) {
+    // Not exactly in scale — find nearest
+    let minDist = 99, best = -1
+    for (let i = 0; i < intervals.length; i++) {
+      const d = Math.abs(intervals[i] - semitone)
+      if (d < minDist) { minDist = d; best = i }
+    }
+    if (best >= 0) return octShift * intervals.length + best
+    return null
+  }
+  return octShift * intervals.length + degIdx
+}
+
+/** Count entries in a <...> pattern — raw bar count without .slow/.fast influence */
+function countRawPatternBars(pattern: string): number {
+  const trimmed = pattern.trim()
+  if (trimmed.startsWith('<') && trimmed.endsWith('>')) {
+    const inner = trimmed.slice(1, -1).trim()
+    let depth = 0, count = 0, inEntry = false
+    for (const ch of inner) {
+      if (ch === '[') { depth++; inEntry = true }
+      else if (ch === ']') depth--
+      else if (ch === ' ' && depth === 0) { if (inEntry) count++; inEntry = false }
+      else inEntry = true
+    }
+    if (inEntry) count++
+    return Math.max(1, count)
+  }
+  return 1
+}
+
+/** Split a mini-notation string into top-level tokens (respecting brackets) */
+function splitTopLevel(str: string): string[] {
+  const entries: string[] = []
+  let depth = 0, current = ''
+  for (const ch of str) {
+    if (ch === '[') { depth++; current += ch }
+    else if (ch === ']') { depth--; current += ch }
+    else if (ch === ' ' && depth === 0) { if (current.trim()) entries.push(current.trim()); current = '' }
+    else current += ch
+  }
+  if (current.trim()) entries.push(current.trim())
+  return entries
+}
+
+/** Resolve a single token (note name or scale degree) to a MIDI number */
+function resolveToMidi(token: string, usesDegrees: boolean, scale: string): number {
+  token = token.trim()
+  if (!token || token === '~') return -1
+  if (usesDegrees) {
+    const num = parseInt(token, 10)
+    if (isNaN(num)) return -1
+    return scaleDegreeToMidi(num, scale)
+  }
+  return noteNameToMidiFromStrudel(token)
+}
+
+/** Recursively parse a mini-notation entry into PianoRollNotes */
+function parseEntryToNotes(
+  entry: string, gridPos: number, cellsAvailable: number, duration: number,
+  usesDegrees: boolean, scale: string, notes: PianoRollNote[],
+): void {
+  entry = entry.trim()
+  if (!entry || entry === '~') return
+
+  // Handle *N repetition: "x*4"
+  const repMatch = entry.match(/^(.+?)\*(\d+)$/)
+  if (repMatch && !repMatch[1].startsWith('[')) {
+    const base = repMatch[1]
+    const times = parseInt(repMatch[2])
+    const subCells = Math.max(1, Math.floor(cellsAvailable / times))
+    for (let i = 0; i < times; i++) {
+      parseEntryToNotes(base, gridPos + i * subCells, subCells, subCells, usesDegrees, scale, notes)
+    }
+    return
+  }
+
+  // Bracketed group
+  if (entry.startsWith('[') && entry.endsWith(']')) {
+    const inner = entry.slice(1, -1).trim()
+    // Commas present → chord (simultaneous)
+    if (inner.includes(',')) {
+      for (const part of inner.split(',')) {
+        const midi = resolveToMidi(part.trim(), usesDegrees, scale)
+        if (midi >= 0 && midi <= 127) notes.push({ midi, step: gridPos, duration, velocity: 0.8 })
+      }
+      return
+    }
+    // Spaces only → subdivision
+    const subs = inner.split(/\s+/).filter(Boolean)
+    const subCells = Math.max(1, Math.floor(cellsAvailable / subs.length))
+    subs.forEach((sub, i) => {
+      parseEntryToNotes(sub, gridPos + i * subCells, subCells, subCells, usesDegrees, scale, notes)
+    })
+    return
+  }
+
+  // Plain token
+  const midi = resolveToMidi(entry, usesDegrees, scale)
+  if (midi >= 0 && midi <= 127) notes.push({ midi, step: gridPos, duration, velocity: 0.8 })
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  PIANO ROLL — DAW-Style (modeled on Logic Pro / FL Studio)
 //
 //  Features:
@@ -229,6 +367,7 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
   const [presetCategory, setPresetCategory] = useState<PresetCategory | 'all'>('all')
   const [showVelocity, setShowVelocity] = useState(false)
   const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set())
+  const [isScaleDegreeBased, setIsScaleDegreeBased] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const isDrawing = useRef(false)
   const drawStartNote = useRef<{ midi: number; step: number } | null>(null)
@@ -294,24 +433,34 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
 
   useEffect(() => {
     if (!isOpen) return
+    // Detect if pattern uses scale degrees (n()) vs absolute note names (note())
+    const degreeMode = isScaleDegreePattern(currentPattern)
+    setIsScaleDegreeBased(degreeMode)
     const parsed = parsePatternToNotes(currentPattern, scale, octaveRange)
     setNotes(parsed)
     setSelectedNotes(new Set())
-    // Auto-size grid: prefer patternBars (respects .slow()), else measure notes
-    const barsFromProp = patternBars && patternBars > 0 ? patternBars : 0
+    // Auto-size grid: use RAW pattern bar count (no .slow() — piano roll edits the pattern)
+    const rawBars = countRawPatternBars(currentPattern)
     const barsFromNotes = parsed.length > 0 ? Math.ceil(Math.max(...parsed.map(n => n.step + n.duration)) / 16) : 0
-    const targetBars = Math.max(barsFromProp, barsFromNotes, 1)
+    const targetBars = Math.max(rawBars, barsFromNotes, 1)
     const needed = targetBars * 16
     const snapped = needed <= 16 ? 16 : needed <= 32 ? 32 : needed <= 64 ? 64 : needed <= 128 ? 128 : 128
     setTotalSteps(snapped)
-  }, [isOpen, currentPattern, scale, octaveRange, patternBars])
-
-  useEffect(() => {
-    if (isOpen && scrollRef.current) {
-      const mid = Math.floor(allMidiNotes.length / 2)
-      scrollRef.current.scrollTop = mid * CELL_H - scrollRef.current.clientHeight / 2
-    }
-  }, [isOpen, allMidiNotes.length, CELL_H])
+    // Auto-scroll to center on the actual notes
+    requestAnimationFrame(() => {
+      if (!scrollRef.current) return
+      if (parsed.length > 0) {
+        const midis = parsed.map(n => n.midi)
+        const avgMidi = midis.reduce((a, b) => a + b, 0) / midis.length
+        const idx = allMidiNotes.findIndex(m => m <= avgMidi)
+        const target = idx >= 0 ? idx : Math.floor(allMidiNotes.length / 2)
+        scrollRef.current.scrollTop = target * CELL_H - scrollRef.current.clientHeight / 2
+      } else {
+        const mid = Math.floor(allMidiNotes.length / 2)
+        scrollRef.current.scrollTop = mid * CELL_H - scrollRef.current.clientHeight / 2
+      }
+    })
+  }, [isOpen, currentPattern, scale, octaveRange, allMidiNotes, CELL_H])
 
   const nid = (midi: number, step: number) => `${midi}:${step}`
 
@@ -418,14 +567,21 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
     setNotes(prev => prev.map(n => n.step === step ? { ...n, velocity: vel } : n))
   }, [])
 
+  // Helper: convert MIDI to output string (respecting note-name vs scale-degree mode)
+  const midiToOutput = useCallback((midi: number): string => {
+    if (isScaleDegreeBased) {
+      const deg = midiToScaleDegree(midi, scale)
+      return deg !== null ? String(deg) : midiToNoteName(midi)
+    }
+    return midiToNoteName(midi)
+  }, [isScaleDegreeBased, scale])
+
   const generatePattern = useCallback(() => {
     if (notes.length === 0) { onPatternChange('~ ~ ~ ~'); return }
 
     // ── For chord/pad nodes: produce CLEAN bar-level or beat-level patterns ──
-    // Strudel <...> = one entry per cycle. We want exactly 1/2/4/8 bars
-    // worth of items (not 16/32/64/128 16th-note steps).
+    // Strudel <...> = one entry per cycle. We want exactly 1/2/4/8 bars.
     if (nodeType === 'chords' || nodeType === 'pad') {
-      // Determine beat grouping: 4 steps = 1 beat, 16 steps = 1 bar
       const STEPS_PER_BEAT = 4
       const totalBeats = Math.floor(totalSteps / STEPS_PER_BEAT)
 
@@ -433,27 +589,23 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
       const beatChords: string[] = []
       for (let beat = 0; beat < totalBeats; beat++) {
         const beatStart = beat * STEPS_PER_BEAT
-        // Find all notes that are sounding at this beat start
         const sounding: number[] = []
         for (const n of notes) {
           const noteEnd = n.step + n.duration
           if (n.step <= beatStart && noteEnd > beatStart) sounding.push(n.midi)
           else if (n.step === beatStart) sounding.push(n.midi)
         }
-        // Deduplicate
         const unique = [...new Set(sounding)].sort((a, b) => a - b)
         if (unique.length === 0) {
           beatChords.push('~')
         } else if (unique.length === 1) {
-          beatChords.push(midiToNoteName(unique[0]))
+          beatChords.push(midiToOutput(unique[0]))
         } else {
-          beatChords.push(`[${unique.map(m => midiToNoteName(m)).join(',')}]`)
+          beatChords.push(`[${unique.map(m => midiToOutput(m)).join(',')}]`)
         }
       }
 
-      // Consolidate: merge consecutive identical chords into one entry
-      // per bar (4 beats) when all beats in a bar are the same chord.
-      // This turns 16 beats into 4 bars when chords hold for full bars.
+      // Consolidate into bar-level when all beats in a bar have the same chord
       const BEATS_PER_BAR = 4
       const totalBars = Math.floor(totalBeats / BEATS_PER_BAR)
       const barChords: string[] = []
@@ -470,13 +622,10 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
         }
       }
 
-      // Use bar-level output if all bars had uniform chords
       if (allBarsIdentical && barChords.length > 0) {
-        // Remove trailing rests
         while (barChords.length > 1 && barChords[barChords.length - 1] === '~') barChords.pop()
         onPatternChange(`<${barChords.join(' ')}>`)
       } else {
-        // Fall back to beat-level output but trim trailing rests
         const trimmed = [...beatChords]
         while (trimmed.length > 1 && trimmed[trimmed.length - 1] === '~') trimmed.pop()
         onPatternChange(`<${trimmed.join(' ')}>`)
@@ -504,12 +653,12 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
       if (covered.has(step)) continue
       const mns = stepMap.get(step)
       if (!mns || mns.length === 0) parts.push('~')
-      else if (mns.length === 1) parts.push(midiToNoteName(mns[0].midi))
-      else parts.push(`[${mns.map(m => midiToNoteName(m.midi)).join(',')}]`)
+      else if (mns.length === 1) parts.push(midiToOutput(mns[0].midi))
+      else parts.push(`[${mns.map(m => midiToOutput(m.midi)).join(',')}]`)
     }
 
     onPatternChange(parts.join(' '))
-  }, [notes, nodeType, onPatternChange, totalSteps])
+  }, [notes, nodeType, onPatternChange, totalSteps, midiToOutput])
 
   const clearAll = useCallback(() => { setNotes([]); setSelectedNotes(new Set()) }, [])
 
@@ -971,46 +1120,31 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
 
 // ═══════════════════════════════════════════════════════════════
 //  PATTERN PARSER — Strudel pattern → MIDI notes
+//  Handles BOTH note() patterns (absolute names: c3, e4)
+//  AND n() patterns (scale degrees: 0, 2, 4, 7)
 // ═══════════════════════════════════════════════════════════════
 
-function parsePatternToNotes(pattern: string, scale: string, octaveRange: [number, number]): PianoRollNote[] {
+function parsePatternToNotes(pattern: string, scale: string, _octaveRange: [number, number]): PianoRollNote[] {
   if (!pattern) return []
   const notes: PianoRollNote[] = []
-
-  // Detect <...> wrapping: each entry = 1 bar (1 cycle in Strudel)
   const trimmed = pattern.trim()
   const isBarLevel = trimmed.startsWith('<') && trimmed.endsWith('>')
+  const usesDegrees = isScaleDegreePattern(trimmed)
 
   let clean = trimmed.replace(/^<\s*/, '').replace(/\s*>$/, '').trim()
   if (!clean) return notes
 
-  const steps: string[] = []
-  let depth = 0, current = ''
-  for (const ch of clean) {
-    if (ch === '[') depth++
-    if (ch === ']') depth--
-    if (ch === ' ' && depth === 0) { if (current.trim()) steps.push(current.trim()); current = '' }
-    else current += ch
-  }
-  if (current.trim()) steps.push(current.trim())
+  // Split into top-level entries (respecting brackets)
+  const entries = splitTopLevel(clean)
+  if (entries.length === 0) return notes
 
-  // Position & duration: bar-level (16 cells) for <...>, or 1 cell for plain patterns
-  const stepFactor = isBarLevel ? 16 : 1
-  const noteDuration = isBarLevel ? 16 : 1
+  // Grid layout: bar-level (16 cells per entry) vs inline (divide 16 cells equally)
+  const cellsPerEntry = isBarLevel ? 16 : Math.max(1, Math.floor(16 / entries.length))
+  const entryDuration = isBarLevel ? 16 : cellsPerEntry
 
-  steps.forEach((step, idx) => {
-    if (step === '~') return
-    const gridPos = idx * stepFactor
-    if (step.startsWith('[') && step.endsWith(']')) {
-      const inner = step.slice(1, -1)
-      for (const name of inner.split(',').map(s => s.trim())) {
-        const midi = noteNameToMidiFromStrudel(name)
-        if (midi >= 0) notes.push({ midi, step: gridPos, duration: noteDuration, velocity: 0.8 })
-      }
-    } else {
-      const midi = noteNameToMidiFromStrudel(step)
-      if (midi >= 0) notes.push({ midi, step: gridPos, duration: noteDuration, velocity: 0.8 })
-    }
+  entries.forEach((entry, idx) => {
+    const gridPos = idx * cellsPerEntry
+    parseEntryToNotes(entry, gridPos, cellsPerEntry, entryDuration, usesDegrees, scale, notes)
   })
   return notes
 }
