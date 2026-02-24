@@ -1,6 +1,10 @@
 'use client'
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
+import {
+  ALL_PRESETS, PRESET_CATEGORY_META, getPresetsForType, searchPresets,
+  type MusicalPreset, type PresetStep, type PresetCategory,
+} from './PianoRollPresets'
 
 // ═══════════════════════════════════════════════════════════════
 //  MUSIC THEORY — key-aware note generation
@@ -135,12 +139,66 @@ interface PianoRollProps {
 const CELL_W = 32
 const CELL_H = 16
 const PIANO_KEY_W = 52
-const TOTAL_STEPS = 16
-const DOCK_HEIGHT = 320
+const DOCK_HEIGHT = 360
+const PRESET_PANEL_W = 220
+
+const STEP_OPTIONS = [
+  { label: '1 bar', value: 16, desc: '16 steps (16th notes)' },
+  { label: '2 bars', value: 32, desc: '32 steps' },
+  { label: '4 bars', value: 64, desc: '64 steps' },
+] as const
+
+/** Convert scale-degree presets to MIDI notes, adapting to current key */
+function presetToNotes(
+  preset: MusicalPreset,
+  scaleStr: string,
+  octaveRange: [number, number],
+): PianoRollNote[] {
+  const { root, mode } = parseScale(scaleStr)
+  const intervals = SCALE_INTERVALS[mode] || SCALE_INTERVALS['major']
+  const rootMidi = NOTE_NAMES.indexOf(root)
+  if (rootMidi < 0) return []
+
+  const centerOct = Math.floor((octaveRange[0] + octaveRange[1]) / 2)
+  const baseOctMidi = (centerOct + 1) * 12 + rootMidi + (preset.octaveOffset ? preset.octaveOffset * 12 : 0)
+
+  // Convert a scale degree to MIDI
+  function degreeToMidi(deg: number): number {
+    const octShift = Math.floor(deg / 7)
+    const degInScale = ((deg % 7) + 7) % 7
+    const interval = intervals[degInScale % intervals.length] ?? 0
+    return baseOctMidi + octShift * 12 + interval
+  }
+
+  const notes: PianoRollNote[] = []
+  preset.steps.forEach((step, idx) => {
+    if (step === null) return
+    if (Array.isArray(step)) {
+      // Chord — multiple simultaneous notes
+      for (const deg of step) {
+        const midi = degreeToMidi(deg)
+        if (midi >= 0 && midi <= 127) {
+          notes.push({ midi, step: idx, duration: 1, velocity: 0.8 })
+        }
+      }
+    } else {
+      // Single note
+      const midi = degreeToMidi(step)
+      if (midi >= 0 && midi <= 127) {
+        notes.push({ midi, step: idx, duration: 1, velocity: 0.8 })
+      }
+    }
+  })
+  return notes
+}
 
 export default function PianoRoll({ isOpen, onClose, scale, currentPattern, nodeType, nodeColor, soundSource, onPatternChange }: PianoRollProps) {
   const [notes, setNotes] = useState<PianoRollNote[]>([])
   const [tool, setTool] = useState<'draw' | 'erase'>('draw')
+  const [totalSteps, setTotalSteps] = useState(16)
+  const [presetPanelOpen, setPresetPanelOpen] = useState(true)
+  const [presetSearch, setPresetSearch] = useState('')
+  const [presetCategory, setPresetCategory] = useState<PresetCategory | 'all'>('all')
   const scrollRef = useRef<HTMLDivElement>(null)
   const isDrawing = useRef(false)
 
@@ -154,6 +212,29 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
       default: return [4, 6]
     }
   }, [nodeType])
+
+  // Filtered presets based on node type, category, and search
+  const filteredPresets = useMemo(() => {
+    let results: MusicalPreset[]
+    if (presetSearch) {
+      results = searchPresets(presetSearch, nodeType)
+    } else {
+      results = getPresetsForType(nodeType)
+    }
+    if (presetCategory !== 'all') {
+      results = results.filter(p => p.category === presetCategory)
+    }
+    return results
+  }, [nodeType, presetSearch, presetCategory])
+
+  const applyPreset = useCallback((preset: MusicalPreset) => {
+    const presetNotes = presetToNotes(preset, scale, octaveRange)
+    setNotes(presetNotes)
+    // Auto-expand grid if preset is longer than current step count
+    if (preset.steps.length > totalSteps) {
+      setTotalSteps(preset.steps.length <= 16 ? 16 : preset.steps.length <= 32 ? 32 : 64)
+    }
+  }, [scale, octaveRange, totalSteps])
 
   const scaleNotes = useMemo(() => getScaleNotes(scale, octaveRange), [scale, octaveRange])
   const allMidiNotes = useMemo(() => {
@@ -223,7 +304,7 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
     }
 
     const parts: string[] = []
-    for (let step = 0; step < TOTAL_STEPS; step++) {
+    for (let step = 0; step < totalSteps; step++) {
       const midiNotes = stepMap.get(step)
       if (!midiNotes || midiNotes.length === 0) {
         parts.push('~')
@@ -239,13 +320,13 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
     } else {
       onPatternChange(parts.join(' '))
     }
-  }, [notes, nodeType, onPatternChange])
+  }, [notes, nodeType, onPatternChange, totalSteps])
 
   const clearAll = useCallback(() => setNotes([]), [])
 
   if (!isOpen) return null
 
-  const gridW = TOTAL_STEPS * CELL_W
+  const gridW = totalSteps * CELL_W
   const gridH = allMidiNotes.length * CELL_H
 
   return (
@@ -264,12 +345,39 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
       <div className="flex items-center justify-between px-3 py-1.5 shrink-0"
         style={{ borderBottom: `1px solid rgba(255,255,255,0.05)`, background: `${nodeColor}06` }}>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setPresetPanelOpen(p => !p)}
+            className="text-[10px] font-bold tracking-[0.15em] uppercase cursor-pointer px-1.5 py-0.5 rounded transition-colors"
+            style={{
+              color: presetPanelOpen ? '#f59e0b' : nodeColor,
+              background: presetPanelOpen ? 'rgba(245,158,11,0.08)' : 'transparent',
+              border: `1px solid ${presetPanelOpen ? 'rgba(245,158,11,0.2)' : 'transparent'}`,
+            }}
+            title="Toggle preset browser">
+            {presetPanelOpen ? '◀ PRESETS' : '▶ PRESETS'}
+          </button>
           <span className="text-[10px] font-bold tracking-[0.15em] uppercase" style={{ color: nodeColor }}>
             🎹 PIANO ROLL
           </span>
           <span className="text-[8px] px-1.5 py-0.5 rounded" style={{ color: '#666', background: '#1a1a1e' }}>
-            {scale} · {TOTAL_STEPS} steps
+            {scale}
           </span>
+          {/* Bar length selector */}
+          <div className="flex gap-px">
+            {STEP_OPTIONS.map(opt => (
+              <button key={opt.value}
+                onClick={() => setTotalSteps(opt.value)}
+                className="px-1.5 py-0.5 rounded text-[7px] font-bold cursor-pointer transition-colors"
+                style={{
+                  background: totalSteps === opt.value ? `${nodeColor}18` : '#151518',
+                  color: totalSteps === opt.value ? nodeColor : '#444',
+                  border: `1px solid ${totalSteps === opt.value ? `${nodeColor}35` : 'rgba(255,255,255,0.04)'}`,
+                }}
+                title={opt.desc}>
+                {opt.label}
+              </button>
+            ))}
+          </div>
           <span className="text-[7px] px-1 py-0.5 rounded" style={{
             color: nodeColor, background: `${nodeColor}12`, border: `1px solid ${nodeColor}20`
           }}>
@@ -322,94 +430,203 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
         </div>
       </div>
 
-      {/* ═══ STEP NUMBERS ═══ */}
-      <div className="flex shrink-0" style={{ marginLeft: PIANO_KEY_W }}>
-        {Array.from({ length: TOTAL_STEPS }, (_, i) => (
-          <div key={i} className="flex items-center justify-center text-[7px] font-mono"
-            style={{
-              width: CELL_W, height: 16,
-              color: i % 4 === 0 ? '#666' : '#2a2a2a',
-              background: i % 4 === 0 ? 'rgba(255,255,255,0.015)' : 'transparent',
-              borderRight: '1px solid rgba(255,255,255,0.025)',
-            }}>
-            {i + 1}
+      {/* ═══ MAIN BODY: PRESET BROWSER + GRID ═══ */}
+      <div className="flex-1 flex min-h-0">
+
+        {/* ═══ PRESET BROWSER PANEL (left) ═══ */}
+        {presetPanelOpen && (
+          <div className="shrink-0 flex flex-col border-r overflow-hidden"
+            style={{ width: PRESET_PANEL_W, borderColor: 'rgba(255,255,255,0.05)', background: '#0b0b0e' }}>
+            {/* Search */}
+            <div className="px-2 py-1.5 shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+              <input
+                type="text" value={presetSearch} onChange={e => setPresetSearch(e.target.value)}
+                placeholder="Search presets..."
+                className="w-full px-2 py-1 rounded text-[9px] outline-none"
+                style={{ background: '#141418', border: '1px solid rgba(255,255,255,0.06)', color: '#ccc' }}
+                onClick={e => e.stopPropagation()}
+              />
+            </div>
+            {/* Category tabs */}
+            <div className="flex flex-wrap gap-1 px-2 py-1 shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+              <button
+                onClick={() => setPresetCategory('all')}
+                className="px-1.5 py-0.5 rounded text-[7px] font-bold cursor-pointer"
+                style={{
+                  background: presetCategory === 'all' ? 'rgba(245,158,11,0.12)' : '#151518',
+                  color: presetCategory === 'all' ? '#f59e0b' : '#555',
+                  border: `1px solid ${presetCategory === 'all' ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.04)'}`,
+                }}>
+                ALL
+              </button>
+              {(Object.entries(PRESET_CATEGORY_META) as [PresetCategory, typeof PRESET_CATEGORY_META[PresetCategory]][]).map(([catId, meta]) => {
+                // Only show categories that have presets for this node type
+                const count = ALL_PRESETS.filter(p => p.category === catId && p.forTypes.includes(nodeType as any)).length
+                if (count === 0) return null
+                return (
+                  <button key={catId}
+                    onClick={() => setPresetCategory(catId)}
+                    className="px-1.5 py-0.5 rounded text-[7px] font-bold cursor-pointer"
+                    style={{
+                      background: presetCategory === catId ? `${meta.color}15` : '#151518',
+                      color: presetCategory === catId ? meta.color : '#555',
+                      border: `1px solid ${presetCategory === catId ? `${meta.color}30` : 'rgba(255,255,255,0.04)'}`,
+                    }}>
+                    {meta.icon} {meta.label}
+                  </button>
+                )
+              })}
+            </div>
+            {/* Preset list */}
+            <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: '#333 transparent' }}>
+              {filteredPresets.length === 0 ? (
+                <div className="p-3 text-[9px] text-center" style={{ color: '#444' }}>
+                  No presets for this {nodeType} type
+                </div>
+              ) : (
+                filteredPresets.map(preset => {
+                  const catMeta = PRESET_CATEGORY_META[preset.category]
+                  const barCount = preset.steps.length <= 16 ? '1 bar' : preset.steps.length <= 32 ? '2 bars' : '4 bars'
+                  return (
+                    <div key={preset.id}
+                      className="px-2 py-1.5 cursor-pointer transition-colors"
+                      style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}
+                      onClick={() => applyPreset(preset)}
+                      onMouseEnter={e => { e.currentTarget.style.background = `${catMeta.color}08` }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px]">{catMeta.icon}</span>
+                        <span className="text-[9px] font-medium flex-1 truncate" style={{ color: '#ddd' }}>
+                          {preset.name}
+                        </span>
+                        <span className="text-[6px] px-1 py-px rounded shrink-0"
+                          style={{ color: catMeta.color, background: `${catMeta.color}12` }}>
+                          {barCount}
+                        </span>
+                      </div>
+                      <div className="text-[7px] mt-0.5 truncate" style={{ color: '#555' }}>
+                        {preset.desc}
+                      </div>
+                      {/* Mini tag pills */}
+                      <div className="flex flex-wrap gap-0.5 mt-0.5">
+                        {preset.tags.slice(0, 4).map(tag => (
+                          <span key={tag} className="text-[6px] px-1 rounded"
+                            style={{ color: '#444', background: 'rgba(255,255,255,0.03)' }}>
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+            {/* Footer */}
+            <div className="px-2 py-1 shrink-0 text-[7px]" style={{ color: '#444', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+              {filteredPresets.length} preset{filteredPresets.length !== 1 ? 's' : ''} · click to load into grid
+            </div>
           </div>
-        ))}
-      </div>
+        )}
 
-      {/* ═══ GRID AREA ═══ */}
-      <div ref={scrollRef} className="flex-1 overflow-auto relative"
-        style={{ scrollbarWidth: 'thin', scrollbarColor: `${nodeColor}25 transparent` }}>
-        <div style={{ display: 'flex', width: PIANO_KEY_W + gridW, minHeight: gridH }}>
-
-          {/* Piano keys column */}
-          <div className="sticky left-0 z-10 shrink-0" style={{ width: PIANO_KEY_W }}>
-            {allMidiNotes.map(midi => {
-              const black = isBlackKey(midi)
-              const inScale = scaleNoteSet.has(midi)
-              const noteName = NOTE_NAMES[midi % 12]
-              const octave = Math.floor(midi / 12) - 1
-              const isC = midi % 12 === 0
-
+        {/* ═══ GRID AREA (right) ═══ */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Step numbers / bar markers */}
+          <div className="flex shrink-0" style={{ marginLeft: PIANO_KEY_W }}>
+            {Array.from({ length: totalSteps }, (_, i) => {
+              const isBarStart = i % 16 === 0
+              const isBeatStart = i % 4 === 0
               return (
-                <div key={midi}
-                  className="flex items-center justify-end pr-1.5 cursor-pointer hover:brightness-125 transition-all"
+                <div key={i} className="flex items-center justify-center text-[7px] font-mono"
                   style={{
-                    height: CELL_H,
-                    background: black ? '#0c0c0f' : '#141418',
-                    borderBottom: `1px solid ${isC ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.015)'}`,
-                    borderRight: '1px solid rgba(255,255,255,0.05)',
-                  }}
-                  onMouseDown={() => handleKeyClick(midi)}
-                >
-                  <span className="text-[7px] font-mono select-none" style={{
-                    color: inScale ? nodeColor : (black ? '#2a2a2a' : '#3a3a3a'),
-                    fontWeight: inScale ? 700 : 400,
+                    width: CELL_W, height: 16,
+                    color: isBarStart ? '#888' : (isBeatStart ? '#555' : '#2a2a2a'),
+                    background: isBarStart ? 'rgba(255,255,255,0.025)' : (isBeatStart ? 'rgba(255,255,255,0.01)' : 'transparent'),
+                    borderRight: `1px solid ${isBarStart ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.025)'}`,
+                    fontWeight: isBarStart ? 700 : 400,
                   }}>
-                    {noteName}{octave}
-                  </span>
+                  {isBarStart ? `Bar ${Math.floor(i / 16) + 1}` : (isBeatStart ? `${(Math.floor(i / 4) % 4) + 1}` : '')}
                 </div>
               )
             })}
           </div>
 
-          {/* Note grid */}
-          <div style={{ width: gridW }}>
-            {allMidiNotes.map(midi => {
-              const black = isBlackKey(midi)
-              const inScale = scaleNoteSet.has(midi)
-              const isC = midi % 12 === 0
+          {/* Scrollable grid */}
+          <div ref={scrollRef} className="flex-1 overflow-auto relative"
+            style={{ scrollbarWidth: 'thin', scrollbarColor: `${nodeColor}25 transparent` }}>
+            <div style={{ display: 'flex', width: PIANO_KEY_W + gridW, minHeight: gridH }}>
 
-              return (
-                <div key={midi} className="flex" style={{ height: CELL_H }}>
-                  {Array.from({ length: TOTAL_STEPS }, (_, step) => {
-                    const hasNote = notes.some(n => n.midi === midi && n.step === step)
-                    const isBeat = step % 4 === 0
+              {/* Piano keys column */}
+              <div className="sticky left-0 z-10 shrink-0" style={{ width: PIANO_KEY_W }}>
+                {allMidiNotes.map(midi => {
+                  const black = isBlackKey(midi)
+                  const inScale = scaleNoteSet.has(midi)
+                  const noteName = NOTE_NAMES[midi % 12]
+                  const octave = Math.floor(midi / 12) - 1
+                  const isC = midi % 12 === 0
 
-                    return (
-                      <div key={step}
-                        className="cursor-pointer transition-colors"
-                        style={{
-                          width: CELL_W,
-                          height: CELL_H,
-                          background: hasNote
-                            ? `${nodeColor}cc`
-                            : inScale
-                              ? (isBeat ? `${nodeColor}06` : `${nodeColor}03`)
-                              : (black ? '#090909' : (isBeat ? 'rgba(255,255,255,0.015)' : 'transparent')),
-                          borderRight: `1px solid ${isBeat ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.015)'}`,
-                          borderBottom: `1px solid ${isC ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.015)'}`,
-                          boxShadow: hasNote ? `inset 0 0 6px ${nodeColor}50, 0 0 2px ${nodeColor}30` : 'none',
-                          borderRadius: hasNote ? 2 : 0,
-                        }}
-                        onMouseDown={() => handleCellMouseDown(midi, step)}
-                        onMouseEnter={() => handleCellMouseEnter(midi, step)}
-                      />
-                    )
-                  })}
-                </div>
-              )
-            })}
+                  return (
+                    <div key={midi}
+                      className="flex items-center justify-end pr-1.5 cursor-pointer hover:brightness-125 transition-all"
+                      style={{
+                        height: CELL_H,
+                        background: black ? '#0c0c0f' : '#141418',
+                        borderBottom: `1px solid ${isC ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.015)'}`,
+                        borderRight: '1px solid rgba(255,255,255,0.05)',
+                      }}
+                      onMouseDown={() => handleKeyClick(midi)}
+                    >
+                      <span className="text-[7px] font-mono select-none" style={{
+                        color: inScale ? nodeColor : (black ? '#2a2a2a' : '#3a3a3a'),
+                        fontWeight: inScale ? 700 : 400,
+                      }}>
+                        {noteName}{octave}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Note grid */}
+              <div style={{ width: gridW }}>
+                {allMidiNotes.map(midi => {
+                  const black = isBlackKey(midi)
+                  const inScale = scaleNoteSet.has(midi)
+                  const isC = midi % 12 === 0
+
+                  return (
+                    <div key={midi} className="flex" style={{ height: CELL_H }}>
+                      {Array.from({ length: totalSteps }, (_, step) => {
+                        const hasNote = notes.some(n => n.midi === midi && n.step === step)
+                        const isBeat = step % 4 === 0
+                        const isBar = step % 16 === 0
+
+                        return (
+                          <div key={step}
+                            className="cursor-pointer transition-colors"
+                            style={{
+                              width: CELL_W,
+                              height: CELL_H,
+                              background: hasNote
+                                ? `${nodeColor}cc`
+                                : inScale
+                                  ? (isBeat ? `${nodeColor}06` : `${nodeColor}03`)
+                                  : (black ? '#090909' : (isBeat ? 'rgba(255,255,255,0.015)' : 'transparent')),
+                              borderRight: `1px solid ${isBar ? 'rgba(255,255,255,0.08)' : (isBeat ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.015)')}`,
+                              borderBottom: `1px solid ${isC ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.015)'}`,
+                              boxShadow: hasNote ? `inset 0 0 6px ${nodeColor}50, 0 0 2px ${nodeColor}30` : 'none',
+                              borderRadius: hasNote ? 2 : 0,
+                            }}
+                            onMouseDown={() => handleCellMouseDown(midi, step)}
+                            onMouseEnter={() => handleCellMouseEnter(midi, step)}
+                          />
+                        )
+                      })}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           </div>
         </div>
       </div>
