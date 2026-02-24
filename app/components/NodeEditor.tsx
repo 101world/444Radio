@@ -1029,12 +1029,17 @@ function parseCodeToNodes(code: string, existingNodes?: PatternNode[]): PatternN
  * Re-parse ALL properties from node code after an injection.
  * This ensures knobs immediately reflect the actual values in the code
  * (e.g. after dragging `.distort(2)` onto a node, the DIST knob shows 2 not 0).
+ *
+ * IMPORTANT: We preserve node.type to prevent the dropdown from flipping
+ * between instruments and samples on every sound/pattern change.
+ * Type is only set during initial parse (parseCodeToNodes) or explicit user action.
  */
 function reparseNodeFromCode(node: PatternNode): PatternNode {
   const rawCode = node.code.replace(/\/\/ \[muted\] /g, '')
   return {
     ...node,
-    type: detectType(rawCode),
+    // Preserve node.type — don't re-detect. Type changes destabilize the
+    // sound preset dropdown (instruments ↔ samples) on every edit.
     sound: detectSound(rawCode),
     gain: detectNum(rawCode, 'gain', 0.5),
     lpf: detectNum(rawCode, 'lpf', 20000),
