@@ -178,6 +178,10 @@ const SOUND_PRESETS: Record<string, { label: string; value: string }[]> = {
     { label: 'CompuRhythm', value: 'RolandCompuRhythm8000' },
     { label: 'Linn Drum', value: 'AkaiLinn' },
     { label: 'Korg Minipops', value: 'KorgMinipops' },
+    { label: 'Boss DR-55', value: 'BossDR55' },
+    { label: 'Space Drum', value: 'ViscoSpaceDrum' },
+    { label: 'Akai XR10', value: 'AkaiXR10' },
+    { label: 'Rhythm Ace', value: 'RhythmAce' },
   ],
   bass: [
     { label: 'Sine Bass', value: 'sine' },
@@ -296,6 +300,8 @@ const SCALE_PRESETS = [
 ]
 
 const DRUM_PATTERNS = [
+  { label: '4 Kicks', value: 'bd*4' },
+  { label: '4 Kicks + Hats', value: 'bd*4, hh*8' },
   { label: 'Basic', value: 'bd [~ bd] ~ ~, ~ cp ~ ~, hh*8' },
   { label: 'Four-on-floor', value: 'bd*4, ~ cp ~ cp, hh*8' },
   { label: 'Boom Bap', value: 'bd ~ ~ bd ~ ~ bd ~, ~ ~ cp ~ ~ ~ ~ cp, hh*16' },
@@ -304,6 +310,8 @@ const DRUM_PATTERNS = [
   { label: 'Breakbeat', value: 'bd ~ ~ bd ~ ~ [bd bd] ~, ~ ~ cp ~ ~ cp ~ ~, hh hh [hh oh] hh' },
   { label: 'Minimal', value: 'bd ~ ~ ~, ~ ~ cp ~, ~ hh ~ hh' },
   { label: 'Jazz Brush', value: '[bd ~ bd ~] [~ bd ~ ~], ~ ~ [rim rim] ~, hh*4' },
+  { label: 'Kick + Rim', value: 'bd ~ bd ~, ~ rim ~ rim' },
+  { label: 'Half-time', value: 'bd ~ ~ ~, ~ ~ ~ cp, hh*4' },
 ]
 
 const MELODY_PATTERNS = [
@@ -548,7 +556,7 @@ const QUICK_FX: QuickFX[] = [
   // Sidechain
   { id: 'sidechain', label: 'SIDE', icon: '📊', category: 'groove', code: '.csid("bd",0.3,0.2)', detect: /\.csid\s*\(/, color: '#f59e0b', desc: 'Pumping sidechain compression' },
   // Arpeggio & layering
-  { id: 'arp', label: 'ARP', icon: '🎵', category: 'pattern', code: '.arp("0 2 4 7")', detect: /\.arp(eggiate)?\s*\(/, color: '#22d3ee', desc: 'Arpeggiate chord notes (triad+7th)' },
+  { id: 'arp', label: 'ARP', icon: '🎵', category: 'pattern', code: '.arp("0 1 2 3")', detect: /\.arp(eggiate)?\s*\(/, color: '#22d3ee', desc: 'Arpeggiate chord notes upward' },
   { id: 'off', label: 'OFF', icon: '⟩', category: 'pattern', code: '.off(1/8, x => x.add(7))', detect: /\.off\s*\(/, color: '#c084fc', desc: 'Offset copy +5th' },
   { id: 'superimpose', label: 'SUPER', icon: '⊕', category: 'pattern', code: '.superimpose(x => x.add(12).slow(2))', detect: /\.superimpose\s*\(/, color: '#c084fc', desc: 'Layer with octave transform' },
   { id: 'struct', label: 'STRUCT', icon: '▣', category: 'groove', code: '.struct("t(3,8)")', detect: /\.struct\s*\(/, color: '#34d399', desc: 'Boolean rhythm structure' },
@@ -668,10 +676,12 @@ const SIDEBAR_CATEGORIES: { id: string; label: string; icon: string; color: stri
   {
     id: 'layering', label: 'Layer & Pitch', icon: '⊕', color: '#c084fc',
     items: [
-      { id: 'mod_arp', label: 'Arp (Up)', icon: '🎵', desc: 'Arpeggiate chords upward', color: '#22d3ee', dragType: 'effect', payload: '.arp("0 2 4 7")' },
-      { id: 'mod_arp_down', label: 'Arp (Down)', icon: '🎵', desc: 'Arpeggiate chords downward', color: '#22d3ee', dragType: 'effect', payload: '.arp("7 4 2 0")' },
-      { id: 'mod_arp_updown', label: 'Arp (Up-Down)', icon: '🎵', desc: 'Arpeggiate up then down', color: '#22d3ee', dragType: 'effect', payload: '.arp("0 2 4 7 4 2")' },
-      { id: 'mod_arp_random', label: 'Arp (Random)', icon: '🎲', desc: 'Random arpeggiation', color: '#22d3ee', dragType: 'effect', payload: '.arp(rand.range(0,7).segment(8))' },
+      { id: 'mod_arp', label: 'Arp (Up)', icon: '🎵', desc: 'Arpeggiate up: cycles through chord notes ascending', color: '#22d3ee', dragType: 'effect', payload: '.arp("0 1 2 3")' },
+      { id: 'mod_arp_down', label: 'Arp (Down)', icon: '🎵', desc: 'Arpeggiate down: cycles through chord notes descending', color: '#22d3ee', dragType: 'effect', payload: '.arp("3 2 1 0")' },
+      { id: 'mod_arp_updown', label: 'Arp (Up-Down)', icon: '🎵', desc: 'Arpeggiate up then down', color: '#22d3ee', dragType: 'effect', payload: '.arp("0 1 2 3 2 1")' },
+      { id: 'mod_arp_random', label: 'Arp (Random)', icon: '🎲', desc: 'Random arpeggiation of chord notes', color: '#22d3ee', dragType: 'effect', payload: '.arp(rand.range(0,3).segment(8))' },
+      { id: 'mod_arp_fast', label: 'Arp (Fast)', icon: '⚡', desc: 'Fast 16th-note arpeggio', color: '#22d3ee', dragType: 'effect', payload: '.arp("0 1 2 3").fast(4)' },
+      { id: 'mod_arp_slow', label: 'Arp (Slow)', icon: '🐢', desc: 'Slow half-note arpeggio', color: '#22d3ee', dragType: 'effect', payload: '.arp("0 1 2").slow(2)' },
       { id: 'mod_off', label: 'Off (Canon)', icon: '⟩', desc: 'Offset copy +5th', color: '#c084fc', dragType: 'effect', payload: '.off(1/8, x => x.add(7))' },
       { id: 'mod_super', label: 'Superimpose', icon: '⊕', desc: 'Layer + octave transform', color: '#c084fc', dragType: 'effect', payload: '.superimpose(x => x.add(12).slow(2))' },
       { id: 'mod_jux', label: 'Jux (Stereo)', icon: '◐', desc: 'Function on R channel', color: '#22d3ee', dragType: 'effect', payload: '.jux(rev)' },
@@ -1991,6 +2001,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sidebarSearch, setSidebarSearch] = useState('')
   const [sidebarCategory, setSidebarCategory] = useState<string | null>(null)
+  const [sidebarHint, setSidebarHint] = useState('')
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [dropTarget, setDropTarget] = useState<string | null>(null)
   const [allCollapsed, setAllCollapsed] = useState(false)
@@ -3167,7 +3178,12 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                             e.dataTransfer.effectAllowed = 'copy'
                           }}
                           onClick={() => {
-                            if (selectedNode) applySidebarItemToNode(selectedNode, item)
+                            if (selectedNode) {
+                              applySidebarItemToNode(selectedNode, item)
+                            } else {
+                              setSidebarHint('⚠ Select a node first — click any node on canvas')
+                              setTimeout(() => setSidebarHint(''), 2500)
+                            }
                           }}
                           className={`flex items-center gap-2 px-2 py-1 rounded text-[9px] transition-colors group ${
                             selectedNode ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'
@@ -3195,9 +3211,11 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
           </div>
           {/* Sidebar footer hint */}
           <div className="px-3 py-1.5 shrink-0 text-[7px]" style={{ color: HW.textDim, borderTop: `1px solid ${HW.border}` }}>
-            {selectedNode
-              ? <span style={{ color: '#22d3ee' }}>● Node selected — click items to apply</span>
-              : 'Drag items onto nodes · or select a node first'
+            {sidebarHint
+              ? <span style={{ color: '#f59e0b' }} className="animate-pulse">{sidebarHint}</span>
+              : selectedNode
+                ? <span style={{ color: '#22d3ee' }}>● Node selected — click items to apply</span>
+                : 'Drag items onto nodes · or select a node first'
             }
           </div>
         </div>
