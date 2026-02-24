@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense } from 'react'
 import ReactDOM from 'react-dom'
-import { Volume2, VolumeX, GripHorizontal, Plus, Trash2, Copy, ChevronDown, Maximize2, Minimize2, ChevronLeft, ChevronRight, Piano, LayoutList, Columns } from 'lucide-react'
+import { Volume2, VolumeX, GripHorizontal, Plus, Trash2, Copy, ChevronDown, Maximize2, Minimize2, ChevronLeft, ChevronRight, Piano, LayoutList, Columns, Upload } from 'lucide-react'
 import { useKeyChords, buildDiatonicChords } from './node-editor/KeyChords'
 
 const PianoRoll = lazy(() => import('./node-editor/PianoRoll'))
 const TimelineSidebar = lazy(() => import('./node-editor/TimelineSidebar'))
+const SoundUploader = lazy(() => import('./node-editor/SoundUploader'))
 
 // ═══════════════════════════════════════════════════════════════
 //  TYPES
@@ -1354,9 +1355,10 @@ interface NodeEditorProps {
   isPlaying: boolean
   onCodeChange: (newCode: string) => void
   onUpdate: () => void
+  onRegisterSound?: (name: string, urls: string[]) => Promise<void>
 }
 
-export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: NodeEditorProps) {
+export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate, onRegisterSound }: NodeEditorProps) {
   const [nodes, setNodes] = useState<PatternNode[]>([])
   const [bpm, setBpm] = useState(0)
   const [connections, setConnections] = useState<Connection[]>([])
@@ -1375,6 +1377,7 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
   const [allCollapsed, setAllCollapsed] = useState(false)
   const [timelineOpen, setTimelineOpen] = useState(false)
   const [pianoRollOpen, setPianoRollOpen] = useState<{ nodeId: string } | null>(null)
+  const [soundUploaderOpen, setSoundUploaderOpen] = useState(false)
   const [currentCycle, setCurrentCycle] = useState(0)
 
   const panStart = useRef({ x: 0, y: 0, px: 0, py: 0 })
@@ -2123,6 +2126,17 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
             {allCollapsed ? <Columns size={10} /> : <LayoutList size={10} />}
             <span>{allCollapsed ? 'EXPAND' : 'COLLAPSE'}</span>
           </button>
+          {/* Custom Sounds */}
+          <button onClick={() => setSoundUploaderOpen(true)}
+            className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[9px] font-bold tracking-wider transition-all cursor-pointer"
+            style={{
+              background: HW.raised,
+              border: `1px solid ${HW.border}`,
+              color: HW.textDim,
+            }}
+            title="Upload custom samples">
+            <Upload size={10} /> SAMPLES
+          </button>
           {/* Timeline toggle */}
           <button onClick={() => setTimelineOpen(p => !p)}
             className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[9px] font-bold tracking-wider transition-all cursor-pointer"
@@ -2867,6 +2881,17 @@ export default function NodeEditor({ code, isPlaying, onCodeChange, onUpdate }: 
           selectedNodeId={selectedNode}
         />
       </Suspense>
+
+      {/* ══════ SOUND UPLOADER MODAL ══════ */}
+      {soundUploaderOpen && onRegisterSound && (
+        <Suspense fallback={null}>
+          <SoundUploader
+            isOpen={soundUploaderOpen}
+            onClose={() => setSoundUploaderOpen(false)}
+            onRegisterSound={onRegisterSound}
+          />
+        </Suspense>
+      )}
     </div>
   )
 }

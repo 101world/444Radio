@@ -7909,6 +7909,26 @@ $: s("bd:3").bank("RolandTR808")
           })
         }
 
+        // ─── Load user's custom NDE samples ───
+        try {
+          const samplesRes = await fetch('/api/nde/samples')
+          if (samplesRes.ok) {
+            const samplesData = await samplesRes.json()
+            if (samplesData.samples?.length > 0) {
+              for (const s of samplesData.samples) {
+                try {
+                  await webaudio.samples({ [s.name]: [s.url] })
+                } catch (regErr) {
+                  console.warn(`[444 INPUT] Failed to register custom sample "${s.name}":`, regErr)
+                }
+              }
+              console.log(`🎵 [444 INPUT] Loaded ${samplesData.samples.length} custom NDE samples`)
+            }
+          }
+        } catch (customErr) {
+          console.warn('[444 INPUT] Failed to load custom samples:', customErr)
+        }
+
         setStatus('ready')
         setLoadingMsg('')
         setError(null)
@@ -8158,6 +8178,18 @@ $: s("bd:3").bank("RolandTR808")
     setIsPlaying(false)
     setStatus('ready')
     setError(null)
+  }, [])
+
+  // ─── Register custom sound in Strudel engine ───
+  const registerCustomSound = useCallback(async (name: string, urls: string[]) => {
+    const webaudio = webaudioRef.current
+    if (!webaudio?.samples) {
+      console.warn('[444 INPUT] Strudel webaudio not ready for custom sound registration')
+      return
+    }
+    // Register as a named sample bank: { name: [url1, url2, ...] }
+    await webaudio.samples({ [name]: urls })
+    console.log(`🎵 [444 INPUT] Custom sound registered: "${name}" (${urls.length} file${urls.length > 1 ? 's' : ''})`)
   }, [])
 
   // ─── WAV Recording handler ───
@@ -9227,6 +9259,7 @@ $: s("bd:3").bank("RolandTR808")
                   setCodeWithUndo(newCode)
                 }}
                 onUpdate={() => handleUpdate()}
+                onRegisterSound={registerCustomSound}
               />
             </Suspense>
           </div>
