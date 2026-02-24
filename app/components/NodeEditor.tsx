@@ -312,11 +312,28 @@ function randomBassPattern(): string {
   return `<${parts.join(' ')}>`
 }
 
+function randomVocalPattern(): string {
+  // Vocal/sample patterns: sparse rhythmic hits using the sample name itself
+  const patterns = [
+    '~ ~ ~ ~, ~ ~ ~ ~',
+    '0 ~ ~ 0 ~ ~ 0 ~',
+    '~ 0 ~ ~',
+    '0 ~ 0 ~',
+    '0 ~ [~ 0] ~',
+    '[0 ~] ~ [~ 0] ~',
+    '0 ~ ~ ~, ~ ~ 0 ~',
+    '~ 0 ~ 0',
+  ]
+  return randomPick(patterns)
+}
+
 function randomPatternForType(type: NodeType): string {
   switch (type) {
     case 'drums': return randomDrumPattern()
     case 'bass':  return randomBassPattern()
     case 'chords': return randomChordProgression()
+    case 'vocal': return randomVocalPattern()
+    case 'fx':    return randomVocalPattern() // sparse for fx too
     default:      return randomMelodyPattern()
   }
 }
@@ -626,17 +643,36 @@ function extractBpm(code: string): number {
   return 0 // 0 = no bpm found, don't inject
 }
 
+// Sounds that are sample-based (use s() patterns, not note() patterns)
+const SAMPLE_BASED_TYPES = new Set<NodeType>(['drums', 'vocal', 'fx', 'other'])
+
+/** Check if a node type operates on samples (rhythmic patterns) rather than pitched notes */
+function isSampleBased(type: NodeType): boolean {
+  return SAMPLE_BASED_TYPES.has(type)
+}
+
 function detectType(code: string): NodeType {
   const c = code.toLowerCase()
+  // Drum detection: explicit drum sounds or drum banks without note()
   if (/\bs\s*\(\s*["'].*?(bd|cp|sd|hh|oh|ch|rim|tom|clap|clave|ride|crash)/i.test(code)) return 'drums'
   if (/\.bank\s*\(/.test(code) && !/note\s*\(/.test(code)) return 'drums'
+  // Drum machine banks
+  if (/RolandTR|cr78|KorgMinipops|AkaiLinn|RolandCompuRhythm/i.test(code)) return 'drums'
+  // Bass detection: low octave notes with bass sounds
   if (/note\s*\(.*?[12]\b/.test(code) && /bass|sub|sine/i.test(code)) return 'bass'
   if (c.includes('bass') || c.includes('sub')) return 'bass'
+  // Chord detection: stacked notes [c3,e3,g3]
   if (/note\s*\(.*?\[.*?,.*?\]/.test(code)) return 'chords'
   if (c.includes('chord') || c.includes('rhodes')) return 'chords'
+  // Pad detection
   if (c.includes('pad') || c.includes('ambient') || c.includes('drone') || c.includes('haze')) return 'pad'
-  if (c.includes('vocal') || c.includes('voice') || c.includes('choir') || c.includes('sing')) return 'vocal'
+  // Vocal/sample detection: voice oohs, choir, etc. — these are SAMPLE-BASED (not melodic)
+  if (c.includes('vocal') || c.includes('voice') || c.includes('choir') || c.includes('sing') || c.includes('oohs') || c.includes('aahs')) return 'vocal'
+  // FX detection
   if (/crackle|rumble|noise|texture/i.test(code)) return 'fx'
+  // If it uses s() with a custom sound name but NO note(), it's a sample (drums-like)
+  if (/\bs\s*\(\s*["']/.test(code) && !/note\s*\(/.test(code) && !/\bn\s*\(/.test(code)) return 'drums'
+  // Melodic detection: note patterns
   if (/note\s*\(.*?[45]\b/.test(code)) return 'melody'
   if (/note\s*\(/.test(code) || /\bn\s*\(/.test(code)) return 'melody'
   return 'other'
@@ -753,7 +789,7 @@ function parseCodeToNodes(code: string, existingNodes?: PatternNode[]): PatternN
     const rawCode = isMuted ? block.code.replace(/\/\/ \[muted\] /g, '') : block.code
     const type = detectType(rawCode)
     const sound = detectSound(rawCode)
-    const isMelodic = type !== 'drums' && type !== 'fx' && type !== 'other'
+    const isMelodic = !isSampleBased(type)
     const detectedScale = detectScale(rawCode)
 
     nodes.push({
@@ -1626,25 +1662,33 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   const handleBpmChange = useCallback((v: number) => {
     const clamped = Math.max(30, Math.min(300, Math.round(v)))
     setBpm(clamped)
-    // Replace setcps line in current code
-    let newCode = lastCodeRef.current
-    const existing = newCode.match(/setcps\s*\([^)]*\)[^\n]*/)
-    if (existing) {
-      newCode = newCode.replace(existing[0], `setcps(${clamped}/60/4) // ${clamped} bpm`)
-    } else {
-      // Insert after preamble comments
-      const lines = newCode.split('\n')
+    // Replace ALL setcps lines in current code (prevents duplicate accumulation)
+    const lines = lastCodeRef.current.split('\n')
+    let replaced = false
+    const cleaned: string[] = []
+    for (const line of lines) {
+      if (/^\s*setcps\s*\(/.test(line) || /^\s*setbpm\s*\(/.test(line)) {
+        if (!replaced) {
+          cleaned.push(`setcps(${clamped}/60/4) // ${clamped} bpm`)
+          replaced = true
+        }
+        // skip duplicate setcps lines
+      } else {
+        cleaned.push(line)
+      }
+    }
+    if (!replaced) {
+      // No setcps found — insert before first $: block
       let insertIdx = 0
-      for (let i = 0; i < lines.length; i++) {
-        const t = lines[i].trim()
+      for (let i = 0; i < cleaned.length; i++) {
+        const t = cleaned[i].trim()
         if (t.startsWith('$:') || t.startsWith('// [muted]')) break
         if (t === '' || t.startsWith('//')) insertIdx = i + 1
         else { insertIdx = i; break }
       }
-      lines.splice(insertIdx, 0, `setcps(${clamped}/60/4) // ${clamped} bpm`)
-      newCode = lines.join('\n')
+      cleaned.splice(insertIdx, 0, `setcps(${clamped}/60/4) // ${clamped} bpm`)
     }
-    sendToParent(newCode)
+    sendToParent(cleaned.join('\n'))
   }, [sendToParent])
 
   // ── Global Scale Change ──
@@ -1652,7 +1696,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     let codeToSend: string | null = null
     setNodes(prev => {
       const updated = prev.map(n => {
-        if (n.type === 'drums' || n.type === 'fx' || n.type === 'other') return n
+        if (isSampleBased(n.type)) return n
         const newCode = applyEffect(n.code, 'scale', newScale)
         return reparseNodeFromCode({ ...n, code: newCode })
       })
@@ -1764,7 +1808,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     setNodes(prev => {
       const node = prev.find(n => n.id === id)
       if (!node) return prev
-      const method = node.type === 'drums' ? 'bank' : 'soundDotS'
+      const method = isSampleBased(node.type) ? 'bank' : 'soundDotS'
       const newCode = applyEffect(node.code, method, newSource)
       if (newCode === node.code) return prev
       const updated = prev.map(n => n.id === id ? reparseNodeFromCode({ ...n, code: newCode }) : n)
@@ -1779,7 +1823,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     setNodes(prev => {
       const node = prev.find(n => n.id === id)
       if (!node) return prev
-      const method = node.type === 'drums' ? 'drumPattern' : 'notePattern'
+      const method = isSampleBased(node.type) ? 'drumPattern' : 'notePattern'
       const newCode = applyEffect(node.code, method, newPattern)
       if (newCode === node.code) return prev
       const updated = prev.map(n => n.id === id ? reparseNodeFromCode({ ...n, code: newCode }) : n)
@@ -1817,8 +1861,9 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
       drums: `$: s("bd [~ bd] ~ ~, ~ cp ~ ~, hh*8")\n  .bank("RolandTR808").gain(0.7)\n  .scope({color:"${tc.drums}",thickness:2,smear:.88})`,
       bass: `$: note("<c2 f2 g2 c2>")\n  .s("sawtooth").lpf(400).gain(0.35)\n  .scale("C4:major")\n  .scope({color:"${tc.bass}",thickness:2.5,smear:.96})`,
       melody: `$: n("0 2 4 7 4 2").scale("C4:major")\n  .s("gm_piano").gain(0.3)\n  .room(0.4).delay(0.15)\n  .scope({color:"${tc.melody}",thickness:1,smear:.91})`,
-      chords: `$: note("<[c3,e3,g3] [a2,c3,e3] [f2,a2,c3] [g2,b2,d3]>")\n  .s("gm_epiano1").gain(0.25).scale("C4:major")\n  .lpf(1800).room(0.5)\n  .slow(2)\n  .scope({color:"${tc.chords}",thickness:1,smear:.93})`,
+      chords: `$: note("<[c4,e4,g4] [a3,c4,e4] [f3,a3,c4] [g3,b3,d4]>")\n  .s("gm_epiano1").gain(0.25).scale("C4:major")\n  .lpf(1800).room(0.5)\n  .slow(2)\n  .scope({color:"${tc.chords}",thickness:1,smear:.93})`,
       pad: `$: note("<[c3,g3,e4] [a2,e3,c4]>")\n  .s("sawtooth").lpf(800).gain(0.08).scale("C4:major")\n  .room(0.9).delay(0.3).delayfeedback(0.5)\n  .slow(4)\n  .fscope()`,
+      vocal: `$: s("gm_choir_aahs").gain(0.3)\n  .room(0.5).lpf(3000)\n  .slow(2)\n  .scope({color:"${tc.vocal}",thickness:1,smear:.93})`,
       fx: `$: s("hh*16").gain(0.06)\n  .delay(0.25).delayfeedback(0.5)\n  .room(0.6).lpf(2000).speed(2.5)\n  .scope({color:"${tc.fx}",thickness:1,smear:.95})`,
     }
     const t = templates[template] || templates.drums
@@ -2074,7 +2119,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
       const node = prev.find(n => n.id === nodeId)
       if (!node) return prev
       const newPattern = randomPatternForType(node.type)
-      const method = node.type === 'drums' ? 'drumPattern' : 'notePattern'
+      const method = isSampleBased(node.type) ? 'drumPattern' : 'notePattern'
       const newCode = applyEffect(node.code, method, newPattern)
       if (newCode === node.code) return prev
       const updated = prev.map(n => n.id === nodeId ? reparseNodeFromCode({ ...n, code: newCode }) : n)
@@ -2152,7 +2197,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
 
   // ── Current global scale (detected from majority of nodes) ──
   const globalScale = useMemo(() => {
-    const melodicNodes = nodes.filter(n => n.type !== 'drums' && n.type !== 'fx' && n.type !== 'other')
+    const melodicNodes = nodes.filter(n => !isSampleBased(n.type))
     if (melodicNodes.length === 0) return 'C4:major'
     const counts = new Map<string, number>()
     melodicNodes.forEach(n => { const s = n.scale || 'C4:major'; counts.set(s, (counts.get(s) || 0) + 1) })
@@ -2278,7 +2323,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
             {showAddMenu && (
               <div className="absolute right-0 top-full mt-1 z-50 min-w-[160px] rounded-lg shadow-2xl overflow-hidden"
                 style={{ background: '#0e0e11', border: `1px solid ${HW.borderLight}` }}>
-                {(['drums', 'bass', 'melody', 'chords', 'pad', 'fx'] as const).map(t => (
+                {(['drums', 'bass', 'melody', 'chords', 'pad', 'vocal', 'fx'] as const).map(t => (
                   <button key={t} onClick={() => addNode(t)}
                     className="w-full flex items-center gap-2.5 px-4 py-2 text-[11px] transition-colors cursor-pointer"
                     style={{ color: TYPE_COLORS[t] }}
@@ -2422,7 +2467,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
             const to = nodes.find(n => n.id === conn.toId)
             if (!from || !to) return null
             const x1 = (from.x + NODE_W - 16 + pan.x) * zoom
-            const fromH = from.collapsed ? 120 : (from.type !== 'drums' && from.type !== 'fx' && from.type !== 'other' ? 780 : 520)
+            const fromH = from.collapsed ? 120 : (!isSampleBased(from.type) ? 780 : 520)
             const y1 = (from.y + fromH + pan.y) * zoom
             const x2 = (to.x + 16 + pan.x) * zoom
             const y2 = (to.y + pan.y) * zoom
@@ -2450,7 +2495,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
             const from = nodes.find(n => n.id === linking.fromId)
             if (!from) return null
             const fx = linking.side === 'out' ? (from.x + NODE_W - 16 + pan.x) * zoom : (from.x + 16 + pan.x) * zoom
-            const fromH2 = from.collapsed ? 120 : (from.type !== 'drums' && from.type !== 'fx' && from.type !== 'other' ? 780 : 520)
+            const fromH2 = from.collapsed ? 120 : (!isSampleBased(from.type) ? 780 : 520)
             const fy = linking.side === 'out' ? (from.y + fromH2 + pan.y) * zoom : (from.y + pan.y) * zoom
             return <line x1={fx} y1={fy} x2={linking.mx} y2={linking.my}
               stroke="#22d3ee" strokeWidth={2} strokeDasharray="6 3" opacity={0.6} />
@@ -2464,7 +2509,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
           const isLive = connectedIds.has(node.id)
           const isActive = isPlaying && !node.muted && isLive
           const presets = SOUND_PRESETS[node.type] || SOUND_PRESETS.other
-          const isMelodic = node.type !== 'drums' && node.type !== 'fx' && node.type !== 'other'
+          const isMelodic = !isSampleBased(node.type)
 
           return (
             <div key={node.id} className="absolute select-none" style={{
@@ -2845,7 +2890,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                     </div>
                     <HardwareSelect label="SND" value={node.soundSource} options={presets}
                       onChange={v => changeSoundSource(node.id, v)} color={color} />
-                    {node.type === 'drums' ? (
+                    {node.type === 'drums' || node.type === 'vocal' || node.type === 'fx' ? (
                       <div className="flex items-center gap-1">
                         <div className="flex-1"><HardwareSelect label="PAT" value={node.pattern} options={DRUM_PATTERNS}
                           onChange={v => changePattern(node.id, v)} color={color} /></div>
@@ -2941,6 +2986,28 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
             </div>
           </div>
         )}
+
+        {/* ══════ PIANO ROLL DOCK (inside canvas for absolute positioning) ══════ */}
+        {pianoRollOpen && (() => {
+          const targetNode = nodes.find(n => n.id === pianoRollOpen.nodeId)
+          if (!targetNode) return null
+          const prNodeType = (['melody', 'chords', 'bass', 'pad', 'vocal'].includes(targetNode.type)
+            ? targetNode.type : 'other') as 'melody' | 'chords' | 'bass' | 'pad' | 'vocal' | 'other'
+          const prColor = TYPE_COLORS[targetNode.type] || '#94a3b8'
+          return (
+            <Suspense fallback={<div className="absolute bottom-0 left-0 right-0 h-[320px] bg-black/90 flex items-center justify-center text-white/40 z-[100]">Loading Piano Roll…</div>}>
+              <PianoRoll
+                isOpen={true}
+                onClose={() => setPianoRollOpen(null)}
+                scale={targetNode.scale || globalScale}
+                currentPattern={targetNode.pattern}
+                nodeType={prNodeType}
+                nodeColor={prColor}
+                onPatternChange={(newPattern) => handlePianoRollPatternChange(targetNode.id, newPattern)}
+              />
+            </Suspense>
+          )
+        })()}
       </div>
 
       {/* Close sidebar+canvas flex container */}
@@ -2962,28 +3029,6 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
       </div>
       )}
 
-      {/* ══════ PIANO ROLL MODAL ══════ */}
-      {pianoRollOpen && (() => {
-        const targetNode = nodes.find(n => n.id === pianoRollOpen.nodeId)
-        if (!targetNode) return null
-        const prNodeType = (['melody', 'chords', 'bass', 'pad', 'vocal'].includes(targetNode.type)
-          ? targetNode.type : 'other') as 'melody' | 'chords' | 'bass' | 'pad' | 'vocal' | 'other'
-        const prColor = TYPE_COLORS[targetNode.type] || '#94a3b8'
-        return (
-          <Suspense fallback={<div className="fixed inset-0 z-[200] bg-black/80 flex items-center justify-center text-white/40">Loading Piano Roll…</div>}>
-            <PianoRoll
-              isOpen={true}
-              onClose={() => setPianoRollOpen(null)}
-              scale={targetNode.scale || globalScale}
-              currentPattern={targetNode.pattern}
-              nodeType={prNodeType}
-              nodeColor={prColor}
-              onPatternChange={(newPattern) => handlePianoRollPatternChange(targetNode.id, newPattern)}
-            />
-          </Suspense>
-        )
-      })()}
-
       {/* ══════ TIMELINE SIDEBAR ══════ */}
       <Suspense fallback={null}>
         <TimelineSidebar
@@ -3003,6 +3048,9 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
           currentCycle={currentCycle}
           onNodeSelect={(nodeId) => setSelectedNode(nodeId)}
           selectedNodeId={selectedNode}
+          onDeleteNode={deleteNode}
+          onToggleMute={toggleMute}
+          onToggleSolo={toggleSolo}
         />
       </Suspense>
 

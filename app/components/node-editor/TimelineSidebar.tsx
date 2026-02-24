@@ -43,6 +43,9 @@ interface TimelineSidebarProps {
   currentCycle: number   // current playback cycle position (0-based)
   onNodeSelect: (nodeId: string) => void
   selectedNodeId: string | null
+  onDeleteNode?: (nodeId: string) => void
+  onToggleMute?: (nodeId: string) => void
+  onToggleSolo?: (nodeId: string) => void
 }
 
 const TRACK_H = 36
@@ -50,7 +53,8 @@ const CYCLES_VISIBLE = 8  // how many cycles to show in the timeline
 const CELL_W = 60
 
 export default function TimelineSidebar({
-  isOpen, onToggle, nodes, bpm, isPlaying, currentCycle, onNodeSelect, selectedNodeId
+  isOpen, onToggle, nodes, bpm, isPlaying, currentCycle, onNodeSelect, selectedNodeId,
+  onDeleteNode, onToggleMute, onToggleSolo,
 }: TimelineSidebarProps) {
 
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -161,19 +165,50 @@ export default function TimelineSidebar({
               onClick={() => onNodeSelect(node.id)}>
 
               {/* Track label */}
-              <div className="shrink-0 flex items-center gap-1.5 px-2 overflow-hidden"
+              <div className="shrink-0 flex items-center gap-1 px-1.5 overflow-hidden"
                 style={{
                   width: 100,
                   borderRight: isSelected ? `2px solid ${color}` : '1px solid rgba(255,255,255,0.04)',
                 }}>
                 <span className="text-[8px] shrink-0" style={{ color }}>{icon}</span>
-                <span className="text-[8px] font-medium truncate" style={{ color: isSelected ? color : '#777' }}>
+                <span className="text-[8px] font-medium truncate flex-1" style={{ color: isSelected ? color : '#777' }}>
                   {node.name || 'Untitled'}
                 </span>
-                {node.solo && (
-                  <span className="text-[6px] font-black px-0.5 rounded"
-                    style={{ background: 'rgba(245,158,11,0.2)', color: '#f59e0b' }}>S</span>
-                )}
+                <div className="flex items-center gap-px shrink-0">
+                  {onToggleMute && (
+                    <button
+                      className="w-3.5 h-3.5 flex items-center justify-center rounded text-[6px] font-black cursor-pointer"
+                      style={{
+                        background: node.muted ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.04)',
+                        color: node.muted ? '#ef4444' : '#444',
+                      }}
+                      onClick={e => { e.stopPropagation(); onToggleMute(node.id) }}
+                      title={node.muted ? 'Unmute' : 'Mute'}>
+                      M
+                    </button>
+                  )}
+                  {onToggleSolo && (
+                    <button
+                      className="w-3.5 h-3.5 flex items-center justify-center rounded text-[6px] font-black cursor-pointer"
+                      style={{
+                        background: node.solo ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.04)',
+                        color: node.solo ? '#f59e0b' : '#444',
+                      }}
+                      onClick={e => { e.stopPropagation(); onToggleSolo(node.id) }}
+                      title={node.solo ? 'Unsolo' : 'Solo'}>
+                      S
+                    </button>
+                  )}
+                  {onDeleteNode && (
+                    <button
+                      className="w-3.5 h-3.5 flex items-center justify-center rounded text-[6px] cursor-pointer"
+                      style={{ background: 'rgba(255,255,255,0.04)', color: '#444' }}
+                      onClick={e => { e.stopPropagation(); onDeleteNode(node.id) }}
+                      title="Remove track">
+                      ✕
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Pattern visualization */}

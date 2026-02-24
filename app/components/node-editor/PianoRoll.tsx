@@ -30,18 +30,13 @@ function parseScale(scaleStr: string): { root: string; octave: number; mode: str
   return { root: m[1], octave: parseInt(m[2]), mode: m[3] }
 }
 
-function noteNameToMidi(name: string, octave: number): number {
-  const idx = NOTE_NAMES.indexOf(name)
-  return idx >= 0 ? (octave + 1) * 12 + idx : 60
-}
-
 function midiToNoteName(midi: number): string {
   const name = NOTE_NAMES[midi % 12]
   const oct = Math.floor(midi / 12) - 1
   return `${name.toLowerCase().replace('#', 's')}${oct}`
 }
 
-function getScaleNotes(scaleStr: string, octaveRange: [number, number] = [2, 6]): number[] {
+function getScaleNotes(scaleStr: string, octaveRange: [number, number] = [3, 6]): number[] {
   const { root, mode } = parseScale(scaleStr)
   const intervals = SCALE_INTERVALS[mode] || SCALE_INTERVALS['major']
   const rootIdx = NOTE_NAMES.indexOf(root)
@@ -63,31 +58,64 @@ function isBlackKey(midi: number): boolean {
   return [1, 3, 6, 8, 10].includes(midi % 12)
 }
 
+/** Convert MIDI note number to frequency (Hz) */
+function midiToFreq(midi: number): number {
+  return 440 * Math.pow(2, (midi - 69) / 12)
+}
+
 // ═══════════════════════════════════════════════════════════════
-//  PIANO ROLL COMPONENT
+//  AUDIO PREVIEW — play notes when clicked in the piano roll
+// ═══════════════════════════════════════════════════════════════
+
+let audioCtx: AudioContext | null = null
+let activeOscs: OscillatorNode[] = []
+
+function playNotePreview(midi: number, durationMs = 200) {
+  if (!audioCtx) audioCtx = new AudioContext()
+  if (audioCtx.state === 'suspended') audioCtx.resume()
+
+  const osc = audioCtx.createOscillator()
+  const gain = audioCtx.createGain()
+  osc.type = 'triangle'
+  osc.frequency.value = midiToFreq(midi)
+  gain.gain.setValueAtTime(0.15, audioCtx.currentTime)
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + durationMs / 1000)
+  osc.connect(gain).connect(audioCtx.destination)
+  osc.start()
+  osc.stop(audioCtx.currentTime + durationMs / 1000 + 0.05)
+  activeOscs.push(osc)
+  osc.onended = () => { activeOscs = activeOscs.filter(o => o !== osc) }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PIANO ROLL — BOTTOM DOCK PANEL
+//
+//  Slides up from the bottom of the node editor. Users can
+//  interact with other panels while it's open.
 // ═══════════════════════════════════════════════════════════════
 
 interface PianoRollNote {
   midi: number
-  step: number    // which beat/step (0-indexed)
-  duration: number // in steps
+  step: number
+  duration: number
   velocity: number
 }
 
 interface PianoRollProps {
   isOpen: boolean
   onClose: () => void
-  scale: string         // e.g. "C4:major"
-  currentPattern: string // current pattern from node
+  scale: string
+  currentPattern: string
   nodeType: 'melody' | 'chords' | 'bass' | 'pad' | 'vocal' | 'other'
   nodeColor: string
   onPatternChange: (newPattern: string) => void
 }
 
-const CELL_W = 28
-const CELL_H = 14
-const PIANO_KEY_W = 48
+const CELL_W = 32
+const CELL_H = 16
+const PIANO_KEY_W = 52
 const TOTAL_STEPS = 16
+const DOCK_HEIGHT = 320
 
 export default function PianoRoll({ isOpen, onClose, scale, currentPattern, nodeType, nodeColor, onPatternChange }: PianoRollProps) {
   const [notes, setNotes] = useState<PianoRollNote[]>([])
@@ -95,36 +123,34 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
   const scrollRef = useRef<HTMLDivElement>(null)
   const isDrawing = useRef(false)
 
-  // Get the full range of MIDI notes available in this scale
+  // Audible octave ranges — raised for better audibility
   const octaveRange: [number, number] = useMemo(() => {
     switch (nodeType) {
-      case 'bass': return [1, 3]
-      case 'pad': return [2, 5]
-      case 'chords': return [2, 5]
-      default: return [3, 6]
+      case 'bass': return [2, 4]
+      case 'pad': return [3, 5]
+      case 'chords': return [3, 5]
+      case 'vocal': return [3, 5]
+      default: return [4, 6]
     }
   }, [nodeType])
 
   const scaleNotes = useMemo(() => getScaleNotes(scale, octaveRange), [scale, octaveRange])
-  // For the grid, show ALL chromatic notes in range but highlight scale notes
   const allMidiNotes = useMemo(() => {
-    const notes: number[] = []
+    const result: number[] = []
     for (let midi = (octaveRange[1] + 1) * 12 + 11; midi >= (octaveRange[0] + 1) * 12; midi--) {
-      notes.push(midi)
+      result.push(midi)
     }
-    return notes
+    return result
   }, [octaveRange])
 
   const scaleNoteSet = useMemo(() => new Set(scaleNotes), [scaleNotes])
 
-  // Parse existing pattern into notes on mount
   useEffect(() => {
     if (!isOpen) return
     const parsed = parsePatternToNotes(currentPattern, scale, octaveRange)
     setNotes(parsed)
   }, [isOpen, currentPattern, scale, octaveRange])
 
-  // Auto-scroll to middle range
   useEffect(() => {
     if (isOpen && scrollRef.current) {
       const middleRow = Math.floor(allMidiNotes.length / 2)
@@ -138,6 +164,7 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
       if (existing >= 0) {
         return prev.filter((_, i) => i !== existing)
       } else {
+        playNotePreview(midi, 180)
         return [...prev, { midi, step, duration: 1, velocity: 0.8 }]
       }
     })
@@ -157,15 +184,16 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
     isDrawing.current = false
   }, [])
 
-  // Convert notes to a Strudel pattern string
+  const handleKeyClick = useCallback((midi: number) => {
+    playNotePreview(midi, 350)
+  }, [])
+
   const generatePattern = useCallback(() => {
     if (notes.length === 0) {
       onPatternChange('~ ~ ~ ~')
-      onClose()
       return
     }
 
-    // Group notes by step
     const stepMap = new Map<number, number[]>()
     for (const note of notes) {
       const arr = stepMap.get(note.step) || []
@@ -173,7 +201,6 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
       stepMap.set(note.step, arr)
     }
 
-    // Build Strudel pattern
     const parts: string[] = []
     for (let step = 0; step < TOTAL_STEPS; step++) {
       const midiNotes = stepMap.get(step)
@@ -182,19 +209,16 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
       } else if (midiNotes.length === 1) {
         parts.push(midiToNoteName(midiNotes[0]))
       } else {
-        // Chord: [note1,note2,note3]
         parts.push(`[${midiNotes.map(m => midiToNoteName(m)).join(',')}]`)
       }
     }
 
-    // For chords, wrap in < > for one-per-cycle behavior
     if (nodeType === 'chords') {
       onPatternChange(`<${parts.join(' ')}>`)
     } else {
       onPatternChange(parts.join(' '))
     }
-    onClose()
-  }, [notes, nodeType, onPatternChange, onClose])
+  }, [notes, nodeType, onPatternChange])
 
   const clearAll = useCallback(() => setNotes([]), [])
 
@@ -204,185 +228,168 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
   const gridH = allMidiNotes.length * CELL_H
 
   return (
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center"
-      style={{ background: 'rgba(0,0,0,0.85)' }}
-      onMouseUp={handleMouseUp}>
-      <div className="flex flex-col rounded-xl shadow-2xl overflow-hidden"
-        style={{
-          width: Math.min(900, PIANO_KEY_W + gridW + 40),
-          maxWidth: '95vw',
-          maxHeight: '85vh',
-          background: '#0a0a0c',
-          border: `1px solid ${nodeColor}30`,
-        }}
-        onClick={e => e.stopPropagation()}>
-
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-2"
-          style={{ borderBottom: `1px solid rgba(255,255,255,0.05)`, background: `${nodeColor}08` }}>
-          <div className="flex items-center gap-3">
-            <span className="text-[11px] font-bold tracking-[0.15em] uppercase" style={{ color: nodeColor }}>
-              🎹 PIANO ROLL
-            </span>
-            <span className="text-[9px] px-2 py-0.5 rounded" style={{ color: '#777', background: '#1a1a1e' }}>
-              {scale} · {TOTAL_STEPS} steps
-            </span>
-            <span className="text-[8px] px-1.5 py-0.5 rounded" style={{
-              color: nodeColor, background: `${nodeColor}15`, border: `1px solid ${nodeColor}25`
-            }}>
-              {notes.length} note{notes.length !== 1 ? 's' : ''}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* Tool buttons */}
-            <button onClick={() => setTool('draw')}
-              className="px-2 py-1 rounded text-[9px] font-bold cursor-pointer"
-              style={{
-                background: tool === 'draw' ? `${nodeColor}20` : '#1a1a1e',
-                color: tool === 'draw' ? nodeColor : '#777',
-                border: `1px solid ${tool === 'draw' ? `${nodeColor}40` : 'rgba(255,255,255,0.05)'}`,
-              }}>
-              ✏️ Draw
-            </button>
-            <button onClick={() => setTool('erase')}
-              className="px-2 py-1 rounded text-[9px] font-bold cursor-pointer"
-              style={{
-                background: tool === 'erase' ? '#ef444420' : '#1a1a1e',
-                color: tool === 'erase' ? '#ef4444' : '#777',
-                border: `1px solid ${tool === 'erase' ? '#ef444440' : 'rgba(255,255,255,0.05)'}`,
-              }}>
-              🗑️ Erase
-            </button>
-            <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.05)' }} />
-            <button onClick={clearAll}
-              className="px-2 py-1 rounded text-[9px] font-bold cursor-pointer"
-              style={{ background: '#1a1a1e', color: '#777', border: '1px solid rgba(255,255,255,0.05)' }}>
-              Clear
-            </button>
-            <button onClick={generatePattern}
-              className="px-3 py-1 rounded text-[9px] font-bold cursor-pointer"
-              style={{ background: `${nodeColor}20`, color: nodeColor, border: `1px solid ${nodeColor}40` }}>
-              ✓ Apply
-            </button>
-            <button onClick={onClose}
-              className="px-2 py-1 rounded text-[9px] cursor-pointer"
-              style={{ color: '#777', background: '#1a1a1e', border: '1px solid rgba(255,255,255,0.05)' }}>
-              ✕
-            </button>
-          </div>
+    <div
+      className="absolute bottom-0 left-0 right-0 z-[100] flex flex-col"
+      style={{
+        height: DOCK_HEIGHT,
+        background: '#08080a',
+        borderTop: `2px solid ${nodeColor}40`,
+        boxShadow: `0 -4px 30px rgba(0,0,0,0.6), inset 0 1px 0 ${nodeColor}15`,
+      }}
+      onMouseUp={handleMouseUp}
+      onClick={e => e.stopPropagation()}
+    >
+      {/* ═══ HEADER BAR ═══ */}
+      <div className="flex items-center justify-between px-3 py-1.5 shrink-0"
+        style={{ borderBottom: `1px solid rgba(255,255,255,0.05)`, background: `${nodeColor}06` }}>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold tracking-[0.15em] uppercase" style={{ color: nodeColor }}>
+            🎹 PIANO ROLL
+          </span>
+          <span className="text-[8px] px-1.5 py-0.5 rounded" style={{ color: '#666', background: '#1a1a1e' }}>
+            {scale} · {TOTAL_STEPS} steps
+          </span>
+          <span className="text-[7px] px-1 py-0.5 rounded" style={{
+            color: nodeColor, background: `${nodeColor}12`, border: `1px solid ${nodeColor}20`
+          }}>
+            {notes.length} note{notes.length !== 1 ? 's' : ''}
+          </span>
         </div>
-
-        {/* Scale note indicator */}
-        <div className="flex items-center gap-1 px-4 py-1" style={{ background: '#0e0e11', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-          <span className="text-[7px] font-bold uppercase tracking-wider" style={{ color: '#444' }}>Scale notes:</span>
-          <div className="flex gap-[2px]">
+        <div className="flex items-center gap-1.5">
+          <div className="flex gap-px mr-2">
             {scaleNotes.slice(0, 12).map((midi, i) => (
-              <span key={i} className="px-1 py-[1px] rounded text-[7px] font-bold"
-                style={{ background: `${nodeColor}12`, color: `${nodeColor}cc` }}>
+              <span key={i} className="px-1 py-[1px] rounded text-[6px] font-bold"
+                style={{ background: `${nodeColor}10`, color: `${nodeColor}aa` }}>
                 {NOTE_NAMES[midi % 12]}
               </span>
             ))}
           </div>
+          <button onClick={() => setTool('draw')}
+            className="px-2 py-0.5 rounded text-[8px] font-bold cursor-pointer"
+            style={{
+              background: tool === 'draw' ? `${nodeColor}18` : '#151518',
+              color: tool === 'draw' ? nodeColor : '#555',
+              border: `1px solid ${tool === 'draw' ? `${nodeColor}35` : 'rgba(255,255,255,0.04)'}`,
+            }}>
+            ✏ Draw
+          </button>
+          <button onClick={() => setTool('erase')}
+            className="px-2 py-0.5 rounded text-[8px] font-bold cursor-pointer"
+            style={{
+              background: tool === 'erase' ? '#ef44441a' : '#151518',
+              color: tool === 'erase' ? '#ef4444' : '#555',
+              border: `1px solid ${tool === 'erase' ? '#ef444435' : 'rgba(255,255,255,0.04)'}`,
+            }}>
+            🗑 Erase
+          </button>
+          <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.04)' }} />
+          <button onClick={clearAll}
+            className="px-2 py-0.5 rounded text-[8px] font-bold cursor-pointer"
+            style={{ background: '#151518', color: '#555', border: '1px solid rgba(255,255,255,0.04)' }}>
+            Clear
+          </button>
+          <button onClick={generatePattern}
+            className="px-2.5 py-0.5 rounded text-[8px] font-bold cursor-pointer"
+            style={{ background: `${nodeColor}18`, color: nodeColor, border: `1px solid ${nodeColor}35` }}>
+            ✓ Apply
+          </button>
+          <button onClick={onClose}
+            className="px-1.5 py-0.5 rounded text-[9px] cursor-pointer ml-1"
+            style={{ color: '#555', background: '#151518', border: '1px solid rgba(255,255,255,0.04)' }}>
+            ▼
+          </button>
         </div>
+      </div>
 
-        {/* Step numbers header */}
-        <div className="flex" style={{ marginLeft: PIANO_KEY_W, paddingRight: 16 }}>
-          {Array.from({ length: TOTAL_STEPS }, (_, i) => (
-            <div key={i} className="flex items-center justify-center text-[7px] font-mono"
-              style={{
-                width: CELL_W, height: 18,
-                color: i % 4 === 0 ? '#777' : '#333',
-                background: i % 4 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent',
-                borderRight: '1px solid rgba(255,255,255,0.03)',
-              }}>
-              {i + 1}
-            </div>
-          ))}
-        </div>
-
-        {/* Grid area */}
-        <div ref={scrollRef} className="flex-1 overflow-auto relative"
-          style={{ scrollbarWidth: 'thin', scrollbarColor: `${nodeColor}30 transparent` }}>
-          <div style={{ display: 'flex', width: PIANO_KEY_W + gridW, minHeight: gridH }}>
-
-            {/* Piano keys column */}
-            <div className="sticky left-0 z-10 shrink-0" style={{ width: PIANO_KEY_W }}>
-              {allMidiNotes.map(midi => {
-                const isBlack = isBlackKey(midi)
-                const isInScale = scaleNoteSet.has(midi)
-                const noteName = NOTE_NAMES[midi % 12]
-                const octave = Math.floor(midi / 12) - 1
-                const isC = midi % 12 === 0
-
-                return (
-                  <div key={midi} className="flex items-center justify-end pr-1"
-                    style={{
-                      height: CELL_H,
-                      background: isBlack ? '#0e0e11' : '#16161a',
-                      borderBottom: `1px solid ${isC ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.02)'}`,
-                      borderRight: '1px solid rgba(255,255,255,0.06)',
-                    }}>
-                    <span className="text-[7px] font-mono" style={{
-                      color: isInScale ? nodeColor : (isBlack ? '#333' : '#444'),
-                      fontWeight: isInScale ? 700 : 400,
-                    }}>
-                      {noteName}{octave}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-
-            {/* Note grid */}
-            <div style={{ width: gridW }}>
-              {allMidiNotes.map(midi => {
-                const isBlack = isBlackKey(midi)
-                const isInScale = scaleNoteSet.has(midi)
-                const isC = midi % 12 === 0
-
-                return (
-                  <div key={midi} className="flex" style={{ height: CELL_H }}>
-                    {Array.from({ length: TOTAL_STEPS }, (_, step) => {
-                      const hasNote = notes.some(n => n.midi === midi && n.step === step)
-                      const isBeat = step % 4 === 0
-
-                      return (
-                        <div key={step}
-                          className="cursor-pointer transition-colors"
-                          style={{
-                            width: CELL_W,
-                            height: CELL_H,
-                            background: hasNote
-                              ? `${nodeColor}cc`
-                              : isInScale
-                                ? (isBeat ? `${nodeColor}08` : `${nodeColor}04`)
-                                : (isBlack ? '#0a0a0c' : (isBeat ? 'rgba(255,255,255,0.02)' : 'transparent')),
-                            borderRight: `1px solid ${isBeat ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)'}`,
-                            borderBottom: `1px solid ${isC ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)'}`,
-                            boxShadow: hasNote ? `inset 0 0 4px ${nodeColor}40` : 'none',
-                            borderRadius: hasNote ? 2 : 0,
-                          }}
-                          onMouseDown={() => handleCellMouseDown(midi, step)}
-                          onMouseEnter={() => handleCellMouseEnter(midi, step)}
-                        />
-                      )
-                    })}
-                  </div>
-                )
-              })}
-            </div>
+      {/* ═══ STEP NUMBERS ═══ */}
+      <div className="flex shrink-0" style={{ marginLeft: PIANO_KEY_W }}>
+        {Array.from({ length: TOTAL_STEPS }, (_, i) => (
+          <div key={i} className="flex items-center justify-center text-[7px] font-mono"
+            style={{
+              width: CELL_W, height: 16,
+              color: i % 4 === 0 ? '#666' : '#2a2a2a',
+              background: i % 4 === 0 ? 'rgba(255,255,255,0.015)' : 'transparent',
+              borderRight: '1px solid rgba(255,255,255,0.025)',
+            }}>
+            {i + 1}
           </div>
-        </div>
+        ))}
+      </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between px-4 py-1.5"
-          style={{ borderTop: '1px solid rgba(255,255,255,0.05)', background: '#0e0e11' }}>
-          <span className="text-[8px]" style={{ color: '#444' }}>
-            Click to place notes · Highlighted rows = in-scale · Pattern outputs as Strudel note()
-          </span>
-          <span className="text-[8px] font-mono" style={{ color: `${nodeColor}60` }}>
-            {nodeType} · {scale}
-          </span>
+      {/* ═══ GRID AREA ═══ */}
+      <div ref={scrollRef} className="flex-1 overflow-auto relative"
+        style={{ scrollbarWidth: 'thin', scrollbarColor: `${nodeColor}25 transparent` }}>
+        <div style={{ display: 'flex', width: PIANO_KEY_W + gridW, minHeight: gridH }}>
+
+          {/* Piano keys column */}
+          <div className="sticky left-0 z-10 shrink-0" style={{ width: PIANO_KEY_W }}>
+            {allMidiNotes.map(midi => {
+              const black = isBlackKey(midi)
+              const inScale = scaleNoteSet.has(midi)
+              const noteName = NOTE_NAMES[midi % 12]
+              const octave = Math.floor(midi / 12) - 1
+              const isC = midi % 12 === 0
+
+              return (
+                <div key={midi}
+                  className="flex items-center justify-end pr-1.5 cursor-pointer hover:brightness-125 transition-all"
+                  style={{
+                    height: CELL_H,
+                    background: black ? '#0c0c0f' : '#141418',
+                    borderBottom: `1px solid ${isC ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.015)'}`,
+                    borderRight: '1px solid rgba(255,255,255,0.05)',
+                  }}
+                  onMouseDown={() => handleKeyClick(midi)}
+                >
+                  <span className="text-[7px] font-mono select-none" style={{
+                    color: inScale ? nodeColor : (black ? '#2a2a2a' : '#3a3a3a'),
+                    fontWeight: inScale ? 700 : 400,
+                  }}>
+                    {noteName}{octave}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Note grid */}
+          <div style={{ width: gridW }}>
+            {allMidiNotes.map(midi => {
+              const black = isBlackKey(midi)
+              const inScale = scaleNoteSet.has(midi)
+              const isC = midi % 12 === 0
+
+              return (
+                <div key={midi} className="flex" style={{ height: CELL_H }}>
+                  {Array.from({ length: TOTAL_STEPS }, (_, step) => {
+                    const hasNote = notes.some(n => n.midi === midi && n.step === step)
+                    const isBeat = step % 4 === 0
+
+                    return (
+                      <div key={step}
+                        className="cursor-pointer transition-colors"
+                        style={{
+                          width: CELL_W,
+                          height: CELL_H,
+                          background: hasNote
+                            ? `${nodeColor}cc`
+                            : inScale
+                              ? (isBeat ? `${nodeColor}06` : `${nodeColor}03`)
+                              : (black ? '#090909' : (isBeat ? 'rgba(255,255,255,0.015)' : 'transparent')),
+                          borderRight: `1px solid ${isBeat ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.015)'}`,
+                          borderBottom: `1px solid ${isC ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.015)'}`,
+                          boxShadow: hasNote ? `inset 0 0 6px ${nodeColor}50, 0 0 2px ${nodeColor}30` : 'none',
+                          borderRadius: hasNote ? 2 : 0,
+                        }}
+                        onMouseDown={() => handleCellMouseDown(midi, step)}
+                        onMouseEnter={() => handleCellMouseEnter(midi, step)}
+                      />
+                    )
+                  })}
+                </div>
+              )
+            })}
+          </div>
         </div>
       </div>
     </div>
