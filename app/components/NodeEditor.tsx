@@ -1290,6 +1290,31 @@ function RotaryKnob({ value, min, max, step, onChange, onCommit, color, label, s
     document.addEventListener('mouseup', onUp)
   }
 
+  // Touch support for knobs on iPad
+  const handleTouchDown = (e: React.TouchEvent) => {
+    if (isDynamic) return
+    e.stopPropagation(); e.preventDefault()
+    const touch = e.touches[0]
+    const startY = touch.clientY, startVal = value, range = max - min
+    const onTouchMove = (ev: TouchEvent) => {
+      ev.preventDefault()
+      const t = ev.touches[0]
+      const sens = 150
+      const next = clamp(startVal + ((startY - t.clientY) / sens) * range)
+      localValueRef.current = next
+      stateRef.current.onChange(next)
+    }
+    const onTouchEnd = () => {
+      document.removeEventListener('touchmove', onTouchMove)
+      document.removeEventListener('touchend', onTouchEnd)
+      document.removeEventListener('touchcancel', onTouchEnd)
+      stateRef.current.onCommit()
+    }
+    document.addEventListener('touchmove', onTouchMove, { passive: false })
+    document.addEventListener('touchend', onTouchEnd)
+    document.addEventListener('touchcancel', onTouchEnd)
+  }
+
   const handleDblClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (!isDynamic && defaultValue !== undefined) { onChange(defaultValue); onCommit() }
@@ -1304,7 +1329,8 @@ function RotaryKnob({ value, min, max, step, onChange, onCommit, color, label, s
     <div className="flex flex-col items-center gap-0" style={{ width: size + 8 }}>
       <span className="text-[7px] font-bold uppercase tracking-[0.1em] mb-0.5" style={{ color: HW.textDim }}>{label}</span>
       <svg ref={knobRef} width={size} height={size} className={isDynamic ? 'cursor-not-allowed opacity-50' : 'cursor-ns-resize'}
-        onMouseDown={handleDown} onDoubleClick={handleDblClick}>
+        style={{ touchAction: 'none' }}
+        onMouseDown={handleDown} onTouchStart={handleTouchDown} onDoubleClick={handleDblClick}>
         <circle cx={cx} cy={cy} r={r + 2} fill="none" stroke={HW.knobRing} strokeWidth={1} opacity={0.4} />
         <circle cx={cx} cy={cy} r={r} fill={HW.knobBg} stroke={HW.knobRing} strokeWidth={1.5} />
         <path d={arcPath(cx, cy, r - 1, -135, 135)} fill="none" stroke={HW.knobRing} strokeWidth={2.5} strokeLinecap="round" opacity={0.5} />
@@ -1912,6 +1938,12 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   const containerRef = useRef<HTMLDivElement>(null)
   const lastCodeRef = useRef(code)
   const commitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // ── Touch state refs (mutable to avoid stale closures in imperative listeners) ──
+  const touchDragRef = useRef<{ id: string; ox: number; oy: number } | null>(null)
+  const touchPanRef = useRef<{ active: boolean; startX: number; startY: number; px: number; py: number }>({ active: false, startX: 0, startY: 0, px: 0, py: 0 })
+  const pinchRef = useRef<{ active: boolean; startDist: number; startZoom: number }>({ active: false, startDist: 0, startZoom: 0.85 })
+  const zoomRef = useRef(zoom)
+  zoomRef.current = zoom
   // Dual guard: counter handles rapid successive changes; string tracks last sent code.
   // Both must agree before we allow re-parse — makes this bulletproof under React 19 batching.
   const internalChangeCount = useRef(0)
@@ -2702,7 +2734,43 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     }
   }, [])
 
-  // Register canvas wheel listener imperatively with { passive: false } to allow preventDefault
+  // ── Touch handlers for node drag ──
+  const handleNodeTouchStart = useCallback((e: React.TouchEvent, nodeId: string) => {
+    if (e.touches.length !== 1) return
+    e.stopPropagation()
+    const touch = e.touches[0]
+    const rect = containerRef.current?.getBoundingClientRect(); if (!rect) return
+    const node = nodesRef.current.find(n => n.id === nodeId); if (!node) return
+    const p = panRef.current
+    const ox = (touch.clientX - rect.left) / zoomRef.current - p.x - node.x
+    const oy = (touch.clientY - rect.top) / zoomRef.current - p.y - node.y
+    touchDragRef.current = { id: nodeId, ox, oy }
+    setDragging({ id: nodeId, ox, oy })
+    setSelectedNode(nodeId)
+  }, [])
+
+  // ── Touch handler for canvas background pan ──
+  const handleBgTouchStart = useCallback((e: React.TouchEvent) => {
+    const target = e.target as HTMLElement
+    const isBg = target === containerRef.current || target.classList.contains('node-grid-bg')
+    if (!isBg) return
+    if (e.touches.length === 2) {
+      // Pinch to zoom
+      const dx = e.touches[0].clientX - e.touches[1].clientX
+      const dy = e.touches[0].clientY - e.touches[1].clientY
+      pinchRef.current = { active: true, startDist: Math.hypot(dx, dy), startZoom: zoomRef.current }
+      touchPanRef.current.active = false
+      return
+    }
+    if (e.touches.length !== 1) return
+    const touch = e.touches[0]
+    const p = panRef.current
+    touchPanRef.current = { active: true, startX: touch.clientX, startY: touch.clientY, px: p.x, py: p.y }
+    setIsPanning(true)
+    setSelectedNode(null)
+  }, [])
+
+  // Register canvas wheel + touch listeners imperatively with { passive: false } to allow preventDefault
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
@@ -2710,8 +2778,63 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
       e.preventDefault()
       setZoom(z => Math.max(0.25, Math.min(2, z + e.deltaY * -0.001)))
     }
+    const onTouchMove = (e: TouchEvent) => {
+      e.preventDefault() // prevent iOS scroll/bounce/zoom
+      if (e.touches.length === 2 && pinchRef.current.active) {
+        // Pinch-to-zoom
+        const dx = e.touches[0].clientX - e.touches[1].clientX
+        const dy = e.touches[0].clientY - e.touches[1].clientY
+        const dist = Math.hypot(dx, dy)
+        const scale = dist / pinchRef.current.startDist
+        setZoom(Math.max(0.25, Math.min(2, pinchRef.current.startZoom * scale)))
+        return
+      }
+      if (e.touches.length !== 1) return
+      const touch = e.touches[0]
+      const rect = el.getBoundingClientRect()
+      const drag = touchDragRef.current
+      if (drag) {
+        const p = panRef.current
+        const z = zoomRef.current
+        setNodes(prev => prev.map(n => n.id === drag.id ? {
+          ...n,
+          x: Math.round(((touch.clientX - rect.left) / z - p.x - drag.ox) / 20) * 20,
+          y: Math.round(((touch.clientY - rect.top) / z - p.y - drag.oy) / 20) * 20,
+        } : n))
+      } else if (touchPanRef.current.active) {
+        const tp = touchPanRef.current
+        const z = zoomRef.current
+        setPan({
+          x: tp.px + (touch.clientX - tp.startX) / z,
+          y: tp.py + (touch.clientY - tp.startY) / z,
+        })
+      }
+    }
+    const onTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length === 0) {
+        touchDragRef.current = null
+        touchPanRef.current.active = false
+        pinchRef.current.active = false
+        setDragging(null)
+        setIsPanning(false)
+      } else if (e.touches.length === 1 && pinchRef.current.active) {
+        // Went from 2 fingers to 1 — transition to pan
+        pinchRef.current.active = false
+        const touch = e.touches[0]
+        const p = panRef.current
+        touchPanRef.current = { active: true, startX: touch.clientX, startY: touch.clientY, px: p.x, py: p.y }
+      }
+    }
     el.addEventListener('wheel', onWheel, { passive: false })
-    return () => el.removeEventListener('wheel', onWheel)
+    el.addEventListener('touchmove', onTouchMove, { passive: false })
+    el.addEventListener('touchend', onTouchEnd, { passive: false })
+    el.addEventListener('touchcancel', onTouchEnd, { passive: false })
+    return () => {
+      el.removeEventListener('wheel', onWheel)
+      el.removeEventListener('touchmove', onTouchMove)
+      el.removeEventListener('touchend', onTouchEnd)
+      el.removeEventListener('touchcancel', onTouchEnd)
+    }
   }, [])
 
   // ── Connected ids — all nodes are always "live" (each is an independent $: block) ──
@@ -2998,9 +3121,10 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
       {/* ══════ CANVAS ══════ */}
       <div ref={containerRef}
         className="flex-1 relative cursor-grab active:cursor-grabbing"
-        style={{ overflow: 'hidden' }}
+        style={{ overflow: 'hidden', touchAction: 'none' }}
         onMouseDown={handleBgMouseDown} onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
+        onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}
+        onTouchStart={handleBgTouchStart}>
 
         {/* Dot grid */}
         <div className="node-grid-bg absolute inset-0" style={{
@@ -3132,8 +3256,9 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                   {/* HEADER */}
                   <div className="flex items-center gap-2 px-3 py-2 cursor-grab active:cursor-grabbing rounded-t-xl"
                     onMouseDown={e => handleMouseDown(e, node.id)}
+                    onTouchStart={e => handleNodeTouchStart(e, node.id)}
                     onContextMenu={e => { e.preventDefault(); e.stopPropagation(); toggleAdditiveSolo(node.id) }}
-                    style={{ background: `linear-gradient(180deg, ${color}08 0%, transparent 100%)`, borderBottom: `1px solid ${HW.border}` }}>
+                    style={{ background: `linear-gradient(180deg, ${color}08 0%, transparent 100%)`, borderBottom: `1px solid ${HW.border}`, touchAction: 'none' }}>
                     <GripHorizontal size={10} style={{ color: HW.textDim }} className="shrink-0" />
                     <div className="w-5 h-5 rounded-md flex items-center justify-center text-[10px]"
                       style={{ background: `${color}15`, color, boxShadow: isActive ? `0 0 8px ${color}30` : 'none' }}>
