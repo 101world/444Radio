@@ -76,7 +76,6 @@ export function computeUrl(u: string): string {
 }
 
 export function AudioPlayerProvider({ children }: { children: ReactNode }) {
-  console.log('🎵 AudioPlayerProvider mounted')
   const { user } = useUser()
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -110,17 +109,13 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       try {
         const parsedQueue = JSON.parse(savedQueue)
         setQueue(parsedQueue)
-        console.log('[Queue] Loaded from localStorage:', parsedQueue.length, 'tracks')
       } catch (error) {
         console.error('[Queue] Failed to load from localStorage:', error)
       }
     }
     
     // Listen for studio playback events
-    const handleStudioPlay = () => {
-      console.log('🎛️ Studio started playing, pausing global player');
-      pause();
-    };
+    const handleStudioPlay = () => { pause() };
     
     window.addEventListener('audio:pause-global', handleStudioPlay);
     return () => window.removeEventListener('audio:pause-global', handleStudioPlay);
@@ -130,19 +125,16 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (queue.length > 0) {
       safeLocalStorage.setItem('444radio-queue', JSON.stringify(queue))
-      console.log('[Queue] Saved to localStorage:', queue.length, 'tracks')
     } else {
       safeLocalStorage.removeItem('444radio-queue')
-      console.log('[Queue] Cleared from localStorage')
     }
   }, [queue])
 
   const resume = useCallback(() => {
     if (audioRef.current) {
+      setIsPlaying(true) // Optimistic — instant UI response
       audioRef.current.play()
         .then(() => {
-          setIsPlaying(true)
-          // When the global player resumes, notify studio to pause
           try { window.dispatchEvent(new CustomEvent('audio:pause-studio')); } catch {}
         })
         .catch(error => {
@@ -153,122 +145,52 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const playTrack = useCallback(async (track: Track) => {
-    console.log('🎵🎵🎵 playTrack CALLED with:', { 
-      title: track?.title, 
-      id: track?.id,
-      audioUrl: track?.audioUrl,
-      userId: track?.userId 
-    })
+    // Quick guard — no lock, no async gap before play() for iOS user-gesture chain
+    if (!track?.audioUrl || !audioRef.current) return
     
-    // Prevent multiple simultaneous play attempts
-    if (isLoadingRef.current) {
-      console.log('⏳ Play already in progress, ignoring duplicate request');
-      return;
-    }
+    // Validate URL format
+    const u = track.audioUrl
+    if (!(u.startsWith('blob:') || u.startsWith('http://') || u.startsWith('https://') || u.startsWith('/'))) return
 
-    if (!track) {
-      console.error('❌ Cannot play: track is null/undefined');
-      return;
-    }
-
-    if (!track.audioUrl) {
-      console.error('❌ Cannot play: audioUrl is missing for track:', track.title || track.id);
-      console.error('Track data:', JSON.stringify(track, null, 2));
-      return;
-    }
-
-    // Validate URL format - allow blob: URLs and relative paths
-    const isValidUrl = track.audioUrl.startsWith('blob:') || 
-                      track.audioUrl.startsWith('http://') || 
-                      track.audioUrl.startsWith('https://') ||
-                      track.audioUrl.startsWith('/');
-    
-    if (!isValidUrl) {
-      console.error('❌ Cannot play: invalid audioUrl format:', track.audioUrl);
-      console.error('Track:', track.title || track.id);
-      return;
-    }
-
-    if (!audioRef.current) {
-      console.error('❌ Audio ref not initialized');
-      return;
-    }
-
-    // Set loading lock
-    isLoadingRef.current = true;
-
-    console.log('🎵 Playing track:', track.title, 'URL:', track.audioUrl);
+    // Prevent overlapping loads — but release lock instantly on error
+    if (isLoadingRef.current) return
+    isLoadingRef.current = true
 
     // Reset play tracking
     playTimeRef.current = 0
     hasTrackedPlayRef.current = false
 
-    // DON'T set currentTrack here - wait until audio actually plays
-    // setCurrentTrack(track)
-    
-    // Always use proxy for R2 and Replicate URLs to avoid CORS issues
-    // Use shared computeUrl — CDN URLs play direct, raw R2/Replicate get proxied
-    
-    let finalUrl: string;
-    try {
-      finalUrl = computeUrl(track.audioUrl);
-      if (!finalUrl) {
-        console.error('❌ computeUrl returned empty string for:', track.audioUrl);
-        return;
-      }
-    } catch (computeError) {
-      console.error('❌ Failed to compute final URL:', computeError);
-      return;
-    }
-    
-    const isProxied = finalUrl.startsWith('/api/r2/proxy')
-    console.log('Using URL:', isProxied ? 'proxy' : 'direct', finalUrl)
-    
+    // Resolve final URL (proxy for R2/Replicate, direct for CDN)
+    const finalUrl = computeUrl(track.audioUrl)
+    if (!finalUrl) { isLoadingRef.current = false; return }
+
     const audio = audioRef.current
-    
+
+    // ── INSTANT UI UPDATE — user sees response immediately ──
+    setCurrentTrack(track)
+    setIsPlaying(true) // Optimistic — corrected by error handler if play fails
+
     try {
-      // Stop any existing playback — fast reset, no artificial delays
+      // Stop current playback — minimal reset, no double-load
       audio.pause()
-      audio.removeAttribute('src')
-      audio.load()
-      
-      // Set currentTrack immediately so UI updates instantly
-      setCurrentTrack(track)
-      
-      // Set the new source and play as soon as browser is ready
+
+      // Set new source — setting .src auto-triggers load, no manual .load() needed
       audio.src = finalUrl
-      audio.load()
-      
-      // Use canplay event for fastest possible start — no setTimeout delays
-      await new Promise<void>((resolve, reject) => {
-        const onCanPlay = () => { cleanup(); resolve() }
-        const onError = () => { cleanup(); reject(audio.error || new Error('Audio load failed')) }
-        const timeout = setTimeout(() => { cleanup(); reject(new Error('Audio load timeout')) }, 15000)
-        function cleanup() {
-          audio.removeEventListener('canplay', onCanPlay)
-          audio.removeEventListener('error', onError)
-          clearTimeout(timeout)
-        }
-        audio.addEventListener('canplay', onCanPlay, { once: true })
-        audio.addEventListener('error', onError, { once: true })
-      })
-      
-      // Now play
+
+      // Play IMMEDIATELY — critical for iOS Safari user-gesture chain.
+      // The browser will buffer and start as soon as data arrives.
+      // Do NOT await canplay first — that async gap breaks iOS gesture chain
+      // and adds 500-2000ms delay on all platforms.
       await audio.play()
-      setIsPlaying(true)
+
       // Notify Studio to stop playback to prevent overlapping audio
       try { window.dispatchEvent(new CustomEvent('audio:pause-studio')); } catch {}
     } catch (error) {
-      console.error('❌ Error playing audio:', error)
-      console.error('Track:', track.title)
-      console.error('Audio URL:', track.audioUrl)
-      console.error('Final URL:', finalUrl)
-      console.error('Audio element src:', audio.src)
-      console.error('Audio element error:', audio.error)
+      // play() was rejected (network error, user gesture policy, etc.)
+      console.error('[AudioPlayer] Play failed:', track.title, error)
       setIsPlaying(false)
     } finally {
-      // Always release lock
-      isLoadingRef.current = false;
+      isLoadingRef.current = false
     }
 
     // Find track in playlist and update index
@@ -333,7 +255,6 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       audioRef.current = new Audio()
       audioRef.current.crossOrigin = 'anonymous'
       audioRef.current.volume = volume
-      console.log('Audio element initialized')
 
       return () => {
         if (audioRef.current) {
@@ -363,7 +284,6 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     const nextTrack = playlist[nextIndex]
     
     if (nextTrack && nextTrack.audioUrl) {
-      console.log('🎵 Preloading next track:', nextTrack.title)
       
       // Clean up previous preload
       if (preloadAudioRef.current) {
@@ -451,10 +371,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       }
     }, 1000)
 
-    return () => {
-      console.log('🎯 Clearing play tracking interval')
-      clearInterval(interval)
-    }
+    return () => clearInterval(interval)
   }, [isPlaying, currentTrack, currentTrack?.id])
 
   // Track play count API call
