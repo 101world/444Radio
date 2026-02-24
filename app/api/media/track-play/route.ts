@@ -37,16 +37,25 @@ export async function POST(request: Request) {
 
     // Check if user is the artist (per copilot instructions: "Artist plays don't count")
     // Use admin client to bypass RLS — avoids false 404s when RLS blocks the select
+    // Use .maybeSingle() instead of .single() to handle duplicates gracefully
     const { data: media, error: fetchError } = await supabaseAdmin
       .from('combined_media')
       .select('user_id')
       .eq('id', mediaId)
-      .single()
+      .maybeSingle()
 
     if (fetchError) {
       console.error('Track-play media lookup failed:', fetchError.message, 'mediaId:', mediaId)
+      // Don't return 404 — just skip tracking silently to avoid noisy console errors
       return corsResponse(
-        NextResponse.json({ error: 'Media not found', details: fetchError.message }, { status: 404 })
+        NextResponse.json({ success: true, message: 'Media lookup failed, play not counted', skipped: true })
+      )
+    }
+
+    if (!media) {
+      // Media not found — skip silently
+      return corsResponse(
+        NextResponse.json({ success: true, message: 'Media not found, play not counted', skipped: true })
       )
     }
 

@@ -227,27 +227,34 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     const audio = audioRef.current
     
     try {
-      // Stop any existing playback completely
+      // Stop any existing playback — fast reset, no artificial delays
       audio.pause()
       audio.removeAttribute('src')
       audio.load()
       
-      // Wait for cleanup to complete
-      await new Promise(resolve => setTimeout(resolve, 50))
+      // Set currentTrack immediately so UI updates instantly
+      setCurrentTrack(track)
       
-      // Now set the new source and load it
+      // Set the new source and play as soon as browser is ready
       audio.src = finalUrl
       audio.load()
       
-      // Wait for the new source to be ready
-      await new Promise(resolve => setTimeout(resolve, 100))
-      
-      // Set currentTrack BEFORE audio.play() so useEffect has both values when isPlaying changes
-      setCurrentTrack(track)
+      // Use canplay event for fastest possible start — no setTimeout delays
+      await new Promise<void>((resolve, reject) => {
+        const onCanPlay = () => { cleanup(); resolve() }
+        const onError = () => { cleanup(); reject(audio.error || new Error('Audio load failed')) }
+        const timeout = setTimeout(() => { cleanup(); reject(new Error('Audio load timeout')) }, 15000)
+        function cleanup() {
+          audio.removeEventListener('canplay', onCanPlay)
+          audio.removeEventListener('error', onError)
+          clearTimeout(timeout)
+        }
+        audio.addEventListener('canplay', onCanPlay, { once: true })
+        audio.addEventListener('error', onError, { once: true })
+      })
       
       // Now play
       await audio.play()
-      // Now that audio is successfully playing, set isPlaying to trigger useEffect
       setIsPlaying(true)
       // Notify Studio to stop playback to prevent overlapping audio
       try { window.dispatchEvent(new CustomEvent('audio:pause-studio')); } catch {}

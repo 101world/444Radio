@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch the resource server-side and stream it back
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout for large audio files
+    const timeoutId = setTimeout(() => controller.abort(), 55000); // 55s timeout (Vercel limit is 60s)
     
     const resp = await fetch(url, {
       headers: {

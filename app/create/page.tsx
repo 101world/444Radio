@@ -21,6 +21,7 @@ const VisualizerModal = lazy(() => import('../components/VisualizerModal'))
 const LipSyncModal = lazy(() => import('../components/LipSyncModal'))
 const ResoundModal = lazy(() => import('../components/ResoundModal'))
 const FeaturesSidebar = lazy(() => import('../components/FeaturesSidebar'))
+import CoverArtGenModal from '../components/CoverArtGenModal'
 const MatrixConsole = lazy(() => import('../components/MatrixConsole'))
 const OutOfCreditsModal = lazy(() => import('../components/OutOfCreditsModal'))
 import PluginGenerationQueue from '../components/PluginGenerationQueue'
@@ -155,6 +156,7 @@ function CreatePageContent() {
   const [isUploadingRef, setIsUploadingRef] = useState(false)
   const [showRemakeModal, setShowRemakeModal] = useState(false)
   const [showResoundModal, setShowResoundModal] = useState(false)
+  const [showCoverArtGenModal, setShowCoverArtGenModal] = useState(false)
   // Audio recording for voice reference (actual mic capture, not speech-to-text)
   const [isAudioRecording, setIsAudioRecording] = useState(false)
   const [audioRecordingTime, setAudioRecordingTime] = useState(0)
@@ -1085,30 +1087,9 @@ function CreatePageContent() {
       return
     }
 
-    // For cover art/image generation
+    // For cover art/image generation — open the CoverArt modal
     if (selectedType === 'image') {
-      const userMessage: Message = {
-        id: Date.now().toString(),
-        type: 'user',
-        content: input,
-        timestamp: new Date()
-      }
-
-      const generatingMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: 'generation',
-        content: activeGenerations.size > 0 ? '🎨 Queued - will start soon...' : '🎨 Generating cover art...',
-        generationType: 'image',
-        isGenerating: true,
-        timestamp: new Date()
-      }
-
-      setMessages(prev => [...prev, userMessage, generatingMessage])
-      setGenerationQueue(prev => [...prev, generatingMessage.id])
-      setInput('')
-
-      // Process queue asynchronously
-      processQueue(generatingMessage.id, 'image', { prompt: input })
+      setShowCoverArtGenModal(true)
       return
     }
   }
@@ -1890,6 +1871,35 @@ function CreatePageContent() {
         return newSet
       })
     }
+  }
+
+  // ── Cover Art Generation (from CoverArtGenModal) ──
+  const handleCoverArtGenerate = async (coverParams: { prompt: string; params: { width: number; height: number; output_format: string; output_quality: number; guidance_scale: number; num_inference_steps: number; go_fast: boolean } }) => {
+    setShowCoverArtGenModal(false)
+    const prompt = coverParams.prompt
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      type: 'user',
+      content: `🎨 Generate cover art: "${prompt.substring(0, 80)}" (${coverParams.params.width}×${coverParams.params.height})`,
+      timestamp: new Date()
+    }
+
+    const generatingMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      type: 'generation',
+      content: activeGenerations.size > 0 ? '🎨 Queued - will start soon...' : '🎨 Generating cover art...',
+      generationType: 'image',
+      isGenerating: true,
+      timestamp: new Date()
+    }
+
+    setMessages(prev => [...prev, userMessage, generatingMessage])
+    setGenerationQueue(prev => [...prev, generatingMessage.id])
+    setInput('')
+
+    // Process queue asynchronously
+    processQueue(generatingMessage.id, 'image', { prompt })
   }
 
   const generateImage = async (prompt: string, signal?: AbortSignal) => {
@@ -2768,7 +2778,7 @@ function CreatePageContent() {
                     </button>
                     
                     <button
-                      onClick={() => setSelectedType('image')}
+                      onClick={() => { setSelectedType('image'); setShowCoverArtGenModal(true) }}
                       className={`group relative p-3 rounded-xl transition-all duration-200 ${
                         selectedType === 'image'
                           ? 'bg-cyan-500/20 border border-cyan-400/50 shadow-lg shadow-cyan-500/20'
@@ -2967,7 +2977,7 @@ function CreatePageContent() {
             <div className="relative bg-black/30 backdrop-blur-2xl rounded-2xl border border-white/[0.08] focus-within:border-cyan-400/25 focus-within:shadow-[0_0_30px_rgba(34,211,238,0.08)] transition-all duration-500 shadow-2xl shadow-black/40">
 
               {/* ── Row 1: Textarea ── */}
-              <div className="flex items-end gap-3 px-4 md:px-5 pt-4 pb-2">
+              <div className="flex items-end gap-2 sm:gap-3 px-3 sm:px-4 md:px-5 pt-3 sm:pt-4 pb-2">
                 <div className="flex-1 min-w-0">
                   <textarea
                     ref={(el) => {
@@ -2984,18 +2994,19 @@ function CreatePageContent() {
                       e.target.style.height = e.target.scrollHeight + 'px'
                     }}
                     onFocus={handleInputFocus}
+                    enterKeyHint="send"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault()
                         if (input.trim().length >= MIN_PROMPT_LENGTH && input.trim().length <= MAX_PROMPT_LENGTH) {
                           if (e.currentTarget) e.currentTarget.blur()
-                          setTimeout(() => handleGenerate(), 100)
+                          handleGenerate()
                         }
                       }
                     }}
                     placeholder={
                       selectedType === 'music'
-                        ? 'Describe your sound... (e.g., upbeat lofi with piano and vinyl crackle)'
+                        ? (isMobile ? 'Describe your sound...' : 'Describe your sound... (e.g., upbeat lofi with piano and vinyl crackle)')
                         : selectedType === 'image'
                         ? 'Describe your cover art...'
                         : selectedType === 'effects'
@@ -3004,20 +3015,20 @@ function CreatePageContent() {
                     }
                     disabled={selectedType === 'video'}
                     rows={1}
-                    className="w-full bg-transparent text-base md:text-lg text-white placeholder-white/30 tracking-wide focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed resize-none overflow-hidden leading-relaxed"
-                    style={{ minHeight: '1.75rem', maxHeight: '6rem' }}
+                    className="w-full bg-transparent text-[15px] sm:text-base md:text-lg text-white placeholder-white/30 tracking-wide focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed resize-none overflow-hidden leading-relaxed"
+                    style={{ minHeight: '2.5rem', maxHeight: '6rem', WebkitAppearance: 'none' }}
                   />
                 </div>
 
-                {/* Send Button */}
+                {/* Send Button — min 44px touch target */}
                 <button
                   onClick={() => {
                     const inp = (window as unknown as Record<string, HTMLInputElement>).__createPageInput;
                     if (inp) inp.blur();
-                    setTimeout(() => handleGenerate(), 100);
+                    handleGenerate();
                   }}
                   disabled={!input.trim() || selectedType === 'video'}
-                  className="relative flex-shrink-0 w-10 h-10 md:w-11 md:h-11 bg-gradient-to-br from-cyan-400 via-cyan-500 to-blue-600 hover:from-cyan-500 hover:via-cyan-600 hover:to-blue-700 rounded-xl flex items-center justify-center transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed shadow-xl shadow-cyan-500/40 hover:shadow-cyan-500/60 hover:scale-105 active:scale-95 mb-0.5"
+                  className="relative flex-shrink-0 w-11 h-11 sm:w-11 sm:h-11 md:w-11 md:h-11 bg-gradient-to-br from-cyan-400 via-cyan-500 to-blue-600 hover:from-cyan-500 hover:via-cyan-600 hover:to-blue-700 rounded-xl flex items-center justify-center transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed shadow-xl shadow-cyan-500/40 hover:shadow-cyan-500/60 hover:scale-105 active:scale-95 mb-0.5"
                 >
                   {activeGenerations.size > 0 && (
                     <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gradient-to-br from-red-500 to-rose-600 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-lg shadow-red-500/50 animate-pulse">
@@ -3033,25 +3044,25 @@ function CreatePageContent() {
               </div>
 
               {/* ── Row 2: Toolbar — spaced buttons + credits ── */}
-              <div className="flex items-center gap-1 md:gap-1.5 px-3 md:px-4 pb-3 pt-1 border-t border-white/[0.04]">
+              <div className="flex items-center gap-1.5 sm:gap-1.5 md:gap-1.5 px-2 sm:px-3 md:px-4 pb-3 pt-1 border-t border-white/[0.04]">
 
                 {/* Plus / Advanced */}
                 <button
                   onClick={() => setShowAdvancedButtons(!showAdvancedButtons)}
-                  className={`flex-shrink-0 w-8 h-8 rounded-lg transition-all duration-300 flex items-center justify-center ${
+                  className={`flex-shrink-0 w-9 h-9 sm:w-9 sm:h-9 rounded-lg transition-all duration-300 flex items-center justify-center ${
                     showAdvancedButtons
                       ? 'bg-cyan-500/20 border border-cyan-400/40'
                       : 'hover:bg-white/[0.06] border border-transparent hover:border-white/10'
                   }`}
                   title={showAdvancedButtons ? 'Hide Options' : 'More Options'}
                 >
-                  <PlusCircle size={16} className={`${showAdvancedButtons ? 'text-cyan-400 rotate-45' : 'text-white/50'} transition-all duration-300`} />
+                  <PlusCircle size={18} className={`${showAdvancedButtons ? 'text-cyan-400 rotate-45' : 'text-white/50'} transition-all duration-300`} />
                 </button>
 
                 {/* Speech-to-text */}
                 <button
                   onClick={isRecording ? stopRecording : startRecording}
-                  className={`flex-shrink-0 w-8 h-8 rounded-lg transition-all duration-300 flex items-center justify-center ${
+                  className={`flex-shrink-0 w-9 h-9 sm:w-9 sm:h-9 rounded-lg transition-all duration-300 flex items-center justify-center ${
                     isRecording
                       ? 'bg-red-500/20 border border-red-400/40 animate-pulse'
                       : 'hover:bg-white/[0.06] border border-transparent hover:border-white/10'
@@ -3061,7 +3072,7 @@ function CreatePageContent() {
                   {isRecording ? (
                     <div className="w-2.5 h-2.5 bg-red-400 rounded-sm"></div>
                   ) : (
-                    <Mic size={16} className="text-white/50" />
+                    <Mic size={18} className="text-white/50" />
                   )}
                 </button>
 
@@ -3071,7 +3082,7 @@ function CreatePageContent() {
                     if (isAudioRecording) { stopAudioRecording(); return }
                     setShowRemakeModal(true)
                   }}
-                  className={`relative flex-shrink-0 w-8 h-8 rounded-lg transition-all duration-300 flex items-center justify-center ${
+                  className={`relative flex-shrink-0 w-9 h-9 sm:w-9 sm:h-9 rounded-lg transition-all duration-300 flex items-center justify-center ${
                     isAudioRecording
                       ? 'bg-purple-500/20 border border-purple-400/40 animate-pulse'
                       : hasVoiceOrInstrumentalRef
@@ -3083,7 +3094,7 @@ function CreatePageContent() {
                   {isAudioRecording ? (
                     <div className="w-2.5 h-2.5 bg-purple-400 rounded-sm"></div>
                   ) : (
-                    <Repeat size={16} className={hasVoiceOrInstrumentalRef ? 'text-purple-400' : 'text-white/50'} />
+                    <Repeat size={18} className={hasVoiceOrInstrumentalRef ? 'text-purple-400' : 'text-white/50'} />
                   )}
                   {hasVoiceOrInstrumentalRef && !isAudioRecording && (
                     <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-purple-400 rounded-full"></div>
@@ -3093,10 +3104,10 @@ function CreatePageContent() {
                 {/* Remix — upload beat + prompt with 444 Radio */}
                 <button
                   onClick={() => setShowResoundModal(true)}
-                  className="flex-shrink-0 w-8 h-8 rounded-lg transition-all duration-300 flex items-center justify-center hover:bg-cyan-500/20 border border-cyan-500/20 hover:border-cyan-400/40 bg-cyan-500/10"
+                  className="flex-shrink-0 w-9 h-9 sm:w-9 sm:h-9 rounded-lg transition-all duration-300 flex items-center justify-center hover:bg-cyan-500/20 border border-cyan-500/20 hover:border-cyan-400/40 bg-cyan-500/10"
                   title="Remix — Upload a beat & generate with 444 Radio"
                 >
-                  <Music2 size={16} className="text-cyan-400" />
+                  <Music2 size={18} className="text-cyan-400" />
                 </button>
 
                 {/* Instrumental Toggle */}
@@ -3105,7 +3116,7 @@ function CreatePageContent() {
                     if (selectedType !== 'music') setSelectedType('music')
                     setIsInstrumental(!isInstrumental)
                   }}
-                  className={`flex-shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold tracking-wider transition-all duration-300 ${
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wider transition-all duration-300 ${
                     isInstrumental
                       ? 'bg-purple-500/20 border border-purple-400/40 text-purple-300'
                       : 'hover:bg-white/[0.06] border border-transparent hover:border-white/10 text-white/40'
@@ -3138,7 +3149,7 @@ function CreatePageContent() {
                     }
                     setShowPromptSuggestions(!showPromptSuggestions)
                   }}
-                  className={`w-8 h-8 md:w-9 md:h-9 rounded-lg transition-all duration-300 flex items-center justify-center ${
+                  className={`w-9 h-9 sm:w-9 sm:h-9 rounded-lg transition-all duration-300 flex items-center justify-center ${
                     showPromptSuggestions
                       ? 'bg-gradient-to-br from-yellow-400 to-orange-500 shadow-lg shadow-yellow-500/50'
                       : 'bg-white/5 hover:bg-white/10 border border-yellow-400/30 hover:border-yellow-400/60'
@@ -4726,6 +4737,15 @@ function CreatePageContent() {
           freeCreditsRemaining={0}
         />
       </Suspense>
+
+      {/* Cover Art Generator Modal */}
+      <CoverArtGenModal
+        isOpen={showCoverArtGenModal}
+        onClose={() => setShowCoverArtGenModal(false)}
+        userCredits={userCredits ?? 0}
+        onGenerate={handleCoverArtGenerate}
+        initialPrompt={input}
+      />
     </div>
   )
 }
