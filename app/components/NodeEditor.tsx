@@ -2897,8 +2897,8 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
       {/* ══════ MAIN AREA: SIDEBAR + CANVAS ══════ */}
       <div className="flex-1 flex min-h-0">
 
-      {/* ══════ SIDEBAR (hidden in headerless mode — parent manages it) ══════ */}
-      {!headerless && sidebarOpen && (
+      {/* ══════ SIDEBAR ══════ */}
+      {sidebarOpen && (
         <div className="flex flex-col shrink-0 border-r overflow-hidden" style={{
           width: 220, background: HW.surface, borderColor: HW.border,
         }}>
