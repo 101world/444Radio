@@ -252,51 +252,44 @@ export default function FeaturesSidebar({
       <div className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50" onClick={onClose} />
 
       {/* Sidebar panel — fullscreen on mobile, docked sidebar on desktop */}
-      <div className="fixed inset-0 md:inset-auto md:left-20 md:top-0 md:h-screen md:w-96 bg-black/95 backdrop-blur-2xl md:border-r md:border-white/10 z-50 md:z-40 flex flex-col animate-slideInLeft">
+      <div className="fixed inset-0 md:inset-auto md:left-20 md:top-0 md:h-screen md:w-72 bg-black/95 backdrop-blur-2xl md:border-r md:border-white/10 z-50 md:z-40 flex flex-col animate-slideInLeft">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 h-20 border-b border-white/10">
-        <div className="flex items-center gap-3">
-          {/* Features SVG Icon */}
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-cyan-400">
+      <div className="flex items-center justify-between px-4 h-12 border-b border-white/10 shrink-0">
+        <div className="flex items-center gap-2">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-cyan-400">
             <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
             <rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
             <rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
             <rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
           </svg>
-          <span className="text-white font-bold text-lg">Features</span>
+          <span className="text-white font-bold text-sm">Features</span>
         </div>
         <button
           onClick={onClose}
-          className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+          className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
         >
-          <X size={18} className="text-gray-400" />
+          <X size={16} className="text-gray-400" />
         </button>
       </div>
 
-      {/* Credits */}
-      <div className="px-5 py-4 border-b border-white/10">
-        <div className="flex items-center gap-2 px-4 py-2.5 bg-cyan-500/10 border border-cyan-500/30 rounded-xl">
-          <Zap size={16} className="text-cyan-400" />
-          <span className="text-white font-bold text-sm">
-            {isLoadingCredits ? '...' : userCredits} credits
+      {/* Credits + Mode Toggle */}
+      <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
+          <Zap size={12} className="text-cyan-400" />
+          <span className="text-white font-bold text-xs">
+            {isLoadingCredits ? '...' : userCredits}
           </span>
         </div>
-      </div>
-
-      {/* Mode Toggle - SVG Icons */}
-      <div className="px-5 py-3 border-b border-white/10">
-        <div className="flex gap-2">
+        <div className="flex gap-1 flex-1">
           <button
             onClick={onToggleInstrumental}
-            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${
               !isInstrumental
-                ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/30'
-                : 'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10'
+                ? 'bg-cyan-500 text-black'
+                : 'bg-white/5 text-gray-400 hover:bg-white/10'
             }`}
-            title="Vocal Mode"
           >
-            {/* Microphone SVG */}
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
               <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
               <line x1="12" x2="12" y1="19" y2="22"/>
@@ -305,15 +298,13 @@ export default function FeaturesSidebar({
           </button>
           <button
             onClick={onToggleInstrumental}
-            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${
               isInstrumental
-                ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
-                : 'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10'
+                ? 'bg-purple-500 text-white'
+                : 'bg-white/5 text-gray-400 hover:bg-white/10'
             }`}
-            title="Instrumental Mode"
           >
-            {/* Piano/Keys SVG */}
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <rect x="2" y="4" width="20" height="16" rx="2"/>
               <line x1="8" x2="8" y1="4" y2="14"/>
               <line x1="16" x2="16" y1="4" y2="14"/>
@@ -324,42 +315,40 @@ export default function FeaturesSidebar({
         </div>
       </div>
 
-      {/* Prompt Input in Sidebar */}
-      <div className="px-5 py-4 border-b border-white/10">
-        <div className="relative">
-          <textarea
-            value={promptText}
-            onChange={(e) => onPromptChange(e.target.value)}
-            placeholder="Describe your music..."
-            className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 resize-none focus:outline-none focus:border-cyan-500/50 transition-colors"
-            rows={5}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                onSubmitPrompt()
-              }
-            }}
-          />
-          <div className="flex items-center justify-between mt-2">
-            <button
-              onClick={onToggleRecording}
-              className={`p-2 rounded-full transition-all ${
-                isRecording
-                  ? 'bg-red-500 animate-pulse'
-                  : 'bg-white/10 hover:bg-white/20'
-              }`}
-            >
-              <Mic size={14} className={isRecording ? 'text-white' : 'text-gray-400'} />
-            </button>
-            <button
-              onClick={onSubmitPrompt}
-              disabled={isGenerating || !promptText.trim()}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-xl text-black text-xs font-bold hover:from-cyan-500 hover:to-cyan-300 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              <Send size={12} />
-              Generate
-            </button>
-          </div>
+      {/* Prompt Input */}
+      <div className="px-3 py-2 border-b border-white/10 shrink-0">
+        <textarea
+          value={promptText}
+          onChange={(e) => onPromptChange(e.target.value)}
+          placeholder="Describe your music..."
+          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-gray-500 resize-none focus:outline-none focus:border-cyan-500/50 transition-colors"
+          rows={3}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault()
+              onSubmitPrompt()
+            }
+          }}
+        />
+        <div className="flex items-center justify-between mt-1.5">
+          <button
+            onClick={onToggleRecording}
+            className={`p-1.5 rounded-full transition-all ${
+              isRecording
+                ? 'bg-red-500 animate-pulse'
+                : 'bg-white/10 hover:bg-white/20'
+            }`}
+          >
+            <Mic size={12} className={isRecording ? 'text-white' : 'text-gray-400'} />
+          </button>
+          <button
+            onClick={onSubmitPrompt}
+            disabled={isGenerating || !promptText.trim()}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-lg text-black text-[10px] font-bold hover:from-cyan-500 hover:to-cyan-300 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <Zap size={10} />
+            Generate
+          </button>
         </div>
       </div>
 
@@ -498,84 +487,73 @@ export default function FeaturesSidebar({
         </div>
       )}
 
-      {/* Feature Buttons - Vertically Stacked */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
-        {/* Ideas Lightbulb Button */}
+      {/* Feature Buttons */}
+      <div className="flex-1 overflow-y-auto px-3 py-2 scrollbar-thin">
+        {/* Ideas Button */}
         <button
           onClick={() => { setShowIdeas(!showIdeas); setIdeasView('tags') }}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all group mb-3 ${
+          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border transition-all group mb-2 ${
             showIdeas
-              ? 'bg-gradient-to-r from-yellow-600/30 to-amber-400/20 border-yellow-400 text-yellow-300'
-              : 'border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 hover:border-yellow-400/50'
+              ? 'bg-yellow-500/15 border-yellow-400/50 text-yellow-300'
+              : 'border-white/10 text-yellow-400 hover:bg-yellow-500/10 hover:border-yellow-400/40'
           }`}
         >
-          <div className={`p-2 rounded-lg ${showIdeas ? 'bg-white/10' : 'bg-white/5'}`}>
-            <Lightbulb size={18} />
-          </div>
-          <div className="flex-1 text-left">
-            <div className="text-sm font-semibold">Ideas & Tags</div>
-            <div className="text-[10px] text-gray-500">AI prompts & quick tags</div>
-          </div>
-          <span className="text-[10px] text-gray-500 bg-white/5 px-2 py-1 rounded-full">AI</span>
+          <Lightbulb size={14} />
+          <span className="flex-1 text-left text-xs font-semibold">Ideas & Tags</span>
+          <span className="text-[9px] text-gray-500 bg-white/5 px-1.5 py-0.5 rounded">AI</span>
         </button>
 
-        <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-3 px-1">Creation Tools</p>
-        <div className="space-y-2">
+        <p className="text-[9px] text-gray-600 uppercase tracking-widest font-bold mb-1.5 px-1">Tools</p>
+        <div className="space-y-0.5">
           {features.filter(f => !f.hidden).map((feature) => {
             const Icon = feature.icon
             const colorMap: Record<string, string> = {
               cyan: feature.active
-                ? 'bg-gradient-to-r from-cyan-600/30 to-cyan-400/20 border-cyan-400 text-cyan-300'
-                : 'border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-400/50',
+                ? 'bg-cyan-500/15 border-cyan-400/50 text-cyan-300'
+                : 'border-transparent text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-400/30',
               purple: feature.active
-                ? 'bg-gradient-to-r from-purple-600/30 to-pink-500/20 border-purple-400 text-purple-300'
-                : 'border-purple-500/30 text-purple-400 hover:bg-purple-500/10 hover:border-purple-400/50',
+                ? 'bg-purple-500/15 border-purple-400/50 text-purple-300'
+                : 'border-transparent text-purple-400 hover:bg-purple-500/10 hover:border-purple-400/30',
               orange: feature.active
-                ? 'bg-gradient-to-r from-orange-600/30 to-red-500/20 border-orange-400 text-orange-300'
-                : 'border-orange-500/30 text-orange-400 hover:bg-orange-500/10 hover:border-orange-400/50',
+                ? 'bg-orange-500/15 border-orange-400/50 text-orange-300'
+                : 'border-transparent text-orange-400 hover:bg-orange-500/10 hover:border-orange-400/30',
             }
 
             return (
               <button
                 key={feature.label}
                 onClick={feature.onClick}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all group ${colorMap[feature.color]}`}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border transition-all group ${colorMap[feature.color]}`}
               >
-                <div className={`p-2 rounded-lg ${feature.active ? 'bg-white/10' : 'bg-white/5'}`}>
-                  <Icon size={18} />
+                <Icon size={15} className="shrink-0" />
+                <div className="flex-1 text-left min-w-0">
+                  <div className="text-xs font-medium leading-tight">{feature.label}</div>
+                  <div className="text-[9px] text-gray-500 leading-tight">{feature.description}</div>
                 </div>
-                <div className="flex-1 text-left">
-                  <div className="text-sm font-semibold">{feature.label}</div>
-                  <div className="text-[10px] text-gray-500">{feature.description}</div>
-                </div>
-                {feature.cost && (
-                  <span className="text-[10px] text-gray-500 bg-white/5 px-2 py-1 rounded-full">
-                    -{feature.cost}
-                  </span>
+                {feature.cost !== undefined && feature.cost > 0 && (
+                  <span className="text-[9px] text-gray-500 tabular-nums shrink-0">-{feature.cost}</span>
                 )}
               </button>
             )
           })}
         </div>
 
-        {/* Utilities Section - Icon Only */}
-        <div className="mt-6 pt-4 border-t border-white/10">
-          <div className="flex items-center gap-2 px-1">
-            <button
-              onClick={onShowDeletedChats}
-              className="p-2.5 rounded-xl border border-green-500/30 text-green-400 hover:bg-green-500/10 hover:border-green-400/50 transition-all"
-              title="Chat History"
-            >
-              <RotateCcw size={16} />
-            </button>
-            <button
-              onClick={onClearChat}
-              className="p-2.5 rounded-xl border border-green-500/30 text-green-400 hover:bg-green-500/10 hover:border-green-400/50 transition-all"
-              title="New Chat"
-            >
-              <Plus size={16} />
-            </button>
-          </div>
+        {/* Utilities */}
+        <div className="mt-3 pt-2 border-t border-white/10 flex items-center gap-1.5">
+          <button
+            onClick={onShowDeletedChats}
+            className="p-2 rounded-lg border border-white/10 text-green-400 hover:bg-green-500/10 transition-all"
+            title="Chat History"
+          >
+            <RotateCcw size={14} />
+          </button>
+          <button
+            onClick={onClearChat}
+            className="p-2 rounded-lg border border-white/10 text-green-400 hover:bg-green-500/10 transition-all"
+            title="New Chat"
+          >
+            <Plus size={14} />
+          </button>
         </div>
       </div>
 
