@@ -92,172 +92,194 @@ export default function FeaturesSidebar({
 
   if (!isOpen) return null
 
-  const features = [
+  type Feature = { icon: any; label: string; description: string; color: string; active: boolean; cost?: number; onClick: () => void; hidden?: boolean }
+
+  const sections: { label: string; features: Feature[] }[] = [
     {
-      icon: Music,
-      label: 'Music',
-      description: 'Generate AI music',
-      color: 'cyan',
-      active: selectedType === 'music' && !isInstrumental,
-      cost: 2,
-      onClick: () => { onSelectType('music'); if (isInstrumental) onToggleInstrumental() },
+      label: 'CREATE',
+      features: [
+        {
+          icon: Music,
+          label: 'Music',
+          description: 'Generate AI music',
+          color: 'cyan',
+          active: selectedType === 'music' && !isInstrumental,
+          cost: 2,
+          onClick: () => { onSelectType('music'); if (isInstrumental) onToggleInstrumental() },
+        },
+        {
+          icon: Music,
+          label: 'Instrumental',
+          description: 'AI music without vocals',
+          color: 'purple',
+          active: selectedType === 'music' && isInstrumental,
+          cost: 2,
+          onClick: () => { onSelectType('music'); if (!isInstrumental) onToggleInstrumental() },
+        },
+        {
+          icon: AudioLines,
+          label: 'Beat Maker',
+          description: 'AI instrumentals & samples',
+          color: 'cyan',
+          active: false,
+          cost: 2,
+          onClick: onShowBeatMaker,
+        },
+        {
+          icon: Edit3,
+          label: 'Lyrics',
+          description: 'Write & edit lyrics',
+          color: 'cyan',
+          active: !!(customTitle || genre || customLyrics || bpm),
+          onClick: onShowLyrics,
+          hidden: selectedType !== 'music' || isInstrumental,
+        },
+        {
+          icon: Repeat,
+          label: 'Remix Audio',
+          description: 'Audio-to-Audio Remix',
+          color: 'cyan',
+          active: false,
+          cost: 10,
+          onClick: onShowRemix,
+        },
+        {
+          icon: RefreshCw,
+          label: 'Remake',
+          description: 'Reimagine existing tracks',
+          color: 'purple',
+          active: false,
+          onClick: onShowLyrics,
+        },
+        {
+          icon: ImageIcon,
+          label: 'Cover Art',
+          description: 'AI album artwork',
+          color: 'cyan',
+          active: selectedType === 'image',
+          cost: 1,
+          onClick: () => onSelectType('image'),
+        },
+      ],
     },
     {
-      icon: Music,
-      label: 'Instrumental',
-      description: 'AI music without vocals',
-      color: 'purple',
-      active: selectedType === 'music' && isInstrumental,
-      cost: 2,
-      onClick: () => { onSelectType('music'); if (!isInstrumental) onToggleInstrumental() },
+      label: 'EFFECTS',
+      features: [
+        {
+          icon: Sparkles,
+          label: 'Effects',
+          description: 'Sound effects',
+          color: 'purple',
+          active: false,
+          cost: 2,
+          onClick: onShowEffects,
+        },
+        {
+          icon: Repeat,
+          label: 'Loops',
+          description: 'Fixed BPM loops',
+          color: 'cyan',
+          active: false,
+          cost: 6,
+          onClick: onShowLoopers,
+        },
+        {
+          icon: Music,
+          label: 'Chords',
+          description: 'Chord & rhythm control',
+          color: 'purple',
+          active: false,
+          cost: 4,
+          onClick: onShowMusiConGen,
+        },
+        {
+          icon: Volume2,
+          label: 'Audio Boost',
+          description: 'Mix & master your track',
+          color: 'orange',
+          active: false,
+          cost: 1,
+          onClick: onShowAudioBoost,
+        },
+      ],
     },
     {
-      icon: AudioLines,
-      label: 'Beat Maker',
-      description: 'AI instrumentals & samples',
-      color: 'cyan',
-      active: false,
-      cost: 2,
-      onClick: onShowBeatMaker,
+      label: 'PROCESS',
+      features: [
+        {
+          icon: Scissors,
+          label: 'Split Stems',
+          description: 'Vocals, drums, bass & more',
+          color: 'purple',
+          active: false,
+          cost: 0,
+          onClick: onShowStemSplit,
+        },
+        {
+          icon: Layers,
+          label: 'Extract',
+          description: 'Extract audio from video/audio',
+          color: 'cyan',
+          active: false,
+          cost: 1,
+          onClick: onShowExtract,
+        },
+        {
+          icon: Mic,
+          label: 'Autotune',
+          description: 'Pitch correct vocals',
+          color: 'purple',
+          active: false,
+          cost: 1,
+          onClick: onShowAutotune,
+        },
+        {
+          icon: Film,
+          label: 'Visualizer',
+          description: 'Text/Image to video',
+          color: 'purple',
+          active: false,
+          onClick: onShowVisualizer,
+        },
+        {
+          icon: Mic,
+          label: 'Lip-Sync',
+          description: 'Image + Audio to video',
+          color: 'pink',
+          active: false,
+          onClick: onShowLipSync,
+        },
+        {
+          icon: Film,
+          label: 'Video to Audio',
+          description: 'Synced SFX from video',
+          color: 'cyan',
+          active: false,
+          cost: 4,
+          onClick: onShowVideoToAudio,
+        },
+      ],
     },
     {
-      icon: Edit3,
-      label: 'Lyrics',
-      description: 'Write & edit lyrics',
-      color: 'cyan',
-      active: !!(customTitle || genre || customLyrics || bpm),
-      onClick: onShowLyrics,
-      hidden: selectedType !== 'music' || isInstrumental,
-    },
-    {
-      icon: Repeat,
-      label: 'Remix Audio',
-      description: 'Audio-to-Audio Remix',
-      color: 'cyan',
-      active: false,
-      cost: 10,
-      onClick: onShowRemix,
-    },
-    {
-      icon: RefreshCw,
-      label: 'Remake',
-      description: 'Reimagine existing tracks',
-      color: 'purple',
-      active: false,
-      onClick: onShowLyrics,
-    },
-    {
-      icon: Sparkles,
-      label: 'Effects',
-      description: 'Sound effects',
-      color: 'purple',
-      active: false,
-      cost: 2,
-      onClick: onShowEffects,
-    },
-    {
-      icon: Repeat,
-      label: 'Loops',
-      description: 'Fixed BPM loops',
-      color: 'cyan',
-      active: false,
-      cost: 6,
-      onClick: onShowLoopers,
-    },
-    {
-      icon: Music,
-      label: 'Chords',
-      description: 'Chord & rhythm control',
-      color: 'purple',
-      active: false,
-      cost: 4,
-      onClick: onShowMusiConGen,
-    },
-    {
-      icon: Scissors,
-      label: 'Split Stems',
-      description: 'Vocals, drums, bass & more',
-      color: 'purple',
-      active: false,
-      cost: 0,
-      onClick: onShowStemSplit,
-    },
-    {
-      icon: Film,
-      label: 'Visualizer',
-      description: 'Text/Image to video',
-      color: 'purple',
-      active: false,
-      onClick: onShowVisualizer,
-    },
-    {
-      icon: Mic,
-      label: 'Lip-Sync',
-      description: 'Image + Audio to video',
-      color: 'pink',
-      active: false,
-      onClick: onShowLipSync,
-    },
-    {
-      icon: Layers,
-      label: 'Extract',
-      description: 'Extract audio from video/audio',
-      color: 'cyan',
-      active: false,
-      cost: 1,
-      onClick: onShowExtract,
-    },
-    {
-      icon: Rocket,
-      label: 'Release',
-      description: 'Publish to feed',
-      color: 'cyan',
-      active: false,
-      onClick: onOpenRelease,
-    },
-    {
-      icon: Mic,
-      label: 'Autotune',
-      description: 'Pitch correct vocals',
-      color: 'purple',
-      active: false,
-      cost: 1,
-      onClick: onShowAutotune,
-    },
-    {
-      icon: Upload,
-      label: 'Upload',
-      description: 'Upload audio/video',
-      color: 'purple',
-      active: false,
-      onClick: onShowUpload,
-    },
-    {
-      icon: ImageIcon,
-      label: 'Cover Art',
-      description: 'AI album artwork',
-      color: 'cyan',
-      active: selectedType === 'image',
-      cost: 1,
-      onClick: () => onSelectType('image'),
-    },
-    {
-      icon: Volume2,
-      label: 'Audio Boost',
-      description: 'Mix & master your track',
-      color: 'orange',
-      active: false,
-      cost: 1,
-      onClick: onShowAudioBoost,
-    },
-    {
-      icon: Film,
-      label: 'Video to Audio',
-      description: 'Synced SFX from video',
-      color: 'cyan',
-      active: false,
-      cost: 4,
-      onClick: onShowVideoToAudio,
+      label: 'PUBLISH',
+      features: [
+        {
+          icon: Upload,
+          label: 'Upload',
+          description: 'Upload audio/video',
+          color: 'purple',
+          active: false,
+          onClick: onShowUpload,
+        },
+        {
+          icon: Rocket,
+          label: 'Release',
+          description: 'Publish to feed',
+          color: 'cyan',
+          active: false,
+          onClick: onOpenRelease,
+        },
+      ],
     },
   ]
 
@@ -516,44 +538,57 @@ export default function FeaturesSidebar({
           </div>
         )}
 
-        {/* Feature Buttons */}
+        {/* Feature Buttons — grouped by section */}
         <div className="flex-1 overflow-y-auto px-3 py-1.5 scrollbar-thin">
-          <div className="space-y-0.5">
-            {features.filter(f => !f.hidden).map((feature) => {
-              const Icon = feature.icon
-              const colorMap: Record<string, string> = {
-                cyan: feature.active
-                  ? 'bg-cyan-500/15 border-cyan-400/50 text-cyan-300'
-                  : 'border-transparent text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-400/30',
-                purple: feature.active
-                  ? 'bg-purple-500/15 border-purple-400/50 text-purple-300'
-                  : 'border-transparent text-purple-400 hover:bg-purple-500/10 hover:border-purple-400/30',
-                orange: feature.active
-                  ? 'bg-orange-500/15 border-orange-400/50 text-orange-300'
-                  : 'border-transparent text-orange-400 hover:bg-orange-500/10 hover:border-orange-400/30',
-                pink: feature.active
-                  ? 'bg-pink-500/15 border-pink-400/50 text-pink-300'
-                  : 'border-transparent text-pink-400 hover:bg-pink-500/10 hover:border-pink-400/30',
-              }
+          {sections.map((section, sIdx) => {
+            const visibleFeatures = section.features.filter((f: Feature) => !(f as any).hidden)
+            if (visibleFeatures.length === 0) return null
+            return (
+              <div key={section.label} className={sIdx > 0 ? 'mt-2' : ''}>
+                {/* Section label */}
+                <div className="flex items-center gap-2 px-1 mb-1">
+                  <span className="text-[9px] font-bold tracking-widest text-gray-500 uppercase select-none">{section.label}</span>
+                  <div className="flex-1 h-px bg-white/5" />
+                </div>
+                <div className="space-y-0.5">
+                  {visibleFeatures.map((feature: Feature) => {
+                    const Icon = feature.icon
+                    const colorMap: Record<string, string> = {
+                      cyan: feature.active
+                        ? 'bg-cyan-500/15 border-cyan-400/50 text-cyan-300'
+                        : 'border-transparent text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-400/30',
+                      purple: feature.active
+                        ? 'bg-purple-500/15 border-purple-400/50 text-purple-300'
+                        : 'border-transparent text-purple-400 hover:bg-purple-500/10 hover:border-purple-400/30',
+                      orange: feature.active
+                        ? 'bg-orange-500/15 border-orange-400/50 text-orange-300'
+                        : 'border-transparent text-orange-400 hover:bg-orange-500/10 hover:border-orange-400/30',
+                      pink: feature.active
+                        ? 'bg-pink-500/15 border-pink-400/50 text-pink-300'
+                        : 'border-transparent text-pink-400 hover:bg-pink-500/10 hover:border-pink-400/30',
+                    }
 
-              return (
-                <button
-                  key={feature.label}
-                  onClick={feature.onClick}
-                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg border transition-all group ${colorMap[feature.color]}`}
-                >
-                  <Icon size={14} className="shrink-0 opacity-80" />
-                  <div className="flex-1 text-left min-w-0">
-                    <div className="text-[11px] font-medium leading-tight">{feature.label}</div>
-                    <div className="text-[9px] text-gray-500 leading-none">{feature.description}</div>
-                  </div>
-                  {feature.cost !== undefined && feature.cost > 0 && (
-                    <span className="text-[9px] text-gray-500 tabular-nums shrink-0">-{feature.cost}</span>
-                  )}
-                </button>
-              )
-            })}
-          </div>
+                    return (
+                      <button
+                        key={feature.label}
+                        onClick={feature.onClick}
+                        className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg border transition-all group ${colorMap[feature.color]}`}
+                      >
+                        <Icon size={14} className="shrink-0 opacity-80" />
+                        <div className="flex-1 text-left min-w-0">
+                          <div className="text-[11px] font-medium leading-tight">{feature.label}</div>
+                          <div className="text-[9px] text-gray-500 leading-none">{feature.description}</div>
+                        </div>
+                        {feature.cost !== undefined && feature.cost > 0 && (
+                          <span className="text-[9px] text-gray-500 tabular-nums shrink-0">-{feature.cost}</span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
 
           {/* Utilities */}
           <div className="mt-3 pt-2 border-t border-white/10 flex items-center gap-1.5">

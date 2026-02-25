@@ -653,10 +653,11 @@ export default function FloatingAudioPlayer() {
                 style={{ background: 'radial-gradient(circle, rgba(34,211,238,0.15) 0%, transparent 70%)' }} />
             )}
           </div>
-          <p className="text-[8px] text-gray-500 text-center mt-1.5 px-1 truncate w-[80px] mx-auto leading-tight">{currentTrack.title}</p>
+          <p className="text-[8px] text-gray-500 text-center mt-1.5 px-1 truncate w-[88px] mx-auto leading-tight font-medium">{currentTrack.title}</p>
+          {currentTrack.artist && <p className="text-[7px] text-gray-600 text-center px-1 truncate w-[88px] mx-auto leading-tight">{currentTrack.artist}</p>}
         </div>
 
-        {/* Vertical waveform */}
+        {/* Vertical waveform + explicit seek bar */}
         <div className="flex-1 w-[72px] min-h-[80px] relative overflow-hidden rounded-xl mx-auto cursor-pointer ring-1 ring-white/[0.04]" onClick={handleVerticalSeek}
           style={{ background: 'rgba(0,0,0,0.3)' }}
         >
@@ -664,6 +665,10 @@ export default function FloatingAudioPlayer() {
           <div className="absolute inset-0 pointer-events-none" style={{
             background: `linear-gradient(to bottom, rgba(0,0,0,0.45) ${100 - progress}%, transparent ${100 - progress}%)`,
           }} />
+          {/* Thin progress line at bottom of waveform */}
+          <div className="absolute bottom-0 left-0 w-full h-[2px] bg-white/[0.06]">
+            <div className="h-full bg-teal-400/80 transition-all duration-200" style={{ width: `${progress}%` }} />
+          </div>
         </div>
 
         {/* Time */}

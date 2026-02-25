@@ -174,8 +174,15 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       // Stop current playback — minimal reset, no double-load
       audio.pause()
 
-      // Set new source — setting .src auto-triggers load, no manual .load() needed
-      audio.src = finalUrl
+      // Check if this track was already preloaded — skip network fetch entirely
+      if (preloadAudioRef.current && preloadAudioRef.current.src === finalUrl && preloadAudioRef.current.readyState >= 2) {
+        // Swap the preloaded element into the main element's source via blob/cache hit
+        // The browser already has the data buffered in the preload element
+        audio.src = finalUrl // Same URL — browser cache should serve it instantly
+      } else {
+        // Set new source — setting .src auto-triggers load, no manual .load() needed
+        audio.src = finalUrl
+      }
 
       // Play IMMEDIATELY — critical for iOS Safari user-gesture chain.
       // The browser will buffer and start as soon as data arrives.
@@ -254,6 +261,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     if (typeof window !== 'undefined' && !audioRef.current) {
       audioRef.current = new Audio()
       audioRef.current.crossOrigin = 'anonymous'
+      audioRef.current.preload = 'auto'
       audioRef.current.volume = volume
 
       return () => {

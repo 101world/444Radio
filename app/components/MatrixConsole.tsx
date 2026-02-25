@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 
 interface MatrixConsoleProps {
   isGenerating?: boolean
+  isPlaying?: boolean
 }
 
 // ─── Pixel art sprite definitions (5 band members) ──────────────
@@ -207,13 +208,18 @@ interface NoteParticle {
   char: string; opacity: number; size: number
 }
 
-export default function MatrixConsole({ isGenerating = false }: MatrixConsoleProps) {
+export default function MatrixConsole({ isGenerating = false, isPlaying = false }: MatrixConsoleProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const isGenRef = useRef(isGenerating)
+  const isPlayRef = useRef(isPlaying)
 
   useEffect(() => {
     isGenRef.current = isGenerating
   }, [isGenerating])
+
+  useEffect(() => {
+    isPlayRef.current = isPlaying
+  }, [isPlaying])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -420,10 +426,14 @@ export default function MatrixConsole({ isGenerating = false }: MatrixConsolePro
 
       } else {
         // ═══════════════════════════════════════
-        //  MATRIX RAIN MODE (idle)
+        //  MATRIX RAIN MODE (idle / playing)
         // ═══════════════════════════════════════
         ctx.fillStyle = 'rgba(0, 0, 0, 0.08)'
         ctx.fillRect(0, 0, w, h)
+
+        // Reactive hue: slowly cycle when playing, fixed cyan when idle
+        const playing = isPlayRef.current
+        const hue = playing ? (t * 0.04) % 360 : 186 // 186 ≈ cyan
 
         ctx.font = `${fontSize}px monospace`
         columns = Math.floor(w / fontSize)
@@ -436,18 +446,18 @@ export default function MatrixConsole({ isGenerating = false }: MatrixConsolePro
 
           const brightness = Math.random()
           if (brightness > 0.95) {
-            ctx.fillStyle = '#22d3ee'
+            ctx.fillStyle = `hsl(${hue}, 80%, 65%)`
           } else if (brightness > 0.8) {
-            ctx.fillStyle = 'rgba(34, 211, 238, 0.8)'
+            ctx.fillStyle = `hsla(${hue}, 80%, 55%, 0.8)`
           } else {
-            ctx.fillStyle = `rgba(34, 211, 238, ${0.1 + Math.random() * 0.3})`
+            ctx.fillStyle = `hsla(${hue}, 80%, 50%, ${0.1 + Math.random() * 0.3})`
           }
           ctx.fillText(char, x, y)
 
           if (y > h && Math.random() > 0.975) {
             drops[i] = 0
           }
-          drops[i] += 0.5 + Math.random() * 0.5
+          drops[i] += 0.5 + Math.random() * (playing ? 1.0 : 0.5)
         }
 
         // Idle GPU logs
@@ -468,30 +478,32 @@ export default function MatrixConsole({ isGenerating = false }: MatrixConsolePro
           line.y -= line.speed
           line.opacity -= 0.002
           if (line.opacity <= 0 || line.y < 0) return false
-          ctx.fillStyle = `rgba(34, 211, 238, ${line.opacity * 0.7})`
+          ctx.fillStyle = `hsla(${hue}, 80%, 55%, ${line.opacity * 0.7})`
           ctx.fillText(line.text, 10, line.y)
           return true
         })
 
-        // Waveform at bottom
+        // Waveform at bottom — reactive amplitude when playing
         const waveH = 40
         const waveY = h - waveH - 5
         const waveAmplitudes: number[] = new Array(64).fill(0)
         for (let i = 0; i < waveAmplitudes.length; i++) {
-          waveAmplitudes[i] = Math.sin(now * 0.003 + i * 0.3) * 0.3 + Math.random() * 0.15
+          const base = Math.sin(now * 0.003 + i * 0.3) * (playing ? 0.6 : 0.3)
+          waveAmplitudes[i] = base + Math.random() * (playing ? 0.3 : 0.15)
         }
         const barWidth = w / waveAmplitudes.length
         for (let i = 0; i < waveAmplitudes.length; i++) {
           const amp = Math.abs(waveAmplitudes[i])
           const barH = amp * waveH
           const x = i * barWidth
-          ctx.fillStyle = `rgba(34, 211, 238, ${0.2 + amp * 0.5})`
+          const barHue = playing ? (hue + i * 3) % 360 : hue
+          ctx.fillStyle = `hsla(${barHue}, 80%, 55%, ${0.2 + amp * 0.5})`
           ctx.fillRect(x + 1, waveY + waveH / 2 - barH / 2, barWidth - 2, barH)
         }
 
-        ctx.fillStyle = 'rgba(34, 211, 238, 0.4)'
+        ctx.fillStyle = `hsla(${hue}, 80%, 55%, 0.4)`
         ctx.font = '9px monospace'
-        ctx.fillText('WAVEFORM OUTPUT', 10, waveY - 3)
+        ctx.fillText(playing ? '♫ WAVEFORM PLAYBACK' : 'WAVEFORM OUTPUT', 10, waveY - 3)
       }
 
       ctx.restore()
@@ -507,7 +519,7 @@ export default function MatrixConsole({ isGenerating = false }: MatrixConsolePro
   }, [])
 
   return (
-    <div className="relative w-full h-full bg-black rounded-xl overflow-hidden border border-cyan-500/20">
+    <div className={`relative w-full h-full bg-black rounded-xl overflow-hidden border transition-colors duration-700 ${isPlaying ? 'border-purple-500/30' : isGenerating ? 'border-orange-500/30' : 'border-cyan-500/20'}`}>
       {/* Scanline overlay */}
       <div className="absolute inset-0 pointer-events-none z-10" style={{
         background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 4px)',
@@ -515,8 +527,8 @@ export default function MatrixConsole({ isGenerating = false }: MatrixConsolePro
 
       {/* Corner decoration */}
       <div className="absolute top-2 left-3 z-10 flex items-center gap-2">
-        <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
-        <span className="text-[10px] text-cyan-500/60 font-mono">444RADIO GPU CONSOLE</span>
+        <div className={`w-2 h-2 rounded-full animate-pulse ${isPlaying ? 'bg-purple-500' : isGenerating ? 'bg-orange-500' : 'bg-cyan-500'}`} />
+        <span className={`text-[10px] font-mono ${isPlaying ? 'text-purple-500/60' : isGenerating ? 'text-orange-500/60' : 'text-cyan-500/60'}`}>444RADIO GPU CONSOLE</span>
       </div>
 
       <canvas

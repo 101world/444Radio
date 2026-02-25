@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, Suspense, lazy } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices, Upload, RotateCcw, Repeat, Plus, Square, Guitar, AudioLines, Drum } from 'lucide-react'
+import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices, Upload, RotateCcw, Repeat, Plus, Square, Guitar, AudioLines, Drum, ChevronDown } from 'lucide-react'
 
 // Lazy load heavy modals for better performance
 const MusicGenerationModal = lazy(() => import('../components/MusicGenerationModal'))
@@ -32,6 +32,20 @@ import { useGenerationQueue } from '../contexts/GenerationQueueContext'
 import { useCredits } from '../contexts/CreditsContext'
 
 const HolographicBackground = lazy(() => import('../components/HolographicBackgroundClient'))
+
+// Relative timestamp helper
+function timeAgo(date: Date): string {
+  const now = Date.now()
+  const diff = now - date.getTime()
+  const seconds = Math.floor(diff / 1000)
+  if (seconds < 30) return 'just now'
+  if (seconds < 60) return `${seconds}s ago`
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
 
 // Note: Cannot export metadata from 'use client' components
 // Metadata is set in parent layout
@@ -690,7 +704,7 @@ function CreatePageContent() {
                     isGenerating: false,
                     content: gen.status === 'failed' 
                       ? '❌ 444 Radio locking in. Please try again.' 
-                      : (gen.type === 'music' ? '✅ Track generated!' : 
+                      : (gen.type === 'music' ? `✅ ${gen.result?.title || 'Track'} is ready!` : 
                          gen.type === 'effects' ? '✅ Effects generated!' : 
                          gen.type === 'image' ? '✅ Image generated!' : 
                          gen.type === 'stem-split' ? `✅ Stem separated! Used ${gen.result?.creditsUsed || 1} credit.` :
@@ -711,7 +725,7 @@ function CreatePageContent() {
               id: `restored-${gen.id}`,
               type: 'assistant',
               generationId: gen.id,
-              content: gen.type === 'music' ? '✅ Track generated!' : 
+              content: gen.type === 'music' ? `✅ ${gen.result?.title || 'Track'} is ready!` : 
                        gen.type === 'effects' ? '✅ Effects generated!' : 
                        gen.type === 'image' ? '✅ Image generated!' : 
                        gen.type === 'stem-split' ? `✅ Stem separated! Used ${gen.result?.creditsUsed || 1} credit.` :
@@ -1384,7 +1398,7 @@ function CreatePageContent() {
               ? {
                   ...msg,
                   isGenerating: false,
-                  content: result.error ? '❌ 444 Radio locking in. Please try again.' : (type === 'music' ? '✅ Track generated!' : '✅ Cover art generated!'),
+                  content: result.error ? '❌ 444 Radio locking in. Please try again.' : (type === 'music' ? `✅ ${result.title || 'Track'} is ready!` : '✅ Cover art generated!'),
                   result: result.error ? undefined : result
                 }
               : msg
@@ -1400,7 +1414,7 @@ function CreatePageContent() {
           id: (Date.now() + Math.random()).toString(),
           type: 'assistant',
           content: type === 'music' 
-            ? 'Your track is ready! Want to create cover art for it? Or generate another track?'
+            ? `${result.title || 'Your track'} is ready! Want to create cover art for it? Or generate another track?`
             : 'Cover art created! Want to combine it with a track?',
           timestamp: new Date()
         }
@@ -1495,7 +1509,7 @@ function CreatePageContent() {
         updated[lastGeneratingIndex] = {
           id: updated[lastGeneratingIndex].id,
           type: 'generation',
-          content: '✅ Track generated!',
+          content: `✅ ${title || 'Track'} is ready!`,
           generationType: 'music',
           result: {
             audioUrl,
@@ -1510,7 +1524,7 @@ function CreatePageContent() {
         const assistantMessage: Message = {
           id: (Date.now() + 2).toString(),
           type: 'assistant',
-          content: 'Your track is ready! Want to create cover art for it? Or generate another track?',
+          content: `${title || 'Your track'} is ready! Want to create cover art for it? Or generate another track?`,
           timestamp: new Date()
         }
         
@@ -1964,7 +1978,7 @@ function CreatePageContent() {
               ? {
                   ...msg,
                   isGenerating: false,
-                  content: result.error ? '❌ 444 Radio locking in. Please try again.' : '✅ Remix track generated!',
+                  content: result.error ? '❌ 444 Radio locking in. Please try again.' : `✅ ${result.title || 'Remix track'} is ready!`,
                   result: result.error ? undefined : result,
                 }
               : msg
@@ -1978,7 +1992,7 @@ function CreatePageContent() {
         const assistantMessage: Message = {
           id: (Date.now() + Math.random()).toString(),
           type: 'assistant',
-          content: 'Your Remix track is ready! Want to create cover art or generate another?',
+          content: `${result.title || 'Your remix'} is ready! Want to create cover art or generate another?`,
           timestamp: new Date(),
         }
         setMessages(prev => [...prev, assistantMessage])
@@ -2142,7 +2156,7 @@ function CreatePageContent() {
               ? {
                   ...msg,
                   isGenerating: false,
-                  content: result.error ? '❌ 444 Radio locking in. Please try again.' : '✅ Beat generated!',
+                  content: result.error ? '❌ 444 Radio locking in. Please try again.' : `✅ ${result.title || 'Beat'} is ready!`,
                   result: result.error ? undefined : result,
                 }
               : msg
@@ -2156,7 +2170,7 @@ function CreatePageContent() {
         const assistantMessage: Message = {
           id: (Date.now() + Math.random()).toString(),
           type: 'assistant',
-          content: 'Your beat is ready! Want to create cover art or generate another?',
+          content: `${result.title || 'Your beat'} is ready! Want to create cover art or generate another?`,
           timestamp: new Date(),
         }
         setMessages(prev => [...prev, assistantMessage])
@@ -2645,7 +2659,7 @@ function CreatePageContent() {
                         message.type === 'user' ? 'text-cyan-100' : 'text-gray-200'
                       }`}>{message.content}</p>
                     </div>
-                    <p className="text-[10px] text-gray-500/80 mt-1.5 font-mono">{hasMounted ? message.timestamp.toLocaleTimeString() : '\u00A0'}</p>
+                    <p className="text-[10px] text-gray-500/80 mt-1.5 font-mono" title={hasMounted ? message.timestamp.toLocaleTimeString() : ''}>{hasMounted ? timeAgo(message.timestamp) : '\u00A0'}</p>
                   </div>
                 )}
 
@@ -2760,28 +2774,37 @@ function CreatePageContent() {
                           Library
                         </Link>
                       </div>
-                      <button
-                        onClick={() => handleSplitStems(message.result!.audioUrl!, message.id)}
-                        className="w-full px-6 py-4 hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-pink-500/10 border-t border-white/10 text-sm font-medium text-purple-400 flex items-center justify-center gap-2 transition-all"
-                        title="Split audio into individual stems (vocals, drums, bass, etc.)"
-                      >
-                        <Sparkles size={18} />
-                        <span>Split Stems</span>
-                        <span className="text-xs text-purple-400/60 bg-purple-500/10 px-2 py-0.5 rounded-full">1/stem</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setBoostAudioUrl(message.result!.audioUrl!)
-                          setBoostTrackTitle(message.result!.title || 'Generated Track')
-                          setShowAudioBoostModal(true)
-                        }}
-                        className="w-full px-6 py-4 hover:bg-gradient-to-r hover:from-orange-500/10 hover:to-red-500/10 border-t border-white/10 text-sm font-medium text-orange-400 flex items-center justify-center gap-2 transition-all"
-                        title="Mix & master your track"
-                      >
-                        <Zap size={18} />
-                        <span>Boost Audio</span>
-                        <span className="text-xs text-orange-400/60 bg-orange-500/10 px-2 py-0.5 rounded-full">1</span>
-                      </button>
+                      {/* More Actions — collapsed by default */}
+                      <details className="border-t border-white/10 group/more">
+                        <summary className="px-6 py-3 text-sm text-gray-400 cursor-pointer hover:bg-white/5 transition-colors font-medium flex items-center justify-center gap-2 select-none">
+                          <ChevronDown size={14} className="transition-transform group-open/more:rotate-180" />
+                          More Actions
+                        </summary>
+                        <div className="flex flex-col">
+                          <button
+                            onClick={() => handleSplitStems(message.result!.audioUrl!, message.id)}
+                            className="w-full px-6 py-3.5 hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-pink-500/10 border-t border-white/10 text-sm font-medium text-purple-400 flex items-center justify-center gap-2 transition-all"
+                            title="Split audio into individual stems (vocals, drums, bass, etc.)"
+                          >
+                            <Sparkles size={18} />
+                            <span>Split Stems</span>
+                            <span className="text-xs text-purple-400/60 bg-purple-500/10 px-2 py-0.5 rounded-full">1/stem</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setBoostAudioUrl(message.result!.audioUrl!)
+                              setBoostTrackTitle(message.result!.title || 'Generated Track')
+                              setShowAudioBoostModal(true)
+                            }}
+                            className="w-full px-6 py-3.5 hover:bg-gradient-to-r hover:from-orange-500/10 hover:to-red-500/10 border-t border-white/10 text-sm font-medium text-orange-400 flex items-center justify-center gap-2 transition-all"
+                            title="Mix & master your track"
+                          >
+                            <Zap size={18} />
+                            <span>Boost Audio</span>
+                            <span className="text-xs text-orange-400/60 bg-orange-500/10 px-2 py-0.5 rounded-full">1</span>
+                          </button>
+                        </div>
+                      </details>
                     </div>
                   </div>
                 )}
@@ -3756,7 +3779,7 @@ function CreatePageContent() {
         <div className="hidden md:block fixed bottom-0 left-[312px] right-0 h-36 z-20 bg-gradient-to-t from-black via-black/95 to-transparent">
           <div className="h-full border-t border-cyan-500/20">
             <Suspense fallback={<div className="h-full bg-black" />}>
-              <MatrixConsole isGenerating={activeGenerations.size > 0} />
+              <MatrixConsole isGenerating={activeGenerations.size > 0} isPlaying={isPlaying} />
             </Suspense>
           </div>
         </div>
