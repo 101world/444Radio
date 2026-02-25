@@ -3410,33 +3410,6 @@ function PluginPageInner() {
                 </select>
               </div>
 
-              {/* ACE-Step Parameters (non-English) */}
-              {selectedLanguage.toLowerCase() !== 'english' && (
-                <div className="space-y-3 p-3 rounded-lg" style={{background:'rgba(6,182,212,0.04)',border:'1px solid rgba(200,200,220,0.08)'}}>
-                  <span className="font-semibold text-[10px] uppercase tracking-wide" style={{color:'rgba(6,182,212,0.6)'}}>🎵 ACE-Step Model Parameters</span>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-medium text-gray-400 flex justify-between"><span>Audio Length</span><span style={{color:'rgba(6,182,212,0.6)'}}>{audioLengthInSeconds}s</span></label>
-                    <input type="range" min="15" max="90" step="5" value={audioLengthInSeconds} onChange={e => setAudioLengthInSeconds(parseInt(e.target.value))} className="w-full h-1" style={{accentColor:'rgba(6,182,212,0.5)'}} />
-                    <div className="flex justify-between text-[9px] text-gray-600"><span>15s</span><span>90s</span></div>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-medium text-gray-400 flex justify-between"><span>Inference Steps</span><span style={{color:'rgba(6,182,212,0.6)'}}>{numInferenceSteps}</span></label>
-                    <input type="range" min="25" max="100" step="5" value={numInferenceSteps} onChange={e => setNumInferenceSteps(parseInt(e.target.value))} className="w-full h-1" style={{accentColor:'rgba(6,182,212,0.5)'}} />
-                    <div className="flex justify-between text-[9px] text-gray-600"><span>25</span><span>100</span></div>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-medium text-gray-400 flex justify-between"><span>Guidance Scale</span><span style={{color:'rgba(6,182,212,0.6)'}}>{guidanceScale.toFixed(1)}</span></label>
-                    <input type="range" min="1" max="15" step="0.5" value={guidanceScale} onChange={e => setGuidanceScale(parseFloat(e.target.value))} className="w-full h-1" style={{accentColor:'rgba(6,182,212,0.5)'}} />
-                    <div className="flex justify-between text-[9px] text-gray-600"><span>1</span><span>15</span></div>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-medium text-gray-400 flex justify-between"><span>Denoising</span><span style={{color:'rgba(6,182,212,0.6)'}}>{denoisingStrength.toFixed(2)}</span></label>
-                    <input type="range" min="0.5" max="1.0" step="0.05" value={denoisingStrength} onChange={e => setDenoisingStrength(parseFloat(e.target.value))} className="w-full h-1" style={{accentColor:'rgba(6,182,212,0.5)'}} />
-                    <div className="flex justify-between text-[9px] text-gray-600"><span>0.5</span><span>1.0</span></div>
-                  </div>
-                </div>
-              )}
-
               {/* Quick Tags in Modal */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Prompt Tags</label>
