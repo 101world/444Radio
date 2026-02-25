@@ -66,6 +66,7 @@ const CREDIT_COSTS: Record<string, number | ((params: Record<string, unknown>) =
   autotune: 1,
   'voice-train': 120,
   'music-01': 3,
+  beatmaker: (p) => Math.max(2, Math.ceil(((p.duration as number) || 30) / 60 * 2)),
 }
 
 function getCreditCost(type: string, params: Record<string, unknown>): number {
@@ -213,6 +214,9 @@ export async function POST(req: NextRequest) {
           break
         case 'music-01':
           result = await generateMusic01(userId, body, jobId, requestSignal)
+          break
+        case 'beatmaker':
+          result = await generateBeatmaker(userId, body, jobId)
           break
         default:
           result = { success: false, error: 'Unknown type' }
@@ -1523,4 +1527,68 @@ async function generateMusic01(userId: string, body: Record<string, unknown>, jo
   await updatePluginJob(jobId, { status: 'completed', output: { audioUrl, title, lyrics: formattedLyrics } })
 
   return { success: true, audioUrl, title, lyrics: formattedLyrics }
+}
+
+
+// ──────────────────────────────────────────────────────────────────
+// BEAT MAKER  (fal.ai CassetteAI/music-generator)
+// ──────────────────────────────────────────────────────────────────
+async function generateBeatmaker(userId: string, body: Record<string, unknown>, jobId: string) {
+  const title = (body.title as string || '').trim()
+  const prompt = (body.prompt as string || '').trim()
+  const duration = Math.min(180, Math.max(5, (body.duration as number) || 30))
+
+  if (!title || title.length < 1 || title.length > 100) return { success: false, error: 'Title required (1-100 chars)' }
+  if (!prompt || prompt.length < 3 || prompt.length > 500) return { success: false, error: 'Prompt required (3-500 chars)' }
+
+  const falKey = process.env.FAL_KEY || process.env.fal_key
+  if (!falKey) return { success: false, error: 'Beat Maker service not configured' }
+
+  await updatePluginJob(jobId, { status: 'processing' })
+
+  // Call fal.ai CassetteAI/music-generator
+  const falRes = await fetch('https://fal.run/CassetteAI/music-generator', {
+    method: 'POST',
+    headers: { Authorization: `Key ${falKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, duration }),
+  })
+
+  if (!falRes.ok) {
+    const errText = await falRes.text().catch(() => '')
+    console.error(`[plugin/beatmaker] fal.ai error (${falRes.status}):`, errText)
+    return { success: false, error: SAFE_ERROR_MESSAGE }
+  }
+
+  const falData = await falRes.json()
+  const audioFile = falData?.audio_file
+  let audioUrl: string | undefined
+  if (typeof audioFile === 'string') audioUrl = audioFile
+  else if (audioFile?.url) audioUrl = audioFile.url
+  if (!audioUrl) return { success: false, error: 'No audio in fal.ai output' }
+
+  // Upload to R2
+  const fileName = `beatmaker-${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.wav`
+  const r2 = await downloadAndUploadToR2(audioUrl, userId, 'music', fileName)
+  if (!r2.success) return { success: false, error: 'Failed to save audio' }
+  audioUrl = r2.url
+
+  // Save to music_library
+  await fetch(`${supabaseUrl}/rest/v1/music_library`, {
+    method: 'POST',
+    headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      clerk_user_id: userId,
+      title,
+      prompt,
+      audio_url: audioUrl,
+      audio_format: 'wav',
+      generation_params: { model: 'cassetteai-music-generator', duration, type: 'beatmaker', source: 'plugin' },
+      genre: 'beatmaker',
+      status: 'ready',
+    }),
+  })
+
+  await updatePluginJob(jobId, { status: 'completed', output: { audioUrl, title, duration } })
+
+  return { success: true, audioUrl, title, duration }
 }

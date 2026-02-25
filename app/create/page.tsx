@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, Suspense, lazy } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices, Upload, RotateCcw, Repeat, Plus, Square, Guitar, AudioLines } from 'lucide-react'
+import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices, Upload, RotateCcw, Repeat, Plus, Square, Guitar, AudioLines, Drum } from 'lucide-react'
 
 // Lazy load heavy modals for better performance
 const MusicGenerationModal = lazy(() => import('../components/MusicGenerationModal'))
@@ -3060,7 +3060,7 @@ function CreatePageContent() {
                 {/* Generation Types */}
                 <div className="mb-4">
                   <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2 px-1">Generate</h3>
-                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                     <button
                       onClick={() => setSelectedType('music')}
                       className={`group relative p-3 rounded-xl transition-all duration-200 ${
@@ -3107,6 +3107,14 @@ function CreatePageContent() {
                     >
                       <Music2 size={20} className="text-white/60 mx-auto group-hover:text-purple-400" />
                       <span className="block text-xs mt-1 text-center text-white/70">Chords</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => setShowBeatMakerModal(true)}
+                      className="group relative p-3 rounded-xl transition-all duration-200 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-cyan-400/30"
+                    >
+                      <Drum size={20} className="text-white/60 mx-auto group-hover:text-cyan-400" />
+                      <span className="block text-xs mt-1 text-center text-white/70">Beats</span>
                     </button>
                   </div>
                 </div>
