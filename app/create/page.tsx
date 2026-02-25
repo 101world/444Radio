@@ -1782,24 +1782,16 @@ function CreatePageContent() {
     return { error: resultData.error || 'Failed to generate music' }
   }
 
-  // Generate using meta/musicgen (Resound — beat upload + prompt)
+  // Generate using fal.ai stable-audio-25/audio-to-audio (444 Radio Remix)
   const generateResound = async (
     params: {
       title: string
       prompt: string
       inputAudioUrl: string
-      duration: number
-      continuation: boolean
-      continuation_start: number
-      continuation_end: number | null
-      model_version: string
-      output_format: string
-      normalization_strategy: string
-      top_k: number
-      top_p: number
-      temperature: number
-      classifier_free_guidance: number
-      multi_band_diffusion: boolean
+      strength: number
+      num_inference_steps: number
+      total_seconds: number | null
+      guidance_scale: number
       seed: number | null
     },
     signal?: AbortSignal,
@@ -1808,19 +1800,11 @@ function CreatePageContent() {
     const requestBody = {
       title: params.title,
       prompt: params.prompt,
-      input_audio: params.inputAudioUrl,
-      duration: params.duration,
-      continuation: params.continuation,
-      continuation_start: params.continuation_start,
-      continuation_end: params.continuation_end,
-      model_version: params.model_version,
-      output_format: params.output_format,
-      normalization_strategy: params.normalization_strategy,
-      top_k: params.top_k,
-      top_p: params.top_p,
-      temperature: params.temperature,
-      classifier_free_guidance: params.classifier_free_guidance,
-      multi_band_diffusion: params.multi_band_diffusion,
+      audio_url: params.inputAudioUrl,
+      strength: params.strength,
+      num_inference_steps: params.num_inference_steps,
+      total_seconds: params.total_seconds,
+      guidance_scale: params.guidance_scale,
       seed: params.seed,
     }
 
@@ -1896,18 +1880,10 @@ function CreatePageContent() {
     title: string
     prompt: string
     inputAudioUrl: string
-    duration: number
-    continuation: boolean
-    continuation_start: number
-    continuation_end: number | null
-    model_version: string
-    output_format: string
-    normalization_strategy: string
-    top_k: number
-    top_p: number
-    temperature: number
-    classifier_free_guidance: number
-    multi_band_diffusion: boolean
+    strength: number
+    num_inference_steps: number
+    total_seconds: number | null
+    guidance_scale: number
     seed: number | null
   }) => {
     // Close the modal

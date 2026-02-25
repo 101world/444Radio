@@ -15,39 +15,12 @@ export interface ResoundGenerationParams {
   title: string
   prompt: string
   inputAudioUrl: string
-  duration: number
-  continuation: boolean
-  continuation_start: number
-  continuation_end: number | null
-  model_version: string
-  output_format: string
-  normalization_strategy: string
-  top_k: number
-  top_p: number
-  temperature: number
-  classifier_free_guidance: number
-  multi_band_diffusion: boolean
+  strength: number
+  num_inference_steps: number
+  total_seconds: number | null
+  guidance_scale: number
   seed: number | null
 }
-
-const MODEL_VERSIONS = [
-  { value: 'stereo-melody-large', label: 'Stereo Melody Large (recommended)' },
-  { value: 'stereo-large', label: 'Stereo Large' },
-  { value: 'melody-large', label: 'Melody Large' },
-  { value: 'large', label: 'Large' },
-]
-
-const OUTPUT_FORMATS = [
-  { value: 'wav', label: 'WAV (lossless)' },
-  { value: 'mp3', label: 'MP3' },
-]
-
-const NORMALIZATION_STRATEGIES = [
-  { value: 'peak', label: 'Peak' },
-  { value: 'loudness', label: 'Loudness' },
-  { value: 'clip', label: 'Clip' },
-  { value: 'rms', label: 'RMS' },
-]
 
 const MAX_PROMPT_LENGTH = 500
 
@@ -71,19 +44,11 @@ export default function ResoundModal({ isOpen, onClose, userCredits, onGenerate 
   // Detected duration of the uploaded audio
   const [detectedDuration, setDetectedDuration] = useState<number | null>(null)
 
-  // Remix parameters (defaults from Replicate playground)
-  const [duration, setDuration] = useState(125)
-  const [continuation, setContinuation] = useState(true)
-  const [continuationStart, setContinuationStart] = useState(0)
-  const [continuationEnd, setContinuationEnd] = useState<number | null>(null)
-  const [modelVersion, setModelVersion] = useState('stereo-melody-large')
-  const [outputFormat, setOutputFormat] = useState('wav')
-  const [normalizationStrategy, setNormalizationStrategy] = useState('peak')
-  const [topK, setTopK] = useState(250)
-  const [topP, setTopP] = useState(0)
-  const [temperature, setTemperature] = useState(1)
-  const [classifierFreeGuidance, setClassifierFreeGuidance] = useState(3)
-  const [multiBandDiffusion, setMultiBandDiffusion] = useState(false)
+  // fal.ai Stable Audio 2.5 parameters
+  const [strength, setStrength] = useState(0.8)
+  const [numInferenceSteps, setNumInferenceSteps] = useState(8)
+  const [totalSeconds, setTotalSeconds] = useState<number | null>(null)
+  const [guidanceScale, setGuidanceScale] = useState(1)
   const [seed, setSeed] = useState<number | null>(null)
 
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -101,8 +66,8 @@ export default function ResoundModal({ isOpen, onClose, userCredits, onGenerate 
     audio.addEventListener('loadedmetadata', () => {
       const dur = Math.ceil(audio.duration)
       setDetectedDuration(dur)
-      // Set duration longer than input to avoid "Prompt is longer than audio to generate"
-      setDuration(Math.max(dur + 5, Math.ceil(dur * 1.5)))
+      // Auto-set total_seconds to match input audio duration
+      setTotalSeconds(dur)
       URL.revokeObjectURL(url)
     })
     audio.addEventListener('error', () => {
@@ -201,20 +166,18 @@ export default function ResoundModal({ isOpen, onClose, userCredits, onGenerate 
   }, [isOpen])
 
   // Validation
-  const durationTooShort = continuation && detectedDuration !== null && duration <= detectedDuration
   const canGenerate =
     title.trim().length >= 1 &&
     effectivePrompt.length >= 3 &&
     effectivePrompt.length <= MAX_PROMPT_LENGTH &&
     inputAudioUrl &&
     !isUploading &&
-    !isGenerating &&
-    !durationTooShort
+    !isGenerating
 
   const handleSubmit = () => {
     if (!canGenerate) return
     if (userCredits !== undefined && userCredits < 10) {
-      setUploadError('You need at least 10 credits to use Remix')
+      setUploadError('You need at least 10 credits to use 444 Radio Remix')
       return
     }
     setIsGenerating(true)
@@ -223,18 +186,10 @@ export default function ResoundModal({ isOpen, onClose, userCredits, onGenerate 
       title: title.trim(),
       prompt: effectivePrompt,
       inputAudioUrl,
-      duration,
-      continuation,
-      continuation_start: continuationStart,
-      continuation_end: continuationEnd,
-      model_version: modelVersion,
-      output_format: outputFormat,
-      normalization_strategy: normalizationStrategy,
-      top_k: topK,
-      top_p: topP,
-      temperature,
-      classifier_free_guidance: classifierFreeGuidance,
-      multi_band_diffusion: multiBandDiffusion,
+      strength,
+      num_inference_steps: numInferenceSteps,
+      total_seconds: totalSeconds,
+      guidance_scale: guidanceScale,
       seed,
     })
   }
@@ -256,8 +211,8 @@ export default function ResoundModal({ isOpen, onClose, userCredits, onGenerate 
                 <Music2 size={20} className="text-cyan-400" />
               </div>
               <div>
-                <h3 className="text-base font-semibold text-white">Remix</h3>
-                <p className="text-xs text-white/40 mt-0.5">Upload a beat &amp; prompt — 444 Radio Remix</p>
+                <h3 className="text-base font-semibold text-white">444 Radio Remix</h3>
+                <p className="text-xs text-white/40 mt-0.5">Upload an instrumental &amp; prompt — Audio-to-Audio</p>
               </div>
             </div>
             <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
@@ -298,7 +253,7 @@ export default function ResoundModal({ isOpen, onClose, userCredits, onGenerate 
             <textarea
               value={prompt}
               onChange={e => setPrompt(e.target.value)}
-              placeholder="Describe the music you want to generate…"
+              placeholder="Describe the instrumental music you want (INSTRUMENTAL ONLY — no vocals)…"
               rows={3}
               className="w-full px-4 py-2.5 bg-white/[0.04] border border-white/10 hover:border-cyan-500/30 focus:border-cyan-400/50 rounded-xl text-sm text-white placeholder-white/25 outline-none transition-colors resize-none"
             />
@@ -322,7 +277,11 @@ export default function ResoundModal({ isOpen, onClose, userCredits, onGenerate 
 
           {/* ── Upload Beat ── */}
           <div>
-            <label className="block text-[11px] font-medium text-white/50 uppercase tracking-wider mb-1.5">Input Audio File <span className="text-red-400">*</span></label>
+            <label className="block text-[11px] font-medium text-white/50 uppercase tracking-wider mb-1.5">Input Audio File (Instrumental Only) <span className="text-red-400">*</span></label>
+            <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-amber-500/[0.08] border border-amber-500/20 rounded-lg">
+              <AlertCircle size={14} className="text-amber-400 flex-shrink-0" />
+              <p className="text-[11px] text-amber-300/80">Use <strong>instrumental audio only</strong> — no vocals. This model works best with beats, loops, and instrumental tracks.</p>
+            </div>
             <input ref={fileInputRef} type="file" accept=".wav,.mp3,.webm,.ogg,audio/*" className="hidden" onChange={handleFileSelect} />
             {inputAudioFile ? (
               <div className="flex items-center justify-between px-4 py-3 bg-cyan-500/[0.08] border border-cyan-500/20 rounded-xl">
@@ -339,7 +298,7 @@ export default function ResoundModal({ isOpen, onClose, userCredits, onGenerate 
                       {isPreviewPlaying ? <Pause size={14} className="text-cyan-400" /> : <Play size={14} className="text-cyan-400" />}
                     </button>
                   )}
-                  <button onClick={() => { setInputAudioFile(null); setInputAudioUrl(''); setDetectedDuration(null); previewAudioRef.current?.pause(); previewAudioRef.current = null }} className="text-xs text-white/30 hover:text-red-400 transition-colors">Remove</button>
+                  <button onClick={() => { setInputAudioFile(null); setInputAudioUrl(''); setDetectedDuration(null); setTotalSeconds(null); previewAudioRef.current?.pause(); previewAudioRef.current = null }} className="text-xs text-white/30 hover:text-red-400 transition-colors">Remove</button>
                 </div>
               </div>
             ) : (
@@ -353,9 +312,9 @@ export default function ResoundModal({ isOpen, onClose, userCredits, onGenerate 
                 </div>
                 <div className="text-left">
                   <div className="text-sm font-medium text-white/80 group-hover:text-cyan-200 transition-colors">
-                    {isUploading ? 'Uploading…' : 'Upload your beat'}
+                    {isUploading ? 'Uploading…' : 'Upload your instrumental'}
                   </div>
-                  <div className="text-[11px] text-white/30">.wav or .mp3 — up to 20 MB</div>
+                  <div className="text-[11px] text-white/30">.wav or .mp3 — up to 20 MB — instrumental only</div>
                 </div>
               </button>
             )}
@@ -366,149 +325,46 @@ export default function ResoundModal({ isOpen, onClose, userCredits, onGenerate 
             )}
           </div>
 
-          {/* ── Model Version ── */}
+          {/* ── Strength (Denoising) ── */}
           <div>
-            <label className="block text-[11px] font-medium text-white/50 uppercase tracking-wider mb-1.5">Model Version</label>
-            <select
-              value={modelVersion}
-              onChange={e => setModelVersion(e.target.value)}
-              className="w-full px-4 py-2.5 bg-white/[0.04] border border-white/10 hover:border-cyan-500/30 rounded-xl text-sm text-white outline-none cursor-pointer appearance-none transition-colors"
-              style={{
-                backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(148,163,184,0.5)' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
-                backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'right 0.6rem center',
-                backgroundSize: '1.1em 1.1em',
-                paddingRight: '2.2rem',
-              }}
-            >
-              {MODEL_VERSIONS.map(m => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
+            <label className="block text-[11px] font-medium text-white/50 uppercase tracking-wider mb-1.5">
+              Remix Strength <span className="text-white/25 normal-case">({strength.toFixed(2)})</span>
+            </label>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={strength}
+              onChange={e => setStrength(parseFloat(e.target.value))}
+              className="w-full accent-cyan-500"
+            />
+            <div className="flex justify-between mt-1">
+              <span className="text-[10px] text-white/20">0 = identical to input</span>
+              <span className="text-[10px] text-white/20">1 = fully new</span>
+            </div>
+            <p className="text-[10px] text-white/20 mt-0.5">Controls how much the remix transforms your audio. Default: 0.8.</p>
           </div>
 
           {/* ── Duration ── */}
           <div>
             <label className="block text-[11px] font-medium text-white/50 uppercase tracking-wider mb-1.5">
               Duration <span className="text-white/25 normal-case">(seconds)</span>
-              {detectedDuration && <span className="text-cyan-400/60 normal-case ml-1">auto-set from input: {detectedDuration}s</span>}
+              {detectedDuration && <span className="text-cyan-400/60 normal-case ml-1">input: {detectedDuration}s</span>}
             </label>
             <input
               type="number"
               min={1}
               max={300}
-              value={duration}
-              onChange={e => setDuration(Math.max(1, Math.min(300, parseInt(e.target.value) || 8)))}
-              className={`w-full px-4 py-2.5 bg-white/[0.04] border ${durationTooShort ? 'border-red-500/50' : 'border-white/10'} hover:border-cyan-500/30 focus:border-cyan-400/50 rounded-xl text-sm text-white outline-none transition-colors`}
-            />
-            {durationTooShort ? (
-              <p className="text-[10px] text-red-400 mt-1">
-                Duration must be longer than the input audio ({detectedDuration}s) when continuation is on.
-                <button onClick={() => setDuration(Math.ceil(detectedDuration! * 1.5))} className="ml-1 underline text-cyan-400 hover:text-cyan-300">
-                  Set to {Math.ceil(detectedDuration! * 1.5)}s
-                </button>
-              </p>
-            ) : (
-              <p className="text-[10px] text-white/20 mt-1">Default: 8. Max recommended: ~300s.</p>
-            )}
-          </div>
-
-          {/* ── Output Format ── */}
-          <div>
-            <label className="block text-[11px] font-medium text-white/50 uppercase tracking-wider mb-1.5">Output Format</label>
-            <div className="flex gap-2">
-              {OUTPUT_FORMATS.map(f => (
-                <button
-                  key={f.value}
-                  onClick={() => setOutputFormat(f.value)}
-                  className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-all ${
-                    outputFormat === f.value
-                      ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300'
-                      : 'bg-white/[0.03] border-white/10 text-white/40 hover:bg-white/[0.06]'
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* ── Continuation ── */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-[11px] font-medium text-white/50 uppercase tracking-wider">Continuation</label>
-              <button
-                onClick={() => setContinuation(!continuation)}
-                className={`relative w-10 h-5 rounded-full transition-colors ${continuation ? 'bg-cyan-500/60' : 'bg-white/10'}`}
-              >
-                <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${continuation ? 'translate-x-5' : ''}`} />
-              </button>
-            </div>
-            <p className="text-[10px] text-white/20">If true, generated music will continue from the input audio. Otherwise, it will mimic the input audio&apos;s melody.</p>
-
-            {continuation && (
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] text-white/30 mb-1">Start (s)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={continuationStart}
-                    onChange={e => setContinuationStart(Math.max(0, parseInt(e.target.value) || 0))}
-                    className="w-full px-3 py-2 bg-white/[0.04] border border-white/10 rounded-lg text-sm text-white outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-white/30 mb-1">End (s) <span className="text-white/15">blank = end of clip</span></label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={continuationEnd ?? ''}
-                    onChange={e => {
-                      const v = e.target.value
-                      setContinuationEnd(v === '' ? null : Math.max(0, parseInt(v) || 0))
-                    }}
-                    placeholder="auto"
-                    className="w-full px-3 py-2 bg-white/[0.04] border border-white/10 rounded-lg text-sm text-white placeholder-white/15 outline-none"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* ── Normalization Strategy ── */}
-          <div>
-            <label className="block text-[11px] font-medium text-white/50 uppercase tracking-wider mb-1.5">Normalization Strategy</label>
-            <select
-              value={normalizationStrategy}
-              onChange={e => setNormalizationStrategy(e.target.value)}
-              className="w-full px-4 py-2.5 bg-white/[0.04] border border-white/10 hover:border-cyan-500/30 rounded-xl text-sm text-white outline-none cursor-pointer appearance-none transition-colors"
-              style={{
-                backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(148,163,184,0.5)' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
-                backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'right 0.6rem center',
-                backgroundSize: '1.1em 1.1em',
-                paddingRight: '2.2rem',
+              value={totalSeconds ?? ''}
+              onChange={e => {
+                const v = e.target.value
+                setTotalSeconds(v === '' ? null : Math.max(1, Math.min(300, parseInt(v) || 1)))
               }}
-            >
-              {NORMALIZATION_STRATEGIES.map(s => (
-                <option key={s.value} value={s.value}>{s.label}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* ── Multi-Band Diffusion ── */}
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="text-[11px] font-medium text-white/50 uppercase tracking-wider">Multi-Band Diffusion</label>
-              <p className="text-[10px] text-white/20 mt-0.5">EnCodec tokens decoded with MultiBand Diffusion. Only works with non-stereo models.</p>
-            </div>
-            <button
-              onClick={() => setMultiBandDiffusion(!multiBandDiffusion)}
-              className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 ml-3 ${multiBandDiffusion ? 'bg-cyan-500/60' : 'bg-white/10'}`}
-            >
-              <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${multiBandDiffusion ? 'translate-x-5' : ''}`} />
-            </button>
+              placeholder={detectedDuration ? `Auto (${detectedDuration}s from input)` : 'Auto (from input audio)'}
+              className="w-full px-4 py-2.5 bg-white/[0.04] border border-white/10 hover:border-cyan-500/30 focus:border-cyan-400/50 rounded-xl text-sm text-white placeholder-white/25 outline-none transition-colors"
+            />
+            <p className="text-[10px] text-white/20 mt-1">Leave empty to use input audio duration. Max: 300s.</p>
           </div>
 
           {/* ── Advanced Toggle ── */}
@@ -517,67 +373,37 @@ export default function ResoundModal({ isOpen, onClose, userCredits, onGenerate 
             className="flex items-center gap-2 text-xs text-white/30 hover:text-white/50 transition-colors"
           >
             <Settings size={12} />
-            {showAdvanced ? 'Hide' : 'Show'} advanced sampling parameters
+            {showAdvanced ? 'Hide' : 'Show'} advanced parameters
           </button>
 
           {showAdvanced && (
             <div className="space-y-4 p-4 bg-white/[0.02] border border-white/[0.04] rounded-xl">
-              {/* top_k */}
+              {/* num_inference_steps */}
               <div>
-                <label className="block text-[10px] font-medium text-white/40 uppercase tracking-wider mb-1">top_k <span className="text-white/20 normal-case">({topK})</span></label>
+                <label className="block text-[10px] font-medium text-white/40 uppercase tracking-wider mb-1">Inference Steps <span className="text-white/20 normal-case">({numInferenceSteps})</span></label>
                 <input
                   type="range"
-                  min={0}
-                  max={1000}
-                  value={topK}
-                  onChange={e => setTopK(parseInt(e.target.value))}
+                  min={1}
+                  max={50}
+                  value={numInferenceSteps}
+                  onChange={e => setNumInferenceSteps(parseInt(e.target.value))}
                   className="w-full accent-cyan-500"
                 />
-                <p className="text-[10px] text-white/15 mt-0.5">Reduces sampling to the k most likely tokens. Default: 250.</p>
+                <p className="text-[10px] text-white/15 mt-0.5">Number of denoising steps. Higher = better quality but slower. Default: 8.</p>
               </div>
 
-              {/* top_p */}
+              {/* guidance_scale */}
               <div>
-                <label className="block text-[10px] font-medium text-white/40 uppercase tracking-wider mb-1">top_p <span className="text-white/20 normal-case">({topP})</span></label>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={topP}
-                  onChange={e => setTopP(parseFloat(e.target.value))}
-                  className="w-full accent-cyan-500"
-                />
-                <p className="text-[10px] text-white/15 mt-0.5">Cumulative probability threshold. 0 = use top_k only. Default: 0.</p>
-              </div>
-
-              {/* temperature */}
-              <div>
-                <label className="block text-[10px] font-medium text-white/40 uppercase tracking-wider mb-1">Temperature <span className="text-white/20 normal-case">({temperature})</span></label>
-                <input
-                  type="range"
-                  min={0}
-                  max={3}
-                  step={0.05}
-                  value={temperature}
-                  onChange={e => setTemperature(parseFloat(e.target.value))}
-                  className="w-full accent-cyan-500"
-                />
-                <p className="text-[10px] text-white/15 mt-0.5">Higher = more diversity. Default: 1.</p>
-              </div>
-
-              {/* classifier_free_guidance */}
-              <div>
-                <label className="block text-[10px] font-medium text-white/40 uppercase tracking-wider mb-1">Classifier-Free Guidance <span className="text-white/20 normal-case">({classifierFreeGuidance})</span></label>
+                <label className="block text-[10px] font-medium text-white/40 uppercase tracking-wider mb-1">Guidance Scale <span className="text-white/20 normal-case">({guidanceScale})</span></label>
                 <input
                   type="range"
                   min={0}
                   max={10}
-                  value={classifierFreeGuidance}
-                  onChange={e => setClassifierFreeGuidance(parseInt(e.target.value))}
+                  value={guidanceScale}
+                  onChange={e => setGuidanceScale(parseInt(e.target.value))}
                   className="w-full accent-cyan-500"
                 />
-                <p className="text-[10px] text-white/15 mt-0.5">Higher values adhere more closely to the prompt. Default: 3.</p>
+                <p className="text-[10px] text-white/15 mt-0.5">How closely the output follows your prompt. Higher = more literal. Default: 1.</p>
               </div>
 
               {/* seed */}
@@ -591,10 +417,10 @@ export default function ResoundModal({ isOpen, onClose, userCredits, onGenerate 
                     const v = e.target.value
                     setSeed(v === '' ? null : parseInt(v))
                   }}
-                  placeholder="Random (-1 or blank)"
+                  placeholder="Random (blank)"
                   className="w-full px-3 py-2 bg-white/[0.04] border border-white/10 rounded-lg text-sm text-white placeholder-white/15 outline-none"
                 />
-                <p className="text-[10px] text-white/15 mt-0.5">-1 or blank = random seed.</p>
+                <p className="text-[10px] text-white/15 mt-0.5">Set a seed for reproducible results. Leave blank for random.</p>
               </div>
             </div>
           )}
@@ -618,7 +444,7 @@ export default function ResoundModal({ isOpen, onClose, userCredits, onGenerate 
                 'Remix — 10 credits'
               )}
             </button>
-            <p className="text-[10px] text-white/20 text-center mt-2">444 Radio Remix Engine • WAV output by default</p>
+            <p className="text-[10px] text-white/20 text-center mt-2">444 Radio Remix Engine • Instrumental Only • WAV output</p>
           </div>
         </div>
       </div>

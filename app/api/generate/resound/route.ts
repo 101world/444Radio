@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import Replicate from 'replicate'
+import { fal } from '@fal-ai/client'
 import { downloadAndUploadToR2 } from '@/lib/storage'
 import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { refundCredits } from '@/lib/refund-credits'
 
-// Allow up to 5 minutes for MusicGen generation
+// Allow up to 5 minutes for fal.ai generation
 export const maxDuration = 300
 
-const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_KEY_LATEST2!,
+// Configure fal.ai client
+fal.config({
+  credentials: process.env.FAL_KEY!,
 })
 
 function sanitizeError(error: any): string {
@@ -17,7 +18,7 @@ function sanitizeError(error: any): string {
   if (
     errorStr.includes('429') ||
     errorStr.includes('rate limit') ||
-    errorStr.includes('replicate') ||
+    errorStr.includes('fal') ||
     errorStr.includes('supabase') ||
     errorStr.includes('API') ||
     errorStr.includes('prediction') ||
@@ -31,8 +32,9 @@ function sanitizeError(error: any): string {
 /**
  * POST /api/generate/resound
  *
- * Uses meta/musicgen on Replicate to generate instrumental music from an uploaded beat
- * and a text prompt (Remix). All MusicGen parameters are exposed.
+ * Uses fal-ai/stable-audio-25/audio-to-audio to remix instrumental audio
+ * from an uploaded beat and a text prompt. All API parameters are exposed.
+ * Branded as "444 Radio Remix". Costs 10 credits.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -44,20 +46,12 @@ export async function POST(req: NextRequest) {
     const {
       title,
       prompt,
-      input_audio,      // Public URL of the uploaded beat
-      duration,          // integer seconds
-      continuation,      // boolean
-      continuation_start,// integer
-      continuation_end,  // integer | null
-      model_version,     // string enum
-      output_format,     // wav | mp3
-      normalization_strategy, // peak | loudness | clip | rms
-      top_k,             // integer
-      top_p,             // number 0-1
-      temperature,       // number
-      classifier_free_guidance, // integer
-      multi_band_diffusion,     // boolean
-      seed,              // integer | null
+      audio_url,          // Public URL of the uploaded beat
+      strength,           // float 0-1, default 0.8
+      num_inference_steps, // integer, default 8
+      total_seconds,      // integer duration (or null = auto from input)
+      guidance_scale,     // integer, default 1
+      seed,               // integer | null
     } = await req.json()
 
     // Validate required fields
@@ -67,26 +61,21 @@ export async function POST(req: NextRequest) {
     if (!prompt || prompt.length < 3 || prompt.length > 500) {
       return NextResponse.json({ error: 'Prompt is required (3-500 characters)' }, { status: 400 })
     }
-    if (!input_audio) {
+    if (!audio_url) {
       return NextResponse.json({ error: 'An input audio file URL is required' }, { status: 400 })
     }
 
-    // When continuation is enabled, MusicGen requires duration > input audio length
-    // Add a buffer to prevent "Prompt is longer than audio to generate" errors
-    const safeDuration = typeof duration === 'number' ? duration : 8
-    if (typeof continuation === 'boolean' && continuation && safeDuration < 10) {
-      console.log('⚠️ Duration too short for continuation mode, bumping to 10s')
-    }
-
-    console.log('🔁 Remix Generation Parameters:')
+    console.log('🔁 444 Radio Remix Parameters:')
     console.log('  Title:', title)
     console.log('  Prompt:', prompt)
-    console.log('  Input audio:', input_audio)
-    console.log('  Duration:', duration)
-    console.log('  Model version:', model_version)
-    console.log('  Output format:', output_format)
+    console.log('  Audio URL:', audio_url)
+    console.log('  Strength:', strength)
+    console.log('  Steps:', num_inference_steps)
+    console.log('  Duration:', total_seconds)
+    console.log('  Guidance Scale:', guidance_scale)
+    console.log('  Seed:', seed)
 
-    // ----- Credit check & deduction (2 credits) -----
+    // ----- Credit check & deduction (10 credits) -----
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
@@ -101,7 +90,7 @@ export async function POST(req: NextRequest) {
     const userCredits = users[0].credits || 0
     if (userCredits < 10) {
       return NextResponse.json({
-        error: 'Insufficient credits. Remix requires 10 credits.',
+        error: 'Insufficient credits. 444 Radio Remix requires 10 credits.',
         creditsNeeded: 10,
         creditsAvailable: userCredits,
       }, { status: 402 })
@@ -124,11 +113,11 @@ export async function POST(req: NextRequest) {
     if (!deductRes.ok || !deductResult?.success) {
       const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
       console.error('❌ Credit deduction blocked:', errorMsg)
-      await logCreditTransaction({ userId, amount: -10, type: 'generation_music', status: 'failed', description: `Remix: ${title}`, metadata: { prompt, model: 'musicgen' } })
+      await logCreditTransaction({ userId, amount: -10, type: 'generation_music', status: 'failed', description: `Remix: ${title}`, metadata: { prompt, model: 'fal-stable-audio-25' } })
       return NextResponse.json({ error: errorMsg }, { status: 402 })
     }
     console.log(`✅ Credits deducted. Remaining: ${deductResult.new_credits}`)
-    await logCreditTransaction({ userId, amount: -10, balanceAfter: deductResult.new_credits, type: 'generation_music', description: `Remix: ${title}`, metadata: { prompt, model: 'musicgen' } })
+    await logCreditTransaction({ userId, amount: -10, balanceAfter: deductResult.new_credits, type: 'generation_music', description: `Remix: ${title}`, metadata: { prompt, model: 'fal-stable-audio-25' } })
 
     // ----- NDJSON streaming response -----
     const encoder = new TextEncoder()
@@ -145,112 +134,63 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const requestSignal = req.signal
-
     ;(async () => {
       try {
-        // Build MusicGen input — include every parameter
-        const musicgenInput: Record<string, unknown> = {
+        // Build fal.ai input with all parameters
+        const falInput: Record<string, unknown> = {
           prompt: prompt.trim(),
-          model_version: model_version || 'stereo-melody-large',
-          output_format: output_format || 'wav',
-          normalization_strategy: normalization_strategy || 'peak',
-          duration: typeof duration === 'number' ? duration : 8,
-          top_k: typeof top_k === 'number' ? top_k : 250,
-          top_p: typeof top_p === 'number' ? top_p : 0,
-          temperature: typeof temperature === 'number' ? temperature : 1,
-          classifier_free_guidance: typeof classifier_free_guidance === 'number' ? classifier_free_guidance : 3,
-          continuation: typeof continuation === 'boolean' ? continuation : true,
-          multi_band_diffusion: typeof multi_band_diffusion === 'boolean' ? multi_band_diffusion : false,
+          audio_url: audio_url,
+          strength: typeof strength === 'number' ? strength : 0.8,
+          num_inference_steps: typeof num_inference_steps === 'number' ? num_inference_steps : 8,
+          guidance_scale: typeof guidance_scale === 'number' ? guidance_scale : 1,
         }
 
-        // Attach the uploaded beat as input_audio
-        if (input_audio) {
-          musicgenInput.input_audio = input_audio
-        }
-
-        // Optional continuation start/end
-        if (typeof continuation_start === 'number') {
-          musicgenInput.continuation_start = continuation_start
-        }
-        if (typeof continuation_end === 'number' && continuation_end > 0) {
-          musicgenInput.continuation_end = continuation_end
+        // Optional total_seconds (if not provided, fal.ai uses input audio duration)
+        if (typeof total_seconds === 'number' && total_seconds > 0) {
+          falInput.total_seconds = total_seconds
         }
 
         // Optional seed
         if (typeof seed === 'number' && seed >= 0) {
-          musicgenInput.seed = seed
+          falInput.seed = seed
         }
 
-        console.log('🔁 Creating MusicGen prediction with input:', JSON.stringify(musicgenInput, null, 2))
+        console.log('🔁 Calling fal.ai stable-audio-25/audio-to-audio with input:', JSON.stringify(falInput, null, 2))
 
-        const prediction = await replicate.predictions.create({
-          version: '671ac645ce5e552cc63a54a2bbff63fcf798043055d2dac5fc9e36a837eedcfb',
-          input: musicgenInput,
+        await sendLine({ type: 'started', model: 'fal-stable-audio-25' })
+
+        // Use fal.subscribe for automatic polling
+        const result = await fal.subscribe('fal-ai/stable-audio-25/audio-to-audio', {
+          input: falInput as any,
+          logs: true,
+          onQueueUpdate: (update) => {
+            if (update.status === 'IN_PROGRESS') {
+              const logs = update.logs?.map((log: { message: string }) => log.message) || []
+              logs.forEach((msg: string) => console.log('  fal.ai log:', msg))
+            }
+          },
         })
 
-        console.log('🔁 MusicGen prediction created:', prediction.id)
-        await sendLine({ type: 'started', predictionId: prediction.id })
-
-        // Poll until complete
-        let finalPrediction = prediction
-        let attempts = 0
-        const maxAttempts = 150 // 300s
-
-        while (
-          finalPrediction.status !== 'succeeded' &&
-          finalPrediction.status !== 'failed' &&
-          finalPrediction.status !== 'canceled' &&
-          attempts < maxAttempts
-        ) {
-          if (requestSignal.aborted && !clientDisconnected) {
-            console.log('🔄 Client disconnected but continuing generation:', prediction.id)
-            clientDisconnected = true
-          }
-          await new Promise(resolve => setTimeout(resolve, 2000))
-          finalPrediction = await replicate.predictions.get(prediction.id)
-          attempts++
-        }
-
-        if (finalPrediction.status === 'canceled') {
-          console.log('⏹ Remix prediction cancelled:', prediction.id)
-          await refundCredits({ userId, amount: 10, type: 'generation_music', reason: `Cancelled: ${title}`, metadata: { prompt, model: 'musicgen', reason: 'user_cancelled' } })
-          await sendLine({ type: 'result', success: false, error: 'Generation cancelled', creditsRemaining: deductResult!.new_credits })
-          await writer.close().catch(() => {})
-          return
-        }
-
-        if (finalPrediction.status !== 'succeeded') {
-          let errMsg = finalPrediction.error || `Generation ${finalPrediction.status === 'failed' ? 'failed' : 'timed out'}`
-          // Make the "prompt longer than audio" error user-friendly
-          if (typeof errMsg === 'string' && errMsg.includes('Prompt is longer than audio')) {
-            errMsg = 'Duration must be longer than your input audio. Please increase the duration and try again.'
-          }
-          console.error('❌ Remix prediction failed:', errMsg)
-          await refundCredits({ userId, amount: 10, type: 'generation_music', reason: `Remix failed: ${title}`, metadata: { prompt, model: 'musicgen', error: String(errMsg).substring(0, 200) } })
-          await sendLine({ type: 'result', success: false, error: sanitizeError(errMsg), creditsRemaining: deductResult!.new_credits })
-          await writer.close().catch(() => {})
-          return
-        }
+        console.log('🔁 fal.ai result received:', result.requestId)
 
         // Extract audio URL from output
-        const output = finalPrediction.output
+        const audioData = (result.data as any)?.audio
         let audioUrl: string
-        if (typeof output === 'string') {
-          audioUrl = output
-        } else if (output && typeof (output as any).url === 'function') {
-          audioUrl = (output as any).url()
-        } else if (output && typeof output === 'object' && 'url' in output) {
-          audioUrl = (output as any).url
+        if (typeof audioData === 'string') {
+          audioUrl = audioData
+        } else if (audioData && typeof audioData === 'object' && audioData.url) {
+          audioUrl = audioData.url
         } else {
-          throw new Error('Invalid output format from MusicGen')
+          throw new Error('Invalid output format from fal.ai — no audio URL returned')
         }
 
-        console.log('🔁 Remix MusicGen audio URL:', audioUrl)
+        const resultSeed = (result.data as any)?.seed
+
+        console.log('🔁 fal.ai audio URL:', audioUrl)
+        console.log('🔁 fal.ai seed:', resultSeed)
 
         // Upload to R2
-        const ext = (output_format || 'wav')
-        const fileName = `remix-${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.${ext}`
+        const fileName = `remix-${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.wav`
         const r2Result = await downloadAndUploadToR2(audioUrl, userId, 'music', fileName)
         if (!r2Result.success) {
           throw new Error(`Failed to upload to permanent storage: ${r2Result.error}`)
@@ -264,21 +204,15 @@ export async function POST(req: NextRequest) {
           title: title.trim(),
           prompt,
           audio_url: audioUrl,
-          audio_format: output_format || 'wav',
+          audio_format: 'wav',
           generation_params: {
-            model: 'meta/musicgen',
-            model_version: model_version || 'stereo-melody-large',
-            output_format: output_format || 'wav',
-            duration,
-            continuation,
-            normalization_strategy: normalization_strategy || 'peak',
-            top_k,
-            top_p,
-            temperature,
-            classifier_free_guidance,
-            multi_band_diffusion,
-            seed,
-            input_audio,
+            model: 'fal-ai/stable-audio-25/audio-to-audio',
+            strength: falInput.strength,
+            num_inference_steps: falInput.num_inference_steps,
+            total_seconds: falInput.total_seconds || null,
+            guidance_scale: falInput.guidance_scale,
+            seed: resultSeed || seed,
+            input_audio_url: audio_url,
           },
           status: 'ready',
         }
@@ -305,10 +239,10 @@ export async function POST(req: NextRequest) {
         // Quest progress
         const { trackQuestProgress, trackModelUsage, trackGenerationStreak } = await import('@/lib/quest-progress')
         trackQuestProgress(userId, 'generate_songs').catch(() => {})
-        trackModelUsage(userId, 'musicgen').catch(() => {})
+        trackModelUsage(userId, 'fal-stable-audio-25').catch(() => {})
         trackGenerationStreak(userId).catch(() => {})
 
-        updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: audioUrl, mediaType: 'audio', title, extraMeta: { model: 'musicgen' } }).catch(() => {})
+        updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: audioUrl, mediaType: 'audio', title, extraMeta: { model: 'fal-stable-audio-25' } }).catch(() => {})
 
         await sendLine({
           type: 'result',
@@ -318,10 +252,11 @@ export async function POST(req: NextRequest) {
           libraryId: savedMusic?.id || null,
           creditsRemaining: deductResult!.new_credits,
           creditsDeducted: 10,
+          seed: resultSeed,
         })
       } catch (err: any) {
-        console.error('❌ Resound generation error:', err)
-        await refundCredits({ userId, amount: 10, type: 'generation_music', reason: `Remix error: ${title}`, metadata: { prompt, model: 'musicgen', error: String(err).substring(0, 200) } })
+        console.error('❌ 444 Radio Remix generation error:', err)
+        await refundCredits({ userId, amount: 10, type: 'generation_music', reason: `Remix error: ${title}`, metadata: { prompt, model: 'fal-stable-audio-25', error: String(err).substring(0, 200) } })
         await sendLine({ type: 'result', success: false, error: sanitizeError(err), creditsRemaining: deductResult!.new_credits })
       } finally {
         await writer.close().catch(() => {})
@@ -336,7 +271,7 @@ export async function POST(req: NextRequest) {
       },
     })
   } catch (error: any) {
-    console.error('Remix generation error:', error)
+    console.error('444 Radio Remix error:', error)
     return NextResponse.json({ success: false, error: sanitizeError(error) }, { status: 500 })
   }
 }

@@ -1813,14 +1813,12 @@ function PluginPageInner() {
     openUploadModal(modeMap[featureType] || null)
   }
 
-  // ═══ REMIX (Resound) — Beat upload + prompt via MusicGen ═══
+  // ═══ REMIX (444 Radio Remix) — Beat upload + prompt via fal.ai ═══
   const generateResound = async (
     params: {
-      title: string; prompt: string; inputAudioUrl: string; duration: number;
-      continuation: boolean; continuation_start: number; continuation_end: number | null;
-      model_version: string; output_format: string; normalization_strategy: string;
-      top_k: number; top_p: number; temperature: number;
-      classifier_free_guidance: number; multi_band_diffusion: boolean; seed: number | null;
+      title: string; prompt: string; inputAudioUrl: string;
+      strength: number; num_inference_steps: number;
+      total_seconds: number | null; guidance_scale: number; seed: number | null;
     },
     signal?: AbortSignal,
     messageId?: string
@@ -1829,14 +1827,10 @@ function PluginPageInner() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        title: params.title, prompt: params.prompt, input_audio: params.inputAudioUrl,
-        duration: params.duration, continuation: params.continuation,
-        continuation_start: params.continuation_start, continuation_end: params.continuation_end,
-        model_version: params.model_version, output_format: params.output_format,
-        normalization_strategy: params.normalization_strategy, top_k: params.top_k,
-        top_p: params.top_p, temperature: params.temperature,
-        classifier_free_guidance: params.classifier_free_guidance,
-        multi_band_diffusion: params.multi_band_diffusion, seed: params.seed,
+        title: params.title, prompt: params.prompt, audio_url: params.inputAudioUrl,
+        strength: params.strength, num_inference_steps: params.num_inference_steps,
+        total_seconds: params.total_seconds, guidance_scale: params.guidance_scale,
+        seed: params.seed,
       }),
       signal,
     })
@@ -1865,11 +1859,9 @@ function PluginPageInner() {
   }
 
   const handleResoundGenerate = async (resoundParams: {
-    title: string; prompt: string; inputAudioUrl: string; duration: number;
-    continuation: boolean; continuation_start: number; continuation_end: number | null;
-    model_version: string; output_format: string; normalization_strategy: string;
-    top_k: number; top_p: number; temperature: number;
-    classifier_free_guidance: number; multi_band_diffusion: boolean; seed: number | null;
+    title: string; prompt: string; inputAudioUrl: string;
+    strength: number; num_inference_steps: number;
+    total_seconds: number | null; guidance_scale: number; seed: number | null;
   }) => {
     setShowResoundModal(false)
     const genMsgId = (Date.now() + 1).toString()
