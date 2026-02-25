@@ -3,6 +3,7 @@ import { currentUser } from '@clerk/nextjs/server'
 import { corsResponse, handleOptions } from '../../../lib/cors'
 import { logCreditTransaction } from '@/lib/credit-transactions'
 import { sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
+import { notifyCreditDeduct } from '@/lib/notifications'
 
 export async function OPTIONS() {
   return handleOptions()
@@ -163,6 +164,9 @@ export async function POST(request: NextRequest) {
     }
 
     const creditsAfter = deductResult.new_credits
+
+    // Notify user of credit deduction for generation
+    notifyCreditDeduct(user.id, 1, `Generation started: ${prompt.substring(0, 40)}`).catch(() => {})
 
     // Return the song ID so frontend can track generation progress
     return corsResponse(NextResponse.json({ 

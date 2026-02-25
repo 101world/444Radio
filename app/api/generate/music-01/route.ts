@@ -4,6 +4,7 @@ import Replicate from 'replicate'
 import { corsResponse, handleOptions } from '@/lib/cors'
 import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { refundCredits } from '@/lib/refund-credits'
+import { notifyGenerationComplete, notifyGenerationFailed, notifyCreditDeduct } from '@/lib/notifications'
 import { downloadAndUploadToR2 } from '@/lib/storage'
 import { findBestMatchingLyrics } from '@/lib/lyrics-matcher'
 
@@ -260,6 +261,7 @@ export async function POST(req: NextRequest) {
         if (finalPrediction.status === 'canceled') {
           console.log('⏹ Music-01 prediction cancelled:', prediction.id)
           await refundCredits({ userId, amount: COST, type: 'generation_music', reason: `Cancelled: ${title}`, metadata: { prompt, genre } })
+          notifyGenerationFailed(userId, 'music', 'Generation cancelled — credits refunded').catch(() => {})
           await sendLine({ type: 'result', success: false, error: 'Generation cancelled', creditsRemaining: deductResult!.new_credits })
           await writer.close().catch(() => {})
           return
@@ -269,6 +271,7 @@ export async function POST(req: NextRequest) {
           const errMsg = finalPrediction.error || `Generation ${finalPrediction.status === 'failed' ? 'failed' : 'timed out'}`
           console.error('❌ Music-01 failed:', errMsg)
           await refundCredits({ userId, amount: COST, type: 'generation_music', reason: `Failed: ${title}`, metadata: { prompt, genre, error: String(errMsg).substring(0, 200) } })
+          notifyGenerationFailed(userId, 'music', 'Generation failed — credits refunded').catch(() => {})
           await sendLine({ type: 'result', success: false, error: sanitizeError(errMsg), creditsRemaining: deductResult!.new_credits })
           await writer.close().catch(() => {})
           return
@@ -414,6 +417,10 @@ export async function POST(req: NextRequest) {
         // Update transaction with output
         updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: audioUrl, mediaType: 'audio', title, extraMeta: { genre, model: 'music-01' } }).catch(() => {})
 
+        // Notify user of successful generation
+        notifyGenerationComplete(userId, savedMusic?.id || '', 'music', title).catch(() => {})
+        notifyCreditDeduct(userId, COST, `Music-01 generation: ${title}`).catch(() => {})
+
         const response: Record<string, unknown> = {
           type: 'result',
           success: true,
@@ -435,6 +442,7 @@ export async function POST(req: NextRequest) {
       } catch (error) {
         console.error('❌ Music-01 generation error (stream):', error)
         await refundCredits({ userId, amount: COST, type: 'generation_music', reason: `Error: ${String(error).substring(0, 80)}`, metadata: { prompt, genre, error: String(error).substring(0, 200) } })
+        notifyGenerationFailed(userId, 'music', 'Generation error — credits refunded').catch(() => {})
         try {
           await sendLine({ type: 'result', success: false, error: sanitizeError(error) })
           await writer.close()

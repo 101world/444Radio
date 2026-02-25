@@ -191,7 +191,7 @@ export async function notifyCreditDeduct(userId: string, credits: number, reason
   return createNotification({
     userId,
     type: 'credit_deduct',
-    data: { credits, reason, message: `${credits} credits used: ${reason}` }
+    data: { credits, reason, title: '🎵 Credits Used', message: `${credits} credits used: ${reason}` }
   });
 }
 
@@ -199,7 +199,7 @@ export async function notifyGenerationComplete(userId: string, mediaId: string, 
   return createNotification({
     userId,
     type: 'generation_complete',
-    data: { mediaId, mediaType, title, message: `Your ${mediaType} generation is ready!` }
+    data: { mediaId, mediaType, title: `✨ Generation Complete!`, message: title ? `Your ${mediaType} "${title}" is ready!` : `Your ${mediaType} generation is ready!` }
   });
 }
 
@@ -207,7 +207,7 @@ export async function notifyGenerationFailed(userId: string, mediaType: string, 
   return createNotification({
     userId,
     type: 'generation_failed',
-    data: { mediaType, error, message: `${mediaType} generation failed. Credits have been refunded.` }
+    data: { mediaType, error, title: '❌ Generation Failed', message: `${mediaType} generation failed. Credits have been refunded.` }
   });
 }
 

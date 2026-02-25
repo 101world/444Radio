@@ -6,6 +6,7 @@ import { corsResponse, handleOptions } from '@/lib/cors'
 import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 import { refundCredits } from '@/lib/refund-credits'
+import { notifyGenerationComplete, notifyGenerationFailed, notifyCreditDeduct } from '@/lib/notifications'
 
 // Allow up to 3 minutes for Chords generation
 export const maxDuration = 180
@@ -266,6 +267,10 @@ export async function POST(req: NextRequest) {
       const { trackQuestProgress } = await import('@/lib/quest-progress')
       trackQuestProgress(userId, 'generate_songs').catch(() => {})
 
+      // Notify user of successful generation
+      notifyGenerationComplete(userId, libraryId || '', 'music', `${prompt.substring(0, 40)}`).catch(() => {})
+      notifyCreditDeduct(userId, creditCost, `Chords generation: ${prompt.substring(0, 40)}`).catch(() => {})
+
       return corsResponse(NextResponse.json({ 
         success: true, 
         audioUrl: outputR2Result.url,
@@ -291,6 +296,7 @@ export async function POST(req: NextRequest) {
         reason: `Chords generation failed: ${prompt?.substring(0, 50) || 'unknown'}`, 
         metadata: { prompt, text_chords, bpm, time_sig, error: String(genError).substring(0, 200) } 
       })
+      notifyGenerationFailed(userId, 'chords', 'Chords generation failed — credits refunded').catch(() => {})
       throw genError
     }
 

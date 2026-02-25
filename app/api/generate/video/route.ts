@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { uploadToR2 } from '@/lib/r2-upload'
 import { SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
+import { notifyGenerationComplete } from '@/lib/notifications'
 
 // Allow up to 5 minutes for video generation (Vercel Pro limit: 300s)
 export const maxDuration = 300
@@ -110,6 +111,9 @@ export async function POST(req: NextRequest) {
     }
 
     console.log('✅ Video generated:', videoUrl)
+
+    // Notify user of successful video generation
+    notifyGenerationComplete(userId, songId, 'video', 'Your music video is ready!').catch(() => {})
 
     return NextResponse.json({ 
       success: true, 

@@ -4,6 +4,7 @@ import Replicate from 'replicate'
 import { corsResponse, handleOptions } from '@/lib/cors'
 import { logCreditTransaction } from '@/lib/credit-transactions'
 import { refundCredits } from '@/lib/refund-credits'
+import { notifyGenerationComplete, notifyCreditDeduct } from '@/lib/notifications'
 import { downloadAndUploadToR2 } from '@/lib/storage'
 import { headers } from 'next/headers'
 
@@ -417,6 +418,12 @@ export async function POST(req: NextRequest) {
       settings: { speed, pitch, volume, emotion, audio_format, sample_rate, bitrate, channel, language_boost },
       metadata: { prediction_id: prediction.id },
     })
+
+    // Notify user of generation
+    notifyGenerationComplete(userId, '', 'voice', title).catch(() => {})
+    if (creditsUsed > 0) {
+      notifyCreditDeduct(userId, creditsUsed, `Voice Labs: ${title}`).catch(() => {})
+    }
 
     return corsResponse(NextResponse.json({
       success: true,
