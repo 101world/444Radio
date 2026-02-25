@@ -59,7 +59,7 @@ export default function TimelineSidebar({
 
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Calculate the playhead position
+  // Calculate the playhead position (smooth fractional)
   const playheadX = useMemo(() => {
     if (!isPlaying) return 0
     return (currentCycle % CYCLES_VISIBLE) * CELL_W
@@ -130,17 +130,21 @@ export default function TimelineSidebar({
         {/* Cycle numbers */}
         <div className="flex-1 overflow-hidden">
           <div className="flex relative" style={{ width: totalW }}>
-            {Array.from({ length: CYCLES_VISIBLE }, (_, i) => (
-              <div key={i} className="flex items-center justify-center text-[7px] font-mono"
-                style={{
-                  width: CELL_W, height: 20,
-                  color: '#333',
-                  borderRight: '1px solid rgba(255,255,255,0.03)',
-                  background: i % 2 === 0 ? 'rgba(255,255,255,0.01)' : 'transparent',
-                }}>
-                {i + 1}
-              </div>
-            ))}
+            {Array.from({ length: CYCLES_VISIBLE }, (_, i) => {
+              const isCurrentBar = isPlaying && Math.floor(currentCycle % CYCLES_VISIBLE) === i
+              return (
+                <div key={i} className="flex items-center justify-center text-[7px] font-mono"
+                  style={{
+                    width: CELL_W, height: 20,
+                    color: isCurrentBar ? '#22d3ee' : '#333',
+                    borderRight: '1px solid rgba(255,255,255,0.03)',
+                    background: isCurrentBar ? 'rgba(34,211,238,0.08)' : i % 2 === 0 ? 'rgba(255,255,255,0.01)' : 'transparent',
+                    fontWeight: isCurrentBar ? 700 : 400,
+                  }}>
+                  {i + 1}
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>
@@ -241,14 +245,24 @@ export default function TimelineSidebar({
                     </div>
                   ))}
 
-                  {/* Playhead */}
+                  {/* Playhead + current bar highlight */}
                   {isPlaying && (
-                    <div className="absolute top-0 bottom-0 w-px z-10"
-                      style={{
-                        left: playheadX,
-                        background: '#22d3ee',
-                        boxShadow: '0 0 4px #22d3ee50',
-                      }} />
+                    <>
+                      {/* Current bar highlight */}
+                      <div className="absolute top-0 bottom-0 pointer-events-none"
+                        style={{
+                          left: Math.floor(currentCycle % CYCLES_VISIBLE) * CELL_W,
+                          width: CELL_W,
+                          background: 'rgba(34,211,238,0.04)',
+                        }} />
+                      {/* Playhead line */}
+                      <div className="absolute top-0 bottom-0 w-px z-10"
+                        style={{
+                          left: playheadX,
+                          background: '#22d3ee',
+                          boxShadow: '0 0 4px #22d3ee50',
+                        }} />
+                    </>
                   )}
 
                   {/* Grid lines */}

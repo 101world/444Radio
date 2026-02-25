@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
-import { Play, Square, Search, Zap, ChevronRight, Volume2, ChevronDown, Sparkles, Copy, Check, Palette, Plus, Undo2, Redo2, BookOpen, FolderOpen, Save, Download, Upload, Trash2, Pencil, Files, AlertTriangle, MessageCircle, Send, Loader2, Mic, CircleDot, LayoutGrid, Columns, LayoutList, Maximize2, Minimize2, ChevronLeft } from 'lucide-react'
+import { Play, Square, Search, Zap, Volume2, ChevronDown, Sparkles, Copy, Check, Palette, Plus, Undo2, Redo2, BookOpen, FolderOpen, Save, Download, Upload, Trash2, Pencil, Files, AlertTriangle, MessageCircle, Send, Loader2, Mic, CircleDot, LayoutGrid, Columns, LayoutList, Maximize2, Minimize2 } from 'lucide-react'
 import { lazy, Suspense } from 'react'
 const NodeEditor = lazy(() => import('./NodeEditor'))
 import type { NodeEditorHandle } from './NodeEditor'
@@ -8928,17 +8928,53 @@ $: s("bd:3").bank("RolandTR808")
 
   return (
     <div className="flex flex-col h-full bg-black/30 text-gray-200 font-mono select-none">
-      {/* ─── Compact Top Bar ─── */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-white/[0.02] border-b border-white/[0.06] backdrop-blur-2xl shrink-0 relative z-[60]">
-        <div className="flex items-center gap-2">
-          <div className={`w-1.5 h-1.5 rounded-full ${isPlaying ? 'bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.5)]' : status === 'loading' ? 'bg-cyan-300 animate-pulse' : 'bg-white/15'}`} />
-          <span className="text-[10px] font-bold tracking-[0.2em] text-white/40 uppercase">INPUT</span>
+      {/* ─── Compact Top Bar — 3-column: Left (status + toggles) | Center (transport) | Right (tools) ─── */}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center px-3 py-1.5 bg-white/[0.02] border-b border-white/[0.06] backdrop-blur-2xl shrink-0 relative z-[60]">
+        {/* ── LEFT: Status + sidebar toggles ── */}
+        <div className="flex items-center gap-2 min-w-0">
+          <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${isPlaying ? 'bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.5)]' : status === 'loading' ? 'bg-cyan-300 animate-pulse' : 'bg-white/15'}`} />
+          <span className="text-[10px] font-bold tracking-[0.2em] text-white/40 uppercase shrink-0">INPUT</span>
           {status === 'loading' && (
-            <span className="text-[9px] text-white/20 ml-1">{loadingMsg}</span>
+            <span className="text-[9px] text-white/20 ml-1 truncate">{loadingMsg}</span>
+          )}
+
+          {/* Examples sidebar toggle (SVG icon) */}
+          <button
+            onClick={() => {
+              if (showPanel && activePanel === 'examples') { setShowPanel(false) }
+              else { setShowPanel(true); setActivePanel('examples') }
+            }}
+            className={`ml-2 w-7 h-7 flex items-center justify-center rounded-md transition-all cursor-pointer shrink-0 ${showPanel && activePanel === 'examples' ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/25' : 'text-white/25 hover:text-white/50 border border-white/[0.06]'}`}
+            title={showPanel && activePanel === 'examples' ? 'Close examples' : 'Open examples'}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.912 5.813a2 2 0 001.272 1.272L21 12l-5.816 1.915a2 2 0 00-1.272 1.272L12 21l-1.912-5.813a2 2 0 00-1.272-1.272L3 12l5.816-1.915a2 2 0 001.272-1.272z"/></svg>
+          </button>
+
+          {/* Node Rack sidebar toggle (SVG icon) — only when node view is active */}
+          {showNodes && nodeEditorRef.current && (
+            <button
+              onClick={() => nodeEditorRef.current?.toggleSidebar()}
+              className={`w-7 h-7 flex items-center justify-center rounded-md transition-all cursor-pointer shrink-0 ${nodeEditorRef.current.sidebarOpen ? 'bg-purple-500/15 text-purple-400 border border-purple-500/25' : 'text-white/25 hover:text-white/50 border border-white/[0.06]'}`}
+              title={nodeEditorRef.current.sidebarOpen ? 'Close node rack' : 'Open node rack'}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            </button>
+          )}
+
+          {/* Active sounds indicator — flashes when haps trigger */}
+          {isPlaying && activeHaps.length > 0 && (
+            <div className="flex items-center gap-1 ml-1 max-w-[140px] overflow-hidden shrink-0">
+              {activeHaps.slice(0, 4).map((s, i) => (
+                <span key={`${s}-${i}`}
+                  className="px-1.5 py-0.5 bg-cyan-500/20 border border-cyan-400/30 rounded text-[8px] font-mono text-cyan-300/80 animate-pulse whitespace-nowrap"
+                  style={{ animationDuration: '0.3s' }}>
+                  {s}
+                </span>
+              ))}
+            </div>
           )}
         </div>
 
-        <div className="flex items-center gap-1.5">
+        {/* ── CENTER: Transport controls (fixed position) ── */}
+        <div className="flex items-center gap-1.5 px-4">
           <button
             onClick={isPlaying ? handleStop : handlePlay}
             disabled={status === 'loading'}
@@ -8970,22 +9006,12 @@ $: s("bd:3").bank("RolandTR808")
               <><Download size={9} /> bounce</>
             )}
           </button>
+        </div>
 
-          {/* Active sounds indicator — flashes when haps trigger */}
-          {isPlaying && activeHaps.length > 0 && (
-            <div className="flex items-center gap-1 ml-1 max-w-[200px] overflow-hidden">
-              {activeHaps.slice(0, 6).map((s, i) => (
-                <span key={`${s}-${i}`}
-                  className="px-1.5 py-0.5 bg-cyan-500/20 border border-cyan-400/30 rounded text-[8px] font-mono text-cyan-300/80 animate-pulse whitespace-nowrap"
-                  style={{ animationDuration: '0.3s' }}>
-                  {s}
-                </span>
-              ))}
-            </div>
-          )}
-
+        {/* ── RIGHT: Tools + panels ── */}
+        <div className="flex items-center gap-1.5 justify-end min-w-0">
           {/* Undo / Redo */}
-          <div className="flex items-center ml-0.5 rounded-md overflow-hidden border border-white/[0.06]">
+          <div className="flex items-center rounded-md overflow-hidden border border-white/[0.06]">
             <button
               onClick={handleUndo}
               disabled={!canUndo}
@@ -9005,7 +9031,7 @@ $: s("bd:3").bank("RolandTR808")
           </div>
 
           {/* Master Volume */}
-          <div className="flex items-center gap-1 ml-1 px-2 py-0.5 rounded-md border border-white/[0.06] bg-white/[0.02]">
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-md border border-white/[0.06] bg-white/[0.02]">
             <Volume2 size={10} className={`shrink-0 ${masterVolume === 0 ? 'text-red-400/40' : 'text-white/25'}`} />
             <input
               type="range"
@@ -9020,33 +9046,29 @@ $: s("bd:3").bank("RolandTR808")
             <span className="text-[9px] text-white/20 font-mono w-6 text-right">{Math.round(masterVolume * 100)}</span>
           </div>
 
-          <div className="flex items-center ml-1 rounded-md overflow-hidden border border-white/[0.06]">
-            <button onClick={() => { setShowPanel(true); setActivePanel('examples') }}
-              className={`px-2.5 py-1.5 transition-all cursor-pointer ${showPanel && activePanel === 'examples' ? 'bg-cyan-500/15 text-cyan-400' : 'text-white/25 hover:text-white/50'}`}
-              title="Examples">
-              <Sparkles size={15} />
-            </button>
-            <button onClick={() => { setShowPanel(true); setActivePanel('sounds') }}
+          {/* Panel tabs */}
+          <div className="flex items-center rounded-md overflow-hidden border border-white/[0.06]">
+            <button onClick={() => { if (showPanel && activePanel === 'sounds') setShowPanel(false); else { setShowPanel(true); setActivePanel('sounds') } }}
               className={`px-2.5 py-1.5 transition-all cursor-pointer ${showPanel && activePanel === 'sounds' ? 'bg-cyan-500/15 text-cyan-400' : 'text-white/25 hover:text-white/50'}`}
               title="Sounds">
               <Volume2 size={15} />
             </button>
-            <button onClick={() => { setShowPanel(true); setActivePanel('settings') }}
+            <button onClick={() => { if (showPanel && activePanel === 'settings') setShowPanel(false); else { setShowPanel(true); setActivePanel('settings') } }}
               className={`px-2.5 py-1.5 transition-all cursor-pointer ${showPanel && activePanel === 'settings' ? 'bg-cyan-500/15 text-cyan-400' : 'text-white/25 hover:text-white/50'}`}
               title="Settings">
               <Palette size={15} />
             </button>
-            <button onClick={() => { setShowPanel(true); setActivePanel('patterns') }}
+            <button onClick={() => { if (showPanel && activePanel === 'patterns') setShowPanel(false); else { setShowPanel(true); setActivePanel('patterns') } }}
               className={`px-2.5 py-1.5 transition-all cursor-pointer ${showPanel && activePanel === 'patterns' ? 'bg-cyan-500/15 text-cyan-400' : 'text-white/25 hover:text-white/50'}`}
               title="My Patterns">
               <FolderOpen size={15} />
             </button>
-            <button onClick={() => { setShowPanel(true); setActivePanel('learn') }}
+            <button onClick={() => { if (showPanel && activePanel === 'learn') setShowPanel(false); else { setShowPanel(true); setActivePanel('learn') } }}
               className={`px-2.5 py-1.5 transition-all cursor-pointer ${showPanel && activePanel === 'learn' ? 'bg-cyan-500/15 text-cyan-400' : 'text-white/25 hover:text-white/50'}`}
               title="Learn">
               <BookOpen size={15} />
             </button>
-            <button onClick={() => { setShowPanel(true); setActivePanel('vibe') }}
+            <button onClick={() => { if (showPanel && activePanel === 'vibe') setShowPanel(false); else { setShowPanel(true); setActivePanel('vibe') } }}
               className={`px-2.5 py-1.5 transition-all cursor-pointer ${showPanel && activePanel === 'vibe' ? 'bg-cyan-500/15 text-cyan-400' : 'text-white/25 hover:text-white/50'}`}
               title="Vibe with 444">
               <MessageCircle size={15} />
@@ -9057,118 +9079,103 @@ $: s("bd:3").bank("RolandTR808")
               title="Node View (visual editor)">
               <LayoutGrid size={15} />
             </button>
-
-            {/* ═══ NDE CONTROLS (shown when node view is active) ═══ */}
-            {showNodes && nodeEditorRef.current && (() => {
-              const nde = nodeEditorRef.current!
-              return (
-                <>
-                  <div className="w-px h-4 bg-white/[0.06] mx-0.5" />
-                  {/* BPM display — tap to type, scroll to adjust, ± buttons */}
-                  <div className="flex items-center gap-0 px-1 py-0.5 rounded-md border border-white/[0.06] bg-white/[0.02] select-none">
-                    <span className="text-[8px] font-bold uppercase tracking-wider text-white/20 mr-1">BPM</span>
-                    <button
-                      onClick={e => { e.stopPropagation(); nde.handleBpmChange((nde.bpm || 72) - 1) }}
-                      className="w-4 h-5 flex items-center justify-center text-[10px] text-white/30 hover:text-cyan-400 cursor-pointer transition-colors rounded-l"
-                      title="Decrease BPM">−</button>
-                    <input
-                      type="number"
-                      min={30} max={300}
-                      value={nde.bpm || 72}
-                      onChange={e => nde.handleBpmChange(parseInt(e.target.value) || 72)}
-                      onWheel={e => { e.preventDefault(); nde.handleBpmChange((nde.bpm || 72) + (e.deltaY < 0 ? 1 : -1)) }}
-                      className="w-8 bg-transparent text-[11px] font-mono text-cyan-400 text-center outline-none font-bold tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                      onClick={e => { e.stopPropagation(); (e.target as HTMLInputElement).select() }}
-                    />
-                    <button
-                      onClick={e => { e.stopPropagation(); nde.handleBpmChange((nde.bpm || 72) + 1) }}
-                      className="w-4 h-5 flex items-center justify-center text-[10px] text-white/30 hover:text-cyan-400 cursor-pointer transition-colors rounded-r"
-                      title="Increase BPM">+</button>
-                  </div>
-                  {/* Time signature selector */}
-                  <select
-                    value={nde.timeSig || '4/4'}
-                    onChange={e => { e.stopPropagation(); nde.handleTimeSigChange(e.target.value) }}
-                    onClick={e => e.stopPropagation()}
-                    className="px-1 py-0.5 rounded text-[9px] font-mono font-bold text-purple-400 bg-white/[0.02] border border-white/[0.06] outline-none cursor-pointer appearance-none text-center"
-                    title="Time signature"
-                    style={{ width: 36 }}
-                  >
-                    {['4/4', '3/4', '2/4', '6/8', '5/4', '7/8', '12/8', '9/8'].map(ts => (
-                      <option key={ts} value={ts} className="bg-gray-900 text-white">{ts}</option>
-                    ))}
-                  </select>
-                  {/* Global Scale / Key */}
-                  <select
-                    value={nde.globalScale || 'C4:major'}
-                    onChange={e => { e.stopPropagation(); nde.handleGlobalScaleChange(e.target.value) }}
-                    onClick={e => e.stopPropagation()}
-                    className="px-1 py-0.5 rounded text-[9px] font-bold text-violet-400 bg-white/[0.02] border border-white/[0.06] outline-none cursor-pointer appearance-none text-center truncate"
-                    title="Global scale / key"
-                    style={{ maxWidth: 72 }}
-                  >
-                    {[
-                      { label: 'C Maj', value: 'C4:major' }, { label: 'A Min', value: 'A3:minor' },
-                      { label: 'A Harm', value: 'A3:harmonic minor' }, { label: 'C Pent', value: 'C4:major pentatonic' },
-                      { label: 'Am Pent', value: 'A3:minor pentatonic' }, { label: 'C Blues', value: 'C4:blues' },
-                      { label: 'D Dor', value: 'D4:dorian' }, { label: 'E Phry', value: 'E4:phrygian' },
-                      { label: 'F Lyd', value: 'F4:lydian' }, { label: 'G Mix', value: 'G4:mixolydian' },
-                      { label: 'Chrom', value: 'C4:chromatic' }, { label: 'D Min', value: 'D4:minor' },
-                      { label: 'G Maj', value: 'G4:major' },
-                    ].map(s => (
-                      <option key={s.value} value={s.value} className="bg-gray-900 text-white">{s.label}</option>
-                    ))}
-                  </select>
-                  {/* Node count */}
-                  <span className="text-[8px] font-mono text-white/20 px-1">{nde.activeCount}/{nde.nodeCount}</span>
-                  {/* Collapse / Expand */}
-                  <button onClick={() => nde.toggleAllCollapsed()}
-                    className="px-1.5 py-1 text-white/20 hover:text-purple-400 hover:bg-purple-500/10 transition-all cursor-pointer rounded"
-                    title={nde.allCollapsed ? 'Expand all nodes' : 'Collapse all nodes'}>
-                    {nde.allCollapsed ? <Columns size={12} /> : <LayoutList size={12} />}
-                  </button>
-                  {/* Sidebar toggle */}
-                  <button onClick={() => nde.toggleSidebar()}
-                    className={`px-1.5 py-1 transition-all cursor-pointer rounded ${nde.sidebarOpen ? 'text-cyan-400 bg-cyan-500/10' : 'text-white/20 hover:text-white/40'}`}
-                    title="Toggle node rack sidebar">
-                    {nde.sidebarOpen ? <ChevronLeft size={12} /> : <ChevronRight size={12} />}
-                  </button>
-                  {/* Add node */}
-                  <button onClick={() => { /* open add menu via portal or inline */ }}
-                    className="px-1.5 py-1 text-cyan-300/60 hover:text-cyan-400 hover:bg-cyan-500/10 transition-all cursor-pointer rounded"
-                    title="Add node"
-                    onMouseDown={e => {
-                      e.stopPropagation()
-                      // Quick add drums
-                    }}
-                  >
-                    <Plus size={12} />
-                  </button>
-                  {/* Zoom */}
-                  <div className="flex items-center gap-0.5">
-                    <button onClick={() => nde.setZoom((z: number) => Math.max(0.25, z - 0.15))}
-                      className="w-5 h-5 flex items-center justify-center text-[10px] rounded cursor-pointer text-white/20 hover:text-white/40 bg-white/[0.02] border border-white/[0.06]">−</button>
-                    <span className="text-[7px] w-6 text-center font-mono text-white/20">{Math.round(nde.zoom * 100)}%</span>
-                    <button onClick={() => nde.setZoom((z: number) => Math.min(2, z + 0.15))}
-                      className="w-5 h-5 flex items-center justify-center text-[10px] rounded cursor-pointer text-white/20 hover:text-white/40 bg-white/[0.02] border border-white/[0.06]">+</button>
-                    <button onClick={() => nde.resetView()}
-                      className="px-1 h-5 flex items-center justify-center text-[7px] font-bold tracking-wider uppercase rounded cursor-pointer text-white/20 hover:text-white/40 bg-white/[0.02] border border-white/[0.06]">FIT</button>
-                  </div>
-                  {/* Fullscreen */}
-                  <button onClick={() => nde.toggleFullscreen()}
-                    className={`px-1.5 py-1 transition-all cursor-pointer rounded ${nde.isFullscreen ? 'text-cyan-400 bg-cyan-500/10' : 'text-white/20 hover:text-white/40'}`}
-                    title={nde.isFullscreen ? 'Exit fullscreen' : 'Fullscreen node grid'}>
-                    {nde.isFullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
-                  </button>
-                </>
-              )
-            })()}
-
-            <button onClick={() => setShowPanel(p => !p)}
-              className="px-2 py-1.5 text-white/25 hover:text-white/40 transition cursor-pointer">
-              <ChevronRight size={13} className={`transition-transform ${showPanel ? 'rotate-180' : ''}`} />
-            </button>
           </div>
+
+          {/* ═══ NDE CONTROLS (shown when node view is active) ═══ */}
+          {showNodes && nodeEditorRef.current && (() => {
+            const nde = nodeEditorRef.current!
+            return (
+              <div className="flex items-center gap-1">
+                {/* BPM display — tap to type, scroll to adjust, ± buttons */}
+                <div className="flex items-center gap-0 px-1 py-0.5 rounded-md border border-white/[0.06] bg-white/[0.02] select-none">
+                  <span className="text-[8px] font-bold uppercase tracking-wider text-white/20 mr-1">BPM</span>
+                  <button
+                    onClick={e => { e.stopPropagation(); nde.handleBpmChange((nde.bpm || 72) - 1) }}
+                    className="w-4 h-5 flex items-center justify-center text-[10px] text-white/30 hover:text-cyan-400 cursor-pointer transition-colors rounded-l"
+                    title="Decrease BPM">−</button>
+                  <input
+                    type="number"
+                    min={30} max={300}
+                    value={nde.bpm || 72}
+                    onChange={e => nde.handleBpmChange(parseInt(e.target.value) || 72)}
+                    onWheel={e => { e.preventDefault(); nde.handleBpmChange((nde.bpm || 72) + (e.deltaY < 0 ? 1 : -1)) }}
+                    className="w-8 bg-transparent text-[11px] font-mono text-cyan-400 text-center outline-none font-bold tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    onClick={e => { e.stopPropagation(); (e.target as HTMLInputElement).select() }}
+                  />
+                  <button
+                    onClick={e => { e.stopPropagation(); nde.handleBpmChange((nde.bpm || 72) + 1) }}
+                    className="w-4 h-5 flex items-center justify-center text-[10px] text-white/30 hover:text-cyan-400 cursor-pointer transition-colors rounded-r"
+                    title="Increase BPM">+</button>
+                </div>
+                {/* Time signature selector */}
+                <select
+                  value={nde.timeSig || '4/4'}
+                  onChange={e => { e.stopPropagation(); nde.handleTimeSigChange(e.target.value) }}
+                  onClick={e => e.stopPropagation()}
+                  className="px-1 py-0.5 rounded text-[9px] font-mono font-bold text-purple-400 bg-white/[0.02] border border-white/[0.06] outline-none cursor-pointer appearance-none text-center"
+                  title="Time signature"
+                  style={{ width: 36 }}
+                >
+                  {['4/4', '3/4', '2/4', '6/8', '5/4', '7/8', '12/8', '9/8'].map(ts => (
+                    <option key={ts} value={ts} className="bg-gray-900 text-white">{ts}</option>
+                  ))}
+                </select>
+                {/* Global Scale / Key */}
+                <select
+                  value={nde.globalScale || 'C4:major'}
+                  onChange={e => { e.stopPropagation(); nde.handleGlobalScaleChange(e.target.value) }}
+                  onClick={e => e.stopPropagation()}
+                  className="px-1 py-0.5 rounded text-[9px] font-bold text-violet-400 bg-white/[0.02] border border-white/[0.06] outline-none cursor-pointer appearance-none text-center truncate"
+                  title="Global scale / key"
+                  style={{ maxWidth: 72 }}
+                >
+                  {[
+                    { label: 'C Maj', value: 'C4:major' }, { label: 'A Min', value: 'A3:minor' },
+                    { label: 'A Harm', value: 'A3:harmonic minor' }, { label: 'C Pent', value: 'C4:major pentatonic' },
+                    { label: 'Am Pent', value: 'A3:minor pentatonic' }, { label: 'C Blues', value: 'C4:blues' },
+                    { label: 'D Dor', value: 'D4:dorian' }, { label: 'E Phry', value: 'E4:phrygian' },
+                    { label: 'F Lyd', value: 'F4:lydian' }, { label: 'G Mix', value: 'G4:mixolydian' },
+                    { label: 'Chrom', value: 'C4:chromatic' }, { label: 'D Min', value: 'D4:minor' },
+                    { label: 'G Maj', value: 'G4:major' },
+                  ].map(s => (
+                    <option key={s.value} value={s.value} className="bg-gray-900 text-white">{s.label}</option>
+                  ))}
+                </select>
+                {/* Node count */}
+                <span className="text-[8px] font-mono text-white/20 px-1">{nde.activeCount}/{nde.nodeCount}</span>
+                {/* Collapse / Expand */}
+                <button onClick={() => nde.toggleAllCollapsed()}
+                  className="px-1.5 py-1 text-white/20 hover:text-purple-400 hover:bg-purple-500/10 transition-all cursor-pointer rounded"
+                  title={nde.allCollapsed ? 'Expand all nodes' : 'Collapse all nodes'}>
+                  {nde.allCollapsed ? <Columns size={12} /> : <LayoutList size={12} />}
+                </button>
+                {/* Add node */}
+                <button onClick={() => { /* open add menu via portal or inline */ }}
+                  className="px-1.5 py-1 text-cyan-300/60 hover:text-cyan-400 hover:bg-cyan-500/10 transition-all cursor-pointer rounded"
+                  title="Add node"
+                  onMouseDown={e => { e.stopPropagation() }}
+                >
+                  <Plus size={12} />
+                </button>
+                {/* Zoom */}
+                <div className="flex items-center gap-0.5">
+                  <button onClick={() => nde.setZoom((z: number) => Math.max(0.25, z - 0.15))}
+                    className="w-5 h-5 flex items-center justify-center text-[10px] rounded cursor-pointer text-white/20 hover:text-white/40 bg-white/[0.02] border border-white/[0.06]">−</button>
+                  <span className="text-[7px] w-6 text-center font-mono text-white/20">{Math.round(nde.zoom * 100)}%</span>
+                  <button onClick={() => nde.setZoom((z: number) => Math.min(2, z + 0.15))}
+                    className="w-5 h-5 flex items-center justify-center text-[10px] rounded cursor-pointer text-white/20 hover:text-white/40 bg-white/[0.02] border border-white/[0.06]">+</button>
+                  <button onClick={() => nde.resetView()}
+                    className="px-1 h-5 flex items-center justify-center text-[7px] font-bold tracking-wider uppercase rounded cursor-pointer text-white/20 hover:text-white/40 bg-white/[0.02] border border-white/[0.06]">FIT</button>
+                </div>
+                {/* Fullscreen */}
+                <button onClick={() => nde.toggleFullscreen()}
+                  className={`px-1.5 py-1 transition-all cursor-pointer rounded ${nde.isFullscreen ? 'text-cyan-400 bg-cyan-500/10' : 'text-white/20 hover:text-white/40'}`}
+                  title={nde.isFullscreen ? 'Exit fullscreen' : 'Fullscreen node grid'}>
+                  {nde.isFullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                </button>
+              </div>
+            )
+          })()}
         </div>
       </div>
 
@@ -9399,7 +9406,8 @@ $: s("bd:3").bank("RolandTR808")
 
         {/* ═══ SIDE PANEL ═══ */}
         {showPanel && (
-          <div className="w-72 lg:w-80 flex flex-col border-l border-white/[0.06] bg-black/40 shrink-0">
+          <div className={`w-72 lg:w-80 flex flex-col border-l border-white/[0.06] bg-black/40 shrink-0 ${nodeEditorRef.current?.isFullscreen ? 'fixed right-0 z-[51] bg-black/95 backdrop-blur-xl' : ''}`}
+            style={nodeEditorRef.current?.isFullscreen ? { top: 36, bottom: 0 } : undefined}>
 
             {/* ═══ EXAMPLES PANEL ═══ */}
             {activePanel === 'examples' && (

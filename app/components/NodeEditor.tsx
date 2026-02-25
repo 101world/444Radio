@@ -2632,15 +2632,20 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     })
   }, [])
 
-  // ── Cycle tracker (approximate) ──
+  // ── Cycle tracker (smooth fractional) ──
   useEffect(() => {
     if (!isPlaying) { setCurrentCycle(0); return }
     const cps = bpm > 0 ? bpm / 60 / 4 : 72 / 60 / 4
     const msPerCycle = 1000 / cps
-    const interval = setInterval(() => {
-      setCurrentCycle(prev => prev + 1)
-    }, msPerCycle)
-    return () => clearInterval(interval)
+    const startTime = performance.now()
+    let raf: number
+    const tick = () => {
+      const elapsed = performance.now() - startTime
+      setCurrentCycle(elapsed / msPerCycle)
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
   }, [isPlaying, bpm])
 
   // ── Delete / Duplicate ──
