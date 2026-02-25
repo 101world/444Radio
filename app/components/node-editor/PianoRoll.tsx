@@ -285,6 +285,9 @@ interface PianoRollProps {
   patternBars?: number
   soundSource?: string
   onPatternChange: (newPattern: string) => void
+  /** Transport state — for playhead */
+  isPlaying?: boolean
+  bpm?: number
 }
 
 const ZOOM_LEVELS = [
@@ -356,7 +359,7 @@ function presetToNotes(
   return notes
 }
 
-export default function PianoRoll({ isOpen, onClose, scale, currentPattern, nodeType, nodeColor, patternBars, soundSource, onPatternChange }: PianoRollProps) {
+export default function PianoRoll({ isOpen, onClose, scale, currentPattern, nodeType, nodeColor, patternBars, soundSource, onPatternChange, isPlaying: prIsPlaying = false, bpm: prBpm = 120 }: PianoRollProps) {
   const [notes, setNotes] = useState<PianoRollNote[]>([])
   const [tool, setTool] = useState<'draw' | 'erase' | 'select'>('draw')
   const [totalSteps, setTotalSteps] = useState(16)
@@ -368,6 +371,7 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
   const [showVelocity, setShowVelocity] = useState(false)
   const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set())
   const [isScaleDegreeBased, setIsScaleDegreeBased] = useState(false)
+  const [playheadStep, setPlayheadStep] = useState(0) // fractional step position for playhead
   const scrollRef = useRef<HTMLDivElement>(null)
   const isDrawing = useRef(false)
   const drawStartNote = useRef<{ midi: number; step: number } | null>(null)
@@ -461,6 +465,25 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
       }
     })
   }, [isOpen, currentPattern, scale, octaveRange, allMidiNotes, CELL_H])
+
+  // ── Playhead — smooth fractional step position synced to transport ──
+  useEffect(() => {
+    if (!prIsPlaying || !isOpen) { setPlayheadStep(0); return }
+    // 1 bar = 4 beats, 16 steps (sixteenth notes)
+    // cps = bpm / 60 / 4  →  cycles per second (1 cycle = 1 bar)
+    const cps = prBpm > 0 ? prBpm / 60 / 4 : 120 / 60 / 4
+    const msPerStep = 1000 / (cps * 16) // ms per sixteenth-note step
+    const startTime = performance.now()
+    let raf: number
+    const tick = () => {
+      const elapsed = performance.now() - startTime
+      const stepPos = (elapsed / msPerStep) % totalSteps
+      setPlayheadStep(stepPos)
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [prIsPlaying, prBpm, totalSteps, isOpen])
 
   const nid = (midi: number, step: number) => `${midi}:${step}`
 
@@ -928,70 +951,87 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
 
         {/* Grid + Velocity */}
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Bar/beat ruler — click bar number to hear that bar's chord */}
-          <div className="flex shrink-0" style={{ marginLeft: PIANO_KEY_W, height: 18 }}>
-            {Array.from({ length: totalSteps }, (_, i) => {
-              const isBar = i % 16 === 0
-              const isBeat = i % 4 === 0
-              return (
-                <div key={i} className={`flex items-center justify-center text-[7px] font-mono shrink-0${isBar ? ' cursor-pointer hover:brightness-150' : ''}`}
-                  style={{
-                    width: CELL_W, height: 18,
-                    color: isBar ? '#999' : (isBeat ? '#555' : '#2a2a2a'),
-                    background: isBar ? 'rgba(255,255,255,0.03)' : 'transparent',
-                    borderRight: `1px solid ${isBar ? 'rgba(255,255,255,0.08)' : (isBeat ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.015)')}`,
-                    borderBottom: '1px solid rgba(255,255,255,0.06)',
-                    fontWeight: isBar ? 700 : 400,
-                  }}
-                  title={isBar ? `Click to hear bar ${Math.floor(i / 16) + 1}` : undefined}
-                  onClick={isBar ? () => {
-                    // Play all notes that sound within this bar
-                    const barStart = i
-                    const barEnd = i + 16
-                    const barNotes = notes.filter(n => n.step < barEnd && n.step + n.duration > barStart)
-                    const uniqueMidis = [...new Set(barNotes.map(n => n.midi))]
-                    for (const midi of uniqueMidis) playNotePreview(midi, 600, soundSource)
-                  } : undefined}>
-                  {isBar ? `${Math.floor(i / 16) + 1}` : (isBeat ? `${Math.floor(i / 16) + 1}.${(Math.floor(i / 4) % 4) + 1}` : '')}
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Scrollable grid */}
+          {/* Scrollable grid (ruler is INSIDE so it scrolls horizontally with the grid) */}
           <div ref={scrollRef} className="overflow-auto relative"
             style={{ flex: '1', scrollbarWidth: 'thin', scrollbarColor: `${nodeColor}25 transparent` }}>
-            <div style={{ display: 'flex', width: PIANO_KEY_W + gridW, minHeight: gridH }}>
-              {/* Piano keys */}
-              <div className="sticky left-0 z-10 shrink-0" style={{ width: PIANO_KEY_W }}>
-                {allMidiNotes.map(midi => {
-                  const black = isBlackKey(midi)
-                  const inScale = scaleNoteSet.has(midi)
-                  const isC = midi % 12 === 0
-                  return (
-                    <div key={midi}
-                      className="flex items-center justify-end pr-1 cursor-pointer hover:brightness-125 transition-all"
-                      style={{
-                        height: CELL_H,
-                        background: black ? (inScale ? '#18181c' : '#0c0c0f') : (inScale ? '#1a1a20' : '#141418'),
-                        borderBottom: `1px solid ${isC ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.015)'}`,
-                        borderRight: '1px solid rgba(255,255,255,0.06)',
-                      }}
-                      onMouseDown={() => handleKeyClick(midi)}>
-                      <span className="text-[6px] font-mono select-none" style={{
-                        color: inScale ? (isC ? '#fff' : nodeColor) : (black ? '#2a2a2a' : '#333'),
-                        fontWeight: isC ? 800 : (inScale ? 600 : 400),
-                      }}>
-                        {NOTE_NAMES[midi % 12]}{Math.floor(midi / 12) - 1}
-                      </span>
-                    </div>
-                  )
-                })}
+            <div style={{ width: PIANO_KEY_W + gridW, position: 'relative' }}>
+              {/* ── Sticky bar/beat ruler ── */}
+              <div className="flex sticky top-0 z-20" style={{ height: 18, background: '#0d0d10' }}>
+                {/* Ruler corner (stays with piano keys) */}
+                <div className="sticky left-0 z-30 shrink-0" style={{ width: PIANO_KEY_W, height: 18, background: '#0d0d10', borderBottom: '1px solid rgba(255,255,255,0.06)', borderRight: '1px solid rgba(255,255,255,0.06)' }} />
+                {/* Ruler cells */}
+                <div className="flex" style={{ position: 'relative' }}>
+                  {Array.from({ length: totalSteps }, (_, i) => {
+                    const isBar = i % 16 === 0
+                    const isBeat = i % 4 === 0
+                    const barNum = Math.floor(i / 16) + 1
+                    return (
+                      <div key={i} className={`flex items-center justify-center text-[7px] font-mono shrink-0${isBar ? ' cursor-pointer hover:brightness-150' : ''}`}
+                        style={{
+                          width: CELL_W, height: 18,
+                          color: isBar ? '#999' : (isBeat ? '#555' : '#2a2a2a'),
+                          background: isBar ? 'rgba(255,255,255,0.03)' : 'transparent',
+                          borderRight: `1px solid ${isBar ? 'rgba(255,255,255,0.08)' : (isBeat ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.015)')}`,
+                          borderBottom: '1px solid rgba(255,255,255,0.06)',
+                          fontWeight: isBar ? 700 : 400,
+                        }}
+                        title={isBar ? `Click to hear bar ${barNum}` : undefined}
+                        onClick={isBar ? () => {
+                          const barStart = i
+                          const barEnd = i + 16
+                          const barNotes = notes.filter(n => n.step < barEnd && n.step + n.duration > barStart)
+                          const uniqueMidis = [...new Set(barNotes.map(n => n.midi))]
+                          for (const midi of uniqueMidis) playNotePreview(midi, 600, soundSource)
+                        } : undefined}>
+                        {isBar ? barNum : (isBeat ? `${barNum}.${(Math.floor(i / 4) % 4) + 1}` : '')}
+                      </div>
+                    )
+                  })}
+                  {/* Playhead on ruler */}
+                  {prIsPlaying && (
+                    <div style={{
+                      position: 'absolute', top: 0, bottom: 0,
+                      left: playheadStep * CELL_W,
+                      width: 2, background: '#22d3ee', zIndex: 5,
+                      boxShadow: '0 0 6px #22d3ee80',
+                      pointerEvents: 'none',
+                    }} />
+                  )}
+                </div>
               </div>
 
-              {/* Grid cells */}
-              <div style={{ width: gridW, position: 'relative' }}>
-                {allMidiNotes.map(midi => {
+              {/* ── Grid rows (keys + cells) ── */}
+              <div style={{ display: 'flex' }}>
+                {/* Piano keys (sticky left) */}
+                <div className="sticky left-0 z-10 shrink-0" style={{ width: PIANO_KEY_W }}>
+                  {allMidiNotes.map(midi => {
+                    const black = isBlackKey(midi)
+                    const inScale = scaleNoteSet.has(midi)
+                    const isC = midi % 12 === 0
+                    return (
+                      <div key={midi}
+                        className="flex items-center justify-end pr-1 cursor-pointer hover:brightness-125 transition-all"
+                        style={{
+                          height: CELL_H,
+                          background: black ? (inScale ? '#18181c' : '#0c0c0f') : (inScale ? '#1a1a20' : '#141418'),
+                          borderBottom: `1px solid ${isC ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.015)'}`,
+                          borderRight: '1px solid rgba(255,255,255,0.06)',
+                        }}
+                        onMouseDown={() => handleKeyClick(midi)}>
+                        <span className="text-[6px] font-mono select-none" style={{
+                          color: inScale ? (isC ? '#fff' : nodeColor) : (black ? '#2a2a2a' : '#333'),
+                          fontWeight: isC ? 800 : (inScale ? 600 : 400),
+                        }}>
+                          {NOTE_NAMES[midi % 12]}{Math.floor(midi / 12) - 1}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Grid cells + playhead */}
+                <div style={{ width: gridW, position: 'relative' }}>
+                  {allMidiNotes.map(midi => {
                   const black = isBlackKey(midi)
                   const inScale = scaleNoteSet.has(midi)
                   const isC = midi % 12 === 0
@@ -1075,6 +1115,18 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
                     </div>
                   )
                 })}
+
+                  {/* ── Playhead line (overlays the grid) ── */}
+                  {prIsPlaying && (
+                    <div style={{
+                      position: 'absolute', top: 0, bottom: 0,
+                      left: playheadStep * CELL_W,
+                      width: 2, background: '#22d3ee',
+                      zIndex: 15, pointerEvents: 'none',
+                      boxShadow: '0 0 8px #22d3ee60',
+                    }} />
+                  )}
+              </div>
               </div>
             </div>
           </div>

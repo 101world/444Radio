@@ -8,6 +8,7 @@ import { useKeyChords, buildDiatonicChords } from './node-editor/KeyChords'
 const PianoRoll = lazy(() => import('./node-editor/PianoRoll'))
 const TimelineSidebar = lazy(() => import('./node-editor/TimelineSidebar'))
 const SoundUploader = lazy(() => import('./node-editor/SoundUploader'))
+const SoundSlicer = lazy(() => import('./node-editor/SoundSlicer'))
 
 // ═══════════════════════════════════════════════════════════════
 //  TYPES
@@ -2289,6 +2290,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   const [fxPanelCategory, setFxPanelCategory] = useState<string | null>(null)
   const [pianoRollOpen, setPianoRollOpen] = useState<{ nodeId: string } | null>(null)
   const [soundUploaderOpen, setSoundUploaderOpen] = useState(false)
+  const [soundSlicerOpen, setSoundSlicerOpen] = useState<{ nodeId: string } | null>(null)
   const [currentCycle, setCurrentCycle] = useState(0)
   const [fxDropdownNodeId, setFxDropdownNodeId] = useState<string | null>(null)
   const [fxSearchQuery, setFxSearchQuery] = useState('')
@@ -2310,6 +2312,10 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   const lastSentCodeRef = useRef<string | null>(null)
   const prevNodeCount = useRef(0)
   const codeGenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Keep latest onUpdate in a ref — avoids stale closures in debounced timers.
+  const onUpdateRef = useRef(onUpdate)
+  useEffect(() => { onUpdateRef.current = onUpdate }, [onUpdate])
 
   // Stable refs for latest state — avoids stale closures in callbacks
   const nodesRef = useRef(nodes)
@@ -2399,14 +2405,17 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   // parameter tweak / knob drag / note toggle.  The code text is pushed
   // to the parent immediately (so Undo history stays current), but the
   // expensive Strudel evaluate() only fires after the user settles.
-  const sendToParent = useCallback((newCode: string) => {
+  const sendToParent = useCallback((newCode: string, immediate?: boolean) => {
     lastCodeRef.current = newCode
     internalChangeCount.current++
     lastSentCodeRef.current = newCode
     onCodeChange(newCode)
     if (commitTimer.current) clearTimeout(commitTimer.current)
-    commitTimer.current = setTimeout(() => onUpdate(), 500)
-  }, [onCodeChange, onUpdate])
+    // Solo/mute need near-instant feedback — use short delay (enough for React to flush
+    // the state update so codeRef.current is fresh when handleUpdate reads it).
+    const delay = immediate ? 60 : 500
+    commitTimer.current = setTimeout(() => onUpdateRef.current(), delay)
+  }, [onCodeChange])
 
   /** Lightweight full code rebuild that stitches node code blocks together */
   const rebuildFullCodeFromNodes = useCallback((nodeList: PatternNode[], currentBpm: number, origCode: string): string => {
@@ -2570,7 +2579,8 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
       codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
       return updated
     })
-    if (codeToSend !== null) sendToParent(codeToSend)
+    // immediate=true → mute takes effect instantly
+    if (codeToSend !== null) sendToParent(codeToSend, true)
   }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
   const toggleSolo = useCallback((id: string) => {
@@ -2590,7 +2600,8 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
       codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
       return updated
     })
-    if (codeToSend !== null) sendToParent(codeToSend)
+    // immediate=true → bypass 500ms debounce so solo takes effect instantly
+    if (codeToSend !== null) sendToParent(codeToSend, true)
   }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
   /** Additive solo — right-click toggles solo on a node without affecting others.
@@ -2615,7 +2626,8 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
       codeToSend = rebuildFullCodeFromNodes(final, bpm, lastCodeRef.current)
       return final
     })
-    if (codeToSend !== null) sendToParent(codeToSend)
+    // immediate=true → bypass 500ms debounce so solo takes effect instantly
+    if (codeToSend !== null) sendToParent(codeToSend, true)
   }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
   // ── Collapse / Expand single node ──
@@ -2768,6 +2780,33 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
       // Determine if it's note() or n() based pattern
       const method = node.type === 'chords' ? 'notePattern' : 'notePattern'
       const newCode = applyEffect(node.code, method, newPattern)
+      if (newCode === node.code) return prev
+      const updated = prev.map(n => n.id === nodeId ? reparseNodeFromCode({ ...n, code: newCode }) : n)
+      codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
+      return updated
+    })
+    if (codeToSend !== null) sendToParent(codeToSend)
+  }, [bpm, sendToParent, rebuildFullCodeFromNodes])
+
+  // ── Sound Slicer region change → inject/update .begin()/.end() on node code ──
+  const handleSlicerRegionChange = useCallback((nodeId: string, beginVal: number, endVal: number) => {
+    let codeToSend: string | null = null
+    setNodes(prev => {
+      const node = prev.find(n => n.id === nodeId)
+      if (!node) return prev
+      let newCode = node.code
+      // Update or inject .begin()
+      if (/\.begin\s*\(/.test(newCode)) {
+        newCode = newCode.replace(/\.begin\s*\([^)]*\)/, `.begin(${beginVal.toFixed(3)})`)
+      } else {
+        newCode = newCode.replace(/(\n|$)/, `.begin(${beginVal.toFixed(3)})$1`)
+      }
+      // Update or inject .end()
+      if (/\.end\s*\(/.test(newCode)) {
+        newCode = newCode.replace(/\.end\s*\([^)]*\)/, `.end(${endVal.toFixed(3)})`)
+      } else {
+        newCode = newCode.replace(/\.begin\([^)]*\)/, `$&.end(${endVal.toFixed(3)})`)
+      }
       if (newCode === node.code) return prev
       const updated = prev.map(n => n.id === nodeId ? reparseNodeFromCode({ ...n, code: newCode }) : n)
       codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
@@ -3768,6 +3807,21 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                         🎹
                       </button>
                     )}
+                    {/* Sound Slicer button (sample-based nodes) */}
+                    {node.soundSource && (
+                      <button
+                        onMouseDown={e => e.stopPropagation()}
+                        onClick={e => { e.stopPropagation(); setSoundSlicerOpen({ nodeId: node.id }) }}
+                        className="w-6 h-6 flex items-center justify-center rounded text-[8px] font-bold cursor-pointer"
+                        style={{
+                          background: soundSlicerOpen?.nodeId === node.id ? 'rgba(34,211,238,0.2)' : 'rgba(34,211,238,0.08)',
+                          color: '#22d3ee',
+                          border: `1px solid ${soundSlicerOpen?.nodeId === node.id ? 'rgba(34,211,238,0.4)' : 'rgba(34,211,238,0.2)'}`,
+                        }}
+                        title="Sound Slicer — set sample region">
+                        ✂
+                      </button>
+                    )}
                     <button
                       onMouseDown={e => e.stopPropagation()}
                       onClick={e => { e.stopPropagation(); toggleSolo(node.id) }}
@@ -4243,6 +4297,8 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                 patternBars={prBars}
                 soundSource={targetNode.soundSource || targetNode.sound || ''}
                 onPatternChange={(newPattern) => handlePianoRollPatternChange(targetNode.id, newPattern)}
+                isPlaying={isPlaying}
+                bpm={bpm}
               />
             </Suspense>
           )
@@ -4398,6 +4454,32 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
           />
         </Suspense>
       )}
+
+      {/* ══════ SOUND SLICER DOCK ══════ */}
+      {soundSlicerOpen && (() => {
+        const slicerNode = nodes.find(n => n.id === soundSlicerOpen.nodeId)
+        if (!slicerNode) return null
+        const slicerColor = TYPE_COLORS[slicerNode.type] || '#94a3b8'
+        // Extract current .begin() / .end() from code
+        const beginMatch = slicerNode.code.match(/\.begin\s*\(\s*([\d.]+)\s*\)/)
+        const endMatch = slicerNode.code.match(/\.end\s*\(\s*([\d.]+)\s*\)/)
+        const curBegin = beginMatch ? parseFloat(beginMatch[1]) : 0
+        const curEnd = endMatch ? parseFloat(endMatch[1]) : 1
+        return (
+          <div className="absolute bottom-0 left-0 right-0 z-[99]">
+            <Suspense fallback={<div className="h-[180px] bg-black/90 flex items-center justify-center text-white/40 text-xs">Loading Slicer…</div>}>
+              <SoundSlicer
+                soundName={slicerNode.soundSource || slicerNode.sound || 'unknown'}
+                nodeColor={slicerColor}
+                begin={curBegin}
+                end={curEnd}
+                onRegionChange={(b, e) => handleSlicerRegionChange(slicerNode.id, b, e)}
+                onClose={() => setSoundSlicerOpen(null)}
+              />
+            </Suspense>
+          </div>
+        )
+      })()}
     </div>
   )
 })
