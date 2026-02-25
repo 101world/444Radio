@@ -94,8 +94,8 @@ function sanitizeError(error: any): string {
  */
 export async function POST(req: NextRequest) {
   try {
-    // Verify FAL_KEY at request time
-    const falKey = process.env.FAL_KEY
+    // Verify FAL_KEY at request time (accept either casing)
+    const falKey = process.env.FAL_KEY || process.env.fal_key
     console.warn('🔑 FAL_KEY present:', !!falKey, 'length:', falKey?.length || 0)
     if (!falKey) {
       console.error('❌ FAL_KEY environment variable is not set!')
