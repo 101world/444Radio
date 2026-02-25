@@ -61,7 +61,7 @@ export default function LibraryPage() {
   const router = useRouter()
   const { user } = useUser()
   const { playTrack, currentTrack, isPlaying, togglePlayPause, setPlaylist } = useAudioPlayer()
-  const [activeTab, setActiveTab] = useState<'images' | 'music' | 'videos' | 'releases' | 'liked' | 'stems' | 'mixmaster' | 'bought' | 'extract' | 'loops' | 'effects' | 'autotune' | 'chords' | 'remix' | 'voiceover'>('music')
+  const [activeTab, setActiveTab] = useState<'images' | 'music' | 'videos' | 'releases' | 'liked' | 'stems' | 'mixmaster' | 'bought' | 'extract' | 'loops' | 'effects' | 'autotune' | 'chords' | 'remix' | 'voiceover' | 'beatmaker'>('music')
   const [musicItems, setMusicItems] = useState<LibraryMusic[]>([])
   const [imageItems, setImageItems] = useState<LibraryImage[]>([])
   const [videoItems, setVideoItems] = useState<LibraryMusic[]>([]) // Reuse music interface for videos
@@ -76,6 +76,7 @@ export default function LibraryPage() {
   const [autotuneItems, setAutotuneItems] = useState<any[]>([])
   const [chordsItems, setChordsItems] = useState<any[]>([])
   const [remixItems, setRemixItems] = useState<any[]>([])
+  const [beatmakerItems, setBeatmakerItems] = useState<any[]>([])
   const [voiceoverItems, setVoiceoverItems] = useState<LibraryMusic[]>([])
   const [expandedExtracts, setExpandedExtracts] = useState<Set<number>>(new Set())
   const [expandedStems, setExpandedStems] = useState<Set<number>>(new Set())
@@ -115,7 +116,7 @@ export default function LibraryPage() {
     }
     try {
       // Fetch all user's content from DB, R2, and releases
-      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, videosRes, r2VideosRes, releasesRes, likedRes, stemsRes, mixmasterRes, boughtRes, extractRes, loopsRes, effectsRes, autotuneRes, chordsRes, remixRes] = await Promise.all([
+      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, videosRes, r2VideosRes, releasesRes, likedRes, stemsRes, mixmasterRes, boughtRes, extractRes, loopsRes, effectsRes, autotuneRes, chordsRes, remixRes, beatmakerRes] = await Promise.all([
         fetch('/api/library/music'),
         fetch('/api/r2/list-audio'),
         fetch('/api/library/images'),
@@ -132,7 +133,8 @@ export default function LibraryPage() {
         fetch('/api/library/effects'),
         fetch('/api/library/autotune'),
         fetch('/api/library/chords'),
-        fetch('/api/library/remix')
+        fetch('/api/library/remix'),
+        fetch('/api/library/beatmaker')
       ])
 
       const musicData = await musicRes.json()
@@ -152,6 +154,7 @@ export default function LibraryPage() {
       const autotuneData = await autotuneRes.json()
       const chordsData = await chordsRes.json()
       const remixData = await remixRes.json()
+      const beatmakerData = await beatmakerRes.json()
 
       // Use ONLY database music - it has correct titles from generation
       if (musicData.success && Array.isArray(musicData.music)) {
@@ -267,6 +270,10 @@ export default function LibraryPage() {
       if (remixData.success && Array.isArray(remixData.remixes)) {
         setRemixItems(remixData.remixes)
         console.log('🔁 Loaded', remixData.remixes.length, 'remixes')
+      }
+      if (beatmakerData.success && Array.isArray(beatmakerData.beats)) {
+        setBeatmakerItems(beatmakerData.beats)
+        console.log('🥁 Loaded', beatmakerData.beats.length, 'beat maker items')
       }
     } catch (error) {
       console.error('Error fetching library:', error)
@@ -789,6 +796,20 @@ export default function LibraryPage() {
               <Mic2 size={18} />
               <span>Voice Labs</span>
               <span className="ml-1 text-xs opacity-60">({voiceoverItems.length})</span>
+            </button>
+
+            {/* Beat Maker Tab */}
+            <button
+              onClick={() => setActiveTab('beatmaker')}
+              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                activeTab === 'beatmaker'
+                  ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/30'
+                  : 'bg-white/5 text-cyan-400/60 hover:bg-cyan-500/10 hover:text-cyan-400'
+              }`}
+            >
+              <Music size={18} />
+              <span>Beat Maker</span>
+              <span className="ml-1 text-xs opacity-60">({beatmakerItems.length})</span>
             </button>
           </div>
         </div>
@@ -2376,6 +2397,102 @@ export default function LibraryPage() {
                           </button>
                         </div>
                       </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Beat Maker Tab */}
+        {!isLoading && activeTab === 'beatmaker' && (
+          <div>
+            {beatmakerItems.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-cyan-400/10 border border-cyan-500/30 flex items-center justify-center">
+                  <Music size={32} className="text-cyan-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white/80 mb-2">No beats yet</h3>
+                <p className="text-cyan-400/50 mb-6 text-sm">Generate instrumentals & samples with Beat Maker</p>
+                <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/20">
+                  <Music size={18} />
+                  Open Beat Maker
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {beatmakerItems.map((beat: any) => {
+                  const isCurrentlyPlaying = currentTrack?.id === beat.id && isPlaying
+                  return (
+                    <div
+                      key={beat.id}
+                      className="flex items-center gap-3 p-3 bg-black/40 backdrop-blur-xl rounded-xl transition-all group"
+                      style={{
+                        border: '1px solid rgba(6,182,212,0.08)',
+                        boxShadow: 'inset 0 0 30px rgba(6,182,212,0.02)',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.border = '1px solid rgba(6,182,212,0.2)'
+                        e.currentTarget.style.boxShadow = '0 0 12px rgba(6,182,212,0.06), 0 0 30px rgba(6,182,212,0.04)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.border = '1px solid rgba(6,182,212,0.08)'
+                        e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(6,182,212,0.02)'
+                      }}
+                    >
+                      {/* Play button */}
+                      <button
+                        onClick={async () => {
+                          if (!beat.audioUrl) return
+                          const t = {
+                            id: beat.id,
+                            audioUrl: beat.audioUrl,
+                            title: beat.title || 'Untitled Beat',
+                            artist: user?.firstName || 'You'
+                          }
+                          if (isCurrentlyPlaying) {
+                            togglePlayPause()
+                          } else {
+                            const allTracks = beatmakerItems.filter((b: any) => b.audioUrl).map((b: any) => ({
+                              id: b.id,
+                              audioUrl: b.audioUrl,
+                              title: b.title || 'Untitled Beat',
+                              artist: user?.firstName || 'You'
+                            }))
+                            await setPlaylist(allTracks, allTracks.findIndex((t: any) => t.id === beat.id))
+                          }
+                        }}
+                        className="w-12 h-12 flex-shrink-0 rounded-lg bg-gradient-to-br from-cyan-500/20 to-cyan-500/10 border border-cyan-500/30 flex items-center justify-center hover:scale-105 transition-transform"
+                      >
+                        {isCurrentlyPlaying ? (
+                          <Pause size={18} className="text-cyan-400" />
+                        ) : (
+                          <Play size={18} className="text-cyan-400 ml-0.5" />
+                        )}
+                      </button>
+
+                      {/* Track info */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-white font-semibold text-sm truncate">{beat.title || 'Untitled Beat'}</h3>
+                        <p className="text-cyan-400/50 text-xs mt-0.5">
+                          {beat.prompt ? (beat.prompt.length > 60 ? beat.prompt.substring(0, 60) + '…' : beat.prompt) : 'Beat'}
+                          {beat.duration && <span className="ml-2 opacity-70">• {beat.duration}s</span>}
+                          {beat.audio_format && <span className="ml-2 opacity-70">• {beat.audio_format.toUpperCase()}</span>}
+                        </p>
+                      </div>
+
+                      {/* Download */}
+                      {beat.audioUrl && (
+                        <button
+                          onClick={() => handleDownload(beat.audioUrl, `${beat.title || 'beat'}.${beat.audio_format || 'wav'}`, beat.audio_format || 'wav')}
+                          className="px-3 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-500/20 flex items-center justify-center gap-1.5 transition-all active:scale-95"
+                          title={`Download ${(beat.audio_format || 'WAV').toUpperCase()}`}
+                        >
+                          <Download size={14} className="text-cyan-400" />
+                          <span className="text-xs text-cyan-400 font-medium">{(beat.audio_format || 'WAV').toUpperCase()}</span>
+                        </button>
+                      )}
                     </div>
                   )
                 })}

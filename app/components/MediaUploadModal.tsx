@@ -10,9 +10,10 @@ interface MediaUploadModalProps {
   onStart?: (type: 'stem-split' | 'video-to-audio' | 'audio-boost' | 'extract-video' | 'extract-audio' | 'autotune') => void
   onError?: (error: string) => void
   onStemSplit?: (audioUrl: string, fileName: string) => void
+  onShowBeatMaker?: () => void
 }
 
-export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, onError, onStemSplit }: MediaUploadModalProps) {
+export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, onError, onStemSplit, onShowBeatMaker }: MediaUploadModalProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [fileType, setFileType] = useState<'audio' | 'video' | 'image' | null>(null)
   const [uploadMode, setUploadMode] = useState<'video-to-audio' | 'audio-remix' | 'stem-split' | 'audio-boost' | 'extract-video' | 'extract-audio' | 'autotune' | 'visualizer' | null>(null)
@@ -599,21 +600,21 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
                 </div>
               </button>
 
-              {/* Audio Remix Button - Disabled */}
+              {/* Beat Maker Button */}
               <button
-                disabled
-                className="w-full p-4 bg-gradient-to-r from-purple-500/5 to-pink-500/5 border-2 border-purple-500/20 rounded-xl opacity-50 cursor-not-allowed"
+                onClick={() => { if (onShowBeatMaker) { onClose(); onShowBeatMaker() } }}
+                className="w-full p-4 bg-gradient-to-r from-cyan-500/10 to-cyan-400/10 border-2 border-cyan-500/30 hover:border-cyan-400/50 rounded-xl transition-all group"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                    <Music size={24} className="text-purple-400" />
+                  <div className="w-12 h-12 rounded-lg bg-cyan-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400"><path d="M2 12h2l3-9 3 18 3-12 3 6 3-3h3" /></svg>
                   </div>
                   <div className="flex-1 text-left">
-                    <h3 className="text-base font-semibold text-white mb-1">Audio Remix</h3>
-                    <p className="text-xs text-gray-400">Create AI variations and remixes</p>
+                    <h3 className="text-base font-semibold text-white mb-1">Beat Maker</h3>
+                    <p className="text-xs text-gray-400">Generate AI instrumentals &amp; samples</p>
                   </div>
-                  <div className="px-3 py-1 bg-purple-500/20 rounded-lg">
-                    <p className="text-xs font-semibold text-purple-300">Coming Soon</p>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-cyan-400">2+ credits</p>
                   </div>
                 </div>
               </button>

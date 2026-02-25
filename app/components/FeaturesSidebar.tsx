@@ -30,6 +30,7 @@ interface FeaturesSidebarProps {
   onShowVisualizer: () => void
   onShowLipSync: () => void
   onShowRemix: () => void
+  onShowBeatMaker: () => void
   onOpenRelease: () => void
   onClearChat: () => void
   onShowDeletedChats: () => void
@@ -71,6 +72,7 @@ export default function FeaturesSidebar({
   onShowVisualizer,
   onShowLipSync,
   onShowRemix,
+  onShowBeatMaker,
   onOpenRelease,
   onClearChat,
   onShowDeletedChats,
@@ -207,6 +209,15 @@ export default function FeaturesSidebar({
       active: false,
       cost: 10,
       onClick: onShowRemix,
+    },
+    {
+      icon: Music,
+      label: 'Beat Maker',
+      description: 'AI instrumentals & samples',
+      color: 'cyan',
+      active: false,
+      cost: 2,
+      onClick: onShowBeatMaker,
     },
     {
       icon: Edit3,

@@ -20,6 +20,7 @@ const SplitStemsModal = lazy(() => import('../components/SplitStemsModal'))
 const VisualizerModal = lazy(() => import('../components/VisualizerModal'))
 const LipSyncModal = lazy(() => import('../components/LipSyncModal'))
 const ResoundModal = lazy(() => import('../components/ResoundModal'))
+const BeatMakerModal = lazy(() => import('../components/BeatMakerModal'))
 const FeaturesSidebar = lazy(() => import('../components/FeaturesSidebar'))
 import CoverArtGenModal from '../components/CoverArtGenModal'
 const MatrixConsole = lazy(() => import('../components/MatrixConsole'))
@@ -156,6 +157,7 @@ function CreatePageContent() {
   const [isUploadingRef, setIsUploadingRef] = useState(false)
   const [showRemakeModal, setShowRemakeModal] = useState(false)
   const [showResoundModal, setShowResoundModal] = useState(false)
+  const [showBeatMakerModal, setShowBeatMakerModal] = useState(false)
   const [showCoverArtGenModal, setShowCoverArtGenModal] = useState(false)
   // Audio recording for voice reference (actual mic capture, not speech-to-text)
   const [isAudioRecording, setIsAudioRecording] = useState(false)
@@ -1997,6 +1999,174 @@ function CreatePageContent() {
     }
   }
 
+  // ── Beat Maker Generation ──
+  const generateBeatMaker = async (
+    params: { title: string; prompt: string; duration: number },
+    signal?: AbortSignal,
+    messageId?: string
+  ) => {
+    const res = await fetch('/api/generate/beatmaker', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: params.title, prompt: params.prompt, duration: params.duration }),
+      signal,
+    })
+
+    if (!res.ok && res.headers.get('content-type')?.includes('application/json')) {
+      const errJson = await res.json().catch(() => ({}))
+      return { error: errJson.error || `Server error (${res.status})` }
+    }
+
+    const reader = res.body?.getReader()
+    if (!reader) return { error: 'No response stream' }
+
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let resultData: any = null
+
+    try {
+      while (true) {
+        if (signal?.aborted) throw new DOMException('The operation was aborted.', 'AbortError')
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+        for (const line of lines) {
+          if (!line.trim()) continue
+          try {
+            const parsed = JSON.parse(line)
+            if (parsed.type === 'result') resultData = parsed
+          } catch { /* skip */ }
+        }
+      }
+      if (buffer.trim()) {
+        try {
+          const parsed = JSON.parse(buffer)
+          if (parsed.type === 'result') resultData = parsed
+        } catch { /* ignore */ }
+      }
+    } finally {
+      reader.releaseLock()
+    }
+
+    if (!resultData) return { error: 'No result received from generation' }
+
+    if (resultData.success) {
+      return {
+        audioUrl: resultData.audioUrl,
+        title: resultData.title || params.title,
+        prompt: params.prompt,
+        creditsRemaining: resultData.creditsRemaining,
+      }
+    }
+    return { error: resultData.error || 'Failed to generate beat' }
+  }
+
+  const handleBeatMakerGenerate = async (beatParams: { title: string; prompt: string; duration: number }) => {
+    setShowBeatMakerModal(false)
+
+    const generationId = Date.now().toString()
+    const userMessage: Message = {
+      id: generationId,
+      type: 'user',
+      content: `🥁 Beat Maker: "${beatParams.title}" — ${beatParams.prompt.substring(0, 80)} (${beatParams.duration}s)`,
+      timestamp: new Date(),
+    }
+    const generatingMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      type: 'generation',
+      content: activeGenerations.size > 0 ? '🥁 Queued — will start soon…' : '🥁 Generating your beat…',
+      generationType: 'music',
+      isGenerating: true,
+      timestamp: new Date(),
+    }
+
+    setMessages(prev => [...prev, userMessage, generatingMessage])
+    setGenerationQueue(prev => [...prev, generatingMessage.id])
+    setActiveGenerations(prev => new Set(prev).add(generatingMessage.id))
+
+    const abortController = new AbortController()
+    abortControllersRef.current.set(generatingMessage.id, abortController)
+
+    const genId = addGeneration({
+      type: 'music',
+      prompt: beatParams.prompt,
+      title: beatParams.title,
+    })
+    genSessionMap.current.set(genId, chatSessionRef.current)
+    setMessages(prev => prev.map(msg =>
+      msg.id === generatingMessage.id ? { ...msg, generationId: genId } : msg
+    ))
+    updateGeneration(genId, { status: 'generating', progress: 10 })
+
+    try {
+      const result = await generateBeatMaker(beatParams, abortController.signal, generatingMessage.id)
+
+      if (!result.error && result.creditsRemaining !== undefined) {
+        setUserCredits(result.creditsRemaining)
+      }
+      refreshCredits()
+      window.dispatchEvent(new Event('credits:refresh'))
+
+      if (result.error) {
+        updateGeneration(genId, { status: 'failed', error: result.error })
+      } else {
+        updateGeneration(genId, {
+          status: 'completed',
+          result: {
+            audioUrl: 'audioUrl' in result ? result.audioUrl : undefined,
+            title: result.title,
+          },
+        })
+      }
+
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === generatingMessage.id || msg.generationId === genId
+            ? {
+                ...msg,
+                isGenerating: false,
+                content: result.error ? '❌ 444 Radio locking in. Please try again.' : '✅ Beat generated!',
+                result: result.error ? undefined : result,
+              }
+            : msg
+        )
+      )
+
+      if (!result.error) {
+        const assistantMessage: Message = {
+          id: (Date.now() + Math.random()).toString(),
+          type: 'assistant',
+          content: 'Your beat is ready! Want to create cover art or generate another?',
+          timestamp: new Date(),
+        }
+        setMessages(prev => [...prev, assistantMessage])
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return
+      console.error('Beat Maker generation error:', error)
+      updateGeneration(genId, { status: 'failed', error: error instanceof Error ? error.message : 'Unknown error' })
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === generatingMessage.id || msg.generationId === genId
+            ? { ...msg, isGenerating: false, content: '❌ Beat generation failed. Please try again.' }
+            : msg
+        )
+      )
+      refreshCredits()
+      window.dispatchEvent(new Event('credits:refresh'))
+    } finally {
+      abortControllersRef.current.delete(generatingMessage.id)
+      setGenerationQueue(prev => prev.filter(id => id !== generatingMessage.id))
+      setActiveGenerations(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(generatingMessage.id)
+        return newSet
+      })
+    }
+  }
+
   // ── Cover Art Generation (from CoverArtGenModal) ──
   const handleCoverArtGenerate = async (coverParams: { prompt: string; params: { width: number; height: number; output_format: string; output_quality: number; guidance_scale: number; num_inference_steps: number; go_fast: boolean } }) => {
     setShowCoverArtGenModal(false)
@@ -2366,6 +2536,7 @@ function CreatePageContent() {
           onShowVisualizer={() => setShowVisualizerModal(true)}
           onShowLipSync={() => setShowLipSyncModal(true)}
           onShowRemix={() => setShowResoundModal(true)}
+          onShowBeatMaker={() => setShowBeatMakerModal(true)}
           onOpenRelease={() => handleOpenRelease()}
           onTagClick={(tag: string) => {
             const newInput = input ? `${input}, ${tag}` : tag
@@ -4080,6 +4251,7 @@ function CreatePageContent() {
         <MediaUploadModal
           isOpen={showMediaUploadModal}
           onClose={() => setShowMediaUploadModal(false)}
+          onShowBeatMaker={() => setShowBeatMakerModal(true)}
           onStemSplit={(audioUrl, fileName) => {
             // Close upload modal and open SplitStemsModal with the uploaded file
             setShowMediaUploadModal(false)
@@ -4741,6 +4913,16 @@ function CreatePageContent() {
           onClose={() => setShowResoundModal(false)}
           userCredits={userCredits ?? undefined}
           onGenerate={handleResoundGenerate}
+        />
+      </Suspense>
+
+      {/* Beat Maker Modal */}
+      <Suspense fallback={null}>
+        <BeatMakerModal
+          isOpen={showBeatMakerModal}
+          onClose={() => setShowBeatMakerModal(false)}
+          userCredits={userCredits ?? undefined}
+          onGenerate={handleBeatMakerGenerate}
         />
       </Suspense>
 
