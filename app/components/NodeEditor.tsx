@@ -2686,14 +2686,52 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     setNodes(prev => {
       const node = prev.find(n => n.id === id)
       if (!node) return prev
-      // For sample-based types: try .bank() first, fall back to soundDotS
-      // For melodic types: use soundDotS
-      let method = isSampleBased(node.type) ? 'bank' : 'soundDotS'
-      let newCode = applyEffect(node.code, method, newSource)
-      // If bank replacement didn't change anything (no .bank() in code), try soundDotS
-      if (newCode === node.code && method === 'bank') {
+      // For sample-based types: replace the sample name in s("...")
+      // For melodic types: use soundDotS to replace .s("instrument")
+      let newCode: string
+      if (isSampleBased(node.type)) {
+        // Replace the entire s("...") pattern content with the new sample name
+        newCode = applyEffect(node.code, 'drumPattern', newSource)
+      } else {
         newCode = applyEffect(node.code, 'soundDotS', newSource)
       }
+      if (newCode === node.code) return prev
+      const updated = prev.map(n => n.id === id ? reparseNodeFromCode({ ...n, code: newCode }) : n)
+      codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
+      return updated
+    })
+    if (codeToSend !== null) sendToParent(codeToSend)
+  }, [bpm, sendToParent, rebuildFullCodeFromNodes])
+
+  // Change .bank("...") on a node — for drum machine drops
+  const changeSoundBank = useCallback((id: string, bankName: string) => {
+    let codeToSend: string | null = null
+    setNodes(prev => {
+      const node = prev.find(n => n.id === id)
+      if (!node) return prev
+      let newCode = applyEffect(node.code, 'bank', bankName)
+      // If no .bank() exists yet, inject one after s("...")
+      if (newCode === node.code) {
+        const sRe = /((?<!\.)\bs\s*\(\s*["'][^"']*["']\s*\))/
+        if (sRe.test(node.code)) {
+          newCode = node.code.replace(sRe, `$1.bank("${bankName}")`)
+        }
+      }
+      if (newCode === node.code) return prev
+      const updated = prev.map(n => n.id === id ? reparseNodeFromCode({ ...n, code: newCode }) : n)
+      codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
+      return updated
+    })
+    if (codeToSend !== null) sendToParent(codeToSend)
+  }, [bpm, sendToParent, rebuildFullCodeFromNodes])
+
+  // Change .s("instrument") on a node — for synth/instrument drops
+  const changeSoundInstrument = useCallback((id: string, instrument: string) => {
+    let codeToSend: string | null = null
+    setNodes(prev => {
+      const node = prev.find(n => n.id === id)
+      if (!node) return prev
+      const newCode = applyEffect(node.code, 'soundDotS', instrument)
       if (newCode === node.code) return prev
       const updated = prev.map(n => n.id === id ? reparseNodeFromCode({ ...n, code: newCode }) : n)
       codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
@@ -2934,7 +2972,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     const json = e.dataTransfer.getData('application/x-sidebar-item')
     if (json) {
       try {
-        const item: SidebarItem = JSON.parse(json)
+        const item = JSON.parse(json) as SidebarItem & { soundCategory?: string }
         if (item.dragType === 'effect' || item.dragType === 'lfo') {
           // Inject the payload code into this node AND re-parse properties so knobs activate
           let codeToSend: string | null = null
@@ -2953,7 +2991,14 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
           })
           if (codeToSend !== null) sendToParent(codeToSend)
         } else if (item.dragType === 'sound') {
-          changeSoundSource(nodeId, item.payload)
+          // Route by soundCategory: drum-machines → bank, synths → .s(), samples → s() pattern
+          if (item.soundCategory === 'drum-machine') {
+            changeSoundBank(nodeId, item.payload)
+          } else if (item.soundCategory === 'synth') {
+            changeSoundInstrument(nodeId, item.payload)
+          } else {
+            changeSoundSource(nodeId, item.payload)
+          }
         } else if (item.dragType === 'scale') {
           changeScale(nodeId, item.payload)
         } else if (item.dragType === 'chord' || item.dragType === 'pattern') {
@@ -2965,11 +3010,15 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
 
     // Fallback: plain text (old sound bank drop)
     const data = e.dataTransfer.getData('text/plain')
-    if (data) changeSoundSource(nodeId, data)
-  }, [changeSoundSource, changeScale, changePattern, bpm, sendToParent, rebuildFullCodeFromNodes])
+    if (data) {
+      // Extract clean sound name from s("...") expression if present
+      const sMatch = data.match(/^s\(["']([^"']+)["']\)$/)
+      changeSoundSource(nodeId, sMatch ? sMatch[1] : data)
+    }
+  }, [changeSoundSource, changeSoundBank, changeSoundInstrument, changeScale, changePattern, bpm, sendToParent, rebuildFullCodeFromNodes])
 
   // ── Apply sidebar item to a node (shared by drag-drop AND click-to-apply) ──
-  const applySidebarItemToNode = useCallback((nodeId: string, item: SidebarItem) => {
+  const applySidebarItemToNode = useCallback((nodeId: string, item: SidebarItem & { soundCategory?: string }) => {
     if (item.dragType === 'effect' || item.dragType === 'lfo') {
       // Inject effect code AND re-parse all properties so knobs activate immediately
       let codeToSend: string | null = null
@@ -2988,13 +3037,20 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
       })
       if (codeToSend !== null) sendToParent(codeToSend)
     } else if (item.dragType === 'sound') {
-      changeSoundSource(nodeId, item.payload)
+      // Route by soundCategory: drum-machines → bank, synths → .s(), samples → s() pattern
+      if (item.soundCategory === 'drum-machine') {
+        changeSoundBank(nodeId, item.payload)
+      } else if (item.soundCategory === 'synth') {
+        changeSoundInstrument(nodeId, item.payload)
+      } else {
+        changeSoundSource(nodeId, item.payload)
+      }
     } else if (item.dragType === 'scale') {
       changeScale(nodeId, item.payload)
     } else if (item.dragType === 'chord' || item.dragType === 'pattern') {
       changePattern(nodeId, item.payload)
     }
-  }, [changeSoundSource, changeScale, changePattern, bpm, sendToParent, rebuildFullCodeFromNodes])
+  }, [changeSoundSource, changeSoundBank, changeSoundInstrument, changeScale, changePattern, bpm, sendToParent, rebuildFullCodeFromNodes])
 
   // ── Randomize pattern for a node ──
   const randomizePattern = useCallback((nodeId: string) => {

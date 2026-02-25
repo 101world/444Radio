@@ -9637,7 +9637,20 @@ $: s("bd:3").bank("RolandTR808")
                           key={s.name}
                           draggable
                           onDragStart={(e) => {
+                            // Set text/plain for code editor drops
                             e.dataTransfer.setData('text/plain', `s("${s.name}")`)
+                            // Set structured sidebar-item JSON for NodeEditor drops
+                            const isDrumMachine = s.tag === 'drum-machines'
+                            e.dataTransfer.setData('application/x-sidebar-item', JSON.stringify({
+                              id: `sound-${s.name}`,
+                              label: s.name,
+                              icon: isDrumMachine ? '🥁' : '🔊',
+                              desc: isDrumMachine ? `Drum machine: ${s.name}` : `Sample: ${s.name}`,
+                              color: isDrumMachine ? '#f59e0b' : '#22d3ee',
+                              dragType: 'sound',
+                              payload: s.name,
+                              soundCategory: isDrumMachine ? 'drum-machine' : activeFilter === 'synths' ? 'synth' : 'sample',
+                            }))
                             e.dataTransfer.effectAllowed = 'copy'
                           }}
                           className="cursor-grab active:cursor-grabbing hover:text-cyan-400 text-[11px] text-white/40 whitespace-nowrap transition"
