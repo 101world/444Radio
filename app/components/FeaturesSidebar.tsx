@@ -29,7 +29,7 @@ interface FeaturesSidebarProps {
   onShowAutotune: () => void
   onShowVisualizer: () => void
   onShowLipSync: () => void
-  onShowMiniMax01: () => void
+  onShowRemix: () => void
   onOpenRelease: () => void
   onClearChat: () => void
   onShowDeletedChats: () => void
@@ -70,7 +70,7 @@ export default function FeaturesSidebar({
   onShowAutotune,
   onShowVisualizer,
   onShowLipSync,
-  onShowMiniMax01,
+  onShowRemix,
   onOpenRelease,
   onClearChat,
   onShowDeletedChats,
@@ -201,12 +201,12 @@ export default function FeaturesSidebar({
     },
     {
       icon: AudioLines,
-      label: '444 Radio',
-      description: 'Voice & Instrumental AI',
-      color: 'purple',
+      label: 'Remix Audio',
+      description: 'Audio-to-Audio Remix',
+      color: 'cyan',
       active: false,
-      cost: undefined,
-      onClick: onShowMiniMax01,
+      cost: 10,
+      onClick: onShowRemix,
     },
     {
       icon: Edit3,

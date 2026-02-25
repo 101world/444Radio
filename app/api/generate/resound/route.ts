@@ -8,11 +8,6 @@ import { refundCredits } from '@/lib/refund-credits'
 // Allow up to 5 minutes for fal.ai generation
 export const maxDuration = 300
 
-// Configure fal.ai client
-fal.config({
-  credentials: process.env.FAL_KEY!,
-})
-
 function sanitizeError(error: any): string {
   const errorStr = error instanceof Error ? error.message : String(error)
   if (
@@ -38,6 +33,14 @@ function sanitizeError(error: any): string {
  */
 export async function POST(req: NextRequest) {
   try {
+    // Configure fal.ai at request time so env vars are guaranteed available
+    const falKey = process.env.FAL_KEY
+    if (!falKey) {
+      console.error('❌ FAL_KEY environment variable is not set!')
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+    }
+    fal.config({ credentials: falKey })
+
     const { userId } = await auth()
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

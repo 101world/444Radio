@@ -2359,7 +2359,7 @@ function CreatePageContent() {
           onShowAutotune={() => setShowAutotuneModal(true)}
           onShowVisualizer={() => setShowVisualizerModal(true)}
           onShowLipSync={() => setShowLipSyncModal(true)}
-          onShowMiniMax01={() => {}} // Voice/instrumental refs now integrated into main prompt bar
+          onShowRemix={() => setShowResoundModal(true)}
           onOpenRelease={() => handleOpenRelease()}
           onTagClick={(tag: string) => {
             const newInput = input ? `${input}, ${tag}` : tag
