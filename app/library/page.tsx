@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { supabase } from '@/lib/supabase'
-import { Music, Music2, Image as ImageIcon, Trash2, Download, Play, Pause, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon, Heart, Scissors, ChevronDown, ChevronUp, Volume2, ShoppingBag, Layers, Repeat, Radio, Info, Mic } from 'lucide-react'
+import { Music, Music2, Image as ImageIcon, Trash2, Download, Play, Pause, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon, Heart, Scissors, ChevronDown, ChevronUp, Volume2, ShoppingBag, Layers, Repeat, Radio, Info, Mic, Mic2 } from 'lucide-react'
 import FloatingMenu from '../components/FloatingMenu'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 import { LibraryTabSkeleton } from '../components/LoadingSkeleton'
@@ -61,7 +61,7 @@ export default function LibraryPage() {
   const router = useRouter()
   const { user } = useUser()
   const { playTrack, currentTrack, isPlaying, togglePlayPause, setPlaylist } = useAudioPlayer()
-  const [activeTab, setActiveTab] = useState<'images' | 'music' | 'videos' | 'releases' | 'liked' | 'stems' | 'mixmaster' | 'bought' | 'extract' | 'loops' | 'effects' | 'autotune' | 'chords' | 'remix'>('music')
+  const [activeTab, setActiveTab] = useState<'images' | 'music' | 'videos' | 'releases' | 'liked' | 'stems' | 'mixmaster' | 'bought' | 'extract' | 'loops' | 'effects' | 'autotune' | 'chords' | 'remix' | 'voiceover'>('music')
   const [musicItems, setMusicItems] = useState<LibraryMusic[]>([])
   const [imageItems, setImageItems] = useState<LibraryImage[]>([])
   const [videoItems, setVideoItems] = useState<LibraryMusic[]>([]) // Reuse music interface for videos
@@ -76,6 +76,7 @@ export default function LibraryPage() {
   const [autotuneItems, setAutotuneItems] = useState<any[]>([])
   const [chordsItems, setChordsItems] = useState<any[]>([])
   const [remixItems, setRemixItems] = useState<any[]>([])
+  const [voiceoverItems, setVoiceoverItems] = useState<LibraryMusic[]>([])
   const [expandedExtracts, setExpandedExtracts] = useState<Set<number>>(new Set())
   const [expandedStems, setExpandedStems] = useState<Set<number>>(new Set())
   const [isLoading, setIsLoading] = useState(true)
@@ -176,12 +177,19 @@ export default function LibraryPage() {
           (boughtData.success && Array.isArray(boughtData.bought) ? boughtData.bought : []).map((t: any) => t.audio_url).filter(Boolean)
         )
         const nonStemMusic = uniqueMusic.filter((track: any) =>
-          track.genre !== 'stem' && track.genre !== 'boosted' && track.genre !== 'extract' && track.genre !== 'loop' && track.genre !== 'effects' && track.genre !== 'processed' && track.genre !== 'chords' &&
+          track.genre !== 'stem' && track.genre !== 'boosted' && track.genre !== 'extract' && track.genre !== 'loop' && track.genre !== 'effects' && track.genre !== 'processed' && track.genre !== 'chords' && track.genre !== 'voice-over' &&
           !(track.prompt && typeof track.prompt === 'string' && track.prompt.toLowerCase().includes('purchased from earn')) &&
           !boughtAudioUrls.has(track.audio_url)
         )
         setMusicItems(nonStemMusic)
-        console.log('✅ Loaded', nonStemMusic.length, 'music tracks from database (excluded', uniqueMusic.length - nonStemMusic.length, 'stems/boosted)')
+        
+        // Separate voice-over items for the Voice Labs tab
+        const voiceOverTracks = uniqueMusic.filter((track: any) => track.genre === 'voice-over')
+        setVoiceoverItems(voiceOverTracks)
+        console.log('✅ Loaded', nonStemMusic.length, 'music tracks from database (excluded', uniqueMusic.length - nonStemMusic.length, 'stems/boosted/voice-over)')
+        if (voiceOverTracks.length > 0) {
+          console.log('🎙️ Loaded', voiceOverTracks.length, 'voice-over items')
+        }
       }
 
       // Merge database images with R2 images, deduplicate by image_url
@@ -767,6 +775,20 @@ export default function LibraryPage() {
               <Music2 size={18} />
               <span>Remix</span>
               <span className="ml-1 text-xs opacity-60">({remixItems.length})</span>
+            </button>
+
+            {/* Voice Labs Tab */}
+            <button
+              onClick={() => setActiveTab('voiceover')}
+              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                activeTab === 'voiceover'
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-400 text-white shadow-lg shadow-amber-500/30'
+                  : 'bg-white/5 text-amber-400/60 hover:bg-amber-500/10 hover:text-amber-400'
+              }`}
+            >
+              <Mic2 size={18} />
+              <span>Voice Labs</span>
+              <span className="ml-1 text-xs opacity-60">({voiceoverItems.length})</span>
             </button>
           </div>
         </div>
@@ -2228,6 +2250,132 @@ export default function LibraryPage() {
                           <span className="text-xs text-cyan-400 font-medium">{(remix.audio_format || 'WAV').toUpperCase()}</span>
                         </button>
                       )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Voice Labs Tab */}
+        {!isLoading && activeTab === 'voiceover' && (
+          <div>
+            {voiceoverItems.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-400/10 border border-amber-500/30 flex items-center justify-center">
+                  <Mic2 size={32} className="text-amber-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white/80 mb-2">No voice generations yet</h3>
+                <p className="text-amber-400/50 mb-6 text-sm">Generate speech and voiceovers in Voice Labs</p>
+                <Link href="/voice-labs" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-400 text-white rounded-xl font-bold hover:from-amber-600 hover:to-orange-500 transition-all shadow-lg shadow-amber-500/20">
+                  <Mic2 size={18} />
+                  Open Voice Labs
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {voiceoverItems.map((item) => {
+                  const isCurrentlyPlaying = currentTrack?.id === item.id && isPlaying
+                  return (
+                    <div
+                      key={item.id}
+                      className="group relative bg-black/40 backdrop-blur-xl rounded-xl overflow-hidden transition-all duration-300"
+                      style={{
+                        border: '1px solid rgba(245,158,11,0.08)',
+                        boxShadow: 'inset 0 0 30px rgba(245,158,11,0.02)',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.border = '1px solid rgba(245,158,11,0.2)'
+                        e.currentTarget.style.boxShadow = '0 0 12px rgba(245,158,11,0.06), 0 0 30px rgba(245,158,11,0.04)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.border = '1px solid rgba(245,158,11,0.08)'
+                        e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(245,158,11,0.02)'
+                      }}
+                    >
+                      <div className="flex items-center gap-3 p-3">
+                        {/* Thumbnail */}
+                        <div className="w-14 h-14 flex-shrink-0 bg-gradient-to-br from-amber-500/20 to-orange-400/10 rounded-lg flex items-center justify-center border border-amber-500/30">
+                          <Mic2 size={24} className="text-amber-400" />
+                        </div>
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-white font-semibold text-sm truncate">
+                            {item.title && !item.title.startsWith('r2_') && !item.title.includes('user_') ?
+                              item.title :
+                              (item.prompt && item.prompt !== 'Legacy R2 file' ?
+                                (item.prompt.length > 40 ? `${item.prompt.substring(0, 40)}...` : item.prompt) :
+                                'Untitled Voice Over'
+                              )
+                            }
+                          </h3>
+                          <p className="text-amber-400/50 text-xs mt-0.5 truncate">
+                            Voice Labs • {new Date(item.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <button
+                            onClick={async () => {
+                              const track = {
+                                id: item.id,
+                                audioUrl: item.audioUrl || item.audio_url,
+                                title: item.title || 'Untitled Voice Over',
+                                artist: user?.firstName || 'You'
+                              }
+
+                              if (currentTrack?.id === item.id) {
+                                togglePlayPause()
+                              } else {
+                                const allTracks = voiceoverItems.map(i => ({
+                                  id: i.id,
+                                  audioUrl: i.audioUrl || i.audio_url,
+                                  title: i.title || 'Untitled Voice Over',
+                                  artist: user?.firstName || 'You',
+                                  userId: user?.id
+                                }))
+                                await setPlaylist(allTracks, voiceoverItems.findIndex(i => i.id === item.id))
+                              }
+                            }}
+                            className="w-10 h-10 rounded-full bg-gradient-to-r from-amber-500 to-orange-400 hover:from-amber-600 hover:to-orange-500 flex items-center justify-center transition-all shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 active:scale-95"
+                          >
+                            {isCurrentlyPlaying ? (
+                              <Pause size={18} className="text-black" />
+                            ) : (
+                              <Play size={18} className="text-black ml-0.5" />
+                            )}
+                          </button>
+
+                          <div className="hidden sm:flex gap-1">
+                            <button
+                              onClick={() => handleDownload(item.audio_url, `${item.title || 'voiceover'}.mp3`, 'mp3')}
+                              className="px-3 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-amber-500/30 hover:border-amber-400 hover:bg-amber-500/20 flex items-center justify-center gap-1.5 transition-all active:scale-95"
+                              title="Download MP3"
+                            >
+                              <Download size={14} className="text-amber-400" />
+                              <span className="text-xs text-amber-400 font-medium">MP3</span>
+                            </button>
+                            <button
+                              onClick={() => handleDownload(item.audio_url, `${item.title || 'voiceover'}.mp3`, 'wav')}
+                              className="px-3 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-amber-400/30 hover:border-amber-300 hover:bg-amber-500/20 flex items-center justify-center gap-1.5 transition-all active:scale-95"
+                              title="Download WAV (High Quality)"
+                            >
+                              <Download size={14} className="text-amber-300" />
+                              <span className="text-xs text-amber-300 font-medium">WAV</span>
+                            </button>
+                          </div>
+
+                          <button
+                            onClick={() => handleDelete('music', item.id)}
+                            className="w-10 h-10 rounded-full bg-red-500/10 backdrop-blur-xl border border-red-500/30 hover:border-red-400 hover:bg-red-500/20 flex items-center justify-center transition-all active:scale-95"
+                          >
+                            <Trash2 size={16} className="text-red-400" />
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   )
                 })}
