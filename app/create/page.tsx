@@ -2500,7 +2500,7 @@ function CreatePageContent() {
   }
 
   return (
-    <div className={`min-h-screen bg-black text-white flex flex-col transition-all duration-300 ${showFeaturesSidebar ? 'md:pl-[312px]' : 'md:pl-14'} md:pr-28`}>
+    <div className={`min-h-screen bg-black text-white flex flex-col transition-[padding] duration-150 ease-out ${showFeaturesSidebar ? 'md:pl-[312px]' : 'md:pl-14'} md:pr-28`}>
       {/* Ambient Cyan Glow Overlays */}
       <div className="fixed inset-0 pointer-events-none z-0" aria-hidden="true">
         <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-cyan-500/[0.03] rounded-full blur-[120px]" />
@@ -3733,7 +3733,7 @@ function CreatePageContent() {
 
       {/* Matrix GPU Console - Shown when Features Sidebar is open */}
       {showFeaturesSidebar && (
-        <div className="hidden md:block fixed bottom-0 left-[464px] right-0 h-36 z-20 bg-gradient-to-t from-black via-black/95 to-transparent">
+        <div className="hidden md:block fixed bottom-0 left-[312px] right-0 h-36 z-20 bg-gradient-to-t from-black via-black/95 to-transparent">
           <div className="h-full border-t border-cyan-500/20">
             <Suspense fallback={<div className="h-full bg-black" />}>
               <MatrixConsole isGenerating={activeGenerations.size > 0} />

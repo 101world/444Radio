@@ -534,183 +534,152 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
         onClick={handleClose}
       />
       
-      {/* Modal - Clean & Simple with Drag & Drop Support */}
-      <div className={`relative w-full max-w-lg bg-gradient-to-b from-gray-900/95 to-black/95 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-2xl transition-all duration-200 ${isDragging ? 'border-4 border-cyan-400 scale-105 ring-4 ring-cyan-400/30' : 'border border-cyan-500/20'}`}>
+      {/* Modal - Compact with Drag & Drop Support */}
+      <div className={`relative w-full max-w-md bg-gradient-to-b from-gray-900/95 to-black/95 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-2xl transition-all duration-200 ${isDragging ? 'border-4 border-cyan-400 scale-105 ring-4 ring-cyan-400/30' : 'border border-cyan-500/20'}`}>
         
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 relative overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 relative overflow-hidden">
           {isDragging && (
             <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 via-cyan-400/30 to-cyan-500/20 animate-pulse pointer-events-none" />
           )}
-          <div className="flex items-center gap-3 relative z-10">
-            <div className={`p-2 bg-cyan-500/10 rounded-lg transition-transform ${isDragging ? 'scale-125 bg-cyan-500/30' : ''}`}>
-              <Upload size={20} className="text-cyan-400" />
+          <div className="flex items-center gap-2.5 relative z-10">
+            <div className={`p-1.5 bg-cyan-500/10 rounded-lg transition-transform ${isDragging ? 'scale-125 bg-cyan-500/30' : ''}`}>
+              <Upload size={16} className="text-cyan-400" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">{isDragging ? '🎯 Drop your file here!' : 'Upload Media'}</h3>
-              {isDragging && <p className="text-xs text-cyan-400">Audio, video, or image supported</p>}
+              <h3 className="text-sm font-semibold text-white">{isDragging ? '🎯 Drop here!' : 'Upload Media'}</h3>
+              {isDragging && <p className="text-[10px] text-cyan-400">Audio, video, or image</p>}
             </div>
           </div>
           <button
             onClick={handleClose}
-            className="p-2 rounded-lg hover:bg-white/5 transition-colors relative z-10"
+            className="p-1.5 rounded-lg hover:bg-white/5 transition-colors relative z-10"
           >
-            <X size={20} className="text-gray-400 hover:text-white transition-colors" />
+            <X size={16} className="text-gray-400 hover:text-white transition-colors" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 relative">
+        <div className="p-4 relative">
           
-          {/* Drag & Drop Overlay - Shows when dragging */}
+          {/* Drag & Drop Overlay */}
           {isDragging && (
-            <div className="absolute inset-4 z-50 flex flex-col items-center justify-center bg-cyan-500/10 border-4 border-dashed border-cyan-400 rounded-xl backdrop-blur-sm pointer-events-none">
-              <Upload size={64} className="text-cyan-400 mb-4 animate-bounce" />
-              <p className="text-2xl font-bold text-white mb-2">Drop your file here</p>
-              <p className="text-sm text-cyan-400">We'll auto-detect the best function for you</p>
-              <div className="flex gap-3 mt-4">
-                <span className="px-3 py-1 bg-cyan-500/20 rounded-full text-xs text-cyan-300">🎵 Audio</span>
-                <span className="px-3 py-1 bg-cyan-500/20 rounded-full text-xs text-cyan-300">🎬 Video</span>
-                <span className="px-3 py-1 bg-cyan-500/20 rounded-full text-xs text-cyan-300">🖼️ Image</span>
+            <div className="absolute inset-3 z-50 flex flex-col items-center justify-center bg-cyan-500/10 border-3 border-dashed border-cyan-400 rounded-xl backdrop-blur-sm pointer-events-none">
+              <Upload size={40} className="text-cyan-400 mb-3 animate-bounce" />
+              <p className="text-lg font-bold text-white mb-1">Drop your file here</p>
+              <p className="text-xs text-cyan-400">Auto-detect best function</p>
+              <div className="flex gap-2 mt-3">
+                <span className="px-2 py-0.5 bg-cyan-500/20 rounded-full text-[10px] text-cyan-300">🎵 Audio</span>
+                <span className="px-2 py-0.5 bg-cyan-500/20 rounded-full text-[10px] text-cyan-300">🎬 Video</span>
+                <span className="px-2 py-0.5 bg-cyan-500/20 rounded-full text-[10px] text-cyan-300">🖼️ Image</span>
               </div>
             </div>
           )}
 
           {/* Feature Selection - Show if no file selected */}
           {!selectedFile && (
-            <div className="space-y-3">
-              <p className="text-sm text-gray-400 text-center mb-4">Choose a feature or drag & drop a file</p>
+            <div className="space-y-2">
+              <p className="text-xs text-gray-500 text-center mb-3">Choose a feature or drag & drop a file</p>
               
-              {/* Video to Audio Button */}
+              {/* Video to Audio */}
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full p-4 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border-2 border-cyan-500/30 hover:border-cyan-400/50 rounded-xl transition-all group"
+                className="w-full p-3 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 hover:border-cyan-400/50 rounded-xl transition-all group"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-cyan-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Film size={24} className="text-cyan-400" />
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-cyan-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Film size={18} className="text-cyan-400" />
                   </div>
                   <div className="flex-1 text-left">
-                    <h3 className="text-base font-semibold text-white mb-1">Video to Audio</h3>
-                    <p className="text-xs text-gray-400">Upload video (max 5s) and generate synced sound effects</p>
+                    <h3 className="text-sm font-semibold text-white">Video to Audio</h3>
+                    <p className="text-[10px] text-gray-400">Upload video (max 5s) → synced SFX</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-cyan-400">4 credits</p>
-                  </div>
+                  <span className="text-xs font-bold text-cyan-400">4 cr</span>
                 </div>
               </button>
 
-              {/* Beat Maker Button */}
-              <button
-                onClick={() => { if (onShowBeatMaker) { onClose(); onShowBeatMaker() } }}
-                className="w-full p-4 bg-gradient-to-r from-cyan-500/10 to-cyan-400/10 border-2 border-cyan-500/30 hover:border-cyan-400/50 rounded-xl transition-all group"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-cyan-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400"><path d="M2 12h2l3-9 3 18 3-12 3 6 3-3h3" /></svg>
-                  </div>
-                  <div className="flex-1 text-left">
-                    <h3 className="text-base font-semibold text-white mb-1">Beat Maker</h3>
-                    <p className="text-xs text-gray-400">Generate AI instrumentals &amp; samples</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-cyan-400">2+ credits</p>
-                  </div>
-                </div>
-              </button>
-
-              {/* Split Audio Stems Button - NEW */}
+              {/* Split Audio Stems Button */}
               <button
                 onClick={() => audioFileInputRef.current?.click()}
-                className="w-full p-4 bg-gradient-to-r from-teal-500/10 to-cyan-500/10 border-2 border-teal-500/30 hover:border-teal-400/50 rounded-xl transition-all group"
+                className="w-full p-3 bg-gradient-to-r from-teal-500/10 to-cyan-500/10 border border-teal-500/30 hover:border-teal-400/50 rounded-xl transition-all group"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-teal-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Scissors size={24} className="text-teal-400" />
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-teal-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Scissors size={18} className="text-teal-400" />
                   </div>
                   <div className="flex-1 text-left">
-                    <h3 className="text-base font-semibold text-white mb-1">Split Audio Stems</h3>
-                    <p className="text-xs text-gray-400">Upload audio and separate vocals, drums, bass & other</p>
+                    <h3 className="text-sm font-semibold text-white">Split Stems</h3>
+                    <p className="text-[10px] text-gray-400">Separate vocals, drums, bass & other</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-teal-400">5 credits</p>
-                  </div>
+                  <span className="text-xs font-bold text-teal-400">5 cr</span>
                 </div>
               </button>
 
-              {/* Audio Boost Button */}
+              {/* Audio Boost */}
               <button
                 onClick={() => boostFileInputRef.current?.click()}
-                className="w-full p-4 bg-gradient-to-r from-orange-500/10 to-red-500/10 border-2 border-orange-500/30 hover:border-orange-400/50 rounded-xl transition-all group"
+                className="w-full p-3 bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/30 hover:border-orange-400/50 rounded-xl transition-all group"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-orange-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Volume2 size={24} className="text-orange-400" />
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-orange-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Volume2 size={18} className="text-orange-400" />
                   </div>
                   <div className="flex-1 text-left">
-                    <h3 className="text-base font-semibold text-white mb-1">Audio Boost</h3>
-                    <p className="text-xs text-gray-400">Mix & master your track — bass, treble, volume & more</p>
+                    <h3 className="text-sm font-semibold text-white">Audio Boost</h3>
+                    <p className="text-[10px] text-gray-400">Mix & master — bass, treble, volume</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-orange-400">1 credit</p>
-                  </div>
+                  <span className="text-xs font-bold text-orange-400">1 cr</span>
                 </div>
               </button>
 
               {/* Extract: Video to Audio */}
               <button
                 onClick={() => extractVideoFileInputRef.current?.click()}
-                className="w-full p-4 bg-gradient-to-r from-emerald-500/10 to-green-500/10 border-2 border-emerald-500/30 hover:border-emerald-400/50 rounded-xl transition-all group"
+                className="w-full p-3 bg-gradient-to-r from-emerald-500/10 to-green-500/10 border border-emerald-500/30 hover:border-emerald-400/50 rounded-xl transition-all group"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-emerald-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Film size={24} className="text-emerald-400" />
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-emerald-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Film size={18} className="text-emerald-400" />
                   </div>
                   <div className="flex-1 text-left">
-                    <h3 className="text-base font-semibold text-white mb-1">Extract: Video → Audio</h3>
-                    <p className="text-xs text-gray-400">Extract audio track from any video file</p>
+                    <h3 className="text-sm font-semibold text-white">Extract: Video → Audio</h3>
+                    <p className="text-[10px] text-gray-400">Extract audio from any video file</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-emerald-400">1 credit</p>
-                  </div>
+                  <span className="text-xs font-bold text-emerald-400">1 cr</span>
                 </div>
               </button>
 
-              {/* Extract: Audio to Audio (Stem) */}
+              {/* Extract: Audio → Stem */}
               <button
                 onClick={() => extractAudioFileInputRef.current?.click()}
-                className="w-full p-4 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border-2 border-emerald-500/30 hover:border-emerald-400/50 rounded-xl transition-all group"
+                className="w-full p-3 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 hover:border-emerald-400/50 rounded-xl transition-all group"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-emerald-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Layers size={24} className="text-emerald-400" />
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-emerald-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Layers size={18} className="text-emerald-400" />
                   </div>
                   <div className="flex-1 text-left">
-                    <h3 className="text-base font-semibold text-white mb-1">Extract: Audio → Stem</h3>
-                    <p className="text-xs text-gray-400">Extract vocals, bass, drums, piano, or other</p>
+                    <h3 className="text-sm font-semibold text-white">Extract: Audio → Stem</h3>
+                    <p className="text-[10px] text-gray-400">Extract vocals, bass, drums, piano</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-emerald-400">1 credit</p>
-                  </div>
+                  <span className="text-xs font-bold text-emerald-400">1 cr</span>
                 </div>
               </button>
 
-              {/* Autotune Button */}
+              {/* Autotune */}
               <button
                 onClick={() => autotuneFileInputRef.current?.click()}
-                className="w-full p-4 bg-gradient-to-r from-violet-500/10 to-purple-500/10 border-2 border-violet-500/30 hover:border-violet-400/50 rounded-xl transition-all group"
+                className="w-full p-3 bg-gradient-to-r from-violet-500/10 to-purple-500/10 border border-violet-500/30 hover:border-violet-400/50 rounded-xl transition-all group"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-violet-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Mic size={24} className="text-violet-400" />
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-violet-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Mic size={18} className="text-violet-400" />
                   </div>
                   <div className="flex-1 text-left">
-                    <h3 className="text-base font-semibold text-white mb-1">Autotune</h3>
-                    <p className="text-xs text-gray-400">Pitch correct vocals to any musical key & scale</p>
+                    <h3 className="text-sm font-semibold text-white">Autotune</h3>
+                    <p className="text-[10px] text-gray-400">Pitch correct to any key & scale</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-violet-400">1 credit</p>
-                  </div>
+                  <span className="text-xs font-bold text-violet-400">1 cr</span>
                 </div>
               </button>
 
@@ -1098,7 +1067,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 border-t border-white/10 flex items-center gap-3 bg-black/40">
+        <div className="px-4 py-2.5 border-t border-white/10 flex items-center gap-3 bg-black/40">
           <div className="flex-1 flex items-center gap-2 text-sm">
             <span className={
               uploadMode === 'stem-split' ? 'text-teal-400' : 

@@ -423,51 +423,51 @@ export default function LipSyncModal({
         onClick={!isGenerating ? onClose : undefined}
       />
 
-      {/* Modal - Glassmorphism */}
-      <div className="relative w-full max-w-4xl max-h-[90vh] overflow-hidden">
+      {/* Modal - Compact */}
+      <div className="relative w-full max-w-lg max-h-[90vh] overflow-hidden">
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl shadow-purple-500/20">
           
           {/* Header */}
-          <div className="relative flex items-center justify-between p-6 border-b border-white/10 bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-purple-500/10">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl shadow-lg shadow-purple-500/50">
-                <Mic className="text-white" size={24} />
+          <div className="relative flex items-center justify-between px-4 py-3 border-b border-white/10 bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-purple-500/10">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl shadow-lg shadow-purple-500/50">
+                <Mic className="text-white" size={18} />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
                   Lip-Sync Generator
-                  <Sparkles className="text-purple-400" size={20} />
+                  <Sparkles className="text-purple-400" size={14} />
                 </h2>
-                <p className="text-sm text-gray-400">Make any photo sing with AI magic</p>
+                <p className="text-[10px] text-gray-400">Make any photo sing with AI magic</p>
               </div>
             </div>
             {!isGenerating && (
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
+                className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
               >
-                <X size={24} />
+                <X size={18} />
               </button>
             )}
           </div>
 
           {/* Form Content */}
-          <div className="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+          <div className="p-4 space-y-4 overflow-y-auto max-h-[calc(90vh-140px)]">
             
             {/* Upload Section */}
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-2 gap-4">
               
               {/* Image Upload */}
-              <div className="space-y-3">
-                <label className="block text-sm font-semibold text-white flex items-center gap-2">
-                  <ImageIcon size={16} className="text-purple-400" />
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold text-white flex items-center gap-1.5">
+                  <ImageIcon size={13} className="text-purple-400" />
                   Upload Photo
                 </label>
                 
                 <button
                   onClick={() => imageInputRef.current?.click()}
                   disabled={isGenerating}
-                  className="w-full h-48 border-2 border-dashed border-white/20 rounded-xl hover:border-purple-500/50 hover:bg-white/5 transition-all flex flex-col items-center justify-center gap-3 group disabled:opacity-50"
+                  className="w-full h-32 border-2 border-dashed border-white/20 rounded-xl hover:border-purple-500/50 hover:bg-white/5 transition-all flex flex-col items-center justify-center gap-2 group disabled:opacity-50"
                 >
                   {imagePreview ? (
                     <img
@@ -477,12 +477,12 @@ export default function LipSyncModal({
                     />
                   ) : (
                     <>
-                      <div className="p-3 bg-white/10 rounded-xl group-hover:bg-purple-500/20 transition-colors">
-                        <Upload className="text-gray-400 group-hover:text-purple-400" size={32} />
+                      <div className="p-2 bg-white/10 rounded-xl group-hover:bg-purple-500/20 transition-colors">
+                        <Upload className="text-gray-400 group-hover:text-purple-400" size={24} />
                       </div>
                       <div className="text-center">
-                        <p className="text-white font-medium">Click to upload</p>
-                        <p className="text-xs text-gray-400">PNG, JPG up to 10MB</p>
+                        <p className="text-xs text-white font-medium">Click to upload</p>
+                        <p className="text-[10px] text-gray-400">PNG, JPG up to 10MB</p>
                       </div>
                     </>
                   )}
@@ -498,51 +498,46 @@ export default function LipSyncModal({
 
               {/* Photo Quality Tip */}
               {imageFile && (
-                <div className="p-4 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 rounded-xl">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 bg-cyan-500/20 rounded-lg shrink-0">
-                      <Sparkles className="text-cyan-400" size={18} />
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-white font-semibold mb-1">💡 Best Results Tip</div>
-                      <p className="text-gray-300 leading-relaxed">
-                        Upload a <span className="text-cyan-400 font-semibold">clear, well-lit photo</span> showing the <span className="text-cyan-400 font-semibold">full face, facing forward</span>. Avoid blurry images, extreme angles, or obstructed faces for optimal lip-sync quality.
-                      </p>
-                    </div>
+                <div className="p-3 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 rounded-xl">
+                  <div className="flex items-start gap-2">
+                    <Sparkles className="text-cyan-400 shrink-0 mt-0.5" size={14} />
+                    <p className="text-[10px] text-gray-300 leading-relaxed">
+                      💡 Upload a <span className="text-cyan-400 font-semibold">clear, well-lit photo</span> showing <span className="text-cyan-400 font-semibold">full face, facing forward</span> for best results.
+                    </p>
                   </div>
                 </div>
               )}
 
               {/* Audio Upload */}
-              <div className="space-y-3">
-                <label className="block text-sm font-semibold text-white flex items-center gap-2">
-                  <Music2 size={16} className="text-pink-400" />
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold text-white flex items-center gap-1.5">
+                  <Music2 size={13} className="text-pink-400" />
                   Upload Audio
                 </label>
                 
                 <button
                   onClick={() => audioInputRef.current?.click()}
                   disabled={isGenerating}
-                  className="w-full h-48 border-2 border-dashed border-white/20 rounded-xl hover:border-pink-500/50 hover:bg-white/5 transition-all flex flex-col items-center justify-center gap-3 group disabled:opacity-50"
+                  className="w-full h-32 border-2 border-dashed border-white/20 rounded-xl hover:border-pink-500/50 hover:bg-white/5 transition-all flex flex-col items-center justify-center gap-2 group disabled:opacity-50"
                 >
                   {audioFile ? (
-                    <div className="flex flex-col items-center gap-3 p-4">
-                      <div className="p-3 bg-pink-500/20 rounded-xl">
-                        <Music2 className="text-pink-400" size={32} />
+                    <div className="flex flex-col items-center gap-2 p-3">
+                      <div className="p-2 bg-pink-500/20 rounded-xl">
+                        <Music2 className="text-pink-400" size={24} />
                       </div>
                       <div className="text-center">
-                        <p className="text-white font-medium truncate max-w-xs">{audioFile.name}</p>
-                        <p className="text-xs text-gray-400">{audioDuration.toFixed(1)}s</p>
+                        <p className="text-xs text-white font-medium truncate max-w-[120px]">{audioFile.name}</p>
+                        <p className="text-[10px] text-gray-400">{audioDuration.toFixed(1)}s</p>
                       </div>
                     </div>
                   ) : (
                     <>
-                      <div className="p-3 bg-white/10 rounded-xl group-hover:bg-pink-500/20 transition-colors">
-                        <Upload className="text-gray-400 group-hover:text-pink-400" size={32} />
+                      <div className="p-2 bg-white/10 rounded-xl group-hover:bg-pink-500/20 transition-colors">
+                        <Upload className="text-gray-400 group-hover:text-pink-400" size={24} />
                       </div>
                       <div className="text-center">
-                        <p className="text-white font-medium">Click to upload</p>
-                        <p className="text-xs text-gray-400">MP3, WAV up to 50MB</p>
+                        <p className="text-xs text-white font-medium">Click to upload</p>
+                        <p className="text-[10px] text-gray-400">MP3, WAV up to 50MB</p>
                       </div>
                     </>
                   )}
@@ -559,13 +554,13 @@ export default function LipSyncModal({
 
             {/* Audio Trimming */}
             {audioFile && audioDuration > 0 && (
-              <div className="p-5 bg-gradient-to-br from-white/5 to-white/10 border border-white/10 rounded-xl space-y-5">
+              <div className="p-3 bg-gradient-to-br from-white/5 to-white/10 border border-white/10 rounded-xl space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-white font-semibold">
-                    <Scissors size={18} className="text-cyan-400" />
-                    <span>Precise Audio Trimmer</span>
+                  <div className="flex items-center gap-1.5 text-white font-semibold text-xs">
+                    <Scissors size={14} className="text-cyan-400" />
+                    <span>Audio Trimmer</span>
                   </div>
-                  <div className="text-xs text-gray-400">Max: {MAX_DURATION}s output</div>
+                  <div className="text-[10px] text-gray-400">Max: {MAX_DURATION}s</div>
                 </div>
 
                 {/* Audio Player with Controls */}
@@ -637,14 +632,14 @@ export default function LipSyncModal({
                 </div>
 
                 {/* Precise Numeric Inputs */}
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Start Time Input */}
-                  <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-white flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-cyan-400"></div>
-                      Start Time
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Start Time */}
+                  <div className="space-y-1">
+                    <label className="block text-[10px] font-semibold text-white flex items-center gap-1.5">
+                      <div className="w-2 h-2 rounded-full bg-cyan-400"></div>
+                      Start
                     </label>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <input
                         type="number"
                         min={0}
@@ -656,42 +651,19 @@ export default function LipSyncModal({
                           setAudioStartTime(Math.max(0, Math.min(val, audioEndTime - 0.1)))
                         }}
                         disabled={isGenerating}
-                        className="flex-1 px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white font-mono focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 outline-none transition-all"
+                        className="flex-1 px-2.5 py-1.5 bg-white/10 border border-white/20 rounded-lg text-white text-xs font-mono focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/20 outline-none transition-all"
                       />
-                      <span className="text-gray-400 text-sm">sec</span>
-                    </div>
-                    {/* Quick buttons */}
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setAudioStartTime(0)}
-                        disabled={isGenerating}
-                        className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs text-gray-300 transition-colors disabled:opacity-50"
-                      >
-                        Start
-                      </button>
-                      {audioElementRef.current && (
-                        <button
-                          onClick={() => {
-                            if (audioElementRef.current) {
-                              setAudioStartTime(audioElementRef.current.currentTime)
-                            }
-                          }}
-                          disabled={isGenerating}
-                          className="px-3 py-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 rounded-lg text-xs text-cyan-300 transition-colors disabled:opacity-50"
-                        >
-                          Use Current
-                        </button>
-                      )}
+                      <span className="text-gray-400 text-[10px]">sec</span>
                     </div>
                   </div>
 
-                  {/* End Time Input */}
-                  <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-white flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-purple-400"></div>
-                      End Time
+                  {/* End Time */}
+                  <div className="space-y-1">
+                    <label className="block text-[10px] font-semibold text-white flex items-center gap-1.5">
+                      <div className="w-2 h-2 rounded-full bg-purple-400"></div>
+                      End
                     </label>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <input
                         type="number"
                         min={audioStartTime + 0.1}
@@ -704,205 +676,106 @@ export default function LipSyncModal({
                           setAudioEndTime(Math.max(audioStartTime + 0.1, Math.min(val, maxEnd)))
                         }}
                         disabled={isGenerating}
-                        className="flex-1 px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white font-mono focus:border-purple-400 focus:ring-2 focus:ring-purple-400/20 outline-none transition-all"
+                        className="flex-1 px-2.5 py-1.5 bg-white/10 border border-white/20 rounded-lg text-white text-xs font-mono focus:border-purple-400 focus:ring-1 focus:ring-purple-400/20 outline-none transition-all"
                       />
-                      <span className="text-gray-400 text-sm">sec</span>
+                      <span className="text-gray-400 text-[10px]">sec</span>
                     </div>
+                  </div>
+                </div>
                     {/* Quick buttons */}
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setAudioEndTime(Math.min(audioDuration, audioStartTime + MAX_DURATION))}
-                        disabled={isGenerating}
-                        className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs text-gray-300 transition-colors disabled:opacity-50"
-                      >
-                        Max ({MAX_DURATION}s)
-                      </button>
-                      {audioElementRef.current && (
-                        <button
-                          onClick={() => {
-                            if (audioElementRef.current) {
-                              const current = audioElementRef.current.currentTime
-                              const maxEnd = Math.min(audioDuration, audioStartTime + MAX_DURATION)
-                              setAudioEndTime(Math.max(audioStartTime + 0.1, Math.min(current, maxEnd)))
-                            }
-                          }}
-                          disabled={isGenerating}
-                          className="px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 rounded-lg text-xs text-purple-300 transition-colors disabled:opacity-50"
-                        >
-                          Use Current
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Range Sliders for Fine Tuning */}
-                <div className="space-y-3">
-                  <div className="text-xs text-gray-400 font-semibold">FINE TUNE WITH SLIDERS</div>
-                  
-                  {/* Start Time Slider */}
-                  <div>
-                    <div className="flex items-center justify-between text-xs text-gray-400 mb-1.5">
-                      <span>Start Position</span>
-                      <span className="text-cyan-400 font-mono">{audioStartTime.toFixed(2)}s</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0}
-                      max={Math.max(0, audioEndTime - 0.1)}
-                      step={0.01}
-                      value={audioStartTime}
-                      onChange={(e) => setAudioStartTime(Number(e.target.value))}
-                      disabled={isGenerating}
-                      className="w-full h-3 bg-white/10 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-cyan-400 [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:shadow-cyan-400/50 [&::-webkit-slider-thumb]:cursor-ew-resize disabled:opacity-50"
-                    />
-                  </div>
-
-                  {/* End Time Slider */}
-                  <div>
-                    <div className="flex items-center justify-between text-xs text-gray-400 mb-1.5">
-                      <span>End Position</span>
-                      <span className="text-purple-400 font-mono">{audioEndTime.toFixed(2)}s</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={audioStartTime + 0.1}
-                      max={Math.min(audioDuration, audioStartTime + MAX_DURATION)}
-                      step={0.01}
-                      value={audioEndTime}
-                      onChange={(e) => setAudioEndTime(Number(e.target.value))}
-                      disabled={isGenerating}
-                      className="w-full h-3 bg-white/10 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-purple-400 [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:shadow-purple-400/50 [&::-webkit-slider-thumb]:cursor-ew-resize disabled:opacity-50"
-                    />
-                  </div>
-                </div>
-
-                {/* Duration Info Card */}
-                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border border-cyan-500/30 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Zap className="text-yellow-400" size={18} />
-                    <span className="text-white font-semibold">Output Duration</span>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-white font-mono">{trimDuration.toFixed(2)}s</div>
-                    {trimDuration > MAX_DURATION && (
-                      <div className="text-xs text-red-400 font-semibold">Exceeds {MAX_DURATION}s limit!</div>
-                    )}
-                  </div>
-                </div>
               </div>
             )}
 
-            {/* Duration Selector (5s/10s/15s) */}
-            <div className="space-y-3">
-              <label className="block text-sm font-semibold text-white flex items-center gap-2">
-                <Zap size={16} className="text-yellow-400" />
-                Output Duration
-
-              </label>
-              <div className="grid grid-cols-3 gap-3">
-                {DURATION_OPTIONS.map((dur) => {
-                  const cost720 = calcCredits(dur, '720p')
-                  const cost1080 = calcCredits(dur, '1080p')
-                  
-                  return (
+            {/* Duration & Resolution — Compact Row */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Duration Selector */}
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold text-white flex items-center gap-1.5">
+                  <Zap size={13} className="text-yellow-400" />
+                  Duration
+                </label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {DURATION_OPTIONS.map((dur) => (
                     <button
                       key={dur}
                       onClick={() => setDuration(dur)}
                       disabled={isGenerating}
-                      className={`p-4 rounded-xl border-2 transition-all disabled:opacity-50 ${
+                      className={`py-2 rounded-lg border text-center transition-all disabled:opacity-50 ${
                         duration === dur
-                          ? 'bg-gradient-to-br from-yellow-500/20 to-orange-500/20 border-yellow-500 shadow-lg shadow-yellow-500/20'
-                          : 'bg-white/5 border-white/10 hover:border-white/30'
+                          ? 'bg-yellow-500/20 border-yellow-500 text-white'
+                          : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/30'
                       }`}
                     >
-                      <div className="text-center">
-                        <div className={`text-2xl font-bold mb-1 ${duration === dur ? 'text-white' : 'text-gray-400'}`}>
-                          {dur}s
-                        </div>
-                        <div className="text-xs space-y-0.5">
-                          <div className={duration === dur ? 'text-gray-300' : 'text-gray-500'}>
-                            720p: <span className="font-semibold">{cost720}</span>
-                          </div>
-                          <div className={duration === dur ? 'text-gray-300' : 'text-gray-500'}>
-                            1080p: <span className="font-semibold">{cost1080}</span>
-                          </div>
-                        </div>
-                      </div>
+                      <div className="text-sm font-bold">{dur}s</div>
                     </button>
-                  )
-                })}
+                  ))}
+                </div>
               </div>
-              <div className="text-xs text-gray-400 text-center">
-                ⚡ Your audio will be trimmed to match the selected duration
+
+              {/* Resolution Selector */}
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold text-white flex items-center gap-1.5">
+                  <Video size={13} className="text-cyan-400" />
+                  Resolution
+                </label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {(['720p', '1080p'] as const).map((res) => (
+                    <button
+                      key={res}
+                      onClick={() => setResolution(res)}
+                      disabled={isGenerating}
+                      className={`py-2 rounded-lg border text-sm font-semibold transition-all ${
+                        resolution === res
+                          ? 'bg-purple-500/20 border-purple-500 text-white'
+                          : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/30'
+                      }`}
+                    >
+                      {res}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
-            {/* Resolution Selector */}
-            <div className="space-y-3">
-              <label className="block text-sm font-semibold text-white flex items-center gap-2">
-                <Video size={16} className="text-cyan-400" />
-                Output Resolution
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                {(['720p', '1080p'] as const).map((res) => (
-                  <button
-                    key={res}
-                    onClick={() => setResolution(res)}
-                    disabled={isGenerating}
-                    className={`p-4 rounded-xl border-2 transition-all font-semibold ${
-                      resolution === res
-                        ? 'bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-purple-500 text-white shadow-lg shadow-purple-500/20'
-                        : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/30 hover:text-white'
-                    }`}
-                  >
-                    {res}
-                  </button>
-                ))}
+            {/* Cost + Balance — Single Row */}
+            <div className="px-3 py-2.5 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-xl flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Zap className="text-yellow-400" size={14} />
+                <span className="text-xs text-white font-semibold">Credit Cost</span>
               </div>
-            </div>
-
-            {/* Cost Display */}
-            <div className="p-5 bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-purple-500/10 border border-purple-500/30 rounded-xl">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Zap className="text-yellow-400" size={20} />
-                  <span className="text-white font-semibold">Credit Cost</span>
-                </div>
-                <span className="text-2xl font-bold text-white">{creditCost}</span>
+              <div className="flex items-center gap-3">
+                {userCredits !== undefined && (
+                  <span className="text-[10px] text-gray-400">Balance: {userCredits}</span>
+                )}
+                <span className="text-lg font-bold text-white">{creditCost}</span>
               </div>
-              {userCredits !== undefined && (
-                <div className="mt-2 text-sm text-gray-400">
-                  Your balance: <span className="text-white font-semibold">{userCredits} credits</span>
-                </div>
-              )}
             </div>
 
             {/* Status Message */}
             {statusMsg && (
-              <div className="p-4 bg-cyan-500/10 border border-cyan-500/30 rounded-xl text-cyan-400 text-center font-medium flex items-center justify-center gap-2">
-                <Loader2 className="animate-spin" size={18} />
+              <div className="px-3 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-xl text-cyan-400 text-center text-xs font-medium flex items-center justify-center gap-2">
+                <Loader2 className="animate-spin" size={14} />
                 {statusMsg}
               </div>
             )}
           </div>
 
           {/* Footer */}
-          <div className="p-6 border-t border-white/10 bg-white/5">
+          <div className="px-4 py-3 border-t border-white/10 bg-white/5">
             <button
               onClick={handleGenerate}
               disabled={!canGenerate}
-              className="w-full py-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-gray-600 disabled:to-gray-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-purple-500/30 disabled:shadow-none flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-gray-600 disabled:to-gray-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-purple-500/30 disabled:shadow-none flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isGenerating ? (
                 <>
-                  <Loader2 className="animate-spin" size={20} />
+                  <Loader2 className="animate-spin" size={16} />
                   Generating...
                 </>
               ) : (
                 <>
-                  <Sparkles size={20} />
-                  Generate Lip-Sync Video
+                  <Sparkles size={16} />
+                  Generate Lip-Sync
                 </>
               )}
             </button>
