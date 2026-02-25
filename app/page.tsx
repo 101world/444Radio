@@ -4,13 +4,81 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Play, Pause, Shuffle, Repeat, Music2, SkipBack, SkipForward, X, Gift } from 'lucide-react'
 import FloatingMenu from './components/FloatingMenu'
 import SEOHeroSection from './components/SEOHeroSection'
-import { useState, useEffect, lazy, Suspense } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { useAudioPlayer } from './contexts/AudioPlayerContext'
+import { getSharedAnalyser, ensureAudioContextResumed } from '@/lib/shared-audio-analyser'
 import Link from 'next/link'
 
 // Lazy load heavy 3D components for better performance
 const HolographicBackgroundClient = lazy(() => import('./components/HolographicBackgroundClient'))
 const FloatingGenres = lazy(() => import('./components/FloatingGenres'))
+
+// ─── Mini Frequency Visualizer for home page player ─────────────
+function MiniVisualizer({ audioElement, isPlaying }: { audioElement: HTMLAudioElement | null; isPlaying: boolean }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const rafRef = useRef<number>(0)
+  const connectedRef = useRef<HTMLAudioElement | null>(null)
+
+  useEffect(() => {
+    if (!audioElement || !canvasRef.current) return
+    if (connectedRef.current !== audioElement) {
+      const analyser = getSharedAnalyser(audioElement, { fftSize: 256, smoothing: 0.7 })
+      analyserRef.current = analyser
+      connectedRef.current = audioElement
+    }
+
+    const canvas = canvasRef.current
+    const c = canvas.getContext('2d')
+    if (!c) return
+    const analyser = analyserRef.current
+    const bufLen = analyser ? analyser.frequencyBinCount : 32
+    const data = new Uint8Array(bufLen)
+
+    const draw = () => {
+      rafRef.current = requestAnimationFrame(draw)
+      const dpr = window.devicePixelRatio || 1
+      const W = canvas.offsetWidth
+      const H = canvas.offsetHeight
+      if (canvas.width !== W * dpr || canvas.height !== H * dpr) {
+        canvas.width = W * dpr
+        canvas.height = H * dpr
+        c.setTransform(dpr, 0, 0, dpr, 0, 0)
+      }
+      c.clearRect(0, 0, W, H)
+
+      if (analyser && isPlaying) { analyser.getByteFrequencyData(data) }
+      else {
+        // Idle ambient animation
+        for (let i = 0; i < bufLen; i++) data[i] = Math.floor(12 + 8 * Math.sin(Date.now() / 900 + i * 0.4))
+      }
+
+      const barCount = Math.min(bufLen, 24)
+      const gap = 2
+      const barW = Math.max(2, (W - gap * (barCount - 1)) / barCount)
+
+      for (let i = 0; i < barCount; i++) {
+        const v = data[i] / 255
+        const barH = Math.max(2, v * H * 0.85)
+        const x = i * (barW + gap)
+        const y = H - barH
+
+        c.fillStyle = `rgba(34, 211, 238, ${0.35 + v * 0.65})`
+        c.shadowColor = 'rgba(34, 211, 238, 0.4)'
+        c.shadowBlur = v * 6
+        const r = Math.min(barW / 2, 2)
+        c.beginPath()
+        c.roundRect(x, y, barW, barH, [r, r, 0, 0])
+        c.fill()
+      }
+      c.shadowBlur = 0
+    }
+    draw()
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [audioElement, isPlaying])
+
+  return <canvas ref={canvasRef} className="w-full h-full" />
+}
 
 interface Track {
   id: string
@@ -41,8 +109,21 @@ function HomePageContent() {
     currentTime,
     duration,
     playNext,
-    playPrevious
+    playPrevious,
+    getAudioElement
   } = useAudioPlayer()
+
+  // Track the audio element for the visualizer
+  const [audioEl, setAudioEl] = useState<HTMLAudioElement | null>(null)
+  useEffect(() => {
+    const el = getAudioElement()
+    if (el) setAudioEl(el)
+    const timer = setInterval(() => {
+      const e = getAudioElement()
+      if (e && e !== audioEl) setAudioEl(e)
+    }, 500)
+    return () => clearInterval(timer)
+  }, [currentTrack, getAudioElement, audioEl])
 
   // Check for payment success
   useEffect(() => {
@@ -117,6 +198,9 @@ function HomePageContent() {
 
   const handlePlayAll = () => {
     if (!tracks.length) return
+    
+    // Resume AudioContext on user gesture (required by browsers)
+    ensureAudioContextResumed()
     
     if (currentTrack && isPlaying) {
       togglePlayPause()
@@ -211,7 +295,7 @@ function HomePageContent() {
                 </div>
 
                 <div className="flex items-center gap-4">
-                  {/* Vinyl/Disc Visual */}
+                  {/* Vinyl/Disc Visual with Visualizer */}
                   <div className="relative flex-shrink-0">
                     <div className="w-28 h-28 rounded-xl bg-gradient-to-br from-gray-900 via-gray-800 to-black border-2 border-cyan-500/40 overflow-hidden relative group/disc shadow-lg shadow-cyan-500/20">
                       {currentTrack?.imageUrl ? (
@@ -227,7 +311,23 @@ function HomePageContent() {
                         </>
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <Music2 className="w-10 h-10 text-cyan-400/50" />
+                          {/* Show visualizer in the album art area when playing */}
+                          {isPlaying && audioEl ? (
+                            <div className="absolute inset-1">
+                              <MiniVisualizer audioElement={audioEl} isPlaying={isPlaying} />
+                            </div>
+                          ) : (
+                            <Music2 className="w-10 h-10 text-cyan-400/50" />
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Visualizer overlay on album art when playing */}
+                      {isPlaying && currentTrack?.imageUrl && audioEl && (
+                        <div className="absolute inset-0 flex items-end p-1">
+                          <div className="w-full h-1/2 opacity-80">
+                            <MiniVisualizer audioElement={audioEl} isPlaying={isPlaying} />
+                          </div>
                         </div>
                       )}
                       

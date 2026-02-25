@@ -30,21 +30,30 @@ export function getSharedAnalyser(
       sharedCtx = new Ctx()
     }
 
-    // Resume if suspended (autoplay policy)
+    // Resume if suspended (autoplay policy) — this is critical.
+    // Don't block on it; the analyser will start getting data once resumed.
     if (sharedCtx.state === 'suspended') {
       sharedCtx.resume().catch(() => {})
     }
 
-    // Create MediaElementSource ONCE per audio element
+    // Create MediaElementSource ONCE per audio element.
+    // After this call the audio element's output is routed through the Web Audio graph
+    // instead of directly to speakers, so we MUST connect source → destination.
     if (connectedElement !== audioElement) {
+      // If we previously connected a different element, disconnect old source
+      if (sharedSource) {
+        try { sharedSource.disconnect() } catch { /* ignore */ }
+        sharedSource = null
+      }
+
       try {
         sharedSource = sharedCtx.createMediaElementSource(audioElement)
         sharedSource.connect(sharedCtx.destination) // Route audio to speakers
         connectedElement = audioElement
       } catch {
-        // Already connected in this context — recover gracefully.
-        // This can happen if the audio element was previously connected in the same context.
-        console.warn('[SharedAnalyser] Could not create source — element may already be connected')
+        // Element may already be connected to THIS context (e.g. hot-reload).
+        // In that case connectedElement was stale but the source is still valid.
+        console.warn('[SharedAnalyser] createMediaElementSource failed — element may already be connected')
         if (!sharedSource) return null
       }
     }
@@ -63,6 +72,16 @@ export function getSharedAnalyser(
   } catch (err) {
     console.warn('[SharedAnalyser] Setup failed:', err)
     return null
+  }
+}
+
+/**
+ * Ensure the AudioContext is resumed (call on user interaction).
+ * Returns a promise that resolves when the context is running.
+ */
+export async function ensureAudioContextResumed(): Promise<void> {
+  if (sharedCtx && sharedCtx.state === 'suspended') {
+    await sharedCtx.resume()
   }
 }
 
