@@ -35,9 +35,10 @@ export async function POST(req: NextRequest) {
   try {
     // Configure fal.ai at request time so env vars are guaranteed available
     const falKey = process.env.FAL_KEY
+    console.warn('🔑 FAL_KEY present:', !!falKey, 'length:', falKey?.length || 0)
     if (!falKey) {
       console.error('❌ FAL_KEY environment variable is not set!')
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+      return NextResponse.json({ error: 'Server configuration error: FAL_KEY missing' }, { status: 500 })
     }
     fal.config({ credentials: falKey })
 
@@ -274,7 +275,7 @@ export async function POST(req: NextRequest) {
       },
     })
   } catch (error: any) {
-    console.error('444 Radio Remix error:', error)
+    console.error('444 Radio Remix OUTER error:', error?.message || error, 'stack:', error?.stack?.substring(0, 500))
     return NextResponse.json({ success: false, error: sanitizeError(error) }, { status: 500 })
   }
 }

@@ -36,9 +36,10 @@ export async function POST(req: NextRequest) {
   try {
     // Configure fal.ai at request time so env vars are guaranteed available
     const falKey = process.env.FAL_KEY
+    console.warn('🔑 FAL_KEY present:', !!falKey, 'length:', falKey?.length || 0)
     if (!falKey) {
       console.error('❌ FAL_KEY environment variable is not set!')
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+      return NextResponse.json({ error: 'Server configuration error: FAL_KEY missing' }, { status: 500 })
     }
     fal.config({ credentials: falKey })
 
