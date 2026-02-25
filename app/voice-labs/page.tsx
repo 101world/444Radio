@@ -17,24 +17,51 @@ const HolographicBackgroundClient = lazy(() => import('../components/Holographic
 
 // ── Constants ──
 
-const SYSTEM_VOICES = [
-  { id: 'Wise_Woman', name: 'Wise Woman', desc: 'Calm, authoritative female' },
-  { id: 'Friendly_Person', name: 'Friendly Person', desc: 'Warm, approachable' },
-  { id: 'Inspirational_girl', name: 'Inspirational Girl', desc: 'Uplifting, youthful' },
-  { id: 'Deep_Voice_Man', name: 'Deep Voice Man', desc: 'Rich, deep male' },
-  { id: 'Calm_Woman', name: 'Calm Woman', desc: 'Gentle, soothing female' },
-  { id: 'Casual_Guy', name: 'Casual Guy', desc: 'Relaxed, everyday male' },
-  { id: 'Lively_Girl', name: 'Lively Girl', desc: 'Energetic, bright female' },
-  { id: 'Patient_Man', name: 'Patient Man', desc: 'Clear, steady male' },
-  { id: 'Young_Knight', name: 'Young Knight', desc: 'Bold, heroic male' },
-  { id: 'Determined_Man', name: 'Determined Man', desc: 'Strong, focused male' },
-  { id: 'Lovely_Girl', name: 'Lovely Girl', desc: 'Sweet, charming female' },
-  { id: 'Decent_Boy', name: 'Decent Boy', desc: 'Polite, youthful male' },
-  { id: 'Imposing_Manner', name: 'Imposing Manner', desc: 'Commanding, powerful' },
-  { id: 'Gentle_Woman', name: 'Gentle Woman', desc: 'Soft, nurturing female' },
-  { id: 'Emotional_Narrator_Woman', name: 'Emotional Narrator', desc: 'Expressive narrator' },
-  { id: 'Serious_Girl', name: 'Serious Girl', desc: 'Focused, clear female' },
+const VOICE_CATEGORIES = [
+  {
+    label: 'Authority',
+    voices: [
+      { id: 'Deep_Voice_Man', name: 'Deep Voice Man', desc: 'Rich, deep male' },
+      { id: 'Imposing_Manner', name: 'Imposing Manner', desc: 'Commanding, powerful' },
+      { id: 'Elegant_Man', name: 'Elegant Man', desc: 'Refined, sophisticated male' },
+    ]
+  },
+  {
+    label: 'Friendly',
+    voices: [
+      { id: 'Casual_Guy', name: 'Casual Guy', desc: 'Relaxed, everyday male' },
+      { id: 'Friendly_Person', name: 'Friendly Person', desc: 'Warm, approachable' },
+      { id: 'Decent_Boy', name: 'Decent Boy', desc: 'Polite, youthful male' },
+      { id: 'Lively_Girl', name: 'Lively Girl', desc: 'Energetic, bright female' },
+    ]
+  },
+  {
+    label: 'Energetic',
+    voices: [
+      { id: 'Exuberant_Girl', name: 'Exuberant Girl', desc: 'Lively, enthusiastic female' },
+      { id: 'Inspirational_girl', name: 'Inspirational Girl', desc: 'Uplifting, youthful' },
+    ]
+  },
+  {
+    label: 'Character',
+    voices: [
+      { id: 'Young_Knight', name: 'Young Knight', desc: 'Bold, heroic male' },
+      { id: 'Abbess', name: 'Abbess', desc: 'Dignified, wise character' },
+      { id: 'Wise_Woman', name: 'Wise Woman', desc: 'Calm, authoritative female' },
+    ]
+  },
+  {
+    label: 'Gentle & Calm',
+    voices: [
+      { id: 'Calm_Woman', name: 'Calm Woman', desc: 'Gentle, soothing female' },
+      { id: 'Patient_Man', name: 'Patient Man', desc: 'Clear, steady male' },
+      { id: 'Lovely_Girl', name: 'Lovely Girl', desc: 'Sweet, charming female' },
+      { id: 'Determined_Man', name: 'Determined Man', desc: 'Strong, focused male' },
+    ]
+  },
 ]
+
+const SYSTEM_VOICES = VOICE_CATEGORIES.flatMap(c => c.voices)
 
 const EMOTIONS = [
   { value: 'auto', label: 'Auto' }, { value: 'happy', label: 'Happy' },
@@ -95,6 +122,9 @@ export default function VoiceLabsPage() {
 
   // ── Character meter (cumulative usage toward next 1K billing) ──
   const [charMeter, setCharMeter] = useState(0)
+
+  // ── Tutorial modal ──
+  const [showTutorial, setShowTutorial] = useState(false)
 
   // ── Docked sidebar + ESC visibility ──
   const [sidebarHidden, setSidebarHidden] = useState(false)
@@ -714,19 +744,24 @@ export default function VoiceLabsPage() {
                 </div>
 
                 {voiceSubTab === 'system' ? (
-                  SYSTEM_VOICES.map(v => (
-                    <button key={v.id} onClick={() => setVoiceId(v.id)}
-                      className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left transition-all ${
-                        voiceId === v.id ? 'bg-cyan-500/10 border border-cyan-500/40' : 'hover:bg-white/[0.03] border border-transparent'
-                      }`}>
-                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${voiceId === v.id ? 'bg-cyan-500/20' : 'bg-white/[0.04]'}`}>
-                        <User size={16} className={voiceId === v.id ? 'text-cyan-400' : 'text-gray-500'} />
-                      </div>
-                      <div className="min-w-0">
-                        <div className={`text-sm font-medium truncate ${voiceId === v.id ? 'text-cyan-300' : 'text-white/70'}`}>{v.name}</div>
-                        <div className="text-xs text-gray-500 truncate">{v.desc}</div>
-                      </div>
-                    </button>
+                  VOICE_CATEGORIES.map(cat => (
+                    <div key={cat.label} className="mb-2">
+                      <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider px-2 pb-1 pt-1.5">{cat.label}</p>
+                      {cat.voices.map(v => (
+                        <button key={v.id} onClick={() => setVoiceId(v.id)}
+                          className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left transition-all ${
+                            voiceId === v.id ? 'bg-cyan-500/10 border border-cyan-500/40' : 'hover:bg-white/[0.03] border border-transparent'
+                          }`}>
+                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${voiceId === v.id ? 'bg-cyan-500/20' : 'bg-white/[0.04]'}`}>
+                            <User size={16} className={voiceId === v.id ? 'text-cyan-400' : 'text-gray-500'} />
+                          </div>
+                          <div className="min-w-0">
+                            <div className={`text-sm font-medium truncate ${voiceId === v.id ? 'text-cyan-300' : 'text-white/70'}`}>{v.name}</div>
+                            <div className="text-xs text-gray-500 truncate">{v.desc}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
                   ))
                 ) : loadingVoices ? (
                   <div className="flex items-center justify-center py-8 text-gray-500 text-sm gap-2"><Loader2 size={14} className="animate-spin" /> Loading...</div>
@@ -872,6 +907,9 @@ export default function VoiceLabsPage() {
                 <span className="text-xs text-cyan-400/70">{selectedVoiceName}</span>
               </div>
             </div>
+            <button onClick={() => setShowTutorial(true)} className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors" title="How to use Voice Labs">
+              <Info size={16} className="text-gray-400 hover:text-cyan-400 transition-colors" />
+            </button>
             <button onClick={createSession} className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/30 rounded-lg text-xs text-cyan-300 hover:bg-cyan-500/20 transition-colors">
               <Plus size={12} /> New
             </button>
@@ -886,7 +924,10 @@ export default function VoiceLabsPage() {
                 </div>
                 <h3 className="text-white/60 text-lg font-medium mb-2">Voice Labs</h3>
                 <p className="text-gray-500 text-sm max-w-sm leading-relaxed">Type text below and press Enter to generate speech. Select a voice from the sidebar.</p>
-                <p className="text-gray-500 text-xs mt-3">Use <code className="text-cyan-400/60 bg-cyan-500/10 px-1.5 py-0.5 rounded text-xs">{'<#0.5#>'}</code> for pauses</p>
+                <p className="text-gray-500 text-xs mt-3">Use <code className="text-cyan-400/60 bg-cyan-500/10 px-1.5 py-0.5 rounded text-xs">{'<#0.5#>'}</code> for pauses &middot; <code className="text-purple-400/60 bg-purple-500/10 px-1.5 py-0.5 rounded text-xs">(laughs)</code> for sounds</p>
+                <button onClick={() => setShowTutorial(true)} className="mt-4 flex items-center gap-2 px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg text-xs text-cyan-300 hover:bg-cyan-500/20 transition-all mx-auto">
+                  <Info size={14} /> How to use Voice Labs
+                </button>
               </div>
             )}
             {loadingMessages && (
@@ -1132,6 +1173,185 @@ export default function VoiceLabsPage() {
           </div>
         </div>
       </div>
+
+      {/* ══════ TUTORIAL MODAL ══════ */}
+      {showTutorial && (
+        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowTutorial(false)}>
+          <div className="bg-gray-950 border border-white/10 rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto custom-scrollbar" onClick={e => e.stopPropagation()}>
+            {/* Modal header */}
+            <div className="sticky top-0 bg-gray-950/95 backdrop-blur-xl border-b border-white/[0.06] p-5 flex items-center justify-between rounded-t-2xl z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 rounded-xl flex items-center justify-center">
+                  <Mic size={20} className="text-cyan-400" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-white">Voice Labs Guide</h2>
+                  <p className="text-xs text-gray-500">MiniMax Speech 2.8 Turbo · Text-to-Speech</p>
+                </div>
+              </div>
+              <button onClick={() => setShowTutorial(false)} className="text-gray-500 hover:text-white p-2 hover:bg-white/10 rounded-lg transition-all text-lg">✕</button>
+            </div>
+
+            <div className="p-5 space-y-6">
+
+              {/* Voice Options */}
+              <section>
+                <h3 className="text-sm font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-2 mb-3">
+                  <User size={14} /> 16 Built-in Voices
+                </h3>
+                <p className="text-xs text-gray-400 mb-3 leading-relaxed">Choose voices spanning different genders, ages, and speaking styles. Custom cloned voices are also supported.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {VOICE_CATEGORIES.map(cat => (
+                    <div key={cat.label} className="bg-white/[0.02] border border-white/[0.06] rounded-lg p-3">
+                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-2">{cat.label}</p>
+                      <div className="space-y-1">
+                        {cat.voices.map(v => (
+                          <div key={v.id} className="flex items-center gap-2">
+                            <span className="text-xs text-white/70 font-medium">{v.name}</span>
+                            <span className="text-[10px] text-gray-600 hidden sm:inline">— {v.desc}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {/* Human-like sounds */}
+              <section>
+                <h3 className="text-sm font-bold text-purple-400 uppercase tracking-wider flex items-center gap-2 mb-3">
+                  <MessageSquare size={14} /> Human-Like Sounds
+                </h3>
+                <p className="text-xs text-gray-400 mb-3 leading-relaxed">Add natural interjections directly in your text for more lifelike delivery. The model recognizes 20+ sounds.</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {['(laughs)', '(chuckle)', '(sighs)', '(coughs)', '(gasps)', '(humming)', '(whistles)', '(crying)', '(breath)', '(pant)', '(sneezes)', '(applause)'].map(s => (
+                    <button key={s} onClick={() => { setText(prev => prev + ' ' + s + ' '); setShowTutorial(false) }}
+                      className="px-2.5 py-1 bg-purple-500/10 border border-purple-500/20 rounded-full text-[11px] text-purple-300 hover:bg-purple-500/20 hover:border-purple-500/40 transition-all cursor-pointer">
+                      {s}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-gray-600 mt-2 flex items-center gap-1"><Info size={10} /> Click any sound to insert it into your text</p>
+              </section>
+
+              {/* Pause markers */}
+              <section>
+                <h3 className="text-sm font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-2 mb-3">
+                  <SlidersHorizontal size={14} /> Pause Markers
+                </h3>
+                <p className="text-xs text-gray-400 mb-3 leading-relaxed">Insert custom pauses using <code className="text-cyan-400 bg-cyan-500/10 px-1.5 py-0.5 rounded">{'<#seconds#>'}</code> markers between text. Range: 0.01 to 99.99 seconds.</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {['<#0.3#>', '<#0.5#>', '<#1.0#>', '<#2.0#>', '<#5.0#>'].map(p => (
+                    <button key={p} onClick={() => { setText(prev => prev + ' ' + p + ' '); setShowTutorial(false) }}
+                      className="px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-[11px] text-emerald-300 font-mono hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all cursor-pointer">
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              {/* Fine-tuned controls */}
+              <section>
+                <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2 mb-3">
+                  <Settings2 size={14} /> Fine-Tuned Controls
+                </h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-white/[0.02] border border-white/[0.06] rounded-lg p-3">
+                    <p className="text-xs text-white/70 font-medium mb-1">Speed</p>
+                    <p className="text-[10px] text-gray-500 leading-relaxed">0.5x to 2x normal pacing. Lower is slower.</p>
+                  </div>
+                  <div className="bg-white/[0.02] border border-white/[0.06] rounded-lg p-3">
+                    <p className="text-xs text-white/70 font-medium mb-1">Volume</p>
+                    <p className="text-[10px] text-gray-500 leading-relaxed">0 to 10. Default gain is 1.0.</p>
+                  </div>
+                  <div className="bg-white/[0.02] border border-white/[0.06] rounded-lg p-3">
+                    <p className="text-xs text-white/70 font-medium mb-1">Pitch</p>
+                    <p className="text-[10px] text-gray-500 leading-relaxed">Shift ±12 semitones up or down.</p>
+                  </div>
+                  <div className="bg-white/[0.02] border border-white/[0.06] rounded-lg p-3">
+                    <p className="text-xs text-white/70 font-medium mb-1">Emotion</p>
+                    <p className="text-[10px] text-gray-500 leading-relaxed">Auto, happy, sad, angry, fearful, disgusted, surprised, calm, fluent, neutral.</p>
+                  </div>
+                </div>
+              </section>
+
+              {/* Use cases */}
+              <section>
+                <h3 className="text-sm font-bold text-blue-400 uppercase tracking-wider flex items-center gap-2 mb-3">
+                  <Zap size={14} /> What It&apos;s Good For
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {[
+                    { title: 'Audiobooks', desc: 'Natural narration, long-form content' },
+                    { title: 'Video Voiceovers', desc: 'Ads, explainers, presentations' },
+                    { title: 'Accessibility', desc: 'Text-to-audio for all users' },
+                    { title: 'Voice Agents', desc: 'Bots, AI assistants, customer service' },
+                    { title: 'Localization', desc: '40+ languages, native quality' },
+                    { title: 'Gaming', desc: 'Character voices, virtual companions' },
+                  ].map(uc => (
+                    <div key={uc.title} className="bg-white/[0.02] border border-white/[0.06] rounded-lg p-2.5">
+                      <p className="text-xs text-white/70 font-medium">{uc.title}</p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">{uc.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {/* Tips */}
+              <section>
+                <h3 className="text-sm font-bold text-rose-400 uppercase tracking-wider flex items-center gap-2 mb-3">
+                  <AlertCircle size={14} /> Tips for Best Results
+                </h3>
+                <ul className="space-y-2">
+                  {[
+                    'Write out numbers and dates fully — "March fifteenth" instead of "3/15".',
+                    'Use different voice IDs + emotions for multi-character dialogue.',
+                    'Adjust speed and pitch to further differentiate characters.',
+                    'If speech sounds unnatural, simplify complex sentences or check punctuation.',
+                    'Add (laughs), (sighs), etc. inline for expressive delivery.',
+                    'Use English Normalization (Advanced) for better number/date reading.',
+                  ].map((tip, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="text-rose-400/60 text-xs mt-0.5 flex-shrink-0">•</span>
+                      <span className="text-xs text-gray-400 leading-relaxed">{tip}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+
+              {/* Billing */}
+              <section className="bg-white/[0.02] border border-white/[0.06] rounded-lg p-4">
+                <h3 className="text-sm font-bold text-yellow-400 uppercase tracking-wider flex items-center gap-2 mb-2">
+                  <Zap size={14} /> Billing
+                </h3>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  Characters accumulate on a meter. Every <strong className="text-white/70">1,000 characters</strong> costs <strong className="text-yellow-300">3 credits</strong>.
+                  Under 1,000 cumulative characters is free. The meter shows in the sidebar.
+                </p>
+              </section>
+
+              {/* Voice Cloning */}
+              <section className="bg-white/[0.02] border border-white/[0.06] rounded-lg p-4">
+                <h3 className="text-sm font-bold text-purple-400 uppercase tracking-wider flex items-center gap-2 mb-2">
+                  <Mic size={14} /> Voice Cloning
+                </h3>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  Train a custom voice from as little as <strong className="text-white/70">5 seconds</strong> of audio.
+                  Use the <strong className="text-purple-300">Clone</strong> tab to upload or record audio.
+                  Costs <strong className="text-yellow-300">{TRAIN_COST} credits</strong>. Cloned voices appear under <strong className="text-purple-300">My Clones</strong> and can be reused unlimited.
+                </p>
+              </section>
+            </div>
+
+            {/* Modal footer */}
+            <div className="sticky bottom-0 bg-gray-950/95 backdrop-blur-xl border-t border-white/[0.06] p-4 flex justify-end rounded-b-2xl">
+              <button onClick={() => setShowTutorial(false)} className="px-5 py-2 bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 text-sm font-medium rounded-lg hover:bg-cyan-500/25 transition-all">
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
