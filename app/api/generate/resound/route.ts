@@ -9,52 +9,21 @@ export const maxDuration = 300
 
 const FAL_MODEL = 'fal-ai/stable-audio-25/audio-to-audio'
 
-/** Submit a request to the fal.ai queue and poll until complete */
-async function runFalAi(falKey: string, input: Record<string, unknown>): Promise<{ data: any; requestId: string }> {
-  const queueRes = await fetch(`https://queue.fal.run/${FAL_MODEL}`, {
+/** Call fal.ai synchronously (blocks until generation complete) */
+async function runFalAi(falKey: string, input: Record<string, unknown>): Promise<{ data: any }> {
+  console.log('🔁 Calling fal.ai synchronous endpoint...')
+  const res = await fetch(`https://fal.run/${FAL_MODEL}`, {
     method: 'POST',
     headers: { Authorization: `Key ${falKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
   })
-  if (!queueRes.ok) {
-    const body = await queueRes.text()
-    throw new Error(`fal.ai queue submit failed (${queueRes.status}): ${body}`)
+  if (!res.ok) {
+    const body = await res.text()
+    throw new Error(`fal.ai request failed (${res.status}): ${body}`)
   }
-  const { request_id } = await queueRes.json()
-  console.log('🔁 fal.ai request queued:', request_id)
-
-  const maxPollMs = 270_000
-  const startTime = Date.now()
-  let pollInterval = 2_000
-
-  while (Date.now() - startTime < maxPollMs) {
-    await new Promise((r) => setTimeout(r, pollInterval))
-    if (pollInterval < 10_000) pollInterval = Math.min(pollInterval + 1_000, 10_000)
-
-    const statusRes = await fetch(
-      `https://queue.fal.run/requests/${request_id}/status`,
-      { headers: { Authorization: `Key ${falKey}` } }
-    )
-    if (!statusRes.ok) { console.warn('⚠️ fal.ai poll error:', statusRes.status); continue }
-    const status = await statusRes.json()
-    console.log('  fal.ai status:', status.status)
-
-    if (status.status === 'COMPLETED') {
-      const resultRes = await fetch(
-        `https://queue.fal.run/requests/${request_id}`,
-        { headers: { Authorization: `Key ${falKey}` } }
-      )
-      if (!resultRes.ok) {
-        const errBody = await resultRes.text()
-        throw new Error(`fal.ai result fetch failed (${resultRes.status}): ${errBody}`)
-      }
-      return { data: await resultRes.json(), requestId: request_id }
-    }
-    if (status.status === 'FAILED') {
-      throw new Error(`fal.ai generation failed: ${JSON.stringify(status)}`)
-    }
-  }
-  throw new Error('fal.ai generation timed out after polling')
+  const data = await res.json()
+  console.log('🔁 fal.ai response received')
+  return { data }
 }
 
 function sanitizeError(error: any): string {
@@ -149,7 +118,7 @@ export async function POST(req: NextRequest) {
       console.log('🔁 fal.ai input:', JSON.stringify(falInput))
 
       const result = await runFalAi(falKey, falInput)
-      console.log('🔁 fal.ai done:', result.requestId)
+      console.log('🔁 fal.ai done')
 
       // Extract audio URL
       const audioData = result.data?.audio
