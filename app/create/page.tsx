@@ -3685,23 +3685,6 @@ function CreatePageContent() {
                   <option value="arabic">العربية Arabic</option>
                   <option value="italian">Italiano Italian</option>
                 </select>
-                
-                {/* Language-specific genre suggestions */}
-                {(() => {
-                  const languageHook = getLanguageHook(selectedLanguage.toLowerCase())
-                  return languageHook && (
-                    <div className="p-2 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
-                      <p className="text-[10px] text-cyan-300 mb-1 font-semibold">💡 Popular Genres:</p>
-                      <div className="flex flex-wrap gap-1">
-                        {languageHook.genres.slice(0, 4).map((g, idx) => (
-                          <span key={idx} className="px-1.5 py-0.5 bg-cyan-500/20 text-cyan-300 text-[9px] rounded">
-                            {g}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )
-                })()}
               </div>
 
               {/* ACE-Step Parameters (only for non-English) */}

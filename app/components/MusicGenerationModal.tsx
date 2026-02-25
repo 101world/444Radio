@@ -285,31 +285,6 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
                 <option value="arabic">العربية Arabic</option>
                 <option value="italian">Italiano Italian</option>
               </select>
-              
-              {/* Language Helper */}
-              {languageHook && (
-                <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg">
-                  <p className="text-xs text-purple-300 mb-2 font-semibold">💡 Popular Genres:</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {languageHook.genres.map((genre, idx) => (
-                      <span key={idx} className="px-2 py-1 bg-purple-500/20 text-purple-300 text-xs rounded">
-                        {genre}
-                      </span>
-                    ))}
-                  </div>
-                  {languageHook.samplePrompts.length > 0 && (
-                    <button
-                      onClick={() => {
-                        const randomPrompt = languageHook.samplePrompts[Math.floor(Math.random() * languageHook.samplePrompts.length)]
-                        setPrompt(randomPrompt)
-                      }}
-                      className="mt-2 text-xs text-purple-400 hover:text-purple-300 underline"
-                    >
-                      Get random prompt idea
-                    </button>
-                  )}
-                </div>
-              )}
             </div>
 
             {/* Lyrics */}

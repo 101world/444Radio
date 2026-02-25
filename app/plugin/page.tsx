@@ -3408,19 +3408,6 @@ function PluginPageInner() {
                   <option value="arabic">العربية Arabic</option>
                   <option value="italian">Italiano Italian</option>
                 </select>
-                {(() => {
-                  const hook = getLanguageHook(selectedLanguage.toLowerCase())
-                  return hook && (
-                    <div className="p-2 rounded-lg" style={{background:'rgba(6,182,212,0.04)',border:'1px solid rgba(200,200,220,0.08)'}}>
-                      <p className="text-[10px] mb-1 font-semibold" style={{color:'rgba(6,182,212,0.6)'}}>💡 Popular Genres:</p>
-                      <div className="flex flex-wrap gap-1">
-                        {hook.genres.slice(0, 4).map((g, i) => (
-                          <span key={i} className="px-1.5 py-0.5 text-[9px] rounded" style={{background:'rgba(6,182,212,0.06)',color:'rgba(6,182,212,0.6)'}}>{g}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )
-                })()}
               </div>
 
               {/* ACE-Step Parameters (non-English) */}
