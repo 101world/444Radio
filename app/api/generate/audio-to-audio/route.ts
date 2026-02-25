@@ -32,7 +32,7 @@ async function runFalAi(falKey: string, input: Record<string, unknown>): Promise
     if (pollInterval < 10_000) pollInterval = Math.min(pollInterval + 1_000, 10_000)
 
     const statusRes = await fetch(
-      `https://queue.fal.run/${FAL_MODEL}/requests/${request_id}/status`,
+      `https://queue.fal.run/requests/${request_id}/status`,
       { headers: { Authorization: `Key ${falKey}` } }
     )
     if (!statusRes.ok) { console.warn('⚠️ fal.ai poll error:', statusRes.status); continue }
@@ -41,7 +41,7 @@ async function runFalAi(falKey: string, input: Record<string, unknown>): Promise
 
     if (status.status === 'COMPLETED') {
       const resultRes = await fetch(
-        `https://queue.fal.run/${FAL_MODEL}/requests/${request_id}`,
+        `https://queue.fal.run/requests/${request_id}`,
         { headers: { Authorization: `Key ${falKey}` } }
       )
       if (!resultRes.ok) {
