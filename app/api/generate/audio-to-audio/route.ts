@@ -1,12 +1,72 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { fal } from '@fal-ai/client'
 import { downloadAndUploadToR2 } from '@/lib/storage'
 import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { refundCredits } from '@/lib/refund-credits'
 
 // Allow up to 5 minutes for fal.ai generation
 export const maxDuration = 300
+
+const FAL_MODEL = 'fal-ai/stable-audio-25/audio-to-audio'
+
+/** Submit a request to the fal.ai queue and poll until complete */
+async function runFalAi(falKey: string, input: Record<string, unknown>): Promise<{ data: any; requestId: string }> {
+  // 1. Submit to queue
+  const queueRes = await fetch(`https://queue.fal.run/${FAL_MODEL}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Key ${falKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  })
+  if (!queueRes.ok) {
+    const body = await queueRes.text()
+    throw new Error(`fal.ai queue submit failed (${queueRes.status}): ${body}`)
+  }
+  const { request_id } = await queueRes.json()
+  console.log('🔁 fal.ai request queued:', request_id)
+
+  // 2. Poll for completion (max ~4.5 minutes)
+  const maxPollMs = 270_000
+  const startTime = Date.now()
+  let pollInterval = 2_000
+
+  while (Date.now() - startTime < maxPollMs) {
+    await new Promise((r) => setTimeout(r, pollInterval))
+    if (pollInterval < 10_000) pollInterval = Math.min(pollInterval + 1_000, 10_000)
+
+    const statusRes = await fetch(
+      `https://queue.fal.run/${FAL_MODEL}/requests/${request_id}/status`,
+      { headers: { Authorization: `Key ${falKey}` } }
+    )
+    if (!statusRes.ok) {
+      console.warn('⚠️ fal.ai status poll error:', statusRes.status)
+      continue
+    }
+    const status = await statusRes.json()
+    console.log('  fal.ai status:', status.status)
+
+    if (status.status === 'COMPLETED') {
+      const resultRes = await fetch(
+        `https://queue.fal.run/${FAL_MODEL}/requests/${request_id}`,
+        { headers: { Authorization: `Key ${falKey}` } }
+      )
+      if (!resultRes.ok) {
+        const errBody = await resultRes.text()
+        throw new Error(`fal.ai result fetch failed (${resultRes.status}): ${errBody}`)
+      }
+      const data = await resultRes.json()
+      return { data, requestId: request_id }
+    }
+
+    if (status.status === 'FAILED') {
+      throw new Error(`fal.ai generation failed: ${JSON.stringify(status)}`)
+    }
+  }
+
+  throw new Error('fal.ai generation timed out after polling')
+}
 
 function sanitizeError(error: any): string {
   const errorStr = error instanceof Error ? error.message : String(error)
@@ -34,14 +94,13 @@ function sanitizeError(error: any): string {
  */
 export async function POST(req: NextRequest) {
   try {
-    // Configure fal.ai at request time so env vars are guaranteed available
+    // Verify FAL_KEY at request time
     const falKey = process.env.FAL_KEY
     console.warn('🔑 FAL_KEY present:', !!falKey, 'length:', falKey?.length || 0)
     if (!falKey) {
       console.error('❌ FAL_KEY environment variable is not set!')
       return NextResponse.json({ error: 'Server configuration error: FAL_KEY missing' }, { status: 500 })
     }
-    fal.config({ credentials: falKey })
 
     const { userId } = await auth()
     if (!userId) {
@@ -162,20 +221,12 @@ export async function POST(req: NextRequest) {
 
         await sendLine({ type: 'started', model: 'fal-stable-audio-25' })
 
-        const result = await fal.subscribe('fal-ai/stable-audio-25/audio-to-audio', {
-          input: falInput as any,
-          logs: true,
-          onQueueUpdate: (update) => {
-            if (update.status === 'IN_PROGRESS') {
-              const logs = update.logs?.map((log: { message: string }) => log.message) || []
-              logs.forEach((msg: string) => console.log('  fal.ai log:', msg))
-            }
-          },
-        })
+        // Use direct fetch to fal.ai REST queue API
+        const result = await runFalAi(falKey, falInput)
 
         console.log('🔁 fal.ai result received:', result.requestId)
 
-        const audioData = (result.data as any)?.audio
+        const audioData = result.data?.audio
         let audioUrl: string
         if (typeof audioData === 'string') {
           audioUrl = audioData
@@ -185,7 +236,7 @@ export async function POST(req: NextRequest) {
           throw new Error('Invalid output format from fal.ai — no audio URL returned')
         }
 
-        const resultSeed = (result.data as any)?.seed
+        const resultSeed = result.data?.seed
 
         console.log('🔁 fal.ai audio URL:', audioUrl)
 
