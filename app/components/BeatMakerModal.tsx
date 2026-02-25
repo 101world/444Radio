@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { X, Loader2, Lightbulb, Clock, Zap, Music2 } from 'lucide-react'
 
 interface BeatMakerModalProps {
@@ -18,7 +18,7 @@ export interface BeatMakerGenerationParams {
 
 const MAX_PROMPT_LENGTH = 500
 const MIN_DURATION = 5
-const MAX_DURATION = 300
+const MAX_DURATION = 180
 const DEFAULT_DURATION = 60
 
 // Quick prompt tags for instrumentals/samples
@@ -45,8 +45,6 @@ export default function BeatMakerModal({ isOpen, onClose, userCredits, onGenerat
   const [isGenerating, setIsGenerating] = useState(false)
   const [showQuickPrompts, setShowQuickPrompts] = useState(false)
   const [error, setError] = useState('')
-  const durationBarRef = useRef<HTMLDivElement>(null)
-  const [isDragging, setIsDragging] = useState(false)
 
   // Credit cost calculation: 2 credits per 60 seconds, minimum 2
   const creditCost = Math.max(2, Math.ceil((duration / 60) * 2))
@@ -58,35 +56,6 @@ export default function BeatMakerModal({ isOpen, onClose, userCredits, onGenerat
       setIsGenerating(false)
     }
   }, [isOpen])
-
-  // Duration bar mouse/touch handler
-  const handleDurationDrag = useCallback((clientX: number) => {
-    if (!durationBarRef.current) return
-    const rect = durationBarRef.current.getBoundingClientRect()
-    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
-    const newDuration = Math.round(MIN_DURATION + pct * (MAX_DURATION - MIN_DURATION))
-    setDuration(newDuration)
-  }, [])
-
-  useEffect(() => {
-    if (!isDragging) return
-    const handleMove = (e: MouseEvent | TouchEvent) => {
-      e.preventDefault()
-      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
-      handleDurationDrag(clientX)
-    }
-    const handleUp = () => setIsDragging(false)
-    window.addEventListener('mousemove', handleMove, { passive: false })
-    window.addEventListener('touchmove', handleMove, { passive: false })
-    window.addEventListener('mouseup', handleUp)
-    window.addEventListener('touchend', handleUp)
-    return () => {
-      window.removeEventListener('mousemove', handleMove)
-      window.removeEventListener('touchmove', handleMove)
-      window.removeEventListener('mouseup', handleUp)
-      window.removeEventListener('touchend', handleUp)
-    }
-  }, [isDragging, handleDurationDrag])
 
   // Validation
   const canGenerate =
@@ -258,51 +227,27 @@ export default function BeatMakerModal({ isOpen, onClose, userCredits, onGenerat
               </div>
             </div>
 
-            {/* Analog duration bar */}
-            <div className="relative py-3">
-              {/* Track */}
-              <div
-                ref={durationBarRef}
-                className="relative h-3 bg-white/[0.04] rounded-full cursor-pointer border border-white/[0.06] overflow-hidden"
-                onMouseDown={(e) => { setIsDragging(true); handleDurationDrag(e.clientX) }}
-                onTouchStart={(e) => { setIsDragging(true); handleDurationDrag(e.touches[0].clientX) }}
-              >
-                {/* Fill */}
-                <div
-                  className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-75"
-                  style={{
-                    width: `${durationPct}%`,
-                    background: 'linear-gradient(90deg, rgba(6,182,212,0.4) 0%, rgba(6,182,212,0.7) 50%, rgba(34,211,238,0.8) 100%)',
-                    boxShadow: '0 0 10px rgba(6,182,212,0.3)',
-                  }}
-                />
-                {/* Tick marks */}
-                {[0, 25, 50, 75, 100].map(pct => (
-                  <div
-                    key={pct}
-                    className="absolute top-0 bottom-0 w-px bg-white/10"
-                    style={{ left: `${pct}%` }}
-                  />
-                ))}
-              </div>
-
-              {/* Knob */}
-              <div
-                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-gray-900 border-2 border-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.4)] transition-[left] duration-75 cursor-grab active:cursor-grabbing"
-                style={{ left: `${durationPct}%`, top: '50%' }}
-                onMouseDown={(e) => { e.stopPropagation(); setIsDragging(true) }}
-                onTouchStart={(e) => { e.stopPropagation(); setIsDragging(true) }}
-              >
-                <div className="absolute inset-[3px] rounded-full bg-cyan-400/30" />
-              </div>
-
+            {/* Duration slider */}
+            <div className="relative">
+              <input
+                type="range"
+                min={MIN_DURATION}
+                max={MAX_DURATION}
+                step={1}
+                value={duration}
+                onChange={e => setDuration(Number(e.target.value))}
+                className="w-full h-2 appearance-none rounded-full cursor-pointer bg-white/[0.06] accent-cyan-500 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gray-900 [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-cyan-400 [&::-webkit-slider-thumb]:shadow-[0_0_8px_rgba(6,182,212,0.4)] [&::-webkit-slider-thumb]:cursor-grab [&::-webkit-slider-thumb]:active:cursor-grabbing [&::-webkit-slider-runnable-track]:rounded-full"
+                style={{
+                  background: `linear-gradient(90deg, rgba(6,182,212,0.7) 0%, rgba(34,211,238,0.8) ${durationPct}%, rgba(255,255,255,0.04) ${durationPct}%)`,
+                }}
+              />
               {/* Labels */}
-              <div className="flex justify-between mt-1.5">
+              <div className="flex justify-between mt-2">
                 <span className="text-[9px] text-white/20 font-mono">0:05</span>
-                <span className="text-[9px] text-white/20 font-mono">1:15</span>
-                <span className="text-[9px] text-white/20 font-mono">2:30</span>
-                <span className="text-[9px] text-white/20 font-mono">3:45</span>
-                <span className="text-[9px] text-white/20 font-mono">5:00</span>
+                <span className="text-[9px] text-white/20 font-mono">0:45</span>
+                <span className="text-[9px] text-white/20 font-mono">1:30</span>
+                <span className="text-[9px] text-white/20 font-mono">2:15</span>
+                <span className="text-[9px] text-white/20 font-mono">3:00</span>
               </div>
             </div>
 

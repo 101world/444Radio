@@ -68,8 +68,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Title is required (1-100 characters)' }, { status: 400 })
     if (!prompt || prompt.length < 3 || prompt.length > 500)
       return NextResponse.json({ error: 'Prompt is required (3-500 characters)' }, { status: 400 })
-    if (!duration || typeof duration !== 'number' || duration < 5 || duration > 300)
-      return NextResponse.json({ error: 'Duration must be between 5 and 300 seconds' }, { status: 400 })
+    if (!duration || typeof duration !== 'number' || duration < 5 || duration > 180)
+      return NextResponse.json({ error: 'Duration must be between 5 and 180 seconds' }, { status: 400 })
 
     // Calculate credit cost: 2 credits per 60 seconds, minimum 2
     const creditCost = Math.max(2, Math.ceil((duration / 60) * 2))
