@@ -6,7 +6,8 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PU
 
 /**
  * GET /api/library/remix
- * Get user's remix generations from music_library (model = meta/musicgen)
+ * Get user's remix generations from music_library
+ * Matches both legacy meta/musicgen AND new fal-ai/stable-audio-25/audio-to-audio
  */
 export async function GET() {
   try {
@@ -15,9 +16,10 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Fetch remixes: rows in music_library where generation_params->model = 'meta/musicgen'
+    // Fetch remixes: rows in music_library where generation_params->model matches remix models
+    // Use or() to match both old and new model identifiers
     const res = await fetch(
-      `${supabaseUrl}/rest/v1/music_library?clerk_user_id=eq.${userId}&generation_params-%3E%3Emodel=eq.meta/musicgen&order=created_at.desc&limit=200`,
+      `${supabaseUrl}/rest/v1/music_library?clerk_user_id=eq.${userId}&or=(generation_params-%3E%3Emodel.eq.meta/musicgen,generation_params-%3E%3Emodel.eq.fal-ai/stable-audio-25/audio-to-audio,generation_params-%3E%3Emodel.eq.fal-stable-audio-25)&order=created_at.desc&limit=200`,
       {
         headers: {
           apikey: supabaseKey,
@@ -39,8 +41,11 @@ export async function GET() {
       audioUrl: item.audio_url,
       prompt: item.prompt,
       audio_format: item.audio_format || 'wav',
-      duration: item.generation_params?.duration,
-      model_version: item.generation_params?.model_version,
+      duration: item.generation_params?.duration || item.generation_params?.total_seconds,
+      model: item.generation_params?.model,
+      strength: item.generation_params?.strength,
+      seed: item.generation_params?.seed,
+      input_audio_url: item.generation_params?.input_audio_url,
       plays: item.plays || 0,
       created_at: item.created_at,
     }))

@@ -1815,6 +1815,12 @@ function CreatePageContent() {
       signal,
     })
 
+    // Handle non-streaming error responses (e.g. 500, 402)
+    if (!res.ok && res.headers.get('content-type')?.includes('application/json')) {
+      const errJson = await res.json().catch(() => ({}))
+      return { error: errJson.error || `Server error (${res.status})` }
+    }
+
     // Parse NDJSON stream (same pattern as generateMusic)
     const reader = res.body?.getReader()
     if (!reader) return { error: 'No response stream' }

@@ -1834,6 +1834,11 @@ function PluginPageInner() {
       }),
       signal,
     })
+    // Handle non-streaming error responses (e.g. 500, 402)
+    if (!res.ok && res.headers.get('content-type')?.includes('application/json')) {
+      const errJson = await res.json().catch(() => ({}))
+      return { error: errJson.error || `Server error (${res.status})` }
+    }
     const reader = res.body?.getReader()
     if (!reader) return { error: 'No response stream' }
     const decoder = new TextDecoder()
