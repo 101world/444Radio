@@ -1897,6 +1897,10 @@ function CreatePageContent() {
     // Close the modal
     setShowResoundModal(false)
 
+    // Capture session so results don't leak into a new chat
+    const mySession = chatSessionRef.current
+    const isStale = () => chatSessionRef.current !== mySession
+
     const generationId = Date.now().toString()
     const userMessage: Message = {
       id: generationId,
@@ -1926,7 +1930,7 @@ function CreatePageContent() {
       prompt: resoundParams.prompt,
       title: resoundParams.title,
     })
-    genSessionMap.current.set(genId, chatSessionRef.current)
+    genSessionMap.current.set(genId, mySession)
     setMessages(prev => prev.map(msg =>
       msg.id === generatingMessage.id ? { ...msg, generationId: genId } : msg
     ))
@@ -1953,20 +1957,24 @@ function CreatePageContent() {
         })
       }
 
-      setMessages(prev =>
-        prev.map(msg =>
-          msg.id === generatingMessage.id || msg.generationId === genId
-            ? {
-                ...msg,
-                isGenerating: false,
-                content: result.error ? '❌ 444 Radio locking in. Please try again.' : '✅ Remix track generated!',
-                result: result.error ? undefined : result,
-              }
-            : msg
+      if (!isStale()) {
+        setMessages(prev =>
+          prev.map(msg =>
+            msg.id === generatingMessage.id || msg.generationId === genId
+              ? {
+                  ...msg,
+                  isGenerating: false,
+                  content: result.error ? '❌ 444 Radio locking in. Please try again.' : '✅ Remix track generated!',
+                  result: result.error ? undefined : result,
+                }
+              : msg
+          )
         )
-      )
+      } else {
+        console.log('[Remix] Skipping message update — chat session changed')
+      }
 
-      if (!result.error) {
+      if (!result.error && !isStale()) {
         const assistantMessage: Message = {
           id: (Date.now() + Math.random()).toString(),
           type: 'assistant',
@@ -1979,13 +1987,15 @@ function CreatePageContent() {
       if (error instanceof DOMException && error.name === 'AbortError') return
       console.error('Remix generation error:', error)
       updateGeneration(genId, { status: 'failed', error: error instanceof Error ? error.message : 'Unknown error' })
-      setMessages(prev =>
-        prev.map(msg =>
-          msg.id === generatingMessage.id || msg.generationId === genId
-            ? { ...msg, isGenerating: false, content: '❌ Remix generation failed. Please try again.' }
-            : msg
+      if (!isStale()) {
+        setMessages(prev =>
+          prev.map(msg =>
+            msg.id === generatingMessage.id || msg.generationId === genId
+              ? { ...msg, isGenerating: false, content: '❌ Remix generation failed. Please try again.' }
+              : msg
+          )
         )
-      )
+      }
       refreshCredits()
       window.dispatchEvent(new Event('credits:refresh'))
     } finally {
@@ -2066,6 +2076,10 @@ function CreatePageContent() {
   const handleBeatMakerGenerate = async (beatParams: { title: string; prompt: string; duration: number }) => {
     setShowBeatMakerModal(false)
 
+    // Capture session so results don't leak into a new chat
+    const mySession = chatSessionRef.current
+    const isStale = () => chatSessionRef.current !== mySession
+
     const generationId = Date.now().toString()
     const userMessage: Message = {
       id: generationId,
@@ -2094,7 +2108,7 @@ function CreatePageContent() {
       prompt: beatParams.prompt,
       title: beatParams.title,
     })
-    genSessionMap.current.set(genId, chatSessionRef.current)
+    genSessionMap.current.set(genId, mySession)
     setMessages(prev => prev.map(msg =>
       msg.id === generatingMessage.id ? { ...msg, generationId: genId } : msg
     ))
@@ -2121,20 +2135,24 @@ function CreatePageContent() {
         })
       }
 
-      setMessages(prev =>
-        prev.map(msg =>
-          msg.id === generatingMessage.id || msg.generationId === genId
-            ? {
-                ...msg,
-                isGenerating: false,
-                content: result.error ? '❌ 444 Radio locking in. Please try again.' : '✅ Beat generated!',
-                result: result.error ? undefined : result,
-              }
-            : msg
+      if (!isStale()) {
+        setMessages(prev =>
+          prev.map(msg =>
+            msg.id === generatingMessage.id || msg.generationId === genId
+              ? {
+                  ...msg,
+                  isGenerating: false,
+                  content: result.error ? '❌ 444 Radio locking in. Please try again.' : '✅ Beat generated!',
+                  result: result.error ? undefined : result,
+                }
+              : msg
+          )
         )
-      )
+      } else {
+        console.log('[BeatMaker] Skipping message update — chat session changed')
+      }
 
-      if (!result.error) {
+      if (!result.error && !isStale()) {
         const assistantMessage: Message = {
           id: (Date.now() + Math.random()).toString(),
           type: 'assistant',
@@ -2147,13 +2165,15 @@ function CreatePageContent() {
       if (error instanceof DOMException && error.name === 'AbortError') return
       console.error('Beat Maker generation error:', error)
       updateGeneration(genId, { status: 'failed', error: error instanceof Error ? error.message : 'Unknown error' })
-      setMessages(prev =>
-        prev.map(msg =>
-          msg.id === generatingMessage.id || msg.generationId === genId
-            ? { ...msg, isGenerating: false, content: '❌ Beat generation failed. Please try again.' }
-            : msg
+      if (!isStale()) {
+        setMessages(prev =>
+          prev.map(msg =>
+            msg.id === generatingMessage.id || msg.generationId === genId
+              ? { ...msg, isGenerating: false, content: '❌ Beat generation failed. Please try again.' }
+              : msg
+          )
         )
-      )
+      }
       refreshCredits()
       window.dispatchEvent(new Event('credits:refresh'))
     } finally {
