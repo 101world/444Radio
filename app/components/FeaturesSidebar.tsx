@@ -1,6 +1,6 @@
 'use client'
 
-import { Music, Sparkles, Repeat, Image as ImageIcon, Edit3, Rocket, Upload, X, RotateCcw, Mic, Zap, Film, Scissors, Lightbulb, ChevronLeft, ChevronDown, Plus, Volume2, Layers, AudioLines, RefreshCw } from 'lucide-react'
+import { Music, Sparkles, Repeat, Image as ImageIcon, Edit3, Rocket, Upload, X, RotateCcw, Mic, Zap, Film, Scissors, Lightbulb, ChevronLeft, Plus, Volume2, Layers, AudioLines, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 
 interface FeaturesSidebarProps {
@@ -89,80 +89,297 @@ export default function FeaturesSidebar({
   const [showIdeas, setShowIdeas] = useState(false)
   const [ideasView, setIdeasView] = useState<'tags' | 'type' | 'genre' | 'generating'>('tags')
   const [promptType, setPromptType] = useState<'song' | 'beat'>('song')
-  const [generateOpen, setGenerateOpen] = useState(true)
-  const [effectsOpen, setEffectsOpen] = useState(false)
 
   if (!isOpen) return null
+
+  const features = [
+    {
+      icon: Music,
+      label: 'Music',
+      description: 'Generate AI music',
+      color: 'cyan',
+      active: selectedType === 'music' && !isInstrumental,
+      cost: 2,
+      onClick: () => { onSelectType('music'); if (isInstrumental) onToggleInstrumental() },
+    },
+    {
+      icon: Music,
+      label: 'Instrumental',
+      description: 'AI music without vocals',
+      color: 'purple',
+      active: selectedType === 'music' && isInstrumental,
+      cost: 2,
+      onClick: () => { onSelectType('music'); if (!isInstrumental) onToggleInstrumental() },
+    },
+    {
+      icon: AudioLines,
+      label: 'Beat Maker',
+      description: 'AI instrumentals & samples',
+      color: 'cyan',
+      active: false,
+      cost: 2,
+      onClick: onShowBeatMaker,
+    },
+    {
+      icon: Edit3,
+      label: 'Lyrics',
+      description: 'Write & edit lyrics',
+      color: 'cyan',
+      active: !!(customTitle || genre || customLyrics || bpm),
+      onClick: onShowLyrics,
+      hidden: selectedType !== 'music' || isInstrumental,
+    },
+    {
+      icon: Repeat,
+      label: 'Remix Audio',
+      description: 'Audio-to-Audio Remix',
+      color: 'cyan',
+      active: false,
+      cost: 10,
+      onClick: onShowRemix,
+    },
+    {
+      icon: RefreshCw,
+      label: 'Remake',
+      description: 'Reimagine existing tracks',
+      color: 'purple',
+      active: false,
+      onClick: onShowLyrics,
+    },
+    {
+      icon: Sparkles,
+      label: 'Effects',
+      description: 'Sound effects',
+      color: 'purple',
+      active: false,
+      cost: 2,
+      onClick: onShowEffects,
+    },
+    {
+      icon: Repeat,
+      label: 'Loops',
+      description: 'Fixed BPM loops',
+      color: 'cyan',
+      active: false,
+      cost: 6,
+      onClick: onShowLoopers,
+    },
+    {
+      icon: Music,
+      label: 'Chords',
+      description: 'Chord & rhythm control',
+      color: 'purple',
+      active: false,
+      cost: 4,
+      onClick: onShowMusiConGen,
+    },
+    {
+      icon: Scissors,
+      label: 'Split Stems',
+      description: 'Vocals, drums, bass & more',
+      color: 'purple',
+      active: false,
+      cost: 0,
+      onClick: onShowStemSplit,
+    },
+    {
+      icon: Film,
+      label: 'Visualizer',
+      description: 'Text/Image to video',
+      color: 'purple',
+      active: false,
+      onClick: onShowVisualizer,
+    },
+    {
+      icon: Mic,
+      label: 'Lip-Sync',
+      description: 'Image + Audio to video',
+      color: 'pink',
+      active: false,
+      onClick: onShowLipSync,
+    },
+    {
+      icon: Layers,
+      label: 'Extract',
+      description: 'Extract audio from video/audio',
+      color: 'cyan',
+      active: false,
+      cost: 1,
+      onClick: onShowExtract,
+    },
+    {
+      icon: Rocket,
+      label: 'Release',
+      description: 'Publish to feed',
+      color: 'cyan',
+      active: false,
+      onClick: onOpenRelease,
+    },
+    {
+      icon: Mic,
+      label: 'Autotune',
+      description: 'Pitch correct vocals',
+      color: 'purple',
+      active: false,
+      cost: 1,
+      onClick: onShowAutotune,
+    },
+    {
+      icon: Upload,
+      label: 'Upload',
+      description: 'Upload audio/video',
+      color: 'purple',
+      active: false,
+      onClick: onShowUpload,
+    },
+    {
+      icon: ImageIcon,
+      label: 'Cover Art',
+      description: 'AI album artwork',
+      color: 'cyan',
+      active: selectedType === 'image',
+      cost: 1,
+      onClick: () => onSelectType('image'),
+    },
+    {
+      icon: Volume2,
+      label: 'Audio Boost',
+      description: 'Mix & master your track',
+      color: 'orange',
+      active: false,
+      cost: 1,
+      onClick: onShowAudioBoost,
+    },
+    {
+      icon: Film,
+      label: 'Video to Audio',
+      description: 'Synced SFX from video',
+      color: 'cyan',
+      active: false,
+      cost: 4,
+      onClick: onShowVideoToAudio,
+    },
+  ]
 
   return (
     <>
       {/* Mobile backdrop overlay */}
       <div className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50" onClick={onClose} />
 
-      {/* Sidebar panel */}
+      {/* Sidebar panel — fullscreen on mobile, docked sidebar on desktop */}
       <div className="fixed inset-0 md:inset-auto md:left-14 md:top-0 md:h-screen md:w-64 bg-black/95 backdrop-blur-2xl md:border-r md:border-white/10 z-50 md:z-40 flex flex-col animate-slideInLeft">
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 h-11 border-b border-white/10 shrink-0">
-          <div className="flex items-center gap-2">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-cyan-400">
-              <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
-              <rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
-              <rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
-              <rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 h-12 border-b border-white/10 shrink-0">
+        <div className="flex items-center gap-2">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-cyan-400">
+            <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
+            <rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
+            <rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
+            <rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
+          </svg>
+          <span className="text-white font-bold text-sm">Features</span>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+        >
+          <X size={16} className="text-gray-400" />
+        </button>
+      </div>
+
+      {/* Credits + Mode Toggle */}
+      <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
+          <Zap size={12} className="text-cyan-400" />
+          <span className="text-white font-bold text-xs">
+            {isLoadingCredits ? '...' : userCredits}
+          </span>
+        </div>
+        <div className="flex gap-1 flex-1">
+          <button
+            onClick={() => { if (isInstrumental) onToggleInstrumental() }}
+            className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${
+              !isInstrumental
+                ? 'bg-cyan-500 text-black'
+                : 'bg-white/5 text-gray-400 hover:bg-white/10'
+            }`}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" x2="12" y1="19" y2="22"/>
             </svg>
-            <span className="text-white font-bold text-sm">Features</span>
-          </div>
-          <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors">
-            <X size={16} className="text-gray-400" />
+            Vocal
+          </button>
+          <button
+            onClick={() => { if (!isInstrumental) onToggleInstrumental() }}
+            className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${
+              isInstrumental
+                ? 'bg-purple-500 text-white'
+                : 'bg-white/5 text-gray-400 hover:bg-white/10'
+            }`}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="4" width="20" height="16" rx="2"/>
+              <line x1="8" x2="8" y1="4" y2="14"/>
+              <line x1="16" x2="16" y1="4" y2="14"/>
+              <line x1="12" x2="12" y1="4" y2="14"/>
+            </svg>
+            Inst
           </button>
         </div>
+      </div>
 
-        {/* Prompt Input — Prominent */}
-        <div className="px-3 py-3 border-b border-white/10 shrink-0">
-          <textarea
-            value={promptText}
-            onChange={(e) => onPromptChange(e.target.value)}
-            placeholder="Describe your music..."
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-500 resize-none focus:outline-none focus:border-cyan-500/50 transition-colors"
-            rows={4}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                onSubmitPrompt()
-              }
-            }}
-          />
-          <div className="flex items-center justify-between mt-2">
-            <div className="flex items-center gap-1">
-              <button
-                onClick={onToggleRecording}
-                className={`p-1.5 rounded-full transition-all ${
-                  isRecording ? 'bg-red-500 animate-pulse' : 'bg-white/10 hover:bg-white/20'
-                }`}
-              >
-                <Mic size={13} className={isRecording ? 'text-white' : 'text-gray-400'} />
-              </button>
-              <button
-                onClick={() => { setShowIdeas(!showIdeas); setIdeasView('tags') }}
-                className={`p-1.5 rounded-full transition-all ${
-                  showIdeas ? 'bg-yellow-500/20 text-yellow-300' : 'bg-white/10 hover:bg-white/20 text-gray-400 hover:text-yellow-400'
-                }`}
-                title="Ideas & Tags"
-              >
-                <Lightbulb size={13} />
-              </button>
-            </div>
+      {/* Prompt Input */}
+      <div className="px-3 py-2 border-b border-white/10 shrink-0">
+        <textarea
+          value={promptText}
+          onChange={(e) => onPromptChange(e.target.value)}
+          placeholder="Describe your music..."
+          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-gray-500 resize-none focus:outline-none focus:border-cyan-500/50 transition-colors"
+          rows={3}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault()
+              onSubmitPrompt()
+            }
+          }}
+        />
+        <div className="flex items-center justify-between mt-1.5">
+          <div className="flex items-center gap-1">
             <button
-              onClick={onSubmitPrompt}
-              disabled={isGenerating || !promptText.trim()}
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-lg text-black text-xs font-bold hover:from-cyan-500 hover:to-cyan-300 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              onClick={onToggleRecording}
+              className={`p-1.5 rounded-full transition-all ${
+                isRecording
+                  ? 'bg-red-500 animate-pulse'
+                  : 'bg-white/10 hover:bg-white/20'
+              }`}
             >
-              <Zap size={11} />
-              Generate
+              <Mic size={12} className={isRecording ? 'text-white' : 'text-gray-400'} />
+            </button>
+            <button
+              onClick={() => { setShowIdeas(!showIdeas); setIdeasView('tags') }}
+              className={`p-1.5 rounded-full transition-all ${
+                showIdeas
+                  ? 'bg-yellow-500/20 text-yellow-300'
+                  : 'bg-white/10 hover:bg-white/20 text-gray-400 hover:text-yellow-400'
+              }`}
+              title="Ideas & Tags"
+            >
+              <Lightbulb size={12} />
             </button>
           </div>
+          <button
+            onClick={onSubmitPrompt}
+            disabled={isGenerating || !promptText.trim()}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-lg text-black text-[10px] font-bold hover:from-cyan-500 hover:to-cyan-300 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <Zap size={10} />
+            Generate
+          </button>
         </div>
+      </div>
 
         {/* ─── Ideas / Tags Panel ─── */}
         {showIdeas && (
@@ -299,156 +516,59 @@ export default function FeaturesSidebar({
           </div>
         )}
 
-        {/* ─── Feature List (Categorized) ─── */}
-        <div className="flex-1 overflow-y-auto px-2.5 py-2 scrollbar-thin">
-
-          {/* ▸ Generate Music — Dropdown */}
-          <button
-            onClick={() => setGenerateOpen(!generateOpen)}
-            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-white hover:bg-white/5 transition-all"
-          >
-            <Music size={14} className="text-cyan-400" />
-            <span className="flex-1 text-left text-[11px] font-semibold tracking-wide uppercase">Generate Music</span>
-            <ChevronDown size={12} className={`text-gray-500 transition-transform duration-200 ${generateOpen ? '' : '-rotate-90'}`} />
-          </button>
-          {generateOpen && (
-            <div className="ml-5 space-y-px mb-1.5">
-              <button
-                onClick={() => { onSelectType('music'); if (isInstrumental) onToggleInstrumental() }}
-                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-[11px] transition-all ${
-                  !isInstrumental && selectedType === 'music'
-                    ? 'bg-cyan-500/15 text-cyan-300'
-                    : 'text-gray-400 hover:bg-white/5 hover:text-white'
-                }`}
-              >
-                <Music size={12} className="shrink-0" />
-                <span className="flex-1 text-left">Music</span>
-                <span className="text-[9px] text-gray-600">-2</span>
-              </button>
-              <button
-                onClick={() => { onSelectType('music'); if (!isInstrumental) onToggleInstrumental() }}
-                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-[11px] transition-all ${
-                  isInstrumental && selectedType === 'music'
-                    ? 'bg-purple-500/15 text-purple-300'
-                    : 'text-gray-400 hover:bg-white/5 hover:text-white'
-                }`}
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="8" x2="8" y1="4" y2="14"/><line x1="16" x2="16" y1="4" y2="14"/><line x1="12" x2="12" y1="4" y2="14"/></svg>
-                <span className="flex-1 text-left">Instrumental</span>
-                <span className="text-[9px] text-gray-600">-2</span>
-              </button>
-              <button onClick={onShowBeatMaker} className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-[11px] text-gray-400 hover:bg-white/5 hover:text-white transition-all">
-                <AudioLines size={12} className="shrink-0" />
-                <span className="flex-1 text-left">Beat Maker</span>
-                <span className="text-[9px] text-gray-600">-2</span>
-              </button>
-              <button onClick={onShowLyrics} className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-[11px] text-gray-400 hover:bg-white/5 hover:text-white transition-all">
-                <Edit3 size={12} className="shrink-0" />
-                <span className="flex-1 text-left">Lyrics</span>
-              </button>
-              <button onClick={onShowRemix} className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-[11px] text-gray-400 hover:bg-white/5 hover:text-white transition-all">
-                <Repeat size={12} className="shrink-0" />
-                <span className="flex-1 text-left">Remix Audio</span>
-                <span className="text-[9px] text-gray-600">-10</span>
-              </button>
-              <button onClick={onShowLyrics} className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-[11px] text-gray-400 hover:bg-white/5 hover:text-white transition-all">
-                <RefreshCw size={12} className="shrink-0" />
-                <span className="flex-1 text-left">Remake</span>
-              </button>
-            </div>
-          )}
-
-          {/* ── Individual Features ── */}
-          <div className="space-y-px my-1">
-            <button onClick={onShowStemSplit} className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-transparent text-gray-400 hover:bg-purple-500/10 hover:text-purple-300 transition-all">
-              <Scissors size={13} className="shrink-0" />
-              <div className="flex-1 text-left"><div className="text-[11px] font-medium leading-tight">Split Stems</div><div className="text-[9px] text-gray-600 leading-none">Vocals, drums, bass & more</div></div>
-            </button>
-            <button onClick={onShowVisualizer} className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-transparent text-gray-400 hover:bg-purple-500/10 hover:text-purple-300 transition-all">
-              <Film size={13} className="shrink-0" />
-              <div className="flex-1 text-left"><div className="text-[11px] font-medium leading-tight">Visualizer</div><div className="text-[9px] text-gray-600 leading-none">Text/Image to video</div></div>
-            </button>
-            <button onClick={onShowLipSync} className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-transparent text-gray-400 hover:bg-pink-500/10 hover:text-pink-300 transition-all">
-              <Mic size={13} className="shrink-0" />
-              <div className="flex-1 text-left"><div className="text-[11px] font-medium leading-tight">Lip-Sync</div><div className="text-[9px] text-gray-600 leading-none">Image + Audio to video</div></div>
-            </button>
-            <button onClick={onShowExtract} className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-transparent text-gray-400 hover:bg-cyan-500/10 hover:text-cyan-300 transition-all">
-              <Layers size={13} className="shrink-0" />
-              <div className="flex-1 text-left"><div className="text-[11px] font-medium leading-tight">Extract</div><div className="text-[9px] text-gray-600 leading-none">Audio from video/audio</div></div>
-              <span className="text-[9px] text-gray-600">-1</span>
-            </button>
-            <button onClick={onOpenRelease} className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-transparent text-gray-400 hover:bg-cyan-500/10 hover:text-cyan-300 transition-all">
-              <Rocket size={13} className="shrink-0" />
-              <div className="flex-1 text-left"><div className="text-[11px] font-medium leading-tight">Release</div><div className="text-[9px] text-gray-600 leading-none">Publish to feed</div></div>
-            </button>
-            <button onClick={onShowAutotune} className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-transparent text-gray-400 hover:bg-purple-500/10 hover:text-purple-300 transition-all">
-              <Mic size={13} className="shrink-0" />
-              <div className="flex-1 text-left"><div className="text-[11px] font-medium leading-tight">Autotune</div><div className="text-[9px] text-gray-600 leading-none">Pitch correct vocals</div></div>
-              <span className="text-[9px] text-gray-600">-1</span>
-            </button>
-            <button onClick={onShowUpload} className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-transparent text-gray-400 hover:bg-purple-500/10 hover:text-purple-300 transition-all">
-              <Upload size={13} className="shrink-0" />
-              <div className="flex-1 text-left"><div className="text-[11px] font-medium leading-tight">Upload</div><div className="text-[9px] text-gray-600 leading-none">Upload audio/video</div></div>
-            </button>
-            <button
-              onClick={() => onSelectType('image')}
-              className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg border transition-all ${
-                selectedType === 'image'
+        {/* Feature Buttons */}
+        <div className="flex-1 overflow-y-auto px-3 py-1.5 scrollbar-thin">
+          <div className="space-y-0.5">
+            {features.filter(f => !f.hidden).map((feature) => {
+              const Icon = feature.icon
+              const colorMap: Record<string, string> = {
+                cyan: feature.active
                   ? 'bg-cyan-500/15 border-cyan-400/50 text-cyan-300'
-                  : 'border-transparent text-gray-400 hover:bg-cyan-500/10 hover:text-cyan-300'
-              }`}
-            >
-              <ImageIcon size={13} className="shrink-0" />
-              <div className="flex-1 text-left"><div className="text-[11px] font-medium leading-tight">Cover Art</div><div className="text-[9px] text-gray-600 leading-none">AI album artwork</div></div>
-              <span className="text-[9px] text-gray-600">-1</span>
-            </button>
+                  : 'border-transparent text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-400/30',
+                purple: feature.active
+                  ? 'bg-purple-500/15 border-purple-400/50 text-purple-300'
+                  : 'border-transparent text-purple-400 hover:bg-purple-500/10 hover:border-purple-400/30',
+                orange: feature.active
+                  ? 'bg-orange-500/15 border-orange-400/50 text-orange-300'
+                  : 'border-transparent text-orange-400 hover:bg-orange-500/10 hover:border-orange-400/30',
+                pink: feature.active
+                  ? 'bg-pink-500/15 border-pink-400/50 text-pink-300'
+                  : 'border-transparent text-pink-400 hover:bg-pink-500/10 hover:border-pink-400/30',
+              }
+
+              return (
+                <button
+                  key={feature.label}
+                  onClick={feature.onClick}
+                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg border transition-all group ${colorMap[feature.color]}`}
+                >
+                  <Icon size={14} className="shrink-0 opacity-80" />
+                  <div className="flex-1 text-left min-w-0">
+                    <div className="text-[11px] font-medium leading-tight">{feature.label}</div>
+                    <div className="text-[9px] text-gray-500 leading-none">{feature.description}</div>
+                  </div>
+                  {feature.cost !== undefined && feature.cost > 0 && (
+                    <span className="text-[9px] text-gray-500 tabular-nums shrink-0">-{feature.cost}</span>
+                  )}
+                </button>
+              )
+            })}
           </div>
 
-          {/* ▸ Effects — Dropdown */}
-          <button
-            onClick={() => setEffectsOpen(!effectsOpen)}
-            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-white hover:bg-white/5 transition-all"
-          >
-            <Sparkles size={14} className="text-purple-400" />
-            <span className="flex-1 text-left text-[11px] font-semibold tracking-wide uppercase">Effects</span>
-            <ChevronDown size={12} className={`text-gray-500 transition-transform duration-200 ${effectsOpen ? '' : '-rotate-90'}`} />
-          </button>
-          {effectsOpen && (
-            <div className="ml-5 space-y-px mb-1.5">
-              <button onClick={onShowEffects} className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-[11px] text-gray-400 hover:bg-white/5 hover:text-white transition-all">
-                <Sparkles size={12} className="shrink-0" />
-                <span className="flex-1 text-left">SFX</span>
-                <span className="text-[9px] text-gray-600">-2</span>
-              </button>
-              <button onClick={onShowLoopers} className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-[11px] text-gray-400 hover:bg-white/5 hover:text-white transition-all">
-                <Repeat size={12} className="shrink-0" />
-                <span className="flex-1 text-left">Loops</span>
-                <span className="text-[9px] text-gray-600">-6</span>
-              </button>
-              <button onClick={onShowMusiConGen} className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-[11px] text-gray-400 hover:bg-white/5 hover:text-white transition-all">
-                <Music size={12} className="shrink-0" />
-                <span className="flex-1 text-left">Chords</span>
-                <span className="text-[9px] text-gray-600">-4</span>
-              </button>
-              <button onClick={onShowAudioBoost} className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-[11px] text-gray-400 hover:bg-white/5 hover:text-white transition-all">
-                <Volume2 size={12} className="shrink-0" />
-                <span className="flex-1 text-left">Audio Boost</span>
-                <span className="text-[9px] text-gray-600">-1</span>
-              </button>
-              <button onClick={onShowExtract} className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-[11px] text-gray-400 hover:bg-white/5 hover:text-white transition-all">
-                <Layers size={12} className="shrink-0" />
-                <span className="flex-1 text-left">Extract</span>
-                <span className="text-[9px] text-gray-600">-1</span>
-              </button>
-            </div>
-          )}
-
           {/* Utilities */}
-          <div className="mt-2 pt-2 border-t border-white/10 flex items-center gap-1.5">
-            <button onClick={onShowDeletedChats} className="p-2 rounded-lg border border-white/10 text-green-400 hover:bg-green-500/10 transition-all" title="Chat History">
+          <div className="mt-3 pt-2 border-t border-white/10 flex items-center gap-1.5">
+            <button
+              onClick={onShowDeletedChats}
+              className="p-2 rounded-lg border border-white/10 text-green-400 hover:bg-green-500/10 transition-all"
+              title="Chat History"
+            >
               <RotateCcw size={14} />
             </button>
-            <button onClick={onClearChat} className="p-2 rounded-lg border border-white/10 text-green-400 hover:bg-green-500/10 transition-all" title="New Chat">
+            <button
+              onClick={onClearChat}
+              className="p-2 rounded-lg border border-white/10 text-green-400 hover:bg-green-500/10 transition-all"
+              title="New Chat"
+            >
               <Plus size={14} />
             </button>
           </div>
