@@ -202,6 +202,11 @@ function CreatePageContent() {
   const [stemPlayingId, setStemPlayingId] = useState<string | null>(null)
   const stemAudioRef = useRef<HTMLAudioElement | null>(null)
 
+  // Chat session ID — bumped on every "New Chat" so stale generation callbacks
+  // (which captured a previous session) can detect they belong to an old chat and
+  // skip writing results into the new chat's messages.
+  const chatSessionRef = useRef<number>(1)
+
   // Abort controllers for cancellable generations
   const abortControllersRef = useRef<Map<string, AbortController>>(new Map())
   // Replicate prediction IDs for server-side cancellation
@@ -533,6 +538,29 @@ function CreatePageContent() {
   // Centralized clear-chat handler: archive → reset messages → purge completed generations
   const handleClearChat = () => {
     if (!confirm('Start a new chat? Your current session will be saved to Chat History.')) return
+
+    // ── 1. Bump session so in-flight generation callbacks become stale ──
+    chatSessionRef.current += 1
+    console.log('[NewChat] Session bumped to', chatSessionRef.current)
+
+    // ── 2. Abort every in-progress generation (network + Replicate) ──
+    abortControllersRef.current.forEach((controller, msgId) => {
+      controller.abort()
+      // Best-effort server-side cancel
+      const predictionId = predictionIdsRef.current.get(msgId)
+      if (predictionId) {
+        fetch('/api/generate/cancel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ predictionId })
+        }).catch(() => {})
+      }
+    })
+    abortControllersRef.current.clear()
+    predictionIdsRef.current.clear()
+    pendingCancelsRef.current.clear()
+
+    // ── 3. Archive current messages to localStorage history ──
     try {
       const archives = localStorage.getItem('444radio-chat-archives')
       const archiveList = archives ? JSON.parse(archives) : []
@@ -548,20 +576,35 @@ function CreatePageContent() {
     } catch (error) {
       console.error('Failed to archive chat:', error)
     }
-    // Clear server-side messages
+
+    // ── 4. Clear server-side messages ──
     fetch('/api/chat/messages', { method: 'DELETE' }).catch(() => {})
-    // Reset tracked state
+
+    // ── 5. Reset ALL generation tracking state ──
+    setActiveGenerations(new Set())
+    setGenerationQueue([])
     syncedIdsRef.current = new Set()
     prevMessageCountRef.current = 1
-    // Reset messages to welcome
+
+    // ── 6. Purge ALL generations (including in-progress) so sync effect can't restore ──
+    // clearCompleted only removes completed/failed — we need to wipe everything
+    clearCompleted() // completed + failed
+    // Also remove any still-generating items from the queue context
+    generations.forEach(gen => {
+      if (gen.status === 'queued' || gen.status === 'generating') {
+        updateGeneration(gen.id, { status: 'failed', error: 'New chat started' })
+      }
+    })
+    // Now clear them all
+    clearCompleted()
+
+    // ── 7. Reset messages to fresh welcome ──
     setMessages([{
       id: '1',
       type: 'assistant',
       content: '\u{1F44B} Hey! I\'m your AI music studio assistant. What would you like to create today?',
       timestamp: new Date()
     }])
-    // Purge completed/failed generations so the sync effect doesn't restore them
-    clearCompleted()
   }
 
   // Cancel an in-progress generation
@@ -608,11 +651,22 @@ function CreatePageContent() {
   }
 
   // Sync generation queue results with messages on mount and when generations change
+  // Track which session each generation belongs to, so we don't inject old gen results
+  // into a new chat.
+  const genSessionMap = useRef<Map<string, number>>(new Map())
   useEffect(() => {
     console.log('[Sync] Checking generation queue for completed generations:', generations.length)
     
     // Check if any generations completed while user was away or during generation
     generations.forEach(gen => {
+      // If this generation wasn't started in the current session, skip it.
+      // This prevents old generations from leaking into a new chat.
+      const genSession = genSessionMap.current.get(gen.id)
+      if (genSession !== undefined && genSession !== chatSessionRef.current) {
+        console.log('[Sync] Skipping generation from old session:', gen.id, 'session:', genSession, 'current:', chatSessionRef.current)
+        return
+      }
+
       if ((gen.status === 'completed' || gen.status === 'failed') && gen.result) {
         setMessages(prev => {
           // First, try to find message by generationId (exact match)
@@ -1188,6 +1242,11 @@ function CreatePageContent() {
   ) => {
     console.log('[Generation] Starting generation:', { messageId, type, params })
     
+    // Capture the current chat session \u2014 if it changes (user clicked \"New Chat\"),
+    // all setMessages calls below become no-ops so results don't leak into the new chat.
+    const mySession = chatSessionRef.current
+    const isStaleSession = () => chatSessionRef.current !== mySession
+    
     // Reuse abort controller if already created (e.g. during auto-fill in handleGenerate),
     // otherwise create a new one (for image/effects or other callers)
     let abortController = abortControllersRef.current.get(messageId)
@@ -1208,6 +1267,8 @@ function CreatePageContent() {
       prompt: params.prompt,
       title: params.customTitle || params.prompt.substring(0, 50)
     })
+    // Record which chat session this generation belongs to
+    genSessionMap.current.set(genId, mySession)
     
     // Link the message to the generation queue item
     setMessages(prev => prev.map(msg =>
@@ -1312,22 +1373,27 @@ function CreatePageContent() {
       }
 
       // Update message with result - mark as NOT generating
-      setMessages(prev => {
-        console.log('[Generation] Updating message', messageId, 'with result:', result)
-        return prev.map(msg => 
-          msg.id === messageId || msg.generationId === genId
-            ? {
-                ...msg,
-                isGenerating: false,
-                content: result.error ? '❌ 444 Radio locking in. Please try again.' : (type === 'music' ? '✅ Track generated!' : '✅ Cover art generated!'),
-                result: result.error ? undefined : result
-              }
-            : msg
-        )
-      })
+      // Guard: skip if user started a new chat (session changed)
+      if (!isStaleSession()) {
+        setMessages(prev => {
+          console.log('[Generation] Updating message', messageId, 'with result:', result)
+          return prev.map(msg => 
+            msg.id === messageId || msg.generationId === genId
+              ? {
+                  ...msg,
+                  isGenerating: false,
+                  content: result.error ? '❌ 444 Radio locking in. Please try again.' : (type === 'music' ? '✅ Track generated!' : '✅ Cover art generated!'),
+                  result: result.error ? undefined : result
+                }
+              : msg
+          )
+        })
+      } else {
+        console.log('[Generation] Skipping message update — chat session changed (old:', mySession, 'current:', chatSessionRef.current, ')')
+      }
 
       // Add assistant response
-      if (!result.error) {
+      if (!result.error && !isStaleSession()) {
         const assistantMessage: Message = {
           id: (Date.now() + Math.random()).toString(),
           type: 'assistant',
@@ -1354,12 +1420,14 @@ function CreatePageContent() {
         error: error instanceof Error ? error.message : 'Unknown error'
       })
       
-      // Mark message as failed and NOT generating
-      setMessages(prev => prev.map(msg => 
-        msg.id === messageId || msg.generationId === genId
-          ? { ...msg, isGenerating: false, content: '❌ Generation failed. Please try again.' }
-          : msg
-      ))
+      // Mark message as failed and NOT generating (skip if session changed)
+      if (!isStaleSession()) {
+        setMessages(prev => prev.map(msg => 
+          msg.id === messageId || msg.generationId === genId
+            ? { ...msg, isGenerating: false, content: '❌ Generation failed. Please try again.' }
+            : msg
+        ))
+      }
       
       // Refetch credits in case of error
       refreshCredits()
@@ -1874,6 +1942,7 @@ function CreatePageContent() {
       prompt: resoundParams.prompt,
       title: resoundParams.title,
     })
+    genSessionMap.current.set(genId, chatSessionRef.current)
     setMessages(prev => prev.map(msg =>
       msg.id === generatingMessage.id ? { ...msg, generationId: genId } : msg
     ))
@@ -2088,6 +2157,7 @@ function CreatePageContent() {
       prompt: `Split ${stem} from: ${splitStemsAudioUrl}`,
       title: `${stem.charAt(0).toUpperCase() + stem.slice(1)} Stem`
     })
+    genSessionMap.current.set(genId, chatSessionRef.current)
     updateGeneration(genId, { status: 'generating' })
 
     // Create a generating message in the chat with progress bar
@@ -4486,6 +4556,7 @@ function CreatePageContent() {
               console.error('Failed to archive current chat:', error)
             }
             // Load the selected history chat and clear stale generations
+            chatSessionRef.current += 1 // Bump session so in-flight gens don't write into restored chat
             setMessages(chat.messages)
             clearCompleted()
             setShowDeletedChatsModal(false)
