@@ -683,6 +683,12 @@ input[placeholder*="Video"]:focus {
   }
 }
 
+/* Metronome pendulum swing animation */
+@keyframes metronomeSwing {
+  0% { transform: rotate(-15deg); }
+  100% { transform: rotate(15deg); }
+}
+
 /* Cyan Slider Styling */
 .slider-cyan::-webkit-slider-thumb {
   appearance: none;

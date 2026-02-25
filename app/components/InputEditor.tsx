@@ -7301,6 +7301,49 @@ $: s("bd:3").bank("RolandTR808")
   const [exampleSearch, setExampleSearch] = useState('')
   const [selectedExample, setSelectedExample] = useState<{ code: string; label: string } | null>(null)
 
+  // Metronome state
+  const [metronomeEnabled, setMetronomeEnabled] = useState(false)
+  const metronomeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const metronomeBeatRef = useRef(0) // tracks which beat we're on (0 = downbeat)
+
+  // Metronome click — uses Web Audio API oscillator for a short beep
+  useEffect(() => {
+    if (metronomeIntervalRef.current) {
+      clearInterval(metronomeIntervalRef.current)
+      metronomeIntervalRef.current = null
+    }
+    if (!metronomeEnabled || !isPlaying) {
+      metronomeBeatRef.current = 0
+      return
+    }
+    const bpm = nodeEditorRef.current?.bpm || 72
+    const msPerBeat = 60000 / bpm
+    const playClick = () => {
+      try {
+        const wa = webaudioRef.current
+        if (!wa?.getAudioContext) return
+        const ctx = wa.getAudioContext()
+        if (ctx.state === 'suspended') return
+        const isDownbeat = metronomeBeatRef.current % 4 === 0
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.frequency.value = isDownbeat ? 1200 : 800
+        gain.gain.setValueAtTime(isDownbeat ? 0.12 : 0.06, ctx.currentTime)
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06)
+        osc.start(ctx.currentTime)
+        osc.stop(ctx.currentTime + 0.06)
+        metronomeBeatRef.current++
+      } catch { /* silent */ }
+    }
+    playClick() // immediate first beat
+    metronomeIntervalRef.current = setInterval(playClick, msPerBeat)
+    return () => {
+      if (metronomeIntervalRef.current) clearInterval(metronomeIntervalRef.current)
+    }
+  }, [metronomeEnabled, isPlaying]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Vibe chat state
   const [vibeMessages, setVibeMessages] = useState<Array<{ role: 'user' | 'ai'; text: string }>>([])
   const [vibeInput, setVibeInput] = useState('')
@@ -9006,6 +9049,34 @@ $: s("bd:3").bank("RolandTR808")
               <><Download size={9} /> bounce</>
             )}
           </button>
+
+          {/* Metronome toggle (SVG pendulum icon, animated based on BPM when active) */}
+          <button
+            onClick={() => setMetronomeEnabled(p => !p)}
+            className={`relative w-7 h-7 flex items-center justify-center rounded-md transition-all cursor-pointer border ${
+              metronomeEnabled
+                ? 'bg-amber-500/15 text-amber-400 border-amber-500/25 shadow-[0_0_8px_rgba(245,158,11,0.15)]'
+                : 'text-white/25 hover:text-white/50 border-white/[0.06]'
+            }`}
+            title={metronomeEnabled ? `Metronome ON (${nodeEditorRef.current?.bpm || 72} BPM) — click to mute` : 'Metronome OFF — click to enable'}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              style={metronomeEnabled && isPlaying ? {
+                animation: `metronomeSwing ${60 / (nodeEditorRef.current?.bpm || 72)}s ease-in-out infinite alternate`,
+                transformOrigin: '12px 20px',
+              } : undefined}>
+              {/* Metronome body (triangle) */}
+              <path d="M7 22L12 2L17 22" />
+              {/* Pendulum arm */}
+              <line x1="12" y1="22" x2="12" y2="8" />
+              {/* Pendulum weight */}
+              <circle cx="12" cy="8" r="2" fill="currentColor" />
+              {/* Base */}
+              <line x1="6" y1="22" x2="18" y2="22" />
+            </svg>
+            {metronomeEnabled && (
+              <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-amber-400 shadow-[0_0_4px_rgba(245,158,11,0.5)]" />
+            )}
+          </button>
         </div>
 
         {/* ── RIGHT: Tools + panels ── */}
@@ -9048,6 +9119,11 @@ $: s("bd:3").bank("RolandTR808")
 
           {/* Panel tabs */}
           <div className="flex items-center rounded-md overflow-hidden border border-white/[0.06]">
+            <button onClick={() => { if (showPanel && activePanel === 'examples') setShowPanel(false); else { setShowPanel(true); setActivePanel('examples') } }}
+              className={`px-2.5 py-1.5 transition-all cursor-pointer ${showPanel && activePanel === 'examples' ? 'bg-cyan-500/15 text-cyan-400' : 'text-white/25 hover:text-white/50'}`}
+              title="Examples">
+              <Sparkles size={15} />
+            </button>
             <button onClick={() => { if (showPanel && activePanel === 'sounds') setShowPanel(false); else { setShowPanel(true); setActivePanel('sounds') } }}
               className={`px-2.5 py-1.5 transition-all cursor-pointer ${showPanel && activePanel === 'sounds' ? 'bg-cyan-500/15 text-cyan-400' : 'text-white/25 hover:text-white/50'}`}
               title="Sounds">
