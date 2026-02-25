@@ -528,7 +528,7 @@ export default function LibraryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white md:pl-20 md:pr-28">
+    <div className="min-h-screen bg-black text-white md:pl-14 md:pr-28">
       {/* Ambient Cyan Glow Overlays */}
       <div className="fixed inset-0 pointer-events-none z-0" aria-hidden="true">
         <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-cyan-500/[0.03] rounded-full blur-[120px]" />

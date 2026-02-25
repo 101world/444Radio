@@ -134,32 +134,32 @@ export default function DockedSidebar() {
   return (
     <aside 
       className={`hidden md:flex fixed left-0 top-0 h-screen bg-black/95 backdrop-blur-2xl border-r border-white/10 transition-all duration-300 ease-in-out z-50 flex-col ${
-        forceHidden ? '-translate-x-full opacity-0 pointer-events-none' : isExpanded ? 'w-64' : 'w-20'
+        forceHidden ? '-translate-x-full opacity-0 pointer-events-none' : isExpanded ? 'w-56' : 'w-14'
       }`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
       {/* Logo / Brand */}
-      <div className="flex items-center justify-center h-20 border-b border-white/10">
-        <Link href="/" className="flex items-center gap-3">
-          <div className={`w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-lg flex items-center justify-center font-bold text-white text-xl transition-all ${
+      <div className="flex items-center justify-center h-14 border-b border-white/10">
+        <Link href="/" className="flex items-center gap-2">
+          <div className={`w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-md flex items-center justify-center font-bold text-white text-base transition-all ${
             isExpanded ? 'scale-100' : 'scale-90'
           }`}>
             4
           </div>
           {isExpanded && (
-            <span className="text-white font-bold text-xl whitespace-nowrap">444Radio</span>
+            <span className="text-white font-bold text-base whitespace-nowrap">444Radio</span>
           )}
         </Link>
       </div>
 
       {/* User Section */}
       {user && (
-        <div className={`px-4 py-6 border-b border-white/10 ${isExpanded ? '' : 'flex justify-center'}`}>
-          <div className="flex flex-col items-center gap-3">
+        <div className={`px-3 py-3 border-b border-white/10 ${isExpanded ? '' : 'flex justify-center'}`}>
+          <div className="flex flex-col items-center gap-2">
             {/* Avatar */}
             <div className="relative">
-              <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-cyan-500 to-blue-500 border-2 border-white/20">
+              <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-cyan-500 to-blue-500 border-2 border-white/20">
                 {avatarUrl ? (
                   <img src={avatarUrl} alt={username || 'User'} className="w-full h-full object-cover" />
                 ) : user.imageUrl ? (
@@ -200,14 +200,14 @@ export default function DockedSidebar() {
       )}
 
       {/* Navigation */}
-      <nav className="flex-1 py-6 overflow-y-auto">
-        <ul className="space-y-1 px-3">
+      <nav className="flex-1 py-2 overflow-y-auto">
+        <ul className="space-y-0.5 px-2">
           {menuItems.map((item, index) => {
             const Icon = item.icon
             const active = isActive(item.href)
             
             // Highlight styles
-            let linkClasses = 'flex items-center gap-3 px-3 py-3 rounded-xl transition-all group relative'
+            let linkClasses = 'flex items-center gap-2.5 px-2 py-2 rounded-lg transition-all group relative'
             
             if (active) {
               linkClasses += ' bg-white/20 text-white'
@@ -233,13 +233,13 @@ export default function DockedSidebar() {
                 <LinkComponent {...linkProps} className={linkClasses}>
                   {/* Icon */}
                   <div className={`flex-shrink-0 ${isExpanded ? '' : 'mx-auto'}`}>
-                    <Icon size={20} />
+                    <Icon size={16} />
                   </div>
                   
                   {/* Label - only show when expanded */}
                   {isExpanded && (
                     <>
-                      <span className="font-medium whitespace-nowrap">{item.label}</span>
+                      <span className="font-medium text-sm whitespace-nowrap">{item.label}</span>
                       {item.badge && (
                         <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${
                           item.highlight === true ? 'bg-cyan-500/20 text-cyan-300' :
@@ -267,15 +267,15 @@ export default function DockedSidebar() {
 
       {/* Features Button - Only on /create page */}
       {pathname === '/create' && (
-        <div className="px-3 py-4 border-t border-white/10">
+        <div className="px-2 py-2 border-t border-white/10">
           <button
             onClick={() => {
               window.dispatchEvent(new CustomEvent('toggle-features-sidebar'))
             }}
-            className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all group relative bg-gradient-to-r from-cyan-600/20 to-purple-500/20 border border-cyan-500/40 text-cyan-400 hover:from-cyan-600/30 hover:to-purple-500/30 hover:border-cyan-400/50`}
+            className={`w-full flex items-center gap-2.5 px-2 py-2 rounded-lg transition-all group relative bg-gradient-to-r from-cyan-600/20 to-purple-500/20 border border-cyan-500/40 text-cyan-400 hover:from-cyan-600/30 hover:to-purple-500/30 hover:border-cyan-400/50`}
           >
             <div className={`flex-shrink-0 ${isExpanded ? '' : 'mx-auto'}`}>
-              <LayoutGrid size={20} />
+              <LayoutGrid size={16} />
             </div>
             {isExpanded && (
               <span className="font-medium whitespace-nowrap">Features</span>

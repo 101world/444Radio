@@ -298,7 +298,7 @@ export default function VoiceTrainingPage() {
 
       <FloatingMenu />
 
-      <main className="relative z-10 md:pl-[72px] pb-32 pt-4">
+      <main className="relative z-10 md:pl-14 pb-32 pt-4">
         <div className="px-4 md:px-8 max-w-3xl mx-auto">
           {/* Header */}
           <div className="flex items-center gap-3 mb-6">

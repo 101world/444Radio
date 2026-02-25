@@ -279,7 +279,7 @@ export default function EarnPage() {
 
       <FloatingMenu />
 
-      <main className="relative z-10 md:pl-[72px] pb-32 pt-4">
+      <main className="relative z-10 md:pl-14 pb-32 pt-4">
         {/* Header row: back + title + List Track + credits */}
         <div className="px-4 md:px-8">
           <div className="flex items-center gap-3 mb-4">

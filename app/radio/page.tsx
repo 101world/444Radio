@@ -715,7 +715,7 @@ function RadioPageContent() {
         <ArrowLeft size={16} />
       </button>
 
-      <main className="relative z-10 md:pl-[72px] pb-32">
+      <main className="relative z-10 md:pl-14 pb-32">
 
         {/* ═══ BANNER VIDEO ═══ */}
         <div className="relative h-44 md:h-56 overflow-hidden">

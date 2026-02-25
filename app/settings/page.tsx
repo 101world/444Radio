@@ -12,7 +12,7 @@ import { useCredits } from '../contexts/CreditsContext'
 export default function SettingsPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-black flex items-center justify-center md:pl-20 md:pr-28">
+      <div className="min-h-screen bg-black flex items-center justify-center md:pl-14 md:pr-28">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div>
       </div>
     }>
@@ -228,14 +228,14 @@ function SettingsPageInner() {
 
   if (!isLoaded || !user) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center md:pl-20 md:pr-28">
+      <div className="min-h-screen bg-black flex items-center justify-center md:pl-14 md:pr-28">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div>
       </div>
     )
   }
 
   return (
-    <main className="min-h-screen bg-black text-white relative overflow-hidden md:pl-20 md:pr-28">
+    <main className="min-h-screen bg-black text-white relative overflow-hidden md:pl-14 md:pr-28">
       <div className="absolute inset-0 bg-gradient-to-br from-cyan-950/20 via-black to-black pointer-events-none"></div>
 
       <div className="max-w-5xl mx-auto relative z-10 px-6 py-12">

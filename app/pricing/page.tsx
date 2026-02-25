@@ -320,7 +320,7 @@ export default function PricingPage() {
 
   if (!isLoaded || !user) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center md:pl-20 md:pr-28">
+      <div className="min-h-screen bg-black flex items-center justify-center md:pl-14 md:pr-28">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white" />
       </div>
     )
@@ -329,7 +329,7 @@ export default function PricingPage() {
   const hasAccess = (walletBalance ?? 0) >= 1
 
   return (
-    <main className="min-h-screen bg-black text-white relative overflow-hidden md:pl-20 md:pr-28">
+    <main className="min-h-screen bg-black text-white relative overflow-hidden md:pl-14 md:pr-28">
       <div className="absolute inset-0 bg-gradient-to-br from-gray-950/30 via-black to-black pointer-events-none" />
 
       <div className="max-w-5xl mx-auto relative z-10 px-4 sm:px-6 py-8 sm:py-12 pb-28">

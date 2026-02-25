@@ -108,7 +108,7 @@ export default function UsernameProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center md:pl-20 md:pr-28">
+      <div className="min-h-screen bg-black text-white flex items-center justify-center md:pl-14 md:pr-28">
         <div className="text-2xl">Loading...</div>
       </div>
     )
@@ -116,7 +116,7 @@ export default function UsernameProfilePage() {
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center md:pl-20 md:pr-28">
+      <div className="min-h-screen bg-black text-white flex items-center justify-center md:pl-14 md:pr-28">
         <div className="text-center">
           <h1 className="text-4xl font-bold mb-4">User Not Found</h1>
         </div>
@@ -125,7 +125,7 @@ export default function UsernameProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white pb-32 md:pl-20 md:pr-28">
+    <div className="min-h-screen bg-black text-white pb-32 md:pl-14 md:pr-28">
       {/* Holographic 3D Background */}
       <HolographicBackgroundClient />
       

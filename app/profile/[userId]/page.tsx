@@ -581,7 +581,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#060a12] text-white md:pl-20 md:pr-28">
+      <div className="min-h-screen bg-[#060a12] text-white md:pl-14 md:pr-28">
         <ProfileHeaderSkeleton />
         <div className="px-8 pb-32">
           <TrackListSkeleton count={8} />
@@ -592,7 +592,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-[#060a12] flex items-center justify-center md:pl-20 md:pr-28">
+      <div className="min-h-screen bg-[#060a12] flex items-center justify-center md:pl-14 md:pr-28">
         <div className="text-center">
           <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-4">
             <Zap size={24} className="text-red-400" />
@@ -605,7 +605,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   }
 
   return (
-    <div className="min-h-screen bg-[#060a12] text-white md:pl-20 md:pr-28">
+    <div className="min-h-screen bg-[#060a12] text-white md:pl-14 md:pr-28">
       <FloatingMenu />
 
       {/* ═══ BACKGROUND GRID TEXTURE ═══ */}

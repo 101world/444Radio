@@ -252,7 +252,7 @@ export default function FeaturesSidebar({
       <div className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50" onClick={onClose} />
 
       {/* Sidebar panel — fullscreen on mobile, docked sidebar on desktop */}
-      <div className="fixed inset-0 md:inset-auto md:left-20 md:top-0 md:h-screen md:w-72 bg-black/95 backdrop-blur-2xl md:border-r md:border-white/10 z-50 md:z-40 flex flex-col animate-slideInLeft">
+      <div className="fixed inset-0 md:inset-auto md:left-14 md:top-0 md:h-screen md:w-64 bg-black/95 backdrop-blur-2xl md:border-r md:border-white/10 z-50 md:z-40 flex flex-col animate-slideInLeft">
       {/* Header */}
       <div className="flex items-center justify-between px-4 h-12 border-b border-white/10 shrink-0">
         <div className="flex items-center gap-2">
@@ -331,16 +331,29 @@ export default function FeaturesSidebar({
           }}
         />
         <div className="flex items-center justify-between mt-1.5">
-          <button
-            onClick={onToggleRecording}
-            className={`p-1.5 rounded-full transition-all ${
-              isRecording
-                ? 'bg-red-500 animate-pulse'
-                : 'bg-white/10 hover:bg-white/20'
-            }`}
-          >
-            <Mic size={12} className={isRecording ? 'text-white' : 'text-gray-400'} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={onToggleRecording}
+              className={`p-1.5 rounded-full transition-all ${
+                isRecording
+                  ? 'bg-red-500 animate-pulse'
+                  : 'bg-white/10 hover:bg-white/20'
+              }`}
+            >
+              <Mic size={12} className={isRecording ? 'text-white' : 'text-gray-400'} />
+            </button>
+            <button
+              onClick={() => { setShowIdeas(!showIdeas); setIdeasView('tags') }}
+              className={`p-1.5 rounded-full transition-all ${
+                showIdeas
+                  ? 'bg-yellow-500/20 text-yellow-300'
+                  : 'bg-white/10 hover:bg-white/20 text-gray-400 hover:text-yellow-400'
+              }`}
+              title="Ideas & Tags"
+            >
+              <Lightbulb size={12} />
+            </button>
+          </div>
           <button
             onClick={onSubmitPrompt}
             disabled={isGenerating || !promptText.trim()}
@@ -488,22 +501,7 @@ export default function FeaturesSidebar({
       )}
 
       {/* Feature Buttons */}
-      <div className="flex-1 overflow-y-auto px-3 py-2 scrollbar-thin">
-        {/* Ideas Button */}
-        <button
-          onClick={() => { setShowIdeas(!showIdeas); setIdeasView('tags') }}
-          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border transition-all group mb-2 ${
-            showIdeas
-              ? 'bg-yellow-500/15 border-yellow-400/50 text-yellow-300'
-              : 'border-white/10 text-yellow-400 hover:bg-yellow-500/10 hover:border-yellow-400/40'
-          }`}
-        >
-          <Lightbulb size={14} />
-          <span className="flex-1 text-left text-xs font-semibold">Ideas & Tags</span>
-          <span className="text-[9px] text-gray-500 bg-white/5 px-1.5 py-0.5 rounded">AI</span>
-        </button>
-
-        <p className="text-[9px] text-gray-600 uppercase tracking-widest font-bold mb-1.5 px-1">Tools</p>
+      <div className="flex-1 overflow-y-auto px-3 py-1.5 scrollbar-thin">
         <div className="space-y-0.5">
           {features.filter(f => !f.hidden).map((feature) => {
             const Icon = feature.icon
@@ -523,12 +521,12 @@ export default function FeaturesSidebar({
               <button
                 key={feature.label}
                 onClick={feature.onClick}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border transition-all group ${colorMap[feature.color]}`}
+                className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg border transition-all group ${colorMap[feature.color]}`}
               >
-                <Icon size={15} className="shrink-0" />
+                <Icon size={14} className="shrink-0 opacity-80" />
                 <div className="flex-1 text-left min-w-0">
-                  <div className="text-xs font-medium leading-tight">{feature.label}</div>
-                  <div className="text-[9px] text-gray-500 leading-tight">{feature.description}</div>
+                  <div className="text-[11px] font-medium leading-tight">{feature.label}</div>
+                  <div className="text-[9px] text-gray-500 leading-none">{feature.description}</div>
                 </div>
                 {feature.cost !== undefined && feature.cost > 0 && (
                   <span className="text-[9px] text-gray-500 tabular-nums shrink-0">-{feature.cost}</span>
