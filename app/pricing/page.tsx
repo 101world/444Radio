@@ -35,6 +35,7 @@ import {
 const TYPE_LABELS: Record<string, { label: string; color: string }> = {
   generation_music: { label: 'Song', color: 'text-pink-400' },
   generation_effects: { label: 'SFX', color: 'text-orange-400' },
+  generation_effects_hq: { label: 'HQ SFX', color: 'text-red-400' },
   generation_loops: { label: 'Loops', color: 'text-purple-400' },
   generation_image: { label: 'Image', color: 'text-blue-400' },
   generation_video_to_audio: { label: 'Video→Audio', color: 'text-yellow-400' },
