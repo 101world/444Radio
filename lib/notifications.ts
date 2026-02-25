@@ -92,7 +92,13 @@ export async function notifyLike(ownerId: string, likerId: string, mediaId: stri
   return createNotification({
     userId: ownerId,
     type: 'like',
-    data: { by: likerId, mediaId, mediaTitle }
+    data: {
+      by: likerId,
+      mediaId,
+      mediaTitle,
+      title: '❤️ New Like!',
+      message: mediaTitle ? `Someone liked your track "${mediaTitle}"` : 'Someone liked your track'
+    }
   });
 }
 
@@ -100,7 +106,11 @@ export async function notifyFollow(targetId: string, followerId: string) {
   return createNotification({
     userId: targetId,
     type: 'follow',
-    data: { by: followerId }
+    data: {
+      by: followerId,
+      title: '👤 New Follower!',
+      message: 'Someone started following you'
+    }
   });
 }
 
@@ -116,7 +126,13 @@ export async function notifyDownload(ownerId: string, downloaderId: string, trac
   return createNotification({
     userId: ownerId,
     type: 'download',
-    data: { by: downloaderId, trackId, trackTitle }
+    data: {
+      by: downloaderId,
+      trackId,
+      trackTitle,
+      title: '⬇️ Track Downloaded!',
+      message: trackTitle ? `Someone downloaded your track "${trackTitle}"` : 'Someone downloaded your track'
+    }
   });
 }
 

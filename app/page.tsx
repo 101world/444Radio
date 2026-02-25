@@ -93,6 +93,7 @@ function HomePageContent() {
           audio_url?: string
           image_url?: string
           user_id?: string
+          users?: { username?: string; avatar_url?: string }
         }
         
         const audioTracks: Track[] = data.combinedMedia
@@ -100,7 +101,7 @@ function HomePageContent() {
           .map((item: MediaItem) => ({
             id: item.id,
             title: item.title || 'Untitled',
-            artist: item.artist || 'Unknown Artist',
+            artist: item.users?.username || item.artist || 'Unknown Artist',
             audio_url: item.audio_url!,
             image_url: item.image_url,
             user_id: item.user_id
@@ -131,8 +132,9 @@ function HomePageContent() {
       userId: t.user_id // Include userId for play tracking
     }))
     
-    setPlaylist(playerTracks)
-    playTrack(playerTracks[0])
+    // setPlaylist already calls playTrack internally (via setPlaylistAndPlay)
+    // Do NOT call playTrack separately — that causes a double-load race = perceived lag
+    setPlaylist(playerTracks, 0)
   }
 
   const handleInputClick = () => {

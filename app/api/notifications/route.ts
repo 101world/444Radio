@@ -77,8 +77,8 @@ export async function GET(req: NextRequest) {
 
     const notifications = rows.map((n: any) => ({
       id: n.id,
-      title: n.title || (n.type ? `${String(n.type).charAt(0).toUpperCase()}${String(n.type).slice(1)} update` : 'Notification'),
-      body: n.body || n.message || n.data?.message || undefined,
+      title: n.data?.title || n.title || (n.type ? `${String(n.type).charAt(0).toUpperCase()}${String(n.type).slice(1)} update` : 'Notification'),
+      body: n.data?.message || n.body || n.message || undefined,
       unread: !n.read_at,
       created_at: n.created_at,
       type: n.type,

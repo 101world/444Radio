@@ -103,7 +103,7 @@ export default function NotificationBell() {
       {open && (
         <div
           className="mt-2 w-80 bg-gray-900 text-white rounded-lg shadow-lg overflow-hidden"
-          style={isCreate ? { right: 0, position: 'absolute' } : { position: 'absolute' }}
+          style={{ position: 'absolute', right: 0, top: '100%' }}
         >
           <div className="flex items-center justify-between px-3 py-2 border-b border-gray-800">
             <div className="text-sm font-medium">Notifications</div>

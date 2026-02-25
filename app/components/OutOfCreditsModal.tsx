@@ -21,8 +21,8 @@ export default function OutOfCreditsModal({
   if (!isOpen) return null
 
   // Determine message type based on error
-  const isFreeCreditsExhausted = errorMessage?.includes('$1 access') || errorMessage?.includes('Free credits exhausted')
-  const needsWalletDeposit = errorMessage?.includes('$1') || errorMessage?.includes('wallet')
+  const isFreeCreditsExhausted = errorMessage?.includes('$1') || errorMessage?.includes('Free credits exhausted') || errorMessage?.includes('pay-per-usage')
+  const needsWalletDeposit = errorMessage?.includes('$1') || errorMessage?.includes('wallet') || errorMessage?.includes('Deposit')
 
   const handleGoToPricing = () => {
     onClose()
@@ -58,17 +58,17 @@ export default function OutOfCreditsModal({
           {isFreeCreditsExhausted ? (
             <>
               <p className="text-gray-300 text-center text-sm leading-relaxed">
-                You've successfully generated music for free! Ready for more?
+                You've used all your free credits! Ready for unlimited creating?
               </p>
               <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4 space-y-2">
                 <p className="text-cyan-400 font-semibold text-sm">
-                  💰 $1 Access + Pay Per Usage
+                  💰 $1 Access + Buy Credits As You Go!
                 </p>
                 <ul className="text-gray-300 text-xs space-y-1 ml-4 list-disc">
                   <li>One-time $1 deposit unlocks the app forever</li>
-                  <li>Pay only for what you generate (2-5 credits per track)</li>
+                  <li>Buy more credits as you go (2-5 per track)</li>
                   <li>Credits never expire</li>
-                  <li>Full access to all features</li>
+                  <li>Full access to all features &amp; tools</li>
                 </ul>
               </div>
             </>

@@ -878,16 +878,28 @@ function CreatePageContent() {
     // Fetch fresh credits to prevent race conditions
     const freshCreditsRes = await fetch('/api/credits')
     const freshCreditsData = await freshCreditsRes.json()
-    const currentCredits = freshCreditsData.credits || 0
+    // Use TOTAL credits (paid + free) — free credits are consumed first server-side
+    const currentCredits = freshCreditsData.totalCredits || 0
+    const walletBalance = freshCreditsData.walletBalance || 0
+    const freeCreditsLeft = freshCreditsData.freeCredits || 0
     
     // Also check if there are active generations that haven't deducted credits yet
     const pendingCredits = activeGenerations.size * (selectedType === 'music' ? (useMusic01 ? 3 : 2) : selectedType === 'effects' ? 2 : 1)
     const availableCredits = currentCredits - pendingCredits
     
-    console.log('[Credit Check]', { currentCredits, pendingCredits, availableCredits, creditsNeeded })
+    console.log('[Credit Check]', { currentCredits, freeCreditsLeft, walletBalance, pendingCredits, availableCredits, creditsNeeded })
     
     if (availableCredits < creditsNeeded) {
-      setOutOfCreditsError(`You need ${creditsNeeded} credits but only have ${currentCredits} available (${pendingCredits} reserved for active generations).`)
+      // Determine the right error message based on user state
+      if (freeCreditsLeft <= 0 && walletBalance < 1) {
+        // Free credits exhausted + no $1 access
+        setOutOfCreditsError('Free credits exhausted. Deposit $1 to unlock pay-per-usage and buy more credits as you go!')
+      } else if (currentCredits <= 0 && walletBalance >= 1) {
+        // Has wallet access but no credits left
+        setOutOfCreditsError('You\'re out of credits! Buy more credits to keep creating.')
+      } else {
+        setOutOfCreditsError(`You need ${creditsNeeded} credits but only have ${currentCredits} available (${pendingCredits} reserved for active generations).`)
+      }
       setShowOutOfCreditsModal(true)
       return
     }

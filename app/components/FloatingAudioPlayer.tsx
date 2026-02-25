@@ -4,36 +4,23 @@ import { useAudioPlayer, computeUrl } from '../contexts/AudioPlayerContext'
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ChevronRight, X, Repeat, Shuffle, ChevronDown, ChevronUp, Search, List, Heart, Zap, Music, Disc3 } from 'lucide-react'
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import Image from 'next/image'
+import { getSharedAnalyser, disconnectAnalyser } from '@/lib/shared-audio-analyser'
 
 // ─── Vertical Waveform Visualizer (thin sidebar) ────────────────
 function VerticalWaveform({ audioElement, isPlaying }: { audioElement: HTMLAudioElement | null; isPlaying: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
-  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null)
-  const ctxRef = useRef<AudioContext | null>(null)
   const rafRef = useRef<number>(0)
   const connectedRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
     if (!audioElement || !canvasRef.current) return
     if (connectedRef.current !== audioElement) {
-      try {
-        if (!ctxRef.current) {
-          ctxRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
-        }
-        const ctx = ctxRef.current
-        const analyser = ctx.createAnalyser()
-        analyser.fftSize = 256
-        analyser.smoothingTimeConstant = 0.65
-        const source = ctx.createMediaElementSource(audioElement)
-        source.connect(analyser)
-        analyser.connect(ctx.destination)
-        analyserRef.current = analyser
-        sourceRef.current = source
-        connectedRef.current = audioElement
-      } catch {
-        console.warn('Waveform: Could not create audio source')
-      }
+      // Disconnect previous analyser
+      disconnectAnalyser(analyserRef.current)
+      const analyser = getSharedAnalyser(audioElement, { fftSize: 256, smoothing: 0.65 })
+      analyserRef.current = analyser
+      connectedRef.current = audioElement
     }
 
     const canvas = canvasRef.current
@@ -83,7 +70,9 @@ function VerticalWaveform({ audioElement, isPlaying }: { audioElement: HTMLAudio
       c.shadowBlur = 0
     }
     draw()
-    return () => cancelAnimationFrame(rafRef.current)
+    return () => {
+      cancelAnimationFrame(rafRef.current)
+    }
   }, [audioElement, isPlaying])
 
   return <canvas ref={canvasRef} className="w-full h-full" style={{ transform: 'scaleY(-1)' }} />
@@ -93,33 +82,16 @@ function VerticalWaveform({ audioElement, isPlaying }: { audioElement: HTMLAudio
 function HorizontalWaveform({ audioElement, isPlaying, progress }: { audioElement: HTMLAudioElement | null; isPlaying: boolean; progress: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
-  const ctxRef = useRef<AudioContext | null>(null)
   const rafRef = useRef<number>(0)
   const connectedRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
     if (!audioElement || !canvasRef.current) return
     if (connectedRef.current !== audioElement) {
-      try {
-        if (!ctxRef.current) {
-          ctxRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
-        }
-        const ctx = ctxRef.current
-        const analyser = ctx.createAnalyser()
-        analyser.fftSize = 512
-        analyser.smoothingTimeConstant = 0.82
-        try {
-          const source = ctx.createMediaElementSource(audioElement)
-          source.connect(analyser)
-          analyser.connect(ctx.destination)
-        } catch {
-          // Already connected
-        }
-        analyserRef.current = analyser
-        connectedRef.current = audioElement
-      } catch {
-        console.warn('HorizontalWaveform: Could not create audio source')
-      }
+      disconnectAnalyser(analyserRef.current)
+      const analyser = getSharedAnalyser(audioElement, { fftSize: 512, smoothing: 0.82 })
+      analyserRef.current = analyser
+      connectedRef.current = audioElement
     }
 
     const canvas = canvasRef.current
@@ -185,7 +157,6 @@ function HorizontalWaveform({ audioElement, isPlaying, progress }: { audioElemen
 function CircularVisualizer({ audioElement, isPlaying }: { audioElement: HTMLAudioElement | null; isPlaying: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
-  const ctxRef = useRef<AudioContext | null>(null)
   const rafRef = useRef<number>(0)
   const connectedRef = useRef<HTMLAudioElement | null>(null)
   const rotRef = useRef(0)
@@ -193,22 +164,10 @@ function CircularVisualizer({ audioElement, isPlaying }: { audioElement: HTMLAud
   useEffect(() => {
     if (!audioElement || !canvasRef.current) return
     if (connectedRef.current !== audioElement) {
-      try {
-        if (!ctxRef.current) {
-          ctxRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
-        }
-        const ctx = ctxRef.current
-        const analyser = ctx.createAnalyser()
-        analyser.fftSize = 512
-        analyser.smoothingTimeConstant = 0.65
-        try {
-          const source = ctx.createMediaElementSource(audioElement)
-          source.connect(analyser)
-          analyser.connect(ctx.destination)
-        } catch { /* Already connected */ }
-        analyserRef.current = analyser
-        connectedRef.current = audioElement
-      } catch { /* fallback */ }
+      disconnectAnalyser(analyserRef.current)
+      const analyser = getSharedAnalyser(audioElement, { fftSize: 512, smoothing: 0.65 })
+      analyserRef.current = analyser
+      connectedRef.current = audioElement
     }
 
     const canvas = canvasRef.current
