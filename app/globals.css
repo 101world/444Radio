@@ -830,42 +830,87 @@ input[placeholder*="Video"]:focus {
 }
 
 /* ── Pro Mode: Force ALL cyan/teal/blue accent colors → red neon ── */
-/* Text colors */
-.pro-mode .text-cyan-100     { color: #fecaca !important; }  /* red-200 */
-.pro-mode .text-cyan-200     { color: #fca5a5 !important; }  /* red-300 */
-.pro-mode .text-cyan-300     { color: #f87171 !important; }  /* red-400 */
-.pro-mode .text-cyan-400     { color: #ef4444 !important; }  /* red-500 */
-.pro-mode .text-cyan-500     { color: #dc2626 !important; }  /* red-600 */
-.pro-mode .text-cyan-600     { color: #b91c1c !important; }  /* red-700 */
+
+/* ─── 3D Background canvas hue shift ─── */
+.pro-3d-filter canvas {
+  filter: hue-rotate(160deg) saturate(2.5) brightness(0.85) !important;
+}
+
+/* ─── GPU Console canvas hue shift ─── */
+.pro-console-filter canvas {
+  filter: hue-rotate(160deg) saturate(2) !important;
+}
+
+/* ─── Text colors: cyan/teal/blue → red ─── */
+.pro-mode .text-cyan-100     { color: #fecaca !important; }
+.pro-mode .text-cyan-200     { color: #fca5a5 !important; }
+.pro-mode .text-cyan-300     { color: #f87171 !important; }
+.pro-mode .text-cyan-400     { color: #ef4444 !important; }
+.pro-mode .text-cyan-500     { color: #dc2626 !important; }
+.pro-mode .text-cyan-600     { color: #b91c1c !important; }
+.pro-mode .text-teal-100     { color: #fecaca !important; }
+.pro-mode .text-teal-200     { color: #fca5a5 !important; }
 .pro-mode .text-teal-300     { color: #f87171 !important; }
 .pro-mode .text-teal-400     { color: #ef4444 !important; }
+.pro-mode .text-teal-500     { color: #dc2626 !important; }
+.pro-mode .text-blue-300     { color: #f87171 !important; }
 .pro-mode .text-blue-400     { color: #ef4444 !important; }
 .pro-mode .text-blue-500     { color: #dc2626 !important; }
+.pro-mode .text-blue-600     { color: #b91c1c !important; }
 
-/* Border colors */
+/* ─── Border colors: ALL cyan/teal/blue → red ─── */
 .pro-mode [class*="border-cyan"] {
   border-color: rgba(239, 68, 68, 0.3) !important;
 }
 .pro-mode [class*="hover\:border-cyan"]:hover {
   border-color: rgba(239, 68, 68, 0.5) !important;
 }
-.pro-mode [class*="focus-within\:border-cyan"]:focus-within {
-  border-color: rgba(239, 68, 68, 0.4) !important;
+.pro-mode [class*="focus-within\:border-cyan"]:focus-within,
+.pro-mode [class*="focus\:border-cyan"]:focus {
+  border-color: rgba(239, 68, 68, 0.5) !important;
 }
 .pro-mode [class*="border-teal"] {
   border-color: rgba(239, 68, 68, 0.25) !important;
 }
+.pro-mode [class*="border-blue"] {
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+.pro-mode [class*="border-t-cyan"] {
+  border-top-color: #ef4444 !important;
+}
 
-/* Background accent overrides */
-.pro-mode [class*="bg-cyan-500\/10"],
-.pro-mode [class*="bg-cyan-500\/20"] {
+/* ─── Solid cyan/blue backgrounds → red ─── */
+.pro-mode .bg-cyan-400 { background-color: #ef4444 !important; }
+.pro-mode .bg-cyan-500 { background-color: #dc2626 !important; }
+.pro-mode .bg-cyan-600 { background-color: #b91c1c !important; }
+.pro-mode .bg-blue-400  { background-color: #ef4444 !important; }
+.pro-mode .bg-blue-500  { background-color: #dc2626 !important; }
+.pro-mode .bg-blue-600  { background-color: #b91c1c !important; }
+
+/* ─── Cyan/blue backgrounds with any opacity → red ─── */
+.pro-mode [class*="bg-cyan-500\/"],
+.pro-mode [class*="bg-cyan-400\/"],
+.pro-mode [class*="bg-cyan-300\/"] {
   background-color: rgba(239, 68, 68, 0.12) !important;
 }
-.pro-mode [class*="hover\:bg-cyan"]:hover {
-  background-color: rgba(239, 68, 68, 0.15) !important;
+.pro-mode [class*="bg-blue-500\/"],
+.pro-mode [class*="bg-blue-400\/"] {
+  background-color: rgba(239, 68, 68, 0.12) !important;
+}
+.pro-mode [class*="bg-teal-500\/"],
+.pro-mode [class*="bg-teal-400\/"] {
+  background-color: rgba(239, 68, 68, 0.1) !important;
 }
 
-/* Gradient overrides for buttons & cards */
+/* ─── Hover backgrounds ─── */
+.pro-mode [class*="hover\:bg-cyan"]:hover {
+  background-color: rgba(239, 68, 68, 0.2) !important;
+}
+.pro-mode [class*="hover\:bg-blue"]:hover {
+  background-color: rgba(239, 68, 68, 0.18) !important;
+}
+
+/* ─── Gradient overrides: from/via/to cyan/teal/blue → red ─── */
 .pro-mode [class*="from-cyan"] {
   --tw-gradient-from: #dc2626 !important;
 }
@@ -875,16 +920,28 @@ input[placeholder*="Video"]:focus {
 .pro-mode [class*="to-cyan"] {
   --tw-gradient-to: #f87171 !important;
 }
-.pro-mode [class*="from-blue-500"],
-.pro-mode [class*="from-blue-600"] {
+.pro-mode [class*="from-blue"] {
   --tw-gradient-from: #991b1b !important;
 }
-.pro-mode [class*="to-blue-600"],
-.pro-mode [class*="to-blue-700"] {
+.pro-mode [class*="to-blue"] {
   --tw-gradient-to: #7f1d1d !important;
 }
+.pro-mode [class*="from-teal"] {
+  --tw-gradient-from: #b91c1c !important;
+}
+.pro-mode [class*="to-teal"] {
+  --tw-gradient-to: #991b1b !important;
+}
 
-/* Shadow overrides — cyan shadows → red neon shadows */
+/* ─── Hover gradient overrides ─── */
+.pro-mode [class*="hover\:from-cyan"]:hover {
+  --tw-gradient-from: #ef4444 !important;
+}
+.pro-mode [class*="hover\:to-cyan"]:hover {
+  --tw-gradient-to: #fca5a5 !important;
+}
+
+/* ─── Shadow overrides: cyan/blue → red neon glow ─── */
 .pro-mode [class*="shadow-cyan"] {
   --tw-shadow-color: rgba(239, 68, 68, 0.3) !important;
   --tw-shadow: 0 0 15px rgba(239, 68, 68, 0.2) !important;
@@ -893,14 +950,54 @@ input[placeholder*="Video"]:focus {
   --tw-shadow-color: rgba(239, 68, 68, 0.5) !important;
   --tw-shadow: 0 0 25px rgba(239, 68, 68, 0.35) !important;
 }
+.pro-mode [class*="shadow-blue"] {
+  --tw-shadow-color: rgba(239, 68, 68, 0.25) !important;
+  --tw-shadow: 0 0 12px rgba(239, 68, 68, 0.15) !important;
+}
 
-/* Drop-shadow text glow override */
+/* ─── Drop-shadow & focus-within glow overrides ─── */
 .pro-mode [class*="drop-shadow-\[0_0_6px_rgba(34"] {
   filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.9)) !important;
 }
-
-/* Focus-within shadow override for prompt box */
 .pro-mode [class*="focus-within\:shadow-\[0_0_30px"]:focus-within {
   box-shadow: 0 0 30px rgba(239, 68, 68, 0.12) !important;
 }
 
+/* ─── GPU Console corner dot & label override ─── */
+.pro-console-filter .bg-cyan-500 { background-color: #ef4444 !important; }
+.pro-console-filter .text-cyan-500\/60 { color: rgba(239, 68, 68, 0.6) !important; }
+.pro-console-filter [class*="border-cyan"] { border-color: rgba(239, 68, 68, 0.2) !important; }
+
+/* ─── Ring/outline overrides ─── */
+.pro-mode [class*="ring-cyan"] {
+  --tw-ring-color: rgba(239, 68, 68, 0.4) !important;
+}
+.pro-mode [class*="ring-blue"] {
+  --tw-ring-color: rgba(239, 68, 68, 0.35) !important;
+}
+
+/* ─── Placeholder text in Pro Mode ─── */
+.pro-mode input::placeholder,
+.pro-mode textarea::placeholder {
+  color: rgba(239, 68, 68, 0.3) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PRO MODE — Layout-level overrides (CreditBadge, NotificationBell)
+   These are outside the .pro-mode div, so we use html.pro-mode-active
+   ═══════════════════════════════════════════════════════════ */
+html.pro-mode-active .text-cyan-300 { color: #f87171 !important; }
+html.pro-mode-active .text-cyan-400 { color: #ef4444 !important; }
+html.pro-mode-active [class*="border-cyan"] {
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+html.pro-mode-active [class*="hover\:border-cyan"]:hover {
+  border-color: rgba(239, 68, 68, 0.5) !important;
+}
+html.pro-mode-active [class*="shadow-cyan"] {
+  --tw-shadow-color: rgba(239, 68, 68, 0.3) !important;
+  --tw-shadow: 0 0 15px rgba(239, 68, 68, 0.15) !important;
+}
+html.pro-mode-active [class*="hover\:shadow-cyan"]:hover {
+  --tw-shadow-color: rgba(239, 68, 68, 0.5) !important;
+}

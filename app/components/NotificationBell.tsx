@@ -66,7 +66,7 @@ export default function NotificationBell() {
   // Return placeholder during SSR to prevent hydration mismatch
   if (!mounted || !isLoaded || !user) {
     return (
-      <div className={pathname === '/create' ? 'fixed top-4 right-16 z-50' : 'relative'}>
+      <div className={pathname === '/create' ? 'fixed top-4 right-[5.5rem] z-50' : 'relative'}>
         <div className="p-2 text-gray-300 flex items-center opacity-50">
           <Bell className="w-5 h-5" />
         </div>
@@ -84,7 +84,7 @@ export default function NotificationBell() {
   return (
     <div
       ref={ref}
-      className={isCreate ? 'fixed top-4 right-16 z-50' : 'relative'}
+      className={isCreate ? 'fixed top-4 right-[5.5rem] z-50' : 'relative'}
     >
       <button
         onClick={() => setOpen((s) => !s)}

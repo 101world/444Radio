@@ -235,6 +235,16 @@ function CreatePageContent() {
   
   // Pro Mode state (red neon theme + MiniMax 2.0)
   const [isProMode, setIsProMode] = useState(false)
+
+  // Sync Pro Mode class to <html> so layout-level components (CreditBadge, NotificationBell) also turn red
+  useEffect(() => {
+    if (isProMode) {
+      document.documentElement.classList.add('pro-mode-active')
+    } else {
+      document.documentElement.classList.remove('pro-mode-active')
+    }
+    return () => document.documentElement.classList.remove('pro-mode-active')
+  }, [isProMode])
   
   // Title validation state
   const [showTitleError, setShowTitleError] = useState(false)
@@ -2783,13 +2793,8 @@ function CreatePageContent() {
         )}
       </div>
 
-      {/* Pro Mode Toggle — Top Right, positioned LEFT of bell+credits */}
-      <div 
-        className={`fixed top-4 right-[7.5rem] md:right-36 z-50 transition-opacity duration-500 ${
-          showTopNav ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
-        style={{ pointerEvents: showTopNav ? 'auto' : 'none' }}
-      >
+      {/* Pro Mode Toggle — Top Right, positioned LEFT of bell+credits — always visible */}
+      <div className="fixed top-4 right-[9rem] z-50">
         <button
           onClick={() => setIsProMode(!isProMode)}
           className={`group flex items-center gap-2 px-3.5 py-1.5 backdrop-blur-xl rounded-full transition-all duration-500 pointer-events-auto ${
@@ -2876,8 +2881,12 @@ function CreatePageContent() {
           isGenerating={isGenerating}
         />
       </Suspense>
-      {/* Holographic 3D Background */}
-      {!isMobile && <HolographicBackground />}
+      {/* Holographic 3D Background — hue-shifted in Pro Mode */}
+      {!isMobile && (
+        <div className={isProMode ? 'pro-3d-filter' : ''}>
+          <HolographicBackground />
+        </div>
+      )}
       
       {/* Credit Indicator - Mobile Only with fade transition */}
       <div 
@@ -4089,8 +4098,8 @@ function CreatePageContent() {
 
       {/* Matrix GPU Console - Shown when Features Sidebar is open */}
       {showFeaturesSidebar && (
-        <div className="hidden md:block fixed bottom-0 left-[312px] right-0 h-36 z-20 bg-gradient-to-t from-black via-black/95 to-transparent">
-          <div className="h-full border-t border-cyan-500/20">
+        <div className={`hidden md:block fixed bottom-0 left-[312px] right-0 h-36 z-20 bg-gradient-to-t from-black via-black/95 to-transparent ${isProMode ? 'pro-console-filter' : ''}`}>
+          <div className={`h-full border-t ${isProMode ? 'border-red-500/30' : 'border-cyan-500/20'}`}>
             <Suspense fallback={<div className="h-full bg-black" />}>
               <MatrixConsole isGenerating={activeGenerations.size > 0} isPlaying={isPlaying} />
             </Suspense>
