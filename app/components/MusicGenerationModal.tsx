@@ -102,16 +102,25 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
         audio_format: audioFormat
       }
 
-      // Add ACE-Step specific parameters for non-English
-      if (!isEnglish) {
-        requestBody.audio_length_in_s = audioLengthInSeconds
-        requestBody.num_inference_steps = numInferenceSteps
-        requestBody.guidance_scale = guidanceScale
-        requestBody.denoising_strength = denoisingStrength
+      // Auto-detect non-English from prompt text or lyrics script
+      const nonEnglishKeywords = /\b(hindi|urdu|punjabi|tamil|telugu|bengali|marathi|gujarati|kannada|malayalam|arabic|persian|farsi|turkish|korean|japanese|chinese|mandarin|cantonese|thai|vietnamese|indonesian|malay)\b/i
+      const promptMentionsNonEnglish = nonEnglishKeywords.test(prompt)
+      const hasNonLatinLyrics = /[\u0900-\u097F\u0980-\u09FF\u0A00-\u0A7F\u0A80-\u0AFF\u0B00-\u0B7F\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0600-\u06FF\u0750-\u077F\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF\u0E00-\u0E7F\u0E80-\u0EFF\u1000-\u109F\u1780-\u17FF]/.test(lyrics)
+      const useNonEnglishRoute = !isEnglish || promptMentionsNonEnglish || hasNonLatinLyrics
+
+      let endpoint: string
+      if (useNonEnglishRoute) {
+        // Route to fal.ai MiniMax 2.0 for non-English
+        endpoint = '/api/generate/hindi-music'
+        requestBody.genre = requestBody.genre || undefined
+        requestBody.bpm = undefined
+        console.log('🎵 [Modal] Routing to MiniMax 2.0 (fal.ai) — non-English detected')
+      } else {
+        endpoint = '/api/generate/music-only'
       }
 
-      // Generate music directly (no song record needed)
-      const res = await fetch('/api/generate/music-only', {
+      // Generate music
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody)

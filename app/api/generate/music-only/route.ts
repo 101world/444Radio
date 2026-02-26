@@ -267,7 +267,218 @@ export async function POST(req: NextRequest) {
     console.log(`✅ Credits deducted. Remaining: ${deductResult.new_credits}`)
     await logCreditTransaction({ userId, amount: -2, balanceAfter: deductResult.new_credits, type: 'generation_music', description: `Music: ${title}`, metadata: { prompt, genre } })
 
-    // Generate music with MiniMax Music-1.5 (all languages)
+    // Auto-detect non-English content from prompt or lyrics
+    const nonEnglishKeywords = /\b(hindi|urdu|punjabi|tamil|telugu|bengali|marathi|gujarati|kannada|malayalam|arabic|persian|farsi|turkish|korean|japanese|chinese|mandarin|cantonese|thai|vietnamese|indonesian|malay)\b/i
+    const promptMentionsNonEnglish = nonEnglishKeywords.test(prompt)
+    const hasNonLatinLyrics = /[\u0900-\u097F\u0980-\u09FF\u0A00-\u0A7F\u0A80-\u0AFF\u0B00-\u0B7F\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0600-\u06FF\u0750-\u077F\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF\u0E00-\u0E7F\u0E80-\u0EFF\u1000-\u109F\u1780-\u17FF]/.test(formattedLyrics)
+    const langIsNonEnglish = language && language.toLowerCase() !== 'english' && language.toLowerCase() !== 'en'
+    const useNonEnglishModel = langIsNonEnglish || promptMentionsNonEnglish || hasNonLatinLyrics
+
+    if (useNonEnglishModel) {
+      // ============ FAL.AI MINIMAX 2.0 PATH ============
+      const falKey = process.env.FAL_KEY || process.env.fal_key
+      if (!falKey) {
+        console.error('❌ FAL_KEY not set — cannot use MiniMax 2.0')
+        // Refund and error
+        await refundCredits({ userId, amount: 2, type: 'generation_music', reason: `FAL_KEY missing: ${title}`, metadata: { prompt, genre } })
+        return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+      }
+
+      const reason = langIsNonEnglish ? `language: ${language}` :
+                     promptMentionsNonEnglish ? `prompt mentions non-English` :
+                     `non-Latin script in lyrics`
+      console.log(`🎵 Auto-detected non-English (${reason}) → routing to MiniMax 2.0 via fal.ai`)
+
+      const chosenFormat = (audio_format === 'wav' || audio_format === 'flac') ? 'flac' : 'mp3'
+      const minimax2Input: Record<string, unknown> = {
+        prompt: prompt.trim().substring(0, 300),
+        audio_setting: {
+          sample_rate: 44100,
+          bitrate: 256000,
+          format: chosenFormat,
+        },
+      }
+      // MiniMax V2 uses lyrics_prompt (10-3000 chars)
+      if (formattedLyrics && formattedLyrics.trim().length > 0 &&
+          !formattedLyrics.toLowerCase().includes('[instrumental]')) {
+        minimax2Input.lyrics_prompt = formattedLyrics.trim().substring(0, 3000)
+      }
+
+      console.log('🎵 [MiniMax2] Input:', JSON.stringify(minimax2Input, null, 2))
+
+      const encoder = new TextEncoder()
+      const stream = new TransformStream()
+      const writer = stream.writable.getWriter()
+      let clientDisconnected = false
+
+      const sendLine = async (data: Record<string, unknown>) => {
+        if (clientDisconnected) return
+        try {
+          await writer.write(encoder.encode(JSON.stringify(data) + '\n'))
+        } catch {
+          clientDisconnected = true
+        }
+      }
+
+      const requestSignal = req.signal
+
+      ;(async () => {
+        try {
+          await sendLine({ type: 'started', model: 'minimax-music-02' })
+
+          // Call fal.ai synchronous endpoint
+          const falRes = await fetch(`https://fal.run/fal-ai/minimax-music/v2`, {
+            method: 'POST',
+            headers: { Authorization: `Key ${falKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(minimax2Input),
+          })
+
+          if (!falRes.ok) {
+            const body = await falRes.text()
+            console.error('❌ [MiniMax2] fal.ai error:', falRes.status, body.substring(0, 500))
+            throw new Error(`MiniMax2 request failed (${falRes.status})`)
+          }
+
+          const data = await falRes.json()
+
+          if (requestSignal.aborted && !clientDisconnected) {
+            console.log('🔄 Client disconnected but completing MiniMax 2.0 gen')
+            clientDisconnected = true
+          }
+
+          // Extract audio URL
+          let audioUrl: string | undefined
+          if (data?.audio?.url) audioUrl = data.audio.url
+          else if (data?.audio && typeof data.audio === 'string') audioUrl = data.audio
+          else if (typeof data?.output === 'string') audioUrl = data.output
+          if (!audioUrl) throw new Error('No audio in MiniMax 2.0 output')
+
+          console.log('🎵 [MiniMax2] Audio URL:', audioUrl)
+
+          // Upload to R2
+          const ext = chosenFormat === 'flac' ? 'flac' : 'mp3'
+          const fileName = `${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.${ext}`
+          const r2Result = await downloadAndUploadToR2(audioUrl, userId, 'music', fileName)
+          if (!r2Result.success) throw new Error(`R2 upload failed: ${r2Result.error}`)
+          audioUrl = r2Result.url
+          console.log('✅ R2 upload:', audioUrl)
+
+          // Save to music_library
+          const libraryEntry = {
+            clerk_user_id: userId,
+            title,
+            prompt,
+            lyrics: formattedLyrics,
+            audio_url: audioUrl,
+            audio_format: chosenFormat,
+            bitrate: chosenFormat === 'mp3' ? 256000 : 0,
+            sample_rate: 44100,
+            generation_params: { model: 'minimax-music-02', language, audio_format: chosenFormat },
+            status: 'ready',
+          }
+          const saveRes = await fetch(`${supabaseUrl}/rest/v1/music_library`, {
+            method: 'POST',
+            headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+            body: JSON.stringify(libraryEntry),
+          })
+          let savedMusic: any = null
+          if (saveRes.ok) {
+            const d = await saveRes.json()
+            savedMusic = Array.isArray(d) ? d[0] : d
+            console.log('✅ Saved to music_library:', savedMusic?.title)
+          }
+
+          // Save to combined_media
+          let savedCombined: any = null
+          try {
+            const combinedRes = await fetch(`${supabaseUrl}/rest/v1/combined_media`, {
+              method: 'POST',
+              headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+              body: JSON.stringify({
+                user_id: userId, type: 'audio', title, audio_prompt: prompt, lyrics: formattedLyrics, audio_url: audioUrl,
+                image_url: null, is_public: false, genre: genre || null,
+                metadata: JSON.stringify({ source: 'music-only-autodetect', model: 'minimax-music-02', language, audio_format: chosenFormat }),
+              }),
+            })
+            if (combinedRes.ok) {
+              const d = await combinedRes.json()
+              savedCombined = Array.isArray(d) ? d[0] : d
+            }
+          } catch (cmErr) {
+            console.error('❌ combined_media save error:', cmErr)
+          }
+
+          const libraryId = savedMusic?.id || savedCombined?.id || null
+
+          // Quest progress
+          try {
+            const { trackQuestProgress, trackModelUsage, trackGenerationStreak } = await import('@/lib/quest-progress')
+            trackQuestProgress(userId, 'generate_songs').catch(() => {})
+            if (genre) trackQuestProgress(userId, 'use_genres', 1, genre).catch(() => {})
+            trackModelUsage(userId, 'minimax-music-02').catch(() => {})
+            trackGenerationStreak(userId).catch(() => {})
+          } catch {}
+
+          updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: audioUrl!, mediaType: 'audio', title, extraMeta: { genre, model: 'minimax-music-02' } }).catch(() => {})
+          notifyGenerationComplete(userId, libraryId || '', 'music', title).catch(() => {})
+          notifyCreditDeduct(userId, 2, `Music: ${title}`).catch(() => {})
+
+          const response: Record<string, unknown> = {
+            type: 'result', success: true, audioUrl, title, lyrics: formattedLyrics, libraryId,
+            creditsRemaining: deductResult!.new_credits, creditsDeducted: 2,
+          }
+
+          // Optional cover art (same logic as below)
+          if (generateCoverArt && deductResult!.new_credits >= 1) {
+            try {
+              const imagePrompt = `${prompt} music album cover art, ${genre || 'electronic'} style, professional music artwork`
+              const imagePrediction = await replicate.predictions.create({
+                model: 'prunaai/z-image-turbo',
+                input: { prompt: imagePrompt, width: 1024, height: 1024, output_format: 'jpg', output_quality: 100, guidance_scale: 0, num_inference_steps: 8, go_fast: false },
+              })
+              let imageResult = await replicate.predictions.get(imagePrediction.id)
+              let imgAttempts = 0
+              while (imageResult.status !== 'succeeded' && imageResult.status !== 'failed' && imgAttempts < 40) {
+                await new Promise(r => setTimeout(r, 1000))
+                imageResult = await replicate.predictions.get(imagePrediction.id)
+                imgAttempts++
+              }
+              if (imageResult.status === 'succeeded' && imageResult.output) {
+                const imageUrls = Array.isArray(imageResult.output) ? imageResult.output : [imageResult.output]
+                let imageUrl = imageUrls[0]
+                if (typeof imageUrl === 'object' && 'url' in imageUrl) imageUrl = (imageUrl as any).url()
+                const imageFileName = `${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-cover-${Date.now()}.jpg`
+                const imageR2 = await downloadAndUploadToR2(imageUrl, userId, 'images', imageFileName)
+                if (imageR2.success) {
+                  response.imageUrl = imageR2.url
+                  await logCreditTransaction({ userId, amount: -1, balanceAfter: deductResult!.new_credits - 1, type: 'generation_cover_art', description: `Cover art: ${title}`, metadata: { prompt: imagePrompt } })
+                }
+              }
+            } catch (imgErr) {
+              console.error('❌ Cover art error:', imgErr)
+            }
+          }
+
+          await sendLine(response)
+          await writer.close().catch(() => {})
+        } catch (error) {
+          console.error('❌ MiniMax 2.0 generation error:', error)
+          await refundCredits({ userId, amount: 2, type: 'generation_music', reason: `Error: ${String(error).substring(0, 80)}`, metadata: { prompt, genre, error: String(error).substring(0, 200) } })
+          notifyGenerationFailed(userId, 'music', 'Generation error — credits refunded').catch(() => {})
+          try {
+            await sendLine({ type: 'result', success: false, error: sanitizeError(error) })
+            await writer.close()
+          } catch { /* stream may already be closed */ }
+        }
+      })()
+
+      return new Response(stream.readable, {
+        headers: { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-cache', 'Transfer-Encoding': 'chunked' },
+      })
+    }
+
+    // ============ MINIMAX 1.5 PATH (English only) ============
+    // Generate music with MiniMax Music-1.5 (English)
     // Use NDJSON streaming so the client gets the prediction ID immediately for cancellation
     console.log('🎵 Using MiniMax Music-1.5 ...')
 
