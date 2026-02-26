@@ -1925,12 +1925,23 @@ function CreatePageContent() {
       generateCoverArt,
     }
 
+    console.log('[Hindi Gen] Calling /api/generate/hindi-music with:', { title, prompt: prompt.substring(0, 80) + '...', lyricsLen: lyrics?.length, genre, bpm })
+
     const res = await fetch('/api/generate/hindi-music', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody),
       signal,
     })
+
+    console.log('[Hindi Gen] Response status:', res.status)
+
+    // If the server returned a non-streaming error, handle it
+    if (!res.ok && res.headers.get('content-type')?.includes('application/json')) {
+      const errData = await res.json()
+      console.error('[Hindi Gen] Server error:', errData)
+      return { error: errData.error || `Server error (${res.status})` }
+    }
 
     // Parse NDJSON stream (same pattern as other generators)
     const reader = res.body?.getReader()

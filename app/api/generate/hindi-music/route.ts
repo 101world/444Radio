@@ -21,6 +21,8 @@ async function runMiniMax2(
   timeoutMs = 270_000
 ): Promise<{ data: any; requestId: string }> {
   console.log('🎵 [MiniMax2] Submitting to fal.ai queue...')
+  console.log('🎵 [MiniMax2] Model:', FAL_MODEL)
+  console.log('🎵 [MiniMax2] Input keys:', Object.keys(input))
 
   // 1. Submit
   const submitRes = await fetch(`https://queue.fal.run/${FAL_MODEL}`, {
@@ -30,9 +32,15 @@ async function runMiniMax2(
   })
   if (!submitRes.ok) {
     const body = await submitRes.text()
+    console.error('🎵 [MiniMax2] Submit failed:', submitRes.status, body.substring(0, 500))
     throw new Error(`MiniMax2 submit failed (${submitRes.status}): ${body}`)
   }
-  const { request_id } = await submitRes.json()
+  const submitData = await submitRes.json()
+  console.log('🎵 [MiniMax2] Submit response:', JSON.stringify(submitData))
+  const request_id = submitData.request_id
+  if (!request_id) {
+    throw new Error(`MiniMax2 submit did not return request_id: ${JSON.stringify(submitData)}`)
+  }
   console.log('🎵 [MiniMax2] Request queued:', request_id)
 
   // 2. Poll
@@ -100,6 +108,7 @@ function sanitizeError(error: any): string {
  * audio_format: 'mp3' (default) | 'wav'
  */
 export async function POST(req: NextRequest) {
+  console.log('🎵 [HINDI-MUSIC] Route hit! POST /api/generate/hindi-music')
   try {
     const { userId } = await auth()
     if (!userId) {
@@ -127,8 +136,8 @@ export async function POST(req: NextRequest) {
     if (!title || typeof title !== 'string' || title.trim().length < 3 || title.trim().length > 100) {
       return NextResponse.json({ error: 'Title required (3-100 characters)' }, { status: 400 })
     }
-    if (!prompt || prompt.length < 10 || prompt.length > 300) {
-      return NextResponse.json({ error: 'Prompt required (10-300 characters)' }, { status: 400 })
+    if (!prompt || prompt.length < 10) {
+      return NextResponse.json({ error: 'Prompt required (at least 10 characters)' }, { status: 400 })
     }
 
     // MiniMax V2 supports: mp3, pcm, flac (no wav — flac is lossless alternative)
@@ -231,6 +240,7 @@ export async function POST(req: NextRequest) {
         }
 
         console.log('🎵 [MiniMax2] Raw output keys:', Object.keys(data || {}))
+        console.log('🎵 [MiniMax2] Raw output:', JSON.stringify(data).substring(0, 500))
 
         // MiniMax V2 returns { audio: { url, content_type, file_name, file_size } }
         let audioUrl: string | undefined
