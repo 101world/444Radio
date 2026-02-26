@@ -291,7 +291,7 @@ export async function POST(req: NextRequest) {
 
       const chosenFormat = (audio_format === 'wav' || audio_format === 'flac') ? 'flac' : 'mp3'
       const minimax2Input: Record<string, unknown> = {
-        prompt: prompt.trim().substring(0, 300),
+        prompt: prompt.trim().substring(0, 200),
         audio_setting: {
           sample_rate: 44100,
           bitrate: 256000,
