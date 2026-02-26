@@ -288,6 +288,8 @@ interface PianoRollProps {
   /** Transport state — for playhead */
   isPlaying?: boolean
   bpm?: number
+  /** Get current cycle position from Strudel scheduler */
+  getCyclePosition?: () => number
 }
 
 const ZOOM_LEVELS = [
@@ -359,7 +361,7 @@ function presetToNotes(
   return notes
 }
 
-export default function PianoRoll({ isOpen, onClose, scale, currentPattern, nodeType, nodeColor, patternBars, soundSource, onPatternChange, isPlaying: prIsPlaying = false, bpm: prBpm = 120 }: PianoRollProps) {
+export default function PianoRoll({ isOpen, onClose, scale, currentPattern, nodeType, nodeColor, patternBars, soundSource, onPatternChange, isPlaying: prIsPlaying = false, bpm: prBpm = 120, getCyclePosition }: PianoRollProps) {
   const [notes, setNotes] = useState<PianoRollNote[]>([])
   const [tool, setTool] = useState<'draw' | 'erase' | 'select'>('draw')
   const [totalSteps, setTotalSteps] = useState(16)
@@ -469,21 +471,32 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
   // ── Playhead — smooth fractional step position synced to transport ──
   useEffect(() => {
     if (!prIsPlaying || !isOpen) { setPlayheadStep(0); return }
-    // 1 bar = 4 beats, 16 steps (sixteenth notes)
-    // cps = bpm / 60 / 4  →  cycles per second (1 cycle = 1 bar)
-    const cps = prBpm > 0 ? prBpm / 60 / 4 : 120 / 60 / 4
-    const msPerStep = 1000 / (cps * 16) // ms per sixteenth-note step
-    const startTime = performance.now()
     let raf: number
-    const tick = () => {
-      const elapsed = performance.now() - startTime
-      const stepPos = (elapsed / msPerStep) % totalSteps
-      setPlayheadStep(stepPos)
+    if (getCyclePosition) {
+      // Synced mode: derive step position from Strudel's actual cycle
+      const tick = () => {
+        const cycle = getCyclePosition()
+        // Each cycle = 1 bar = 16 sixteenth-note steps. Pattern may span multiple bars.
+        const stepPos = (cycle * 16) % totalSteps
+        setPlayheadStep(stepPos)
+        raf = requestAnimationFrame(tick)
+      }
+      raf = requestAnimationFrame(tick)
+    } else {
+      // Fallback: independent clock
+      const cps = prBpm > 0 ? prBpm / 60 / 4 : 120 / 60 / 4
+      const msPerStep = 1000 / (cps * 16)
+      const startTime = performance.now()
+      const tick = () => {
+        const elapsed = performance.now() - startTime
+        const stepPos = (elapsed / msPerStep) % totalSteps
+        setPlayheadStep(stepPos)
+        raf = requestAnimationFrame(tick)
+      }
       raf = requestAnimationFrame(tick)
     }
-    raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [prIsPlaying, prBpm, totalSteps, isOpen])
+  }, [prIsPlaying, prBpm, totalSteps, isOpen, getCyclePosition])
 
   const nid = (midi: number, step: number) => `${midi}:${step}`
 

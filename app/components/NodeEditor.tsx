@@ -2276,6 +2276,8 @@ interface NodeEditorProps {
   getAnalyserById?: (id: string, fftSize?: number, smoothing?: number) => AnalyserNode | null
   /** When true, NDE renders without its own header — controls are in the parent */
   headerless?: boolean
+  /** Get current cycle position from Strudel scheduler — used to sync playhead, timeline, piano roll */
+  getCyclePosition?: () => number
 }
 
 /** Imperative handle exposed to parent for headerless control */
@@ -2303,7 +2305,7 @@ export interface NodeEditorHandle {
   selectedNode: string | null
 }
 
-const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEditor({ code, isPlaying, onCodeChange, onUpdate, onRegisterSound, analyserNode, getAnalyserById, headerless }, ref) {
+const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEditor({ code, isPlaying, onCodeChange, onUpdate, onRegisterSound, analyserNode, getAnalyserById, headerless, getCyclePosition }, ref) {
   const [nodes, setNodes] = useState<PatternNode[]>([])
   const [bpm, setBpm] = useState(0)
   const [timeSig, setTimeSig] = useState('4/4')
@@ -2682,21 +2684,31 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     })
   }, [])
 
-  // ── Cycle tracker (smooth fractional) ──
+  // ── Cycle tracker — synced to Strudel scheduler when available ──
   useEffect(() => {
     if (!isPlaying) { setCurrentCycle(0); return }
-    const cps = bpm > 0 ? bpm / 60 / 4 : 72 / 60 / 4
-    const msPerCycle = 1000 / cps
-    const startTime = performance.now()
     let raf: number
-    const tick = () => {
-      const elapsed = performance.now() - startTime
-      setCurrentCycle(elapsed / msPerCycle)
+    if (getCyclePosition) {
+      // Synced mode: read directly from Strudel scheduler.now()
+      const tick = () => {
+        setCurrentCycle(getCyclePosition())
+        raf = requestAnimationFrame(tick)
+      }
+      raf = requestAnimationFrame(tick)
+    } else {
+      // Fallback: independent clock (same BPM, may drift)
+      const cps = bpm > 0 ? bpm / 60 / 4 : 72 / 60 / 4
+      const msPerCycle = 1000 / cps
+      const startTime = performance.now()
+      const tick = () => {
+        const elapsed = performance.now() - startTime
+        setCurrentCycle(elapsed / msPerCycle)
+        raf = requestAnimationFrame(tick)
+      }
       raf = requestAnimationFrame(tick)
     }
-    raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [isPlaying, bpm])
+  }, [isPlaying, bpm, getCyclePosition])
 
   // ── Delete / Duplicate ──
   const deleteNode = useCallback((id: string) => {
@@ -4433,6 +4445,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                 onPatternChange={(newPattern) => handlePianoRollPatternChange(targetNode.id, newPattern)}
                 isPlaying={isPlaying}
                 bpm={bpm}
+                getCyclePosition={getCyclePosition}
               />
             </Suspense>
           )

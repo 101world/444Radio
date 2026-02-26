@@ -7307,45 +7307,58 @@ $: s("bd:3").bank("RolandTR808")
 
   // Metronome state
   const [metronomeEnabled, setMetronomeEnabled] = useState(false)
-  const metronomeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const metronomeBeatRef = useRef(0) // tracks which beat we're on (0 = downbeat)
+  const metronomeRafRef = useRef<number | null>(null)
 
-  // Metronome click — uses Web Audio API oscillator for a short beep
+  // Metronome — drift-free lookahead scheduler using Web Audio scheduled timing.
+  // Schedules clicks ahead of time using audioContext.currentTime so they
+  // are sample-accurate regardless of JS main-thread jitter.
+  // Reads BPM dynamically each frame so tempo changes are picked up immediately.
   useEffect(() => {
-    if (metronomeIntervalRef.current) {
-      clearInterval(metronomeIntervalRef.current)
-      metronomeIntervalRef.current = null
-    }
-    if (!metronomeEnabled || !isPlaying) {
-      metronomeBeatRef.current = 0
-      return
-    }
-    const bpm = nodeEditorRef.current?.bpm || 72
-    const msPerBeat = 60000 / bpm
-    const playClick = () => {
+    if (metronomeRafRef.current) { cancelAnimationFrame(metronomeRafRef.current); metronomeRafRef.current = null }
+    if (!metronomeEnabled || !isPlaying) return
+
+    const wa = webaudioRef.current
+    if (!wa?.getAudioContext) return
+    const ctx = wa.getAudioContext()
+    if (ctx.state === 'suspended') return
+
+    const lookahead = 0.08 // schedule 80ms ahead
+    let nextBeatTime = ctx.currentTime + 0.02 // first click 20ms from now
+    let beatIndex = 0
+    let lastBpm = nodeEditorRef.current?.bpm || 72
+
+    const scheduleClick = (time: number, downbeat: boolean) => {
       try {
-        const wa = webaudioRef.current
-        if (!wa?.getAudioContext) return
-        const ctx = wa.getAudioContext()
-        if (ctx.state === 'suspended') return
-        const isDownbeat = metronomeBeatRef.current % 4 === 0
         const osc = ctx.createOscillator()
         const gain = ctx.createGain()
         osc.connect(gain)
         gain.connect(ctx.destination)
-        osc.frequency.value = isDownbeat ? 1200 : 800
-        gain.gain.setValueAtTime(isDownbeat ? 0.12 : 0.06, ctx.currentTime)
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06)
-        osc.start(ctx.currentTime)
-        osc.stop(ctx.currentTime + 0.06)
-        metronomeBeatRef.current++
+        osc.frequency.value = downbeat ? 1200 : 800
+        gain.gain.setValueAtTime(downbeat ? 0.12 : 0.06, time)
+        gain.gain.exponentialRampToValueAtTime(0.001, time + 0.06)
+        osc.start(time)
+        osc.stop(time + 0.06)
       } catch { /* silent */ }
     }
-    playClick() // immediate first beat
-    metronomeIntervalRef.current = setInterval(playClick, msPerBeat)
-    return () => {
-      if (metronomeIntervalRef.current) clearInterval(metronomeIntervalRef.current)
+
+    const tick = () => {
+      // Re-read BPM each frame so tempo changes take effect immediately
+      const currentBpm = nodeEditorRef.current?.bpm || 72
+      if (currentBpm !== lastBpm) {
+        // BPM changed — adjust nextBeatTime based on new tempo
+        lastBpm = currentBpm
+      }
+      const secPerBeat = 60 / currentBpm
+      const deadline = ctx.currentTime + lookahead
+      while (nextBeatTime < deadline) {
+        scheduleClick(nextBeatTime, beatIndex % 4 === 0)
+        nextBeatTime += secPerBeat
+        beatIndex++
+      }
+      metronomeRafRef.current = requestAnimationFrame(tick)
     }
+    metronomeRafRef.current = requestAnimationFrame(tick)
+    return () => { if (metronomeRafRef.current) cancelAnimationFrame(metronomeRafRef.current) }
   }, [metronomeEnabled, isPlaying]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Vibe chat state
@@ -8258,6 +8271,13 @@ $: s("bd:3").bank("RolandTR808")
     const webaudio = webaudioRef.current
     if (!webaudio?.getAnalyserById) return null
     try { return webaudio.getAnalyserById(id, fftSize, smoothing) } catch { return null }
+  }, [])
+
+  /** Get current cycle position from Strudel scheduler — used by NodeEditor to sync playhead/timeline/pianoroll */
+  const getCyclePosition = useCallback((): number => {
+    const scheduler = strudelRef.current?.scheduler
+    if (scheduler?.now) return scheduler.now()
+    return 0
   }, [])
 
   // ─── WAV Recording handler ───
@@ -9488,12 +9508,14 @@ $: s("bd:3").bank("RolandTR808")
                 code={code}
                 isPlaying={isPlaying}
                 onCodeChange={(newCode: string) => {
+                  codeRef.current = newCode // sync ref immediately so handleUpdate evaluates the right code
                   setCodeWithUndo(newCode)
                 }}
                 onUpdate={() => handleUpdate()}
                 onRegisterSound={registerCustomSound}
                 analyserNode={analyserRef.current}
                 getAnalyserById={getAnalyserByIdCb}
+                getCyclePosition={getCyclePosition}
                 headerless
               />
             </Suspense>
