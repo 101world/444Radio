@@ -88,7 +88,12 @@ export async function POST(req: NextRequest) {
       bpm,
       audio_format = 'mp3',
       generateCoverArt = false,
+      source = 'hindi',
     } = await req.json()
+
+    // Label for logging — 'pro' for Pro Mode, 'hindi' for South Asian languages
+    const sourceLabel = source === 'pro' ? 'Pro Music' : 'Hindi Music'
+    const sourceTag = source === 'pro' ? 'pro' : 'hindi'
 
     // Validate
     if (!title || typeof title !== 'string' || title.trim().length < 3 || title.trim().length > 100) {
@@ -101,8 +106,9 @@ export async function POST(req: NextRequest) {
     // MiniMax V2 supports: mp3, pcm, flac (no wav — flac is lossless alternative)
     const chosenFormat = (audio_format === 'wav' || audio_format === 'flac') ? 'flac' : 'mp3'
 
-    console.log('🎵 [Hindi Music] MiniMax 2.0 generation request:')
+    console.log(`🎵 [${sourceLabel}] MiniMax 2.0 generation request:`)
     console.log('  Title:', title)
+    console.log('  Source:', source)
     console.log('  Prompt:', prompt)
     console.log('  Lyrics:', lyrics ? lyrics.substring(0, 100) + '...' : '<instrumental>')
     console.log('  Genre:', genre || 'auto')
@@ -124,12 +130,12 @@ export async function POST(req: NextRequest) {
     const userCredits = users[0].credits || 0
     if (userCredits < CREDIT_COST) {
       return NextResponse.json({
-        error: `Insufficient credits. Hindi music generation requires ${CREDIT_COST} credits.`,
+        error: `Insufficient credits. Music generation requires ${CREDIT_COST} credits.`,
         creditsNeeded: CREDIT_COST,
         creditsAvailable: userCredits,
       }, { status: 402 })
     }
-    console.log(`💰 User has ${userCredits} credits. Hindi music requires ${CREDIT_COST}.`)
+    console.log(`💰 User has ${userCredits} credits. ${sourceLabel} requires ${CREDIT_COST}.`)
 
     // Deduct atomically
     const deductRes = await fetch(`${supabaseUrl}/rest/v1/rpc/deduct_credits`, {
@@ -145,11 +151,11 @@ export async function POST(req: NextRequest) {
     if (!deductRes.ok || !deductResult?.success) {
       const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
       console.error('❌ Credit deduction blocked:', errorMsg)
-      await logCreditTransaction({ userId, amount: -CREDIT_COST, type: 'generation_music', status: 'failed', description: `Hindi Music: ${title}`, metadata: { prompt, genre } })
+      await logCreditTransaction({ userId, amount: -CREDIT_COST, type: 'generation_music', status: 'failed', description: `${sourceLabel}: ${title}`, metadata: { prompt, genre, source: sourceTag } })
       return NextResponse.json({ error: errorMsg }, { status: 402 })
     }
     console.log(`✅ Credits deducted (${CREDIT_COST}). Remaining: ${deductResult.new_credits}`)
-    await logCreditTransaction({ userId, amount: -CREDIT_COST, balanceAfter: deductResult.new_credits, type: 'generation_music', description: `Hindi Music: ${title}`, metadata: { prompt, genre, model: 'minimax-music-02' } })
+    await logCreditTransaction({ userId, amount: -CREDIT_COST, balanceAfter: deductResult.new_credits, type: 'generation_music', description: `${sourceLabel}: ${title}`, metadata: { prompt, genre, model: 'minimax-music-02', source: sourceTag } })
 
     // ---------- Build MiniMax 2.0 input (fal.ai V2 schema) ----------
     const minimax2Input: Record<string, unknown> = {
@@ -218,7 +224,8 @@ export async function POST(req: NextRequest) {
 
         // Upload to R2 for permanent storage
         const ext = chosenFormat === 'flac' ? 'flac' : 'mp3'
-        const fileName = `hindi-${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.${ext}`
+        const filePrefix = sourceTag === 'pro' ? 'pro' : 'hindi'
+        const fileName = `${filePrefix}-${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.${ext}`
         const r2Result = await downloadAndUploadToR2(audioUrl, userId, 'music', fileName)
         if (!r2Result.success) {
           throw new Error(`Failed to upload to permanent storage: ${r2Result.error}`)
@@ -236,7 +243,7 @@ export async function POST(req: NextRequest) {
           audio_format: chosenFormat,
           bitrate: chosenFormat === 'mp3' ? 256000 : 0,
           sample_rate: 44100,
-          generation_params: { model: 'minimax-music-02', language: 'hindi', audio_format: chosenFormat },
+          generation_params: { model: 'minimax-music-02', language: sourceTag === 'pro' ? 'english' : 'hindi', source: sourceTag, audio_format: chosenFormat },
           status: 'ready',
         }
         const saveRes = await fetch(`${supabaseUrl}/rest/v1/music_library`, {
@@ -269,7 +276,7 @@ export async function POST(req: NextRequest) {
               image_url: null,
               is_public: false,
               genre: genre || null,
-              metadata: JSON.stringify({ source: 'hindi-music', model: 'minimax-music-02', language: 'hindi', audio_format: chosenFormat }),
+              metadata: JSON.stringify({ source: sourceTag === 'pro' ? 'pro-music' : 'hindi-music', model: 'minimax-music-02', language: sourceTag === 'pro' ? 'english' : 'hindi', audio_format: chosenFormat }),
             }),
           })
           if (combinedRes.ok) {
@@ -294,7 +301,7 @@ export async function POST(req: NextRequest) {
 
         updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: audioUrl!, mediaType: 'audio', title, extraMeta: { genre, model: 'minimax-music-02' } }).catch(() => {})
         notifyGenerationComplete(userId, libraryId || '', 'music', title).catch(() => {})
-        notifyCreditDeduct(userId, CREDIT_COST, `Hindi Music: ${title}`).catch(() => {})
+        notifyCreditDeduct(userId, CREDIT_COST, `${sourceLabel}: ${title}`).catch(() => {})
 
         const response: Record<string, unknown> = {
           type: 'result',
@@ -353,8 +360,8 @@ export async function POST(req: NextRequest) {
         await writer.close().catch(() => {})
       } catch (error) {
         console.error('❌ Hindi music generation error:', error)
-        await refundCredits({ userId, amount: CREDIT_COST, type: 'generation_music', reason: `Error: ${String(error).substring(0, 80)}`, metadata: { prompt, genre, error: String(error).substring(0, 200) } })
-        notifyGenerationFailed(userId, 'music', 'Hindi generation error — credits refunded').catch(() => {})
+        await refundCredits({ userId, amount: CREDIT_COST, type: 'generation_music', reason: `Error: ${String(error).substring(0, 80)}`, metadata: { prompt, genre, source: sourceTag, error: String(error).substring(0, 200) } })
+        notifyGenerationFailed(userId, 'music', `${sourceLabel} generation error — credits refunded`).catch(() => {})
         try {
           await sendLine({ type: 'result', success: false, error: sanitizeError(error) })
           await writer.close()

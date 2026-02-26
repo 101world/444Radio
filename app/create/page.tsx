@@ -1463,8 +1463,8 @@ function CreatePageContent() {
             result = await generateHindiMusic(params.prompt, titleToUse, lyricsToUse, genreToUse, bpmToUse, abortController.signal, messageId)
           } else if (isProMode) {
             // PRO MODE: Route all MiniMax 1.5 generations through MiniMax 2.0 (fal.ai)
-            console.log('[Generation] 🔴 PRO MODE — Using MiniMax 2.0 via fal.ai')
-            result = await generateHindiMusic(params.prompt, titleToUse, lyricsToUse, genreToUse, bpmToUse, abortController.signal, messageId)
+            console.log('[Generation] 🔴 PRO MODE — Using premium engine via fal.ai')
+            result = await generateHindiMusic(params.prompt, titleToUse, lyricsToUse, genreToUse, bpmToUse, abortController.signal, messageId, 'pro')
           } else {
             console.log('[Generation] Calling generateMusic with:', { 
               prompt: params.prompt, 
@@ -1938,7 +1938,8 @@ function CreatePageContent() {
     genre?: string,
     bpm?: string,
     signal?: AbortSignal,
-    messageId?: string
+    messageId?: string,
+    source?: string
   ) => {
     const requestBody: Record<string, unknown> = {
       prompt: prompt.slice(0, 500),
@@ -1947,6 +1948,7 @@ function CreatePageContent() {
       genre: genre || undefined,
       bpm: bpm ? parseInt(bpm) : undefined,
       generateCoverArt,
+      ...(source && { source }),
     }
 
     console.log('[Hindi Gen] Calling /api/generate/hindi-music with:', { title, prompt: prompt.substring(0, 80) + '...', lyricsLen: lyrics?.length, genre, bpm })
