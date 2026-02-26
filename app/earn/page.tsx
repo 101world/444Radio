@@ -20,7 +20,7 @@ import TrackCard from './components/TrackCard'
 const HolographicBackgroundClient = lazy(() => import('../components/HolographicBackgroundClient'))
 
 interface EarnTrack {
-  id: string; title: string; audio_url: string; image_url: string; user_id: string
+  id: string; title: string; audio_url: string; image_url: string; video_url?: string; user_id: string
   username: string; avatar_url?: string; genre?: string; plays: number; likes: number
   downloads: number; created_at: string; listed_on_earn: boolean; earn_price: number
   artist_share: number; admin_share: number; mood?: string; bpm?: number; key_signature?: string

@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     const q = searchParams.get('q') || ''
 
     // Build query for tracks listed on earn marketplace
-    let query = `combined_media?listed_on_earn=eq.true&select=id,title,audio_url,image_url,user_id,genre,secondary_genre,plays,likes,downloads,created_at,earn_price,artist_share,admin_share,mood,bpm,key_signature,vocals,language,tags,description,instruments,is_explicit,duration_seconds`
+    let query = `combined_media?listed_on_earn=eq.true&select=id,title,audio_url,image_url,video_url,user_id,genre,secondary_genre,plays,likes,downloads,created_at,earn_price,artist_share,admin_share,mood,bpm,key_signature,vocals,language,tags,description,instruments,is_explicit,duration_seconds`
 
     // Genre filter
     if (genre) {
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
     // If column doesn't exist OR no tracks are listed, use fallback
     if (!res.ok || !tracks || tracks.length === 0) {
       // Return all public tracks as fallback
-      const fallbackQuery = `combined_media?select=id,title,audio_url,image_url,user_id,genre,secondary_genre,plays,likes,downloads,created_at,mood,bpm,key_signature,vocals,language,tags,description,instruments,is_explicit,duration_seconds&is_public=eq.true&order=plays.desc.nullslast&limit=50`
+      const fallbackQuery = `combined_media?select=id,title,audio_url,image_url,video_url,user_id,genre,secondary_genre,plays,likes,downloads,created_at,mood,bpm,key_signature,vocals,language,tags,description,instruments,is_explicit,duration_seconds&is_public=eq.true&order=plays.desc.nullslast&limit=50`
       const fallbackRes = await supabaseRest(fallbackQuery)
       const fallbackTracks = await fallbackRes.json()
 
@@ -136,7 +136,7 @@ export async function GET(request: NextRequest) {
       try {
         const bareAudioUrls = bareTracks.map((t: any) => `"${t.audio_url}"`).join(',')
         const siblingsRes = await supabaseRest(
-          `combined_media?audio_url=in.(${bareAudioUrls})&genre=not.is.null&listed_on_earn=not.eq.true&select=audio_url,user_id,genre,secondary_genre,mood,bpm,key_signature,vocals,language,description,instruments,tags,is_explicit,duration_seconds,artist_name,featured_artists,contributors,songwriters,copyright_holder,copyright_year,record_label,publisher,release_type,version_tag,image_url`
+          `combined_media?audio_url=in.(${bareAudioUrls})&genre=not.is.null&listed_on_earn=not.eq.true&select=audio_url,user_id,genre,secondary_genre,mood,bpm,key_signature,vocals,language,description,instruments,tags,is_explicit,duration_seconds,artist_name,featured_artists,contributors,songwriters,copyright_holder,copyright_year,record_label,publisher,release_type,version_tag,image_url,video_url`
         )
         if (siblingsRes.ok) {
           const siblings = await siblingsRes.json()
@@ -163,6 +163,7 @@ export async function GET(request: NextRequest) {
                 }
               }
               if (sib.image_url && !t.image_url) t.image_url = sib.image_url
+              if (sib.video_url && !t.video_url) t.video_url = sib.video_url
             }
           }
         }

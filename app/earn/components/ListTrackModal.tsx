@@ -15,6 +15,7 @@ interface UserTrack {
   title: string
   audio_url: string
   image_url: string
+  video_url?: string
   genre?: string
   plays: number
 }
@@ -44,7 +45,7 @@ export default function ListTrackModal({ onClose, onListed }: ListTrackModalProp
       try {
         const { data, error } = await supabase
           .from('combined_media')
-          .select('id, title, audio_url, image_url, genre, plays')
+          .select('id, title, audio_url, image_url, video_url, genre, plays')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
 
@@ -135,6 +136,8 @@ export default function ListTrackModal({ onClose, onListed }: ListTrackModalProp
                   <div className="w-12 h-12 rounded-lg overflow-hidden bg-white/10 flex-shrink-0">
                     {track.image_url ? (
                       <img src={track.image_url} alt={track.title} className="w-full h-full object-cover" />
+                    ) : track.video_url ? (
+                      <video src={track.video_url} className="w-full h-full object-cover" muted playsInline preload="metadata" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <Music2 size={16} className="text-gray-500" />

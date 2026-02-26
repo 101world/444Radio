@@ -163,14 +163,14 @@ export async function POST(request: NextRequest) {
     let metadataPatch: Record<string, unknown> = {}
     try {
       // First, get this track's audio_url and check if it already has metadata
-      const thisTrackRes = await supabaseRest(`combined_media?id=eq.${trackId}&select=audio_url,genre,mood,bpm,key_signature,vocals,language,description,instruments,tags,secondary_genre,is_explicit,duration_seconds,artist_name,featured_artists,contributors,songwriters,copyright_holder,copyright_year,record_label,publisher,release_type,version_tag,image_url`)
+      const thisTrackRes = await supabaseRest(`combined_media?id=eq.${trackId}&select=audio_url,genre,mood,bpm,key_signature,vocals,language,description,instruments,tags,secondary_genre,is_explicit,duration_seconds,artist_name,featured_artists,contributors,songwriters,copyright_holder,copyright_year,record_label,publisher,release_type,version_tag,image_url,video_url`)
       if (thisTrackRes.ok) {
         const thisTrackArr = await thisTrackRes.json()
         const thisTrack = thisTrackArr?.[0]
         if (thisTrack && !thisTrack.genre && thisTrack.audio_url) {
           // Look for a released sibling with metadata (same audio_url, same user, has genre)
           const siblingRes = await supabaseRest(
-            `combined_media?audio_url=eq.${encodeURIComponent(thisTrack.audio_url)}&user_id=eq.${userId}&genre=not.is.null&id=not.eq.${trackId}&select=genre,mood,bpm,key_signature,vocals,language,description,instruments,tags,secondary_genre,is_explicit,duration_seconds,artist_name,featured_artists,contributors,songwriters,copyright_holder,copyright_year,record_label,publisher,release_type,version_tag,image_url&limit=1`
+            `combined_media?audio_url=eq.${encodeURIComponent(thisTrack.audio_url)}&user_id=eq.${userId}&genre=not.is.null&id=not.eq.${trackId}&select=genre,mood,bpm,key_signature,vocals,language,description,instruments,tags,secondary_genre,is_explicit,duration_seconds,artist_name,featured_artists,contributors,songwriters,copyright_holder,copyright_year,record_label,publisher,release_type,version_tag,image_url,video_url&limit=1`
           )
           if (siblingRes.ok) {
             const siblings = await siblingRes.json()
@@ -192,6 +192,10 @@ export async function POST(request: NextRequest) {
               // Also fill image_url if the listed record has none
               if (sibling.image_url && !thisTrack.image_url) {
                 metadataPatch.image_url = sibling.image_url
+              }
+              // Also fill video_url (visualizer) if the listed record has none
+              if (sibling.video_url && !thisTrack.video_url) {
+                metadataPatch.video_url = sibling.video_url
               }
               console.log(`[EARN-LIST] Merged ${Object.keys(metadataPatch).length} metadata fields from released sibling`)
             }
