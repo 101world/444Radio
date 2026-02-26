@@ -744,3 +744,87 @@ input[placeholder*="Video"]:focus {
   opacity: 0 !important;
 }
 
+/* ═══════════════════════════════════════════════════════════
+   PRO MODE — Black & Red Neon Glow Theme
+   Applied when .pro-mode class is on the page container
+   ═══════════════════════════════════════════════════════════ */
+
+/* Pro Mode: Red neon scrollbar */
+.pro-mode ::-webkit-scrollbar-thumb {
+  background: #7f1d1d;
+}
+.pro-mode ::-webkit-scrollbar-thumb:hover {
+  background: #991b1b;
+}
+.pro-mode ::-webkit-scrollbar-thumb:active {
+  background: #ef4444;
+}
+
+/* Pro Mode: Red focus indicators */
+.pro-mode *:focus-visible {
+  outline-color: #ef4444;
+}
+.pro-mode button:focus-visible,
+.pro-mode input:focus-visible,
+.pro-mode select:focus-visible,
+.pro-mode textarea:focus-visible {
+  outline-color: #ef4444;
+}
+
+/* Pro Mode: Subtle red neon grid floor effect (bottom of page) */
+.pro-mode::after {
+  content: '';
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 35vh;
+  background:
+    linear-gradient(transparent 0%, rgba(239, 68, 68, 0.03) 100%),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 80px,
+      rgba(239, 68, 68, 0.06) 80px,
+      rgba(239, 68, 68, 0.06) 81px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 80px,
+      rgba(239, 68, 68, 0.06) 80px,
+      rgba(239, 68, 68, 0.06) 81px
+    );
+  mask-image: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 100%);
+  pointer-events: none;
+  z-index: 0;
+  animation: pro-grid-pulse 4s ease-in-out infinite alternate;
+}
+
+@keyframes pro-grid-pulse {
+  0% { opacity: 0.4; }
+  100% { opacity: 0.8; }
+}
+
+/* Pro Mode: Neon scanline */
+.pro-mode::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.4), rgba(239, 68, 68, 0.8), rgba(239, 68, 68, 0.4), transparent);
+  z-index: 100;
+  animation: pro-scanline 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes pro-scanline {
+  0% { transform: translateY(0); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
+

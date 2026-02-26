@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, Suspense, lazy } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices, Upload, RotateCcw, Repeat, Plus, Square, Guitar, AudioLines, Drum, ChevronDown } from 'lucide-react'
+import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices, Upload, RotateCcw, Repeat, Plus, Square, Guitar, AudioLines, Drum, ChevronDown, Crown } from 'lucide-react'
 
 // Lazy load heavy modals for better performance
 const MusicGenerationModal = lazy(() => import('../components/MusicGenerationModal'))
@@ -232,6 +232,9 @@ function CreatePageContent() {
   
   // Features sidebar state
   const [showFeaturesSidebar, setShowFeaturesSidebar] = useState(false)
+  
+  // Pro Mode state (red neon theme + MiniMax 2.0)
+  const [isProMode, setIsProMode] = useState(false)
   
   // Title validation state
   const [showTitleError, setShowTitleError] = useState(false)
@@ -1457,6 +1460,10 @@ function CreatePageContent() {
 
           if (useHindiRoute) {
             console.log('[Generation] Using MiniMax 2.0 (Hindi/South Asian language):', selectedLanguage)
+            result = await generateHindiMusic(params.prompt, titleToUse, lyricsToUse, genreToUse, bpmToUse, abortController.signal, messageId)
+          } else if (isProMode) {
+            // PRO MODE: Route all MiniMax 1.5 generations through MiniMax 2.0 (fal.ai)
+            console.log('[Generation] 🔴 PRO MODE — Using MiniMax 2.0 via fal.ai')
             result = await generateHindiMusic(params.prompt, titleToUse, lyricsToUse, genreToUse, bpmToUse, abortController.signal, messageId)
           } else {
             console.log('[Generation] Calling generateMusic with:', { 
@@ -2757,12 +2764,59 @@ function CreatePageContent() {
   }
 
   return (
-    <div className={`min-h-screen bg-black text-white flex flex-col transition-[padding] duration-150 ease-out ${showFeaturesSidebar ? 'md:pl-[312px]' : 'md:pl-14'} md:pr-28`}>
-      {/* Ambient Cyan Glow Overlays */}
+    <div className={`min-h-screen bg-black text-white flex flex-col transition-all duration-700 ease-out ${showFeaturesSidebar ? 'md:pl-[312px]' : 'md:pl-14'} md:pr-28 ${isProMode ? 'pro-mode' : ''}`}>
+      {/* Ambient Glow Overlays — Cyan default, Red in Pro Mode */}
       <div className="fixed inset-0 pointer-events-none z-0" aria-hidden="true">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-cyan-500/[0.03] rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-teal-500/[0.025] rounded-full blur-[100px]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-cyan-400/[0.015] rounded-full blur-[150px]" />
+        <div className={`absolute top-0 left-1/4 w-[600px] h-[600px] rounded-full blur-[120px] transition-colors duration-1000 ${isProMode ? 'bg-red-500/[0.06]' : 'bg-cyan-500/[0.03]'}`} />
+        <div className={`absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full blur-[100px] transition-colors duration-1000 ${isProMode ? 'bg-rose-600/[0.05]' : 'bg-teal-500/[0.025]'}`} />
+        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] rounded-full blur-[150px] transition-colors duration-1000 ${isProMode ? 'bg-red-400/[0.03]' : 'bg-cyan-400/[0.015]'}`} />
+        {/* Pro Mode extra neon accents */}
+        {isProMode && (
+          <>
+            <div className="absolute top-[10%] right-[15%] w-[300px] h-[300px] bg-red-600/[0.04] rounded-full blur-[80px] animate-pulse" />
+            <div className="absolute bottom-[20%] left-[10%] w-[400px] h-[200px] bg-rose-500/[0.03] rounded-full blur-[100px]" />
+          </>
+        )}
+      </div>
+
+      {/* Pro Mode Toggle — Top Right */}
+      <div 
+        className={`fixed top-6 right-4 md:right-8 z-50 transition-opacity duration-500 ${
+          showTopNav ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        style={{ pointerEvents: showTopNav ? 'auto' : 'none' }}
+      >
+        <button
+          onClick={() => setIsProMode(!isProMode)}
+          className={`group flex items-center gap-2 px-3 md:px-4 py-2 backdrop-blur-xl rounded-full transition-all duration-500 shadow-lg pointer-events-auto ${
+            isProMode
+              ? 'bg-red-500/20 hover:bg-red-500/30 border border-red-500/60 hover:border-red-400/80 shadow-red-500/30 hover:shadow-red-500/50'
+              : 'bg-black/40 hover:bg-white/10 border border-white/20 hover:border-white/40 shadow-white/5 hover:shadow-white/10'
+          }`}
+          title={isProMode ? 'Switch to Standard Mode' : 'Activate Pro Mode'}
+        >
+          <Crown 
+            size={16} 
+            className={`transition-all duration-500 ${
+              isProMode 
+                ? 'text-red-400 drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]' 
+                : 'text-white/50 group-hover:text-white/80'
+            }`} 
+          />
+          <span className={`text-sm font-bold tracking-wide transition-all duration-500 ${
+            isProMode
+              ? 'text-red-300 drop-shadow-[0_0_6px_rgba(239,68,68,0.6)]'
+              : 'text-white/60 group-hover:text-white/90'
+          }`}>
+            PRO
+          </span>
+          {isProMode && (
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+            </span>
+          )}
+        </button>
       </div>
       {/* Features Sidebar */}
       <Suspense fallback={null}>
@@ -2839,17 +2893,21 @@ function CreatePageContent() {
         style={{ pointerEvents: showTopNav ? 'auto' : 'none' }}
       >
         <Link href="/" className="block">
-          <button className="group flex items-center gap-2 px-3 md:px-4 py-2 bg-black/40 hover:bg-cyan-500/10 backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400/60 rounded-full transition-all duration-300 shadow-lg shadow-cyan-500/5 hover:shadow-cyan-500/20 hover:shadow-xl pointer-events-auto">
+          <button className={`group flex items-center gap-2 px-3 md:px-4 py-2 backdrop-blur-xl rounded-full transition-all duration-500 shadow-lg pointer-events-auto ${
+            isProMode
+              ? 'bg-black/40 hover:bg-red-500/10 border border-red-500/30 hover:border-red-400/60 shadow-red-500/5 hover:shadow-red-500/20 hover:shadow-xl'
+              : 'bg-black/40 hover:bg-cyan-500/10 border border-cyan-500/30 hover:border-cyan-400/60 shadow-cyan-500/5 hover:shadow-cyan-500/20 hover:shadow-xl'
+          }`}>
             <svg 
-              className="w-4 h-4 text-cyan-400 transition-transform group-hover:-translate-x-1" 
+              className={`w-4 h-4 transition-all duration-500 group-hover:-translate-x-1 ${isProMode ? 'text-red-400' : 'text-cyan-400'}`}
               fill="none" 
               stroke="currentColor" 
               viewBox="0 0 24 24"
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            <span className="text-sm font-medium text-cyan-300 hidden md:inline">Home</span>
-            <span className="text-xs text-cyan-400/50 ml-1 hidden lg:inline">(ESC)</span>
+            <span className={`text-sm font-medium hidden md:inline transition-colors duration-500 ${isProMode ? 'text-red-300' : 'text-cyan-300'}`}>Home</span>
+            <span className={`text-xs ml-1 hidden lg:inline transition-colors duration-500 ${isProMode ? 'text-red-400/50' : 'text-cyan-400/50'}`}>(ESC)</span>
           </button>
         </Link>
       </div>
@@ -2857,9 +2915,17 @@ function CreatePageContent() {
       {/* Chat Area - Glassmorphism Effect */}
       <div className="chat-scroll-container flex-1 overflow-y-auto px-3 sm:px-4 md:px-8 lg:px-16 xl:px-24 py-6 pb-40 w-full scrollbar-thin scroll-smooth">
         {/* Single Glassmorphism Container - Full Width */}
-        <div className="relative p-4 sm:p-6 md:p-8 rounded-3xl backdrop-blur-sm bg-white/[0.01] border border-cyan-500/10 shadow-2xl shadow-cyan-500/[0.03]">
+        <div className={`relative p-4 sm:p-6 md:p-8 rounded-3xl backdrop-blur-sm transition-all duration-700 ${
+          isProMode
+            ? 'bg-white/[0.01] border border-red-500/15 shadow-2xl shadow-red-500/[0.05]'
+            : 'bg-white/[0.01] border border-cyan-500/10 shadow-2xl shadow-cyan-500/[0.03]'
+        }`}>
           {/* Dew-like gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/5 via-transparent to-cyan-500/5 rounded-3xl pointer-events-none"></div>
+          <div className={`absolute inset-0 rounded-3xl pointer-events-none transition-all duration-700 ${
+            isProMode
+              ? 'bg-gradient-to-br from-red-500/5 via-transparent to-rose-500/5'
+              : 'bg-gradient-to-br from-cyan-400/5 via-transparent to-cyan-500/5'
+          }`}></div>
           
           {/* Content - Symmetrical Layout */}
           <div className="relative space-y-3 max-w-6xl mx-auto">
@@ -2873,10 +2939,14 @@ function CreatePageContent() {
                 {/* Text Message - Sleeker Bubble */}
                 {message.content && (
                   <div className={`${message.type === 'user' ? 'text-right' : 'text-left'}`}>
-                    <div className={`inline-block px-4 py-2.5 rounded-2xl backdrop-blur-xl ${
+                    <div className={`inline-block px-4 py-2.5 rounded-2xl backdrop-blur-xl transition-all duration-500 ${
                       message.type === 'user' 
-                        ? 'bg-gradient-to-br from-cyan-500/15 via-cyan-600/10 to-blue-500/15 border border-cyan-400/40 shadow-lg shadow-cyan-500/15' 
-                        : 'bg-gradient-to-br from-white/8 to-white/4 border border-white/15 shadow-lg shadow-cyan-500/[0.05]'
+                        ? (isProMode
+                            ? 'bg-gradient-to-br from-red-500/15 via-rose-600/10 to-red-500/15 border border-red-400/40 shadow-lg shadow-red-500/15'
+                            : 'bg-gradient-to-br from-cyan-500/15 via-cyan-600/10 to-blue-500/15 border border-cyan-400/40 shadow-lg shadow-cyan-500/15')
+                        : (isProMode
+                            ? 'bg-gradient-to-br from-white/8 to-white/4 border border-white/15 shadow-lg shadow-red-500/[0.05]'
+                            : 'bg-gradient-to-br from-white/8 to-white/4 border border-white/15 shadow-lg shadow-cyan-500/[0.05]')
                     }`}>
                       <p className={`text-sm leading-relaxed break-words font-light ${
                         message.type === 'user' ? 'text-cyan-100' : 'text-gray-200'
@@ -3529,7 +3599,7 @@ function CreatePageContent() {
             className="group relative w-full max-w-3xl mx-auto"
           >
             {/* Ambient Glow Effect */}
-            {!isMobile && <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/15 via-blue-500/15 to-purple-500/15 rounded-[28px] blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>}
+            {!isMobile && <div className={`absolute -inset-1 rounded-[28px] blur-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 ${isProMode ? 'bg-gradient-to-r from-red-500/20 via-rose-500/15 to-red-600/20' : 'bg-gradient-to-r from-cyan-500/15 via-blue-500/15 to-purple-500/15'}`}></div>}
             
             {/* Hidden file inputs */}
             <input ref={instrumentalRefInputRef} type="file" accept=".wav,.mp3" className="hidden" onChange={e => {
@@ -3544,7 +3614,11 @@ function CreatePageContent() {
             }} />
 
             {/* Glass Container */}
-            <div className="relative bg-black/30 backdrop-blur-2xl rounded-2xl border border-white/[0.08] focus-within:border-cyan-400/25 focus-within:shadow-[0_0_30px_rgba(34,211,238,0.08)] transition-all duration-500 shadow-2xl shadow-black/40" style={{ touchAction: 'manipulation' }}>
+            <div className={`relative bg-black/30 backdrop-blur-2xl rounded-2xl border transition-all duration-700 shadow-2xl ${
+              isProMode
+                ? 'border-red-500/15 focus-within:border-red-400/30 focus-within:shadow-[0_0_30px_rgba(239,68,68,0.12)] shadow-black/40'
+                : 'border-white/[0.08] focus-within:border-cyan-400/25 focus-within:shadow-[0_0_30px_rgba(34,211,238,0.08)] shadow-black/40'
+            }`} style={{ touchAction: 'manipulation' }}>
 
               {/* ── Row 1: Textarea ── */}
               <div className="flex items-end gap-2 sm:gap-3 px-3 sm:px-4 md:px-5 pt-3 sm:pt-4 pb-2">
@@ -3598,7 +3672,11 @@ function CreatePageContent() {
                     handleGenerate();
                   }}
                   disabled={!input.trim() || selectedType === 'video'}
-                  className="relative flex-shrink-0 w-11 h-11 sm:w-11 sm:h-11 md:w-11 md:h-11 bg-gradient-to-br from-cyan-400 via-cyan-500 to-blue-600 hover:from-cyan-500 hover:via-cyan-600 hover:to-blue-700 rounded-xl flex items-center justify-center transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed shadow-xl shadow-cyan-500/40 hover:shadow-cyan-500/60 hover:scale-105 active:scale-95 mb-0.5"
+                  className={`relative flex-shrink-0 w-11 h-11 sm:w-11 sm:h-11 md:w-11 md:h-11 rounded-xl flex items-center justify-center transition-all duration-500 disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 active:scale-95 mb-0.5 ${
+                    isProMode
+                      ? 'bg-gradient-to-br from-red-500 via-red-600 to-rose-700 hover:from-red-400 hover:via-red-500 hover:to-rose-600 shadow-xl shadow-red-500/40 hover:shadow-red-500/60'
+                      : 'bg-gradient-to-br from-cyan-400 via-cyan-500 to-blue-600 hover:from-cyan-500 hover:via-cyan-600 hover:to-blue-700 shadow-xl shadow-cyan-500/40 hover:shadow-cyan-500/60'
+                  }`}
                 >
                   {activeGenerations.size > 0 && (
                     <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gradient-to-br from-red-500 to-rose-600 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-lg shadow-red-500/50 animate-pulse">
@@ -3674,10 +3752,14 @@ function CreatePageContent() {
                 {/* Remix — upload beat + prompt with 444 Radio */}
                 <button
                   onClick={() => setShowResoundModal(true)}
-                  className="flex-shrink-0 w-9 h-9 sm:w-9 sm:h-9 rounded-lg transition-all duration-300 flex items-center justify-center hover:bg-cyan-500/20 border border-cyan-500/20 hover:border-cyan-400/40 bg-cyan-500/10"
+                  className={`flex-shrink-0 w-9 h-9 sm:w-9 sm:h-9 rounded-lg transition-all duration-500 flex items-center justify-center ${
+                    isProMode
+                      ? 'hover:bg-red-500/20 border border-red-500/20 hover:border-red-400/40 bg-red-500/10'
+                      : 'hover:bg-cyan-500/20 border border-cyan-500/20 hover:border-cyan-400/40 bg-cyan-500/10'
+                  }`}
                   title="Remix — Upload a beat & generate with 444 Radio"
                 >
-                  <Music2 size={18} className="text-cyan-400" />
+                  <Music2 size={18} className={`transition-colors duration-500 ${isProMode ? 'text-red-400' : 'text-cyan-400'}`} />
                 </button>
 
                 {/* Instrumental Toggle */}
@@ -3963,12 +4045,16 @@ function CreatePageContent() {
                 </div>
 
                 {/* Credits Badge — integrated */}
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.04] rounded-lg border border-white/[0.06]">
-                  <Zap size={13} className="text-cyan-400 drop-shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
+                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-500 ${
+                  isProMode
+                    ? 'bg-red-500/[0.06] border-red-500/[0.12]'
+                    : 'bg-white/[0.04] border-white/[0.06]'
+                }`}>
+                  <Zap size={13} className={`transition-all duration-500 ${isProMode ? 'text-red-400 drop-shadow-[0_0_6px_rgba(239,68,68,0.8)]' : 'text-cyan-400 drop-shadow-[0_0_6px_rgba(34,211,238,0.8)]'}`} />
                   <span className="text-sm font-bold text-white tabular-nums">
                     {isLoadingCredits ? '...' : userCredits}
                   </span>
-                  <span className="text-[10px] text-cyan-400/50 font-mono">
+                  <span className={`text-[10px] font-mono transition-colors duration-500 ${isProMode ? 'text-red-400/50' : 'text-cyan-400/50'}`}>
                     {selectedType === 'music' ? (hasVoiceOrInstrumentalRef ? '(-3)' : '(-2)') : selectedType === 'image' ? '(-1)' : selectedType === 'effects' ? '(-2)' : ''}
                   </span>
                 </div>
@@ -3979,14 +4065,14 @@ function CreatePageContent() {
           
           {/* Slim Info Label */}
           <div className="flex items-center justify-center gap-2 mt-2.5 text-xs md:text-sm">
-            <span className="px-3 py-1 rounded-full bg-black/20 backdrop-blur-sm border border-white/5 text-cyan-300/70 font-medium tracking-wide">
+            <span className={`px-3 py-1 rounded-full bg-black/20 backdrop-blur-sm border border-white/5 font-medium tracking-wide transition-colors duration-500 ${isProMode ? 'text-red-300/70' : 'text-cyan-300/70'}`}>
               {activeGenerations.size > 0 ? (
                 <span className="flex items-center gap-2">
                   <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+                    <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isProMode ? 'bg-red-400' : 'bg-cyan-400'}`}></span>
+                    <span className={`relative inline-flex rounded-full h-2 w-2 ${isProMode ? 'bg-red-500' : 'bg-cyan-500'}`}></span>
                   </span>
-                  {activeGenerations.size} generating
+                  {activeGenerations.size} generating{isProMode ? ' (PRO)' : ''}
                 </span>
               ) : (
                 <>{'✨ '}{selectedType === 'music' ? 'Create tracks' : selectedType === 'image' ? 'Generate art' : selectedType === 'effects' ? 'Generate sounds' : 'Coming soon'}</>
