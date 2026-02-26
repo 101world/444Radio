@@ -771,6 +771,25 @@ function RadioPageContent() {
     }, 400)
   }, [talesIndex, talesVideos])
 
+  // Lock body scroll on mobile when Tales is active
+  useEffect(() => {
+    if (activeTab === 'tales' && typeof window !== 'undefined') {
+      const isMobile = window.innerWidth < 768
+      if (isMobile) {
+        document.body.style.overflow = 'hidden'
+        document.body.style.position = 'fixed'
+        document.body.style.width = '100%'
+        document.body.style.height = '100%'
+      }
+      return () => {
+        document.body.style.overflow = ''
+        document.body.style.position = ''
+        document.body.style.width = ''
+        document.body.style.height = ''
+      }
+    }
+  }, [activeTab])
+
   // ─── Derived ───
   const INTERNAL_GENRES = ['stem', 'effects', 'loop', 'sfx']
   const nonStemMedia = combinedMedia.filter(m => !INTERNAL_GENRES.includes(m.genre?.toLowerCase() || ''))
@@ -1215,8 +1234,8 @@ function RadioPageContent() {
             {/* ═══ TALES TAB ═══ */}
             {activeTab === 'tales' && !isSearchActive && (
               <>
-                {/* ── MOBILE: TikTok-style fullscreen vertical swipe ── */}
-                <div className="md:hidden">
+                {/* ── MOBILE: TikTok-style fullscreen fixed overlay ── */}
+                <div className="md:hidden fixed inset-0 z-[45] bg-black">
                   <style jsx>{`
                     @keyframes talesSlideUp {
                       0% { opacity: 0; transform: translateY(60px); }
@@ -1248,11 +1267,11 @@ function RadioPageContent() {
                   `}</style>
 
                   {loadingTales ? (
-                    <div className="flex items-center justify-center h-[calc(100vh-120px)]">
+                    <div className="flex items-center justify-center h-full">
                       <div className="w-8 h-8 border-2 border-pink-400/30 border-t-pink-400 rounded-full animate-spin" />
                     </div>
                   ) : talesVideos.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-[calc(100vh-120px)]">
+                    <div className="flex flex-col items-center justify-center h-full">
                       <Video size={40} className="text-gray-700 mb-4" />
                       <h2 className="text-xl font-bold text-white mb-2">No Tales Yet</h2>
                       <p className="text-gray-500 text-sm mb-6">Be the first to create a tale!</p>
@@ -1263,7 +1282,7 @@ function RadioPageContent() {
                   ) : (
                     <div
                       ref={talesContainerRef}
-                      className="relative w-full overflow-hidden bg-black" style={{ height: '100dvh' }}
+                      className="relative w-full h-full overflow-hidden bg-black touch-none"
                       onTouchStart={handleTalesTouchStart}
                       onTouchMove={handleTalesTouchMove}
                       onTouchEnd={handleTalesTouchEnd}
