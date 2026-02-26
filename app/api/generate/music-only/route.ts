@@ -267,14 +267,15 @@ export async function POST(req: NextRequest) {
     console.log(`✅ Credits deducted. Remaining: ${deductResult.new_credits}`)
     await logCreditTransaction({ userId, amount: -2, balanceAfter: deductResult.new_credits, type: 'generation_music', description: `Music: ${title}`, metadata: { prompt, genre } })
 
-    // Auto-detect non-English content from prompt or lyrics
-    const nonEnglishKeywords = /\b(hindi|urdu|punjabi|tamil|telugu|bengali|marathi|gujarati|kannada|malayalam|arabic|persian|farsi|turkish|korean|japanese|chinese|mandarin|cantonese|thai|vietnamese|indonesian|malay)\b/i
-    const promptMentionsNonEnglish = nonEnglishKeywords.test(prompt)
-    const hasNonLatinLyrics = /[\u0900-\u097F\u0980-\u09FF\u0A00-\u0A7F\u0A80-\u0AFF\u0B00-\u0B7F\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0600-\u06FF\u0750-\u077F\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF\u0E00-\u0E7F\u0E80-\u0EFF\u1000-\u109F\u1780-\u17FF]/.test(formattedLyrics)
-    const langIsNonEnglish = language && language.toLowerCase() !== 'english' && language.toLowerCase() !== 'en'
-    const useNonEnglishModel = langIsNonEnglish || promptMentionsNonEnglish || hasNonLatinLyrics
+    // Only route Hindi-family languages to fal.ai V2; all others (Spanish, etc.) use MiniMax 1.5
+    const hindiLanguages = ['hindi', 'urdu', 'punjabi', 'tamil', 'telugu']
+    const langLower = (language || '').toLowerCase()
+    const isHindiFamily = hindiLanguages.includes(langLower)
+    // Also detect Devanagari/South Asian scripts in lyrics as Hindi-family
+    const hasIndicScript = /[\u0900-\u097F\u0980-\u09FF\u0A00-\u0A7F\u0A80-\u0AFF\u0B00-\u0B7F\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F]/.test(formattedLyrics)
+    const useHindiModel = isHindiFamily || hasIndicScript
 
-    if (useNonEnglishModel) {
+    if (useHindiModel) {
       // ============ FAL.AI MINIMAX 2.0 PATH ============
       const falKey = process.env.FAL_KEY || process.env.fal_key
       if (!falKey) {
@@ -284,10 +285,9 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
       }
 
-      const reason = langIsNonEnglish ? `language: ${language}` :
-                     promptMentionsNonEnglish ? `prompt mentions non-English` :
-                     `non-Latin script in lyrics`
-      console.log(`🎵 Auto-detected non-English (${reason}) → routing to MiniMax 2.0 via fal.ai`)
+      const reason = isHindiFamily ? `language: ${language}` :
+                     `Indic script in lyrics`
+      console.log(`🎵 Hindi-family detected (${reason}) → routing to MiniMax 2.0 via fal.ai`)
 
       const chosenFormat = (audio_format === 'wav' || audio_format === 'flac') ? 'flac' : 'mp3'
       const minimax2Input: Record<string, unknown> = {
@@ -485,8 +485,8 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // ============ MINIMAX 1.5 PATH (English only) ============
-    // Generate music with MiniMax Music-1.5 (English)
+    // ============ MINIMAX 1.5 PATH (all languages except Hindi-family) ============
+    // Generate music with MiniMax Music-1.5 via Replicate
     // Use NDJSON streaming so the client gets the prediction ID immediately for cancellation
     console.log('🎵 Using MiniMax Music-1.5 ...')
 

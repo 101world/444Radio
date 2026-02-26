@@ -1481,24 +1481,14 @@ function CreatePageContent() {
             abortController.signal, messageId
           )
         } else {
-          // Check if language routes to MiniMax 2.0 (Hindi, Urdu, Punjabi, Tamil, Telugu)
+          // Only Hindi-family languages route to MiniMax 2.0 (fal.ai); everything else uses MiniMax 1.5
           const hindiLangs = ['hindi', 'urdu', 'punjabi', 'tamil', 'telugu']
-          const langFromDropdown = hindiLangs.includes(selectedLanguage.toLowerCase())
+          const isHindiFamily = hindiLangs.includes(selectedLanguage.toLowerCase())
+          // Also detect Devanagari/South Asian scripts in lyrics
+          const hasIndicScript = lyricsToUse ? /[\u0900-\u097F\u0980-\u09FF\u0A00-\u0A7F\u0A80-\u0AFF\u0B00-\u0B7F\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F]/.test(lyricsToUse) : false
 
-          // Auto-detect non-English from prompt text (e.g. user typed "Hindi, Very intimate...")
-          const nonEnglishKeywords = /\b(hindi|urdu|punjabi|tamil|telugu|bengali|marathi|gujarati|kannada|malayalam|arabic|persian|farsi|turkish|korean|japanese|chinese|mandarin|cantonese|thai|vietnamese|indonesian|malay|swahili|amharic|nepali|sinhala|burmese|khmer|lao|tibetan|mongolian|tagalog|filipino)\b/i
-          const promptMentionsNonEnglish = nonEnglishKeywords.test(params.prompt)
-
-          // Auto-detect non-Latin scripts in lyrics (Devanagari, Arabic, CJK, etc.)
-          const hasNonLatinLyrics = lyricsToUse ? /[\u0900-\u097F\u0980-\u09FF\u0A00-\u0A7F\u0A80-\u0AFF\u0B00-\u0B7F\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0600-\u06FF\u0750-\u077F\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF\u0E00-\u0E7F\u0E80-\u0EFF\u1000-\u109F\u1780-\u17FF]/.test(lyricsToUse) : false
-
-          const useNonEnglishRoute = langFromDropdown || promptMentionsNonEnglish || hasNonLatinLyrics
-
-          if (useNonEnglishRoute) {
-            const reason = langFromDropdown ? `language dropdown: ${selectedLanguage}` :
-                          promptMentionsNonEnglish ? `prompt mentions non-English language` :
-                          `non-Latin script detected in lyrics`
-            console.log(`[Generation] Using MiniMax 2.0 via fal.ai (${reason})`)
+          if (isHindiFamily || hasIndicScript) {
+            console.log(`[Generation] Using MiniMax 2.0 via fal.ai (Hindi-family: ${selectedLanguage})`)
             result = await generateHindiMusic(params.prompt, titleToUse, lyricsToUse, genreToUse, bpmToUse, abortController.signal, messageId)
           } else if (isProMode) {
             // PRO MODE: Route all MiniMax 1.5 generations through MiniMax 2.0 (fal.ai)
