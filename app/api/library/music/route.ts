@@ -56,9 +56,9 @@ export async function GET() {
 
     // Fetch from 3 database tables
     const [combinedMediaResponse, combinedLibraryResponse, musicLibraryResponse] = await Promise.all([
-      // combined_media - has audio_url directly, uses user_id column (exclude extracts, loops, effects)
+      // combined_media - has audio_url directly, uses user_id column (exclude internal tool genres + visualizers)
       fetch(
-        `${supabaseUrl}/rest/v1/combined_media?audio_url=not.is.null&user_id=eq.${userId}&genre=not.in.(extract,loop,effects)&order=created_at.desc`,
+        `${supabaseUrl}/rest/v1/combined_media?audio_url=not.is.null&user_id=eq.${userId}&genre=not.in.(extract,loop,effects,stem,boosted,chords,processed,voice-over,visualizer)&order=created_at.desc`,
         {
           headers: {
             'apikey': supabaseKey,
@@ -66,9 +66,9 @@ export async function GET() {
           }
         }
       ),
-      // combined_media_library - uses clerk_user_id column
+      // combined_media_library - uses clerk_user_id column (exclude internal tool genres + visualizers)
       fetch(
-        `${supabaseUrl}/rest/v1/combined_media_library?clerk_user_id=eq.${userId}&order=created_at.desc`,
+        `${supabaseUrl}/rest/v1/combined_media_library?clerk_user_id=eq.${userId}&genre=not.in.(extract,loop,effects,stem,boosted,chords,processed,voice-over,visualizer)&order=created_at.desc`,
         {
           headers: {
             'apikey': supabaseKey,
@@ -76,9 +76,9 @@ export async function GET() {
           }
         }
       ),
-      // music_library - uses clerk_user_id column
+      // music_library - uses clerk_user_id column (exclude internal tool genres + visualizers)
       fetch(
-        `${supabaseUrl}/rest/v1/music_library?clerk_user_id=eq.${userId}&order=created_at.desc`,
+        `${supabaseUrl}/rest/v1/music_library?clerk_user_id=eq.${userId}&genre=not.in.(extract,loop,effects,stem,boosted,chords,processed,voice-over,visualizer)&order=created_at.desc`,
         {
           headers: {
             'apikey': supabaseKey,
@@ -117,7 +117,9 @@ export async function GET() {
             const key = f.Key || ''
             // Match audio files for this user
             return /\.(mp3|wav|ogg)$/i.test(key) && 
-                   (key.startsWith(`${userId}/`) || key.includes(`/${userId}/`))
+                   (key.startsWith(`${userId}/`) || key.includes(`/${userId}/`)) &&
+                   // Exclude internal tool outputs by key pattern
+                   !/\b(effects[_-]?hq|visualizer|stem|boosted|extract)\b/i.test(key)
           })
           .map((file, index) => {
             const key = file.Key || ''
@@ -203,8 +205,8 @@ export async function GET() {
 
     // R2 files are already transformed above (r2Music array)
 
-    // Combine ALL FOUR sources and deduplicate by audio_url (DB entries take precedence over R2)
-    const allMusic = [...combinedMediaMusic, ...combinedLibraryMusic, ...musicLibraryMusic, ...r2Music]
+    // Combine ALL FOUR sources and deduplicate by audio_url (R2 first so DB entries overwrite them)
+    const allMusic = [...r2Music, ...combinedMediaMusic, ...combinedLibraryMusic, ...musicLibraryMusic]
     
     console.log(`🎵 Music sources before dedup: combined_media=${combinedMediaMusic.length}, combined_library=${combinedLibraryMusic.length}, music_library=${musicLibraryMusic.length}, r2=${r2Music.length}, total=${allMusic.length}`)
     
