@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { Play, Square, Search, Zap, Volume2, ChevronDown, Sparkles, Copy, Check, Palette, Plus, Undo2, Redo2, BookOpen, FolderOpen, Save, Download, Upload, Trash2, Pencil, Files, AlertTriangle, MessageCircle, Send, Loader2, Mic, CircleDot, LayoutGrid, Columns, LayoutList, Maximize2, Minimize2 } from 'lucide-react'
 import { lazy, Suspense } from 'react'
 const NodeEditor = lazy(() => import('./NodeEditor'))
+const SoundUploader = lazy(() => import('./node-editor/SoundUploader'))
 import type { NodeEditorHandle } from './NodeEditor'
 
 // ─── Saved Pattern type ───
@@ -7259,6 +7260,9 @@ $: s("bd:3").bank("RolandTR808")
   const masterGainRef = useRef<GainNode | null>(null)
   const [masterVolume, setMasterVolume] = useState(0.75)
 
+  // ─── Sound Uploader ───
+  const [showSoundUploader, setShowSoundUploader] = useState(false)
+
   // ─── WAV Recording ───
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
@@ -9050,6 +9054,14 @@ $: s("bd:3").bank("RolandTR808")
             )}
           </button>
 
+          {/* Custom samples uploader */}
+          <button
+            onClick={() => setShowSoundUploader(true)}
+            className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer bg-white/[0.04] border border-white/[0.08] text-white/30 hover:text-purple-400 hover:border-purple-500/25"
+            title="Upload custom audio samples">
+            <Upload size={9} /> samples
+          </button>
+
           {/* Metronome toggle (SVG pendulum icon, animated based on BPM when active) */}
           <button
             onClick={() => setMetronomeEnabled(p => !p)}
@@ -10085,6 +10097,17 @@ $: s("bd:3").bank("RolandTR808")
           </div>
         )}
       </div>
+
+      {/* ══════ SOUND UPLOADER MODAL ══════ */}
+      {showSoundUploader && (
+        <Suspense fallback={null}>
+          <SoundUploader
+            isOpen={showSoundUploader}
+            onClose={() => setShowSoundUploader(false)}
+            onRegisterSound={registerCustomSound}
+          />
+        </Suspense>
+      )}
     </div>
   )
 }

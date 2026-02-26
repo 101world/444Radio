@@ -60,6 +60,7 @@ export default function SoundUploader({ isOpen, onClose, onRegisterSound, onUnre
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [dragOver, setDragOver] = useState(false)
+  const dragCounterRef = useRef(0)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -262,9 +263,10 @@ export default function SoundUploader({ isOpen, onClose, onRegisterSound, onUnre
               borderColor: dragOver ? accentColor : HW.border,
               background: dragOver ? `${accentColor}08` : HW.bg,
             }}
-            onDragOver={e => { e.preventDefault(); setDragOver(true) }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
+            onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
+            onDragEnter={e => { e.preventDefault(); e.stopPropagation(); dragCounterRef.current++; setDragOver(true) }}
+            onDragLeave={e => { e.preventDefault(); e.stopPropagation(); dragCounterRef.current--; if (dragCounterRef.current <= 0) { dragCounterRef.current = 0; setDragOver(false) } }}
+            onDrop={e => { dragCounterRef.current = 0; setDragOver(false); handleDrop(e) }}
             onClick={() => fileInputRef.current?.click()}
           >
             <input
