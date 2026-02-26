@@ -630,11 +630,14 @@ function CreatePageContent() {
     // Also remove any still-generating items from the queue context
     generations.forEach(gen => {
       if (gen.status === 'queued' || gen.status === 'generating') {
+        processedGenIdsRef.current.add(gen.id)
         updateGeneration(gen.id, { status: 'failed', error: 'New chat started' })
       }
     })
     // Now clear them all
     clearCompleted()
+    // Reset processed IDs since we're starting fresh
+    processedGenIdsRef.current.clear()
 
     // ── 7. Reset messages to fresh welcome ──
     setMessages([{
@@ -675,6 +678,7 @@ function CreatePageContent() {
     // Update generation queue item if linked
     const msg = messages.find(m => m.id === messageId)
     if (msg?.generationId) {
+      processedGenIdsRef.current.add(msg.generationId)
       updateGeneration(msg.generationId, { status: 'failed', error: 'Cancelled by user' })
     }
     // Clean up active generations set
@@ -692,11 +696,19 @@ function CreatePageContent() {
   // Track which session each generation belongs to, so we don't inject old gen results
   // into a new chat.
   const genSessionMap = useRef<Map<string, number>>(new Map())
+  // Track generation IDs already handled by processQueue — useEffect must skip these
+  // to avoid creating duplicate messages.
+  const processedGenIdsRef = useRef<Set<string>>(new Set())
   useEffect(() => {
     console.log('[Sync] Checking generation queue for completed generations:', generations.length)
     
     // Check if any generations completed while user was away or during generation
     generations.forEach(gen => {
+      // Skip generations already handled by processQueue (prevents duplicates)
+      if (processedGenIdsRef.current.has(gen.id)) {
+        return
+      }
+
       // If this generation wasn't started in the current session, skip it.
       // This prevents old generations from leaking into a new chat.
       const genSession = genSessionMap.current.get(gen.id)
@@ -1493,6 +1505,9 @@ function CreatePageContent() {
         })
       }
 
+      // Mark this generation as processed so the sync useEffect won't duplicate messages
+      processedGenIdsRef.current.add(genId)
+
       // Update message with result - mark as NOT generating
       // Guard: skip if user started a new chat (session changed)
       if (!isStaleSession()) {
@@ -1540,6 +1555,8 @@ function CreatePageContent() {
         status: 'failed',
         error: error instanceof Error ? error.message : 'Unknown error'
       })
+      // Mark as processed so sync useEffect won't duplicate
+      processedGenIdsRef.current.add(genId)
       
       // Mark message as failed and NOT generating (skip if session changed)
       if (!isStaleSession()) {
@@ -2159,6 +2176,7 @@ function CreatePageContent() {
       refreshCredits()
       window.dispatchEvent(new Event('credits:refresh'))
 
+      processedGenIdsRef.current.add(genId)
       if (result.error) {
         updateGeneration(genId, { status: 'failed', error: result.error })
       } else {
@@ -2200,6 +2218,7 @@ function CreatePageContent() {
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return
       console.error('Remix generation error:', error)
+      processedGenIdsRef.current.add(genId)
       updateGeneration(genId, { status: 'failed', error: error instanceof Error ? error.message : 'Unknown error' })
       if (!isStale()) {
         setMessages(prev =>
@@ -2337,6 +2356,7 @@ function CreatePageContent() {
       refreshCredits()
       window.dispatchEvent(new Event('credits:refresh'))
 
+      processedGenIdsRef.current.add(genId)
       if (result.error) {
         updateGeneration(genId, { status: 'failed', error: result.error })
       } else {
@@ -2378,6 +2398,7 @@ function CreatePageContent() {
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return
       console.error('Beat Maker generation error:', error)
+      processedGenIdsRef.current.add(genId)
       updateGeneration(genId, { status: 'failed', error: error instanceof Error ? error.message : 'Unknown error' })
       if (!isStale()) {
         setMessages(prev =>
@@ -2625,6 +2646,7 @@ function CreatePageContent() {
       refreshCredits()
       window.dispatchEvent(new Event('credits:refresh'))
 
+      processedGenIdsRef.current.add(genId)
       updateGeneration(genId, { status: 'completed', result: { stems: data.stems, creditsUsed: data.creditsUsed || 1 } })
 
       // Add completed stems to state — merge with existing
@@ -2654,6 +2676,7 @@ function CreatePageContent() {
       if (error instanceof DOMException && error.name === 'AbortError') return
       console.error('Stem splitting error:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to split stem. Please try again.'
+      processedGenIdsRef.current.add(genId)
       updateGeneration(genId, { status: 'failed', error: errorMessage })
       // Update the chat message to show the error
       setMessages(prev => prev.map(msg =>
