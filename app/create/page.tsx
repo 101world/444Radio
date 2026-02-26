@@ -2765,55 +2765,57 @@ function CreatePageContent() {
 
   return (
     <div className={`min-h-screen bg-black text-white flex flex-col transition-all duration-700 ease-out ${showFeaturesSidebar ? 'md:pl-[312px]' : 'md:pl-14'} md:pr-28 ${isProMode ? 'pro-mode' : ''}`}>
-      {/* Ambient Glow Overlays — Cyan default, Red in Pro Mode */}
+      {/* Ambient Glow Overlays — Cyan default, PUNCHY Red in Pro Mode */}
       <div className="fixed inset-0 pointer-events-none z-0" aria-hidden="true">
-        <div className={`absolute top-0 left-1/4 w-[600px] h-[600px] rounded-full blur-[120px] transition-colors duration-1000 ${isProMode ? 'bg-red-500/[0.06]' : 'bg-cyan-500/[0.03]'}`} />
-        <div className={`absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full blur-[100px] transition-colors duration-1000 ${isProMode ? 'bg-rose-600/[0.05]' : 'bg-teal-500/[0.025]'}`} />
-        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] rounded-full blur-[150px] transition-colors duration-1000 ${isProMode ? 'bg-red-400/[0.03]' : 'bg-cyan-400/[0.015]'}`} />
-        {/* Pro Mode extra neon accents */}
+        <div className={`absolute top-0 left-1/4 w-[600px] h-[600px] rounded-full blur-[120px] transition-colors duration-1000 ${isProMode ? 'bg-red-500/[0.08]' : 'bg-cyan-500/[0.03]'}`} />
+        <div className={`absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full blur-[100px] transition-colors duration-1000 ${isProMode ? 'bg-rose-600/[0.07]' : 'bg-teal-500/[0.025]'}`} />
+        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] rounded-full blur-[150px] transition-colors duration-1000 ${isProMode ? 'bg-red-500/[0.05]' : 'bg-cyan-400/[0.015]'}`} />
+        {/* Pro Mode extra neon accents — punchy red pulses */}
         {isProMode && (
           <>
-            <div className="absolute top-[10%] right-[15%] w-[300px] h-[300px] bg-red-600/[0.04] rounded-full blur-[80px] animate-pulse" />
-            <div className="absolute bottom-[20%] left-[10%] w-[400px] h-[200px] bg-rose-500/[0.03] rounded-full blur-[100px]" />
+            <div className="absolute top-[5%] right-[10%] w-[400px] h-[400px] bg-red-600/[0.08] rounded-full blur-[100px] animate-pulse" />
+            <div className="absolute bottom-[15%] left-[5%] w-[500px] h-[300px] bg-red-500/[0.06] rounded-full blur-[120px]" />
+            <div className="absolute top-[40%] right-[30%] w-[300px] h-[300px] bg-rose-500/[0.05] rounded-full blur-[90px] animate-pulse" style={{ animationDelay: '1.5s' }} />
+            <div className="absolute bottom-[35%] left-[25%] w-[250px] h-[250px] bg-red-700/[0.04] rounded-full blur-[80px] animate-pulse" style={{ animationDelay: '3s' }} />
           </>
         )}
       </div>
 
-      {/* Pro Mode Toggle — Top Right */}
+      {/* Pro Mode Toggle — Top Right, positioned LEFT of bell+credits */}
       <div 
-        className={`fixed top-6 right-4 md:right-8 z-50 transition-opacity duration-500 ${
+        className={`fixed top-4 right-[7.5rem] md:right-36 z-50 transition-opacity duration-500 ${
           showTopNav ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
         style={{ pointerEvents: showTopNav ? 'auto' : 'none' }}
       >
         <button
           onClick={() => setIsProMode(!isProMode)}
-          className={`group flex items-center gap-2 px-3 md:px-4 py-2 backdrop-blur-xl rounded-full transition-all duration-500 shadow-lg pointer-events-auto ${
+          className={`group flex items-center gap-2 px-3.5 py-1.5 backdrop-blur-xl rounded-full transition-all duration-500 pointer-events-auto ${
             isProMode
-              ? 'bg-red-500/20 hover:bg-red-500/30 border border-red-500/60 hover:border-red-400/80 shadow-red-500/30 hover:shadow-red-500/50'
-              : 'bg-black/40 hover:bg-white/10 border border-white/20 hover:border-white/40 shadow-white/5 hover:shadow-white/10'
+              ? 'bg-red-950/80 hover:bg-red-900/80 border-2 border-red-500/80 hover:border-red-400 shadow-[0_0_20px_rgba(239,68,68,0.4),0_0_60px_rgba(239,68,68,0.15)] hover:shadow-[0_0_30px_rgba(239,68,68,0.6),0_0_80px_rgba(239,68,68,0.2)]'
+              : 'bg-black/60 hover:bg-black/80 border border-white/20 hover:border-white/40 shadow-lg shadow-black/20'
           }`}
           title={isProMode ? 'Switch to Standard Mode' : 'Activate Pro Mode'}
         >
           <Crown 
-            size={16} 
+            size={15} 
             className={`transition-all duration-500 ${
               isProMode 
-                ? 'text-red-400 drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]' 
+                ? 'text-red-400 drop-shadow-[0_0_12px_rgba(239,68,68,1)]' 
                 : 'text-white/50 group-hover:text-white/80'
             }`} 
           />
-          <span className={`text-sm font-bold tracking-wide transition-all duration-500 ${
+          <span className={`text-xs font-black tracking-widest uppercase transition-all duration-500 ${
             isProMode
-              ? 'text-red-300 drop-shadow-[0_0_6px_rgba(239,68,68,0.6)]'
-              : 'text-white/60 group-hover:text-white/90'
+              ? 'text-red-300 drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]'
+              : 'text-white/50 group-hover:text-white/80'
           }`}>
             PRO
           </span>
           {isProMode && (
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.8)]"></span>
             </span>
           )}
         </button>

@@ -778,46 +778,47 @@ input[placeholder*="Video"]:focus {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 35vh;
+  height: 40vh;
   background:
-    linear-gradient(transparent 0%, rgba(239, 68, 68, 0.03) 100%),
+    linear-gradient(transparent 0%, rgba(239, 68, 68, 0.05) 100%),
     repeating-linear-gradient(
       90deg,
       transparent,
-      transparent 80px,
-      rgba(239, 68, 68, 0.06) 80px,
-      rgba(239, 68, 68, 0.06) 81px
+      transparent 60px,
+      rgba(239, 68, 68, 0.08) 60px,
+      rgba(239, 68, 68, 0.08) 61px
     ),
     repeating-linear-gradient(
       0deg,
       transparent,
-      transparent 80px,
-      rgba(239, 68, 68, 0.06) 80px,
-      rgba(239, 68, 68, 0.06) 81px
+      transparent 60px,
+      rgba(239, 68, 68, 0.08) 60px,
+      rgba(239, 68, 68, 0.08) 61px
     );
-  mask-image: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 100%);
+  mask-image: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%);
   pointer-events: none;
   z-index: 0;
-  animation: pro-grid-pulse 4s ease-in-out infinite alternate;
+  animation: pro-grid-pulse 3s ease-in-out infinite alternate;
 }
 
 @keyframes pro-grid-pulse {
-  0% { opacity: 0.4; }
-  100% { opacity: 0.8; }
+  0% { opacity: 0.5; }
+  100% { opacity: 1; }
 }
 
-/* Pro Mode: Neon scanline */
+/* Pro Mode: Neon scanline — bolder */
 .pro-mode::before {
   content: '';
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.4), rgba(239, 68, 68, 0.8), rgba(239, 68, 68, 0.4), transparent);
+  height: 3px;
+  background: linear-gradient(90deg, transparent 5%, rgba(239, 68, 68, 0.6) 30%, rgba(255, 100, 100, 1) 50%, rgba(239, 68, 68, 0.6) 70%, transparent 95%);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.6), 0 0 60px rgba(239, 68, 68, 0.3);
   z-index: 100;
-  animation: pro-scanline 3s ease-in-out infinite;
+  animation: pro-scanline 4s ease-in-out infinite;
   pointer-events: none;
 }
 
@@ -826,5 +827,80 @@ input[placeholder*="Video"]:focus {
   10% { opacity: 1; }
   90% { opacity: 1; }
   100% { transform: translateY(100vh); opacity: 0; }
+}
+
+/* ── Pro Mode: Force ALL cyan/teal/blue accent colors → red neon ── */
+/* Text colors */
+.pro-mode .text-cyan-100     { color: #fecaca !important; }  /* red-200 */
+.pro-mode .text-cyan-200     { color: #fca5a5 !important; }  /* red-300 */
+.pro-mode .text-cyan-300     { color: #f87171 !important; }  /* red-400 */
+.pro-mode .text-cyan-400     { color: #ef4444 !important; }  /* red-500 */
+.pro-mode .text-cyan-500     { color: #dc2626 !important; }  /* red-600 */
+.pro-mode .text-cyan-600     { color: #b91c1c !important; }  /* red-700 */
+.pro-mode .text-teal-300     { color: #f87171 !important; }
+.pro-mode .text-teal-400     { color: #ef4444 !important; }
+.pro-mode .text-blue-400     { color: #ef4444 !important; }
+.pro-mode .text-blue-500     { color: #dc2626 !important; }
+
+/* Border colors */
+.pro-mode [class*="border-cyan"] {
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+.pro-mode [class*="hover\:border-cyan"]:hover {
+  border-color: rgba(239, 68, 68, 0.5) !important;
+}
+.pro-mode [class*="focus-within\:border-cyan"]:focus-within {
+  border-color: rgba(239, 68, 68, 0.4) !important;
+}
+.pro-mode [class*="border-teal"] {
+  border-color: rgba(239, 68, 68, 0.25) !important;
+}
+
+/* Background accent overrides */
+.pro-mode [class*="bg-cyan-500\/10"],
+.pro-mode [class*="bg-cyan-500\/20"] {
+  background-color: rgba(239, 68, 68, 0.12) !important;
+}
+.pro-mode [class*="hover\:bg-cyan"]:hover {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+}
+
+/* Gradient overrides for buttons & cards */
+.pro-mode [class*="from-cyan"] {
+  --tw-gradient-from: #dc2626 !important;
+}
+.pro-mode [class*="via-cyan"] {
+  --tw-gradient-via: #ef4444 !important;
+}
+.pro-mode [class*="to-cyan"] {
+  --tw-gradient-to: #f87171 !important;
+}
+.pro-mode [class*="from-blue-500"],
+.pro-mode [class*="from-blue-600"] {
+  --tw-gradient-from: #991b1b !important;
+}
+.pro-mode [class*="to-blue-600"],
+.pro-mode [class*="to-blue-700"] {
+  --tw-gradient-to: #7f1d1d !important;
+}
+
+/* Shadow overrides — cyan shadows → red neon shadows */
+.pro-mode [class*="shadow-cyan"] {
+  --tw-shadow-color: rgba(239, 68, 68, 0.3) !important;
+  --tw-shadow: 0 0 15px rgba(239, 68, 68, 0.2) !important;
+}
+.pro-mode [class*="hover\:shadow-cyan"]:hover {
+  --tw-shadow-color: rgba(239, 68, 68, 0.5) !important;
+  --tw-shadow: 0 0 25px rgba(239, 68, 68, 0.35) !important;
+}
+
+/* Drop-shadow text glow override */
+.pro-mode [class*="drop-shadow-\[0_0_6px_rgba(34"] {
+  filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.9)) !important;
+}
+
+/* Focus-within shadow override for prompt box */
+.pro-mode [class*="focus-within\:shadow-\[0_0_30px"]:focus-within {
+  box-shadow: 0 0 30px rgba(239, 68, 68, 0.12) !important;
 }
 
