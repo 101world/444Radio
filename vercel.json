@@ -26,6 +26,10 @@
       "memory": 1024,
       "maxDuration": 120
     },
+    "app/api/nde/samples/route.ts": {
+      "memory": 3008,
+      "maxDuration": 60
+    },
     "app/api/upload/media/route.ts": {
       "memory": 3008,
       "maxDuration": 300

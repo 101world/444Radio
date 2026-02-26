@@ -72,10 +72,10 @@ export async function POST(req: NextRequest) {
       return corsResponse(NextResponse.json({ error: 'File must be audio' }, { status: 400 }))
     }
 
-    // 10MB limit for individual samples
-    const MAX_SIZE = 10 * 1024 * 1024
+    // 4MB limit (Vercel serverless body limit is ~4.5MB)
+    const MAX_SIZE = 4 * 1024 * 1024
     if (file.size > MAX_SIZE) {
-      return corsResponse(NextResponse.json({ error: 'Sample must be under 10MB' }, { status: 400 }))
+      return corsResponse(NextResponse.json({ error: 'Sample must be under 4MB' }, { status: 400 }))
     }
 
     // Check user doesn't exceed 50 custom samples

@@ -17,6 +17,9 @@ const nextConfig: NextConfig = {
   // Experimental optimizations
   experimental: {
     optimizePackageImports: ['lucide-react', '@clerk/nextjs'],
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
   },
 
   typescript: {

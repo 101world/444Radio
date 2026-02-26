@@ -103,8 +103,8 @@ export default function SoundUploader({ isOpen, onClose, onRegisterSound, onUnre
       setError('Only audio files are accepted')
       return
     }
-    if (file.size > 10 * 1024 * 1024) {
-      setError('File must be under 10MB')
+    if (file.size > 4 * 1024 * 1024) {
+      setError('File must be under 4MB')
       return
     }
     setSelectedFile(file)
@@ -301,7 +301,7 @@ export default function SoundUploader({ isOpen, onClose, onRegisterSound, onUnre
                   Drop audio file here or click to browse
                 </p>
                 <p className="text-[10px]" style={{ color: HW.textDim }}>
-                  WAV, MP3, OGG, FLAC — max 10MB
+                  WAV, MP3, OGG, FLAC — max 4MB
                 </p>
               </div>
             )}
