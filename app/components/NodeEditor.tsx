@@ -1184,6 +1184,18 @@ const FX_CATEGORY_IDS = new Set([
 const SIDEBAR_SOUNDS = SIDEBAR_CATEGORIES.filter(c => !FX_CATEGORY_IDS.has(c.id))
 const SIDEBAR_FX = SIDEBAR_CATEGORIES.filter(c => FX_CATEGORY_IDS.has(c.id))
 
+// Map each node type to the sidebar categories relevant to it
+const NODE_TYPE_SIDEBAR_MAP: Record<NodeType, Set<string>> = {
+  drums:  new Set(['drums', 'drum_patterns']),
+  bass:   new Set(['sounds', 'melody_patterns', 'scales']),
+  melody: new Set(['sounds', 'melody_patterns', 'scales']),
+  chords: new Set(['sounds', 'chords', 'scales']),
+  pad:    new Set(['sounds', 'melody_patterns', 'scales']),
+  vocal:  new Set(['sounds', 'melody_patterns', 'scales']),
+  fx:     new Set(['drums', 'drum_patterns']),
+  other:  new Set(['sounds', 'drums', 'drum_patterns', 'melody_patterns', 'chords', 'scales']),
+}
+
 // ═══════════════════════════════════════════════════════════════
 //  SVG MATH
 // ═══════════════════════════════════════════════════════════════
@@ -3594,20 +3606,41 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
       <div className="flex-1 flex min-h-0">
 
       {/* ══════ SIDEBAR (Sounds & Patterns) ══════ */}
-      {sidebarOpen && (
+      {sidebarOpen && (() => {
+        const selNodeObj = selectedNode ? nodes.find(n => n.id === selectedNode) : null
+        const relevantIds = selNodeObj ? NODE_TYPE_SIDEBAR_MAP[selNodeObj.type] || NODE_TYPE_SIDEBAR_MAP.other : null
+        const relevantCategories = relevantIds ? SIDEBAR_SOUNDS.filter(c => relevantIds.has(c.id)) : []
+        return (
         <div className="flex flex-col shrink-0 border-r overflow-hidden" style={{
           width: 220, background: HW.surface, borderColor: HW.border,
         }}>
           {/* Header */}
           <div className="px-3 py-1.5 shrink-0 flex items-center gap-1.5" style={{ borderBottom: `1px solid ${HW.border}` }}>
-            <span className="text-[10px]">🎸</span>
-            <span className="text-[9px] font-bold tracking-[0.15em] uppercase" style={{ color: HW.textBright }}>SOUNDS</span>
+            <span className="text-[10px]">{selNodeObj ? TYPE_ICONS[selNodeObj.type] || '🎸' : '🎸'}</span>
+            <span className="text-[9px] font-bold tracking-[0.15em] uppercase" style={{ color: selNodeObj ? (TYPE_COLORS[selNodeObj.type] || HW.textBright) : HW.textBright }}>
+              {selNodeObj ? `${selNodeObj.name || selNodeObj.type.toUpperCase()} SOUNDS` : 'SOUNDS'}
+            </span>
           </div>
+
+          {!selNodeObj ? (
+            /* No node selected — show prompt */
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 px-4 text-center">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'rgba(34,211,238,0.08)', border: '1px solid rgba(34,211,238,0.15)' }}>
+                <span className="text-lg">👆</span>
+              </div>
+              <div>
+                <div className="text-[10px] font-bold" style={{ color: HW.textBright }}>Select a node</div>
+                <div className="text-[8px] mt-1" style={{ color: HW.textDim }}>Click any node on the canvas to see sounds, patterns & presets relevant to that instrument type</div>
+              </div>
+            </div>
+          ) : (
+            /* Node selected — show filtered categories */
+            <>
           {/* Search */}
           <div className="px-2 py-2 shrink-0" style={{ borderBottom: `1px solid ${HW.border}` }}>
             <input
               type="text" value={sidebarSearch} onChange={e => setSidebarSearch(e.target.value)}
-              placeholder="Search sounds, patterns..."
+              placeholder={`Search ${selNodeObj.type} sounds...`}
               className="w-full px-2 py-1 rounded text-[10px] outline-none"
               style={{ background: HW.raised, border: `1px solid ${HW.border}`, color: HW.textBright }}
               onClick={e => e.stopPropagation()}
@@ -3615,7 +3648,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
           </div>
           {/* Categories */}
           <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: `${HW.raisedLight} transparent` }}>
-            {SIDEBAR_SOUNDS.map(cat => {
+            {relevantCategories.map(cat => {
               const q = sidebarSearch.toLowerCase()
               const filteredItems = q
                 ? cat.items.filter(item => item.label.toLowerCase().includes(q) || item.desc.toLowerCase().includes(q))
@@ -3645,30 +3678,19 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                             e.dataTransfer.setData('application/x-sidebar-item', JSON.stringify(item))
                             e.dataTransfer.effectAllowed = 'copy'
                           }}
-                          onClick={() => {
-                            if (selectedNode) {
-                              applySidebarItemToNode(selectedNode, item)
-                            } else {
-                              setSidebarHint('⚠ Select a node first — click any node on canvas')
-                              setTimeout(() => setSidebarHint(''), 2500)
-                            }
-                          }}
-                          className={`flex items-center gap-2 px-2 py-1 rounded text-[9px] transition-colors group ${
-                            selectedNode ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'
-                          }`}
+                          onClick={() => applySidebarItemToNode(selectedNode!, item)}
+                          className="flex items-center gap-2 px-2 py-1 rounded text-[9px] transition-colors group cursor-pointer"
                           style={{ color: HW.text }}
                           onMouseEnter={e => { e.currentTarget.style.background = `${item.color}10`; e.currentTarget.style.color = item.color }}
                           onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = HW.text }}
-                          title={selectedNode ? `Click to apply to selected node: ${item.desc}` : `Drag onto a node: ${item.desc}`}
+                          title={`Click to apply: ${item.desc}`}
                         >
                           <span className="text-[10px] shrink-0 w-4 text-center">{item.icon}</span>
                           <div className="flex-1 min-w-0">
                             <div className="font-medium truncate">{item.label}</div>
                             <div className="text-[7px] truncate" style={{ color: HW.textDim }}>{item.desc}</div>
                           </div>
-                          <span className="text-[7px] opacity-0 group-hover:opacity-60 shrink-0">
-                            {selectedNode ? 'click✓' : 'drag→'}
-                          </span>
+                          <span className="text-[7px] opacity-0 group-hover:opacity-60 shrink-0">click✓</span>
                         </div>
                       ))}
                     </div>
@@ -3677,17 +3699,20 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
               )
             })}
           </div>
+            </>
+          )}
           {/* Sidebar footer hint */}
           <div className="px-3 py-1.5 shrink-0 text-[7px]" style={{ color: HW.textDim, borderTop: `1px solid ${HW.border}` }}>
             {sidebarHint
               ? <span style={{ color: '#f59e0b' }} className="animate-pulse">{sidebarHint}</span>
-              : selectedNode
-                ? <span style={{ color: '#22d3ee' }}>● Node selected — click items to apply</span>
-                : 'Drag items onto nodes · or select a node first'
+              : selNodeObj
+                ? <span style={{ color: TYPE_COLORS[selNodeObj.type] || '#22d3ee' }}>● {selNodeObj.type.toUpperCase()} — click items to apply</span>
+                : 'Select a node to see its sounds & patterns'
             }
           </div>
         </div>
-      )}
+        )
+      })()}
 
       {/* ══════ CANVAS ══════ */}
       <div ref={containerRef}
