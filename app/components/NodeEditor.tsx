@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense, forwardRef, useImperativeHandle } from 'react'
 import ReactDOM from 'react-dom'
-import { Volume2, VolumeX, GripHorizontal, Plus, Trash2, Copy, ChevronDown, Maximize2, Minimize2, ChevronLeft, ChevronRight, Piano, LayoutList, Columns, Upload, SlidersHorizontal } from 'lucide-react'
+import { Volume2, VolumeX, GripHorizontal, Plus, Trash2, Copy, ChevronDown, Maximize2, Minimize2, ChevronLeft, ChevronRight, Piano, LayoutList, Columns, Upload } from 'lucide-react'
 import { useKeyChords, buildDiatonicChords } from './node-editor/KeyChords'
 
 const PianoRoll = lazy(() => import('./node-editor/PianoRoll'))
@@ -65,7 +65,7 @@ interface PatternNode {
 
 type NodeType = 'drums' | 'bass' | 'melody' | 'chords' | 'fx' | 'vocal' | 'pad' | 'other'
 
-interface Connection { fromId: string; toId: string }
+// Connection type removed — nodes are independent $: blocks, wires were cosmetic
 
 // Track which fields the user has ACTUALLY changed via knobs (not just detected)
 interface NodeOverrides {
@@ -2258,34 +2258,7 @@ function MasterVisualizer({ analyserNode, isPlaying }: { analyserNode?: Analyser
   )
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  PORT
-// ═══════════════════════════════════════════════════════════════
-
-function Port({ side, color, connected, onMouseDown, onMouseUp, nodeId }: {
-  side: 'in' | 'out'; color: string; connected: boolean
-  onMouseDown: (e: React.MouseEvent, nodeId: string, side: 'in' | 'out') => void
-  onMouseUp: (e: React.MouseEvent, nodeId: string, side: 'in' | 'out') => void
-  nodeId: string
-}) {
-  return (
-    <div className={`absolute top-1/2 -translate-y-1/2 ${
-      side === 'in' ? 'left-0 -translate-x-1/2' : 'right-0 translate-x-1/2'
-    } z-30 cursor-crosshair group`}
-      onMouseDown={e => { e.stopPropagation(); onMouseDown(e, nodeId, side) }}
-      onMouseUp={e => { e.stopPropagation(); onMouseUp(e, nodeId, side) }}>
-      <div className="w-3.5 h-3.5 rounded-full transition-all group-hover:scale-125" style={{
-        border: `2px solid ${connected ? color : HW.knobRing}`,
-        backgroundColor: connected ? `${color}40` : HW.knobBg,
-        boxShadow: connected ? `0 0 10px ${color}30, inset 0 0 4px ${color}20` : 'none',
-      }} />
-      <span className="absolute text-[5px] font-bold uppercase tracking-wider whitespace-nowrap"
-        style={{ color: HW.textDim, top: '50%', transform: 'translateY(-50%)', ...(side === 'in' ? { right: 18 } : { left: 18 }) }}>
-        {side === 'in' ? 'IN' : 'OUT'}
-      </span>
-    </div>
-  )
-}
+// Port component removed — nodes are independent $: blocks, not connected
 
 // ═══════════════════════════════════════════════════════════════
 //  MAIN COMPONENT
@@ -2333,14 +2306,12 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   const [nodes, setNodes] = useState<PatternNode[]>([])
   const [bpm, setBpm] = useState(0)
   const [timeSig, setTimeSig] = useState('4/4')
-  const [connections, setConnections] = useState<Connection[]>([])
   const [dragging, setDragging] = useState<{ id: string; ox: number; oy: number } | null>(null)
   const [zoom, setZoom] = useState(0.85)
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [isPanning, setIsPanning] = useState(false)
   const [selectedNode, setSelectedNode] = useState<string | null>(null)
   const [showAddMenu, setShowAddMenu] = useState(false)
-  const [linking, setLinking] = useState<{ fromId: string; side: 'in' | 'out'; mx: number; my: number } | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sidebarSearch, setSidebarSearch] = useState('')
   const [sidebarCategory, setSidebarCategory] = useState<string | null>(null)
@@ -2349,9 +2320,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   const [dropTarget, setDropTarget] = useState<string | null>(null)
   const [allCollapsed, setAllCollapsed] = useState(false)
   const [timelineOpen, setTimelineOpen] = useState(false)
-  const [fxPanelOpen, setFxPanelOpen] = useState(false)
-  const [fxPanelSearch, setFxPanelSearch] = useState('')
-  const [fxPanelCategory, setFxPanelCategory] = useState<string | null>(null)
+
   const [pianoRollOpen, setPianoRollOpen] = useState<{ nodeId: string } | null>(null)
   const [soundUploaderOpen, setSoundUploaderOpen] = useState(false)
   const [soundSlicerOpen, setSoundSlicerOpen] = useState<{ nodeId: string } | null>(null)
@@ -2438,19 +2407,11 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     setCodeGenerating(true)
     codeGenTimerRef.current = setTimeout(() => setCodeGenerating(false), 1200)
 
-    let newConnections: Connection[] | null = null
     setNodes(prev => {
       const parsed = parseCodeToNodes(code, prev.length > 0 ? prev : undefined)
-      // If node count changed significantly (new project loaded), reset connections
-      if (Math.abs(parsed.length - prevNodeCount.current) > 2 || prevNodeCount.current === 0) {
-        const conns: Connection[] = []
-        for (let i = 1; i < parsed.length; i++) conns.push({ fromId: parsed[i - 1].id, toId: parsed[i].id })
-        newConnections = conns
-      }
       prevNodeCount.current = parsed.length
       return parsed
     })
-    if (newConnections !== null) setConnections(newConnections)
   }, [code])
 
   // ── Init on mount ──
@@ -2459,9 +2420,6 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     setNodes(parsed)
     setBpm(extractBpm(code))
     prevNodeCount.current = parsed.length
-    const conns: Connection[] = []
-    for (let i = 1; i < parsed.length; i++) conns.push({ fromId: parsed[i - 1].id, toId: parsed[i].id })
-    setConnections(conns)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Send code change to parent ──
@@ -2733,7 +2691,6 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
       prevNodeCount.current = updated.length
       return updated
     })
-    setConnections(c => c.filter(conn => conn.fromId !== id && conn.toId !== id))
     if (codeToSend !== null) sendToParent(codeToSend)
   }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
@@ -2898,10 +2855,6 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     const parsed = parseCodeToNodes(newCode)
     setNodes(parsed)
     prevNodeCount.current = parsed.length
-    // Auto-connect new node
-    const conns: Connection[] = []
-    for (let i = 1; i < parsed.length; i++) conns.push({ fromId: parsed[i - 1].id, toId: parsed[i].id })
-    setConnections(conns)
     sendToParent(newCode)
     setShowAddMenu(false)
   }, [sendToParent])
@@ -3035,24 +2988,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     if (codeToSend !== null) sendToParent(codeToSend)
   }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
-  // ── Connection port handlers ──
-  const startLink = useCallback((e: React.MouseEvent, nodeId: string, side: 'in' | 'out') => {
-    const rect = containerRef.current?.getBoundingClientRect()
-    if (!rect) return
-    setLinking({ fromId: nodeId, side, mx: e.clientX - rect.left, my: e.clientY - rect.top })
-  }, [])
 
-  const endLink = useCallback((_e: React.MouseEvent, nodeId: string, side: 'in' | 'out') => {
-    if (!linking || linking.fromId === nodeId || side === linking.side) { setLinking(null); return }
-    const fromId = linking.side === 'out' ? linking.fromId : nodeId
-    const toId = linking.side === 'out' ? nodeId : linking.fromId
-    setConnections(prev => [...prev.filter(c => c.toId !== toId), { fromId, toId }])
-    setLinking(null)
-  }, [linking])
-
-  const removeConnection = useCallback((fromId: string, toId: string) => {
-    setConnections(prev => prev.filter(c => !(c.fromId === fromId && c.toId === toId)))
-  }, [])
 
   // ── Drag & drop from sidebar onto nodes ──
   const handleDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy' }, [])
@@ -3232,11 +3168,6 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   }, [zoom])
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (linking) {
-      const rect = containerRef.current?.getBoundingClientRect()
-      if (rect) setLinking(prev => prev ? { ...prev, mx: e.clientX - rect.left, my: e.clientY - rect.top } : null)
-      return
-    }
     if (dragging) {
       const rect = containerRef.current?.getBoundingClientRect(); if (!rect) return
       const p = panRef.current
@@ -3251,11 +3182,11 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
         y: panStart.current.py + (e.clientY - panStart.current.y) / zoom,
       })
     }
-  }, [dragging, isPanning, zoom, linking])
+  }, [dragging, isPanning, zoom])
 
   const handleMouseUp = useCallback(() => {
-    setDragging(null); setIsPanning(false); if (linking) setLinking(null)
-  }, [linking])
+    setDragging(null); setIsPanning(false)
+  }, [])
 
   const handleBgMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.target === containerRef.current || (e.target as HTMLElement).classList.contains('node-grid-bg')) {
@@ -3369,35 +3300,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     }
   }, [])
 
-  // ── Connected ids — all nodes are always "live" (each is an independent $: block) ──
-  const connectedIds = useMemo(() => {
-    const ids = new Set<string>()
-    nodes.forEach(n => ids.add(n.id))
-    return ids
-  }, [nodes])
 
-  // ── Auto-clean stale connections (remove refs to deleted nodes) ──
-  useEffect(() => {
-    const nodeIds = new Set(nodes.map(n => n.id))
-    setConnections(prev => {
-      const valid = prev.filter(c => nodeIds.has(c.fromId) && nodeIds.has(c.toId))
-      // Auto-connect any orphan nodes to the nearest preceding node
-      const connected = new Set<string>()
-      valid.forEach(c => { connected.add(c.fromId); connected.add(c.toId) })
-      const newConns = [...valid]
-      nodes.forEach((node, idx) => {
-        if (!connected.has(node.id) && idx > 0) {
-          newConns.push({ fromId: nodes[idx - 1].id, toId: node.id })
-          connected.add(node.id)
-          connected.add(nodes[idx - 1].id)
-        }
-      })
-      if (newConns.length !== prev.length || newConns.some((c, i) => prev[i]?.fromId !== c.fromId || prev[i]?.toId !== c.toId)) {
-        return newConns
-      }
-      return prev
-    })
-  }, [nodes])
 
   // ── Current global scale (detected from majority of nodes) ──
   const globalScale = useMemo(() => {
@@ -3535,17 +3438,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
             title="Upload custom samples">
             <Upload size={10} /> SAMPLES
           </button>
-          {/* FX Panel toggle */}
-          <button onClick={() => setFxPanelOpen(p => !p)}
-            className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[9px] font-bold tracking-wider transition-all cursor-pointer"
-            style={{
-              background: fxPanelOpen ? 'rgba(167,139,250,0.08)' : HW.raised,
-              border: `1px solid ${fxPanelOpen ? 'rgba(167,139,250,0.2)' : HW.border}`,
-              color: fxPanelOpen ? '#a78bfa' : HW.textDim,
-            }}
-            title="Toggle effects panel">
-            <SlidersHorizontal size={10} /> FX
-          </button>
+
           {/* Timeline toggle */}
           <button onClick={() => setTimelineOpen(p => !p)}
             className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[9px] font-bold tracking-wider transition-all cursor-pointer"
@@ -3564,18 +3457,47 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
               <Plus size={11} /> ADD
             </button>
             {showAddMenu && (
-              <div className="absolute right-0 top-full mt-1 z-50 min-w-[160px] rounded-lg shadow-2xl overflow-hidden"
+              <div className="absolute right-0 top-full mt-1 z-50 min-w-[220px] rounded-xl shadow-2xl overflow-hidden"
                 style={{ background: '#0e0e11', border: `1px solid ${HW.borderLight}` }}>
-                {(['drums', 'bass', 'melody', 'chords', 'pad', 'vocal', 'fx'] as const).map(t => (
+                {/* Section: Sound Sources */}
+                <div className="px-3 pt-2 pb-1">
+                  <span className="text-[7px] font-bold tracking-[0.2em] uppercase" style={{ color: HW.textDim }}>SOUND SOURCES</span>
+                </div>
+                {([
+                  { type: 'drums' as const, desc: '808 kit — kick, snare, hats' },
+                  { type: 'bass' as const, desc: 'Sub bass with lowpass filter' },
+                  { type: 'melody' as const, desc: 'Piano melody with reverb' },
+                  { type: 'chords' as const, desc: 'Chord progression — epiano' },
+                  { type: 'pad' as const, desc: 'Slow evolving atmosphere' },
+                  { type: 'vocal' as const, desc: 'Choir / vocal texture' },
+                ]).map(({ type: t, desc }) => (
                   <button key={t} onClick={() => addNode(t)}
-                    className="w-full flex items-center gap-2.5 px-4 py-2 text-[11px] transition-colors cursor-pointer"
+                    className="w-full flex items-center gap-2.5 px-3 py-1.5 text-[11px] transition-colors cursor-pointer"
                     style={{ color: TYPE_COLORS[t] }}
                     onMouseEnter={e => { (e.currentTarget).style.background = `${TYPE_COLORS[t]}10` }}
                     onMouseLeave={e => { (e.currentTarget).style.background = 'transparent' }}>
-                    <span className="text-[10px]">{TYPE_ICONS[t]}</span>
-                    <span className="capitalize font-medium">{t}</span>
+                    <span className="text-[12px] w-5 text-center">{TYPE_ICONS[t]}</span>
+                    <div className="flex-1 text-left">
+                      <span className="capitalize font-medium">{t}</span>
+                      <span className="text-[8px] ml-1.5 opacity-50">{desc}</span>
+                    </div>
                   </button>
                 ))}
+                {/* Section: Utility */}
+                <div className="px-3 pt-2 pb-1" style={{ borderTop: `1px solid ${HW.border}` }}>
+                  <span className="text-[7px] font-bold tracking-[0.2em] uppercase" style={{ color: HW.textDim }}>UTILITY</span>
+                </div>
+                <button onClick={() => addNode('fx')}
+                  className="w-full flex items-center gap-2.5 px-3 py-1.5 text-[11px] transition-colors cursor-pointer"
+                  style={{ color: TYPE_COLORS.fx }}
+                  onMouseEnter={e => { (e.currentTarget).style.background = `${TYPE_COLORS.fx}10` }}
+                  onMouseLeave={e => { (e.currentTarget).style.background = 'transparent' }}>
+                  <span className="text-[12px] w-5 text-center">{TYPE_ICONS.fx}</span>
+                  <div className="flex-1 text-left">
+                    <span className="capitalize font-medium">FX / Texture</span>
+                    <span className="text-[8px] ml-1.5 opacity-50">Delay, reverb, glitch layer</span>
+                  </div>
+                </button>
               </div>
             )}
           </div>
@@ -3729,51 +3651,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
           backgroundPosition: `${pan.x * zoom}px ${pan.y * zoom}px`,
         }} />
 
-        {/* SVG: connections */}
-        <svg className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%' }}>
-          {connections.map((conn, i) => {
-            const from = nodes.find(n => n.id === conn.fromId)
-            const to = nodes.find(n => n.id === conn.toId)
-            if (!from || !to) return null
-            const fromH = from.collapsed ? 120 : (!isSampleBased(from.type) ? 780 : 520)
-            const toH = to.collapsed ? 120 : (!isSampleBased(to.type) ? 780 : 520)
-            // OUT port = right edge, vertically centered
-            const x1 = (from.x + NODE_W + pan.x) * zoom
-            const y1 = (from.y + fromH / 2 + pan.y) * zoom
-            // IN port = left edge, vertically centered
-            const x2 = (to.x + pan.x) * zoom
-            const y2 = (to.y + toH / 2 + pan.y) * zoom
-            const dx = Math.abs(x2 - x1) * 0.5
-            const col = TYPE_COLORS[from.type]
-            const d = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`
-            return (
-              <g key={i}>
-                <path d={d} fill="none" stroke="black" strokeWidth={4} strokeOpacity={0.2} />
-                <path d={d} fill="none" stroke={col} strokeWidth={2} strokeOpacity={0.4} />
-                <path d={d} fill="none" stroke="transparent" strokeWidth={14}
-                  className="cursor-pointer pointer-events-auto" onClick={() => removeConnection(conn.fromId, conn.toId)} />
-                {isPlaying && !from.muted && !to.muted && (
-                  <circle r={3 * zoom} fill={col} opacity={0.7}>
-                    <animateMotion dur="1.5s" repeatCount="indefinite" path={d} />
-                  </circle>
-                )}
-              </g>
-            )
-          })}
-          {linking && (() => {
-            const from = nodes.find(n => n.id === linking.fromId)
-            if (!from) return null
-            const fromH2 = from.collapsed ? 120 : (!isSampleBased(from.type) ? 780 : 520)
-            // OUT = right edge center, IN = left edge center
-            const fx = linking.side === 'out' ? (from.x + NODE_W + pan.x) * zoom : (from.x + pan.x) * zoom
-            const fy = (from.y + fromH2 / 2 + pan.y) * zoom
-            const dx = Math.abs(linking.mx - fx) * 0.5
-            const cx1 = linking.side === 'out' ? fx + dx : fx - dx
-            const cx2 = linking.side === 'out' ? linking.mx - dx : linking.mx + dx
-            return <path d={`M ${fx} ${fy} C ${cx1} ${fy}, ${cx2} ${linking.my}, ${linking.mx} ${linking.my}`}
-              fill="none" stroke="#22d3ee" strokeWidth={2} strokeDasharray="6 3" opacity={0.6} />
-          })()}
-        </svg>
+
 
         {/* ══════ MASTER VISUALIZER (pinned bottom-left of canvas) ══════ */}
         <div className="absolute z-[5] pointer-events-auto" style={{ bottom: 12, left: 12 }}>
@@ -3815,8 +3693,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
         {nodes.map((node, nodeIndex) => {
           const color = TYPE_COLORS[node.type]
           const isSel = selectedNode === node.id
-          const isLive = connectedIds.has(node.id)
-          const isActive = isPlaying && !node.muted && isLive
+          const isActive = isPlaying && !node.muted
           const presets = SOUND_PRESETS[node.type] || SOUND_PRESETS.other
           const isMelodic = !isSampleBased(node.type)
 
@@ -3834,14 +3711,9 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                 onDragEnter={e => handleNodeDragEnter(e, node.id)}
                 onDragLeave={handleNodeDragLeave}
                 onDrop={e => handleDrop(e, node.id)}>
-                <Port side="in" color={color} connected={connections.some(c => c.toId === node.id)}
-                  onMouseDown={startLink} onMouseUp={endLink} nodeId={node.id} />
-                <Port side="out" color={color} connected={connections.some(c => c.fromId === node.id)}
-                  onMouseDown={startLink} onMouseUp={endLink} nodeId={node.id} />
-
                 {/* Node body — NO overflow:hidden so dropdowns can escape */}
                 <div className={`rounded-xl transition-all duration-200 ${
-                  node.muted ? 'opacity-20 grayscale' : !isLive ? 'opacity-35' : ''
+                  node.muted ? 'opacity-20 grayscale' : ''
                 }`} style={{
                   background: `linear-gradient(180deg, ${HW.surfaceAlt} 0%, ${HW.surface} 100%)`,
                   border: `1px solid ${isSel ? `${color}50` : isActive ? `${color}25` : HW.border}`,
@@ -4308,12 +4180,6 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                   <div className="flex items-center justify-between px-3 py-1.5 rounded-b-xl"
                     style={{ borderTop: `1px solid ${HW.border}`, background: `${HW.bg}40` }}>
                     <div className="flex items-center gap-1">
-                      {!isLive && (
-                        <span className="text-[7px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"
-                          style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.15)' }}>
-                          disconnected
-                        </span>
-                      )}
                       {isActive && (
                         <div className="flex items-center gap-1">
                           <div className="w-1.5 h-1.5 rounded-full" style={{ background: color, boxShadow: `0 0 6px ${color}50` }} />
@@ -4382,100 +4248,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
         })()}
       </div>
 
-      {/* ══════ FX PANEL (right side) ══════ */}
-      {fxPanelOpen && (
-        <div className="flex flex-col shrink-0 border-l overflow-hidden" style={{
-          width: 240, background: HW.surface, borderColor: HW.border,
-        }}>
-          {/* Header */}
-          <div className="px-3 py-1.5 shrink-0 flex items-center gap-1.5" style={{ borderBottom: `1px solid ${HW.border}` }}>
-            <SlidersHorizontal size={11} style={{ color: '#a78bfa' }} />
-            <span className="text-[9px] font-bold tracking-[0.15em] uppercase" style={{ color: HW.textBright }}>EFFECTS</span>
-            <span className="text-[8px] ml-auto" style={{ color: HW.textDim }}>{SIDEBAR_FX.reduce((n, c) => n + c.items.length, 0)}</span>
-          </div>
-          {/* Search */}
-          <div className="px-2 py-2 shrink-0" style={{ borderBottom: `1px solid ${HW.border}` }}>
-            <input
-              type="text" value={fxPanelSearch} onChange={e => setFxPanelSearch(e.target.value)}
-              placeholder="Search effects, filters..."
-              className="w-full px-2 py-1 rounded text-[10px] outline-none"
-              style={{ background: HW.raised, border: `1px solid ${HW.border}`, color: HW.textBright }}
-              onClick={e => e.stopPropagation()}
-            />
-          </div>
-          {/* FX Categories */}
-          <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: `${HW.raisedLight} transparent` }}>
-            {SIDEBAR_FX.map(cat => {
-              const q = fxPanelSearch.toLowerCase()
-              const filteredItems = q
-                ? cat.items.filter(item => item.label.toLowerCase().includes(q) || item.desc.toLowerCase().includes(q))
-                : cat.items
-              if (q && filteredItems.length === 0) return null
-              const isOpen = fxPanelCategory === cat.id || !!q
-              return (
-                <div key={cat.id}>
-                  <button
-                    onClick={() => setFxPanelCategory(p => p === cat.id ? null : cat.id)}
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-[10px] font-bold tracking-wider uppercase cursor-pointer transition-colors"
-                    style={{ color: isOpen ? cat.color : HW.textDim, background: isOpen ? `${cat.color}08` : 'transparent' }}
-                    onMouseEnter={e => { if (!isOpen) e.currentTarget.style.background = `${cat.color}05` }}
-                    onMouseLeave={e => { if (!isOpen) e.currentTarget.style.background = 'transparent' }}
-                  >
-                    <span className="text-[11px]">{cat.icon}</span>
-                    <span className="flex-1 text-left">{cat.label}</span>
-                    <span className="text-[8px]" style={{ color: HW.textDim }}>{cat.items.length}</span>
-                    <ChevronDown size={10} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} style={{ color: HW.textDim }} />
-                  </button>
-                  {isOpen && (
-                    <div className="px-1.5 pb-1">
-                      {filteredItems.map(item => (
-                        <div key={item.id}
-                          draggable
-                          onDragStart={e => {
-                            e.dataTransfer.setData('application/x-sidebar-item', JSON.stringify(item))
-                            e.dataTransfer.effectAllowed = 'copy'
-                          }}
-                          onClick={() => {
-                            if (selectedNode) {
-                              applySidebarItemToNode(selectedNode, item)
-                            } else {
-                              setSidebarHint('⚠ Select a node first — click any node on canvas')
-                              setTimeout(() => setSidebarHint(''), 2500)
-                            }
-                          }}
-                          className={`flex items-center gap-2 px-2 py-1 rounded text-[9px] transition-colors group ${
-                            selectedNode ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'
-                          }`}
-                          style={{ color: HW.text }}
-                          onMouseEnter={e => { e.currentTarget.style.background = `${item.color}10`; e.currentTarget.style.color = item.color }}
-                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = HW.text }}
-                          title={selectedNode ? `Click to apply to selected node: ${item.desc}` : `Drag onto a node: ${item.desc}`}
-                        >
-                          <span className="text-[10px] shrink-0 w-4 text-center">{item.icon}</span>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium truncate">{item.label}</div>
-                            <div className="text-[7px] truncate" style={{ color: HW.textDim }}>{item.desc}</div>
-                          </div>
-                          <span className="text-[7px] opacity-0 group-hover:opacity-60 shrink-0">
-                            {selectedNode ? 'click✓' : 'drag→'}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-          {/* FX panel footer */}
-          <div className="px-3 py-1.5 shrink-0 text-[7px]" style={{ color: HW.textDim, borderTop: `1px solid ${HW.border}` }}>
-            {selectedNode
-              ? <span style={{ color: '#a78bfa' }}>● Node selected — click FX to apply</span>
-              : 'Select a node or drag FX onto canvas'
-            }
-          </div>
-        </div>
-      )}
+
 
       {/* Close sidebar+canvas flex container */}
       </div>
@@ -4488,7 +4261,6 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
           knobs show what&apos;s in code · drag effects to add · click sidebar with node selected · 🎲 randomize patterns
         </span>
         <div className="flex items-center gap-3 text-[8px] font-mono tabular-nums" style={{ color: HW.textDim }}>
-          <span>{connections.length} links</span>
           <span>{nodes.filter(n => !n.muted).length}/{nodes.length} active</span>
           <span style={{ color: '#22d3ee80' }}>{bpm || 72} bpm</span>
           <span style={{ color: '#a78bfa80' }}>{SCALE_PRESETS.find(s => s.value === globalScale)?.label || globalScale}</span>
