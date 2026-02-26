@@ -106,7 +106,7 @@ export async function fetchMessages(
   userId: string,
   opts: FetchOptions = {}
 ) {
-  const limit = Math.min(opts.limit ?? 200, 500)
+  const limit = Math.min(opts.limit ?? 50, 500)
 
   let query = db
     .from('chat_messages')
@@ -118,8 +118,39 @@ export async function fetchMessages(
   if (opts.before) query = query.lt('timestamp', opts.before)
   if (opts.after) query = query.gt('timestamp', opts.after)
 
-  const { data, error } = await query
-  return { data: data as ChatMessageRow[] | null, error, hasMore: (data?.length ?? 0) === limit }
+  try {
+    const { data, error } = await query
+    return { data: data as ChatMessageRow[] | null, error, hasMore: (data?.length ?? 0) === limit }
+  } catch (parseError: unknown) {
+    // Supabase client can throw JSON parse errors on very large responses
+    const message = parseError instanceof Error ? parseError.message : String(parseError)
+    console.error('Supabase response parse error (retrying with smaller limit):', message)
+
+    // Retry with a much smaller limit to avoid truncated responses
+    const retryLimit = Math.min(limit, 20)
+    try {
+      let retryQuery = db
+        .from('chat_messages')
+        .select(MSG_COLS)
+        .eq('clerk_user_id', userId)
+        .order('timestamp', { ascending: false })  // newest first for retry
+        .limit(retryLimit)
+
+      if (opts.before) retryQuery = retryQuery.lt('timestamp', opts.before)
+      if (opts.after) retryQuery = retryQuery.gt('timestamp', opts.after)
+
+      const { data, error } = await retryQuery
+      // Re-sort ascending for consumer
+      const sorted = data ? [...data].reverse() : null
+      return { data: sorted as ChatMessageRow[] | null, error, hasMore: true }
+    } catch {
+      return {
+        data: null,
+        error: { message, details: String(parseError), hint: '', code: '' },
+        hasMore: false,
+      }
+    }
+  }
 }
 
 export async function insertMessage(

@@ -453,25 +453,41 @@ function CreatePageContent() {
     let cancelled = false
 
     // 1. Try server first
+    const applyServerMessages = (data: { success?: boolean; messages?: Message[] }) => {
+      if (cancelled) return false
+      if (data.success && data.messages && data.messages.length > 0) {
+        const serverMessages = data.messages.map((msg: Message) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }))
+        // Mark all server messages as already synced so the persist effect
+        // doesn't re-POST them (which would create duplicates with wrong timestamps)
+        prevMessageCountRef.current = serverMessages.length
+        serverMessages.forEach((m: Message) => syncedIdsRef.current.add(m.id))
+        setMessages(serverMessages)
+        // Update localStorage cache from server truth
+        try {
+          localStorage.setItem('444radio-chat-messages', JSON.stringify(serverMessages))
+        } catch { /* ignore */ }
+        return true
+      }
+      return false
+    }
+
     fetch('/api/chat/messages')
       .then(r => r.json())
       .then(data => {
-        if (cancelled) return
-        if (data.success && data.messages && data.messages.length > 0) {
-          const serverMessages = data.messages.map((msg: Message) => ({
-            ...msg,
-            timestamp: new Date(msg.timestamp)
-          }))
-          // Mark all server messages as already synced so the persist effect
-          // doesn't re-POST them (which would create duplicates with wrong timestamps)
-          prevMessageCountRef.current = serverMessages.length
-          serverMessages.forEach((m: Message) => syncedIdsRef.current.add(m.id))
-          setMessages(serverMessages)
-          // Update localStorage cache from server truth
-          try {
-            localStorage.setItem('444radio-chat-messages', JSON.stringify(serverMessages))
-          } catch { /* ignore */ }
-          return
+        if (applyServerMessages(data)) return
+        if (data.error) {
+          // Server returned an error (e.g. JSON parse failure) — retry with smaller limit
+          console.warn('Chat fetch error, retrying with limit=20:', data.error)
+          return fetch('/api/chat/messages?limit=20')
+            .then(r => r.json())
+            .then(retryData => {
+              if (applyServerMessages(retryData)) return
+              loadFromLocalStorage()
+            })
+            .catch(() => { if (!cancelled) loadFromLocalStorage() })
         }
         // Server has no messages — fall back to localStorage
         loadFromLocalStorage()

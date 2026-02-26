@@ -30,14 +30,19 @@ function withAuth(handler: ApiHandler) {
 // ── GET /api/chat/messages?limit=200&before=<ISO>&after=<ISO> ──
 export const GET = withAuth(async (userId, request) => {
   const url = request ? new URL(request.url) : null
-  const limit = Number(url?.searchParams.get('limit')) || 200
+  const limit = Number(url?.searchParams.get('limit')) || 50
   const before = url?.searchParams.get('before') || null
   const after = url?.searchParams.get('after') || null
 
   const { data, error, hasMore } = await fetchMessages(supabase, userId, { limit, before, after })
   if (error) {
     console.error('Fetch messages error:', error)
-    return NextResponse.json({ error: 'Failed to fetch chat messages' }, { status: 500 })
+    return NextResponse.json({
+      error: 'Failed to fetch chat messages',
+      details: typeof error === 'object' && error !== null && 'message' in error
+        ? (error as { message: string }).message
+        : String(error),
+    }, { status: 500 })
   }
 
   return NextResponse.json({
