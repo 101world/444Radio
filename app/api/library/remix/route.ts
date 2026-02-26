@@ -17,9 +17,16 @@ export async function GET() {
     }
 
     // Fetch remixes: rows in music_library where generation_params->model matches remix models
-    // Use or() to match both old and new model identifiers
+    // Use JSONB contains (cs) operator for reliable filtering
+    const params = new URLSearchParams({
+      clerk_user_id: `eq.${userId}`,
+      or: '(generation_params.cs.{"model":"meta/musicgen"},generation_params.cs.{"model":"fal-ai/stable-audio-25/audio-to-audio"},generation_params.cs.{"model":"fal-stable-audio-25"})',
+      order: 'created_at.desc',
+      limit: '200',
+    })
+
     const res = await fetch(
-      `${supabaseUrl}/rest/v1/music_library?clerk_user_id=eq.${userId}&or=(generation_params-%3E%3Emodel.eq.meta/musicgen,generation_params-%3E%3Emodel.eq.fal-ai/stable-audio-25/audio-to-audio,generation_params-%3E%3Emodel.eq.fal-stable-audio-25)&order=created_at.desc&limit=200`,
+      `${supabaseUrl}/rest/v1/music_library?${params.toString()}`,
       {
         headers: {
           apikey: supabaseKey,

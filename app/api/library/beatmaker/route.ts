@@ -17,8 +17,17 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Use JSONB contains operator for reliable filtering
+    // or filter: either generation_params contains the model OR genre = beatmaker
+    const params = new URLSearchParams({
+      clerk_user_id: `eq.${userId}`,
+      or: '(generation_params.cs.{"model":"cassetteai-music-generator"},genre.eq.beatmaker)',
+      order: 'created_at.desc',
+      limit: '200',
+    })
+
     const res = await fetch(
-      `${supabaseUrl}/rest/v1/music_library?clerk_user_id=eq.${userId}&or=(generation_params-%3E%3Emodel.eq.cassetteai-music-generator,genre.eq.beatmaker)&order=created_at.desc&limit=200`,
+      `${supabaseUrl}/rest/v1/music_library?${params.toString()}`,
       {
         headers: {
           apikey: supabaseKey,
