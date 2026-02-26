@@ -1311,12 +1311,13 @@ function detectSoundSource(code: string): string {
   // (no spaces/brackets/commas/* — distinguishes from drum patterns in s("bd sd hh"))
   const a = code.match(/\.s\s*\(\s*["']([^"'\s,\[\]{}*]+)["']/)
   if (a) return a[1]
-  // Match .bank("bank_name")
+  // Match standalone s("sample_name") — single-token names (custom samples, waveforms)
+  // Must NOT contain spaces/brackets (which indicate drum patterns like "bd sd hh")
+  const c2 = code.match(/(?<!\.)\bs\s*\(\s*["']([^"'\s,\[\]{}*]+)["']/)
+  if (c2) return c2[1]
+  // Match .bank("bank_name") — only if no direct sound source was found above
   const b = code.match(/\.bank\s*\(\s*["']([^"']+)["']/)
   if (b) return b[1]
-  // Match standalone s("instrument") — basic waveforms (not preceded by dot)
-  const c2 = code.match(/(?<!\.)\bs\s*\(\s*["'](sine|sawtooth|square|triangle|supersaw)["']/)
-  if (c2) return c2[1]
   return ''
 }
 
