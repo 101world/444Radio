@@ -4024,14 +4024,19 @@ function CreatePageContent() {
                       try {
                         setIsGeneratingAtomLyrics(true)
 
-                        // Call Atom API to generate lyrics
-                        const response = await fetch('/api/generate/atom-lyrics', {
+                        // Hindi/South-Asian languages use atom-hindi (generates both enhanced prompt + lyrics)
+                        const hindiLangs = ['hindi', 'urdu', 'punjabi', 'tamil', 'telugu']
+                        const isHindiLang = hindiLangs.includes(selectedLanguage.toLowerCase())
+
+                        const endpoint = isHindiLang ? '/api/generate/atom-hindi' : '/api/generate/atom-lyrics'
+                        const body = isHindiLang
+                          ? { prompt: input, instrumental: false }
+                          : { prompt: input, language: selectedLanguage }
+
+                        const response = await fetch(endpoint, {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            prompt: input,
-                            language: selectedLanguage
-                          })
+                          body: JSON.stringify(body)
                         })
 
                         const result = await response.json()

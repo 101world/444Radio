@@ -10,6 +10,10 @@
       "memory": 1024,
       "maxDuration": 120
     },
+    "app/api/generate/hindi-music/route.ts": {
+      "memory": 1024,
+      "maxDuration": 300
+    },
     "app/api/generate/lipsync/route.ts": {
       "memory": 1024,
       "maxDuration": 300
