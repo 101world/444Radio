@@ -56,9 +56,10 @@ export async function GET() {
 
     // Fetch from 3 database tables
     const [combinedMediaResponse, combinedLibraryResponse, musicLibraryResponse] = await Promise.all([
-      // combined_media - has audio_url directly, uses user_id column (exclude internal tool genres + visualizers)
+      // combined_media - has audio_url directly, uses user_id column
+      // Use or() to exclude internal genres while keeping NULL genre rows (most generated tracks)
       fetch(
-        `${supabaseUrl}/rest/v1/combined_media?audio_url=not.is.null&user_id=eq.${userId}&genre=not.in.(extract,loop,effects,stem,boosted,chords,processed,voice-over,visualizer)&order=created_at.desc`,
+        `${supabaseUrl}/rest/v1/combined_media?audio_url=not.is.null&user_id=eq.${userId}&or=(genre.is.null,genre.not.in.(extract,loop,effects,stem,boosted,chords,processed,voice-over,visualizer))&order=created_at.desc`,
         {
           headers: {
             'apikey': supabaseKey,
@@ -66,9 +67,9 @@ export async function GET() {
           }
         }
       ),
-      // combined_media_library - uses clerk_user_id column (exclude internal tool genres + visualizers)
+      // combined_media_library - uses clerk_user_id column
       fetch(
-        `${supabaseUrl}/rest/v1/combined_media_library?clerk_user_id=eq.${userId}&genre=not.in.(extract,loop,effects,stem,boosted,chords,processed,voice-over,visualizer)&order=created_at.desc`,
+        `${supabaseUrl}/rest/v1/combined_media_library?clerk_user_id=eq.${userId}&order=created_at.desc`,
         {
           headers: {
             'apikey': supabaseKey,
@@ -76,9 +77,9 @@ export async function GET() {
           }
         }
       ),
-      // music_library - uses clerk_user_id column (exclude internal tool genres + visualizers)
+      // music_library - uses clerk_user_id column
       fetch(
-        `${supabaseUrl}/rest/v1/music_library?clerk_user_id=eq.${userId}&genre=not.in.(extract,loop,effects,stem,boosted,chords,processed,voice-over,visualizer)&order=created_at.desc`,
+        `${supabaseUrl}/rest/v1/music_library?clerk_user_id=eq.${userId}&order=created_at.desc`,
         {
           headers: {
             'apikey': supabaseKey,
@@ -167,8 +168,13 @@ export async function GET() {
       updated_at: item.updated_at
     })) : []
 
-    // Transform combined_media_library format
-    const combinedLibraryMusic = Array.isArray(combinedLibraryData) ? combinedLibraryData.map(item => ({
+    // Internal tool genres to exclude from music library
+    const excludedGenres = new Set(['extract', 'loop', 'effects', 'stem', 'boosted', 'chords', 'processed', 'voice-over', 'visualizer'])
+
+    // Transform combined_media_library format (filter out internal genres in JS since column may not exist)
+    const combinedLibraryMusic = Array.isArray(combinedLibraryData) ? combinedLibraryData
+      .filter(item => !item.genre || !excludedGenres.has(item.genre))
+      .map(item => ({
       id: item.id,
       clerk_user_id: item.clerk_user_id,
       user_id: item.clerk_user_id,
@@ -186,8 +192,10 @@ export async function GET() {
       updated_at: item.updated_at
     })) : []
 
-    // Transform music_library format
-    const musicLibraryMusic = Array.isArray(musicLibraryData) ? musicLibraryData.map(item => ({
+    // Transform music_library format (filter out internal genres in JS since column may not exist)
+    const musicLibraryMusic = Array.isArray(musicLibraryData) ? musicLibraryData
+      .filter(item => !item.genre || !excludedGenres.has(item.genre))
+      .map(item => ({
       id: item.id,
       clerk_user_id: item.clerk_user_id,
       user_id: item.clerk_user_id,
