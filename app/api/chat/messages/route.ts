@@ -50,7 +50,7 @@ export const GET = withAuth(async (userId, request) => {
 // ── POST /api/chat/messages — append a single message ──
 export const POST = withAuth(async (userId, request) => {
   const body = await request!.json()
-  const { type, content, generationType, generationId, result } = body
+  const { type, content, generationType, generationId, result, timestamp } = body
 
   if (!type || !content) {
     return NextResponse.json({ error: 'Missing required fields: type and content' }, { status: 400 })
@@ -61,6 +61,7 @@ export const POST = withAuth(async (userId, request) => {
     generationType: generationType ?? null,
     generationId: generationId ?? null,
     result: result ?? null,
+    timestamp: timestamp ?? undefined,
   })
 
   if (error) {

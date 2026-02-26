@@ -449,6 +449,10 @@ function CreatePageContent() {
             ...msg,
             timestamp: new Date(msg.timestamp)
           }))
+          // Mark all server messages as already synced so the persist effect
+          // doesn't re-POST them (which would create duplicates with wrong timestamps)
+          prevMessageCountRef.current = serverMessages.length
+          serverMessages.forEach((m: Message) => syncedIdsRef.current.add(m.id))
           setMessages(serverMessages)
           // Update localStorage cache from server truth
           try {
@@ -473,6 +477,9 @@ function CreatePageContent() {
             ...msg,
             timestamp: new Date(msg.timestamp)
           }))
+          // Mark localStorage messages as synced to avoid duplicate POSTs
+          prevMessageCountRef.current = messagesWithDates.length
+          messagesWithDates.forEach((m: Message) => syncedIdsRef.current.add(m.id))
           setMessages(messagesWithDates)
         }
       } catch (error) {
@@ -496,6 +503,13 @@ function CreatePageContent() {
       localStorage.setItem('444radio-chat-messages', JSON.stringify(messages))
     } catch (error) {
       console.error('Failed to save chat to localStorage:', error)
+    }
+
+    // Always cancel the stale debounced PUT timer — it captured old messages via closure
+    // and would overwrite server state with stale data if allowed to fire.
+    if (dirtySyncTimerRef.current) {
+      clearTimeout(dirtySyncTimerRef.current)
+      dirtySyncTimerRef.current = null
     }
 
     // Skip if only the welcome message
@@ -525,6 +539,7 @@ function CreatePageContent() {
           generationType: msg.generationType || null,
           generationId: msg.generationId || null,
           result: msg.result || null,
+          timestamp: msg.timestamp instanceof Date ? msg.timestamp.toISOString() : msg.timestamp,
         })
       }).catch(() => { syncedIdsRef.current.delete(msg.id) }) // retry on next cycle if failed
     }
@@ -532,7 +547,6 @@ function CreatePageContent() {
     // Debounced full sync for in-place updates (generation completes, content changes)
     // Only fire if no new messages were appended (pure mutation)
     if (newMessages.length === 0 && messages.length > 1) {
-      if (dirtySyncTimerRef.current) clearTimeout(dirtySyncTimerRef.current)
       dirtySyncTimerRef.current = setTimeout(() => {
         const syncPayload = messages.map(m => ({
           type: m.type,
@@ -552,8 +566,14 @@ function CreatePageContent() {
   }, [messages])
 
   // Centralized clear-chat handler: archive → reset messages → purge completed generations
-  const handleClearChat = () => {
+  const handleClearChat = async () => {
     if (!confirm('Start a new chat? Your current session will be saved to Chat History.')) return
+
+    // ── 0. Kill any pending debounced PUT timer (it captured old messages via closure) ──
+    if (dirtySyncTimerRef.current) {
+      clearTimeout(dirtySyncTimerRef.current)
+      dirtySyncTimerRef.current = null
+    }
 
     // ── 1. Bump session so in-flight generation callbacks become stale ──
     chatSessionRef.current += 1
@@ -593,8 +613,10 @@ function CreatePageContent() {
       console.error('Failed to archive chat:', error)
     }
 
-    // ── 4. Clear server-side messages ──
-    fetch('/api/chat/messages', { method: 'DELETE' }).catch(() => {})
+    // ── 4. Clear server-side messages (await to ensure clean state before new messages are POSTed) ──
+    try {
+      await fetch('/api/chat/messages', { method: 'DELETE' })
+    } catch { /* offline — localStorage already archived */ }
 
     // ── 5. Reset ALL generation tracking state ──
     setActiveGenerations(new Set())
@@ -4760,9 +4782,32 @@ function CreatePageContent() {
             } catch (error) {
               console.error('Failed to archive current chat:', error)
             }
+            // Kill pending debounced PUT timer (it captured old messages)
+            if (dirtySyncTimerRef.current) {
+              clearTimeout(dirtySyncTimerRef.current)
+              dirtySyncTimerRef.current = null
+            }
             // Load the selected history chat and clear stale generations
             chatSessionRef.current += 1 // Bump session so in-flight gens don't write into restored chat
+            // Mark restored messages as already-synced so sync effect doesn't re-POST them
+            syncedIdsRef.current = new Set()
+            chat.messages.forEach((m: Message) => syncedIdsRef.current.add(m.id))
+            prevMessageCountRef.current = chat.messages.length
             setMessages(chat.messages)
+            // Replace server-side chat with restored messages
+            const syncPayload = chat.messages.map((m: Message) => ({
+              type: m.type,
+              content: m.content,
+              generationType: m.generationType || null,
+              generationId: m.generationId || null,
+              result: m.result || null,
+              timestamp: m.timestamp instanceof Date ? m.timestamp.toISOString() : m.timestamp
+            }))
+            fetch('/api/chat/messages', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ messages: syncPayload })
+            }).catch(() => {})
             clearCompleted()
             setShowDeletedChatsModal(false)
           }}
