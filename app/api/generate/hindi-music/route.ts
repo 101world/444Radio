@@ -12,76 +12,34 @@ const CREDIT_COST = 2
 const FAL_MODEL = 'fal-ai/minimax-music/v2'
 
 /**
- * Call fal.ai queue API: submit → poll → fetch result.
- * MiniMax 2.0 can take 30-120s so we poll generously.
+ * Call fal.ai synchronous endpoint — blocks until generation completes.
+ * MiniMax 2.0 typically takes 30-120s, well within our 300s Vercel timeout.
+ * Uses fal.run (synchronous) instead of queue.fal.run (queue + poll).
  */
 async function runMiniMax2(
   falKey: string,
   input: Record<string, unknown>,
-  timeoutMs = 270_000
-): Promise<{ data: any; requestId: string }> {
-  console.log('🎵 [MiniMax2] Submitting to fal.ai queue...')
+): Promise<{ data: any }> {
+  console.log('🎵 [MiniMax2] Calling fal.ai synchronous endpoint...')
   console.log('🎵 [MiniMax2] Model:', FAL_MODEL)
   console.log('🎵 [MiniMax2] Input keys:', Object.keys(input))
+  console.log('🎵 [MiniMax2] Input:', JSON.stringify(input).substring(0, 500))
 
-  // 1. Submit
-  const submitRes = await fetch(`https://queue.fal.run/${FAL_MODEL}`, {
+  const res = await fetch(`https://fal.run/${FAL_MODEL}`, {
     method: 'POST',
     headers: { Authorization: `Key ${falKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
   })
-  if (!submitRes.ok) {
-    const body = await submitRes.text()
-    console.error('🎵 [MiniMax2] Submit failed:', submitRes.status, body.substring(0, 500))
-    throw new Error(`MiniMax2 submit failed (${submitRes.status}): ${body}`)
-  }
-  const submitData = await submitRes.json()
-  console.log('🎵 [MiniMax2] Submit response:', JSON.stringify(submitData))
-  const request_id = submitData.request_id
-  if (!request_id) {
-    throw new Error(`MiniMax2 submit did not return request_id: ${JSON.stringify(submitData)}`)
-  }
-  console.log('🎵 [MiniMax2] Request queued:', request_id)
 
-  // 2. Poll
-  const start = Date.now()
-  let lastStatus = ''
-  while (Date.now() - start < timeoutMs) {
-    await new Promise(r => setTimeout(r, 4000)) // poll every 4s
-
-    const statusRes = await fetch(
-      `https://queue.fal.run/${FAL_MODEL}/requests/${request_id}/status`,
-      { headers: { Authorization: `Key ${falKey}` } }
-    )
-    if (!statusRes.ok) {
-      console.warn('[MiniMax2] Status check failed:', statusRes.status)
-      continue
-    }
-    const status = await statusRes.json()
-    if (status.status !== lastStatus) {
-      console.log(`🎵 [MiniMax2] Status: ${status.status} (${Math.round((Date.now() - start) / 1000)}s)`)
-      lastStatus = status.status
-    }
-
-    if (status.status === 'COMPLETED') {
-      const resultRes = await fetch(
-        `https://queue.fal.run/${FAL_MODEL}/requests/${request_id}`,
-        { headers: { Authorization: `Key ${falKey}` } }
-      )
-      if (!resultRes.ok) {
-        const body = await resultRes.text()
-        throw new Error(`MiniMax2 result fetch failed (${resultRes.status}): ${body}`)
-      }
-      const data = await resultRes.json()
-      return { data, requestId: request_id }
-    }
-
-    if (status.status === 'FAILED') {
-      throw new Error(`MiniMax2 generation failed: ${JSON.stringify(status)}`)
-    }
+  if (!res.ok) {
+    const body = await res.text()
+    console.error('🎵 [MiniMax2] Request failed:', res.status, body.substring(0, 500))
+    throw new Error(`MiniMax2 request failed (${res.status}): ${body}`)
   }
 
-  throw new Error('MiniMax2 generation timed out after ' + Math.round(timeoutMs / 1000) + 's')
+  const data = await res.json()
+  console.log('🎵 [MiniMax2] Response received, keys:', Object.keys(data || {}))
+  return { data }
 }
 
 function sanitizeError(error: any): string {
@@ -232,10 +190,10 @@ export async function POST(req: NextRequest) {
       try {
         await sendLine({ type: 'started', model: 'minimax-music-02' })
 
-        const { data, requestId } = await runMiniMax2(falKey, minimax2Input)
+        const { data } = await runMiniMax2(falKey, minimax2Input)
 
         if (requestSignal.aborted && !clientDisconnected) {
-          console.log('🔄 Client disconnected but continuing Hindi gen:', requestId)
+          console.log('🔄 Client disconnected but continuing Hindi gen')
           clientDisconnected = true
         }
 
