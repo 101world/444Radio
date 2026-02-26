@@ -799,15 +799,15 @@ function RadioPageContent() {
 
       <FloatingMenu />
 
-      {/* ESC button — positioned to NOT overlap sidebar */}
-      <button onClick={() => router.push('/create')} className="md:hidden fixed top-4 left-4 z-50 w-9 h-9 rounded-full bg-black/70 backdrop-blur-md border border-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all">
+      {/* ESC button — positioned to NOT overlap sidebar (hidden on mobile Tales) */}
+      <button onClick={() => router.push('/create')} className={`md:hidden fixed top-4 left-4 z-50 w-9 h-9 rounded-full bg-black/70 backdrop-blur-md border border-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all ${activeTab === 'tales' ? 'hidden' : ''}`}>
         <ArrowLeft size={16} />
       </button>
 
       <main className="relative z-10 md:pl-14 pb-32">
 
-        {/* ═══ BANNER VIDEO ═══ */}
-        <div className="relative h-44 md:h-56 overflow-hidden">
+        {/* ═══ BANNER VIDEO ═══ (hidden on mobile when Tales active) */}
+        <div className={`relative h-44 md:h-56 overflow-hidden ${activeTab === 'tales' ? 'hidden md:block' : ''}`}>
           <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover">
             <source src="/1_1_thm2_rxl1.webm" type="video/webm" />
           </video>
@@ -819,8 +819,8 @@ function RadioPageContent() {
           </div>
         </div>
 
-        {/* ═══ TOP BAR — Compact Search ═══ */}
-        <div className="sticky top-0 z-40 bg-black/80 backdrop-blur-xl border-b border-white/[0.04]">
+        {/* ═══ TOP BAR — Compact Search ═══ (hidden on mobile when Tales active) */}
+        <div className={`sticky top-0 z-40 bg-black/80 backdrop-blur-xl border-b border-white/[0.04] ${activeTab === 'tales' ? 'hidden md:block' : ''}`}>
           <div className="flex items-center gap-3 px-4 md:px-6 h-14">
 
             {/* Search — compact, center-weighted */}
@@ -1263,7 +1263,7 @@ function RadioPageContent() {
                   ) : (
                     <div
                       ref={talesContainerRef}
-                      className="relative h-[calc(100vh-60px)] w-full overflow-hidden bg-black"
+                      className="relative w-full overflow-hidden bg-black" style={{ height: '100dvh' }}
                       onTouchStart={handleTalesTouchStart}
                       onTouchMove={handleTalesTouchMove}
                       onTouchEnd={handleTalesTouchEnd}
@@ -1330,8 +1330,8 @@ function RadioPageContent() {
                               </div>
                             )}
 
-                            {/* Right side action buttons (TikTok style) */}
-                            <div className="absolute right-3 bottom-32 flex flex-col items-center gap-5 z-20">
+                            {/* Right side action buttons (TikTok style) — pushed up above bottom bar+search */}
+                            <div className="absolute right-3 bottom-44 flex flex-col items-center gap-5 z-20">
                               {/* Profile */}
                               <Link href={`/profile/${video.user_id}`} className="flex flex-col items-center gap-1">
                                 <div className="w-11 h-11 rounded-full border-2 border-white overflow-hidden bg-gray-800">
@@ -1379,8 +1379,8 @@ function RadioPageContent() {
                               </button>
                             </div>
 
-                            {/* Bottom info (TikTok style) */}
-                            <div className="absolute bottom-20 left-4 right-16 z-20">
+                            {/* Bottom info (TikTok style) — pushed up above bottom bar+search */}
+                            <div className="absolute bottom-32 left-4 right-16 z-20">
                               <div className="flex items-center gap-2 mb-2">
                                 <span className="text-white font-bold text-sm">
                                   @{video.artist_name || video.users?.username || video.username || 'Unknown'}
@@ -1550,6 +1550,22 @@ function RadioPageContent() {
 
       {/* ═══ MOBILE BOTTOM NAV BAR ═══ */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-xl border-t border-white/[0.06]" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+        {/* Search bar above nav buttons */}
+        <div className="px-3 pt-2">
+          <div className="relative group">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-cyan-400 transition-colors" />
+            <input
+              type="text" value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') performSearch(searchQuery) }}
+              placeholder="Search tracks, genres, moods..."
+              className="w-full pl-8 pr-8 py-1.5 bg-white/[0.06] border border-white/[0.08] rounded-full text-white text-[11px] placeholder-gray-600 focus:border-cyan-500/30 focus:bg-white/[0.08] focus:outline-none transition-all"
+            />
+            {searchQuery && (
+              <button onClick={clearSearch} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"><X size={11} /></button>
+            )}
+          </div>
+        </div>
         <div className="flex items-center justify-around h-14 px-2">
           {([
             {
