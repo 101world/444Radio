@@ -295,22 +295,33 @@ const TIME_SIGNATURES: { label: string; value: string; beatsPerBar: number }[] =
   { label: '9/8', value: '9/8', beatsPerBar: 9 },
 ]
 
-const SCALE_PRESETS = [
-  { label: 'C Major', value: 'C4:major' },
-  { label: 'A Minor', value: 'A3:minor' },
-  { label: 'A Harmonic Min', value: 'A3:harmonic minor' },
-  { label: 'C Maj Pentatonic', value: 'C4:major pentatonic' },
-  { label: 'A Min Pentatonic', value: 'A3:minor pentatonic' },
-  { label: 'C Blues', value: 'C4:blues' },
-  { label: 'D Dorian', value: 'D4:dorian' },
-  { label: 'E Phrygian', value: 'E4:phrygian' },
-  { label: 'F Lydian', value: 'F4:lydian' },
-  { label: 'G Mixolydian', value: 'G4:mixolydian' },
-  { label: 'C Chromatic', value: 'C4:chromatic' },
-  { label: 'D Minor', value: 'D4:minor' },
-  { label: 'G Major', value: 'G4:major' },
-  { label: 'F Major', value: 'F4:major' },
+// ═══════════════════════════════════════════════════════════════
+//  COMPLETE SCALE PRESETS — every root × every mode/scale type
+// ═══════════════════════════════════════════════════════════════
+const SCALE_ROOTS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const
+const SCALE_TYPES: { label: string; value: string; octave: number }[] = [
+  { label: 'Major',           value: 'major',           octave: 4 },
+  { label: 'Minor',           value: 'minor',           octave: 3 },
+  { label: 'Harm Min',        value: 'harmonic minor',  octave: 3 },
+  { label: 'Mel Min',         value: 'melodic minor',   octave: 3 },
+  { label: 'Dorian',          value: 'dorian',          octave: 4 },
+  { label: 'Phrygian',        value: 'phrygian',        octave: 4 },
+  { label: 'Lydian',          value: 'lydian',          octave: 4 },
+  { label: 'Mixolydian',      value: 'mixolydian',      octave: 4 },
+  { label: 'Locrian',         value: 'locrian',         octave: 4 },
+  { label: 'Maj Pent',        value: 'major pentatonic', octave: 4 },
+  { label: 'Min Pent',        value: 'minor pentatonic', octave: 3 },
+  { label: 'Blues',            value: 'blues',           octave: 4 },
+  { label: 'Whole Tone',      value: 'whole tone',      octave: 4 },
+  { label: 'Diminished',      value: 'diminished',      octave: 4 },
+  { label: 'Chromatic',       value: 'chromatic',       octave: 4 },
 ]
+const SCALE_PRESETS = SCALE_ROOTS.flatMap(root =>
+  SCALE_TYPES.map(st => ({
+    label: `${root} ${st.label}`,
+    value: `${root}${st.octave}:${st.value}`,
+  }))
+)
 
 const DRUM_PATTERNS = [
   { label: '4 Kicks', value: 'bd*4' },
@@ -392,6 +403,42 @@ const DISTORT_TYPES = [
 // ═══════════════════════════════════════════════════════════════
 
 function randomPick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)] }
+
+/** Detect if a drum pattern uses only a single sound category (e.g. just 'cp' or just 'hh') */
+function detectSingleDrumSound(pattern: string): string | null {
+  // Standard drum abbreviations in Strudel
+  const drumSounds = ['bd', 'sd', 'cp', 'hh', 'oh', 'ch', 'lt', 'mt', 'ht', 'rim', 'cb', 'cy', 'rs', 'ma', 'cl', 'lo', 'tom']
+  const found = new Set<string>()
+  for (const snd of drumSounds) {
+    // Match whole-word occurrences (not inside longer words)
+    if (new RegExp(`\\b${snd}\\b`).test(pattern)) found.add(snd)
+  }
+  if (found.size === 1) return Array.from(found)[0]
+  return null
+}
+
+/** Generate a rhythmic pattern for a single percussion sound */
+function randomSingleSoundPattern(sound: string): string {
+  const patterns = [
+    `${sound} ~ ~ ~`,
+    `${sound} ~ ${sound} ~`,
+    `~ ${sound} ~ ~`,
+    `~ ${sound} ~ ${sound}`,
+    `${sound} ${sound} ~ ~`,
+    `${sound} ~ [~ ${sound}] ~`,
+    `[${sound} ~] ~ [~ ${sound}] ~`,
+    `${sound} ~ [${sound} ${sound}] ~`,
+    `[~ ${sound}] ${sound} ~ ${sound}`,
+    `${sound}*4`,
+    `${sound}*8`,
+    `${sound} [${sound} ~] ${sound} ~`,
+    `[${sound} ${sound} ~ ${sound}]*2`,
+    `${sound} ~ ~ [${sound} ~]`,
+    `[${sound} ~ ~ ${sound}] [~ ${sound} ~ ~]`,
+    `~ [${sound} ${sound}] ~ ${sound}`,
+  ]
+  return randomPick(patterns)
+}
 
 function randomDrumPattern(): string {
   const kicks  = ['bd', 'bd*2', '[bd ~ bd ~]', '[bd ~ ~ bd]', 'bd ~ ~ ~', '[~ bd] ~ [~ bd] ~', 'bd ~ [bd bd] ~', '[bd bd ~ ~]']
@@ -502,7 +549,12 @@ function randomVocalPattern(): string {
   return randomPick(patterns)
 }
 
-function randomPatternForType(type: NodeType): string {
+function randomPatternForType(type: NodeType, currentPattern?: string): string {
+  // For drum/fx types, check if the current pattern uses a single sound category
+  if ((type === 'drums' || type === 'fx') && currentPattern) {
+    const singleSound = detectSingleDrumSound(currentPattern)
+    if (singleSound) return randomSingleSoundPattern(singleSound)
+  }
   switch (type) {
     case 'drums': return randomDrumPattern()
     case 'bass':  return randomBassPattern()
@@ -3097,7 +3149,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     setNodes(prev => {
       const node = prev.find(n => n.id === nodeId)
       if (!node) return prev
-      const newPattern = randomPatternForType(node.type)
+      const newPattern = randomPatternForType(node.type, node.pattern)
       const method = isSampleBased(node.type) ? 'drumPattern' : 'notePattern'
       const newCode = applyEffect(node.code, method, newPattern)
       if (newCode === node.code) return prev
@@ -4455,7 +4507,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
         </Suspense>
       )}
 
-      {/* ══════ SOUND SLICER DOCK ══════ */}
+      {/* ══════ SOUND SLICER MODAL ══════ */}
       {soundSlicerOpen && (() => {
         const slicerNode = nodes.find(n => n.id === soundSlicerOpen.nodeId)
         if (!slicerNode) return null
@@ -4466,17 +4518,20 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
         const curBegin = beginMatch ? parseFloat(beginMatch[1]) : 0
         const curEnd = endMatch ? parseFloat(endMatch[1]) : 1
         return (
-          <div className="absolute bottom-0 left-0 right-0 z-[99]">
-            <Suspense fallback={<div className="h-[180px] bg-black/90 flex items-center justify-center text-white/40 text-xs">Loading Slicer…</div>}>
-              <SoundSlicer
-                soundName={slicerNode.soundSource || slicerNode.sound || 'unknown'}
-                nodeColor={slicerColor}
-                begin={curBegin}
-                end={curEnd}
-                onRegionChange={(b, e) => handleSlicerRegionChange(slicerNode.id, b, e)}
-                onClose={() => setSoundSlicerOpen(null)}
-              />
-            </Suspense>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm"
+            onClick={e => { if (e.target === e.currentTarget) setSoundSlicerOpen(null) }}>
+            <div className="w-full max-w-2xl mx-4 rounded-xl overflow-hidden shadow-2xl border border-white/10" style={{ background: '#0a0a0c' }}>
+              <Suspense fallback={<div className="h-[200px] bg-black/90 flex items-center justify-center text-white/40 text-xs">Loading Slicer…</div>}>
+                <SoundSlicer
+                  soundName={slicerNode.soundSource || slicerNode.sound || 'unknown'}
+                  nodeColor={slicerColor}
+                  begin={curBegin}
+                  end={curEnd}
+                  onRegionChange={(b, e) => handleSlicerRegionChange(slicerNode.id, b, e)}
+                  onClose={() => setSoundSlicerOpen(null)}
+                />
+              </Suspense>
+            </div>
           </div>
         )
       })()}

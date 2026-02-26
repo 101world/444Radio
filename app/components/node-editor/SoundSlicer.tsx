@@ -40,8 +40,8 @@ const HW = {
   textDim: '#52525b',
 }
 
-const WAVEFORM_H = 100
-const SLICER_H = 180
+const WAVEFORM_H = 140
+const SLICER_H = 280
 
 export default function SoundSlicer({
   audioUrl: propUrl,

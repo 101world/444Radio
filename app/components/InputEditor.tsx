@@ -9203,17 +9203,25 @@ $: s("bd:3").bank("RolandTR808")
                   onClick={e => e.stopPropagation()}
                   className="px-1 py-0.5 rounded text-[9px] font-bold text-violet-400 bg-white/[0.02] border border-white/[0.06] outline-none cursor-pointer appearance-none text-center truncate"
                   title="Global scale / key"
-                  style={{ maxWidth: 72 }}
+                  style={{ maxWidth: 90 }}
                 >
-                  {[
-                    { label: 'C Maj', value: 'C4:major' }, { label: 'A Min', value: 'A3:minor' },
-                    { label: 'A Harm', value: 'A3:harmonic minor' }, { label: 'C Pent', value: 'C4:major pentatonic' },
-                    { label: 'Am Pent', value: 'A3:minor pentatonic' }, { label: 'C Blues', value: 'C4:blues' },
-                    { label: 'D Dor', value: 'D4:dorian' }, { label: 'E Phry', value: 'E4:phrygian' },
-                    { label: 'F Lyd', value: 'F4:lydian' }, { label: 'G Mix', value: 'G4:mixolydian' },
-                    { label: 'Chrom', value: 'C4:chromatic' }, { label: 'D Min', value: 'D4:minor' },
-                    { label: 'G Maj', value: 'G4:major' },
-                  ].map(s => (
+                  {(() => {
+                    const roots = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+                    const types = [
+                      { l: 'Maj', v: 'major', o: 4 }, { l: 'Min', v: 'minor', o: 3 },
+                      { l: 'Harm', v: 'harmonic minor', o: 3 }, { l: 'MelMin', v: 'melodic minor', o: 3 },
+                      { l: 'Dor', v: 'dorian', o: 4 }, { l: 'Phry', v: 'phrygian', o: 4 },
+                      { l: 'Lyd', v: 'lydian', o: 4 }, { l: 'Mix', v: 'mixolydian', o: 4 },
+                      { l: 'Loc', v: 'locrian', o: 4 }, { l: 'MajP', v: 'major pentatonic', o: 4 },
+                      { l: 'MinP', v: 'minor pentatonic', o: 3 }, { l: 'Blues', v: 'blues', o: 4 },
+                      { l: 'WhlT', v: 'whole tone', o: 4 }, { l: 'Dim', v: 'diminished', o: 4 },
+                      { l: 'Chrom', v: 'chromatic', o: 4 },
+                    ]
+                    return roots.flatMap(r => types.map(t => ({
+                      label: `${r} ${t.l}`,
+                      value: `${r}${t.o}:${t.v}`,
+                    })))
+                  })().map(s => (
                     <option key={s.value} value={s.value} className="bg-gray-900 text-white">{s.label}</option>
                   ))}
                 </select>
@@ -9273,7 +9281,7 @@ $: s("bd:3").bank("RolandTR808")
               ref={canvasRef}
               id="test-canvas"
               className="absolute inset-0 pointer-events-none z-[3]"
-              style={{ opacity: isPlaying ? 0.45 : 0, transition: 'opacity 1s ease' }}
+              style={{ opacity: isPlaying ? 0.45 : 0, transition: 'opacity 0.6s ease', pointerEvents: 'none' }}
             />
 
             {/* ── Manifesto text backdrop — audio-reactive, only on default code ── */}
@@ -9281,7 +9289,7 @@ $: s("bd:3").bank("RolandTR808")
             <div
               ref={manifestoRef}
               className="absolute inset-0 pointer-events-none z-[4] flex flex-col items-center justify-center select-none overflow-hidden"
-              style={{ opacity: isPlaying ? 0.28 : 0.08, transition: 'opacity 1.5s ease' }}
+              style={{ opacity: isPlaying ? 0.28 : 0, transition: 'opacity 1s ease' }}
             >
               <div style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.2rem',
