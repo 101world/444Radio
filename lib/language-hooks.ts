@@ -20,7 +20,7 @@ export const LANGUAGE_HOOKS: Record<string, LanguageHook> = {
       'Melancholic love song with acoustic guitar',
       'Energetic dance pop with synthesizers'
     ],
-    lyricsStructure: '[前奏]\n...\n[主歌]\n...\n[副歌]\n...\n[桥段]\n...\n[尾奏]',
+    lyricsStructure: '[Intro]\nQianzhou...\n[Verse]\nZhuge...\n[Chorus]\nFuge...\n[Bridge]\nQiaoduan...\n[Outro]\nWeizhou...',
     typicalPatterns: [
       '爱情 (love themes)',
       '思念 (longing)',
@@ -40,7 +40,7 @@ export const LANGUAGE_HOOKS: Record<string, LanguageHook> = {
       'Energetic idol pop with catchy hooks',
       'Alternative J-rock with distorted guitars'
     ],
-    lyricsStructure: '[イントロ]\n...\n[Aメロ]\n...\n[サビ]\n...\n[ブリッジ]\n...\n[アウトロ]',
+    lyricsStructure: '[Intro]\nIntoro...\n[Verse]\nA-mero...\n[Chorus]\nSabi...\n[Bridge]\nBurijji...\n[Outro]\nAutoro...',
     typicalPatterns: [
       '青春 (youth themes)',
       '恋愛 (romance)',
@@ -60,7 +60,7 @@ export const LANGUAGE_HOOKS: Record<string, LanguageHook> = {
       'K-hip-hop with trap beats and melodic hooks',
       'Emotional ballad with piano and strings'
     ],
-    lyricsStructure: '[인트로]\n...\n[벌스]\n...\n[코러스]\n...\n[브릿지]\n...\n[아웃트로]',
+    lyricsStructure: '[Intro]\nInturo...\n[Verse]\nBeoseu...\n[Chorus]\nKoreoseu...\n[Bridge]\nBeuritji...\n[Outro]\nAuteuro...',
     typicalPatterns: [
       '사랑 (love)',
       '이별 (farewell)',
@@ -120,7 +120,7 @@ export const LANGUAGE_HOOKS: Record<string, LanguageHook> = {
       'Modern indie pop with electronic beats and traditional instruments',
       'Classical fusion with sitar and modern production'
     ],
-    lyricsStructure: '[मुखड़ा]\n...\n[अंतरा]\n...\n[स्थायी]\n...\n[संगीत]',
+    lyricsStructure: '[Intro]\nMukhda...\n[Verse]\nAntara...\n[Chorus]\nSthayi...\n[Bridge]\nSangeet...\n[Outro]\nSamapti...',
     typicalPatterns: [
       'प्यार (love)',
       'दर्द (pain)',
@@ -180,7 +180,7 @@ export const LANGUAGE_HOOKS: Record<string, LanguageHook> = {
       'Emotional ballad with strings and Arabic scales',
       'Upbeat Shaabi with tabla and catchy melodies'
     ],
-    lyricsStructure: '[مقدمة]\n...\n[مقطع]\n...\n[كورال]\n...\n[جسر]\n...\n[خاتمة]',
+    lyricsStructure: '[Intro]\nMuqaddima...\n[Verse]\nMaqta...\n[Chorus]\nKoral...\n[Bridge]\nJisr...\n[Outro]\nKhatima...',
     typicalPatterns: [
       'حب (love)',
       'شوق (longing)',

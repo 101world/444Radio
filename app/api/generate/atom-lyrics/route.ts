@@ -61,6 +61,12 @@ export async function POST(req: NextRequest) {
       throw new Error('Unexpected output format')
     }
 
+    // SAFETY: If non-English language was requested, strip any native script the LLM may have produced
+    // Keep only Latin letters, digits, punctuation, whitespace, and structural tags like [Verse]
+    if (lang) {
+      lyrics = lyrics.replace(/[\u0900-\u097F\u0980-\u09FF\u0A00-\u0A7F\u0A80-\u0AFF\u0B00-\u0B7F\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0600-\u06FF\u0750-\u077F\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF\u0E00-\u0E7F\u0E80-\u0EFF\u1000-\u109F\u1780-\u17FF]/g, '').replace(/\n{3,}/g, '\n\n').trim()
+    }
+
     // Trim to 600 characters max
     if (lyrics.length > 600) {
       lyrics = lyrics.substring(0, 600).trim()

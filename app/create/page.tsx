@@ -1129,7 +1129,8 @@ function CreatePageContent() {
 
       // Check if this is a Hindi/South-Asian language (routes to MiniMax 2.0)
       const hindiLangs = ['hindi', 'urdu', 'punjabi', 'tamil', 'telugu']
-      const isHindiLang = hindiLangs.includes(selectedLanguage.toLowerCase())
+      const hindiKeywords = /\b(hindi|urdu|punjabi|tamil|telugu|bengali|marathi|gujarati|kannada|malayalam)\b/i
+      const isHindiLang = hindiLangs.includes(selectedLanguage.toLowerCase()) || hindiKeywords.test(originalPrompt)
 
       if (isInstrumental) {
         // For instrumental mode, set lyrics to [Instrumental]
