@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import FloatingMenu from '../components/FloatingMenu'
-import { Search, Play, Pause, ArrowLeft, FileText, Radio as RadioIcon, Users, Music, X, SlidersHorizontal, Heart, TrendingUp, Disc3, Headphones, ChevronRight, Sparkles, Flame, Info, Video } from 'lucide-react'
+import { Search, Play, Pause, ArrowLeft, FileText, Radio as RadioIcon, Users, Music, X, SlidersHorizontal, Heart, TrendingUp, Disc3, Headphones, ChevronRight, Sparkles, Flame, Info, Video, MessageCircle, ThumbsDown, Volume2, VolumeX } from 'lucide-react'
 import { useAudioPlayer, computeUrl } from '../contexts/AudioPlayerContext'
 import { supabase } from '@/lib/supabase'
 import { ExploreGridSkeleton } from '../components/LoadingSkeleton'
@@ -523,7 +523,7 @@ function RadioPageContent() {
   const [searchFilters, setSearchFilters] = useState({
     genre: '', mood: '', bpm_min: '', bpm_max: '', key: '', vocals: '', sort: 'relevance'
   })
-  const [activeTab, setActiveTab] = useState<'tracks' | 'genres' | 'stations' | 'lipsync'>('tracks')
+  const [activeTab, setActiveTab] = useState<'tracks' | 'genres' | 'stations' | 'tales'>('tracks')
   const [genres, setGenres] = useState<string[]>([])
   const [showLyricsModal, setShowLyricsModal] = useState(false)
   const [selectedLyricsId, setSelectedLyricsId] = useState<string | null>(null)
@@ -531,8 +531,16 @@ function RadioPageContent() {
   const [infoMedia, setInfoMedia] = useState<CombinedMedia | null>(null)
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null)
   const [genreTransition, setGenreTransition] = useState<'idle' | 'zooming' | 'visible'>('idle')
-  const [lipsyncVideos, setLipsyncVideos] = useState<CombinedMedia[]>([])
-  const [loadingLipsync, setLoadingLipsync] = useState(false)
+  const [talesVideos, setTalesVideos] = useState<CombinedMedia[]>([])
+  const [loadingTales, setLoadingTales] = useState(false)
+  const [talesIndex, setTalesIndex] = useState(0)
+  const [talesSwipeDir, setTalesSwipeDir] = useState<'left' | 'right' | null>(null)
+  const [talesMuted, setTalesMuted] = useState(false)
+  const talesContainerRef = useRef<HTMLDivElement>(null)
+  const talesTouchStartRef = useRef<{ x: number; y: number; time: number } | null>(null)
+  const [talesSwipeOffset, setTalesSwipeOffset] = useState(0)
+  const [talesVerticalOffset, setTalesVerticalOffset] = useState(0)
+  const [isSwiping, setIsSwiping] = useState(false)
   const [hoveredVideoId, setHoveredVideoId] = useState<string | null>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
@@ -666,21 +674,102 @@ function RadioPageContent() {
     setSelectedLyricsId(media.id); setSelectedLyricsTitle(media.title); setShowLyricsModal(true)
   }
 
-  // Fetch lipsync videos when tab is selected
+  // Fetch tales videos when tab is selected
   useEffect(() => {
-    if (activeTab === 'lipsync' && lipsyncVideos.length === 0 && !loadingLipsync) {
-      setLoadingLipsync(true)
+    if (activeTab === 'tales' && talesVideos.length === 0 && !loadingTales) {
+      setLoadingTales(true)
       fetch('/api/library/videos')
         .then(res => res.json())
         .then(data => {
           if (data.videos && Array.isArray(data.videos)) {
-            setLipsyncVideos(data.videos)
+            setTalesVideos(data.videos)
           }
         })
         .catch(console.error)
-        .finally(() => setLoadingLipsync(false))
+        .finally(() => setLoadingTales(false))
     }
-  }, [activeTab, lipsyncVideos.length, loadingLipsync])
+  }, [activeTab, talesVideos.length, loadingTales])
+
+  // Tales swipe handlers
+  const handleTalesTouchStart = useCallback((e: React.TouchEvent) => {
+    talesTouchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, time: Date.now() }
+    setIsSwiping(false)
+  }, [])
+
+  const handleTalesTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!talesTouchStartRef.current) return
+    const dx = e.touches[0].clientX - talesTouchStartRef.current.x
+    const dy = e.touches[0].clientY - talesTouchStartRef.current.y
+    // If horizontal swipe dominates, track it
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
+      setTalesSwipeOffset(dx)
+      setIsSwiping(true)
+    } else if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) {
+      setTalesVerticalOffset(dy)
+      setIsSwiping(true)
+    }
+  }, [])
+
+  const handleTalesTouchEnd = useCallback(() => {
+    if (!talesTouchStartRef.current) return
+    const swipeThreshold = 80
+    const verticalThreshold = 80
+
+    if (Math.abs(talesSwipeOffset) > swipeThreshold) {
+      if (talesSwipeOffset > 0) {
+        // Right swipe = LIKE
+        setTalesSwipeDir('right')
+        const currentVideo = talesVideos[talesIndex]
+        if (currentVideo) {
+          // Trigger like via API
+          fetch('/api/media/like', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ releaseId: currentVideo.id })
+          }).catch(console.error)
+        }
+        setTimeout(() => {
+          setTalesSwipeDir(null)
+          setTalesIndex(prev => Math.min(prev + 1, talesVideos.length - 1))
+        }, 400)
+      } else {
+        // Left swipe = SKIP / dislike
+        setTalesSwipeDir('left')
+        setTimeout(() => {
+          setTalesSwipeDir(null)
+          setTalesIndex(prev => Math.min(prev + 1, talesVideos.length - 1))
+        }, 400)
+      }
+    } else if (Math.abs(talesVerticalOffset) > verticalThreshold) {
+      if (talesVerticalOffset < 0) {
+        // Swipe up = next video
+        setTalesIndex(prev => Math.min(prev + 1, talesVideos.length - 1))
+      } else {
+        // Swipe down = previous video
+        setTalesIndex(prev => Math.max(prev - 1, 0))
+      }
+    }
+
+    talesTouchStartRef.current = null
+    setTalesSwipeOffset(0)
+    setTalesVerticalOffset(0)
+    setIsSwiping(false)
+  }, [talesSwipeOffset, talesVerticalOffset, talesIndex, talesVideos])
+
+  const handleTalesLike = useCallback(() => {
+    const currentVideo = talesVideos[talesIndex]
+    if (!currentVideo) return
+    fetch('/api/media/like', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ releaseId: currentVideo.id })
+    }).catch(console.error)
+    setTalesSwipeDir('right')
+    setTimeout(() => {
+      setTalesSwipeDir(null)
+      setTalesIndex(prev => Math.min(prev + 1, talesVideos.length - 1))
+    }, 400)
+  }, [talesIndex, talesVideos])
 
   // ─── Derived ───
   const INTERNAL_GENRES = ['stem', 'effects', 'loop', 'sfx']
@@ -771,7 +860,7 @@ function RadioPageContent() {
                   { key: 'tracks' as const, label: 'Tracks', icon: Music },
                   { key: 'genres' as const, label: 'Genres', icon: Disc3 },
                   { key: 'stations' as const, label: 'Live', icon: RadioIcon, count: liveStations.length },
-                  { key: 'lipsync' as const, label: 'LipSync', icon: Video, count: lipsyncVideos.length },
+                  { key: 'tales' as const, label: 'Tales', icon: Video, count: talesVideos.length },
                 ] as const).map(tab => (
                   <button
                     key={tab.key}
@@ -830,27 +919,8 @@ function RadioPageContent() {
 
 
 
-          {/* Mobile tabs */}
-          {!isSearchActive && (
-            <div className="md:hidden flex items-center gap-0.5 px-4 pb-2">
-              {([
-                { key: 'tracks' as const, label: 'Tracks', icon: Music },
-                { key: 'genres' as const, label: 'Genres', icon: Disc3 },
-                { key: 'stations' as const, label: 'Live', icon: RadioIcon, count: liveStations.length },
-                { key: 'lipsync' as const, label: 'LipSync', icon: Video, count: lipsyncVideos.length },
-              ] as const).map(tab => (
-                <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-                  className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${
-                    activeTab === tab.key ? 'bg-white/10 text-white' : 'text-gray-600'
-                  }`}
-                >
-                  <tab.icon size={12} />
-                  {tab.label}
-                  {'count' in tab && tab.count > 0 && <span className="w-4 h-4 bg-pink-500/20 text-pink-400 text-[9px] rounded-full flex items-center justify-center">{tab.count}</span>}
-                </button>
-              ))}
-            </div>
-          )}
+          {/* Mobile bottom nav - docked at bottom */}
+          {/* Old mobile tabs removed — using bottom docked nav instead */}
         </div>
 
         {/* ═══ CONTENT ═══ */}
@@ -1142,51 +1212,87 @@ function RadioPageContent() {
               </div>
             )}
 
-            {/* ═══ LIPSYNC TAB ═══ */}
-            {activeTab === 'lipsync' && !isSearchActive && (
-              <div className="px-4 md:px-6 pt-4">
-                <style jsx>{`
-                  @keyframes videoCardEnter {
-                    0% { opacity: 0; transform: scale(0.95) translateY(10px); }
-                    100% { opacity: 1; transform: scale(1) translateY(0); }
-                  }
-                  .lipsync-video-card { animation: videoCardEnter 0.4s ease-out both; }
-                `}</style>
-                {loadingLipsync ? (
-                  <div className="flex items-center justify-center py-16">
-                    <div className="w-6 h-6 border-2 border-pink-400/30 border-t-pink-400 rounded-full animate-spin" />
-                  </div>
-                ) : lipsyncVideos.length === 0 ? (
-                  <div className="text-center py-16">
-                    <Video size={28} className="text-gray-700 mx-auto mb-3" />
-                    <h2 className="text-lg font-bold text-white mb-1">No LipSync Videos Yet</h2>
-                    <p className="text-gray-600 text-xs mb-4">Be the first to create a lipsync video!</p>
-                    <Link href="/create" className="inline-block px-4 py-2 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-full text-sm font-semibold hover:from-pink-600 hover:to-rose-600 transition-all">
-                      Create LipSync
-                    </Link>
-                  </div>
-                ) : (
-                  <>
-                    <SectionHeader icon={Video} label="LipSync Videos" iconColor="text-pink-400" gradientFrom="from-pink-500/20" gradientTo="to-rose-500/20" count={lipsyncVideos.length} />
-                    {/* Instagram-style grid with adaptive aspect ratio */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3">
-                      {lipsyncVideos.map((video, idx) => (
-                        <div
-                          key={video.id}
-                          className="lipsync-video-card group relative rounded-lg overflow-hidden cursor-pointer"
-                          style={{ animationDelay: `${idx * 0.05}s` }}
-                          onMouseEnter={() => setHoveredVideoId(video.id)}
-                          onMouseLeave={() => setHoveredVideoId(null)}
-                          onClick={() => handlePlay(video)}
-                        >
-                          {/* Video container with adaptive aspect ratio (9:16 vertical video style) */}
-                          <div className="relative w-full pb-[133.33%] bg-gray-900">
-                            {hoveredVideoId === video.id && video.video_url ? (
+            {/* ═══ TALES TAB ═══ */}
+            {activeTab === 'tales' && !isSearchActive && (
+              <>
+                {/* ── MOBILE: TikTok-style fullscreen vertical swipe ── */}
+                <div className="md:hidden">
+                  <style jsx>{`
+                    @keyframes talesSlideUp {
+                      0% { opacity: 0; transform: translateY(60px); }
+                      100% { opacity: 1; transform: translateY(0); }
+                    }
+                    @keyframes swipeRightAnim {
+                      0% { opacity: 1; transform: translateX(0) rotate(0deg); }
+                      100% { opacity: 0; transform: translateX(120%) rotate(15deg); }
+                    }
+                    @keyframes swipeLeftAnim {
+                      0% { opacity: 1; transform: translateX(0) rotate(0deg); }
+                      100% { opacity: 0; transform: translateX(-120%) rotate(-15deg); }
+                    }
+                    @keyframes likePopIn {
+                      0% { transform: scale(0); opacity: 0; }
+                      50% { transform: scale(1.3); opacity: 1; }
+                      100% { transform: scale(1); opacity: 1; }
+                    }
+                    @keyframes skipPopIn {
+                      0% { transform: scale(0); opacity: 0; }
+                      50% { transform: scale(1.3); opacity: 1; }
+                      100% { transform: scale(1); opacity: 1; }
+                    }
+                    .tales-enter { animation: talesSlideUp 0.4s ease-out; }
+                    .tales-swipe-right { animation: swipeRightAnim 0.4s ease-in forwards; }
+                    .tales-swipe-left { animation: swipeLeftAnim 0.4s ease-in forwards; }
+                    .tales-like-badge { animation: likePopIn 0.3s ease-out; }
+                    .tales-skip-badge { animation: skipPopIn 0.3s ease-out; }
+                  `}</style>
+
+                  {loadingTales ? (
+                    <div className="flex items-center justify-center h-[calc(100vh-120px)]">
+                      <div className="w-8 h-8 border-2 border-pink-400/30 border-t-pink-400 rounded-full animate-spin" />
+                    </div>
+                  ) : talesVideos.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-[calc(100vh-120px)]">
+                      <Video size={40} className="text-gray-700 mb-4" />
+                      <h2 className="text-xl font-bold text-white mb-2">No Tales Yet</h2>
+                      <p className="text-gray-500 text-sm mb-6">Be the first to create a tale!</p>
+                      <Link href="/create" className="px-6 py-3 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-full text-sm font-bold">
+                        Create Tale
+                      </Link>
+                    </div>
+                  ) : (
+                    <div
+                      ref={talesContainerRef}
+                      className="relative h-[calc(100vh-60px)] w-full overflow-hidden bg-black"
+                      onTouchStart={handleTalesTouchStart}
+                      onTouchMove={handleTalesTouchMove}
+                      onTouchEnd={handleTalesTouchEnd}
+                    >
+                      {/* Current video card */}
+                      {talesVideos[talesIndex] && (() => {
+                        const video = talesVideos[talesIndex]
+                        return (
+                          <div
+                            key={`tale-${talesIndex}`}
+                            className={`absolute inset-0 tales-enter ${
+                              talesSwipeDir === 'right' ? 'tales-swipe-right' :
+                              talesSwipeDir === 'left' ? 'tales-swipe-left' : ''
+                            }`}
+                            style={{
+                              transform: !talesSwipeDir && isSwiping
+                                ? `translateX(${talesSwipeOffset}px) rotate(${talesSwipeOffset * 0.03}deg)`
+                                : undefined,
+                              transition: !isSwiping ? 'transform 0.3s ease-out' : 'none',
+                            }}
+                          >
+                            {/* Full screen video/image */}
+                            {video.video_url ? (
                               <video
+                                key={`video-${video.id}-${talesIndex}`}
                                 src={video.video_url}
                                 autoPlay
                                 loop
-                                muted
+                                muted={talesMuted}
                                 playsInline
                                 className="absolute inset-0 w-full h-full object-cover"
                               />
@@ -1196,64 +1302,316 @@ function RadioPageContent() {
                                 alt={video.title}
                                 fill
                                 className="object-cover"
-                                loading="lazy"
-                                quality={70}
+                                priority
                                 unoptimized
                               />
                             ) : (
-                              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-pink-900/30 to-purple-900/30">
-                                <Video size={24} className="text-pink-400/50" />
+                              <div className="absolute inset-0 bg-gradient-to-br from-pink-900/40 to-purple-900/40 flex items-center justify-center">
+                                <Video size={48} className="text-pink-400/30" />
                               </div>
                             )}
-                            
-                            {/* Gradient overlay */}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                            
-                            {/* Play icon on hover */}
-                            <div className={`absolute inset-0 flex items-center justify-center transition-all duration-200 ${
-                              hoveredVideoId === video.id ? 'opacity-100' : 'opacity-0'
-                            }`}>
-                              <div className="w-12 h-12 rounded-full bg-pink-500/90 backdrop-blur flex items-center justify-center shadow-lg">
-                                <Play size={18} className="text-white ml-0.5" />
-                              </div>
-                            </div>
-                            
-                            {/* Live/playing indicator */}
-                            {playingId === video.id && isPlaying && (
-                              <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/70 backdrop-blur px-2 py-1 rounded-full">
-                                <div className="flex items-end gap-[2px] h-3">
-                                  <div className="w-[2px] bg-pink-400 rounded-full animate-pulse" style={{ height: '40%' }} />
-                                  <div className="w-[2px] bg-pink-400 rounded-full animate-pulse" style={{ height: '80%', animationDelay: '0.15s' }} />
-                                  <div className="w-[2px] bg-pink-400 rounded-full animate-pulse" style={{ height: '55%', animationDelay: '0.3s' }} />
+
+                            {/* Gradient overlays */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/30 pointer-events-none" />
+
+                            {/* Swipe indicator overlays */}
+                            {talesSwipeOffset > 40 && !talesSwipeDir && (
+                              <div className="absolute inset-0 bg-green-500/10 pointer-events-none flex items-center justify-center">
+                                <div className="tales-like-badge w-20 h-20 rounded-full bg-green-500/30 backdrop-blur-md flex items-center justify-center border-2 border-green-400/50">
+                                  <Heart size={36} className="text-green-400 fill-green-400" />
                                 </div>
                               </div>
                             )}
-                          </div>
-                          
-                          {/* Video info */}
-                          <div className="absolute bottom-0 left-0 right-0 p-2">
-                            <h3 className="text-xs font-semibold text-white truncate">{video.title}</h3>
-                            <div className="flex items-center justify-between mt-1">
-                              <span className="text-[10px] text-gray-400 truncate">
-                                {video.artist_name || video.users?.username || video.username || 'Unknown'}
-                              </span>
-                              <div className="flex items-center gap-1.5">
-                                <span className="flex items-center gap-0.5 text-[9px] text-gray-400">
-                                  <Heart size={8} />{video.likes || 0}
+                            {talesSwipeOffset < -40 && !talesSwipeDir && (
+                              <div className="absolute inset-0 bg-red-500/10 pointer-events-none flex items-center justify-center">
+                                <div className="tales-skip-badge w-20 h-20 rounded-full bg-red-500/30 backdrop-blur-md flex items-center justify-center border-2 border-red-400/50">
+                                  <ThumbsDown size={36} className="text-red-400" />
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Right side action buttons (TikTok style) */}
+                            <div className="absolute right-3 bottom-32 flex flex-col items-center gap-5 z-20">
+                              {/* Profile */}
+                              <Link href={`/profile/${video.user_id}`} className="flex flex-col items-center gap-1">
+                                <div className="w-11 h-11 rounded-full border-2 border-white overflow-hidden bg-gray-800">
+                                  {video.users?.avatar_url ? (
+                                    <Image src={video.users.avatar_url} alt="" width={44} height={44} className="w-full h-full object-cover" unoptimized />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center">
+                                      <Users size={18} className="text-gray-500" />
+                                    </div>
+                                  )}
+                                </div>
+                              </Link>
+
+                              {/* Like */}
+                              <button onClick={handleTalesLike} className="flex flex-col items-center gap-1">
+                                <div className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center">
+                                  <Heart size={22} className="text-white" />
+                                </div>
+                                <span className="text-[10px] text-white font-semibold">{video.likes || 0}</span>
+                              </button>
+
+                              {/* Comment / Info */}
+                              <button onClick={() => setInfoMedia(video)} className="flex flex-col items-center gap-1">
+                                <div className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center">
+                                  <MessageCircle size={22} className="text-white" />
+                                </div>
+                                <span className="text-[10px] text-white font-semibold">Info</span>
+                              </button>
+
+                              {/* Play audio */}
+                              <button onClick={() => handlePlay(video)} className="flex flex-col items-center gap-1">
+                                <div className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center">
+                                  {playingId === video.id && isPlaying
+                                    ? <Pause size={22} className="text-white" />
+                                    : <Play size={22} className="text-white ml-0.5" />}
+                                </div>
+                                <span className="text-[10px] text-white font-semibold">{formatPlays(video.plays || 0)}</span>
+                              </button>
+
+                              {/* Mute toggle */}
+                              <button onClick={() => setTalesMuted(!talesMuted)} className="flex flex-col items-center gap-1">
+                                <div className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center">
+                                  {talesMuted ? <VolumeX size={22} className="text-white" /> : <Volume2 size={22} className="text-white" />}
+                                </div>
+                              </button>
+                            </div>
+
+                            {/* Bottom info (TikTok style) */}
+                            <div className="absolute bottom-20 left-4 right-16 z-20">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-white font-bold text-sm">
+                                  @{video.artist_name || video.users?.username || video.username || 'Unknown'}
+                                </span>
+                              </div>
+                              <h3 className="text-white font-semibold text-base mb-1">{video.title}</h3>
+                              {video.genre && (
+                                <span className="inline-block px-2 py-0.5 bg-white/10 backdrop-blur-md rounded-full text-[10px] text-white/80 font-medium">
+                                  {video.genre}
+                                </span>
+                              )}
+
+                              {/* Swipe hint */}
+                              <div className="flex items-center gap-3 mt-3 text-[10px] text-white/40">
+                                <span className="flex items-center gap-1">
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M5 12L12 19M5 12L12 5"/></svg>
+                                  Skip
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12H19M19 12L12 5M19 12L12 19"/></svg>
+                                  Like
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 19V5M12 5L5 12M12 5L19 12"/></svg>
+                                  Next
                                 </span>
                               </div>
                             </div>
+
+                            {/* Progress indicator */}
+                            <div className="absolute top-3 left-0 right-0 px-4 z-20">
+                              <div className="flex gap-0.5">
+                                {talesVideos.slice(0, Math.min(talesVideos.length, 30)).map((_, i) => (
+                                  <div key={i} className={`h-[2px] flex-1 rounded-full transition-all ${
+                                    i === talesIndex ? 'bg-white' : i < talesIndex ? 'bg-white/40' : 'bg-white/15'
+                                  }`} />
+                                ))}
+                              </div>
+                              <div className="flex justify-between mt-2">
+                                <span className="text-[10px] text-white/50 font-mono">{talesIndex + 1} / {talesVideos.length}</span>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        )
+                      })()}
                     </div>
-                  </>
-                )}
-              </div>
+                  )}
+                </div>
+
+                {/* ── DESKTOP: Grid layout (same as before) ── */}
+                <div className="hidden md:block px-4 md:px-6 pt-4">
+                  <style jsx>{`
+                    @keyframes videoCardEnter {
+                      0% { opacity: 0; transform: scale(0.95) translateY(10px); }
+                      100% { opacity: 1; transform: scale(1) translateY(0); }
+                    }
+                    .tales-video-card { animation: videoCardEnter 0.4s ease-out both; }
+                  `}</style>
+                  {loadingTales ? (
+                    <div className="flex items-center justify-center py-16">
+                      <div className="w-6 h-6 border-2 border-pink-400/30 border-t-pink-400 rounded-full animate-spin" />
+                    </div>
+                  ) : talesVideos.length === 0 ? (
+                    <div className="text-center py-16">
+                      <Video size={28} className="text-gray-700 mx-auto mb-3" />
+                      <h2 className="text-lg font-bold text-white mb-1">No Tales Yet</h2>
+                      <p className="text-gray-600 text-xs mb-4">Be the first to create a tale!</p>
+                      <Link href="/create" className="inline-block px-4 py-2 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-full text-sm font-semibold hover:from-pink-600 hover:to-rose-600 transition-all">
+                        Create Tale
+                      </Link>
+                    </div>
+                  ) : (
+                    <>
+                      <SectionHeader icon={Video} label="Tales" iconColor="text-pink-400" gradientFrom="from-pink-500/20" gradientTo="to-rose-500/20" count={talesVideos.length} />
+                      {/* Desktop TikTok-style: centered vertical video with sidebar */}
+                      <div className="flex justify-center gap-6 pb-8">
+                        <div className="grid grid-cols-3 lg:grid-cols-4 gap-3 max-w-4xl">
+                          {talesVideos.map((video, idx) => (
+                            <div
+                              key={video.id}
+                              className="tales-video-card group relative rounded-xl overflow-hidden cursor-pointer hover:scale-[1.02] transition-transform"
+                              style={{ animationDelay: `${idx * 0.05}s` }}
+                              onMouseEnter={() => setHoveredVideoId(video.id)}
+                              onMouseLeave={() => setHoveredVideoId(null)}
+                              onClick={() => handlePlay(video)}
+                            >
+                              {/* 9:16 aspect ratio */}
+                              <div className="relative w-full pb-[177.78%] bg-gray-900 rounded-xl overflow-hidden">
+                                {hoveredVideoId === video.id && video.video_url ? (
+                                  <video
+                                    src={video.video_url}
+                                    autoPlay
+                                    loop
+                                    muted
+                                    playsInline
+                                    className="absolute inset-0 w-full h-full object-cover"
+                                  />
+                                ) : video.image_url || video.imageUrl ? (
+                                  <Image
+                                    src={video.image_url || video.imageUrl || ''}
+                                    alt={video.title}
+                                    fill
+                                    className="object-cover"
+                                    loading="lazy"
+                                    quality={70}
+                                    unoptimized
+                                  />
+                                ) : (
+                                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-pink-900/30 to-purple-900/30">
+                                    <Video size={24} className="text-pink-400/50" />
+                                  </div>
+                                )}
+                                
+                                {/* Gradient overlay */}
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                                
+                                {/* Hover play icon */}
+                                <div className={`absolute inset-0 flex items-center justify-center transition-all duration-200 ${
+                                  hoveredVideoId === video.id ? 'opacity-100' : 'opacity-0'
+                                }`}>
+                                  <div className="w-14 h-14 rounded-full bg-pink-500/90 backdrop-blur flex items-center justify-center shadow-lg">
+                                    <Play size={22} className="text-white ml-0.5" />
+                                  </div>
+                                </div>
+                                
+                                {/* Now playing indicator */}
+                                {playingId === video.id && isPlaying && (
+                                  <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/70 backdrop-blur px-2 py-1 rounded-full">
+                                    <div className="flex items-end gap-[2px] h-3">
+                                      <div className="w-[2px] bg-pink-400 rounded-full animate-pulse" style={{ height: '40%' }} />
+                                      <div className="w-[2px] bg-pink-400 rounded-full animate-pulse" style={{ height: '80%', animationDelay: '0.15s' }} />
+                                      <div className="w-[2px] bg-pink-400 rounded-full animate-pulse" style={{ height: '55%', animationDelay: '0.3s' }} />
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Bottom info overlay */}
+                                <div className="absolute bottom-0 left-0 right-0 p-3">
+                                  <h3 className="text-xs font-bold text-white truncate">{video.title}</h3>
+                                  <div className="flex items-center justify-between mt-1">
+                                    <span className="text-[10px] text-gray-300 truncate">
+                                      @{video.artist_name || video.users?.username || video.username || 'Unknown'}
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      <span className="flex items-center gap-0.5 text-[9px] text-gray-300">
+                                        <Heart size={9} />{video.likes || 0}
+                                      </span>
+                                      <span className="flex items-center gap-0.5 text-[9px] text-gray-300">
+                                        <Play size={9} />{formatPlays(video.plays || 0)}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </>
             )}
           </>
         )}
       </main>
+
+      {/* ═══ MOBILE BOTTOM NAV BAR ═══ */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-xl border-t border-white/[0.06]" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+        <div className="flex items-center justify-around h-14 px-2">
+          {([
+            {
+              key: 'tracks' as const,
+              label: 'Tracks',
+              icon: (active: boolean) => (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#22d3ee' : '#6b7280'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
+                </svg>
+              ),
+            },
+            {
+              key: 'genres' as const,
+              label: 'Genres',
+              icon: (active: boolean) => (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#a78bfa' : '#6b7280'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="3" />
+                  <path d="M12 2v7" /><path d="M12 15v7" />
+                </svg>
+              ),
+            },
+            {
+              key: 'stations' as const,
+              label: 'Live',
+              icon: (active: boolean) => (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#f87171' : '#6b7280'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9" /><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.4" />
+                  <path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.4" /><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19" />
+                  <circle cx="12" cy="12" r="2" />
+                </svg>
+              ),
+            },
+            {
+              key: 'tales' as const,
+              label: 'Tales',
+              icon: (active: boolean) => (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? '#ec4899' : 'none'} stroke={active ? '#ec4899' : '#6b7280'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8" /><path d="M12 17v4" />
+                  <polygon points="10 8 16 11 10 14" fill={active ? '#fff' : 'none'} stroke={active ? '#fff' : '#6b7280'} strokeWidth="1.5" />
+                </svg>
+              ),
+            },
+          ] as const).map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-all ${
+                activeTab === tab.key
+                  ? 'text-white'
+                  : 'text-gray-500'
+              }`}
+            >
+              {tab.icon(activeTab === tab.key)}
+              <span className={`text-[9px] font-semibold ${
+                activeTab === tab.key ? 'text-white' : 'text-gray-600'
+              }`}>
+                {tab.label}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
 
       <Suspense fallback={null}>
         {selectedLyricsId && (
