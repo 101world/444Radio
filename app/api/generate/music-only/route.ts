@@ -291,7 +291,7 @@ export async function POST(req: NextRequest) {
 
       const chosenFormat = (audio_format === 'wav' || audio_format === 'flac') ? 'flac' : 'mp3'
       const minimax2Input: Record<string, unknown> = {
-        prompt: prompt.trim().substring(0, 200),
+        prompt: prompt.trim().substring(0, 300),
         audio_setting: {
           sample_rate: 44100,
           bitrate: 256000,
@@ -299,9 +299,17 @@ export async function POST(req: NextRequest) {
         },
       }
       // MiniMax V2 uses lyrics_prompt (10-3000 chars)
+      // Supported structure tags: [Intro], [Verse], [Chorus], [Bridge], [Outro]
       if (formattedLyrics && formattedLyrics.trim().length > 0 &&
           !formattedLyrics.toLowerCase().includes('[instrumental]')) {
-        minimax2Input.lyrics_prompt = formattedLyrics.trim().substring(0, 3000)
+        let sanitizedLyrics = formattedLyrics.trim()
+        // Replace unsupported [hook] tags with [chorus]
+        sanitizedLyrics = sanitizedLyrics.replace(/\[hook\]/gi, '[chorus]')
+        // Remove any other unsupported tags (keep only intro/verse/chorus/bridge/outro)
+        sanitizedLyrics = sanitizedLyrics.replace(/\[(?!intro\]|verse\]|chorus\]|bridge\]|outro\])([^\]]+)\]/gi, '')
+        // Remove trailing empty tags (tag at end with no content after it)
+        sanitizedLyrics = sanitizedLyrics.replace(/\[(intro|verse|chorus|bridge|outro)\]\s*$/gi, '').trim()
+        minimax2Input.lyrics_prompt = sanitizedLyrics.substring(0, 3000)
       }
 
       console.log('🎵 [MiniMax2] Input:', JSON.stringify(minimax2Input, null, 2))
