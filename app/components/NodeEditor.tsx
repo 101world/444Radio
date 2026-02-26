@@ -2325,6 +2325,8 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   const [soundUploaderOpen, setSoundUploaderOpen] = useState(false)
   const [soundSlicerOpen, setSoundSlicerOpen] = useState<{ nodeId: string } | null>(null)
   const [currentCycle, setCurrentCycle] = useState(0)
+  const [userSamples, setUserSamples] = useState<{ name: string; url: string }[]>([])
+  const [sampleChoiceModal, setSampleChoiceModal] = useState<{ sampleName: string; sampleUrl: string } | null>(null)
   const [fxDropdownNodeId, setFxDropdownNodeId] = useState<string | null>(null)
   const [fxSearchQuery, setFxSearchQuery] = useState('')
   const [codeGenerating, setCodeGenerating] = useState(false)
@@ -2384,6 +2386,19 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     handleGlobalScaleChange,
     selectedNode,
   }))
+
+  // ── Fetch user's uploaded samples on mount ──
+  const fetchUserSamples = useCallback(async () => {
+    try {
+      const res = await fetch('/api/nde/samples')
+      const data = await res.json()
+      if (data.samples) {
+        setUserSamples(data.samples.map((s: { name: string; url: string }) => ({ name: s.name, url: s.url })))
+      }
+    } catch { /* silent */ }
+  }, [])
+
+  useEffect(() => { fetchUserSamples() }, [fetchUserSamples])
 
   // ── FULL SYNC from parent code ──
   // This is the ONLY place where we re-parse nodes from code.
@@ -2836,6 +2851,32 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     if (codeToSend !== null) sendToParent(codeToSend)
   }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
+  // ── Add a sample-based node (Instrument = MIDI sliced, Sound = pitched) ──
+  const addSampleNode = useCallback((sampleName: string, mode: 'instrument' | 'sound') => {
+    const tc = TYPE_COLORS
+    let t: string
+    if (mode === 'instrument') {
+      // Instrument: sliced across MIDI notes so user can play it in the Piano Roll
+      t = `$: n("0 1 2 3 4 5 6 7").s("${sampleName}")
+  .gain(0.5).cut(1)
+  .scope({color:"${tc.vocal}",thickness:1.5,smear:.92})`
+    } else {
+      // Sound: pitched according to scale, like a vocal/pad layer
+      t = `$: note("<c4 e4 g4 c5>").s("${sampleName}")
+  .gain(0.4).scale("C4:major")
+  .room(0.4).lpf(4000)
+  .slow(2)
+  .scope({color:"${tc.vocal}",thickness:1,smear:.93})`
+    }
+    const label = mode === 'instrument' ? 'sample instrument' : 'sample sound'
+    const newCode = lastCodeRef.current.trimEnd() + `\n\n// ── ${sampleName} (${label}) ──\n` + t + '\n'
+    const parsed = parseCodeToNodes(newCode)
+    setNodes(parsed)
+    prevNodeCount.current = parsed.length
+    sendToParent(newCode)
+    setSampleChoiceModal(null)
+  }, [sendToParent])
+
   // ── Quick Add ──
   const addNode = useCallback((template: string) => {
     const tc = TYPE_COLORS
@@ -3055,6 +3096,53 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
       changeSoundSource(nodeId, sMatch ? sMatch[1] : data)
     }
   }, [changeSoundSource, changeSoundBank, changeSoundInstrument, changeScale, changePattern, bpm, sendToParent, rebuildFullCodeFromNodes])
+
+  // ── Canvas-level drop: audio file → upload → ask instrument/sound ──
+  const handleCanvasDrop = useCallback(async (e: React.DragEvent) => {
+    // Only handle file drops; let sidebar item drops bubble to node handlers
+    const files = e.dataTransfer.files
+    if (!files || files.length === 0) return
+    const file = files[0]
+    if (!file.type.startsWith('audio/')) return
+    e.preventDefault(); e.stopPropagation()
+
+    if (file.size > 4 * 1024 * 1024) {
+      setSidebarHint('⚠ File must be under 4MB')
+      setTimeout(() => setSidebarHint(''), 3000)
+      return
+    }
+
+    // Auto-generate name from filename
+    const baseName = file.name.replace(/\.[^.]+$/, '')
+      .toLowerCase().replace(/[^a-z0-9_-]/g, '_').replace(/_+/g, '_').slice(0, 32)
+
+    setSidebarHint(`⏳ Uploading "${baseName}"…`)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('name', baseName)
+      const res = await fetch('/api/nde/samples', { method: 'POST', body: formData })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setSidebarHint(`⚠ ${data.error || 'Upload failed'}`)
+        setTimeout(() => setSidebarHint(''), 3000)
+        return
+      }
+
+      // Register in Strudel
+      if (onRegisterSound) await onRegisterSound(baseName, [data.sample.url])
+      // Refresh sidebar sample list
+      await fetchUserSamples()
+      setSidebarHint('')
+      // Show instrument/sound choice
+      setSampleChoiceModal({ sampleName: baseName, sampleUrl: data.sample.url })
+    } catch {
+      setSidebarHint('⚠ Upload failed — check connection')
+      setTimeout(() => setSidebarHint(''), 3000)
+    }
+  }, [onRegisterSound, fetchUserSamples])
 
   // ── Apply sidebar item to a node (shared by drag-drop AND click-to-apply) ──
   const applySidebarItemToNode = useCallback((nodeId: string, item: SidebarItem & { soundCategory?: string }) => {
@@ -3498,6 +3586,27 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                     <span className="text-[8px] ml-1.5 opacity-50">Delay, reverb, glitch layer</span>
                   </div>
                 </button>
+                {/* Section: My Samples */}
+                {userSamples.length > 0 && (
+                  <>
+                    <div className="px-3 pt-2 pb-1" style={{ borderTop: `1px solid ${HW.border}` }}>
+                      <span className="text-[7px] font-bold tracking-[0.2em] uppercase" style={{ color: HW.textDim }}>MY SAMPLES</span>
+                    </div>
+                    {userSamples.slice(0, 5).map(s => (
+                      <button key={s.name} onClick={() => { setShowAddMenu(false); setSampleChoiceModal({ sampleName: s.name, sampleUrl: s.url }) }}
+                        className="w-full flex items-center gap-2.5 px-3 py-1.5 text-[11px] transition-colors cursor-pointer"
+                        style={{ color: '#22d3ee' }}
+                        onMouseEnter={e => { (e.currentTarget).style.background = 'rgba(34,211,238,0.1)' }}
+                        onMouseLeave={e => { (e.currentTarget).style.background = 'transparent' }}>
+                        <span className="text-[12px] w-5 text-center">🔊</span>
+                        <div className="flex-1 text-left">
+                          <span className="font-mono font-medium">{s.name}</span>
+                          <span className="text-[8px] ml-1.5 opacity-50">Add as new node</span>
+                        </div>
+                      </button>
+                    ))}
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -3570,6 +3679,80 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
           </div>
           {/* Categories */}
           <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: `${HW.raisedLight} transparent` }}>
+            {/* ── MY SAMPLES (user uploads) ── */}
+            {userSamples.length > 0 && (() => {
+              const q = sidebarSearch.toLowerCase()
+              const filteredSamples = q
+                ? userSamples.filter(s => s.name.includes(q))
+                : userSamples
+              if (q && filteredSamples.length === 0) return null
+              const isOpen = sidebarCategory === '_my_samples' || !!q
+              return (
+                <div>
+                  <button
+                    onClick={() => setSidebarCategory(p => p === '_my_samples' ? null : '_my_samples')}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-[10px] font-bold tracking-wider uppercase cursor-pointer transition-colors"
+                    style={{ color: isOpen ? '#22d3ee' : HW.textDim, background: isOpen ? 'rgba(34,211,238,0.08)' : 'transparent' }}
+                    onMouseEnter={e => { if (!isOpen) e.currentTarget.style.background = 'rgba(34,211,238,0.05)' }}
+                    onMouseLeave={e => { if (!isOpen) e.currentTarget.style.background = 'transparent' }}
+                  >
+                    <span className="text-[11px]">🎤</span>
+                    <span className="flex-1 text-left">MY SAMPLES</span>
+                    <span className="text-[8px]" style={{ color: HW.textDim }}>{userSamples.length}</span>
+                    <ChevronDown size={10} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} style={{ color: HW.textDim }} />
+                  </button>
+                  {isOpen && (
+                    <div className="px-1.5 pb-1">
+                      {filteredSamples.map(s => (
+                        <div key={s.name}
+                          draggable
+                          onDragStart={e => {
+                            e.dataTransfer.setData('application/x-sidebar-item', JSON.stringify({
+                              id: `sample_${s.name}`, label: s.name, desc: `Custom sample: ${s.name}`,
+                              icon: '🔊', color: '#22d3ee', dragType: 'sound', payload: s.name,
+                            }))
+                            e.dataTransfer.effectAllowed = 'copy'
+                          }}
+                          onClick={() => {
+                            if (selectedNode) {
+                              // Apply sample directly to selected node's sound source
+                              changeSoundSource(selectedNode, s.name)
+                            } else {
+                              setSidebarHint('⚠ Select a node first — click any node on canvas')
+                              setTimeout(() => setSidebarHint(''), 2500)
+                            }
+                          }}
+                          className="flex items-center gap-2 px-2 py-1 rounded text-[9px] transition-colors group cursor-pointer"
+                          style={{ color: HW.text }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(34,211,238,0.1)'; e.currentTarget.style.color = '#22d3ee' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = HW.text }}
+                          title={`Click to use s("${s.name}") on selected node`}
+                        >
+                          <span className="text-[10px] shrink-0 w-4 text-center">🔊</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium font-mono truncate">{s.name}</div>
+                            <div className="text-[7px] truncate" style={{ color: HW.textDim }}>s(&quot;{s.name}&quot;)</div>
+                          </div>
+                          <span className="text-[7px] opacity-0 group-hover:opacity-60 shrink-0">click✓</span>
+                        </div>
+                      ))}
+                      {/* + Add as new node */}
+                      {filteredSamples.map(s => (
+                        <button key={`add_${s.name}`}
+                          onClick={() => setSampleChoiceModal({ sampleName: s.name, sampleUrl: s.url })}
+                          className="w-full flex items-center gap-2 px-2 py-1 mt-0.5 rounded text-[8px] transition-colors cursor-pointer"
+                          style={{ color: HW.textDim }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(34,211,238,0.08)'; e.currentTarget.style.color = '#22d3ee' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = HW.textDim }}
+                        >
+                          <Plus size={9} /> Add &quot;{s.name}&quot; as new node
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
             {relevantCategories.map(cat => {
               const q = sidebarSearch.toLowerCase()
               const filteredItems = q
@@ -3642,7 +3825,9 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
         style={{ overflow: 'hidden', touchAction: 'none' }}
         onMouseDown={handleBgMouseDown} onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}
-        onTouchStart={handleBgTouchStart}>
+        onTouchStart={handleBgTouchStart}
+        onDragOver={e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy' } }}
+        onDrop={handleCanvasDrop}>
 
         {/* Dot grid */}
         <div className="node-grid-bg absolute inset-0" style={{
@@ -4250,6 +4435,60 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
 
 
 
+      {/* ══════ SAMPLE MODE CHOICE MODAL ══════ */}
+      {sampleChoiceModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center" onClick={() => setSampleChoiceModal(null)}>
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div className="relative w-full max-w-sm rounded-xl overflow-hidden"
+            style={{ background: HW.surface, border: `1px solid ${HW.border}` }}
+            onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-4 text-center" style={{ borderBottom: `1px solid ${HW.border}`, background: HW.surfaceAlt }}>
+              <p className="text-sm font-semibold" style={{ color: HW.textBright }}>
+                How do you want to use <span className="font-mono" style={{ color: '#22d3ee' }}>&quot;{sampleChoiceModal.sampleName}&quot;</span>?
+              </p>
+            </div>
+            <div className="p-4 space-y-3">
+              <button
+                onClick={() => addSampleNode(sampleChoiceModal.sampleName, 'instrument')}
+                className="w-full flex items-center gap-3 p-3 rounded-lg text-left transition-all cursor-pointer group"
+                style={{ background: HW.bg, border: `1px solid ${HW.border}` }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = '#a78bfa40'; e.currentTarget.style.background = '#a78bfa08' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = HW.border; e.currentTarget.style.background = HW.bg }}
+              >
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xl shrink-0"
+                  style={{ background: '#a78bfa15', border: '1px solid #a78bfa20' }}>🎹</div>
+                <div>
+                  <div className="text-xs font-bold" style={{ color: '#a78bfa' }}>Instrument (MIDI)</div>
+                  <div className="text-[10px] mt-0.5" style={{ color: HW.textDim }}>
+                    Slice across MIDI notes — play it chromatically via Piano Roll
+                  </div>
+                </div>
+              </button>
+              <button
+                onClick={() => addSampleNode(sampleChoiceModal.sampleName, 'sound')}
+                className="w-full flex items-center gap-3 p-3 rounded-lg text-left transition-all cursor-pointer group"
+                style={{ background: HW.bg, border: `1px solid ${HW.border}` }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = '#22d3ee40'; e.currentTarget.style.background = '#22d3ee08' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = HW.border; e.currentTarget.style.background = HW.bg }}
+              >
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xl shrink-0"
+                  style={{ background: '#22d3ee15', border: '1px solid #22d3ee20' }}>🎵</div>
+                <div>
+                  <div className="text-xs font-bold" style={{ color: '#22d3ee' }}>Sound (Pitched)</div>
+                  <div className="text-[10px] mt-0.5" style={{ color: HW.textDim }}>
+                    Play pitched notes using the current scale — like a vocal or pad layer
+                  </div>
+                </div>
+              </button>
+            </div>
+            <div className="px-5 py-2 text-center" style={{ borderTop: `1px solid ${HW.border}` }}>
+              <button onClick={() => setSampleChoiceModal(null)}
+                className="text-[10px] cursor-pointer" style={{ color: HW.textDim }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Close sidebar+canvas flex container */}
       </div>
 
@@ -4298,7 +4537,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
         <Suspense fallback={null}>
           <SoundUploader
             isOpen={soundUploaderOpen}
-            onClose={() => setSoundUploaderOpen(false)}
+            onClose={() => { setSoundUploaderOpen(false); fetchUserSamples() }}
             onRegisterSound={onRegisterSound}
           />
         </Suspense>
