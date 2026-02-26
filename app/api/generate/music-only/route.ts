@@ -213,7 +213,7 @@ export async function POST(req: NextRequest) {
     console.log('  Format:', audio_format)
     console.log('  Language:', language)
 
-    // Check user credits (music costs 2 credits) - REVERTED to old system
+    // Check user credits (music costs 2 credits)
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
     
@@ -243,7 +243,7 @@ export async function POST(req: NextRequest) {
 
     console.log(`💰 User has ${userCredits} credits. Music requires 2 credits.`)
 
-    // ✅ DEDUCT 2 CREDITS atomically BEFORE generation (blocks if wallet < $1)
+    // ✅ DEDUCT 2 CREDITS atomically BEFORE generation
     const deductRes = await fetch(`${supabaseUrl}/rest/v1/rpc/deduct_credits`, {
       method: 'POST',
       headers: {

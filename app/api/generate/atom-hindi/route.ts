@@ -1,0 +1,212 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getAuthUserId } from '@/lib/hybrid-auth'
+import Replicate from 'replicate'
+import { corsResponse, handleOptions } from '@/lib/cors'
+import { SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
+
+const replicate = new Replicate({
+  auth: process.env.REPLICATE_API_KEY_LATEST2!,
+})
+
+export async function OPTIONS() {
+  return handleOptions()
+}
+
+/**
+ * POST /api/generate/atom-hindi
+ *
+ * Given a user's short idea/prompt, generates:
+ *   1. An enhanced production prompt (for MiniMax 2.0) — vivid, genre-tagged,
+ *      atmospheric description of the song (in English).
+ *   2. Full Hindi/Urdu lyrics in ROMANIZED ENGLISH letters — structured with
+ *      [Verse], [Pre-Chorus], [Chorus], [Bridge], [Outro] tags.
+ *
+ * Body: { prompt: string, instrumental?: boolean }
+ * Returns: { success, prompt, lyrics }
+ */
+export async function POST(req: NextRequest) {
+  try {
+    const userId = await getAuthUserId(req)
+    if (!userId) {
+      return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+    }
+
+    const { prompt, instrumental = false } = await req.json()
+
+    if (!prompt || !prompt.trim()) {
+      return corsResponse(NextResponse.json({ error: 'Missing prompt' }, { status: 400 }))
+    }
+
+    console.log(`🇮🇳 [ATOM-HINDI] Generating for user ${userId}`)
+    console.log('🇮🇳 [ATOM-HINDI] User prompt:', prompt)
+    console.log('🇮🇳 [ATOM-HINDI] Instrumental:', instrumental)
+
+    // --------------- STEP 1: ENHANCED PROMPT ---------------
+    const promptSystemMsg = `You are an expert South-Asian music producer. Given the user's idea, write a vivid, richly detailed music production prompt in English (max 280 characters).
+
+RULES:
+- Describe the sonic palette: instruments (sitar, tabla, dholak, tanpura, sarangi, harmonium, flute, piano, synths), textures (warm vinyl, lo-fi haze, cinematic strings, ambient pads), rhythm feel (groovy, mellow, bouncy, driving).
+- Include mood/atmosphere words: nostalgic, romantic, melancholic, euphoric, night-drive, rainy, dreamy, intimate, epic.
+- Tag genre/sub-genre: bollywood, desi lofi, hindi pop, urdu ghazal, qawwali, punjabi, sufi, indie hindi, R&B hindi, chill desi, trap desi.
+- If the idea mentions a specific vibe or era (90s bollywood, modern trap, classical fusion), reflect that.
+- Do NOT include lyrics in the prompt.
+- Keep it under 280 characters total.
+- Write in fluent English — this is a production description, not lyrics.
+
+EXAMPLE OUTPUT:
+Chill Urdu lofi song with soft emotional male vocals, warm vinyl texture, mellow piano chords, subtle lo-fi drums, deep ambient pads, light bass groove, rainy night atmosphere, nostalgic romantic vibe, minimal production, intimate recording, cinematic emotional tone`
+
+    const promptUserMsg = `User idea: "${prompt.trim()}"`
+
+    console.log('🇮🇳 [ATOM-HINDI] Generating enhanced prompt...')
+    const promptOutput = await replicate.run(
+      "openai/gpt-5-nano",
+      {
+        input: {
+          system_prompt: promptSystemMsg,
+          prompt: promptUserMsg,
+          max_tokens: 350,
+          temperature: 0.85,
+        }
+      }
+    )
+
+    let enhancedPrompt = ''
+    if (Array.isArray(promptOutput)) {
+      enhancedPrompt = promptOutput.join('')
+    } else if (typeof promptOutput === 'string') {
+      enhancedPrompt = promptOutput
+    }
+
+    // Clean: remove surrounding quotes, trim
+    enhancedPrompt = enhancedPrompt.replace(/^["'\s]+|["'\s]+$/g, '').trim()
+    // Enforce 280 char limit
+    if (enhancedPrompt.length > 280) {
+      enhancedPrompt = enhancedPrompt.substring(0, 277).trim() + '...'
+    }
+
+    console.log('✅ [ATOM-HINDI] Enhanced prompt:', enhancedPrompt)
+
+    // --------------- STEP 2: HINDI LYRICS ---------------
+    let lyrics = ''
+
+    if (!instrumental) {
+      const lyricsSystemMsg = `You are a gifted Hindi/Urdu songwriter who writes poetic, emotional, and catchy song lyrics.
+
+CRITICAL RULES:
+1. Write lyrics in ROMANIZED ENGLISH LETTERS (transliteration) — do NOT use Devanagari, Urdu script, or any non-Latin characters.
+   Example: "raat ki khamoshi mein, teri yaad chalti hai" (NOT "रात की खामोशी में").
+2. Structure with tags: [Verse 1], [Pre-Chorus], [Chorus], [Verse 2], [Bridge], [Final Chorus] or [Outro].
+3. Keep total lyrics under 550 characters.
+4. Make them melodic and singable — short lines, rhyming couplets, emotional hooks.
+5. Match the mood/vibe described by the user — if romantic, write romantic; if party, write upbeat; if sad, write melancholic.
+6. Mix Hindi and Urdu words naturally — "dil", "ishq", "roshan", "shaam", "khwab", "sitaara", "raaste", "zindagi", etc.
+7. The [Chorus] should be the catchiest, most memorable part — something you'd hum.
+8. Each verse 4-6 lines, chorus 4-8 lines, bridge 2-4 lines.
+9. NO English lyrics unless the user specifically asks for Hinglish.
+
+EXAMPLE OUTPUT:
+[Verse 1]
+raat ki khamoshi mein
+teri yaad chalti hai
+bheegi si in hawaon mein
+teri baat jalti hai
+
+[Pre-Chorus]
+dil ke sheher mein ab bhi
+tera hi noor hai
+main tanha sahi lekin
+tera hi suroor hai
+
+[Chorus]
+tu hi meri kahani hai
+tu hi mera armaan
+tere bina lagta nahi
+yeh dil ka samaan
+
+tu hi meri roshni hai
+andheron ke darmiyan
+tere bina jeena bhi
+lagta hai anjaan
+
+[Verse 2]
+khwabon ke kinare par
+tera naam likha hai
+har dhadkan ke andar
+tera ishq chhupa hai
+
+[Bridge]
+agar tu paas hoti
+toh raat theher jaati
+yeh waqt ki gardish bhi
+shayad ruk si jaati
+
+[Final Chorus]
+tu hi meri kahani hai
+tu hi mera armaan
+tere bina lagta nahi
+yeh dil ka samaan`
+
+      const lyricsUserMsg = `Write Hindi/Urdu lyrics for this song idea: "${prompt.trim()}"
+
+The production style is: ${enhancedPrompt}
+
+Remember: Romanized English letters ONLY. Structured with section tags. Under 550 characters.`
+
+      console.log('🇮🇳 [ATOM-HINDI] Generating lyrics...')
+      const lyricsOutput = await replicate.run(
+        "openai/gpt-5-nano",
+        {
+          input: {
+            system_prompt: lyricsSystemMsg,
+            prompt: lyricsUserMsg,
+            max_tokens: 700,
+            temperature: 0.9,
+          }
+        }
+      )
+
+      if (Array.isArray(lyricsOutput)) {
+        lyrics = lyricsOutput.join('')
+      } else if (typeof lyricsOutput === 'string') {
+        lyrics = lyricsOutput
+      }
+
+      // Clean up
+      lyrics = lyrics.trim()
+
+      // Enforce 600 char limit (MiniMax limit)
+      if (lyrics.length > 600) {
+        lyrics = lyrics.substring(0, 597).trim()
+        const lastNewline = lyrics.lastIndexOf('\n')
+        if (lastNewline > 450) {
+          lyrics = lyrics.substring(0, lastNewline)
+        }
+      }
+
+      console.log('✅ [ATOM-HINDI] Lyrics generated:', lyrics.substring(0, 120) + '...')
+    } else {
+      lyrics = '[Instrumental]'
+      console.log('🎹 [ATOM-HINDI] Instrumental mode — no lyrics')
+    }
+
+    return corsResponse(NextResponse.json({
+      success: true,
+      prompt: enhancedPrompt,
+      lyrics,
+      message: 'Hindi prompt & lyrics generated successfully',
+    }))
+
+  } catch (error: any) {
+    console.error('🇮🇳 [ATOM-HINDI] Error:', {
+      message: error?.message,
+      status: error?.response?.status,
+      stack: error?.stack?.substring(0, 300),
+    })
+
+    return corsResponse(NextResponse.json({
+      success: false,
+      error: SAFE_ERROR_MESSAGE,
+    }, { status: 500 }))
+  }
+}

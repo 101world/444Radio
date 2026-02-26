@@ -1101,13 +1101,87 @@ function CreatePageContent() {
         // User cancelled during auto-fill, abort early
         return
       }
+
+      // Check if this is a Hindi/South-Asian language (routes to MiniMax 2.0)
+      const hindiLangs = ['hindi', 'urdu', 'punjabi', 'tamil', 'telugu']
+      const isHindiLang = hindiLangs.includes(selectedLanguage.toLowerCase())
+
       if (isInstrumental) {
         // For instrumental mode, set lyrics to [Instrumental]
         finalLyrics = '[Instrumental]'
         setCustomLyrics(finalLyrics)
         console.log('🎹 Instrumental mode: setting lyrics to [Instrumental]')
+
+        // For Hindi/South-Asian languages, enhance the prompt via atom-hindi
+        if (isHindiLang && !wasCancelled()) {
+          console.log('🎵 Enhancing Hindi instrumental prompt via atom-hindi (MiniMax 2.0)...')
+          wasAutoFilled = true
+          try {
+            const enhanceRes = await fetch('/api/generate/atom-hindi', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ prompt: originalPrompt, instrumental: true })
+            })
+            const enhanceData = await enhanceRes.json()
+            if (enhanceData.success && enhanceData.prompt) {
+              originalPrompt = enhanceData.prompt
+              console.log('✅ Enhanced Hindi instrumental prompt:', originalPrompt.substring(0, 100) + '...')
+            }
+            await new Promise(resolve => setTimeout(resolve, 10000))
+          } catch (error) {
+            console.error('❌ Hindi prompt enhancement failed:', error)
+          }
+        }
+      } else if (isHindiLang && (!finalLyrics.trim() || !finalTitle.trim())) {
+        // For Hindi/South-Asian languages: use atom-hindi to generate BOTH prompt + lyrics
+        console.log('🎵 Auto-generating Hindi prompt + lyrics via atom-hindi (MiniMax 2.0)...')
+        wasAutoFilled = true
+        try {
+          const enhanceRes = await fetch('/api/generate/atom-hindi', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: originalPrompt, instrumental: false })
+          })
+          const enhanceData = await enhanceRes.json()
+          if (enhanceData.success) {
+            if (enhanceData.prompt) {
+              originalPrompt = enhanceData.prompt
+              console.log('✅ Enhanced Hindi prompt:', originalPrompt.substring(0, 100) + '...')
+            }
+            if (enhanceData.lyrics && !finalLyrics.trim()) {
+              finalLyrics = enhanceData.lyrics
+              setCustomLyrics(finalLyrics)
+              console.log('✅ Auto-generated Hindi lyrics:', finalLyrics.substring(0, 100) + '...')
+            }
+          }
+          // Rate limit safety
+          await new Promise(resolve => setTimeout(resolve, 10000))
+        } catch (error) {
+          console.error('❌ Hindi prompt+lyrics enhancement failed:', error)
+          // Fallback to standard lyrics generation
+        }
+
+        // If lyrics still empty after Hindi enhancer, fall back to atom-lyrics
+        if (!finalLyrics.trim() && !wasCancelled()) {
+          try {
+            const lyricsResponse = await fetch('/api/generate/atom-lyrics', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ prompt: originalPrompt, language: selectedLanguage })
+            })
+            const lyricsData = await lyricsResponse.json()
+            if (lyricsData.success && lyricsData.lyrics) {
+              finalLyrics = lyricsData.lyrics
+              setCustomLyrics(finalLyrics)
+              console.log('✅ Fallback lyrics generated:', finalLyrics.substring(0, 100) + '...')
+            }
+            await new Promise(resolve => setTimeout(resolve, 10000))
+          } catch (error) {
+            console.error('❌ Fallback lyrics generation failed:', error)
+          }
+        }
       } else if (!finalLyrics.trim()) {
-        // Only auto-generate lyrics if not in instrumental mode and no lyrics provided
+        // Standard lyrics generation for English and other non-Hindi languages
         console.log('🤖 Auto-generating lyrics from prompt...')
         wasAutoFilled = true
         try {
@@ -1365,16 +1439,25 @@ function CreatePageContent() {
             abortController.signal, messageId
           )
         } else {
-          console.log('[Generation] Calling generateMusic with:', { 
-            prompt: params.prompt, 
-            titleToUse, 
-            lyricsToUse, 
-            durationToUse,
-            genreToUse,
-            bpmToUse
-          })
-          console.log('🔍 [TITLE DEBUG] Title being sent to generateMusic:', titleToUse)
-          result = await generateMusic(params.prompt, titleToUse, lyricsToUse, durationToUse, genreToUse, bpmToUse, abortController.signal, messageId)
+          // Check if language routes to MiniMax 2.0 (Hindi, Urdu, Punjabi, Tamil, Telugu)
+          const hindiLangs = ['hindi', 'urdu', 'punjabi', 'tamil', 'telugu']
+          const useHindiRoute = hindiLangs.includes(selectedLanguage.toLowerCase())
+
+          if (useHindiRoute) {
+            console.log('[Generation] Using MiniMax 2.0 (Hindi/South Asian language):', selectedLanguage)
+            result = await generateHindiMusic(params.prompt, titleToUse, lyricsToUse, genreToUse, bpmToUse, abortController.signal, messageId)
+          } else {
+            console.log('[Generation] Calling generateMusic with:', { 
+              prompt: params.prompt, 
+              titleToUse, 
+              lyricsToUse, 
+              durationToUse,
+              genreToUse,
+              bpmToUse
+            })
+            console.log('🔍 [TITLE DEBUG] Title being sent to generateMusic:', titleToUse)
+            result = await generateMusic(params.prompt, titleToUse, lyricsToUse, durationToUse, genreToUse, bpmToUse, abortController.signal, messageId)
+          }
         }
         console.log('[Generation] Music generation result:', result)
       } else {
@@ -1818,6 +1901,90 @@ function CreatePageContent() {
       }
     }
     return { error: resultData.error || 'Failed to generate music' }
+  }
+
+  // Hindi/Urdu/Punjabi music via fal.ai MiniMax Music 2.0
+  const HINDI_LANGUAGES = ['hindi', 'urdu', 'punjabi', 'tamil', 'telugu']
+  const isHindiLanguage = (lang: string) => HINDI_LANGUAGES.includes(lang.toLowerCase())
+
+  const generateHindiMusic = async (
+    prompt: string,
+    title?: string,
+    lyrics?: string,
+    genre?: string,
+    bpm?: string,
+    signal?: AbortSignal,
+    messageId?: string
+  ) => {
+    const requestBody: Record<string, unknown> = {
+      prompt: prompt.slice(0, 500),
+      title,
+      lyrics,
+      genre: genre || undefined,
+      bpm: bpm ? parseInt(bpm) : undefined,
+      generateCoverArt,
+    }
+
+    const res = await fetch('/api/generate/hindi-music', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody),
+      signal,
+    })
+
+    // Parse NDJSON stream (same pattern as other generators)
+    const reader = res.body?.getReader()
+    if (!reader) return { error: 'No response stream' }
+
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let resultData: any = null
+
+    try {
+      while (true) {
+        if (signal?.aborted) throw new DOMException('The operation was aborted.', 'AbortError')
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+        for (const line of lines) {
+          if (!line.trim()) continue
+          try {
+            const parsed = JSON.parse(line)
+            if (parsed.type === 'started' && messageId) {
+              // MiniMax 2.0 uses fal.ai queue (no prediction ID for cancellation)
+              console.log('[Hindi Gen] Generation started via MiniMax 2.0')
+            } else if (parsed.type === 'result') {
+              resultData = parsed
+            }
+          } catch { /* skip */ }
+        }
+      }
+      if (buffer.trim()) {
+        try {
+          const parsed = JSON.parse(buffer)
+          if (parsed.type === 'result') resultData = parsed
+        } catch { /* ignore */ }
+      }
+    } finally {
+      reader.releaseLock()
+      if (messageId) predictionIdsRef.current.delete(messageId)
+    }
+
+    if (!resultData) return { error: 'No result received from Hindi generation' }
+
+    if (resultData.success) {
+      return {
+        audioUrl: resultData.audioUrl,
+        imageUrl: resultData.imageUrl,
+        title: resultData.title || title || prompt.substring(0, 50),
+        prompt,
+        lyrics: resultData.lyrics || lyrics,
+        creditsRemaining: resultData.creditsRemaining,
+      }
+    }
+    return { error: resultData.error || 'Failed to generate Hindi music' }
   }
 
   // Generate using fal.ai stable-audio-25/audio-to-audio (444 Radio Remix)
