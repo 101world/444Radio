@@ -2744,13 +2744,18 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
       } else {
         newCode = applyEffect(node.code, 'soundDotS', newSource)
       }
+      // If new source is a user sample, strip .bank() — custom samples don't use banks
+      const isUserSample = userSamples.some(s => s.name === newSource)
+      if (isUserSample) {
+        newCode = newCode.replace(/\s*\.bank\s*\(\s*["'][^"']*["']\s*\)/, '')
+      }
       if (newCode === node.code) return prev
       const updated = prev.map(n => n.id === id ? reparseNodeFromCode({ ...n, code: newCode }) : n)
       codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
       return updated
     })
     if (codeToSend !== null) sendToParent(codeToSend)
-  }, [bpm, sendToParent, rebuildFullCodeFromNodes])
+  }, [bpm, sendToParent, rebuildFullCodeFromNodes, userSamples])
 
   // Change .bank("...") on a node — for drum machine drops
   const changeSoundBank = useCallback((id: string, bankName: string) => {
