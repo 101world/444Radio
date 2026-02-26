@@ -343,10 +343,51 @@ export async function POST(req: NextRequest) {
         if (saveResponse.ok) {
           const saveData = await saveResponse.json()
           savedMusic = Array.isArray(saveData) ? saveData[0] : saveData
-          console.log('✅ Saved to library:', savedMusic?.title)
+          console.log('✅ Saved to music_library:', savedMusic?.title)
         } else {
-          console.error('❌ Failed to save to music_library:', saveResponse.status)
+          const errBody = await saveResponse.text().catch(() => 'no body')
+          console.error('❌ Failed to save to music_library:', saveResponse.status, errBody)
         }
+
+        // Also save to combined_media as fallback (library reads from both tables)
+        let savedCombined: any = null
+        try {
+          const combinedEntry: Record<string, unknown> = {
+            user_id: userId,
+            type: 'audio',
+            title,
+            audio_prompt: prompt,
+            lyrics: formattedLyrics,
+            audio_url: audioUrl,
+            image_url: null,
+            is_public: false,
+            genre: genre || null,
+            metadata: JSON.stringify({ source: 'music-01', model: 'minimax/music-01', voice_id: voice_id || undefined, has_voice_ref: !!voice_file, has_instrumental_ref: !!instrumental_file })
+          }
+          const combinedRes = await fetch(`${supabaseUrl}/rest/v1/combined_media`, {
+            method: 'POST',
+            headers: {
+              apikey: supabaseKey,
+              Authorization: `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json',
+              Prefer: 'return=representation'
+            },
+            body: JSON.stringify(combinedEntry)
+          })
+          if (combinedRes.ok) {
+            const combinedData = await combinedRes.json()
+            savedCombined = Array.isArray(combinedData) ? combinedData[0] : combinedData
+            console.log('✅ Saved to combined_media:', savedCombined?.id)
+          } else {
+            const errBody = await combinedRes.text().catch(() => 'no body')
+            console.error('❌ Failed to save to combined_media:', combinedRes.status, errBody)
+          }
+        } catch (cmErr) {
+          console.error('❌ combined_media save error:', cmErr)
+        }
+
+        // Use whichever save succeeded for the library ID
+        const libraryId = savedMusic?.id || savedCombined?.id || null
 
         // Quest progress (fire-and-forget)
         const { trackQuestProgress, trackModelUsage, trackGenerationStreak } = await import('@/lib/quest-progress')
@@ -418,7 +459,7 @@ export async function POST(req: NextRequest) {
         updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: audioUrl, mediaType: 'audio', title, extraMeta: { genre, model: 'music-01' } }).catch(() => {})
 
         // Notify user of successful generation
-        notifyGenerationComplete(userId, savedMusic?.id || '', 'music', title).catch(() => {})
+        notifyGenerationComplete(userId, libraryId || '', 'music', title).catch(() => {})
         notifyCreditDeduct(userId, COST, `Music-01 generation: ${title}`).catch(() => {})
 
         const response: Record<string, unknown> = {
@@ -427,7 +468,7 @@ export async function POST(req: NextRequest) {
           audioUrl,
           title,
           lyrics: formattedLyrics,
-          libraryId: savedMusic?.id || null,
+          libraryId,
           creditsRemaining: deductResult!.new_credits,
           creditsDeducted: COST
         }

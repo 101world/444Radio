@@ -410,10 +410,51 @@ export async function POST(req: NextRequest) {
         if (saveResponse.ok) {
           const saveData = await saveResponse.json()
           savedMusic = Array.isArray(saveData) ? saveData[0] : saveData
-          console.log('✅ Saved to library:', savedMusic?.title)
+          console.log('✅ Saved to music_library:', savedMusic?.title)
         } else {
-          console.error('❌ Failed to save to music_library:', saveResponse.status)
+          const errBody = await saveResponse.text().catch(() => 'no body')
+          console.error('❌ Failed to save to music_library:', saveResponse.status, errBody)
         }
+
+        // Also save to combined_media as fallback (library reads from both tables)
+        let savedCombined: any = null
+        try {
+          const combinedEntry: Record<string, unknown> = {
+            user_id: userId,
+            type: 'audio',
+            title,
+            audio_prompt: prompt,
+            lyrics: formattedLyrics,
+            audio_url: audioUrl,
+            image_url: null,
+            is_public: false,
+            genre: genre || null,
+            metadata: JSON.stringify({ source: 'music-only', audio_format, bitrate, sample_rate, language })
+          }
+          const combinedRes = await fetch(`${supabaseUrl}/rest/v1/combined_media`, {
+            method: 'POST',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation'
+            },
+            body: JSON.stringify(combinedEntry)
+          })
+          if (combinedRes.ok) {
+            const combinedData = await combinedRes.json()
+            savedCombined = Array.isArray(combinedData) ? combinedData[0] : combinedData
+            console.log('✅ Saved to combined_media:', savedCombined?.id)
+          } else {
+            const errBody = await combinedRes.text().catch(() => 'no body')
+            console.error('❌ Failed to save to combined_media:', combinedRes.status, errBody)
+          }
+        } catch (cmErr) {
+          console.error('❌ combined_media save error:', cmErr)
+        }
+
+        // Use whichever save succeeded for the library ID
+        const libraryId = savedMusic?.id || savedCombined?.id || null
 
         // Record 444 Radio lyrics usage
         if (used444Radio) {
@@ -451,7 +492,7 @@ export async function POST(req: NextRequest) {
         updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: audioUrl, mediaType: 'audio', title, extraMeta: { genre } }).catch(() => {})
 
         // Notify user of successful generation
-        notifyGenerationComplete(userId, savedMusic?.id || '', 'music', title).catch(() => {})
+        notifyGenerationComplete(userId, libraryId || '', 'music', title).catch(() => {})
         notifyCreditDeduct(userId, 2, `Music generation: ${title}`).catch(() => {})
 
         const response: any = {
@@ -460,7 +501,7 @@ export async function POST(req: NextRequest) {
           audioUrl,
           title,
           lyrics: formattedLyrics,
-          libraryId: savedMusic?.id || null,
+          libraryId,
           creditsRemaining: deductResult!.new_credits,
           creditsDeducted: 2
         }
@@ -535,7 +576,7 @@ export async function POST(req: NextRequest) {
 
         if (clientDisconnected) {
           console.log('✅ Generation completed in background (client navigated away):', title)
-          console.log('  📚 Saved to music_library — user will find it there')
+          console.log('  📚 Saved to music_library:', !!savedMusic, '+ combined_media:', !!savedCombined)
         }
 
         await sendLine(response)
