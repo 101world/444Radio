@@ -1,4 +1,4 @@
-/**
+                                        /**
  * Hybrid Auth Helper
  * 
  * Tries Clerk session auth first, falls back to plugin Bearer token auth.

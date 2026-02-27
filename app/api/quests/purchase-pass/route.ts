@@ -137,6 +137,7 @@ export async function POST(req: NextRequest) {
           expires_at: expiresAt.toISOString(),
           is_active: true,
           credits_spent: QUEST_PASS_COST,
+          auto_renew: false, // Quest pass never auto-renews — user must repurchase manually
         }),
       }
     )

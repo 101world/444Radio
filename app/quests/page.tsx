@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useUser } from '@clerk/nextjs'
@@ -17,6 +17,7 @@ interface Quest {
   title: string
   description: string
   quest_type: 'daily' | 'weekly' | 'monthly' | 'yearly'
+  quest_level: number
   requirement: { action: string; target: number }
   credits_reward: number
   is_active: boolean
@@ -39,6 +40,7 @@ interface QuestPass {
   purchased_at: string
   expires_at: string
   is_active: boolean
+  auto_renew?: boolean
 }
 
 interface QuestStats {
@@ -49,7 +51,18 @@ interface QuestStats {
   completionRate: number
 }
 
+interface LevelStats {
+  [level: number]: { total: number; completed: number }
+}
+
 type QuestFilter = 'all' | 'daily' | 'weekly' | 'monthly' | 'yearly'
+
+const LEVEL_CONFIG = [
+  { level: 1, name: 'STARTER', color: 'cyan', desc: 'Begin your journey', maxReward: '~600' },
+  { level: 2, name: 'OPERATOR', color: 'teal', desc: 'Prove your skills', maxReward: '~800' },
+  { level: 3, name: 'COMMANDER', color: 'blue', desc: 'Lead the charge', maxReward: '~1200' },
+  { level: 4, name: 'ULTIMATE', color: 'purple', desc: 'Legendary status', maxReward: '~2500' },
+]
 
 // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function getTimeRemaining(expiresAt: string) {
@@ -233,6 +246,9 @@ export default function QuestsPage() {
   const [pass, setPass] = useState<QuestPass | null>(null)
   const [stats, setStats] = useState<QuestStats | null>(null)
   const [totalCompleted, setTotalCompleted] = useState(0)
+  const [userLevel, setUserLevel] = useState(1)
+  const [levelStats, setLevelStats] = useState<LevelStats>({})
+  const [selectedLevel, setSelectedLevel] = useState(1)
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<QuestFilter>('all')
   const [starting, setStarting] = useState<string | null>(null)
@@ -256,6 +272,8 @@ export default function QuestsPage() {
         setQuests(questsData.quests || [])
         setPass(questsData.pass || null)
         setTotalCompleted(questsData.totalCompleted || 0)
+        setUserLevel(questsData.userLevel || 1)
+        setLevelStats(questsData.levelStats || {})
       }
       if (statsData.success) {
         setStats(statsData.stats || null)
@@ -339,9 +357,14 @@ export default function QuestsPage() {
   }
 
   // â”€â”€ Filtered quests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const filteredQuests = quests.filter(q => filter === 'all' || q.quest_type === filter)
+  const filteredQuests = quests.filter(q => {
+    const levelMatch = (q.quest_level || 1) === selectedLevel
+    const typeMatch = filter === 'all' || q.quest_type === filter
+    return levelMatch && typeMatch
+  })
   const passActive = pass && new Date(pass.expires_at) > new Date()
   const passDaysLeft = pass ? Math.max(0, Math.ceil((new Date(pass.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 0
+  const isLevelLocked = (level: number) => level > userLevel
 
   // â”€â”€ Canvas background ref â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -689,6 +712,52 @@ export default function QuestsPage() {
           
           {/* Left: Quest Feed (3 cols) */}
           <div className="lg:col-span-3 space-y-6">
+
+            {/* Level Tabs */}
+            <div className="grid grid-cols-4 gap-2">
+              {LEVEL_CONFIG.map(cfg => {
+                const locked = isLevelLocked(cfg.level)
+                const isSelected = selectedLevel === cfg.level
+                const ls = levelStats[cfg.level]
+                const completedCount = ls?.completed || 0
+                const totalCount = ls?.total || 0
+                const levelPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
+                const levelColorMap: Record<string, string> = {
+                  cyan: 'from-cyan-500/20 to-cyan-600/10 border-cyan-500/40 text-cyan-300',
+                  teal: 'from-teal-500/20 to-teal-600/10 border-teal-500/40 text-teal-300',
+                  blue: 'from-blue-500/20 to-blue-600/10 border-blue-500/40 text-blue-300',
+                  purple: 'from-purple-500/20 to-purple-600/10 border-purple-500/40 text-purple-300',
+                }
+                const activeColors = levelColorMap[cfg.color] || levelColorMap.cyan
+                return (
+                  <button
+                    key={cfg.level}
+                    onClick={() => !locked && setSelectedLevel(cfg.level)}
+                    disabled={locked}
+                    className={`relative p-3 rounded-xl border text-center transition-all ${
+                      locked ? 'bg-gray-900/60 border-gray-700/30 text-gray-600 cursor-not-allowed opacity-60' :
+                      isSelected ? `bg-gradient-to-br ${activeColors} shadow-lg` :
+                      'bg-white/[0.03] border-white/[0.08] text-gray-400 hover:bg-white/[0.06]'
+                    }`}
+                  >
+                    {locked && <Lock size={14} className="absolute top-2 right-2 text-gray-600" />}
+                    <div className="text-[10px] font-bold uppercase tracking-widest mb-0.5 opacity-70">Level {cfg.level}</div>
+                    <div className={`text-xs font-black tracking-wide ${isSelected ? '' : 'text-gray-500'}`}>{cfg.name}</div>
+                    {!locked && totalCount > 0 && (
+                      <div className="mt-1.5">
+                        <div className="h-1 bg-black/40 rounded-full overflow-hidden">
+                          <div className="h-full bg-current rounded-full transition-all" style={{ width: `${levelPct}%` }} />
+                        </div>
+                        <div className="text-[9px] mt-0.5 opacity-60">{completedCount}/{totalCount}</div>
+                      </div>
+                    )}
+                    {locked && (
+                      <div className="text-[9px] mt-1 text-gray-600">Complete L{cfg.level - 1}</div>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
             
             {/* Filter tabs */}
             <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
@@ -711,8 +780,14 @@ export default function QuestsPage() {
               </div>
             </div>
 
-            {/* Quest cards */}
-            {loading ? (
+            {/* Locked level message */}
+            {isLevelLocked(selectedLevel) ? (
+              <div className="text-center py-20">
+                <Lock size={48} className="mx-auto text-gray-700 mb-4" />
+                <p className="text-gray-500 text-lg">Level {selectedLevel} Locked</p>
+                <p className="text-gray-600 text-sm mt-1">Complete all Level {selectedLevel - 1} quests to unlock this tier.</p>
+              </div>
+            ) : loading ? (
               <div className="space-y-4">
                 {[1, 2, 3, 4].map(i => (
                   <div key={i} className="h-44 bg-white/5 border border-white/10 rounded-2xl animate-pulse" />
@@ -740,7 +815,6 @@ export default function QuestsPage() {
               </div>
             )}
           </div>
-
           {/* Right sidebar: Analytics (1 col) */}
           <div className="space-y-6">
             {/* Analytics card */}
@@ -752,27 +826,35 @@ export default function QuestsPage() {
               <StatsPanel stats={stats} />
             </div>
 
-            {/* Reward tiers info */}
+            {/* Level Progression */}
             <div className="bg-black/50 backdrop-blur-2xl border border-white/[0.06] rounded-2xl p-5 shadow-xl shadow-black/20">
               <div className="flex items-center gap-2 mb-4">
                 <Sparkles size={16} className="text-cyan-400" />
-                <h2 className="text-gray-300 font-bold text-sm uppercase tracking-wider">Reward Tiers</h2>
+                <h2 className="text-gray-300 font-bold text-sm uppercase tracking-wider">Level Progression</h2>
               </div>
               <div className="space-y-3">
-                {[
-                  { type: 'Daily', reward: '50', color: 'text-cyan-400', border: 'border-cyan-500/15' },
-                  { type: 'Weekly', reward: '20', color: 'text-cyan-300', border: 'border-cyan-400/15' },
-                  { type: 'Monthly', reward: '100', color: 'text-indigo-300', border: 'border-indigo-500/15' },
-                  { type: 'Yearly', reward: '250', color: 'text-sky-300', border: 'border-sky-500/15' },
-                ].map(tier => (
-                  <div key={tier.type} className={`flex items-center justify-between p-2.5 rounded-lg border ${tier.border} bg-white/[0.02]`}>
-                    <span className={`text-xs font-bold uppercase tracking-wider ${tier.color}`}>{tier.type}</span>
-                    <div className="flex items-center gap-1">
-                      <Zap size={12} className="text-cyan-400" />
-                      <span className="text-cyan-300 font-bold text-xs">{tier.reward}</span>
+                {LEVEL_CONFIG.map(cfg => {
+                  const unlocked = !isLevelLocked(cfg.level)
+                  const colorMap: Record<string, { text: string; border: string }> = {
+                    cyan: { text: 'text-cyan-400', border: 'border-cyan-500/20' },
+                    teal: { text: 'text-teal-400', border: 'border-teal-500/20' },
+                    blue: { text: 'text-blue-400', border: 'border-blue-500/20' },
+                    purple: { text: 'text-purple-400', border: 'border-purple-500/20' },
+                  }
+                  const c = colorMap[cfg.color] || colorMap.cyan
+                  return (
+                    <div key={cfg.level} className={`flex items-center justify-between p-2.5 rounded-lg border ${c.border} bg-white/[0.02] ${!unlocked ? 'opacity-40' : ''}`}>
+                      <div className="flex items-center gap-2">
+                        {unlocked ? <Unlock size={12} className={c.text} /> : <Lock size={12} className="text-gray-600" />}
+                        <span className={`text-xs font-bold uppercase tracking-wider ${c.text}`}>L{cfg.level} {cfg.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Zap size={12} className="text-cyan-400" />
+                        <span className="text-cyan-300 font-bold text-xs">{cfg.maxReward}</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
 
@@ -781,10 +863,11 @@ export default function QuestsPage() {
               <h2 className="text-gray-300 font-bold text-sm uppercase tracking-wider mb-3">How It Works</h2>
               <ol className="space-y-2.5 text-gray-500 text-xs">
                 {[
-                  'Pay 30 credits to activate your Quest Pass', 
-                  'Browse and start available quests',
-                  'Complete challenges by using the platform',
-                  'Claim your credit rewards',
+                  'Pay 30 credits to activate your Quest Pass',
+                  'Start with Level 1 (STARTER) quests',
+                  'Complete all quests in a level to unlock the next',
+                  'Reach Level 4 ULTIMATE for 2000-credit quests',
+                  'Quest pass renews monthly on purchase (no auto-renew)',
                 ].map((step, i) => (
                   <li key={i} className="flex items-start gap-2">
                     <span className="flex-shrink-0 w-5 h-5 rounded-full bg-cyan-500/15 border border-cyan-500/20 flex items-center justify-center text-cyan-400 text-[10px] font-bold">

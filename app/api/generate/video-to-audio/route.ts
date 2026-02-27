@@ -283,8 +283,9 @@ export async function POST(req: NextRequest) {
     updateTransactionMedia({ userId, type: 'generation_video_to_audio', mediaUrl: outputR2Result.url, mediaType: 'audio', title: `Video SFX: ${prompt.substring(0, 40)}` }).catch(() => {})
 
     // Quest progress: fire-and-forget
-    const { trackQuestProgress } = await import('@/lib/quest-progress')
+    const { trackQuestProgress, trackGenerationStreak } = await import('@/lib/quest-progress')
     trackQuestProgress(userId, 'generate_songs').catch(() => {})
+    trackGenerationStreak(userId).catch(() => {})
 
     return NextResponse.json({ 
       success: true, 

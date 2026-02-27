@@ -273,8 +273,9 @@ export async function POST(request: Request) {
         }
 
         // Quest progress: fire-and-forget
-        const { trackQuestProgress } = await import('@/lib/quest-progress')
+        const { trackQuestProgress, trackGenerationStreak } = await import('@/lib/quest-progress')
         trackQuestProgress(userId, 'generate_songs').catch(() => {})
+        trackGenerationStreak(userId).catch(() => {})
 
         // Update transaction with output media
         const primaryStemUrl = permanentStems[stem] || Object.values(permanentStems)[0]

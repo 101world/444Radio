@@ -175,6 +175,11 @@ export async function PATCH(req: NextRequest) {
       import('@/lib/quest-progress').then(({ trackQuestProgress, trackReleaseStreak }) => {
         trackQuestProgress(userId!, 'share_tracks').catch(() => {})
         trackReleaseStreak(userId!).catch(() => {})
+        // Track lipsync 1080p release quest
+        const track = updated[0]
+        if (track?.genre === 'lipsync' && track?.metadata?.resolution === '1080p') {
+          trackQuestProgress(userId!, 'release_lipsync_1080').catch(() => {})
+        }
       }).catch(() => {})
     }
 

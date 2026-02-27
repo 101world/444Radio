@@ -239,8 +239,9 @@ export async function POST(req: NextRequest) {
       }).catch(() => {})
 
       // Quest progress: fire-and-forget
-      const { trackQuestProgress } = await import('@/lib/quest-progress')
+      const { trackQuestProgress, trackGenerationStreak } = await import('@/lib/quest-progress')
       trackQuestProgress(userId, 'generate_songs').catch(() => {})
+      trackGenerationStreak(userId).catch(() => {})
 
       return corsResponse(NextResponse.json({
         success: true,

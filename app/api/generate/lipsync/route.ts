@@ -341,6 +341,14 @@ export async function POST(req: NextRequest) {
             extraMeta: { duration: durationSec, resolution: finalResolution },
           }).catch(() => {})
 
+          // Quest progress: fire-and-forget
+          const { trackQuestProgress, trackGenerationStreak } = await import('@/lib/quest-progress')
+          trackQuestProgress(userId!, 'generate_lipsync').catch(() => {})
+          if (finalResolution === '1080p') {
+            trackQuestProgress(userId!, 'generate_lipsync_1080').catch(() => {})
+          }
+          trackGenerationStreak(userId!).catch(() => {})
+
           send({
             status: 'complete',
             message: 'Lip-sync video generated successfully!',

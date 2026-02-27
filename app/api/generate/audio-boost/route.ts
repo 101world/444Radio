@@ -312,8 +312,9 @@ export async function POST(req: NextRequest) {
       updateTransactionMedia({ userId, type: 'generation_audio_boost', mediaUrl: outputR2Result.url, mediaType: 'audio', title: 'Audio Boost' }).catch(() => {})
 
       // Quest progress: fire-and-forget
-      const { trackQuestProgress } = await import('@/lib/quest-progress')
+      const { trackQuestProgress, trackGenerationStreak } = await import('@/lib/quest-progress')
       trackQuestProgress(userId, 'use_mastering').catch(() => {})
+      trackGenerationStreak(userId).catch(() => {})
 
       return corsResponse(NextResponse.json({
         success: true,

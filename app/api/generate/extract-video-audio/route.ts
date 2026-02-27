@@ -196,8 +196,9 @@ export async function POST(req: NextRequest) {
       }
 
       // Quest progress: fire-and-forget
-      const { trackQuestProgress } = await import('@/lib/quest-progress')
+      const { trackQuestProgress, trackGenerationStreak } = await import('@/lib/quest-progress')
       trackQuestProgress(userId, 'generate_songs').catch(() => {})
+      trackGenerationStreak(userId).catch(() => {})
 
       // Update transaction with output media
       updateTransactionMedia({ userId, type: 'generation_extract', mediaUrl: r2Result.url, mediaType: 'audio', title: `${trackTitle} (Video Extract)` }).catch(() => {})
