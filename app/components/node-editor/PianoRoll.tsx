@@ -979,14 +979,15 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
                     const isBeat = i % 4 === 0
                     const barNum = Math.floor(i / 16) + 1
                     return (
-                      <div key={i} className={`flex items-center justify-center text-[7px] font-mono shrink-0${isBar ? ' cursor-pointer hover:brightness-150' : ''}`}
+                      <div key={i} className={`flex items-center justify-start text-[7px] font-mono shrink-0${isBar ? ' cursor-pointer hover:brightness-150' : ''}`}
                         style={{
                           width: CELL_W, height: 18,
                           color: isBar ? '#999' : (isBeat ? '#555' : '#2a2a2a'),
                           background: isBar ? 'rgba(255,255,255,0.03)' : 'transparent',
-                          borderRight: `1px solid ${isBar ? 'rgba(255,255,255,0.08)' : (isBeat ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.015)')}`,
+                          borderLeft: `1px solid ${isBar ? 'rgba(255,255,255,0.12)' : (isBeat ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.015)')}`,
                           borderBottom: '1px solid rgba(255,255,255,0.06)',
                           fontWeight: isBar ? 700 : 400,
+                          paddingLeft: (isBar || isBeat) ? 3 : 0,
                         }}
                         title={isBar ? `Click to hear bar ${barNum}` : undefined}
                         onClick={isBar ? () => {
@@ -1066,7 +1067,7 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
                             <div key={step} className="relative cursor-pointer group"
                               style={{
                                 width: CELL_W, height: CELL_H,
-                                borderRight: `1px solid ${isBar ? 'rgba(255,255,255,0.08)' : (isBeat ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.015)')}`,
+                                borderLeft: `1px solid ${isBar ? 'rgba(255,255,255,0.12)' : (isBeat ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.015)')}`,
                                 borderBottom: `1px solid ${isC ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.015)'}`,
                                 background: inScale ? `${nodeColor}04` : (black ? '#090909' : 'transparent'),
                               }}
@@ -1102,7 +1103,7 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
                             <div key={step} className="cursor-pointer"
                               style={{
                                 width: CELL_W, height: CELL_H,
-                                borderRight: `1px solid ${isBar ? 'rgba(255,255,255,0.08)' : (isBeat ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.015)')}`,
+                                borderLeft: `1px solid ${isBar ? 'rgba(255,255,255,0.12)' : (isBeat ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.015)')}`,
                                 borderBottom: `1px solid ${isC ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.015)'}`,
                               }}
                               onMouseDown={e => handleCellMouseDown(midi, step, e)}
@@ -1118,7 +1119,7 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
                               background: inScale
                                 ? (isBeat ? `${nodeColor}06` : `${nodeColor}03`)
                                 : (black ? '#090909' : (isBeat ? 'rgba(255,255,255,0.012)' : 'transparent')),
-                              borderRight: `1px solid ${isBar ? 'rgba(255,255,255,0.08)' : (isBeat ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.015)')}`,
+                              borderLeft: `1px solid ${isBar ? 'rgba(255,255,255,0.12)' : (isBeat ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.015)')}`,
                               borderBottom: `1px solid ${isC ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.015)'}`,
                             }}
                             onMouseDown={e => handleCellMouseDown(midi, step, e)}
@@ -1157,7 +1158,7 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
                     <div key={step} className="relative cursor-ns-resize"
                       style={{
                         width: CELL_W, height: VELOCITY_LANE_H,
-                        borderRight: `1px solid ${isBar ? 'rgba(255,255,255,0.08)' : (isBeat ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.015)')}`,
+                        borderLeft: `1px solid ${isBar ? 'rgba(255,255,255,0.12)' : (isBeat ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.015)')}`,
                         background: '#0a0a0c',
                       }}
                       onMouseDown={e => {
