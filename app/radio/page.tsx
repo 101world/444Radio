@@ -254,8 +254,8 @@ function Genre3DTrackCard({ media, index, isCurrentlyPlaying, isPlaying, onPlay,
       >
         {/* Cover art — small square */}
         <div className="aspect-square relative">
-          {media.video_url ? (
-            <video src={computeUrl(media.video_url)} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" />
+          {(media.video_url || (media.image_url && /\.(mp4|webm|mov)($|\?)/.test(media.image_url))) ? (
+            <video src={computeUrl(media.video_url || media.image_url || '')} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" />
           ) : media.image_url || media.imageUrl ? (
             <Image src={media.image_url || media.imageUrl || ''} alt={media.title} width={120} height={120}
               className="w-full h-full object-cover" loading="lazy" quality={60} unoptimized />
@@ -358,9 +358,9 @@ function GridTrackCard({ media, isCurrentlyPlaying, isPlaying, onPlay, onLyrics,
         isCurrentlyPlaying ? 'ring-2 ring-cyan-400 shadow-lg shadow-cyan-500/20' : 'ring-1 ring-white/[0.06] hover:ring-white/15 hover:shadow-lg hover:shadow-black/30'
       }`}>
         {/* Looping video canvas (Spotify Canvas–style) — always loops for video releases */}
-        {media.video_url ? (
+        {(media.video_url || (media.image_url && /\.(mp4|webm|mov)($|\?)/.test(media.image_url))) ? (
           <video
-            src={media.video_url}
+            src={media.video_url || media.image_url}
             autoPlay
             loop
             muted
@@ -470,8 +470,8 @@ function ListTrackRow({ media, index, isCurrentlyPlaying, isPlaying, onPlay, onL
       </div>
       {/* Cover */}
       <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 ring-1 ring-white/[0.06] relative">
-        {media.video_url ? (
-          <video src={computeUrl(media.video_url)} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" />
+        {(media.video_url || (media.image_url && /\.(mp4|webm|mov)($|\?)/.test(media.image_url))) ? (
+          <video src={computeUrl(media.video_url || media.image_url || '')} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" />
         ) : (media.image_url || media.imageUrl) ? (
           <Image src={media.image_url || media.imageUrl || ''} alt={media.title} width={40} height={40}
             className="w-full h-full object-cover" loading="lazy" quality={60} unoptimized />
@@ -1305,10 +1305,10 @@ function RadioPageContent() {
                             }}
                           >
                             {/* Full screen video/image */}
-                            {video.video_url ? (
+                            {(video.video_url || (video.image_url && /\.(mp4|webm|mov)($|\?)/.test(video.image_url))) ? (
                               <video
                                 key={`video-${video.id}-${talesIndex}`}
-                                src={video.video_url}
+                                src={video.video_url || video.image_url}
                                 autoPlay
                                 loop
                                 muted={talesMuted}
@@ -1488,16 +1488,16 @@ function RadioPageContent() {
                             >
                               {/* 9:16 aspect ratio */}
                               <div className="relative w-full pb-[177.78%] bg-gray-900 rounded-xl overflow-hidden">
-                                {hoveredVideoId === video.id && video.video_url ? (
+                                {hoveredVideoId === video.id && (video.video_url || (video.image_url && /\.(mp4|webm|mov)($|\?)/.test(video.image_url))) ? (
                                   <video
-                                    src={video.video_url}
+                                    src={video.video_url || video.image_url}
                                     autoPlay
                                     loop
                                     muted
                                     playsInline
                                     className="absolute inset-0 w-full h-full object-cover"
                                   />
-                                ) : video.image_url || video.imageUrl ? (
+                                ) : (video.image_url && !/\.(mp4|webm|mov)($|\?)/.test(video.image_url)) || video.imageUrl ? (
                                   <Image
                                     src={video.image_url || video.imageUrl || ''}
                                     alt={video.title}

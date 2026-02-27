@@ -63,15 +63,29 @@ export default function EnhancedTrackCard({
             {!imageLoaded && (
               <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 animate-pulse" />
             )}
-            <img
-              src={track.imageUrl || '/placeholder-track.png'}
-              alt={track.title}
-              loading="lazy"
-              onLoad={() => setImageLoaded(true)}
-              className={`w-full h-full object-cover transition-all duration-500 ${
-                isHovered ? 'scale-110' : 'scale-100'
-              } ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
-            />
+            {track.imageUrl && /\.(mp4|webm|mov)($|\?)/.test(track.imageUrl) ? (
+              <video
+                src={track.imageUrl}
+                className={`w-full h-full object-cover transition-all duration-500 ${
+                  isHovered ? 'scale-110' : 'scale-100'
+                }`}
+                muted
+                loop
+                playsInline
+                autoPlay
+                onLoadedData={() => setImageLoaded(true)}
+              />
+            ) : (
+              <img
+                src={track.imageUrl || '/placeholder-track.png'}
+                alt={track.title}
+                loading="lazy"
+                onLoad={() => setImageLoaded(true)}
+                className={`w-full h-full object-cover transition-all duration-500 ${
+                  isHovered ? 'scale-110' : 'scale-100'
+                } ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              />
+            )}
           </>
         )}
         

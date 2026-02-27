@@ -1166,11 +1166,22 @@ export default function LibraryPage() {
                     <div className="flex items-center gap-3 p-3">
                       {/* Cover Art */}
                       <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden border border-green-500/30">
-                        <img
-                          src={item.image_url}
-                          alt={item.title || 'Release'}
-                          className="w-full h-full object-cover"
-                        />
+                        {item.image_url && /\.(mp4|webm|mov)($|\?)/.test(item.image_url) ? (
+                          <video
+                            src={item.image_url}
+                            className="w-full h-full object-cover"
+                            muted
+                            loop
+                            playsInline
+                            autoPlay
+                          />
+                        ) : (
+                          <img
+                            src={item.image_url}
+                            alt={item.title || 'Release'}
+                            className="w-full h-full object-cover"
+                          />
+                        )}
                       </div>
 
                       {/* Info */}
@@ -1263,7 +1274,11 @@ export default function LibraryPage() {
                   >
                     <div className="flex items-center gap-3 p-3">
                       <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden border border-pink-500/30">
-                        <Image src={item.image_url} alt={item.title || 'Release'} width={56} height={56} className="w-full h-full object-cover" loading="lazy" />
+                        {item.image_url && /\.(mp4|webm|mov)($|\?)/.test(item.image_url) ? (
+                          <video src={item.image_url} className="w-full h-full object-cover" muted loop playsInline autoPlay />
+                        ) : (
+                          <Image src={item.image_url} alt={item.title || 'Release'} width={56} height={56} className="w-full h-full object-cover" loading="lazy" />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="text-white font-semibold text-sm truncate">{item.title || 'Release'}</h3>

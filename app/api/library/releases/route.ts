@@ -22,12 +22,15 @@ export async function GET() {
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
     // Fetch published releases from BOTH tables
-    // Note: We fetch items with EITHER is_published=true OR is_public=true to catch all releases
+    // Exclude stems, extracts, effects, loops, visualizers, processed, chords, voice-over, boosted
+    const excludedGenres = ['stem', 'extract', 'loop', 'effects', 'processed', 'chords', 'voice-over', 'boosted', 'visualizer']
+    const genreFilter = excludedGenres.map(g => `genre.neq.${g}`).join('&')
+
     const [combinedMediaResponse, libraryResponse] = await Promise.all([
       // combined_media - items with both audio and image, uses user_id
-      // Fetch all items with audio+image, then filter by is_published OR is_public in code
+      // Exclude derivative content (stems, extracts, etc.) and items without a parent_track_id
       fetch(
-        `${supabaseUrl}/rest/v1/combined_media?user_id=eq.${userId}&audio_url=not.is.null&image_url=not.is.null&order=created_at.desc`,
+        `${supabaseUrl}/rest/v1/combined_media?user_id=eq.${userId}&audio_url=not.is.null&image_url=not.is.null&parent_track_id=is.null&${genreFilter}&order=created_at.desc`,
         {
           headers: {
             'apikey': supabaseKey,
@@ -50,10 +53,18 @@ export async function GET() {
     const combinedMediaData = await combinedMediaResponse.json()
     const libraryData = await libraryResponse.json()
 
-    // Transform combined_media format - include ALL items with both audio and image
+    // Transform combined_media format - exclude derivative content
     // (is_published can be true, false, or null - we show all complete releases)
     const combinedReleases = Array.isArray(combinedMediaData) 
       ? combinedMediaData
+          .filter(item => {
+            // Extra safety: exclude items whose image_url is actually a video
+            const imgUrl = (item.image_url || '').toLowerCase()
+            if (imgUrl.endsWith('.mp4') || imgUrl.endsWith('.webm') || imgUrl.includes('/videos/')) return false
+            // Exclude visualizer-titled items that slipped through
+            if (item.title?.startsWith('Visualizer:')) return false
+            return true
+          })
           .map(item => ({
             id: item.id,
             clerk_user_id: item.user_id,

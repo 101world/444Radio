@@ -154,9 +154,9 @@ export default function UsernameProfilePage() {
                   <div className="relative aspect-square bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:shadow-[#5a8fc7]/20 hover:border-[#5a8fc7]/30">
                     {/* Thumbnail */}
                     {thumbnailUrl ? (
-                      mediaType === 'video' ? (
+                      (mediaType === 'video' || /\.(mp4|webm|mov)($|\?)/.test(thumbnailUrl)) ? (
                         <video 
-                          src={media.video_url} 
+                          src={media.video_url || thumbnailUrl} 
                           className="w-full h-full object-cover"
                           muted
                           loop

@@ -61,10 +61,10 @@ export default function TrackCard({ track, isCurrentTrack, isPlaying, currentUse
       <div className="flex gap-4">
         {/* Cover art */}
         <div className="relative w-24 h-24 flex-shrink-0 rounded-xl overflow-hidden bg-gradient-to-br from-purple-700/50 to-cyan-600/50">
-          {track.image_url ? (
+          {track.image_url && !track.image_url.match(/\.(mp4|webm|mov)($|\?)/) ? (
             <img src={track.image_url} alt={track.title} className="w-full h-full object-cover" loading="lazy" />
-          ) : track.video_url ? (
-            <video src={track.video_url} className="w-full h-full object-cover" muted loop playsInline preload="metadata" />
+          ) : (track.video_url || (track.image_url && track.image_url.match(/\.(mp4|webm|mov)($|\?)/))) ? (
+            <video src={track.video_url || track.image_url} className="w-full h-full object-cover" muted loop playsInline preload="metadata" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <Music2 size={28} className="text-white/40" />

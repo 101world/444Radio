@@ -134,10 +134,10 @@ export default function ListTrackModal({ onClose, onListed }: ListTrackModalProp
                   }`}
                 >
                   <div className="w-12 h-12 rounded-lg overflow-hidden bg-white/10 flex-shrink-0">
-                    {track.image_url ? (
+                    {track.image_url && !/\.(mp4|webm|mov)($|\?)/.test(track.image_url) ? (
                       <img src={track.image_url} alt={track.title} className="w-full h-full object-cover" />
-                    ) : track.video_url ? (
-                      <video src={track.video_url} className="w-full h-full object-cover" muted playsInline preload="metadata" />
+                    ) : (track.video_url || (track.image_url && /\.(mp4|webm|mov)($|\?)/.test(track.image_url))) ? (
+                      <video src={track.video_url || track.image_url} className="w-full h-full object-cover" muted playsInline preload="metadata" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <Music2 size={16} className="text-gray-500" />

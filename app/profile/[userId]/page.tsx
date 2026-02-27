@@ -1008,9 +1008,9 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                     >
                       {/* Cover Art / Visualizer Video */}
                       <div className="relative aspect-square bg-[#0a0f1a]">
-                        {track.video_url ? (
+                        {(track.video_url || (track.image_url && /\.(mp4|webm|mov)($|\?)/.test(track.image_url))) ? (
                           <video
-                            src={track.video_url}
+                            src={track.video_url || track.image_url}
                             autoPlay
                             loop
                             muted
@@ -1142,8 +1142,8 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
                       {/* Cover */}
                       <div className="relative w-10 h-10 rounded-lg overflow-hidden border border-white/[0.05]">
-                        {track.video_url ? (
-                          <video src={computeUrl(track.video_url)} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" />
+                        {(track.video_url || (track.image_url && /\.(mp4|webm|mov)($|\?)/.test(track.image_url))) ? (
+                          <video src={computeUrl(track.video_url || track.image_url)} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" />
                         ) : track.image_url ? (
                           <Image src={track.image_url} alt={track.title} fill className="object-cover" loading="lazy" />
                         ) : (
