@@ -704,13 +704,13 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
     onPatternChange(parts.join(' '))
   }, [notes, nodeType, onPatternChange, totalSteps, midiToOutput])
 
-  // ── Phase 2: Auto-apply on every note change (debounced 300ms) ──
+  // ── Phase 2: Auto-apply on every note change (debounced 150ms) ──
   useEffect(() => {
     if (!isOpen) return
     // Skip the initial load — don't re-apply the pattern we just parsed
     if (initialLoadRef.current) { initialLoadRef.current = false; return }
     if (autoApplyTimer.current) clearTimeout(autoApplyTimer.current)
-    autoApplyTimer.current = setTimeout(() => { generatePattern() }, 300)
+    autoApplyTimer.current = setTimeout(() => { generatePattern() }, 150)
     return () => { if (autoApplyTimer.current) clearTimeout(autoApplyTimer.current) }
   }, [notes, isOpen]) // intentionally omit generatePattern to avoid stale closure loops
 

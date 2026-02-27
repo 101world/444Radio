@@ -485,12 +485,12 @@ export default function DrumSequencer({
     setNumSteps(n)
   }, [])
 
-  // ── Phase 2: Auto-apply on every row/step change (debounced 300ms) ──
+  // ── Phase 2: Auto-apply on every row/step change (debounced 150ms) ──
   useEffect(() => {
     if (!isOpen) return
     if (initialLoadRef.current) { initialLoadRef.current = false; return }
     if (autoApplyTimer.current) clearTimeout(autoApplyTimer.current)
-    autoApplyTimer.current = setTimeout(() => { applyPattern() }, 300)
+    autoApplyTimer.current = setTimeout(() => { applyPattern() }, 150)
     return () => { if (autoApplyTimer.current) clearTimeout(autoApplyTimer.current) }
   }, [rows, isOpen]) // intentionally omit applyPattern to avoid stale closure loops
 

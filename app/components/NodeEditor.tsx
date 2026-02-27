@@ -2344,15 +2344,17 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   const containerRef = useRef<HTMLDivElement>(null)
   const lastCodeRef = useRef(code)
   const commitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const immediateTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // ── Touch state refs (mutable to avoid stale closures in imperative listeners) ──
   const touchDragRef = useRef<{ id: string; ox: number; oy: number } | null>(null)
   const touchPanRef = useRef<{ active: boolean; startX: number; startY: number; px: number; py: number }>({ active: false, startX: 0, startY: 0, px: 0, py: 0 })
   const pinchRef = useRef<{ active: boolean; startDist: number; startZoom: number }>({ active: false, startDist: 0, startZoom: 0.85 })
   const zoomRef = useRef(zoom)
   zoomRef.current = zoom
-  // Dual guard: counter handles rapid successive changes; string tracks last sent code.
-  // Both must agree before we allow re-parse — makes this bulletproof under React 19 batching.
-  const internalChangeCount = useRef(0)
+  // Boolean flag: true when the most recent code change came from sendToParent (internal).
+  // Uses boolean instead of counter to avoid permanent leak when React batches multiple
+  // sendToParent calls into a single render (counter increments N but only decrements once).
+  const isInternalChange = useRef(false)
   const lastSentCodeRef = useRef<string | null>(null)
   const prevNodeCount = useRef(0)
   const codeGenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -2414,13 +2416,14 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   // It runs whenever the code prop changes AND it wasn't us who changed it.
   useEffect(() => {
     // Skip re-parse if this code change originated from us (sendToParent).
-    // Dual guard: counter catches rapid successive changes, string catches React 19 batching.
-    const isInternal = internalChangeCount.current > 0 || (lastSentCodeRef.current !== null && code === lastSentCodeRef.current)
+    // Boolean flag catches batched changes; string check catches React 19 batching edge cases.
+    const isInternal = isInternalChange.current || (lastSentCodeRef.current !== null && code === lastSentCodeRef.current)
     if (isInternal) {
-      if (internalChangeCount.current > 0) internalChangeCount.current--
+      isInternalChange.current = false
       lastSentCodeRef.current = null
       return
     }
+    isInternalChange.current = false
     lastSentCodeRef.current = null
     // External code change (user typed in editor, loaded example, etc.)
     lastCodeRef.current = code
@@ -2447,20 +2450,36 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Send code change to parent ──
-  // Using 500ms debounce to prevent Strudel from re-evaluating on every
-  // parameter tweak / knob drag / note toggle.  The code text is pushed
-  // to the parent immediately (so Undo history stays current), but the
-  // expensive Strudel evaluate() only fires after the user settles.
+  // The code text is pushed to the parent immediately (so Undo history stays current),
+  // but the expensive Strudel evaluate() is debounced to prevent thrashing.
+  //
+  // Two separate timers prevent solo/mute from being blocked by PianoRoll auto-apply:
+  //  - immediateTimer (16ms): for solo/mute — fires almost instantly, can't be cancelled
+  //    by normal edits. Only cancelled/reset by other immediate sends.
+  //  - commitTimer (200ms): for knob drags, PianoRoll, etc. — debounced.
+  //    Cleared when an immediate send fires (to avoid redundant re-evaluate).
   const sendToParent = useCallback((newCode: string, immediate?: boolean) => {
     lastCodeRef.current = newCode
-    internalChangeCount.current++
+    isInternalChange.current = true
     lastSentCodeRef.current = newCode
     onCodeChange(newCode)
-    if (commitTimer.current) clearTimeout(commitTimer.current)
-    // Solo/mute need near-instant feedback — use short delay (enough for React to flush
-    // the state update so codeRef.current is fresh when handleUpdate reads it).
-    const delay = immediate ? 60 : 500
-    commitTimer.current = setTimeout(() => onUpdateRef.current(), delay)
+    if (immediate) {
+      // Solo/mute: clear pending normal timer (immediate supersedes)
+      if (commitTimer.current) { clearTimeout(commitTimer.current); commitTimer.current = null }
+      // Use dedicated immediate timer so normal sends can't cancel it
+      if (immediateTimer.current) clearTimeout(immediateTimer.current)
+      immediateTimer.current = setTimeout(() => {
+        immediateTimer.current = null
+        onUpdateRef.current()
+      }, 16)
+    } else {
+      // Normal edit: debounced. Don't touch the immediate timer.
+      if (commitTimer.current) clearTimeout(commitTimer.current)
+      commitTimer.current = setTimeout(() => {
+        commitTimer.current = null
+        onUpdateRef.current()
+      }, 200)
+    }
   }, [onCodeChange])
 
   /** Lightweight full code rebuild that stitches node code blocks together */

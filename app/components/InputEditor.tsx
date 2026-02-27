@@ -7229,6 +7229,7 @@ $: s("bd:3").bank("RolandTR808")
   const soundMapRef = useRef<any>(null)
   const webaudioRef = useRef<any>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
+  const lastEvaluatedRef = useRef('') // Tracks last evaluated code to skip redundant evaluates
   const glowRef = useRef<HTMLDivElement>(null)
   const glowRafRef = useRef<number>(0)
   const activeHapsRef = useRef<Set<string>>(new Set())
@@ -8170,6 +8171,7 @@ $: s("bd:3").bank("RolandTR808")
         const { evaluate, webaudio } = strudelRef.current
         await webaudio.getAudioContext().resume()
         drawStateRef.current.counter = 0  // Reset draw IDs for fresh evaluation
+        lastEvaluatedRef.current = '' // Clear dedup so live updates evaluate immediately
         await evaluate(fixSoundfontNames(src))
         setSliderDefs({ ...sliderDefsRef.current })
         // Start Drawer for onPaint visualizations + active hap tracking
@@ -8199,13 +8201,17 @@ $: s("bd:3").bank("RolandTR808")
     if (!strudelRef.current?.evaluate || !isPlaying) return
     try {
       setError(null)
+      const src = codeRef.current.trim()
+      if (!src) return
+      // Skip if code hasn't changed since last evaluate (prevents redundant hush+re-register
+      // when both immediate and normal timers fire for the same code change)
+      if (src === lastEvaluatedRef.current) return
+      lastEvaluatedRef.current = src
       // Flash effect on evaluation
       if (flashOnEval && editorContainerRef.current) {
         editorContainerRef.current.style.outline = '2px solid rgba(34,211,238,0.4)'
         setTimeout(() => { if (editorContainerRef.current) editorContainerRef.current.style.outline = 'none' }, 200)
       }
-      const src = codeRef.current.trim()
-      if (!src) return
       sliderDefsRef.current = {}
       const { evaluate, webaudio, scheduler } = strudelRef.current as any
       await webaudio.getAudioContext().resume()
