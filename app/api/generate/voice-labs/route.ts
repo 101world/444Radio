@@ -145,11 +145,11 @@ export async function POST(req: NextRequest) {
 
     // Read current meter + credits
     const userRes = await fetch(
-      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,voice_labs_tokens`,
+      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,free_credits,voice_labs_tokens`,
       { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
     )
     const users = await userRes.json()
-    const currentCredits = users?.[0]?.credits ?? 0
+    const currentCredits = (users?.[0]?.credits ?? 0) + (users?.[0]?.free_credits ?? 0)
     const currentMeter = users?.[0]?.voice_labs_tokens ?? 0
 
     const newMeter = currentMeter + charCount

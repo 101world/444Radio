@@ -108,15 +108,21 @@ export function sanitizeError(error: unknown, context?: string): string {
 export function sanitizeCreditError(errorMessage: string | null | undefined): string {
   if (!errorMessage) return 'Insufficient credits'
 
-  const safeMessages = [
-    'insufficient credits',
-    'failed to deduct credits',
-    'wallet balance too low',
-  ]
-
   const lower = errorMessage.toLowerCase()
-  for (const safe of safeMessages) {
-    if (lower.includes(safe)) return 'Insufficient credits. Please add more credits to continue.'
+
+  // Wallet gate — user needs $1 deposit (free credits exhausted)
+  if (lower.includes('wallet balance') || lower.includes('$1 access') || lower.includes('add funds')) {
+    return 'Free credits used up! Deposit $1 to unlock pay-per-usage and keep creating.'
+  }
+
+  // Free credits exhausted messages from DB
+  if (lower.includes('free credits exhausted') || lower.includes('deposit $1')) {
+    return 'Free credits used up! Deposit $1 to unlock pay-per-usage and keep creating.'
+  }
+
+  // Generic insufficient credits
+  if (lower.includes('insufficient credits')) {
+    return 'Insufficient credits. Please add more credits to continue.'
   }
 
   return 'Insufficient credits'

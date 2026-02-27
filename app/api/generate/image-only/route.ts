@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
     
     const userRes = await fetch(
-      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits`,
+      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,free_credits`,
       {
         headers: {
           'apikey': supabaseKey,
@@ -44,16 +44,17 @@ export async function POST(req: NextRequest) {
     
     const userData = await userRes.json()
     const user = userData?.[0]
+    const totalCredits = (user?.credits || 0) + (user?.free_credits || 0)
     
-    if (!user || user.credits < 1) {
+    if (!user || totalCredits < 1) {
       return NextResponse.json({ 
         error: 'Insufficient credits. Image generation requires 1 credit.',
         creditsNeeded: 1,
-        creditsAvailable: user?.credits || 0
+        creditsAvailable: totalCredits
       }, { status: 402 })
     }
 
-    console.log(`💰 User has ${user.credits} credits. Image requires 1 credit.`)
+    console.log(`💰 User has ${totalCredits} credits (${user?.free_credits || 0} free). Image requires 1 credit.`)
 
     // ✅ DEDUCT 1 CREDIT atomically BEFORE generation (blocks if wallet < $1)
     const deductRes = await fetch(

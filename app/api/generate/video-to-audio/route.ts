@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
     
     const userRes = await fetch(
-      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits`,
+      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,free_credits`,
       {
         headers: {
           'apikey': supabaseKey,
@@ -73,16 +73,17 @@ export async function POST(req: NextRequest) {
     
     const userData = await userRes.json()
     const user = userData?.[0]
+    const totalCredits = (user?.credits || 0) + (user?.free_credits || 0)
     
-    if (!user || user.credits < creditsRequired) {
+    if (!user || totalCredits < creditsRequired) {
       return NextResponse.json({ 
         error: `Insufficient credits. Video-to-audio generation requires ${creditsRequired} credits.`,
         creditsNeeded: creditsRequired,
-        creditsAvailable: user?.credits || 0
+        creditsAvailable: totalCredits
       }, { status: 402 })
     }
 
-    console.log(`💰 User has ${user.credits} credits. Generation requires ${creditsRequired} credits.`)
+    console.log(`💰 User has ${totalCredits} credits (${user?.free_credits || 0} free). Generation requires ${creditsRequired} credits.`)
 
     // ✅ DEDUCT credits atomically BEFORE generation (blocks if wallet < $1)
     const deductRes = await fetch(

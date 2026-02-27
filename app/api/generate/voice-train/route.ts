@@ -47,14 +47,14 @@ export async function POST(req: NextRequest) {
     // Check credits (voice training costs 120 credits)
     const COST = 120
     const userRes = await fetch(
-      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits`,
+      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,free_credits`,
       { headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` } }
     )
     const users = await userRes.json()
     if (!users || users.length === 0) {
       return corsResponse(NextResponse.json({ error: 'User not found' }, { status: 404 }))
     }
-    const userCredits = users[0].credits || 0
+    const userCredits = (users[0].credits || 0) + (users[0].free_credits || 0)
     if (userCredits < COST) {
       return corsResponse(NextResponse.json({
         error: `Insufficient credits. Voice training requires ${COST} credits.`,

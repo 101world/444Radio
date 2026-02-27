@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
     
     const userRes = await fetch(
-      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits`,
+      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,free_credits`,
       {
         headers: {
           'apikey': supabaseKey,
@@ -105,12 +105,13 @@ export async function POST(req: NextRequest) {
     
     const userData = await userRes.json()
     const user = userData?.[0]
+    const totalCredits = (user?.credits || 0) + (user?.free_credits || 0)
     
-    if (!user || user.credits < CREDIT_COST) {
+    if (!user || totalCredits < CREDIT_COST) {
       return corsResponse(NextResponse.json({ 
         error: `Insufficient credits. Autotune requires ${CREDIT_COST} credit.`,
         creditsNeeded: CREDIT_COST,
-        creditsAvailable: user?.credits || 0
+        creditsAvailable: totalCredits
       }, { status: 402 }))
     }
 

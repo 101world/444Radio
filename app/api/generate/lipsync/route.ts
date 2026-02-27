@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
 
     // ────── Check & deduct credits ──────
     const userRes = await fetch(
-      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits`,
+      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,free_credits`,
       { headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` } }
     )
     const users = await userRes.json()
@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    const userCredits = users[0].credits || 0
+    const userCredits = (users[0].credits || 0) + (users[0].free_credits || 0)
     if (userCredits < creditCost) {
       return NextResponse.json({
         error: `Insufficient credits. ${durationSec}s lip-sync video requires ${creditCost} credits.`,
@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
       }, { status: 402 })
     }
 
-    console.log(`💰 User has ${userCredits} credits. Lip-sync requires ${creditCost} credits.`)
+    console.log(`💰 User has ${userCredits} credits (${users[0].free_credits || 0} free). Lip-sync requires ${creditCost} credits.`)
 
     // Atomically deduct credits
     const deductRes = await fetch(`${supabaseUrl}/rest/v1/rpc/deduct_credits`, {

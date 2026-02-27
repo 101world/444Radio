@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
     
     const creditCheck = await fetch(
-      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits`,
+      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,free_credits`,
       {
         headers: {
           'apikey': supabaseKey,
@@ -57,8 +57,8 @@ export async function POST(req: NextRequest) {
     )
     if (creditCheck.ok) {
       const userData = await creditCheck.json()
-      const credits = userData?.[0]?.credits ?? 0
-      if (credits < 1) {
+      const totalCredits = (userData?.[0]?.credits ?? 0) + (userData?.[0]?.free_credits ?? 0)
+      if (totalCredits < 1) {
         return NextResponse.json({ error: 'Insufficient credits', success: false }, { status: 402 })
       }
     }

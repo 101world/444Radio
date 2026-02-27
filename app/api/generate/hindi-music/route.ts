@@ -120,14 +120,14 @@ export async function POST(req: NextRequest) {
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
     const userRes = await fetch(
-      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits`,
+      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,free_credits`,
       { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
     )
     const users = await userRes.json()
     if (!users || users.length === 0) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
-    const userCredits = users[0].credits || 0
+    const userCredits = (users[0].credits || 0) + (users[0].free_credits || 0)
     if (userCredits < CREDIT_COST) {
       return NextResponse.json({
         error: `Insufficient credits. Music generation requires ${CREDIT_COST} credits.`,
@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
         creditsAvailable: userCredits,
       }, { status: 402 })
     }
-    console.log(`💰 User has ${userCredits} credits. ${sourceLabel} requires ${CREDIT_COST}.`)
+    console.log(`💰 User has ${userCredits} credits (${users[0].free_credits || 0} free). ${sourceLabel} requires ${CREDIT_COST}.`)
 
     // Deduct atomically
     const deductRes = await fetch(`${supabaseUrl}/rest/v1/rpc/deduct_credits`, {

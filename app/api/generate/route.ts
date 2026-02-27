@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
 
     // Check if user has enough credits
     const userResponse = await fetch(
-      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${user.id}&select=credits`,
+      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${user.id}&select=credits,free_credits`,
       {
         headers: {
           'apikey': supabaseKey,
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
       } else {
         // Try fetching again in case webhook created it
         const retryResponse = await fetch(
-          `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${user.id}&select=credits`,
+          `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${user.id}&select=credits,free_credits`,
           {
             headers: {
               'apikey': supabaseKey,
@@ -86,10 +86,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (!userRecord || userRecord.credits < 1) {
+    const totalAvailableCredits = (userRecord?.credits || 0) + (userRecord?.free_credits || 0)
+    if (!userRecord || totalAvailableCredits < 1) {
       return NextResponse.json({ 
         error: 'Insufficient credits',
-        message: 'You need at least 1 credit to generate music' 
+        message: 'You need at least 1 credit to generate' 
       }, { status: 402 })
     }
 

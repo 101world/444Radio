@@ -72,12 +72,13 @@ export async function POST(req: NextRequest) {
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
     const userRes = await fetch(
-      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits`,
+      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,free_credits`,
       { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
     )
     const users = await userRes.json()
     if (!users?.length) return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    if ((users[0].credits || 0) < 10) return NextResponse.json({ error: 'Insufficient credits. Remix requires 10 credits.', creditsNeeded: 10, creditsAvailable: users[0].credits || 0 }, { status: 402 })
+    const totalCredits = (users[0].credits || 0) + (users[0].free_credits || 0)
+    if (totalCredits < 10) return NextResponse.json({ error: 'Insufficient credits. Remix requires 10 credits.', creditsNeeded: 10, creditsAvailable: totalCredits }, { status: 402 })
 
     const deductRes = await fetch(`${supabaseUrl}/rest/v1/rpc/deduct_credits`, {
       method: 'POST',
