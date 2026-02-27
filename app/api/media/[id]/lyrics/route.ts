@@ -22,19 +22,19 @@ export async function GET(
       .eq('id', mediaId)
       .single()
 
-    if (error) {
+    if (error || !data) {
+      // PGRST116 = no rows found by .single()
+      if (error?.code === 'PGRST116' || !data) {
+        return NextResponse.json({ 
+          success: false, 
+          error: 'Media not found' 
+        }, { status: 404 })
+      }
       console.error('Error fetching lyrics:', error)
       return NextResponse.json({ 
         success: false, 
         error: 'Failed to fetch lyrics' 
       }, { status: 500 })
-    }
-
-    if (!data) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Media not found' 
-      }, { status: 404 })
     }
 
     // Only audio/music types have lyrics (type can be 'audio', 'music', or null for older tracks)

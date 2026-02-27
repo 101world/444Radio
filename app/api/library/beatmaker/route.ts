@@ -7,8 +7,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PU
 /**
  * GET /api/library/beatmaker
  * Get user's beat maker generations from music_library
- * Matches rows where generation_params->model = cassetteai-music-generator
- * OR genre = 'beatmaker'
+ * Filters rows where generation_params contains model = cassetteai-music-generator
  */
 export async function GET() {
   try {
@@ -17,17 +16,9 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Use JSONB contains operator for reliable filtering
-    // or filter: either generation_params contains the model OR genre = beatmaker
-    const params = new URLSearchParams({
-      clerk_user_id: `eq.${userId}`,
-      or: '(generation_params.cs.{"model":"cassetteai-music-generator"},genre.eq.beatmaker)',
-      order: 'created_at.desc',
-      limit: '200',
-    })
-
+    // Use JSONB contains operator to match beat maker model
     const res = await fetch(
-      `${supabaseUrl}/rest/v1/music_library?${params.toString()}`,
+      `${supabaseUrl}/rest/v1/music_library?clerk_user_id=eq.${userId}&generation_params=cs.${encodeURIComponent('{"model":"cassetteai-music-generator"}')}&order=created_at.desc&limit=200`,
       {
         headers: {
           apikey: supabaseKey,
@@ -49,10 +40,9 @@ export async function GET() {
       audioUrl: item.audio_url,
       prompt: item.prompt,
       audio_format: item.audio_format || 'wav',
-      duration: item.generation_params?.duration,
+      duration: item.duration || item.generation_params?.duration,
       model: item.generation_params?.model,
       credit_cost: item.generation_params?.credit_cost,
-      plays: item.plays || 0,
       created_at: item.created_at,
     }))
 
