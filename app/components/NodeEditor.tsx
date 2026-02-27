@@ -6,6 +6,7 @@ import { Volume2, VolumeX, GripHorizontal, Plus, Trash2, Copy, ChevronDown, Maxi
 import { useKeyChords, buildDiatonicChords } from './node-editor/KeyChords'
 
 const PianoRoll = lazy(() => import('./node-editor/PianoRoll'))
+const DrumSequencer = lazy(() => import('./node-editor/DrumSequencer'))
 const TimelineSidebar = lazy(() => import('./node-editor/TimelineSidebar'))
 const SoundUploader = lazy(() => import('./node-editor/SoundUploader'))
 const SoundSlicer = lazy(() => import('./node-editor/SoundSlicer'))
@@ -1301,7 +1302,8 @@ function detectScale(code: string): string {
 function detectPattern(code: string): string {
   // Use negative lookbehind (?<!\.) so we only match standalone s(...) patterns, NOT .s("sound") sources
   const sm = code.match(/(?<!\.)\bs\s*\(\s*["']([^"']+)["']/)
-  if (sm && /bd|sd|cp|hh|oh/i.test(sm[1])) return sm[1]
+  // Accept any s() pattern containing standard drum abbreviations OR multi-token patterns (spaces, commas, ~)
+  if (sm && (/bd|sd|cp|hh|oh|rim|cy|cr|rd|cb|cl|sh|ma|lt|mt|ht|perc|tb/i.test(sm[1]) || /[\s,~]/.test(sm[1]))) return sm[1]
   const nm = code.match(/\b(?:note|n)\s*\(\s*["']([^"']+)["']/)
   return nm ? nm[1] : ''
 }
@@ -2325,6 +2327,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   const [timelineOpen, setTimelineOpen] = useState(false)
 
   const [pianoRollOpen, setPianoRollOpen] = useState<{ nodeId: string } | null>(null)
+  const [drumSequencerOpen, setDrumSequencerOpen] = useState<{ nodeId: string } | null>(null)
   const [soundUploaderOpen, setSoundUploaderOpen] = useState(false)
   const [soundSlicerOpen, setSoundSlicerOpen] = useState<{ nodeId: string } | null>(null)
   const [currentCycle, setCurrentCycle] = useState(0)
@@ -2831,9 +2834,36 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     setNodes(prev => {
       const node = prev.find(n => n.id === nodeId)
       if (!node) return prev
-      // Determine if it's note() or n() based pattern
-      const method = node.type === 'chords' ? 'notePattern' : 'notePattern'
+      const method = 'notePattern'
       const newCode = applyEffect(node.code, method, newPattern)
+      if (newCode === node.code) return prev
+      const updated = prev.map(n => n.id === nodeId ? reparseNodeFromCode({ ...n, code: newCode }) : n)
+      codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
+      return updated
+    })
+    if (codeToSend !== null) sendToParent(codeToSend)
+  }, [bpm, sendToParent, rebuildFullCodeFromNodes])
+
+  // ── Drum Sequencer pattern change → update s("...") and .slow() for multi-bar ──
+  const handleDrumPatternChange = useCallback((nodeId: string, newPattern: string, bars: number) => {
+    let codeToSend: string | null = null
+    setNodes(prev => {
+      const node = prev.find(n => n.id === nodeId)
+      if (!node) return prev
+      let newCode = applyEffect(node.code, 'drumPattern', newPattern)
+      // Manage .slow() for multi-bar patterns
+      if (bars > 1) {
+        // Inject or update .slow(N)
+        if (/\.slow\s*\(/.test(newCode)) {
+          newCode = newCode.replace(/\.slow\s*\([^)]*\)/, `.slow(${bars})`)
+        } else {
+          // Inject .slow() after s("...") line
+          newCode = newCode.replace(/((?<!\.))\bs\s*\(\s*["'][^"']*["']\s*\)/, `$&\n  .slow(${bars})`)
+        }
+      } else {
+        // 1 bar → remove .slow() if present (it defaults to 1)
+        newCode = newCode.replace(/\s*\.slow\s*\(\s*1\s*\)/, '')
+      }
       if (newCode === node.code) return prev
       const updated = prev.map(n => n.id === nodeId ? reparseNodeFromCode({ ...n, code: newCode }) : n)
       codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
@@ -3945,18 +3975,32 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                       title={node.collapsed ? 'Expand' : 'Collapse'}>
                       {node.collapsed ? '▼' : '▲'}
                     </button>
-                    {/* MIDI button (melodic nodes only) */}
-                    {isMelodic && (
+                    {/* MIDI / Drum Sequencer button */}
+                    {isMelodic ? (
                       <button
                         onMouseDown={e => e.stopPropagation()}
-                        onClick={e => { e.stopPropagation(); setPianoRollOpen({ nodeId: node.id }) }}
+                        onClick={e => { e.stopPropagation(); setPianoRollOpen({ nodeId: node.id }); setDrumSequencerOpen(null) }}
                         className="w-6 h-6 flex items-center justify-center rounded text-[8px] font-bold cursor-pointer"
                         style={{
-                          background: 'rgba(167,139,250,0.08)', color: '#a78bfa',
-                          border: '1px solid rgba(167,139,250,0.2)',
+                          background: pianoRollOpen?.nodeId === node.id ? 'rgba(167,139,250,0.2)' : 'rgba(167,139,250,0.08)',
+                          color: '#a78bfa',
+                          border: `1px solid ${pianoRollOpen?.nodeId === node.id ? 'rgba(167,139,250,0.4)' : 'rgba(167,139,250,0.2)'}`,
                         }}
                         title="Open Piano Roll (MIDI override)">
                         🎹
+                      </button>
+                    ) : (
+                      <button
+                        onMouseDown={e => e.stopPropagation()}
+                        onClick={e => { e.stopPropagation(); setDrumSequencerOpen({ nodeId: node.id }); setPianoRollOpen(null) }}
+                        className="w-6 h-6 flex items-center justify-center rounded text-[8px] font-bold cursor-pointer"
+                        style={{
+                          background: drumSequencerOpen?.nodeId === node.id ? `rgba(245,158,11,0.2)` : 'rgba(245,158,11,0.08)',
+                          color: '#f59e0b',
+                          border: `1px solid ${drumSequencerOpen?.nodeId === node.id ? 'rgba(245,158,11,0.4)' : 'rgba(245,158,11,0.2)'}`,
+                        }}
+                        title="Open Drum Sequencer">
+                        🥁
                       </button>
                     )}
                     {/* Sound Slicer button (sample-based nodes) */}
@@ -4446,6 +4490,30 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                 isPlaying={isPlaying}
                 bpm={bpm}
                 getCyclePosition={getCyclePosition}
+              />
+            </Suspense>
+          )
+        })()}
+
+        {/* ══════ DRUM SEQUENCER DOCK (sample-based nodes) ══════ */}
+        {drumSequencerOpen && (() => {
+          const dsNode = nodes.find(n => n.id === drumSequencerOpen.nodeId)
+          if (!dsNode) return null
+          const dsColor = TYPE_COLORS[dsNode.type] || '#f59e0b'
+          const bankMatch = dsNode.code.match(/\.bank\s*\(\s*["']([^"']+)["']/)
+          return (
+            <Suspense fallback={<div className="absolute bottom-0 left-0 right-0 h-[300px] bg-black/90 flex items-center justify-center text-white/40 z-[100]">Loading Drum Sequencer…</div>}>
+              <DrumSequencer
+                isOpen={true}
+                onClose={() => setDrumSequencerOpen(null)}
+                currentPattern={dsNode.pattern}
+                nodeColor={dsColor}
+                onPatternChange={(newPattern, bars) => handleDrumPatternChange(dsNode.id, newPattern, bars)}
+                isPlaying={isPlaying}
+                bpm={bpm}
+                getCyclePosition={getCyclePosition}
+                bankName={bankMatch ? bankMatch[1] : undefined}
+                patternBars={getPatternBarCount(dsNode.pattern, dsNode.code)}
               />
             </Suspense>
           )
