@@ -7280,6 +7280,7 @@ $: s("bd:3").bank("RolandTR808")
 
   // Node view state
   const [showNodes, setShowNodes] = useState(false)
+  const [showNodeAddMenu, setShowNodeAddMenu] = useState(false)
   const nodeEditorRef = useRef<NodeEditorHandle>(null)
   // Force re-render when NDE state changes (bpm, zoom, etc.)
   const [, forceNdeUpdate] = useState(0)
@@ -9266,13 +9267,49 @@ $: s("bd:3").bank("RolandTR808")
                   {nde.allCollapsed ? <Columns size={12} /> : <LayoutList size={12} />}
                 </button>
                 {/* Add node */}
-                <button onClick={() => { /* open add menu via portal or inline */ }}
-                  className="px-1.5 py-1 text-cyan-300/60 hover:text-cyan-400 hover:bg-cyan-500/10 transition-all cursor-pointer rounded"
-                  title="Add node"
-                  onMouseDown={e => { e.stopPropagation() }}
-                >
-                  <Plus size={12} />
-                </button>
+                <div className="relative">
+                  <button onClick={() => setShowNodeAddMenu(p => !p)}
+                    className={`px-1.5 py-1 transition-all cursor-pointer rounded ${showNodeAddMenu ? 'text-cyan-400 bg-cyan-500/15' : 'text-cyan-300/60 hover:text-cyan-400 hover:bg-cyan-500/10'}`}
+                    title="Add node"
+                    onMouseDown={e => { e.stopPropagation() }}
+                  >
+                    <Plus size={12} />
+                  </button>
+                  {showNodeAddMenu && (
+                    <div className="absolute right-0 top-full mt-1 z-[60] min-w-[200px] rounded-xl shadow-2xl overflow-hidden border border-white/10"
+                      style={{ background: '#0e0e11' }}>
+                      <div className="px-3 pt-2 pb-1">
+                        <span className="text-[7px] font-bold tracking-[0.2em] uppercase text-white/25">SOUND SOURCES</span>
+                      </div>
+                      {[
+                        { type: 'drums', icon: '⬤', color: '#f59e0b', desc: '808 kit' },
+                        { type: 'bass', icon: '◆', color: '#ef4444', desc: 'Sub bass' },
+                        { type: 'melody', icon: '▲', color: '#22d3ee', desc: 'Piano melody' },
+                        { type: 'chords', icon: '■', color: '#a78bfa', desc: 'Chord progression' },
+                        { type: 'pad', icon: '◈', color: '#818cf8', desc: 'Slow atmosphere' },
+                        { type: 'vocal', icon: '●', color: '#f472b6', desc: 'Choir / vocal' },
+                      ].map(({ type, icon, color, desc }) => (
+                        <button key={type} onClick={() => { nde.addNode(type); setShowNodeAddMenu(false) }}
+                          className="w-full flex items-center gap-2 px-3 py-1.5 text-[11px] transition-colors cursor-pointer hover:bg-white/5"
+                          style={{ color }}>
+                          <span className="text-[11px] w-4 text-center">{icon}</span>
+                          <span className="capitalize font-medium">{type}</span>
+                          <span className="text-[8px] ml-auto opacity-40">{desc}</span>
+                        </button>
+                      ))}
+                      <div className="px-3 pt-1.5 pb-1 border-t border-white/5">
+                        <span className="text-[7px] font-bold tracking-[0.2em] uppercase text-white/25">UTILITY</span>
+                      </div>
+                      <button onClick={() => { nde.addNode('fx'); setShowNodeAddMenu(false) }}
+                        className="w-full flex items-center gap-2 px-3 py-1.5 text-[11px] transition-colors cursor-pointer hover:bg-white/5"
+                        style={{ color: '#34d399' }}>
+                        <span className="text-[11px] w-4 text-center">✦</span>
+                        <span className="font-medium">FX / Texture</span>
+                        <span className="text-[8px] ml-auto opacity-40">Effects layer</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
                 {/* Zoom */}
                 <div className="flex items-center gap-0.5">
                   <button onClick={() => nde.setZoom((z: number) => Math.max(0.25, z - 0.15))}

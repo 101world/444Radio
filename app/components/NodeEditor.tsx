@@ -2593,11 +2593,20 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
 
   // ── Global Scale Change ──
   const handleGlobalScaleChange = useCallback((newScale: string) => {
+    // Parse new scale: "D#4:diminished" → root="D#", octave=4, type="diminished"
+    const newMatch = newScale.match(/^([A-Ga-g]#?)(-?\d+):(.+)$/)
+    if (!newMatch) return
+    const [, newRoot, , newType] = newMatch
+
     let codeToSend: string | null = null
     setNodes(prev => {
       const updated = prev.map(n => {
         if (isSampleBased(n.type)) return n
-        const newCode = applyEffect(n.code, 'scale', newScale)
+        // Preserve each node's octave offset — bass stays low, melody stays high
+        const currentMatch = n.code.match(/\.scale\s*\(\s*["']([A-Ga-g]#?)(-?\d+):([^"']+)["']\s*\)/)
+        const nodeOctave = currentMatch ? currentMatch[2] : '4'
+        const nodeNewScale = `${newRoot}${nodeOctave}:${newType}`
+        const newCode = applyEffect(n.code, 'scale', nodeNewScale)
         return reparseNodeFromCode({ ...n, code: newCode })
       })
       codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
@@ -2910,8 +2919,8 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   .scope({color:"${tc.vocal}",thickness:1.5,smear:.92})`
     } else {
       // Sound: pitched according to scale, like a vocal/pad layer
-      t = `$: note("<c4 e4 g4 c5>").s("${sampleName}")
-  .gain(0.4).scale("C4:major")
+      t = `$: n("<0 2 4 7>").scale("C4:major").s("${sampleName}")
+  .gain(0.4)
   .room(0.4).lpf(4000)
   .slow(2)
   .scope({color:"${tc.vocal}",thickness:1,smear:.93})`
@@ -2930,11 +2939,11 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     const tc = TYPE_COLORS
     const templates: Record<string, string> = {
       drums: `$: s("bd [~ bd] ~ ~, ~ cp ~ ~, hh*8")\n  .bank("RolandTR808").gain(0.7)\n  .scope({color:"${tc.drums}",thickness:2,smear:.88})`,
-      bass: `$: note("<c2 f2 g2 c2>")\n  .s("sawtooth").lpf(400).gain(0.35)\n  .scale("C4:major")\n  .scope({color:"${tc.bass}",thickness:2.5,smear:.96})`,
+      bass: `$: n("<0 3 4 0>").scale("C2:major")\n  .s("sawtooth").lpf(400).gain(0.35)\n  .scope({color:"${tc.bass}",thickness:2.5,smear:.96})`,
       melody: `$: n("0 2 4 7 4 2").scale("C4:major")\n  .s("gm_piano").gain(0.3)\n  .room(0.4).delay(0.15)\n  .scope({color:"${tc.melody}",thickness:1,smear:.91})`,
-      chords: `$: note("<[c4,e4,g4] [a3,c4,e4] [f3,a3,c4] [g3,b3,d4]>")\n  .s("gm_epiano1").gain(0.25).scale("C4:major")\n  .lpf(1800).room(0.5)\n  .slow(2)\n  .scope({color:"${tc.chords}",thickness:1,smear:.93})`,
-      pad: `$: note("<[c3,g3,e4] [a2,e3,c4]>")\n  .s("sawtooth").lpf(800).gain(0.08).scale("C4:major")\n  .room(0.9).delay(0.3).delayfeedback(0.5)\n  .slow(4)\n  .fscope()`,
-      vocal: `$: note("<c4 e4 g4 c5>").s("gm_choir_aahs").gain(0.3)\n  .scale("C4:major")\n  .room(0.5).lpf(3000)\n  .slow(2)\n  .scope({color:"${tc.vocal}",thickness:1,smear:.93})`,
+      chords: `$: n("<[0,2,4] [-2,0,2] [-4,-2,0] [-3,-1,1]>").scale("C4:major")\n  .s("gm_epiano1").gain(0.25)\n  .lpf(1800).room(0.5)\n  .slow(2)\n  .scope({color:"${tc.chords}",thickness:1,smear:.93})`,
+      pad: `$: n("<[0,4,9] [-2,2,7]>").scale("C3:major")\n  .s("sawtooth").lpf(800).gain(0.08)\n  .room(0.9).delay(0.3).delayfeedback(0.5)\n  .slow(4)\n  .fscope()`,
+      vocal: `$: n("<0 2 4 7>").scale("C4:major")\n  .s("gm_choir_aahs").gain(0.3)\n  .room(0.5).lpf(3000)\n  .slow(2)\n  .scope({color:"${tc.vocal}",thickness:1,smear:.93})`,
       fx: `$: s("hh*16").gain(0.06)\n  .delay(0.25).delayfeedback(0.5)\n  .room(0.6).lpf(2000).speed(2.5)\n  .scope({color:"${tc.fx}",thickness:1,smear:.95})`,
     }
     const t = templates[template] || templates.drums
