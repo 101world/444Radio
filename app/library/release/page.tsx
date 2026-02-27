@@ -133,7 +133,7 @@ export default function ReleasePage() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: previewItem.id,
+          combinedId: previewItem.id,
           title: editingTitle.trim()
         })
       })
@@ -163,7 +163,7 @@ export default function ReleasePage() {
       const res = await fetch(`/api/library/combined`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, is_published: true })
+        body: JSON.stringify({ combinedId: id, is_published: true })
       })
 
       const data = await res.json()
@@ -201,7 +201,7 @@ export default function ReleasePage() {
         const res = await fetch(`/api/library/combined`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, is_published: true })
+          body: JSON.stringify({ combinedId: id, is_published: true })
         })
 
         if (res.ok) {
