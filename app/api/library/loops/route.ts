@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { supabase } from '@/lib/supabase'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
 /**
  * GET /api/library/loops
@@ -13,18 +15,23 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Fetch all loops for this user
-    const { data, error } = await supabase
-      .from('combined_media')
-      .select('id, title, audio_url, image_url, prompt, created_at, plays')
-      .eq('user_id', userId)
-      .eq('genre', 'loop')
-      .order('created_at', { ascending: false })
+    // Fetch all loops for this user — use service role key to bypass RLS
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/combined_media?user_id=eq.${userId}&genre=eq.loop&order=created_at.desc&select=id,title,audio_url,image_url,prompt,created_at,plays`,
+      {
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+        },
+      }
+    )
 
-    if (error) {
-      console.error('Supabase error fetching loops:', error)
+    if (!res.ok) {
+      console.error('Supabase error fetching loops:', res.status)
       return NextResponse.json({ error: 'Failed to fetch loops' }, { status: 500 })
     }
+
+    const data = await res.json()
 
     const loops = (data || []).map((item: any) => ({
       id: item.id,

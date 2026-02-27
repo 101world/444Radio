@@ -146,23 +146,26 @@ export async function POST(req: NextRequest) {
       audioUrl = r2Result.url
       console.log('✅ R2:', audioUrl)
 
-      // Save to music_library
+      // Save to combined_media (consistent with all other generators)
       const libraryEntry = {
-        clerk_user_id: userId,
+        user_id: userId,
+        type: 'audio',
         title: title.trim(),
         prompt,
+        audio_prompt: prompt,
         audio_url: audioUrl,
-        audio_format: 'wav',
-        generation_params: {
+        image_url: null,
+        is_public: false,
+        genre: 'beatmaker',
+        metadata: JSON.stringify({
           model: 'cassetteai-music-generator',
           duration,
           credit_cost: creditCost,
           type: 'beatmaker',
-        },
-        genre: 'beatmaker',
-        status: 'ready',
+          audio_format: 'wav',
+        }),
       }
-      const saveRes = await fetch(`${supabaseUrl}/rest/v1/music_library`, {
+      const saveRes = await fetch(`${supabaseUrl}/rest/v1/combined_media`, {
         method: 'POST',
         headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
         body: JSON.stringify(libraryEntry),

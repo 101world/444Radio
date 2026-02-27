@@ -116,7 +116,7 @@ export default function LibraryPage() {
     }
     try {
       // Fetch all user's content from DB, R2, and releases
-      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, videosRes, r2VideosRes, releasesRes, likedRes, stemsRes, mixmasterRes, boughtRes, extractRes, loopsRes, effectsRes, autotuneRes, chordsRes, remixRes, beatmakerRes] = await Promise.all([
+      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, videosRes, r2VideosRes, releasesRes, likedRes, stemsRes, mixmasterRes, boughtRes, extractRes, loopsRes, effectsRes, autotuneRes, chordsRes, remixRes, beatmakerRes, voiceoverRes] = await Promise.all([
         fetch('/api/library/music'),
         fetch('/api/r2/list-audio'),
         fetch('/api/library/images'),
@@ -134,7 +134,8 @@ export default function LibraryPage() {
         fetch('/api/library/autotune'),
         fetch('/api/library/chords'),
         fetch('/api/library/remix'),
-        fetch('/api/library/beatmaker')
+        fetch('/api/library/beatmaker'),
+        fetch('/api/library/voiceover')
       ])
 
       const musicData = await musicRes.json()
@@ -155,6 +156,7 @@ export default function LibraryPage() {
       const chordsData = await chordsRes.json()
       const remixData = await remixRes.json()
       const beatmakerData = await beatmakerRes.json()
+      const voiceoverData = await voiceoverRes.json()
 
       // Use ONLY database music - it has correct titles from generation
       if (musicData.success && Array.isArray(musicData.music)) {
@@ -180,19 +182,19 @@ export default function LibraryPage() {
           (boughtData.success && Array.isArray(boughtData.bought) ? boughtData.bought : []).map((t: any) => t.audio_url).filter(Boolean)
         )
         const nonStemMusic = uniqueMusic.filter((track: any) =>
-          track.genre !== 'stem' && track.genre !== 'boosted' && track.genre !== 'extract' && track.genre !== 'loop' && track.genre !== 'effects' && track.genre !== 'processed' && track.genre !== 'chords' && track.genre !== 'voice-over' &&
+          track.genre !== 'stem' && track.genre !== 'boosted' && track.genre !== 'extract' && track.genre !== 'loop' && track.genre !== 'effects' && track.genre !== 'processed' && track.genre !== 'chords' && track.genre !== 'voice-over' && track.genre !== 'beatmaker' &&
           !(track.prompt && typeof track.prompt === 'string' && track.prompt.toLowerCase().includes('purchased from earn')) &&
           !boughtAudioUrls.has(track.audio_url)
         )
         setMusicItems(nonStemMusic)
         
-        // Separate voice-over items for the Voice Labs tab
-        const voiceOverTracks = uniqueMusic.filter((track: any) => track.genre === 'voice-over')
-        setVoiceoverItems(voiceOverTracks)
         console.log('✅ Loaded', nonStemMusic.length, 'music tracks from database (excluded', uniqueMusic.length - nonStemMusic.length, 'stems/boosted/voice-over)')
-        if (voiceOverTracks.length > 0) {
-          console.log('🎙️ Loaded', voiceOverTracks.length, 'voice-over items')
-        }
+      }
+
+      // Voice Labs — use dedicated endpoint
+      if (voiceoverData.success && Array.isArray(voiceoverData.tracks)) {
+        setVoiceoverItems(voiceoverData.tracks)
+        console.log('🎙️ Loaded', voiceoverData.tracks.length, 'voice-over items')
       }
 
       // Merge database images with R2 images, deduplicate by image_url

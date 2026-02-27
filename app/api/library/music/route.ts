@@ -59,7 +59,7 @@ export async function GET() {
       // combined_media - has audio_url directly, uses user_id column
       // Use or() to exclude internal genres while keeping NULL genre rows (most generated tracks)
       fetch(
-        `${supabaseUrl}/rest/v1/combined_media?audio_url=not.is.null&user_id=eq.${userId}&or=(genre.is.null,genre.not.in.(extract,loop,effects,stem,boosted,chords,processed,voice-over,visualizer))&order=created_at.desc`,
+        `${supabaseUrl}/rest/v1/combined_media?audio_url=not.is.null&user_id=eq.${userId}&or=(genre.is.null,genre.not.in.(extract,loop,effects,stem,boosted,chords,processed,voice-over,visualizer,beatmaker))&order=created_at.desc`,
         {
           headers: {
             'apikey': supabaseKey,
