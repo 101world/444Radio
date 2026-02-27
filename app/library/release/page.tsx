@@ -50,11 +50,11 @@ export default function ReleasePage() {
   const fetchLibrary = async () => {
     setIsLoading(true)
     try {
-      const res = await fetch('/api/library/combined')
+      const res = await fetch('/api/library/release-manager')
       const data = await res.json()
       
-      if (data.success && Array.isArray(data.combined)) {
-        setItems(data.combined)
+      if (data.success && Array.isArray(data.releases)) {
+        setItems(data.releases)
       }
     } catch (error) {
       console.error('Failed to fetch library:', error)
@@ -129,11 +129,11 @@ export default function ReleasePage() {
     if (!previewItem || !editingTitle.trim()) return
 
     try {
-      const res = await fetch(`/api/library/combined`, {
+      const res = await fetch(`/api/library/release-manager`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          combinedId: previewItem.id,
+          id: previewItem.id,
           title: editingTitle.trim()
         })
       })
@@ -160,10 +160,10 @@ export default function ReleasePage() {
   const handlePublish = async (id: string) => {
     setIsPublishing(true)
     try {
-      const res = await fetch(`/api/library/combined`, {
+      const res = await fetch(`/api/library/release-manager`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ combinedId: id, is_published: true })
+        body: JSON.stringify({ id, is_published: true })
       })
 
       const data = await res.json()
@@ -198,10 +198,10 @@ export default function ReleasePage() {
 
     try {
       for (const id of ids) {
-        const res = await fetch(`/api/library/combined`, {
+        const res = await fetch(`/api/library/release-manager`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ combinedId: id, is_published: true })
+          body: JSON.stringify({ id, is_published: true })
         })
 
         if (res.ok) {
