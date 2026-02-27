@@ -171,9 +171,14 @@ function extractSoundName(layer: string): string {
   const stripped = layer.replace(/[\[\]<>{}]/g, ' ').replace(/\*\d+/g, '')
   const tokens = stripped.split(/\s+/).filter(Boolean)
   for (const t of tokens) {
-    if (t !== '~') return t
+    if (t !== '~' && !/^-+$/.test(t)) return t
   }
   return 'bd'
+}
+
+/** Check if a token represents silence (rest) — supports ~ and - variants */
+function isRest(token: string): boolean {
+  return token === '~' || /^-+$/.test(token)
 }
 
 /**
@@ -182,7 +187,7 @@ function extractSoundName(layer: string): string {
  */
 function expandToSteps(token: string, numSteps: number): boolean[] {
   token = token.trim()
-  if (!token || token === '~') return new Array(numSteps).fill(false)
+  if (!token || isRest(token)) return new Array(numSteps).fill(false)
 
   // ── *N repetition (e.g. "hh*8", "[bd ~]*4") ──
   const repeatMatch = token.match(/^(.+)\*(\d+)$/)
@@ -222,7 +227,7 @@ function expandToSteps(token: string, numSteps: number): boolean[] {
   // ── Multiple space-separated elements → divide time equally ──
   const elements = splitTopLevel(token)
   if (elements.length <= 1) {
-    if (elements[0] === '~') return new Array(numSteps).fill(false)
+    if (isRest(elements[0])) return new Array(numSteps).fill(false)
     // Check for nested *N
     if (elements[0]?.includes('*')) return expandToSteps(elements[0], numSteps)
     // Hit on first step

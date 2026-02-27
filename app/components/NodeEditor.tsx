@@ -2898,8 +2898,8 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
           newCode = newCode.replace(/((?<!\.))\bs\s*\(\s*["'][^"']*["']\s*\)/, `$&\n  .slow(${bars})`)
         }
       } else {
-        // 1 bar → remove .slow() if present (it defaults to 1)
-        newCode = newCode.replace(/\s*\.slow\s*\(\s*1\s*\)/, '')
+        // 1 bar → remove any .slow() (1 bar is the default cycle length)
+        newCode = newCode.replace(/\s*\.slow\s*\([^)]*\)/, '')
       }
       if (newCode === node.code) return prev
       const updated = prev.map(n => n.id === nodeId ? reparseNodeFromCode({ ...n, code: newCode }) : n)

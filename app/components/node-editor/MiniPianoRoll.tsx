@@ -83,9 +83,14 @@ function splitTopLevel(str: string): string[] {
   return entries
 }
 
+/** Check if a token represents silence (rest) — supports ~ and - variants */
+function isRest(token: string): boolean {
+  return token === '~' || /^-+$/.test(token)
+}
+
 function resolveToMidi(token: string, usesDegrees: boolean, scale: string): number {
   token = token.trim()
-  if (!token || token === '~') return -1
+  if (!token || isRest(token)) return -1
   if (usesDegrees) { const num = parseInt(token, 10); return isNaN(num) ? -1 : scaleDegreeToMidi(num, scale) }
   return noteNameToMidi(token)
 }
@@ -95,7 +100,7 @@ function parseEntryToNotes(
   usesDegrees: boolean, scale: string, notes: MiniNote[],
 ): void {
   entry = entry.trim()
-  if (!entry || entry === '~') return
+  if (!entry || isRest(entry)) return
   const repMatch = entry.match(/^(.+?)\*(\d+)$/)
   if (repMatch && !repMatch[1].startsWith('[')) {
     const base = repMatch[1], times = parseInt(repMatch[2])

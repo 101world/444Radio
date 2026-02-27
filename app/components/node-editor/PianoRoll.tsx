@@ -197,9 +197,14 @@ function splitTopLevel(str: string): string[] {
 }
 
 /** Resolve a single token (note name or scale degree) to a MIDI number */
+/** Check if a token represents silence (rest) — supports ~ and - variants */
+function isRest(token: string): boolean {
+  return token === '~' || /^-+$/.test(token)
+}
+
 function resolveToMidi(token: string, usesDegrees: boolean, scale: string): number {
   token = token.trim()
-  if (!token || token === '~') return -1
+  if (!token || isRest(token)) return -1
   if (usesDegrees) {
     const num = parseInt(token, 10)
     if (isNaN(num)) return -1
@@ -214,7 +219,7 @@ function parseEntryToNotes(
   usesDegrees: boolean, scale: string, notes: PianoRollNote[],
 ): void {
   entry = entry.trim()
-  if (!entry || entry === '~') return
+  if (!entry || isRest(entry)) return
 
   // Handle *N repetition: "x*4"
   const repMatch = entry.match(/^(.+?)\*(\d+)$/)

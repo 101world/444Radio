@@ -68,16 +68,21 @@ function splitTopLevel(token: string): string[] {
   return out
 }
 
+/** Check if a token represents silence (rest) — supports ~ and - variants */
+function isRest(token: string): boolean {
+  return token === '~' || /^-+$/.test(token)
+}
+
 function extractSoundName(layer: string): string {
   const stripped = layer.replace(/[\[\]<>{}]/g, ' ').replace(/\*\d+/g, '')
   const tokens = stripped.split(/\s+/).filter(Boolean)
-  for (const t of tokens) { if (t !== '~') return t }
+  for (const t of tokens) { if (!isRest(t)) return t }
   return 'bd'
 }
 
 function expandToSteps(token: string, numSteps: number): boolean[] {
   token = token.trim()
-  if (!token || token === '~') return new Array(numSteps).fill(false)
+  if (!token || isRest(token)) return new Array(numSteps).fill(false)
   const repeatMatch = token.match(/^(.+)\*(\d+)$/)
   if (repeatMatch) {
     const base = repeatMatch[1].trim(), n = parseInt(repeatMatch[2])
@@ -102,7 +107,7 @@ function expandToSteps(token: string, numSteps: number): boolean[] {
   }
   const elements = splitTopLevel(token)
   if (elements.length <= 1) {
-    if (elements[0] === '~') return new Array(numSteps).fill(false)
+    if (isRest(elements[0])) return new Array(numSteps).fill(false)
     if (elements[0]?.includes('*')) return expandToSteps(elements[0], numSteps)
     const result = new Array(numSteps).fill(false)
     if (numSteps > 0) result[0] = true
