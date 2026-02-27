@@ -2,8 +2,13 @@
 
 import { SignUp, useAuth } from '@clerk/nextjs'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useState, Suspense, useCallback } from 'react'
-import { Music2, Sparkles, Radio, Gift } from 'lucide-react'
+import { useEffect, useState, useRef, Suspense, useCallback } from 'react'
+import { Music2, Sparkles, Radio, Gift, Search, User, Check } from 'lucide-react'
+
+interface LookupUser {
+  username: string
+  referralCode: string
+}
 
 function SignUpContent() {
   const [ageVerified, setAgeVerified] = useState(false)
@@ -11,6 +16,15 @@ function SignUpContent() {
   const [error, setError] = useState('')
   const [referralCode, setReferralCode] = useState('')
   const [referralApplied, setReferralApplied] = useState(false)
+  // Username search state
+  const [usernameQuery, setUsernameQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<LookupUser[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [selectedReferrer, setSelectedReferrer] = useState<string | null>(null)
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [referralMode, setReferralMode] = useState<'username' | 'code'>('username')
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
   const searchParams = useSearchParams()
   const { isSignedIn, userId } = useAuth()
 
@@ -19,8 +33,56 @@ function SignUpContent() {
     const refFromUrl = searchParams.get('ref')
     if (refFromUrl) {
       setReferralCode(refFromUrl.toUpperCase())
+      setReferralMode('code')
     }
   }, [searchParams])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Debounced username search (public endpoint, no auth needed)
+  const searchUsers = useCallback(async (query: string) => {
+    if (query.length < 2) {
+      setSearchResults([])
+      setShowDropdown(false)
+      return
+    }
+    setIsSearching(true)
+    try {
+      const res = await fetch(`/api/referral/lookup?q=${encodeURIComponent(query)}`)
+      const data = await res.json()
+      setSearchResults(data.users || [])
+      setShowDropdown((data.users || []).length > 0)
+    } catch {
+      setSearchResults([])
+    } finally {
+      setIsSearching(false)
+    }
+  }, [])
+
+  // Handle username input change with debounce
+  const handleUsernameChange = (value: string) => {
+    setUsernameQuery(value)
+    setSelectedReferrer(null)
+    if (searchTimeout.current) clearTimeout(searchTimeout.current)
+    searchTimeout.current = setTimeout(() => searchUsers(value), 300)
+  }
+
+  // Select a user from the search results
+  const selectReferrer = (user: LookupUser) => {
+    setReferralCode(user.referralCode)
+    setSelectedReferrer(user.username)
+    setUsernameQuery(user.username)
+    setShowDropdown(false)
+  }
 
   const applyReferralCode = useCallback(async () => {
     if (!referralCode) return
@@ -265,18 +327,109 @@ function SignUpContent() {
       <div className="mt-6 p-4 bg-gradient-to-br from-cyan-950/20 to-teal-950/20 border border-cyan-500/20 rounded-xl">
         <div className="flex items-center gap-2 mb-3">
           <Gift className="w-5 h-5 text-cyan-400" />
-          <h3 className="text-white font-semibold text-sm">Have a Referral Code?</h3>
+          <h3 className="text-white font-semibold text-sm">Referred by someone?</h3>
         </div>
-        <input
-          type="text"
-          value={referralCode}
-          onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-          placeholder="Enter code (optional)"
-          maxLength={8}
-          className="w-full bg-slate-950/80 border border-slate-700 text-gray-100 placeholder:text-gray-500 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 transition-all rounded-lg px-4 py-2.5 text-sm font-mono tracking-wider"
-        />
+
+        {/* Toggle between username search and code input */}
+        <div className="flex gap-1 mb-3 bg-slate-950/60 rounded-lg p-1">
+          <button
+            type="button"
+            onClick={() => { setReferralMode('username'); setReferralCode(''); setSelectedReferrer(null); setUsernameQuery('') }}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-xs font-medium transition-all ${
+              referralMode === 'username'
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                : 'text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            <Search className="w-3.5 h-3.5" />
+            Search Username
+          </button>
+          <button
+            type="button"
+            onClick={() => { setReferralMode('code'); setSelectedReferrer(null); setUsernameQuery('') }}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-xs font-medium transition-all ${
+              referralMode === 'code'
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                : 'text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            <Gift className="w-3.5 h-3.5" />
+            Enter Code
+          </button>
+        </div>
+
+        {referralMode === 'username' ? (
+          <div className="relative" ref={dropdownRef}>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <input
+                type="text"
+                value={usernameQuery}
+                onChange={(e) => handleUsernameChange(e.target.value)}
+                onFocus={() => { if (searchResults.length > 0 && !selectedReferrer) setShowDropdown(true) }}
+                placeholder="Search by username..."
+                className="w-full bg-slate-950/80 border border-slate-700 text-gray-100 placeholder:text-gray-500 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 transition-all rounded-lg pl-9 pr-4 py-2.5 text-sm"
+                autoComplete="off"
+              />
+              {isSearching && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-cyan-400"></div>
+                </div>
+              )}
+              {selectedReferrer && (
+                <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400" />
+              )}
+            </div>
+
+            {/* Search Results Dropdown */}
+            {showDropdown && searchResults.length > 0 && (
+              <div className="absolute z-50 w-full mt-1 bg-slate-900 border border-cyan-500/30 rounded-lg shadow-xl shadow-black/50 max-h-48 overflow-y-auto">
+                {searchResults.map((user) => (
+                  <button
+                    key={user.referralCode}
+                    type="button"
+                    onClick={() => selectReferrer(user)}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-cyan-500/10 transition-colors text-left"
+                  >
+                    <User className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-white font-medium truncate">{user.username}</p>
+                    </div>
+                    <span className="text-xs text-gray-500 font-mono">{user.referralCode}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* No results message */}
+            {showDropdown && searchResults.length === 0 && usernameQuery.length >= 2 && !isSearching && (
+              <div className="absolute z-50 w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg p-3">
+                <p className="text-gray-500 text-xs text-center">No users found for &ldquo;{usernameQuery}&rdquo;</p>
+              </div>
+            )}
+
+            {selectedReferrer && (
+              <p className="text-emerald-400 text-xs mt-2 flex items-center gap-1">
+                <Check className="w-3 h-3" />
+                Referred by <span className="font-semibold">{selectedReferrer}</span>
+              </p>
+            )}
+          </div>
+        ) : (
+          <input
+            type="text"
+            value={referralCode}
+            onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+            placeholder="Enter 8-character code (optional)"
+            maxLength={8}
+            className="w-full bg-slate-950/80 border border-slate-700 text-gray-100 placeholder:text-gray-500 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 transition-all rounded-lg px-4 py-2.5 text-sm font-mono tracking-wider"
+          />
+        )}
+
         <p className="text-gray-500 text-xs mt-2">
-          Help a friend complete their invite quest! Your sign-up counts toward their progress.
+          {referralMode === 'username'
+            ? 'Search for the person who invited you. Your sign-up counts toward their quest progress.'
+            : 'Enter your referral code. Your sign-up counts toward their quest progress.'}
         </p>
       </div>
 

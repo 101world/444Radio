@@ -8,6 +8,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/webhook(.*)',
   '/api/webhooks/paypal(.*)', // PayPal subscription webhooks
   '/api/webhooks/razorpay(.*)', // Razorpay subscription webhooks
+  '/api/referral/lookup(.*)',    // Public referral lookup for sign-up page
   '/api/cron/(.*)',
   '/api/media/track-play',
   '/api/songs/track-play',
