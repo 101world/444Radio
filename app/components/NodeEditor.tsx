@@ -10,6 +10,8 @@ const DrumSequencer = lazy(() => import('./node-editor/DrumSequencer'))
 const TimelineSidebar = lazy(() => import('./node-editor/TimelineSidebar'))
 const SoundUploader = lazy(() => import('./node-editor/SoundUploader'))
 const SoundSlicer = lazy(() => import('./node-editor/SoundSlicer'))
+import MiniPianoRoll from './node-editor/MiniPianoRoll'
+import MiniDrumGrid from './node-editor/MiniDrumGrid'
 
 // ═══════════════════════════════════════════════════════════════
 //  TYPES
@@ -2981,6 +2983,18 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     prevNodeCount.current = parsed.length
     sendToParent(newCode)
     setShowAddMenu(false)
+    // Phase 3: Auto-open the visual editor for the new node
+    const newNode = parsed[parsed.length - 1]
+    if (newNode) {
+      const sampleBased = new Set(['drums', 'fx', 'other'])
+      if (sampleBased.has(newNode.type)) {
+        setDrumSequencerOpen({ nodeId: newNode.id })
+        setPianoRollOpen(null)
+      } else {
+        setPianoRollOpen({ nodeId: newNode.id })
+        setDrumSequencerOpen(null)
+      }
+    }
   }, [sendToParent])
 
   // ── Knob change handler (updates local state, commits on release) ──
@@ -4105,24 +4119,26 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                           hpf={hasMethod(node.code, 'hpf') ? node.hpf : undefined}
                           lpf={hasMethod(node.code, 'lpf') ? node.lpf : undefined} />
                       </div>
-                      {/* Pattern display — with bar count */}
-                      {node.pattern && (() => {
-                        const bars = getPatternBarCount(node.pattern, node.code)
-                        return (
-                        <div className="px-2.5 py-1" style={{ borderTop: `1px solid ${HW.border}`, background: `${color}03` }}>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[6px] font-bold uppercase tracking-wider shrink-0" style={{ color: `${color}50` }}>PAT</span>
-                            <span className="px-1 py-px rounded text-[6px] font-bold shrink-0" style={{
-                              color: bars <= 1 ? '#9ca3af' : bars <= 4 ? '#22d3ee' : '#a78bfa',
-                              background: bars <= 1 ? 'rgba(156,163,175,0.08)' : bars <= 4 ? 'rgba(34,211,238,0.08)' : 'rgba(167,139,250,0.08)',
-                            }}>{bars} bar{bars !== 1 ? 's' : ''}</span>
-                            <span className="text-[7px] font-mono truncate block" style={{ color: `${color}90` }}>
-                              {node.pattern.length > 40 ? node.pattern.slice(0, 40) + '…' : node.pattern}
-                            </span>
-                          </div>
-                        </div>
-                        )
-                      })()}
+                      {/* Pattern visualization — mini piano roll or drum grid */}
+                      <div className="px-2 py-1" style={{ borderTop: `1px solid ${HW.border}` }}
+                        onMouseDown={e => e.stopPropagation()}>
+                        {isSampleBased(node.type) ? (
+                          <MiniDrumGrid
+                            pattern={node.pattern || ''}
+                            color={color}
+                            height={Math.max(28, Math.min(48, (node.pattern?.split(',').length || 1) * 12))}
+                            onClick={() => { setDrumSequencerOpen({ nodeId: node.id }); setPianoRollOpen(null) }}
+                          />
+                        ) : (
+                          <MiniPianoRoll
+                            pattern={node.pattern || ''}
+                            scale={node.scale || globalScale}
+                            color={color}
+                            height={32}
+                            onClick={() => { setPianoRollOpen({ nodeId: node.id }); setDrumSequencerOpen(null) }}
+                          />
+                        )}
+                      </div>
                       {/* Filter knobs: HPF / LPF + VOL */}
                       <div className="flex items-start justify-center gap-1 px-2 py-1" style={{ borderTop: `1px solid ${HW.border}` }}>
                         <RotaryKnob label="VOL" value={node.gain} min={0} max={1} step={0.01} defaultValue={0.5} size={34}
@@ -4408,6 +4424,26 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                     </div>
                     <HardwareSelect label={isSampleBased(node.type) ? 'SND' : 'INST'} value={node.soundSource} options={presets}
                       onChange={v => changeSoundSource(node.id, v)} color={color} />
+                    {/* Mini visualization (click to open full editor) */}
+                    <div onMouseDown={e => e.stopPropagation()}>
+                      {isSampleBased(node.type) ? (
+                        <MiniDrumGrid
+                          pattern={node.pattern || ''}
+                          color={color}
+                          height={Math.max(32, Math.min(52, (node.pattern?.split(',').length || 1) * 14))}
+                          onClick={() => { setDrumSequencerOpen({ nodeId: node.id }); setPianoRollOpen(null) }}
+                        />
+                      ) : (
+                        <MiniPianoRoll
+                          pattern={node.pattern || ''}
+                          scale={node.scale || globalScale}
+                          color={color}
+                          height={36}
+                          onClick={() => { setPianoRollOpen({ nodeId: node.id }); setDrumSequencerOpen(null) }}
+                        />
+                      )}
+                    </div>
+                    {/* Preset dropdown + transpose/randomize controls */}
                     {node.type === 'drums' || node.type === 'fx' ? (
                       <div className="flex items-center gap-1">
                         <div className="flex-1"><HardwareSelect label="PAT" value={node.pattern} options={DRUM_PATTERNS}

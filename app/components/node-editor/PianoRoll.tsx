@@ -379,6 +379,8 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
   const drawStartNote = useRef<{ midi: number; step: number } | null>(null)
   const resizingNote = useRef<{ midi: number; step: number } | null>(null)
   const lastDrawnCell = useRef<string | null>(null)
+  const autoApplyTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const initialLoadRef = useRef(true)
 
   const zoom = ZOOM_LEVELS[zoomIdx]
   const CELL_W = zoom.cellW
@@ -439,6 +441,7 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
 
   useEffect(() => {
     if (!isOpen) return
+    initialLoadRef.current = true // reset on re-open
     // Detect if pattern uses scale degrees (n()) vs absolute note names (note())
     const degreeMode = isScaleDegreePattern(currentPattern)
     setIsScaleDegreeBased(degreeMode)
@@ -696,6 +699,16 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
     onPatternChange(parts.join(' '))
   }, [notes, nodeType, onPatternChange, totalSteps, midiToOutput])
 
+  // ── Phase 2: Auto-apply on every note change (debounced 300ms) ──
+  useEffect(() => {
+    if (!isOpen) return
+    // Skip the initial load — don't re-apply the pattern we just parsed
+    if (initialLoadRef.current) { initialLoadRef.current = false; return }
+    if (autoApplyTimer.current) clearTimeout(autoApplyTimer.current)
+    autoApplyTimer.current = setTimeout(() => { generatePattern() }, 300)
+    return () => { if (autoApplyTimer.current) clearTimeout(autoApplyTimer.current) }
+  }, [notes, isOpen]) // intentionally omit generatePattern to avoid stale closure loops
+
   const clearAll = useCallback(() => { setNotes([]); setSelectedNotes(new Set()) }, [])
 
   /** Preview: play the sequence step by step to hear it */
@@ -887,9 +900,10 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
           <button onClick={clearAll}
             className="px-1.5 py-0.5 rounded text-[8px] cursor-pointer"
             style={{ color: '#555', background: '#151518', border: '1px solid rgba(255,255,255,0.04)' }}>Clear</button>
-          <button onClick={generatePattern}
-            className="px-2 py-0.5 rounded text-[8px] font-bold cursor-pointer"
-            style={{ background: `${nodeColor}20`, color: nodeColor, border: `1px solid ${nodeColor}40` }}>✓ Apply</button>
+          <span className="px-1.5 py-0.5 rounded text-[7px] font-bold tracking-wider"
+            style={{ color: '#22c55e', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)' }}>
+            ● LIVE
+          </span>
           <button onClick={onClose}
             className="px-1.5 py-0.5 rounded text-[8px] cursor-pointer"
             title="Esc"

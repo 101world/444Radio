@@ -345,12 +345,15 @@ export default function DrumSequencer({
   const [addPickerOpen, setAddPickerOpen] = useState(false)
   const [presetOpen, setPresetOpen] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const autoApplyTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const initialLoadRef = useRef(true)
 
   const stepsPerBeat = numSteps / BEATS_PER_BAR
 
   // ── Parse pattern on open ──
   useEffect(() => {
     if (!isOpen) return
+    initialLoadRef.current = true // reset on re-open
     // Initialize step count from pattern bars (1 bar = 16 steps, 2 bars = 32 steps)
     const initSteps = patternBars > 1 ? Math.min(patternBars * 16, 32) : 16
     setNumSteps(initSteps)
@@ -477,6 +480,15 @@ export default function DrumSequencer({
     setNumSteps(n)
   }, [])
 
+  // ── Phase 2: Auto-apply on every row/step change (debounced 300ms) ──
+  useEffect(() => {
+    if (!isOpen) return
+    if (initialLoadRef.current) { initialLoadRef.current = false; return }
+    if (autoApplyTimer.current) clearTimeout(autoApplyTimer.current)
+    autoApplyTimer.current = setTimeout(() => { applyPattern() }, 300)
+    return () => { if (autoApplyTimer.current) clearTimeout(autoApplyTimer.current) }
+  }, [rows, isOpen]) // intentionally omit applyPattern to avoid stale closure loops
+
   // ── Keyboard shortcuts ──
   useEffect(() => {
     if (!isOpen) return
@@ -586,11 +598,10 @@ export default function DrumSequencer({
             style={{ color: HW.textDim, background: HW.raised, border: `1px solid ${HW.border}` }}>
             🎲
           </button>
-          <button onClick={applyPattern}
-            className="px-2 py-0.5 rounded text-[8px] font-bold cursor-pointer"
-            style={{ background: `${nodeColor}20`, color: nodeColor, border: `1px solid ${nodeColor}40` }}>
-            ✓ Apply
-          </button>
+          <span className="px-1.5 py-0.5 rounded text-[7px] font-bold tracking-wider"
+            style={{ color: '#22c55e', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)' }}>
+            ● LIVE
+          </span>
           <button onClick={onClose}
             className="px-1.5 py-0.5 rounded text-[8px] cursor-pointer"
             title="Close (Esc)"
