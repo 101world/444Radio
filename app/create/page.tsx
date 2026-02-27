@@ -654,19 +654,21 @@ function CreatePageContent() {
     prevMessageCountRef.current = 1
 
     // ── 6. Purge ALL generations (including in-progress) so sync effect can't restore ──
-    // clearCompleted only removes completed/failed — we need to wipe everything
-    clearCompleted() // completed + failed
-    // Also remove any still-generating items from the queue context
+    // Mark every existing generation as processed so the sync useEffect never touches them again.
+    // Do NOT clear processedGenIdsRef — keeping old IDs prevents stale gens from leaking
+    // into the new chat if React hasn't flushed state updates yet.
     generations.forEach(gen => {
+      processedGenIdsRef.current.add(gen.id)
       if (gen.status === 'queued' || gen.status === 'generating') {
-        processedGenIdsRef.current.add(gen.id)
         updateGeneration(gen.id, { status: 'failed', error: 'New chat started' })
       }
     })
-    // Now clear them all
+    // Remove completed/failed items from the queue
     clearCompleted()
-    // Reset processed IDs since we're starting fresh
-    processedGenIdsRef.current.clear()
+    // Flush generation queue from localStorage immediately (don't wait for React render)
+    try { localStorage.removeItem('444radio_generation_queue') } catch { /* noop */ }
+    // Clear genSessionMap — the bumped session ID already guards new gens
+    genSessionMap.current.clear()
 
     // ── 7. Reset messages to fresh welcome ──
     setMessages([{
@@ -738,11 +740,16 @@ function CreatePageContent() {
         return
       }
 
-      // If this generation wasn't started in the current session, skip it.
-      // This prevents old generations from leaking into a new chat.
+      // Only process generations that were explicitly started in the CURRENT session.
+      // If genSessionMap has no entry (e.g. page reload, or old gen from localStorage),
+      // we must NOT inject it into the current chat.
       const genSession = genSessionMap.current.get(gen.id)
-      if (genSession !== undefined && genSession !== chatSessionRef.current) {
-        console.log('[Sync] Skipping generation from old session:', gen.id, 'session:', genSession, 'current:', chatSessionRef.current)
+      if (genSession !== chatSessionRef.current) {
+        if (genSession !== undefined) {
+          console.log('[Sync] Skipping generation from old session:', gen.id, 'session:', genSession, 'current:', chatSessionRef.current)
+        } else {
+          console.log('[Sync] Skipping generation with unknown session (stale/reloaded):', gen.id)
+        }
         return
       }
 
