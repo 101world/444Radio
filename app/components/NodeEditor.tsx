@@ -1309,6 +1309,10 @@ function detectPattern(code: string): string {
 }
 
 function detectSoundSource(code: string): string {
+  // For drum-patterned nodes, the bank IS the sound source (not the first drum abbreviation)
+  // Check .bank() first — if present, that's the sound identity
+  const b = code.match(/\.bank\s*\(\s*["']([^"']+)["']/)
+  if (b) return b[1]
   // Match .s("instrument") in method chain — single-token instrument names
   // (no spaces/brackets/commas/* — distinguishes from drum patterns in s("bd sd hh"))
   const a = code.match(/\.s\s*\(\s*["']([^"'\s,\[\]{}*]+)["']/)
@@ -1317,9 +1321,6 @@ function detectSoundSource(code: string): string {
   // Must NOT contain spaces/brackets (which indicate drum patterns like "bd sd hh")
   const c2 = code.match(/(?<!\.)\bs\s*\(\s*["']([^"'\s,\[\]{}*]+)["']/)
   if (c2) return c2[1]
-  // Match .bank("bank_name") — only if no direct sound source was found above
-  const b = code.match(/\.bank\s*\(\s*["']([^"']+)["']/)
-  if (b) return b[1]
   return ''
 }
 
@@ -2759,20 +2760,45 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     setNodes(prev => {
       const node = prev.find(n => n.id === id)
       if (!node) return prev
-      // For sample-based types: replace the sample name in s("...")
-      // For melodic types: use soundDotS to replace .s("instrument")
       let newCode: string
+      const isUserSample = userSamples.some(s => s.name === newSource)
+
       if (isSampleBased(node.type)) {
-        // Replace the entire s("...") pattern content with the new sample name
-        newCode = applyEffect(node.code, 'drumPattern', newSource)
+        if (isUserSample) {
+          // Custom sample on drum/fx node:
+          // Replace drum abbreviation tokens in pattern with sample name, strip .bank()
+          const patternRe = /(?<!\.)\bs\s*\(\s*["']([^"']+)["']\s*\)/
+          const pm = node.code.match(patternRe)
+          if (pm) {
+            const oldPattern = pm[1]
+            const drumTokenRe = /\b(bd|sd|cp|hh|oh|rim|cy|cr|rd|cb|cl|sh|ma|lt|mt|ht|perc|tb)\b/gi
+            // If pattern has drum abbreviations, replace them with sample name
+            const newPattern = drumTokenRe.test(oldPattern)
+              ? oldPattern.replace(drumTokenRe, newSource)
+              : newSource
+            newCode = node.code.replace(pm[0], `s("${newPattern}")`)
+          } else {
+            newCode = applyEffect(node.code, 'drumPattern', newSource)
+          }
+          // Strip .bank() — custom samples don't use banks
+          newCode = newCode.replace(/\s*\.bank\s*\(\s*["'][^"']*["']\s*\)/, '')
+        } else {
+          // Drum bank: change .bank() value — preserve the drum pattern in s()
+          const bankRe = /\.bank\s*\(\s*["'][^"']*["']\s*\)/
+          if (bankRe.test(node.code)) {
+            newCode = node.code.replace(bankRe, `.bank("${newSource}")`)
+          } else {
+            // No .bank() yet — inject after s("...")
+            const sRe = /((?<!\.)\bs\s*\(\s*["'][^"']*["']\s*\))/
+            newCode = sRe.test(node.code)
+              ? node.code.replace(sRe, `$1.bank("${newSource}")`)
+              : node.code
+          }
+        }
       } else {
         newCode = applyEffect(node.code, 'soundDotS', newSource)
       }
-      // If new source is a user sample, strip .bank() — custom samples don't use banks
-      const isUserSample = userSamples.some(s => s.name === newSource)
-      if (isUserSample) {
-        newCode = newCode.replace(/\s*\.bank\s*\(\s*["'][^"']*["']\s*\)/, '')
-      }
+
       if (newCode === node.code) return prev
       const updated = prev.map(n => n.id === id ? reparseNodeFromCode({ ...n, code: newCode }) : n)
       codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
@@ -3936,7 +3962,11 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
           const color = TYPE_COLORS[node.type]
           const isSel = selectedNode === node.id
           const isActive = isPlaying && !node.muted
-          const presets = SOUND_PRESETS[node.type] || SOUND_PRESETS.other
+          const basePresets = SOUND_PRESETS[node.type] || SOUND_PRESETS.other
+          // Append user samples to SND dropdown for sample-based nodes
+          const presets = isSampleBased(node.type) && userSamples.length > 0
+            ? [...basePresets, ...userSamples.map(s => ({ label: `🔊 ${s.name}`, value: s.name }))]
+            : basePresets
           const isMelodic = !isSampleBased(node.type)
 
           return (
@@ -3963,88 +3993,105 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                     : `0 2px 12px rgba(0,0,0,0.4), inset 0 1px 0 ${HW.borderLight}`,
                 }}>
 
-                  {/* HEADER */}
-                  <div className="flex items-center gap-2 px-3 py-2 cursor-grab active:cursor-grabbing rounded-t-xl"
+                  {/* ── HEADER ── */}
+                  {/* Color accent bar (Logic Pro style track color strip) */}
+                  <div className="rounded-t-xl" style={{ height: 3, background: `linear-gradient(90deg, ${color}, ${color}40)` }} />
+
+                  {/* Row 1: Identity — draggable */}
+                  <div className="flex items-center gap-2 px-3 py-1.5 cursor-grab active:cursor-grabbing"
                     onMouseDown={e => handleMouseDown(e, node.id)}
                     onTouchStart={e => handleNodeTouchStart(e, node.id)}
                     onContextMenu={e => { e.preventDefault(); e.stopPropagation(); toggleAdditiveSolo(node.id) }}
-                    style={{ background: `linear-gradient(180deg, ${color}08 0%, transparent 100%)`, borderBottom: `1px solid ${HW.border}`, touchAction: 'none' }}>
-                    <GripHorizontal size={10} style={{ color: HW.textDim }} className="shrink-0" />
-                    <div className="w-5 h-5 rounded-md flex items-center justify-center text-[10px]"
-                      style={{ background: `${color}15`, color, boxShadow: isActive ? `0 0 8px ${color}30` : 'none' }}>
+                    style={{ touchAction: 'none' }}>
+                    <div className="w-5 h-5 rounded flex items-center justify-center text-[10px] shrink-0"
+                      style={{ background: `${color}18`, color, boxShadow: isActive ? `0 0 8px ${color}30` : 'none' }}>
                       {TYPE_ICONS[node.type]}
                     </div>
                     <span className="text-[11px] font-bold truncate flex-1 tracking-wide" style={{ color }}>{node.name || 'Untitled'}</span>
-                    {/* Collapse/Expand toggle */}
-                    <button
-                      onMouseDown={e => e.stopPropagation()}
-                      onClick={e => { e.stopPropagation(); toggleCollapsed(node.id) }}
-                      className="w-5 h-5 flex items-center justify-center rounded text-[8px] cursor-pointer"
-                      style={{ background: HW.raised, color: HW.textDim, border: `1px solid ${HW.border}` }}
-                      title={node.collapsed ? 'Expand' : 'Collapse'}>
-                      {node.collapsed ? '▼' : '▲'}
-                    </button>
-                    {/* MIDI / Drum Sequencer button */}
+                    <span className="text-[7px] font-bold tracking-[0.12em] uppercase shrink-0 px-1.5 py-0.5 rounded"
+                      style={{ color: `${color}60`, background: `${color}08` }}>
+                      {node.type}
+                    </span>
+                  </div>
+
+                  {/* Row 2: Control strip — tools | transport | collapse */}
+                  <div className="flex items-center gap-[3px] px-2 py-[3px]" style={{ background: `${HW.bg}50`, borderBottom: `1px solid ${HW.border}` }}>
+                    {/* ── Editor tools ── */}
                     {isMelodic ? (
                       <button
                         onMouseDown={e => e.stopPropagation()}
                         onClick={e => { e.stopPropagation(); setPianoRollOpen({ nodeId: node.id }); setDrumSequencerOpen(null) }}
-                        className="w-6 h-6 flex items-center justify-center rounded text-[8px] font-bold cursor-pointer"
+                        className="h-5 px-1.5 flex items-center gap-1 rounded text-[7px] font-bold cursor-pointer transition-all"
                         style={{
-                          background: pianoRollOpen?.nodeId === node.id ? 'rgba(167,139,250,0.2)' : 'rgba(167,139,250,0.08)',
-                          color: '#a78bfa',
-                          border: `1px solid ${pianoRollOpen?.nodeId === node.id ? 'rgba(167,139,250,0.4)' : 'rgba(167,139,250,0.2)'}`,
+                          background: pianoRollOpen?.nodeId === node.id ? 'rgba(167,139,250,0.15)' : 'transparent',
+                          color: pianoRollOpen?.nodeId === node.id ? '#a78bfa' : `${color}50`,
+                          border: `1px solid ${pianoRollOpen?.nodeId === node.id ? 'rgba(167,139,250,0.3)' : HW.border}`,
                         }}
-                        title="Open Piano Roll (MIDI override)">
-                        🎹
+                        title="Open Piano Roll">
+                        🎹 <span className="tracking-wider">KEYS</span>
                       </button>
                     ) : (
                       <button
                         onMouseDown={e => e.stopPropagation()}
                         onClick={e => { e.stopPropagation(); setDrumSequencerOpen({ nodeId: node.id }); setPianoRollOpen(null) }}
-                        className="w-6 h-6 flex items-center justify-center rounded text-[8px] font-bold cursor-pointer"
+                        className="h-5 px-1.5 flex items-center gap-1 rounded text-[7px] font-bold cursor-pointer transition-all"
                         style={{
-                          background: drumSequencerOpen?.nodeId === node.id ? `rgba(245,158,11,0.2)` : 'rgba(245,158,11,0.08)',
-                          color: '#f59e0b',
-                          border: `1px solid ${drumSequencerOpen?.nodeId === node.id ? 'rgba(245,158,11,0.4)' : 'rgba(245,158,11,0.2)'}`,
+                          background: drumSequencerOpen?.nodeId === node.id ? 'rgba(245,158,11,0.15)' : 'transparent',
+                          color: drumSequencerOpen?.nodeId === node.id ? '#f59e0b' : `${color}50`,
+                          border: `1px solid ${drumSequencerOpen?.nodeId === node.id ? 'rgba(245,158,11,0.3)' : HW.border}`,
                         }}
                         title="Open Drum Sequencer">
-                        🥁
+                        🥁 <span className="tracking-wider">SEQ</span>
                       </button>
                     )}
-                    {/* Sound Slicer button (sample-based nodes) */}
                     {node.soundSource && (
                       <button
                         onMouseDown={e => e.stopPropagation()}
                         onClick={e => { e.stopPropagation(); setSoundSlicerOpen({ nodeId: node.id }) }}
-                        className="w-6 h-6 flex items-center justify-center rounded text-[8px] font-bold cursor-pointer"
+                        className="h-5 px-1.5 flex items-center gap-1 rounded text-[7px] font-bold cursor-pointer transition-all"
                         style={{
-                          background: soundSlicerOpen?.nodeId === node.id ? 'rgba(34,211,238,0.2)' : 'rgba(34,211,238,0.08)',
-                          color: '#22d3ee',
-                          border: `1px solid ${soundSlicerOpen?.nodeId === node.id ? 'rgba(34,211,238,0.4)' : 'rgba(34,211,238,0.2)'}`,
+                          background: soundSlicerOpen?.nodeId === node.id ? 'rgba(34,211,238,0.15)' : 'transparent',
+                          color: soundSlicerOpen?.nodeId === node.id ? '#22d3ee' : `${color}50`,
+                          border: `1px solid ${soundSlicerOpen?.nodeId === node.id ? 'rgba(34,211,238,0.3)' : HW.border}`,
                         }}
-                        title="Sound Slicer — set sample region">
-                        ✂
+                        title="Sound Slicer">
+                        ✂ <span className="tracking-wider">SLICE</span>
                       </button>
                     )}
+                    {/* ── Spacer ── */}
+                    <div className="flex-1" />
+                    {/* ── Transport: Solo + Mute ── */}
                     <button
                       onMouseDown={e => e.stopPropagation()}
                       onClick={e => { e.stopPropagation(); toggleSolo(node.id) }}
-                      className="w-6 h-6 flex items-center justify-center rounded text-[9px] font-black cursor-pointer"
+                      className="w-5 h-5 flex items-center justify-center rounded text-[8px] font-black cursor-pointer transition-all"
                       style={{
-                        background: node.solo ? 'rgba(245,158,11,0.2)' : HW.raised,
+                        background: node.solo ? 'rgba(245,158,11,0.2)' : 'transparent',
                         color: node.solo ? '#f59e0b' : HW.textDim,
                         border: `1px solid ${node.solo ? 'rgba(245,158,11,0.3)' : HW.border}`,
-                      }}>S</button>
+                      }}
+                      title="Solo">S</button>
                     <button
                       onMouseDown={e => e.stopPropagation()}
                       onClick={e => { e.stopPropagation(); toggleMute(node.id) }}
-                      className="w-6 h-6 flex items-center justify-center rounded cursor-pointer"
+                      className="w-5 h-5 flex items-center justify-center rounded cursor-pointer transition-all"
                       style={{
-                        background: node.muted ? 'rgba(239,68,68,0.15)' : HW.raised,
+                        background: node.muted ? 'rgba(239,68,68,0.15)' : 'transparent',
                         border: `1px solid ${node.muted ? 'rgba(239,68,68,0.25)' : HW.border}`,
-                      }}>
-                      {node.muted ? <VolumeX size={10} color="#ef4444" /> : <Volume2 size={10} style={{ color: `${color}80` }} />}
+                      }}
+                      title={node.muted ? 'Unmute' : 'Mute'}>
+                      {node.muted ? <VolumeX size={9} color="#ef4444" /> : <Volume2 size={9} style={{ color: `${color}60` }} />}
+                    </button>
+                    {/* ── Divider ── */}
+                    <div className="w-px h-3.5" style={{ background: HW.border }} />
+                    {/* ── Collapse ── */}
+                    <button
+                      onMouseDown={e => e.stopPropagation()}
+                      onClick={e => { e.stopPropagation(); toggleCollapsed(node.id) }}
+                      className="w-5 h-5 flex items-center justify-center rounded text-[8px] cursor-pointer transition-all"
+                      style={{ color: HW.textDim }}
+                      title={node.collapsed ? 'Expand' : 'Collapse'}>
+                      {node.collapsed ? '▼' : '▲'}
                     </button>
                   </div>
 
