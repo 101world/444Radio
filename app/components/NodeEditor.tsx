@@ -2344,7 +2344,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   const containerRef = useRef<HTMLDivElement>(null)
   const lastCodeRef = useRef(code)
   const commitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const immediateTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingMicrotask = useRef(false)
   // ── Touch state refs (mutable to avoid stale closures in imperative listeners) ──
   const touchDragRef = useRef<{ id: string; ox: number; oy: number } | null>(null)
   const touchPanRef = useRef<{ active: boolean; startX: number; startY: number; px: number; py: number }>({ active: false, startX: 0, startY: 0, px: 0, py: 0 })
@@ -2453,27 +2453,27 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   // The code text is pushed to the parent immediately (so Undo history stays current),
   // but the expensive Strudel evaluate() is debounced to prevent thrashing.
   //
-  // Two separate timers prevent solo/mute from being blocked by PianoRoll auto-apply:
-  //  - immediateTimer (16ms): for solo/mute — fires almost instantly, can't be cancelled
-  //    by normal edits. Only cancelled/reset by other immediate sends.
-  //  - commitTimer (200ms): for knob drags, PianoRoll, etc. — debounced.
-  //    Cleared when an immediate send fires (to avoid redundant re-evaluate).
+  // Solo/mute uses queueMicrotask — fires before the next paint, can NOT be
+  // cancelled or lost (unlike setTimeout which PianoRoll timers could interfere with).
+  // Normal edits use a 200ms setTimeout debounce.
   const sendToParent = useCallback((newCode: string, immediate?: boolean) => {
     lastCodeRef.current = newCode
     isInternalChange.current = true
     lastSentCodeRef.current = newCode
     onCodeChange(newCode)
     if (immediate) {
-      // Solo/mute: clear pending normal timer (immediate supersedes)
+      // Solo/mute: cancel pending normal debounce (immediate supersedes)
       if (commitTimer.current) { clearTimeout(commitTimer.current); commitTimer.current = null }
-      // Use dedicated immediate timer so normal sends can't cancel it
-      if (immediateTimer.current) clearTimeout(immediateTimer.current)
-      immediateTimer.current = setTimeout(() => {
-        immediateTimer.current = null
-        onUpdateRef.current()
-      }, 16)
+      // Use microtask — runs before next paint, can't be cancelled by normal sends
+      if (!pendingMicrotask.current) {
+        pendingMicrotask.current = true
+        queueMicrotask(() => {
+          pendingMicrotask.current = false
+          onUpdateRef.current()
+        })
+      }
     } else {
-      // Normal edit: debounced. Don't touch the immediate timer.
+      // Normal edit: debounced. Don't touch pending microtasks.
       if (commitTimer.current) clearTimeout(commitTimer.current)
       commitTimer.current = setTimeout(() => {
         commitTimer.current = null

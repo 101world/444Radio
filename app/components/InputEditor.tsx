@@ -8481,6 +8481,16 @@ $: s("bd:3").bank("RolandTR808")
     })
   }, [pushUndo])
 
+  // Stable callback for NodeEditor code changes — memoized to prevent
+  // sendToParent/toggleSolo from being recreated on every InputEditor render.
+  const handleNodeCodeChange = useCallback((newCode: string) => {
+    codeRef.current = newCode  // sync ref immediately so handleUpdate evaluates the right code
+    setCodeWithUndo(newCode)
+  }, [setCodeWithUndo])
+
+  // Stable callback for NodeEditor evaluate trigger
+  const handleNodeUpdate = useCallback(() => handleUpdate(), [handleUpdate])
+
   // Pattern loader (defined after setCodeWithUndo)
   const loadPattern = useCallback((patternCode: string) => {
     setCodeWithUndo(fixSoundfontNames(patternCode))
@@ -9550,11 +9560,8 @@ $: s("bd:3").bank("RolandTR808")
                 ref={nodeEditorRef}
                 code={code}
                 isPlaying={isPlaying}
-                onCodeChange={(newCode: string) => {
-                  codeRef.current = newCode // sync ref immediately so handleUpdate evaluates the right code
-                  setCodeWithUndo(newCode)
-                }}
-                onUpdate={() => handleUpdate()}
+                onCodeChange={handleNodeCodeChange}
+                onUpdate={handleNodeUpdate}
                 onRegisterSound={registerCustomSound}
                 analyserNode={analyserRef.current}
                 getAnalyserById={getAnalyserByIdCb}
