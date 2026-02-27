@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, lazy, Suspense } from 'react'
 import Link from 'next/link'
@@ -174,7 +174,7 @@ export default function LibraryPage() {
         }).length
         
         if (expiredWarningCount > 0) {
-          console.warn(`⚠️ ${expiredWarningCount} tracks may have expired URLs (Replicate > 48h old)`)
+          console.warn(`âš ï¸ ${expiredWarningCount} tracks may have expired URLs (Replicate > 48h old)`)
         }
         
         // Filter out stems, boosted tracks, AND purchased tracks from the music tab
@@ -188,13 +188,13 @@ export default function LibraryPage() {
         )
         setMusicItems(nonStemMusic)
         
-        console.log('✅ Loaded', nonStemMusic.length, 'music tracks from database (excluded', uniqueMusic.length - nonStemMusic.length, 'stems/boosted/voice-over)')
+        console.log('âœ… Loaded', nonStemMusic.length, 'music tracks from database (excluded', uniqueMusic.length - nonStemMusic.length, 'stems/boosted/voice-over)')
       }
 
-      // Voice Labs — use dedicated endpoint
+      // Voice Labs â€” use dedicated endpoint
       if (voiceoverData.success && Array.isArray(voiceoverData.tracks)) {
         setVoiceoverItems(voiceoverData.tracks)
-        console.log('🎙️ Loaded', voiceoverData.tracks.length, 'voice-over items')
+        console.log('ðŸŽ™ï¸ Loaded', voiceoverData.tracks.length, 'voice-over items')
       }
 
       // Merge database images with R2 images, deduplicate by image_url
@@ -209,7 +209,7 @@ export default function LibraryPage() {
         )
         
         setImageItems(uniqueImages)
-        console.log('✅ Loaded', uniqueImages.length, 'images (DB:', dbImages.length, '+ R2:', r2Images.length, ')')
+        console.log('âœ… Loaded', uniqueImages.length, 'images (DB:', dbImages.length, '+ R2:', r2Images.length, ')')
       }
 
       // Merge database videos with R2 videos, deduplicate by URL
@@ -224,58 +224,58 @@ export default function LibraryPage() {
         )
         
         setVideoItems(uniqueVideos)
-        console.log('✅ Loaded', uniqueVideos.length, 'videos (DB:', dbVideos.length, '+ R2:', r2Videos.length, ')')
+        console.log('âœ… Loaded', uniqueVideos.length, 'videos (DB:', dbVideos.length, '+ R2:', r2Videos.length, ')')
       }
 
       if (releasesData.success && Array.isArray(releasesData.releases)) {
         setReleaseItems(releasesData.releases)
-        console.log('✅ Loaded', releasesData.releases.length, 'releases')
+        console.log('âœ… Loaded', releasesData.releases.length, 'releases')
       }
       if (likedData.success && Array.isArray(likedData.liked)) {
         setLikedItems(likedData.liked)
-        console.log('💚 Loaded', likedData.liked.length, 'liked tracks')
+        console.log('ðŸ’š Loaded', likedData.liked.length, 'liked tracks')
       }
       // Stem groups
       if (stemsData.success && Array.isArray(stemsData.groups)) {
         setStemGroups(stemsData.groups)
-        console.log('🎛️ Loaded', stemsData.groups.length, 'stem groups')
+        console.log('ðŸŽ›ï¸ Loaded', stemsData.groups.length, 'stem groups')
       }
       // Mix & Master tracks
       if (mixmasterData.success && Array.isArray(mixmasterData.tracks)) {
         setMixmasterItems(mixmasterData.tracks)
-        console.log('🔊 Loaded', mixmasterData.tracks.length, 'mix & master tracks')
+        console.log('ðŸ”Š Loaded', mixmasterData.tracks.length, 'mix & master tracks')
       }
       if (boughtData.success && Array.isArray(boughtData.bought)) {
         setBoughtItems(boughtData.bought)
-        console.log('🛒 Loaded', boughtData.bought.length, 'bought tracks')
+        console.log('ðŸ›’ Loaded', boughtData.bought.length, 'bought tracks')
       }
       if (extractData.success && Array.isArray(extractData.groups)) {
         setExtractGroups(extractData.groups)
-        console.log('🎬 Loaded', extractData.groups.length, 'extract groups')
+        console.log('ðŸŽ¬ Loaded', extractData.groups.length, 'extract groups')
       }
       if (loopsData.success && Array.isArray(loopsData.loops)) {
         setLoopsItems(loopsData.loops)
-        console.log('🔄 Loaded', loopsData.loops.length, 'loops')
+        console.log('ðŸ”„ Loaded', loopsData.loops.length, 'loops')
       }
       if (effectsData.success && Array.isArray(effectsData.effects)) {
         setEffectsItems(effectsData.effects)
-        console.log('🎵 Loaded', effectsData.effects.length, 'effects/SFX')
+        console.log('ðŸŽµ Loaded', effectsData.effects.length, 'effects/SFX')
       }
       if (autotuneData.success && Array.isArray(autotuneData.tracks)) {
         setAutotuneItems(autotuneData.tracks)
-        console.log('🎤 Loaded', autotuneData.tracks.length, 'autotune tracks')
+        console.log('ðŸŽ¤ Loaded', autotuneData.tracks.length, 'autotune tracks')
       }
       if (chordsData.success && Array.isArray(chordsData.chords)) {
         setChordsItems(chordsData.chords)
-        console.log('🎹 Loaded', chordsData.chords.length, 'chords tracks')
+        console.log('ðŸŽ¹ Loaded', chordsData.chords.length, 'chords tracks')
       }
       if (remixData.success && Array.isArray(remixData.remixes)) {
         setRemixItems(remixData.remixes)
-        console.log('🔁 Loaded', remixData.remixes.length, 'remixes')
+        console.log('ðŸ” Loaded', remixData.remixes.length, 'remixes')
       }
       if (beatmakerData.success && Array.isArray(beatmakerData.beats)) {
         setBeatmakerItems(beatmakerData.beats)
-        console.log('🥁 Loaded', beatmakerData.beats.length, 'beat maker items')
+        console.log('ðŸ¥ Loaded', beatmakerData.beats.length, 'beat maker items')
       }
     } catch (error) {
       console.error('Error fetching library:', error)
@@ -405,11 +405,11 @@ export default function LibraryPage() {
         } else if (type === 'releases') {
           setReleaseItems(prev => prev.filter(item => item.id !== id))
         }
-        alert('✅ Deleted successfully!')
+        alert('âœ… Deleted successfully!')
       }
     } catch (error) {
       console.error('Delete error:', error)
-      alert('❌ Failed to delete. Please try again.')
+      alert('âŒ Failed to delete. Please try again.')
     }
   }
 
@@ -529,2059 +529,1026 @@ export default function LibraryPage() {
     return new Blob([arrayBuffer], { type: 'audio/wav' })
   }
 
+
+  // --- Procedural gradient for tracks without cover art ---
+  const getTrackGradient = (str: string) => {
+    let h = 0
+    for (let i = 0; i < (str || 'x').length; i++) h = (str || 'x').charCodeAt(i) + ((h << 5) - h)
+    const h1 = Math.abs(h % 360), h2 = (h1 + 40) % 360
+    return `linear-gradient(135deg, hsl(${h1}, 60%, 18%), hsl(${h2}, 50%, 8%))`
+  }
+
+  // --- Tab Configuration ---
+  const tabConfig: { key: typeof activeTab; label: string; icon: any; count: number; gradient: string }[] = [
+    { key: 'music', label: 'Music', icon: Music, count: musicItems.length, gradient: 'from-cyan-500 to-teal-400' },
+    { key: 'images', label: 'Images', icon: ImageIcon, count: imageItems.length, gradient: 'from-purple-500 to-fuchsia-400' },
+    { key: 'videos', label: 'Videos', icon: ImageViewIcon, count: videoItems.length, gradient: 'from-violet-500 to-purple-400' },
+    { key: 'releases', label: 'Releases', icon: Send, count: releaseItems.length, gradient: 'from-green-500 to-emerald-400' },
+    { key: 'liked', label: 'Liked', icon: Heart, count: likedItems.length, gradient: 'from-pink-500 to-rose-400' },
+    { key: 'stems', label: 'Stems', icon: Scissors, count: stemGroups.length, gradient: 'from-orange-500 to-amber-400' },
+    { key: 'mixmaster', label: 'Mix & Master', icon: Volume2, count: mixmasterItems.length, gradient: 'from-red-500 to-orange-400' },
+    { key: 'bought', label: 'Bought', icon: ShoppingBag, count: boughtItems.length, gradient: 'from-yellow-500 to-amber-400' },
+    { key: 'extract', label: 'Extract', icon: Layers, count: extractGroups.length, gradient: 'from-emerald-500 to-teal-400' },
+    { key: 'loops', label: 'Loops', icon: Repeat, count: loopsItems.length, gradient: 'from-indigo-500 to-blue-400' },
+    { key: 'effects', label: 'SFX', icon: Radio, count: effectsItems.length, gradient: 'from-rose-500 to-pink-400' },
+    { key: 'autotune', label: 'Autotune', icon: Mic, count: autotuneItems.length, gradient: 'from-violet-500 to-purple-400' },
+    { key: 'chords', label: 'Chords', icon: Music, count: chordsItems.length, gradient: 'from-purple-500 to-indigo-400' },
+    { key: 'remix', label: 'Remix', icon: Music2, count: remixItems.length, gradient: 'from-cyan-500 to-blue-400' },
+    { key: 'voiceover', label: 'Voice Labs', icon: Mic2, count: voiceoverItems.length, gradient: 'from-amber-500 to-orange-400' },
+    { key: 'beatmaker', label: 'Beat Maker', icon: Music, count: beatmakerItems.length, gradient: 'from-teal-500 to-cyan-400' },
+  ]
+
   return (
-    <div className="min-h-screen bg-black text-white md:pl-14 md:pr-28">
-      {/* Ambient Cyan Glow Overlays */}
+    <div className="min-h-screen bg-[#060610] text-white overflow-x-hidden">
+      {/* â•â•â• CINEMATIC BACKGROUND â•â•â• */}
       <div className="fixed inset-0 pointer-events-none z-0" aria-hidden="true">
-        <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-cyan-500/[0.03] rounded-full blur-[120px]" />
-        <div className="absolute bottom-1/4 left-1/4 w-[400px] h-[400px] bg-teal-500/[0.02] rounded-full blur-[100px]" />
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-cyan-400/[0.015] rounded-full blur-[140px]" />
+        <div className="absolute top-[-10%] right-[-5%] w-[700px] h-[700px] rounded-full bg-cyan-500/[0.025] blur-[160px] animate-pulse" style={{ animationDuration: '8s' }} />
+        <div className="absolute bottom-[-15%] left-[-8%] w-[600px] h-[600px] rounded-full bg-purple-500/[0.02] blur-[140px] animate-pulse" style={{ animationDuration: '12s', animationDelay: '3s' }} />
+        <div className="absolute top-[30%] left-[40%] w-[500px] h-[500px] rounded-full bg-teal-500/[0.015] blur-[120px] animate-pulse" style={{ animationDuration: '10s', animationDelay: '5s' }} />
+        <div className="absolute top-[60%] right-[15%] w-[400px] h-[400px] rounded-full bg-indigo-500/[0.015] blur-[100px] animate-pulse" style={{ animationDuration: '14s', animationDelay: '7s' }} />
       </div>
-      {/* Scanline overlay for cinematic depth */}
-      <div className="fixed inset-0 pointer-events-none z-[1] mix-blend-overlay opacity-[0.015]" style={{
-        backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(200,200,220,0.08) 3px, rgba(200,200,220,0.08) 4px)',
-      }} />
-      {/* Holographic 3D Background - Lazy Loaded */}
-      <Suspense fallback={null}>
-        <HolographicBackgroundClient />
-      </Suspense>
-      
-      {/* Floating Menu - Desktop Only */}
+      <div className="fixed inset-0 pointer-events-none z-[1] mix-blend-overlay opacity-[0.012]" style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(200,200,220,0.06) 2px, rgba(200,200,220,0.06) 3px)' }} />
+      <Suspense fallback={null}><HolographicBackgroundClient /></Suspense>
       <FloatingMenu />
 
-      {/* Back Button - Mobile (Top Left) */}
+      {/* Back / ESC */}
       {user?.id && (
-        <button
-          onClick={() => router.push(`/profile/${user.id}`)}
-          className="md:hidden fixed top-4 left-4 z-50 w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-cyan-500/30 flex items-center justify-center text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-400 transition-all shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/20"
-          title="Back to Profile"
-        >
+        <button onClick={() => router.push(`/profile/${user.id}`)} className="md:hidden fixed top-4 left-4 z-50 w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-all" title="Back to Profile">
           <ArrowLeft size={20} />
         </button>
       )}
-
-      {/* ESC Button - Desktop (Top Left) */}
       {user?.id && (
-        <button
-          onClick={() => router.push(`/profile/${user.id}`)}
-          className="hidden md:flex fixed top-4 left-4 z-50 px-4 py-2 rounded-full bg-black/60 backdrop-blur-md border border-cyan-500/30 items-center gap-2 text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-400 transition-all shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/20 text-sm font-medium"
-          title="Press ESC to go back"
-        >
-          <ArrowLeft size={16} />
-          <span>ESC</span>
+        <button onClick={() => router.push(`/profile/${user.id}`)} className="hidden md:flex fixed top-4 left-4 z-50 px-4 py-2 rounded-full bg-black/40 backdrop-blur-xl border border-white/[0.08] items-center gap-2 text-white/50 hover:text-white hover:bg-white/[0.06] hover:border-white/15 transition-all text-sm font-medium" title="Press ESC to go back">
+          <ArrowLeft size={16} /><span>ESC</span>
         </button>
       )}
 
-      {/* Main Content - Starts from top */}
-      <div className="max-w-7xl mx-auto px-4 pt-20 md:pt-24 pb-8">
-        {/* Header with Refresh Button */}
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-white to-teal-400" style={{ filter: 'drop-shadow(0 0 16px rgba(6,182,212,0.5))' }}>
-            My Library
-          </h1>
-          <div className="flex gap-3">
-            <Link
-              href="/library/release"
-              className="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-600 to-cyan-400 text-white hover:from-cyan-700 hover:to-cyan-500 transition-all flex items-center gap-2 font-bold text-sm shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50"
-            >
-              <Send size={16} />
-              <span>Release Manager</span>
-            </Link>
-            <button
-              onClick={() => fetchLibrary(true)}
-              disabled={isRefreshing}
-              className={`px-4 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20 hover:shadow-lg hover:shadow-cyan-500/10 transition-all flex items-center gap-2 ${isRefreshing ? 'opacity-50 cursor-not-allowed' : ''}`}
-              title="Refresh library"
-            >
-              <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
-              <span className="text-sm font-medium">{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
-            </button>
-          </div>
-        </div>
-        
-        {/* Category Tabs - Clean & Prominent */}
-        <div className="sticky top-0 z-40 bg-black/80 backdrop-blur-xl -mx-4 px-4 py-4 mb-6" style={{
-          borderBottom: '1px solid rgba(200,200,220,0.08)',
-          boxShadow: '0 4px 20px rgba(6,182,212,0.03), 0 1px 0 rgba(200,200,220,0.05)',
-        }}>
-          <div className="flex gap-1 overflow-x-auto scrollbar-hide">
-            <button
-              onClick={() => setActiveTab('images')}
-              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'images'
-                  ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/30'
-                  : 'bg-white/5 text-cyan-400/60 hover:bg-cyan-500/10 hover:text-cyan-400'
-              }`}
-            >
-              <ImageIcon size={18} />
-              <span>Images</span>
-              <span className="ml-1 text-xs opacity-60">({imageItems.length})</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('music')}
-              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'music'
-                  ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/30'
-                  : 'bg-white/5 text-cyan-400/60 hover:bg-cyan-500/10 hover:text-cyan-400'
-              }`}
-            >
-              <Music size={18} />
-              <span>Music</span>
-              <span className="ml-1 text-xs opacity-60">({musicItems.length})</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('videos')}
-              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'videos'
-                  ? 'bg-gradient-to-r from-purple-600 to-purple-400 text-white shadow-lg shadow-purple-500/30'
-                  : 'bg-white/5 text-purple-400/60 hover:bg-purple-500/10 hover:text-purple-400'
-              }`}
-            >
-              <ImageViewIcon size={18} />
-              <span>Videos</span>
-              <span className="ml-1 text-xs opacity-60">({videoItems.length})</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('releases')}
-              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'releases'
-                  ? 'bg-gradient-to-r from-green-600 to-green-400 text-white shadow-lg shadow-green-500/30'
-                  : 'bg-white/5 text-green-400/60 hover:bg-green-500/10 hover:text-green-400'
-              }`}
-            >
-              <Send size={18} />
-              <span>Releases</span>
-              <span className="ml-1 text-xs opacity-60">({releaseItems.length})</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('liked')}
-              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'liked'
-                  ? 'bg-gradient-to-r from-pink-600 to-pink-400 text-white shadow-lg shadow-pink-500/30'
-                  : 'bg-white/5 text-pink-400/60 hover:bg-pink-500/10 hover:text-pink-400'
-              }`}
-            >
-              <Heart size={18} />
-              <span>Liked</span>
-              <span className="ml-1 text-xs opacity-60">({likedItems.length})</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('stems')}
-              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'stems'
-                  ? 'bg-gradient-to-r from-orange-600 to-amber-400 text-white shadow-lg shadow-orange-500/30'
-                  : 'bg-white/5 text-orange-400/60 hover:bg-orange-500/10 hover:text-orange-400'
-              }`}
-            >
-              <Scissors size={18} />
-              <span>Stems</span>
-              <span className="ml-1 text-xs opacity-60">({stemGroups.length})</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('mixmaster')}
-              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'mixmaster'
-                  ? 'bg-gradient-to-r from-orange-600 to-red-500 text-white shadow-lg shadow-orange-500/30'
-                  : 'bg-white/5 text-orange-400/60 hover:bg-orange-500/10 hover:text-orange-400'
-              }`}
-            >
-              <Volume2 size={18} />
-              <span>Mix & Master</span>
-              <span className="ml-1 text-xs opacity-60">({mixmasterItems.length})</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('bought')}
-              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'bought'
-                  ? 'bg-gradient-to-r from-yellow-600 to-amber-400 text-white shadow-lg shadow-yellow-500/30'
-                  : 'bg-white/5 text-yellow-400/60 hover:bg-yellow-500/10 hover:text-yellow-400'
-              }`}
-            >
-              <ShoppingBag size={18} />
-              <span>Bought</span>
-              <span className="ml-1 text-xs opacity-60">({boughtItems.length})</span>
-            </button>
+      {/* â•â•â• MAIN LAYOUT â•â•â• */}
+      <div className="relative z-10 md:pl-14 md:pr-28">
 
-            {/* Extract Tab */}
-            <button
-              onClick={() => setActiveTab('extract')}
-              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'extract'
-                  ? 'bg-gradient-to-r from-emerald-600 to-teal-400 text-white shadow-lg shadow-emerald-500/30'
-                  : 'bg-white/5 text-emerald-400/60 hover:bg-emerald-500/10 hover:text-emerald-400'
-              }`}
-            >
-              <Layers size={18} />
-              <span>Extract</span>
-              <span className="ml-1 text-xs opacity-60">({extractGroups.length})</span>
-            </button>
-
-            {/* Loops Tab */}
-            <button
-              onClick={() => setActiveTab('loops')}
-              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'loops'
-                  ? 'bg-gradient-to-r from-indigo-600 to-blue-400 text-white shadow-lg shadow-indigo-500/30'
-                  : 'bg-white/5 text-indigo-400/60 hover:bg-indigo-500/10 hover:text-indigo-400'
-              }`}
-            >
-              <Repeat size={18} />
-              <span>Loops</span>
-              <span className="ml-1 text-xs opacity-60">({loopsItems.length})</span>
-            </button>
-
-            {/* Effects Tab */}
-            <button
-              onClick={() => setActiveTab('effects')}
-              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'effects'
-                  ? 'bg-gradient-to-r from-pink-600 to-rose-400 text-white shadow-lg shadow-pink-500/30'
-                  : 'bg-white/5 text-pink-400/60 hover:bg-pink-500/10 hover:text-pink-400'
-              }`}
-            >
-              <Radio size={18} />
-              <span>SFX</span>
-              <span className="ml-1 text-xs opacity-60">({effectsItems.length})</span>
-            </button>
-
-            {/* Autotune Tab */}
-            <button
-              onClick={() => setActiveTab('autotune')}
-              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'autotune'
-                  ? 'bg-gradient-to-r from-violet-600 to-purple-400 text-white shadow-lg shadow-violet-500/30'
-                  : 'bg-white/5 text-violet-400/60 hover:bg-violet-500/10 hover:text-violet-400'
-              }`}
-            >
-              <Mic size={18} />
-              <span>Autotune</span>
-              <span className="ml-1 text-xs opacity-60">({autotuneItems.length})</span>
-            </button>
-
-            {/* Chords Tab */}
-            <button
-              onClick={() => setActiveTab('chords')}
-              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'chords'
-                  ? 'bg-gradient-to-r from-purple-600 to-purple-400 text-white shadow-lg shadow-purple-500/30'
-                  : 'bg-white/5 text-purple-400/60 hover:bg-purple-500/10 hover:text-purple-400'
-              }`}
-            >
-              <Music size={18} />
-              <span>Chords</span>
-              <span className="ml-1 text-xs opacity-60">({chordsItems.length})</span>
-            </button>
-
-            {/* Remix Tab */}
-            <button
-              onClick={() => setActiveTab('remix')}
-              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'remix'
-                  ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/30'
-                  : 'bg-white/5 text-cyan-400/60 hover:bg-cyan-500/10 hover:text-cyan-400'
-              }`}
-            >
-              <Music2 size={18} />
-              <span>Remix</span>
-              <span className="ml-1 text-xs opacity-60">({remixItems.length})</span>
-            </button>
-
-            {/* Voice Labs Tab */}
-            <button
-              onClick={() => setActiveTab('voiceover')}
-              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'voiceover'
-                  ? 'bg-gradient-to-r from-amber-500 to-orange-400 text-white shadow-lg shadow-amber-500/30'
-                  : 'bg-white/5 text-amber-400/60 hover:bg-amber-500/10 hover:text-amber-400'
-              }`}
-            >
-              <Mic2 size={18} />
-              <span>Voice Labs</span>
-              <span className="ml-1 text-xs opacity-60">({voiceoverItems.length})</span>
-            </button>
-
-            {/* Beat Maker Tab */}
-            <button
-              onClick={() => setActiveTab('beatmaker')}
-              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'beatmaker'
-                  ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/30'
-                  : 'bg-white/5 text-cyan-400/60 hover:bg-cyan-500/10 hover:text-cyan-400'
-              }`}
-            >
-              <Music size={18} />
-              <span>Beat Maker</span>
-              <span className="ml-1 text-xs opacity-60">({beatmakerItems.length})</span>
-            </button>
+        {/* â•â•â• HEADER â•â•â• */}
+        <div className="pt-20 md:pt-24 px-4 md:px-8 lg:px-12">
+          <div className="flex items-end justify-between mb-8">
+            <div>
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight leading-none">
+                <span className="text-white">My </span>
+                <span className="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-teal-300" style={{ filter: 'drop-shadow(0 0 20px rgba(6,182,212,0.4))' }}>Library</span>
+              </h1>
+              <p className="text-white/25 text-sm mt-3 font-medium tracking-wide">
+                {musicItems.length + imageItems.length + videoItems.length + releaseItems.length} creations &middot; {likedItems.length} liked
+              </p>
+            </div>
+            <div className="flex gap-2 items-center">
+              <Link href="/library/release" className="hidden sm:flex px-5 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-teal-400 text-black hover:shadow-lg hover:shadow-cyan-500/20 transition-all items-center gap-2 font-bold text-sm hover:scale-[1.03] duration-200">
+                <Send size={14} /> Release Manager
+              </Link>
+              <button onClick={() => fetchLibrary(true)} disabled={isRefreshing} className={`p-2.5 rounded-2xl bg-white/[0.04] border border-white/[0.06] text-white/40 hover:text-white hover:bg-white/[0.08] hover:border-white/10 transition-all ${isRefreshing ? 'opacity-50 pointer-events-none' : ''}`} title="Refresh">
+                <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Loading State - Skeleton */}
-        {isLoading && (
-          <LibraryTabSkeleton />
-        )}
+        {/* â•â•â• TAB NAVIGATION â•â•â• */}
+        <div className="sticky top-0 z-40 backdrop-blur-2xl bg-[#060610]/80 border-b border-white/[0.04]" style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-hide px-4 md:px-8 lg:px-12 py-3">
+            {tabConfig.map((tab) => {
+              const TabIcon = tab.icon
+              const isActive = activeTab === tab.key
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`group relative flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all duration-300 whitespace-nowrap flex-shrink-0 ${
+                    isActive
+                      ? `bg-gradient-to-r ${tab.gradient} text-white shadow-lg scale-[1.02]`
+                      : 'text-white/30 hover:text-white/60 hover:bg-white/[0.04]'
+                  }`}
+                >
+                  <TabIcon size={15} />
+                  <span>{tab.label}</span>
+                  {tab.count > 0 && (
+                    <span className={`ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none ${isActive ? 'bg-black/20 text-white' : 'bg-white/[0.06] text-white/30'}`}>
+                      {tab.count}
+                    </span>
+                  )}
+                  {isActive && <div className={`absolute -bottom-3 left-1/2 -translate-x-1/2 w-8 h-1 rounded-full bg-gradient-to-r ${tab.gradient} blur-sm opacity-60`} />}
+                </button>
+              )
+            })}
+          </div>
+        </div>
 
-        {/* Images Tab */}
-        {!isLoading && activeTab === 'images' && (
-          <div>
-            {imageItems.length === 0 ? (
-              <div className="text-center py-20">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-cyan-400/10 border border-cyan-500/30 flex items-center justify-center">
-                  <ImageIcon size={32} className="text-cyan-400" />
-                </div>
-                <h3 className="text-xl font-bold text-white/80 mb-2">No images yet</h3>
-                <p className="text-cyan-400/50 mb-6 text-sm">Create cover art to get started</p>
-                <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/20">
-                  <ImageIcon size={18} />
-                  Create Cover Art
-                </Link>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-                {imageItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="group relative aspect-square bg-black/40 backdrop-blur-xl rounded-xl overflow-hidden hover:scale-105 transition-all duration-300 cursor-pointer"
-                    style={{
-                      border: '1px solid rgba(200,200,220,0.1)',
-                      boxShadow: '0 0 0 0 rgba(200,200,220,0), inset 0 0 30px rgba(6,182,212,0.02)',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.border = '1px solid rgba(200,200,220,0.25)'
-                      e.currentTarget.style.boxShadow = '0 0 15px rgba(200,200,220,0.08), 0 0 40px rgba(6,182,212,0.06)'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.border = '1px solid rgba(200,200,220,0.1)'
-                      e.currentTarget.style.boxShadow = '0 0 0 0 rgba(200,200,220,0), inset 0 0 30px rgba(6,182,212,0.02)'
-                    }}
-                  >
-                    {/* Image */}
-                    <Image
-                      src={item.image_url}
-                      alt={item.title || item.prompt}
-                      width={300}
-                      height={300}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                      loading="lazy"
-                    />
+        {/* â•â•â• CONTENT AREA â•â•â• */}
+        <div className="px-4 md:px-8 lg:px-12 py-8 pb-32 min-h-[60vh]">
+          {isLoading && <LibraryTabSkeleton />}
 
-                    {/* Hover Actions */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-end gap-2 p-3">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setSelectedCoverUrl(item.image_url)
-                          setSelectedCoverTitle(item.title || item.prompt)
-                          setShowCoverModal(true)
-                        }}
-                        className="w-full py-2.5 bg-purple-500/20 backdrop-blur-xl rounded-lg hover:bg-purple-500/40 transition-colors border border-purple-500/30 flex items-center justify-center gap-2"
-                      >
-                        <ImageViewIcon size={16} className="text-purple-400" />
-                        <span className="text-purple-400 text-xs font-semibold">View</span>
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDownload(item.image_url, `${item.title || 'image'}.webp`); }}
-                        className="w-full py-2.5 bg-cyan-500/20 backdrop-blur-xl rounded-lg hover:bg-cyan-500/40 transition-colors border border-cyan-500/30 flex items-center justify-center gap-2"
-                      >
-                        <Download size={16} className="text-cyan-400" />
-                        <span className="text-cyan-400 text-xs font-semibold">Download</span>
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDelete('images', item.id); }}
-                        className="w-full py-2.5 bg-red-500/20 backdrop-blur-xl rounded-lg hover:bg-red-500/40 transition-colors border border-red-500/30 flex items-center justify-center gap-2"
-                      >
-                        <Trash2 size={16} className="text-red-400" />
-                        <span className="text-red-400 text-xs font-semibold">Delete</span>
-                      </button>
-                    </div>
-
-                    {/* Info Overlay */}
-                    <div className="absolute bottom-0 left-0 right-0 p-2.5 bg-gradient-to-t from-black to-transparent">
-                      <p className="text-xs text-white/90 truncate font-medium">
-                        {item.title || 'Untitled Image'}
-                      </p>
-                      <p className="text-[10px] text-cyan-400/50 mt-0.5">
-                        {new Date(item.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
+          {/* â”€â”€â”€ IMAGES TAB â”€â”€â”€ */}
+          {!isLoading && activeTab === 'images' && (
+            <div>
+              {imageItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24">
+                  <div className="relative w-24 h-24 mb-6 rounded-3xl bg-gradient-to-br from-purple-500/20 to-fuchsia-500/10 border border-purple-500/20 flex items-center justify-center">
+                    <ImageIcon size={40} className="text-purple-400/60" />
+                    <div className="absolute inset-0 rounded-3xl bg-purple-500/10 blur-xl -z-10" />
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Music Tab */}
-        {!isLoading && activeTab === 'music' && (
-          <div>
-            {musicItems.length === 0 ? (
-              <div className="text-center py-20">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-cyan-400/10 border border-cyan-500/30 flex items-center justify-center">
-                  <Music size={32} className="text-cyan-400" />
+                  <h3 className="text-xl font-bold text-white/80 mb-2">No images yet</h3>
+                  <p className="text-white/30 text-sm mb-8">Create cover art to get started</p>
+                  <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-purple-500 to-fuchsia-400 text-white font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-purple-500/20">
+                    <ImageIcon size={16} /> Create Cover Art
+                  </Link>
                 </div>
-                <h3 className="text-xl font-bold text-white/80 mb-2">No music yet</h3>
-                <p className="text-cyan-400/50 mb-6 text-sm">Generate your first track</p>
-                <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50">
-                  <Music size={18} />
-                  Create Music
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {musicItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="group relative bg-black/40 backdrop-blur-xl rounded-xl overflow-hidden transition-all duration-300"
-                    style={{
-                      border: '1px solid rgba(200,200,220,0.08)',
-                      boxShadow: 'inset 0 0 30px rgba(6,182,212,0.02)',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.border = '1px solid rgba(200,200,220,0.2)'
-                      e.currentTarget.style.boxShadow = '0 0 12px rgba(200,200,220,0.06), 0 0 30px rgba(6,182,212,0.04)'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.border = '1px solid rgba(200,200,220,0.08)'
-                      e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(6,182,212,0.02)'
-                    }}
-                  >
-                    <div className="flex items-center gap-3 p-3">
-                      {/* Thumbnail */}
-                      <div className="w-14 h-14 flex-shrink-0 bg-gradient-to-br from-cyan-500/20 to-cyan-400/10 rounded-lg flex items-center justify-center border border-cyan-500/30">
-                        <Music size={24} className="text-cyan-400" />
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                  {imageItems.map((item, idx) => (
+                    <div
+                      key={item.id}
+                      className="group relative aspect-square rounded-2xl overflow-hidden bg-white/[0.03] border border-white/[0.05] hover:border-purple-500/20 transition-all duration-500 hover:-translate-y-1 hover:shadow-xl hover:shadow-purple-500/[0.06] animate-slide-in-up"
+                      style={{ animationDelay: `${Math.min(idx * 30, 500)}ms` }}
+                    >
+                      <Image src={item.image_url} alt={item.title || item.prompt} width={300} height={300} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
+                      {/* Hover overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-end p-3 gap-2">
+                        <button onClick={(e) => { e.stopPropagation(); setSelectedCoverUrl(item.image_url); setSelectedCoverTitle(item.title || item.prompt); setShowCoverModal(true) }} className="w-full py-2 bg-purple-500/20 backdrop-blur-xl rounded-xl hover:bg-purple-500/40 transition-colors border border-purple-500/30 flex items-center justify-center gap-2">
+                          <ImageViewIcon size={14} className="text-purple-300" /><span className="text-purple-300 text-xs font-semibold">View</span>
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); handleDownload(item.image_url, `${item.title || 'image'}.webp`) }} className="w-full py-2 bg-cyan-500/20 backdrop-blur-xl rounded-xl hover:bg-cyan-500/40 transition-colors border border-cyan-500/30 flex items-center justify-center gap-2">
+                          <Download size={14} className="text-cyan-300" /><span className="text-cyan-300 text-xs font-semibold">Download</span>
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); handleDelete('images', item.id) }} className="w-full py-2 bg-red-500/20 backdrop-blur-xl rounded-xl hover:bg-red-500/40 transition-colors border border-red-500/30 flex items-center justify-center gap-2">
+                          <Trash2 size={14} className="text-red-300" /><span className="text-red-300 text-xs font-semibold">Delete</span>
+                        </button>
                       </div>
-
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-white font-semibold text-sm truncate">
-                          {/* Show a clean title, avoiding R2 metadata/filenames */}
-                          {item.title && !item.title.startsWith('r2_') && !item.title.includes('user_') ? 
-                            item.title : 
-                            (item.prompt && item.prompt !== 'Legacy R2 file' ? 
-                              (item.prompt.length > 40 ? `${item.prompt.substring(0, 40)}...` : item.prompt) : 
-                              'Untitled Track'
-                            )
-                          }
-                        </h3>
-                        <p className="text-cyan-400/50 text-xs mt-0.5 truncate">
-                          {new Date(item.created_at).toLocaleDateString()}
-                        </p>
+                      {/* Bottom info bar */}
+                      <div className="absolute bottom-0 left-0 right-0 p-2.5 bg-gradient-to-t from-black/80 to-transparent group-hover:opacity-0 transition-opacity">
+                        <p className="text-xs text-white/80 truncate font-medium">{item.title || 'Untitled Image'}</p>
+                        <p className="text-[10px] text-white/25 mt-0.5">{new Date(item.created_at).toLocaleDateString()}</p>
                       </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
-                      {/* Actions */}
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <button
+          {/* â”€â”€â”€ MUSIC TAB â”€â”€â”€ */}
+          {!isLoading && activeTab === 'music' && (
+            <div>
+              {musicItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24">
+                  <div className="relative w-24 h-24 mb-6 rounded-3xl bg-gradient-to-br from-cyan-500/20 to-teal-500/10 border border-cyan-500/20 flex items-center justify-center">
+                    <Music size={40} className="text-cyan-400/60" />
+                    <div className="absolute inset-0 rounded-3xl bg-cyan-500/10 blur-xl -z-10" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white/80 mb-2">No music yet</h3>
+                  <p className="text-white/30 text-sm mb-8">Generate your first track to get started</p>
+                  <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-teal-400 text-black font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-cyan-500/20">
+                    <Music size={16} /> Create Music
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {musicItems.map((item, idx) => {
+                    const trackTitle = item.title && !item.title.startsWith('r2_') && !item.title.includes('user_')
+                      ? item.title
+                      : (item.prompt && item.prompt !== 'Legacy R2 file'
+                        ? (item.prompt.length > 40 ? `${item.prompt.substring(0, 40)}...` : item.prompt)
+                        : 'Untitled Track')
+                    const isCurrentlyPlaying = currentTrack?.id === item.id && isPlaying                    
+                    return (
+                      <div
+                        key={item.id}
+                        className="group flex items-center gap-4 p-3 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.05] hover:border-cyan-500/15 transition-all duration-300 hover:-translate-y-[1px] animate-slide-in-up"
+                        style={{ animationDelay: `${Math.min(idx * 25, 500)}ms` }}
+                      >
+                        {/* Track # */}
+                        <span className="hidden sm:block w-6 text-right text-[11px] text-white/15 font-mono tabular-nums flex-shrink-0">{idx + 1}</span>
+                        {/* Procedural gradient thumbnail */}
+                        <div
+                          className="relative w-12 h-12 flex-shrink-0 rounded-xl overflow-hidden cursor-pointer group/thumb"
+                          style={{ background: getTrackGradient(trackTitle) }}
                           onClick={async () => {
-                            const track = {
-                              id: item.id,
-                              audioUrl: item.audioUrl || item.audio_url, // Use normalized field with fallback
-                              title: item.title || 'Untitled',
-                              artist: user?.firstName || 'You'
-                            }
-                            
-                            // If this track is playing, toggle pause/play
-                            if (currentTrack?.id === item.id) {
-                              togglePlayPause()
-                            } else {
-                              // Set playlist to all music items and play this one
-                              const allTracks = musicItems.map(i => ({
-                                id: i.id,
-                                audioUrl: i.audioUrl || i.audio_url, // Use normalized field with fallback
-                                title: i.title || 'Untitled',
-                                artist: user?.firstName || 'You',
-                                userId: user?.id // Include userId for play tracking
-                              }))
+                            if (currentTrack?.id === item.id) { togglePlayPause() } else {
+                              const allTracks = musicItems.map(i => ({ id: i.id, audioUrl: i.audioUrl || i.audio_url, title: i.title || 'Untitled', artist: user?.firstName || 'You', userId: user?.id }))
                               await setPlaylist(allTracks, musicItems.findIndex(i => i.id === item.id))
                             }
                           }}
-                          className="w-10 h-10 rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400 hover:from-cyan-700 hover:to-cyan-500 flex items-center justify-center transition-all shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 active:scale-95"
                         >
-                          {currentTrack?.id === item.id && isPlaying ? (
-                            <Pause size={18} className="text-black" />
-                          ) : (
-                            <Play size={18} className="text-black ml-0.5" />
-                          )}
-                        </button>
-
-                        <div className="hidden sm:flex gap-1">
+                          <div className="absolute inset-0 flex items-center justify-center"><Music size={16} className="text-white/15" /></div>
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover/thumb:bg-black/40 transition-colors">
+                            <div className="opacity-0 group-hover/thumb:opacity-100 scale-75 group-hover/thumb:scale-100 transition-all">
+                              {isCurrentlyPlaying ? <Pause size={16} className="text-white" /> : <Play size={16} className="text-white ml-0.5" />}
+                            </div>
+                          </div>
+                        </div>
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-white/90 font-medium text-sm truncate">{trackTitle}</h3>
+                          <p className="text-white/20 text-xs mt-0.5">{new Date(item.created_at).toLocaleDateString()}</p>
+                        </div>
+                        {/* Actions */}
+                        <div className="flex items-center gap-1 flex-shrink-0 sm:opacity-40 sm:group-hover:opacity-100 transition-opacity">
                           <button
-                            onClick={() => handleDownload(item.audio_url, `${item.title || 'track'}.mp3`, 'mp3')}
-                            className="px-3 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-500/20 flex items-center justify-center gap-1.5 transition-all active:scale-95"
-                            title="Download MP3"
+                            onClick={async () => {
+                              if (currentTrack?.id === item.id) { togglePlayPause() } else {
+                                const allTracks = musicItems.map(i => ({ id: i.id, audioUrl: i.audioUrl || i.audio_url, title: i.title || 'Untitled', artist: user?.firstName || 'You', userId: user?.id }))
+                                await setPlaylist(allTracks, musicItems.findIndex(i => i.id === item.id))
+                              }
+                            }}
+                            className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-400 flex items-center justify-center text-black hover:scale-110 transition-transform shadow-lg shadow-cyan-500/20"
                           >
-                            <Download size={14} className="text-cyan-400" />
-                            <span className="text-xs text-cyan-400 font-medium">MP3</span>
+                            {isCurrentlyPlaying ? <Pause size={14} /> : <Play size={14} className="ml-0.5" />}
                           </button>
-                          <button
-                            onClick={() => handleDownload(item.audio_url, `${item.title || 'track'}.mp3`, 'wav')}
-                            className="px-3 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-500/20 flex items-center justify-center gap-1.5 transition-all active:scale-95"
-                            title="Download WAV (High Quality)"
-                          >
-                            <Download size={14} className="text-cyan-300" />
-                            <span className="text-xs text-cyan-300 font-medium">WAV</span>
+                          <div className="hidden sm:flex gap-1">
+                            <button onClick={() => handleDownload(item.audio_url, `${item.title || 'track'}.mp3`, 'mp3')} className="px-2.5 h-8 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-cyan-500/10 hover:border-cyan-500/20 flex items-center gap-1 transition-all" title="Download MP3">
+                              <Download size={12} className="text-cyan-400/60" /><span className="text-[10px] text-cyan-400/60 font-medium">MP3</span>
+                            </button>
+                            <button onClick={() => handleDownload(item.audio_url, `${item.title || 'track'}.mp3`, 'wav')} className="px-2.5 h-8 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-cyan-500/10 hover:border-cyan-500/20 flex items-center gap-1 transition-all" title="Download WAV">
+                              <Download size={12} className="text-cyan-300/60" /><span className="text-[10px] text-cyan-300/60 font-medium">WAV</span>
+                            </button>
+                          </div>
+                          <button onClick={() => { setSelectedLyricsId(item.id); setSelectedLyricsTitle(item.title || 'Untitled'); setShowLyricsModal(true) }} className="w-8 h-8 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-purple-500/10 hover:border-purple-500/20 flex items-center justify-center transition-all" title="Lyrics">
+                            <FileText size={13} className="text-purple-400/60" />
+                          </button>
+                          <button onClick={() => { setSelectedReleaseTrack(item); setShowReleaseModal(true) }} className="w-8 h-8 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-green-500/10 hover:border-green-500/20 flex items-center justify-center transition-all" title="Release">
+                            <Send size={13} className="text-green-400/60" />
+                          </button>
+                          <button onClick={() => handleDelete('music', item.id)} className="w-8 h-8 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-red-500/10 hover:border-red-500/20 flex items-center justify-center transition-all" title="Delete">
+                            <Trash2 size={13} className="text-red-400/60" />
                           </button>
                         </div>
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setSelectedLyricsId(item.id)
-                            setSelectedLyricsTitle(item.title || 'Untitled')
-                            setShowLyricsModal(true)
-                          }}
-                          className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-purple-500/30 hover:border-purple-400 hover:bg-purple-500/20 flex items-center justify-center transition-all active:scale-95"
-                          title="View Lyrics"
-                        >
-                          <FileText size={16} className="text-purple-400" />
-                        </button>
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setSelectedReleaseTrack(item)
-                            setShowReleaseModal(true)
-                          }}
-                          className="w-10 h-10 rounded-full bg-gradient-to-r from-green-600/20 to-emerald-500/20 backdrop-blur-xl border border-green-500/30 hover:border-green-400 hover:from-green-500/30 hover:to-emerald-400/30 flex items-center justify-center transition-all active:scale-95"
-                          title="Release Track"
-                        >
-                          <Send size={16} className="text-green-400" />
-                        </button>
-
-                        <button
-                          onClick={() => handleDelete('music', item.id)}
-                          className="w-10 h-10 rounded-full bg-red-500/10 backdrop-blur-xl border border-red-500/30 hover:border-red-400 hover:bg-red-500/20 flex items-center justify-center transition-all active:scale-95"
-                        >
-                          <Trash2 size={16} className="text-red-400" />
-                        </button>
                       </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Videos Tab */}
-        {!isLoading && activeTab === 'videos' && (
-          <div>
-            {videoItems.length === 0 ? (
-              <div className="text-center py-20">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-500/20 to-purple-400/10 border border-purple-500/30 flex items-center justify-center">
-                  <ImageViewIcon size={32} className="text-purple-400" />
+                    )
+                  })}
                 </div>
-                <h3 className="text-xl font-bold text-white/80 mb-2">No videos yet</h3>
-                <p className="text-purple-400/50 mb-6 text-sm">Upload a video to generate synced audio</p>
-                <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-400 text-white rounded-xl font-bold hover:from-purple-700 hover:to-purple-500 transition-all shadow-lg shadow-purple-500/20">
-                  <ImageViewIcon size={18} />
-                  Create Video
-                </Link>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {videoItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="group relative aspect-video bg-black/60 backdrop-blur-xl rounded-xl overflow-hidden transition-all duration-300 cursor-pointer"
-                    style={{
-                      border: '1px solid rgba(200,200,220,0.08)',
-                      boxShadow: 'inset 0 0 30px rgba(6,182,212,0.02)',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.border = '1px solid rgba(200,200,220,0.2)'
-                      e.currentTarget.style.boxShadow = '0 0 12px rgba(200,200,220,0.06), 0 0 30px rgba(6,182,212,0.04)'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.border = '1px solid rgba(200,200,220,0.08)'
-                      e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(6,182,212,0.02)'
-                    }}
-                    onClick={() => {
-                      // Play video with generated audio
-                      const videoUrl = item.video_url || item.audioUrl || item.audio_url || item.media_url
-                      window.open(videoUrl, '_blank')
-                    }}
-                  >
-                    <video 
-                      src={item.video_url || item.audioUrl || item.audio_url || item.media_url}
-                      className="w-full h-full object-cover"
-                      muted
-                      playsInline
-                      onMouseEnter={(e) => e.currentTarget.play()}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.pause()
-                        e.currentTarget.currentTime = 0
+              )}
+            </div>
+          )}
+
+          {/* â”€â”€â”€ VIDEOS TAB â”€â”€â”€ */}
+          {!isLoading && activeTab === 'videos' && (
+            <div>
+              {videoItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24">
+                  <div className="relative w-24 h-24 mb-6 rounded-3xl bg-gradient-to-br from-violet-500/20 to-purple-500/10 border border-violet-500/20 flex items-center justify-center">
+                    <ImageViewIcon size={40} className="text-violet-400/60" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white/80 mb-2">No videos yet</h3>
+                  <p className="text-white/30 text-sm mb-8">Upload a video to generate synced audio</p>
+                  <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-400 text-white font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-violet-500/20">
+                    <ImageViewIcon size={16} /> Create Video
+                  </Link>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {videoItems.map((item, idx) => (
+                    <div
+                      key={item.id}
+                      className="group relative aspect-video rounded-2xl overflow-hidden bg-white/[0.03] border border-white/[0.05] hover:border-violet-500/20 transition-all duration-500 hover:-translate-y-1 hover:shadow-xl hover:shadow-violet-500/[0.06] cursor-pointer animate-slide-in-up"
+                      style={{ animationDelay: `${Math.min(idx * 40, 400)}ms` }}
+                      onClick={() => {
+                        const videoUrl = item.video_url || item.audioUrl || item.audio_url || item.media_url
+                        window.open(videoUrl, '_blank')
                       }}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="absolute bottom-0 left-0 right-0 p-3">
-                        <p className="text-white font-semibold text-xs truncate">
-                          {item.title || 'Video with Synced Audio'}
-                        </p>
-                        <p className="text-purple-400/70 text-[10px] mt-0.5 truncate">
-                          {item.prompt && `"${item.prompt.substring(0, 40)}${item.prompt.length > 40 ? '...' : ''}"`}
-                        </p>
+                    >
+                      <video src={item.video_url || item.audioUrl || item.audio_url || item.media_url} className="w-full h-full object-cover" muted playsInline onMouseEnter={(e) => e.currentTarget.play()} onMouseLeave={(e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 0 }} />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="absolute bottom-0 left-0 right-0 p-4">
+                          <p className="text-white font-semibold text-sm truncate">{item.title || 'Video with Synced Audio'}</p>
+                          <p className="text-violet-400/60 text-xs mt-1 truncate">{item.prompt && `"${item.prompt.substring(0, 40)}${item.prompt.length > 40 ? '...' : ''}"`}</p>
+                        </div>
+                      </div>
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
+                        <div className="w-14 h-14 rounded-full bg-violet-500/80 backdrop-blur-sm flex items-center justify-center scale-75 group-hover:scale-100 transition-transform shadow-xl shadow-violet-500/30">
+                          <Play size={22} className="text-white ml-1" />
+                        </div>
                       </div>
                     </div>
-                    {/* Play icon overlay */}
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="w-16 h-16 rounded-full bg-purple-600/80 backdrop-blur-sm flex items-center justify-center">
-                        <Play size={24} className="text-white ml-1" />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Releases Tab */}
-        {!isLoading && activeTab === 'releases' && (
-          <div>
-            {releaseItems.length === 0 ? (
-              <div className="text-center py-20">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-green-500/20 to-green-400/10 border border-green-500/30 flex items-center justify-center">
-                  <Send size={32} className="text-green-400" />
+                  ))}
                 </div>
-                <h3 className="text-xl font-bold text-white/80 mb-2">No releases yet</h3>
-                <p className="text-green-400/50 mb-6 text-sm">Release your tracks from the Music tab to see them here</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {releaseItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="group relative bg-black/40 backdrop-blur-xl rounded-xl overflow-hidden transition-all duration-300"
-                    style={{
-                      border: '1px solid rgba(200,200,220,0.08)',
-                      boxShadow: 'inset 0 0 30px rgba(6,182,212,0.02)',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.border = '1px solid rgba(200,200,220,0.2)'
-                      e.currentTarget.style.boxShadow = '0 0 12px rgba(200,200,220,0.06), 0 0 30px rgba(6,182,212,0.04)'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.border = '1px solid rgba(200,200,220,0.08)'
-                      e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(6,182,212,0.02)'
-                    }}
-                  >
-                    <div className="flex items-center gap-3 p-3">
-                      {/* Cover Art */}
-                      <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden border border-green-500/30">
-                        {item.image_url && /\.(mp4|webm|mov)($|\?)/.test(item.image_url) ? (
-                          <video
-                            src={item.image_url}
-                            className="w-full h-full object-cover"
-                            muted
-                            loop
-                            playsInline
-                            autoPlay
-                          />
-                        ) : (
-                          <img
-                            src={item.image_url}
-                            alt={item.title || 'Release'}
-                            className="w-full h-full object-cover"
-                          />
-                        )}
-                      </div>
+              )}
+            </div>
+          )}
 
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <h3 className="text-white font-semibold text-sm truncate">
-                            {item.title || 'Release'}
-                          </h3>
+          {/* â”€â”€â”€ RELEASES TAB â”€â”€â”€ */}
+          {!isLoading && activeTab === 'releases' && (
+            <div>
+              {releaseItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24">
+                  <div className="relative w-24 h-24 mb-6 rounded-3xl bg-gradient-to-br from-green-500/20 to-emerald-500/10 border border-green-500/20 flex items-center justify-center">
+                    <Send size={40} className="text-green-400/60" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white/80 mb-2">No releases yet</h3>
+                  <p className="text-white/30 text-sm mb-8">Release your tracks from the Music tab</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {releaseItems.map((item, idx) => {
+                    const isCurrentlyPlaying = currentTrack?.id === item.id && isPlaying
+                    return (
+                      <div key={item.id} className="group relative rounded-2xl overflow-hidden bg-white/[0.03] border border-white/[0.05] hover:border-green-500/20 transition-all duration-500 hover:-translate-y-1 hover:shadow-xl hover:shadow-green-500/[0.06] animate-slide-in-up" style={{ animationDelay: `${Math.min(idx * 40, 400)}ms` }}>
+                        {/* Cover Art */}
+                        <div className="relative aspect-square overflow-hidden">
+                          {item.image_url && /\.(mp4|webm|mov)($|\?)/.test(item.image_url) ? (
+                            <video src={item.image_url} className="w-full h-full object-cover" muted loop playsInline autoPlay />
+                          ) : (
+                            <img src={item.image_url} alt={item.title || 'Release'} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                          )}
+                          {/* Play overlay */}
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                const track = { id: item.id, title: item.title || 'Untitled', artist: 'Unknown Artist', audioUrl: item.audioUrl || item.audio_url, imageUrl: item.imageUrl || item.image_url, userId: user?.id }
+                                setPlaylist([track])
+                                playTrack(track)
+                              }}
+                              className="w-12 h-12 rounded-full bg-green-500/90 flex items-center justify-center opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 transition-all shadow-xl shadow-green-500/30"
+                            >
+                              {isCurrentlyPlaying ? <Pause size={18} className="text-white" /> : <Play size={18} className="text-white ml-0.5" />}
+                            </button>
+                          </div>
+                          {/* Live badge */}
                           {item.is_published && (
-                            <span className="px-2 py-0.5 bg-gradient-to-r from-green-600 to-green-400 rounded-full text-[10px] font-bold text-white shadow-lg shadow-green-500/20 flex-shrink-0">
-                              ✨ Live
-                            </span>
+                            <div className="absolute top-2 right-2">
+                              <span className="px-2 py-1 bg-green-500/90 backdrop-blur-sm rounded-lg text-[10px] font-bold text-white shadow-lg shadow-green-500/30">âœ¨ Live</span>
+                            </div>
                           )}
                         </div>
-                        <p className="text-green-400/50 text-xs">
-                          {new Date(item.created_at).toLocaleDateString()}
-                        </p>
+                        {/* Info */}
+                        <div className="p-3">
+                          <h3 className="text-white/90 font-medium text-sm truncate">{item.title || 'Release'}</h3>
+                          <p className="text-green-400/30 text-xs mt-1">{new Date(item.created_at).toLocaleDateString()}</p>
+                          <div className="flex gap-1.5 mt-2.5">
+                            <button onClick={() => handleDelete('releases', item.id)} className="px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-red-500/10 hover:border-red-500/20 transition-all" title="Delete">
+                              <Trash2 size={12} className="text-red-400/50" />
+                            </button>
+                          </div>
+                        </div>
                       </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <button
-                          onClick={() => {
-                            const track = {
-                              id: item.id,
-                              title: item.title || 'Untitled',
-                              artist: 'Unknown Artist',
-                              audioUrl: item.audioUrl || item.audio_url,
-                              imageUrl: item.imageUrl || item.image_url,
-                              userId: user?.id // Include userId for play tracking
-                            }
-                            setPlaylist([track])
-                            playTrack(track)
-                          }}
-                          className="p-2.5 bg-green-500/20 rounded-lg hover:bg-green-500/40 transition-all hover:scale-105 border border-green-500/30"
-                          title="Play"
-                        >
-                          {currentTrack?.id === item.id && isPlaying ? (
-                            <Pause size={16} className="text-green-400" />
-                          ) : (
-                            <Play size={16} className="text-green-400" />
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleDelete('releases', item.id)}
-                          className="p-2.5 bg-red-500/20 rounded-lg hover:bg-red-500/40 transition-all hover:scale-105 border border-red-500/30"
-                          title="Delete Release"
-                        >
-                          <Trash2 size={16} className="text-red-400" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Liked Tab */}
-        {!isLoading && activeTab === 'liked' && (
-          <div>
-            {likedItems.length === 0 ? (
-              <div className="text-center py-20">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-pink-500/20 to-pink-400/10 border border-pink-500/30 flex items-center justify-center">
-                  <Heart size={32} className="text-pink-400" />
+                    )
+                  })}
                 </div>
-                <h3 className="text-xl font-bold text-white/80 mb-2">No liked tracks yet</h3>
-                <p className="text-pink-400/50 mb-6 text-sm">Like tracks to see them here</p>
-                <Link href="/radio" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-pink-600 to-pink-400 text-white rounded-xl font-bold hover:from-pink-700 hover:to-pink-500 transition-all shadow-lg shadow-pink-500/20">
-                  Radio
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {likedItems.map((item: any) => (
-                  <div key={item.id} className="group relative bg-black/40 backdrop-blur-xl rounded-xl overflow-hidden transition-all duration-300"
-                    style={{
-                      border: '1px solid rgba(200,200,220,0.08)',
-                      boxShadow: 'inset 0 0 30px rgba(6,182,212,0.02)',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.border = '1px solid rgba(200,200,220,0.2)'
-                      e.currentTarget.style.boxShadow = '0 0 12px rgba(200,200,220,0.06), 0 0 30px rgba(6,182,212,0.04)'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.border = '1px solid rgba(200,200,220,0.08)'
-                      e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(6,182,212,0.02)'
-                    }}
-                  >
-                    <div className="flex items-center gap-3 p-3">
-                      <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden border border-pink-500/30">
-                        {item.image_url && /\.(mp4|webm|mov)($|\?)/.test(item.image_url) ? (
-                          <video src={item.image_url} className="w-full h-full object-cover" muted loop playsInline autoPlay />
-                        ) : (
-                          <Image src={item.image_url} alt={item.title || 'Release'} width={56} height={56} className="w-full h-full object-cover" loading="lazy" />
-                        )}
+              )}
+            </div>
+          )}
+
+          {/* â”€â”€â”€ LIKED TAB â”€â”€â”€ */}
+          {!isLoading && activeTab === 'liked' && (
+            <div>
+              {likedItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24">
+                  <div className="relative w-24 h-24 mb-6 rounded-3xl bg-gradient-to-br from-pink-500/20 to-rose-500/10 border border-pink-500/20 flex items-center justify-center">
+                    <Heart size={40} className="text-pink-400/60" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white/80 mb-2">No liked tracks yet</h3>
+                  <p className="text-white/30 text-sm mb-8">Like tracks to see them here</p>
+                  <Link href="/radio" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-pink-500 to-rose-400 text-white font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-pink-500/20">
+                    Radio
+                  </Link>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {likedItems.map((item: any, idx: number) => {
+                    const isCurrentlyPlaying = currentTrack?.id === item.id && isPlaying
+                    return (
+                      <div key={item.id} className="group relative rounded-2xl overflow-hidden bg-white/[0.03] border border-white/[0.05] hover:border-pink-500/20 transition-all duration-500 hover:-translate-y-1 hover:shadow-xl hover:shadow-pink-500/[0.06] animate-slide-in-up" style={{ animationDelay: `${Math.min(idx * 40, 400)}ms` }}>
+                        <div className="relative aspect-square overflow-hidden">
+                          {item.image_url && /\.(mp4|webm|mov)($|\?)/.test(item.image_url) ? (
+                            <video src={item.image_url} className="w-full h-full object-cover" muted loop playsInline autoPlay />
+                          ) : (
+                            <Image src={item.image_url} alt={item.title || 'Release'} width={300} height={300} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
+                          )}
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation()
+                                const track = { id: item.id, title: item.title || 'Untitled', artist: 'Unknown Artist', audioUrl: item.audioUrl || item.audio_url, imageUrl: item.imageUrl || item.image_url, userId: user?.id }
+                                await setPlaylist([track])
+                                await playTrack(track)
+                              }}
+                              className="w-12 h-12 rounded-full bg-pink-500/90 flex items-center justify-center opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 transition-all shadow-xl shadow-pink-500/30"
+                            >
+                              {isCurrentlyPlaying ? <Pause size={18} className="text-white" /> : <Play size={18} className="text-white ml-0.5" />}
+                            </button>
+                          </div>
+                          {/* Heart icon */}
+                          <div className="absolute top-2 right-2">
+                            <Heart size={16} className="text-pink-400 fill-pink-400" />
+                          </div>
+                        </div>
+                        <div className="p-3">
+                          <h3 className="text-white/90 font-medium text-sm truncate">{item.title || 'Release'}</h3>
+                          <p className="text-pink-400/30 text-xs mt-1">{new Date(item.created_at).toLocaleDateString()}</p>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-white font-semibold text-sm truncate">{item.title || 'Release'}</h3>
-                        <p className="text-pink-400/50 text-xs">{new Date(item.created_at).toLocaleDateString()}</p>
-                        {/* Show who liked this track */}
-                        {Array.isArray(item.likes) && item.likes.length > 0 && (
-                          <div className="mt-1 text-xs text-pink-300/80">
-                            <span className="font-semibold">Liked by:</span>{' '}
-                            {item.likes.map((like: any, idx: number) => (
-                              <span key={like.user_id} className="mr-2">
-                                {like.user_id}{' '}
-                                <span className="text-pink-400/50">({new Date(like.created_at).toLocaleDateString()})</span>
-                                {idx < item.likes.length - 1 && ','}
-                              </span>
-                            ))}
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* â”€â”€â”€ STEMS TAB â”€â”€â”€ */}
+          {!isLoading && activeTab === 'stems' && (
+            <div>
+              {stemGroups.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24">
+                  <div className="relative w-24 h-24 mb-6 rounded-3xl bg-gradient-to-br from-orange-500/20 to-amber-500/10 border border-orange-500/20 flex items-center justify-center">
+                    <Scissors size={40} className="text-orange-400/60" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white/80 mb-2">No stems yet</h3>
+                  <p className="text-white/30 text-sm mb-8">Split a track into vocals, drums, bass & more</p>
+                  <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-400 text-black font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-orange-500/20">
+                    <Scissors size={16} /> Split Stems
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {stemGroups.map((group: any, idx: number) => {
+                    const isExpanded = expandedStems.has(idx)
+                    return (
+                      <div key={idx} className="rounded-2xl overflow-hidden bg-white/[0.02] border border-white/[0.04] hover:border-orange-500/15 transition-all animate-slide-in-up" style={{ animationDelay: `${Math.min(idx * 50, 300)}ms` }}>
+                        <button
+                          onClick={() => { setExpandedStems(prev => { const next = new Set(prev); if (next.has(idx)) next.delete(idx); else next.add(idx); return next }) }}
+                          className="w-full flex items-center gap-4 p-4 hover:bg-white/[0.02] transition-colors"
+                        >
+                          <div className="w-12 h-12 flex-shrink-0 rounded-xl overflow-hidden border border-orange-500/20 bg-gradient-to-br from-orange-500/20 to-amber-400/10 flex items-center justify-center">
+                            {group.parentImage ? <Image src={group.parentImage} alt={group.parentTitle} width={48} height={48} className="w-full h-full object-cover" /> : <Music size={20} className="text-orange-400/60" />}
+                          </div>
+                          <div className="flex-1 min-w-0 text-left">
+                            <h3 className="text-white/90 font-medium text-sm truncate">{group.parentTitle}</h3>
+                            <p className="text-orange-400/30 text-xs mt-0.5">{group.stems.length} stems</p>
+                          </div>
+                          <button onClick={async (e) => {
+                            e.stopPropagation()
+                            const playlist = group.stems.map((s: any) => ({ id: s.id, audioUrl: s.audioUrl, title: s.title || s.stemType, artist: user?.firstName || 'You' }))
+                            await setPlaylist(playlist); await playTrack(playlist[0])
+                          }} className="p-2.5 bg-orange-500/10 rounded-xl hover:bg-orange-500/20 transition-all border border-orange-500/20 flex-shrink-0" title="Play all">
+                            <Play size={16} className="text-orange-400" />
+                          </button>
+                          <div className="flex-shrink-0">{isExpanded ? <ChevronUp size={16} className="text-white/20" /> : <ChevronDown size={16} className="text-white/20" />}</div>
+                        </button>
+                        {isExpanded && (
+                          <div className="border-t border-white/[0.04]">
+                            {group.stems.map((stem: any) => {
+                              const stemLabel = (stem.stemType || 'unknown').charAt(0).toUpperCase() + (stem.stemType || 'unknown').slice(1)
+                              const stemColor = getStemColor(stem.stemType)
+                              return (
+                                <div key={stem.id} className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.03] transition-colors border-b border-white/[0.03] last:border-b-0">
+                                  <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${stemColor}`}>{stemLabel}</span>
+                                  <span className="flex-1 text-white/70 text-sm truncate">{stem.title}</span>
+                                  <button onClick={async () => { const track = { id: stem.id, audioUrl: stem.audioUrl, title: stem.title || stemLabel, artist: user?.firstName || 'You' }; await setPlaylist([track]); await playTrack(track) }} className="p-2 rounded-lg hover:bg-orange-500/10 transition-colors" title={`Play ${stemLabel}`}>
+                                    {currentTrack?.id === stem.id && isPlaying ? <Pause size={14} className="text-orange-400" /> : <Play size={14} className="text-orange-400" />}
+                                  </button>
+                                  <button onClick={() => handleDownload(stem.audioUrl, `${stem.title || stemLabel}.wav`, 'wav')} className="p-2 rounded-lg hover:bg-cyan-500/10 transition-colors" title="Download">
+                                    <Download size={14} className="text-cyan-400/50" />
+                                  </button>
+                                </div>
+                              )
+                            })}
                           </div>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <button onClick={async () => {
-                            const track = { id: item.id, title: item.title || 'Untitled', artist: 'Unknown Artist', audioUrl: item.audioUrl || item.audio_url, imageUrl: item.imageUrl || item.image_url, userId: user?.id }
-                            await setPlaylist([track])
-                            await playTrack(track)
-                          }}
-                          className="p-2.5 bg-pink-500/20 rounded-lg hover:bg-pink-500/40 transition-all hover:scale-105 border border-pink-500/30"
-                          title="Play"
-                        >
-                          {currentTrack?.id === item.id && isPlaying ? (
-                            <Pause size={16} className="text-pink-400" />
-                          ) : (
-                            <Play size={16} className="text-pink-400" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* â”€â”€â”€ MIX & MASTER TAB â”€â”€â”€ */}
+          {!isLoading && activeTab === 'mixmaster' && (
+            <div>
+              {mixmasterItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24">
+                  <div className="relative w-24 h-24 mb-6 rounded-3xl bg-gradient-to-br from-red-500/20 to-orange-500/10 border border-red-500/20 flex items-center justify-center">
+                    <Volume2 size={40} className="text-red-400/60" />
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Stems Tab */}
-        {!isLoading && activeTab === 'stems' && (
-          <div>
-            {stemGroups.length === 0 ? (
-              <div className="text-center py-20">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-orange-500/20 to-amber-400/10 border border-orange-500/30 flex items-center justify-center">
-                  <Scissors size={32} className="text-orange-400" />
+                  <h3 className="text-xl font-bold text-white/80 mb-2">No mix & master tracks yet</h3>
+                  <p className="text-white/30 text-sm mb-8">Boost your audio for 1 credit</p>
+                  <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-red-500 to-orange-400 text-white font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-red-500/20">
+                    <Volume2 size={16} /> Boost a Track
+                  </Link>
                 </div>
-                <h3 className="text-xl font-bold text-white/80 mb-2">No stems yet</h3>
-                <p className="text-orange-400/50 mb-6 text-sm">Split a track into vocals, drums, bass & more</p>
-                <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-amber-400 text-white rounded-xl font-bold hover:from-orange-700 hover:to-amber-500 transition-all shadow-lg shadow-orange-500/20">
-                  <Scissors size={18} />
-                  Split Stems
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {stemGroups.map((group: any, idx: number) => {
-                  const isExpanded = expandedStems.has(idx)
-                  return (
-                    <div key={idx} className="bg-black/40 backdrop-blur-xl rounded-xl overflow-hidden transition-all"
-                      style={{
-                        border: '1px solid rgba(200,200,220,0.08)',
-                        boxShadow: 'inset 0 0 30px rgba(6,182,212,0.02)',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.2)'
-                        e.currentTarget.style.boxShadow = '0 0 12px rgba(200,200,220,0.06), 0 0 30px rgba(6,182,212,0.04)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.08)'
-                        e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(6,182,212,0.02)'
-                      }}
-                    >
-                      {/* Parent track header — click to expand */}
-                      <button
-                        onClick={() => {
-                          setExpandedStems(prev => {
-                            const next = new Set(prev)
-                            if (next.has(idx)) next.delete(idx)
-                            else next.add(idx)
-                            return next
-                          })
-                        }}
-                        className="w-full flex items-center gap-3 p-3 hover:bg-orange-500/5 transition-colors"
-                      >
-                        {/* Thumbnail */}
-                        <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden border border-orange-500/30 bg-gradient-to-br from-orange-500/20 to-amber-400/10 flex items-center justify-center">
-                          {group.parentImage ? (
-                            <Image src={group.parentImage} alt={group.parentTitle} width={56} height={56} className="w-full h-full object-cover" />
-                          ) : (
-                            <Music size={24} className="text-orange-400" />
-                          )}
-                        </div>
-                        {/* Info */}
-                        <div className="flex-1 min-w-0 text-left">
-                          <h3 className="text-white font-semibold text-sm truncate">{group.parentTitle}</h3>
-                          <p className="text-orange-400/60 text-xs mt-0.5">{group.stems.length} stems</p>
-                        </div>
-                        {/* Play all stems button */}
-                        <button
-                          onClick={async (e) => {
-                            e.stopPropagation()
-                            const playlist = group.stems.map((s: any) => ({
-                              id: s.id,
-                              audioUrl: s.audioUrl,
-                              title: s.title || s.stemType,
-                              artist: user?.firstName || 'You'
-                            }))
-                            await setPlaylist(playlist)
-                            await playTrack(playlist[0])
-                          }}
-                          className="p-2.5 bg-orange-500/20 rounded-lg hover:bg-orange-500/40 transition-all hover:scale-105 border border-orange-500/30 flex-shrink-0"
-                          title="Play all stems"
-                        >
-                          <Play size={16} className="text-orange-400" />
+              ) : (
+                <div className="space-y-1.5">
+                  {mixmasterItems.map((track: any, idx: number) => {
+                    const isCurrentlyPlaying = currentTrack?.id === track.id && isPlaying
+                    return (
+                      <div key={track.id} className="group flex items-center gap-4 p-3 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.05] hover:border-red-500/15 transition-all duration-300 animate-slide-in-up" style={{ animationDelay: `${Math.min(idx * 30, 400)}ms` }}>
+                        <button onClick={async () => {
+                          const t = { id: track.id, audioUrl: track.audioUrl || track.audio_url, title: track.title || 'Boosted Audio', artist: user?.firstName || 'You' }
+                          if (isCurrentlyPlaying) { togglePlayPause() } else { await setPlaylist([t]); await playTrack(t) }
+                        }} className="w-11 h-11 flex-shrink-0 rounded-xl bg-gradient-to-br from-red-500/20 to-orange-500/10 border border-red-500/20 flex items-center justify-center hover:scale-110 transition-transform">
+                          {isCurrentlyPlaying ? <Pause size={16} className="text-red-400" /> : <Play size={16} className="text-red-400 ml-0.5" />}
                         </button>
-                        {/* Expand chevron */}
-                        <div className="flex-shrink-0">
-                          {isExpanded ? (
-                            <ChevronUp size={18} className="text-orange-400/60" />
-                          ) : (
-                            <ChevronDown size={18} className="text-orange-400/60" />
-                          )}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-white/90 font-medium text-sm truncate">{track.title || 'Boosted Audio'}</h3>
+                          <p className="text-red-400/30 text-xs mt-0.5 truncate">{track.prompt || 'Mix & Master'}</p>
                         </div>
-                      </button>
-
-                      {/* Expanded stems list */}
-                      {isExpanded && (
-                        <div className="border-t border-orange-500/10">
-                          {group.stems.map((stem: any) => {
-                            const stemLabel = (stem.stemType || 'unknown').charAt(0).toUpperCase() + (stem.stemType || 'unknown').slice(1)
-                            const stemColor = getStemColor(stem.stemType)
-                            return (
-                              <div key={stem.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 transition-colors border-b border-white/5 last:border-b-0">
-                                {/* Stem type badge */}
-                                <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider ${stemColor}`}>
-                                  {stemLabel}
-                                </span>
-                                {/* Title */}
-                                <span className="flex-1 text-white/80 text-sm truncate">{stem.title}</span>
-                                {/* Play */}
-                                <button
-                                  onClick={async () => {
-                                    const track = {
-                                      id: stem.id,
-                                      audioUrl: stem.audioUrl,
-                                      title: stem.title || stemLabel,
-                                      artist: user?.firstName || 'You'
-                                    }
-                                    await setPlaylist([track])
-                                    await playTrack(track)
-                                  }}
-                                  className="p-2 rounded-lg hover:bg-orange-500/20 transition-colors"
-                                  title={`Play ${stemLabel}`}
-                                >
-                                  {currentTrack?.id === stem.id && isPlaying ? (
-                                    <Pause size={14} className="text-orange-400" />
-                                  ) : (
-                                    <Play size={14} className="text-orange-400" />
-                                  )}
-                                </button>
-                                {/* Download */}
-                                <button
-                                  onClick={() => handleDownload(stem.audioUrl, `${stem.title || stemLabel}.wav`, 'wav')}
-                                  className="p-2 rounded-lg hover:bg-cyan-500/20 transition-colors"
-                                  title={`Download ${stemLabel}`}
-                                >
-                                  <Download size={14} className="text-cyan-400" />
-                                </button>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Mix & Master Tab */}
-        {!isLoading && activeTab === 'mixmaster' && (
-          <div>
-            {mixmasterItems.length === 0 ? (
-              <div className="text-center py-20">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-orange-500/20 to-red-500/10 border border-orange-500/30 flex items-center justify-center">
-                  <Volume2 size={32} className="text-orange-400" />
-                </div>
-                <h3 className="text-xl font-bold text-white/80 mb-2">No mix & master tracks yet</h3>
-                <p className="text-orange-400/50 mb-6 text-sm">Boost your audio — mix & master any track for 1 credit</p>
-                <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-red-500 text-white rounded-xl font-bold hover:from-orange-700 hover:to-red-600 transition-all shadow-lg shadow-orange-500/20">
-                  <Volume2 size={18} />
-                  Boost a Track
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {mixmasterItems.map((track: any) => {
-                  const isCurrentlyPlaying = currentTrack?.id === track.id && isPlaying
-                  return (
-                    <div
-                      key={track.id}
-                      className="flex items-center gap-3 p-3 bg-black/40 backdrop-blur-xl rounded-xl transition-all group"
-                      style={{
-                        border: '1px solid rgba(200,200,220,0.08)',
-                        boxShadow: 'inset 0 0 30px rgba(6,182,212,0.02)',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.2)'
-                        e.currentTarget.style.boxShadow = '0 0 12px rgba(200,200,220,0.06), 0 0 30px rgba(6,182,212,0.04)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.08)'
-                        e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(6,182,212,0.02)'
-                      }}
-                    >
-                      {/* Play button */}
-                      <button
-                        onClick={async () => {
-                          const t = {
-                            id: track.id,
-                            audioUrl: track.audioUrl || track.audio_url,
-                            title: track.title || 'Boosted Audio',
-                            artist: user?.firstName || 'You'
-                          }
-                          await setPlaylist([t])
-                          if (isCurrentlyPlaying) {
-                            togglePlayPause()
-                          } else {
-                            await playTrack(t)
-                          }
-                        }}
-                        className="w-12 h-12 flex-shrink-0 rounded-lg bg-gradient-to-br from-orange-500/20 to-red-500/10 border border-orange-500/30 flex items-center justify-center hover:scale-105 transition-transform"
-                      >
-                        {isCurrentlyPlaying ? (
-                          <Pause size={18} className="text-orange-400" />
-                        ) : (
-                          <Play size={18} className="text-orange-400 ml-0.5" />
-                        )}
-                      </button>
-
-                      {/* Track info */}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-white font-semibold text-sm truncate">{track.title || 'Boosted Audio'}</h3>
-                        <p className="text-orange-400/50 text-xs mt-0.5 truncate">{track.prompt || 'Mix & Master'}</p>
+                        <span className="text-[10px] text-white/15 hidden sm:block">{new Date(track.created_at).toLocaleDateString()}</span>
+                        <button onClick={() => handleDownload(track.audioUrl || track.audio_url, `${track.title || 'boosted'}.mp3`)} className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-red-500/10 hover:border-red-500/20 transition-all" title="Download">
+                          <Download size={14} className="text-red-400/50" />
+                        </button>
                       </div>
-
-                      {/* Date */}
-                      <span className="text-[10px] text-gray-500 flex-shrink-0 hidden sm:block">
-                        {new Date(track.created_at).toLocaleDateString()}
-                      </span>
-
-                      {/* Download */}
-                      <button
-                        onClick={() => handleDownload(track.audioUrl || track.audio_url, `${track.title || 'boosted'}.mp3`)}
-                        className="p-2 rounded-lg hover:bg-cyan-500/20 transition-colors flex-shrink-0"
-                        title="Download"
-                      >
-                        <Download size={16} className="text-cyan-400" />
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Bought / Downloaded Tab */}
-        {!isLoading && activeTab === 'bought' && (
-          <div>
-            {boughtItems.length === 0 ? (
-              <div className="text-center py-20">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-yellow-500/20 to-amber-400/10 border border-yellow-500/30 flex items-center justify-center">
-                  <ShoppingBag size={32} className="text-yellow-400" />
+                    )
+                  })}
                 </div>
-                <h3 className="text-xl font-bold text-white/80 mb-2">No purchased tracks yet</h3>
-                <p className="text-yellow-400/50 mb-6 text-sm">Browse the Earn marketplace to discover tracks</p>
-                <Link href="/earn" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-yellow-600 to-amber-400 text-white rounded-xl font-bold hover:from-yellow-700 hover:to-amber-500 transition-all shadow-lg shadow-yellow-500/20">
-                  <ShoppingBag size={18} />
-                  Browse Earn
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {boughtItems.map((item: any) => {
-                  const isCurrentlyPlaying = currentTrack?.id === item.id && isPlaying
-                  return (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-3 p-3 bg-black/40 backdrop-blur-xl rounded-xl transition-all group"
-                      style={{
-                        border: '1px solid rgba(200,200,220,0.08)',
-                        boxShadow: 'inset 0 0 30px rgba(6,182,212,0.02)',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.2)'
-                        e.currentTarget.style.boxShadow = '0 0 12px rgba(200,200,220,0.06), 0 0 30px rgba(6,182,212,0.04)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.08)'
-                        e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(6,182,212,0.02)'
-                      }}
-                    >
-                      {/* Play button */}
-                      <button
-                        onClick={async () => {
+              )}
+            </div>
+          )}
+
+          {/* â”€â”€â”€ BOUGHT TAB â”€â”€â”€ */}
+          {!isLoading && activeTab === 'bought' && (
+            <div>
+              {boughtItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24">
+                  <div className="relative w-24 h-24 mb-6 rounded-3xl bg-gradient-to-br from-yellow-500/20 to-amber-500/10 border border-yellow-500/20 flex items-center justify-center">
+                    <ShoppingBag size={40} className="text-yellow-400/60" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white/80 mb-2">No purchased tracks yet</h3>
+                  <p className="text-white/30 text-sm mb-8">Browse the Earn marketplace to discover tracks</p>
+                  <Link href="/earn" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-yellow-500 to-amber-400 text-black font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-yellow-500/20">
+                    <ShoppingBag size={16} /> Browse Earn
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {boughtItems.map((item: any, idx: number) => {
+                    const isCurrentlyPlaying = currentTrack?.id === item.id && isPlaying
+                    return (
+                      <div key={item.id} className="group flex items-center gap-4 p-3 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.05] hover:border-yellow-500/15 transition-all duration-300 animate-slide-in-up" style={{ animationDelay: `${Math.min(idx * 30, 400)}ms` }}>
+                        <button onClick={async () => {
                           if (!item.audio_url) return
-                          const t = {
-                            id: item.id,
-                            audioUrl: item.audio_url,
-                            title: item.title || 'Untitled',
-                            artist: item.seller_username || item.username || user?.firstName || 'Artist',
-                            imageUrl: item.image_url || undefined,
-                          }
-                          if (isCurrentlyPlaying) {
-                            togglePlayPause()
-                          } else {
-                            const allTracks = boughtItems.filter((b: any) => b.audio_url).map((b: any) => ({
-                              id: b.id,
-                              audioUrl: b.audio_url,
-                              title: b.title || 'Untitled',
-                              artist: b.seller_username || b.username || user?.firstName || 'Artist',
-                              imageUrl: b.image_url || undefined,
-                            }))
+                          const t = { id: item.id, audioUrl: item.audio_url, title: item.title || 'Untitled', artist: item.seller_username || item.username || user?.firstName || 'Artist', imageUrl: item.image_url || undefined }
+                          if (isCurrentlyPlaying) { togglePlayPause() } else {
+                            const allTracks = boughtItems.filter((b: any) => b.audio_url).map((b: any) => ({ id: b.id, audioUrl: b.audio_url, title: b.title || 'Untitled', artist: b.seller_username || b.username || user?.firstName || 'Artist', imageUrl: b.image_url || undefined }))
                             await setPlaylist(allTracks, allTracks.findIndex((t: any) => t.id === item.id))
                           }
-                        }}
-                        className="w-12 h-12 flex-shrink-0 rounded-lg bg-gradient-to-br from-yellow-500/20 to-amber-500/10 border border-yellow-500/30 flex items-center justify-center hover:scale-105 transition-transform"
-                      >
-                        {isCurrentlyPlaying ? (
-                          <Pause size={18} className="text-yellow-400" />
-                        ) : (
-                          <Play size={18} className="text-yellow-400 ml-0.5" />
-                        )}
-                      </button>
-
-                      {/* Track info */}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-white font-semibold text-sm truncate">{item.title || 'Untitled'}</h3>
-                        <p className="text-yellow-400/50 text-xs mt-0.5 truncate">
-                          {item.seller_username ? `@${item.seller_username}` : 'Purchased'}{item.genre ? ` • ${item.genre}` : ''}{item.amount_paid ? ` • ${item.amount_paid} cr` : ''}{item.purchased_at ? ` • ${new Date(item.purchased_at).toLocaleDateString()}` : ''}
-                        </p>
-                      </div>
-
-                      {/* Info button */}
-                      <button
-                        onClick={() => setBoughtInfoTrack(item)}
-                        className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-yellow-500/30 hover:border-yellow-400 hover:bg-yellow-500/20 flex items-center justify-center transition-all active:scale-95 flex-shrink-0"
-                        title="Track info"
-                      >
-                        <Info size={14} className="text-yellow-400" />
-                      </button>
-
-                      {/* Badge - Purchased, no release */}
-                      <span className="hidden sm:inline-flex px-2.5 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-[10px] text-yellow-400 font-medium flex-shrink-0">
-                        Purchased
-                      </span>
-
-                      {/* Download only - NO release button */}
-                      {item.audio_url && (
-                        <div className="flex gap-1 flex-shrink-0">
-                          <button
-                            onClick={() => handleDownload(item.audio_url, `${item.title || 'track'}.mp3`, 'mp3')}
-                            className="px-3 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-yellow-500/30 hover:border-yellow-400 hover:bg-yellow-500/20 flex items-center justify-center gap-1.5 transition-all active:scale-95"
-                            title="Download MP3"
-                          >
-                            <Download size={14} className="text-yellow-400" />
-                            <span className="text-xs text-yellow-400 font-medium">MP3</span>
-                          </button>
-                          <button
-                            onClick={() => handleDownload(item.audio_url, `${item.title || 'track'}.mp3`, 'wav')}
-                            className="px-3 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-yellow-500/30 hover:border-yellow-400 hover:bg-yellow-500/20 flex items-center justify-center gap-1.5 transition-all active:scale-95"
-                            title="Download WAV"
-                          >
-                            <Download size={14} className="text-yellow-300" />
-                            <span className="text-xs text-yellow-300 font-medium">WAV</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Extract Tab */}
-        {!isLoading && activeTab === 'extract' && (
-          <div>
-            {extractGroups.length === 0 ? (
-              <div className="text-center py-20">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-400/10 border border-emerald-500/30 flex items-center justify-center">
-                  <Layers size={32} className="text-emerald-400" />
-                </div>
-                <h3 className="text-xl font-bold text-white/80 mb-2">No extractions yet</h3>
-                <p className="text-emerald-400/50 mb-6 text-sm">Extract audio from video or isolate stems from audio</p>
-                <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-400 text-white rounded-xl font-bold hover:from-emerald-700 hover:to-teal-500 transition-all shadow-lg shadow-emerald-500/20">
-                  <Layers size={18} />
-                  Extract Audio
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {extractGroups.map((group: any, idx: number) => {
-                  const isExpanded = expandedExtracts.has(idx)
-                  return (
-                    <div key={idx} className="bg-black/40 backdrop-blur-xl rounded-xl overflow-hidden transition-all"
-                      style={{
-                        border: '1px solid rgba(200,200,220,0.08)',
-                        boxShadow: 'inset 0 0 30px rgba(6,182,212,0.02)',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.2)'
-                        e.currentTarget.style.boxShadow = '0 0 12px rgba(200,200,220,0.06), 0 0 30px rgba(6,182,212,0.04)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.08)'
-                        e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(6,182,212,0.02)'
-                      }}
-                    >
-                      {/* Parent track header — click to expand */}
-                      <button
-                        onClick={() => {
-                          setExpandedExtracts(prev => {
-                            const next = new Set(prev)
-                            if (next.has(idx)) next.delete(idx)
-                            else next.add(idx)
-                            return next
-                          })
-                        }}
-                        className="w-full flex items-center gap-3 p-3 hover:bg-emerald-500/5 transition-colors"
-                      >
-                        {/* Thumbnail */}
-                        <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden border border-emerald-500/30 bg-gradient-to-br from-emerald-500/20 to-teal-400/10 flex items-center justify-center">
-                          {group.parentImage ? (
-                            <Image src={group.parentImage} alt={group.parentTitle} width={56} height={56} className="w-full h-full object-cover" />
-                          ) : (
-                            <Layers size={24} className="text-emerald-400" />
-                          )}
-                        </div>
-                        {/* Info */}
-                        <div className="flex-1 min-w-0 text-left">
-                          <h3 className="text-white font-semibold text-sm truncate">{group.parentTitle}</h3>
-                          <p className="text-emerald-400/60 text-xs mt-0.5">
-                            {group.extracts.length} extract{group.extracts.length !== 1 ? 's' : ''}
-                            {group.extracts[0]?.source === 'video-to-audio' ? ' • from video' : ' • stems'}
-                          </p>
-                        </div>
-                        {/* Play all extracts */}
-                        <button
-                          onClick={async (e) => {
-                            e.stopPropagation()
-                            const playlist = group.extracts.map((ex: any) => ({
-                              id: ex.id,
-                              audioUrl: ex.audioUrl,
-                              title: ex.title || ex.stemType || 'Extract',
-                              artist: user?.firstName || 'You'
-                            }))
-                            await setPlaylist(playlist)
-                            await playTrack(playlist[0])
-                          }}
-                          className="p-2.5 bg-emerald-500/20 rounded-lg hover:bg-emerald-500/40 transition-all hover:scale-105 border border-emerald-500/30 flex-shrink-0"
-                          title="Play all extracts"
-                        >
-                          <Play size={16} className="text-emerald-400" />
+                        }} className="w-11 h-11 flex-shrink-0 rounded-xl bg-gradient-to-br from-yellow-500/20 to-amber-500/10 border border-yellow-500/20 flex items-center justify-center hover:scale-110 transition-transform">
+                          {isCurrentlyPlaying ? <Pause size={16} className="text-yellow-400" /> : <Play size={16} className="text-yellow-400 ml-0.5" />}
                         </button>
-                        {/* Expand chevron */}
-                        <div className="flex-shrink-0">
-                          {isExpanded ? (
-                            <ChevronUp size={18} className="text-emerald-400/60" />
-                          ) : (
-                            <ChevronDown size={18} className="text-emerald-400/60" />
-                          )}
-                        </div>
-                      </button>
-
-                      {/* Expanded extracts list */}
-                      {isExpanded && (
-                        <div className="border-t border-emerald-500/10">
-                          {group.extracts.map((extract: any) => {
-                            const label = extract.stemType
-                              ? extract.stemType.charAt(0).toUpperCase() + extract.stemType.slice(1)
-                              : extract.source === 'video-to-audio' ? 'Full Audio' : 'Extract'
-                            const badgeColor = extract.stemType
-                              ? getStemColor(extract.stemType)
-                              : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                            return (
-                              <div key={extract.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 transition-colors border-b border-white/5 last:border-b-0">
-                                {/* Type badge */}
-                                <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider ${badgeColor}`}>
-                                  {label}
-                                </span>
-                                {/* Title */}
-                                <span className="flex-1 text-white/80 text-sm truncate">{extract.title}</span>
-                                {/* Play */}
-                                <button
-                                  onClick={async () => {
-                                    const track = {
-                                      id: extract.id,
-                                      audioUrl: extract.audioUrl,
-                                      title: extract.title || label,
-                                      artist: user?.firstName || 'You'
-                                    }
-                                    await setPlaylist([track])
-                                    await playTrack(track)
-                                  }}
-                                  className="p-2 rounded-lg hover:bg-emerald-500/20 transition-colors"
-                                  title={`Play ${label}`}
-                                >
-                                  {currentTrack?.id === extract.id && isPlaying ? (
-                                    <Pause size={14} className="text-emerald-400" />
-                                  ) : (
-                                    <Play size={14} className="text-emerald-400" />
-                                  )}
-                                </button>
-                                {/* Download */}
-                                <button
-                                  onClick={() => handleDownload(extract.audioUrl, `${extract.title || label}.mp3`)}
-                                  className="p-2 rounded-lg hover:bg-cyan-500/20 transition-colors"
-                                  title={`Download ${label}`}
-                                >
-                                  <Download size={14} className="text-cyan-400" />
-                                </button>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Loops Tab */}
-        {!isLoading && activeTab === 'loops' && (
-          <div>
-            {loopsItems.length === 0 ? (
-              <div className="text-center py-20">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-blue-400/10 border border-indigo-500/30 flex items-center justify-center">
-                  <Repeat size={32} className="text-indigo-400" />
-                </div>
-                <h3 className="text-xl font-bold text-white/80 mb-2">No loops yet</h3>
-                <p className="text-indigo-400/50 mb-6 text-sm">Generate fixed BPM loops to build tracks</p>
-                <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-400 text-white rounded-xl font-bold hover:from-indigo-700 hover:to-blue-500 transition-all shadow-lg shadow-indigo-500/20">
-                  <Repeat size={18} />
-                  Generate Loops
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {loopsItems.map((loop: any) => {
-                  const isCurrentlyPlaying = currentTrack?.id === loop.id && isPlaying
-                  return (
-                    <div
-                      key={loop.id}
-                      className="flex items-center gap-3 p-3 bg-black/40 backdrop-blur-xl rounded-xl transition-all group"
-                      style={{
-                        border: '1px solid rgba(200,200,220,0.08)',
-                        boxShadow: 'inset 0 0 30px rgba(6,182,212,0.02)',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.2)'
-                        e.currentTarget.style.boxShadow = '0 0 12px rgba(200,200,220,0.06), 0 0 30px rgba(6,182,212,0.04)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.08)'
-                        e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(6,182,212,0.02)'
-                      }}
-                    >
-                      {/* Play button */}
-                      <button
-                        onClick={async () => {
-                          if (!loop.audioUrl) return
-                          const t = {
-                            id: loop.id,
-                            audioUrl: loop.audioUrl,
-                            title: loop.title || 'Untitled Loop',
-                            artist: user?.firstName || 'You'
-                          }
-                          if (isCurrentlyPlaying) {
-                            togglePlayPause()
-                          } else {
-                            const allTracks = loopsItems.filter((l: any) => l.audioUrl).map((l: any) => ({
-                              id: l.id,
-                              audioUrl: l.audioUrl,
-                              title: l.title || 'Untitled Loop',
-                              artist: user?.firstName || 'You'
-                            }))
-                            await setPlaylist(allTracks, allTracks.findIndex((t: any) => t.id === loop.id))
-                          }
-                        }}
-                        className="w-12 h-12 flex-shrink-0 rounded-lg bg-gradient-to-br from-indigo-500/20 to-blue-500/10 border border-indigo-500/30 flex items-center justify-center hover:scale-105 transition-transform"
-                      >
-                        {isCurrentlyPlaying ? (
-                          <Pause size={18} className="text-indigo-400" />
-                        ) : (
-                          <Play size={18} className="text-indigo-400 ml-0.5" />
-                        )}
-                      </button>
-
-                      {/* Track info */}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-white font-semibold text-sm truncate">{loop.title || 'Untitled Loop'}</h3>
-                        <p className="text-indigo-400/50 text-xs mt-0.5">
-                          {loop.prompt ? `${loop.prompt.substring(0, 50)}${loop.prompt.length > 50 ? '...' : ''}` : 'Fixed BPM Loop'}
-                        </p>
-                      </div>
-
-                      {/* Download */}
-                      {loop.audioUrl && (
-                        <button
-                          onClick={() => handleDownload(loop.audioUrl, `${loop.title || 'loop'}.mp3`, 'mp3')}
-                          className="px-3 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-indigo-500/30 hover:border-indigo-400 hover:bg-indigo-500/20 flex items-center justify-center gap-1.5 transition-all active:scale-95"
-                          title="Download MP3"
-                        >
-                          <Download size={14} className="text-indigo-400" />
-                          <span className="text-xs text-indigo-400 font-medium">MP3</span>
-                        </button>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Effects/SFX Tab */}
-        {!isLoading && activeTab === 'effects' && (
-          <div>
-            {effectsItems.length === 0 ? (
-              <div className="text-center py-20">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-pink-500/20 to-rose-400/10 border border-pink-500/30 flex items-center justify-center">
-                  <Radio size={32} className="text-pink-400" />
-                </div>
-                <h3 className="text-xl font-bold text-white/80 mb-2">No sound effects yet</h3>
-                <p className="text-pink-400/50 mb-6 text-sm">Generate custom audio effects and SFX</p>
-                <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-pink-600 to-rose-400 text-white rounded-xl font-bold hover:from-pink-700 hover:to-rose-500 transition-all shadow-lg shadow-pink-500/20">
-                  <Radio size={18} />
-                  Generate SFX
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {effectsItems.map((effect: any) => {
-                  const isCurrentlyPlaying = currentTrack?.id === effect.id && isPlaying
-                  return (
-                    <div
-                      key={effect.id}
-                      className="flex items-center gap-3 p-3 bg-black/40 backdrop-blur-xl rounded-xl transition-all group"
-                      style={{
-                        border: '1px solid rgba(200,200,220,0.08)',
-                        boxShadow: 'inset 0 0 30px rgba(6,182,212,0.02)',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.2)'
-                        e.currentTarget.style.boxShadow = '0 0 12px rgba(200,200,220,0.06), 0 0 30px rgba(6,182,212,0.04)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.08)'
-                        e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(6,182,212,0.02)'
-                      }}
-                    >
-                      {/* Play button */}
-                      <button
-                        onClick={async () => {
-                          if (!effect.audioUrl) return
-                          const t = {
-                            id: effect.id,
-                            audioUrl: effect.audioUrl,
-                            title: effect.title || 'Untitled SFX',
-                            artist: user?.firstName || 'You'
-                          }
-                          if (isCurrentlyPlaying) {
-                            togglePlayPause()
-                          } else {
-                            const allTracks = effectsItems.filter((e: any) => e.audioUrl).map((e: any) => ({
-                              id: e.id,
-                              audioUrl: e.audioUrl,
-                              title: e.title || 'Untitled SFX',
-                              artist: user?.firstName || 'You'
-                            }))
-                            await setPlaylist(allTracks, allTracks.findIndex((t: any) => t.id === effect.id))
-                          }
-                        }}
-                        className="w-12 h-12 flex-shrink-0 rounded-lg bg-gradient-to-br from-pink-500/20 to-rose-500/10 border border-pink-500/30 flex items-center justify-center hover:scale-105 transition-transform"
-                      >
-                        {isCurrentlyPlaying ? (
-                          <Pause size={18} className="text-pink-400" />
-                        ) : (
-                          <Play size={18} className="text-pink-400 ml-0.5" />
-                        )}
-                      </button>
-
-                      {/* Track info */}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-white font-semibold text-sm truncate">{effect.title || 'Untitled SFX'}</h3>
-                        <p className="text-pink-400/50 text-xs mt-0.5">
-                          {effect.prompt ? `${effect.prompt.substring(0, 50)}${effect.prompt.length > 50 ? '...' : ''}` : 'Sound Effect'}
-                        </p>
-                      </div>
-
-                      {/* Download */}
-                      {effect.audioUrl && (
-                        <button
-                          onClick={() => handleDownload(effect.audioUrl, `${effect.title || 'effect'}.mp3`, 'mp3')}
-                          className="px-3 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-pink-500/30 hover:border-pink-400 hover:bg-pink-500/20 flex items-center justify-center gap-1.5 transition-all active:scale-95"
-                          title="Download MP3"
-                        >
-                          <Download size={14} className="text-pink-400" />
-                          <span className="text-xs text-pink-400 font-medium">MP3</span>
-                        </button>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Autotune Tab */}
-        {!isLoading && activeTab === 'autotune' && (
-          <div>
-            {autotuneItems.length === 0 ? (
-              <div className="text-center py-20">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-violet-500/20 to-purple-400/10 border border-violet-500/30 flex items-center justify-center">
-                  <Mic size={32} className="text-violet-400" />
-                </div>
-                <h3 className="text-xl font-bold text-white/80 mb-2">No autotuned tracks yet</h3>
-                <p className="text-violet-400/50 mb-6 text-sm">Pitch correct any audio to a musical key & scale</p>
-                <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-600 to-purple-400 text-white rounded-xl font-bold hover:from-violet-700 hover:to-purple-500 transition-all shadow-lg shadow-violet-500/20">
-                  <Mic size={18} />
-                  Autotune a Track
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {autotuneItems.map((track: any) => {
-                  const isCurrentlyPlaying = currentTrack?.id === track.id && isPlaying
-                  return (
-                    <div
-                      key={track.id}
-                      className="flex items-center gap-3 p-3 bg-black/40 backdrop-blur-xl rounded-xl transition-all group"
-                      style={{
-                        border: '1px solid rgba(200,200,220,0.08)',
-                        boxShadow: 'inset 0 0 30px rgba(6,182,212,0.02)',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.2)'
-                        e.currentTarget.style.boxShadow = '0 0 12px rgba(200,200,220,0.06), 0 0 30px rgba(6,182,212,0.04)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.08)'
-                        e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(6,182,212,0.02)'
-                      }}
-                    >
-                      {/* Play button */}
-                      <button
-                        onClick={async () => {
-                          const t = {
-                            id: track.id,
-                            audioUrl: track.audioUrl || track.audio_url,
-                            title: track.title || 'Autotuned Audio',
-                            artist: user?.firstName || 'You'
-                          }
-                          if (isCurrentlyPlaying) {
-                            togglePlayPause()
-                          } else {
-                            const allTracks = autotuneItems.filter((a: any) => a.audioUrl || a.audio_url).map((a: any) => ({
-                              id: a.id,
-                              audioUrl: a.audioUrl || a.audio_url,
-                              title: a.title || 'Autotuned Audio',
-                              artist: user?.firstName || 'You'
-                            }))
-                            await setPlaylist(allTracks, allTracks.findIndex((t: any) => t.id === track.id))
-                          }
-                        }}
-                        className="w-12 h-12 flex-shrink-0 rounded-lg bg-gradient-to-br from-violet-500/20 to-purple-500/10 border border-violet-500/30 flex items-center justify-center hover:scale-105 transition-transform"
-                      >
-                        {isCurrentlyPlaying ? (
-                          <Pause size={18} className="text-violet-400" />
-                        ) : (
-                          <Play size={18} className="text-violet-400 ml-0.5" />
-                        )}
-                      </button>
-
-                      {/* Track info */}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-white font-semibold text-sm truncate">{track.title || 'Autotuned Audio'}</h3>
-                        <p className="text-violet-400/50 text-xs mt-0.5 truncate">{track.prompt || 'Pitch Corrected'}</p>
-                      </div>
-
-                      {/* Date */}
-                      <span className="text-[10px] text-gray-500 flex-shrink-0 hidden sm:block">
-                        {new Date(track.created_at).toLocaleDateString()}
-                      </span>
-
-                      {/* Download */}
-                      <button
-                        onClick={() => handleDownload(track.audioUrl || track.audio_url, `${track.title || 'autotuned'}.wav`)}
-                        className="p-2 rounded-lg hover:bg-violet-500/20 transition-colors flex-shrink-0"
-                        title="Download"
-                      >
-                        <Download size={16} className="text-violet-400" />
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Chords Tab */}
-        {!isLoading && activeTab === 'chords' && (
-          <div>
-            {chordsItems.length === 0 ? (
-              <div className="text-center py-20">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-500/20 to-purple-400/10 border border-purple-500/30 flex items-center justify-center">
-                  <Music size={32} className="text-purple-400" />
-                </div>
-                <h3 className="text-xl font-bold text-white/80 mb-2">No chords yet</h3>
-                <p className="text-purple-400/50 mb-6 text-sm">Generate chord progressions and rhythms</p>
-                <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-400 text-white rounded-xl font-bold hover:from-purple-700 hover:to-purple-500 transition-all shadow-lg shadow-purple-500/20">
-                  <Music size={18} />
-                  Generate Chords
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {chordsItems.map((chord: any) => {
-                  const isCurrentlyPlaying = currentTrack?.id === chord.id && isPlaying
-                  return (
-                    <div
-                      key={chord.id}
-                      className="flex items-center gap-3 p-3 bg-black/40 backdrop-blur-xl rounded-xl transition-all group"
-                      style={{
-                        border: '1px solid rgba(200,200,220,0.08)',
-                        boxShadow: 'inset 0 0 30px rgba(6,182,212,0.02)',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.2)'
-                        e.currentTarget.style.boxShadow = '0 0 12px rgba(200,200,220,0.06), 0 0 30px rgba(6,182,212,0.04)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.08)'
-                        e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(6,182,212,0.02)'
-                      }}
-                    >
-                      {/* Play button */}
-                      <button
-                        onClick={async () => {
-                          if (!chord.audioUrl && !chord.audio_url) return
-                          const t = {
-                            id: chord.id,
-                            audioUrl: chord.audioUrl || chord.audio_url,
-                            title: chord.title || 'Untitled Chords',
-                            artist: user?.firstName || 'You'
-                          }
-                          if (isCurrentlyPlaying) {
-                            togglePlayPause()
-                          } else {
-                            const allTracks = chordsItems.filter((c: any) => c.audioUrl || c.audio_url).map((c: any) => ({
-                              id: c.id,
-                              audioUrl: c.audioUrl || c.audio_url,
-                              title: c.title || 'Untitled Chords',
-                              artist: user?.firstName || 'You'
-                            }))
-                            await setPlaylist(allTracks, allTracks.findIndex((t: any) => t.id === chord.id))
-                          }
-                        }}
-                        className="w-12 h-12 flex-shrink-0 rounded-lg bg-gradient-to-br from-purple-500/20 to-purple-500/10 border border-purple-500/30 flex items-center justify-center hover:scale-105 transition-transform"
-                      >
-                        {isCurrentlyPlaying ? (
-                          <Pause size={18} className="text-purple-400" />
-                        ) : (
-                          <Play size={18} className="text-purple-400 ml-0.5" />
-                        )}
-                      </button>
-
-                      {/* Track info */}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-white font-semibold text-sm truncate">{chord.title || 'Untitled Chords'}</h3>
-                        <p className="text-purple-400/50 text-xs mt-0.5">
-                          {chord.chord_progression || chord.prompt || 'Chord Progression'}
-                          {chord.time_signature && <span className="ml-2 opacity-70">• {chord.time_signature}</span>}
-                        </p>
-                      </div>
-
-                      {/* Download */}
-                      {(chord.audioUrl || chord.audio_url) && (
-                        <button
-                          onClick={() => handleDownload(chord.audioUrl || chord.audio_url, `${chord.title || 'chords'}.mp3`, 'mp3')}
-                          className="px-3 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-purple-500/30 hover:border-purple-400 hover:bg-purple-500/20 flex items-center justify-center gap-1.5 transition-all active:scale-95"
-                          title="Download MP3"
-                        >
-                          <Download size={14} className="text-purple-400" />
-                          <span className="text-xs text-purple-400 font-medium">MP3</span>
-                        </button>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Remix Tab */}
-        {!isLoading && activeTab === 'remix' && (
-          <div>
-            {remixItems.length === 0 ? (
-              <div className="text-center py-20">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-cyan-400/10 border border-cyan-500/30 flex items-center justify-center">
-                  <Music2 size={32} className="text-cyan-400" />
-                </div>
-                <h3 className="text-xl font-bold text-white/80 mb-2">No remixes yet</h3>
-                <p className="text-cyan-400/50 mb-6 text-sm">Upload a beat and remix it with 444 Radio</p>
-                <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/20">
-                  <Music2 size={18} />
-                  Create Remix
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {remixItems.map((remix: any) => {
-                  const isCurrentlyPlaying = currentTrack?.id === remix.id && isPlaying
-                  return (
-                    <div
-                      key={remix.id}
-                      className="flex items-center gap-3 p-3 bg-black/40 backdrop-blur-xl rounded-xl transition-all group"
-                      style={{
-                        border: '1px solid rgba(6,182,212,0.08)',
-                        boxShadow: 'inset 0 0 30px rgba(6,182,212,0.02)',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.border = '1px solid rgba(6,182,212,0.2)'
-                        e.currentTarget.style.boxShadow = '0 0 12px rgba(6,182,212,0.06), 0 0 30px rgba(6,182,212,0.04)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.border = '1px solid rgba(6,182,212,0.08)'
-                        e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(6,182,212,0.02)'
-                      }}
-                    >
-                      {/* Play button */}
-                      <button
-                        onClick={async () => {
-                          if (!remix.audioUrl) return
-                          const t = {
-                            id: remix.id,
-                            audioUrl: remix.audioUrl,
-                            title: remix.title || 'Untitled Remix',
-                            artist: user?.firstName || 'You'
-                          }
-                          if (isCurrentlyPlaying) {
-                            togglePlayPause()
-                          } else {
-                            const allTracks = remixItems.filter((r: any) => r.audioUrl).map((r: any) => ({
-                              id: r.id,
-                              audioUrl: r.audioUrl,
-                              title: r.title || 'Untitled Remix',
-                              artist: user?.firstName || 'You'
-                            }))
-                            await setPlaylist(allTracks, allTracks.findIndex((t: any) => t.id === remix.id))
-                          }
-                        }}
-                        className="w-12 h-12 flex-shrink-0 rounded-lg bg-gradient-to-br from-cyan-500/20 to-cyan-500/10 border border-cyan-500/30 flex items-center justify-center hover:scale-105 transition-transform"
-                      >
-                        {isCurrentlyPlaying ? (
-                          <Pause size={18} className="text-cyan-400" />
-                        ) : (
-                          <Play size={18} className="text-cyan-400 ml-0.5" />
-                        )}
-                      </button>
-
-                      {/* Track info */}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-white font-semibold text-sm truncate">{remix.title || 'Untitled Remix'}</h3>
-                        <p className="text-cyan-400/50 text-xs mt-0.5">
-                          {remix.prompt || 'Remix'}
-                          {remix.duration && <span className="ml-2 opacity-70">• {remix.duration}s</span>}
-                          {remix.audio_format && <span className="ml-2 opacity-70">• {remix.audio_format.toUpperCase()}</span>}
-                        </p>
-                      </div>
-
-                      {/* Download */}
-                      {remix.audioUrl && (
-                        <button
-                          onClick={() => handleDownload(remix.audioUrl, `${remix.title || 'remix'}.${remix.audio_format || 'wav'}`, remix.audio_format || 'wav')}
-                          className="px-3 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-500/20 flex items-center justify-center gap-1.5 transition-all active:scale-95"
-                          title={`Download ${(remix.audio_format || 'WAV').toUpperCase()}`}
-                        >
-                          <Download size={14} className="text-cyan-400" />
-                          <span className="text-xs text-cyan-400 font-medium">{(remix.audio_format || 'WAV').toUpperCase()}</span>
-                        </button>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Voice Labs Tab */}
-        {!isLoading && activeTab === 'voiceover' && (
-          <div>
-            {voiceoverItems.length === 0 ? (
-              <div className="text-center py-20">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-400/10 border border-amber-500/30 flex items-center justify-center">
-                  <Mic2 size={32} className="text-amber-400" />
-                </div>
-                <h3 className="text-xl font-bold text-white/80 mb-2">No voice generations yet</h3>
-                <p className="text-amber-400/50 mb-6 text-sm">Generate speech and voiceovers in Voice Labs</p>
-                <Link href="/voice-labs" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-400 text-white rounded-xl font-bold hover:from-amber-600 hover:to-orange-500 transition-all shadow-lg shadow-amber-500/20">
-                  <Mic2 size={18} />
-                  Open Voice Labs
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {voiceoverItems.map((item) => {
-                  const isCurrentlyPlaying = currentTrack?.id === item.id && isPlaying
-                  return (
-                    <div
-                      key={item.id}
-                      className="group relative bg-black/40 backdrop-blur-xl rounded-xl overflow-hidden transition-all duration-300"
-                      style={{
-                        border: '1px solid rgba(245,158,11,0.08)',
-                        boxShadow: 'inset 0 0 30px rgba(245,158,11,0.02)',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.border = '1px solid rgba(245,158,11,0.2)'
-                        e.currentTarget.style.boxShadow = '0 0 12px rgba(245,158,11,0.06), 0 0 30px rgba(245,158,11,0.04)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.border = '1px solid rgba(245,158,11,0.08)'
-                        e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(245,158,11,0.02)'
-                      }}
-                    >
-                      <div className="flex items-center gap-3 p-3">
-                        {/* Thumbnail */}
-                        <div className="w-14 h-14 flex-shrink-0 bg-gradient-to-br from-amber-500/20 to-orange-400/10 rounded-lg flex items-center justify-center border border-amber-500/30">
-                          <Mic2 size={24} className="text-amber-400" />
-                        </div>
-
-                        {/* Info */}
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-white font-semibold text-sm truncate">
-                            {item.title && !item.title.startsWith('r2_') && !item.title.includes('user_') ?
-                              item.title :
-                              (item.prompt && item.prompt !== 'Legacy R2 file' ?
-                                (item.prompt.length > 40 ? `${item.prompt.substring(0, 40)}...` : item.prompt) :
-                                'Untitled Voice Over'
-                              )
-                            }
-                          </h3>
-                          <p className="text-amber-400/50 text-xs mt-0.5 truncate">
-                            Voice Labs • {new Date(item.created_at).toLocaleDateString()}
+                          <h3 className="text-white/90 font-medium text-sm truncate">{item.title || 'Untitled'}</h3>
+                          <p className="text-yellow-400/30 text-xs mt-0.5 truncate">
+                            {item.seller_username ? `@${item.seller_username}` : 'Purchased'}{item.genre ? ` Â· ${item.genre}` : ''}{item.amount_paid ? ` Â· ${item.amount_paid} cr` : ''}
                           </p>
                         </div>
+                        <button onClick={() => setBoughtInfoTrack(item)} className="w-8 h-8 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-yellow-500/10 hover:border-yellow-500/20 flex items-center justify-center transition-all" title="Info">
+                          <Info size={13} className="text-yellow-400/50" />
+                        </button>
+                        <span className="hidden sm:inline-flex px-2 py-1 rounded-lg bg-yellow-500/10 border border-yellow-500/15 text-[10px] text-yellow-400/60 font-medium">Purchased</span>
+                        {item.audio_url && (
+                          <div className="flex gap-1 flex-shrink-0">
+                            <button onClick={() => handleDownload(item.audio_url, `${item.title || 'track'}.mp3`, 'mp3')} className="px-2.5 h-8 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-yellow-500/10 hover:border-yellow-500/20 flex items-center gap-1 transition-all" title="MP3">
+                              <Download size={12} className="text-yellow-400/50" /><span className="text-[10px] text-yellow-400/50 font-medium">MP3</span>
+                            </button>
+                            <button onClick={() => handleDownload(item.audio_url, `${item.title || 'track'}.mp3`, 'wav')} className="px-2.5 h-8 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-yellow-500/10 hover:border-yellow-500/20 flex items-center gap-1 transition-all" title="WAV">
+                              <Download size={12} className="text-yellow-300/50" /><span className="text-[10px] text-yellow-300/50 font-medium">WAV</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
-                        {/* Actions */}
-                        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* â”€â”€â”€ EXTRACT TAB â”€â”€â”€ */}
+          {!isLoading && activeTab === 'extract' && (
+            <div>
+              {extractGroups.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24">
+                  <div className="relative w-24 h-24 mb-6 rounded-3xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border border-emerald-500/20 flex items-center justify-center">
+                    <Layers size={40} className="text-emerald-400/60" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white/80 mb-2">No extractions yet</h3>
+                  <p className="text-white/30 text-sm mb-8">Extract audio from video or isolate stems</p>
+                  <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 text-white font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-emerald-500/20">
+                    <Layers size={16} /> Extract Audio
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {extractGroups.map((group: any, idx: number) => {
+                    const isExpanded = expandedExtracts.has(idx)
+                    return (
+                      <div key={idx} className="rounded-2xl overflow-hidden bg-white/[0.02] border border-white/[0.04] hover:border-emerald-500/15 transition-all animate-slide-in-up" style={{ animationDelay: `${Math.min(idx * 50, 300)}ms` }}>
+                        <button onClick={() => { setExpandedExtracts(prev => { const next = new Set(prev); if (next.has(idx)) next.delete(idx); else next.add(idx); return next }) }} className="w-full flex items-center gap-4 p-4 hover:bg-white/[0.02] transition-colors">
+                          <div className="w-12 h-12 flex-shrink-0 rounded-xl overflow-hidden border border-emerald-500/20 bg-gradient-to-br from-emerald-500/20 to-teal-400/10 flex items-center justify-center">
+                            {group.parentImage ? <Image src={group.parentImage} alt={group.parentTitle} width={48} height={48} className="w-full h-full object-cover" /> : <Layers size={20} className="text-emerald-400/60" />}
+                          </div>
+                          <div className="flex-1 min-w-0 text-left">
+                            <h3 className="text-white/90 font-medium text-sm truncate">{group.parentTitle}</h3>
+                            <p className="text-emerald-400/30 text-xs mt-0.5">
+                              {group.extracts.length} extract{group.extracts.length !== 1 ? 's' : ''}
+                              {group.extracts[0]?.source === 'video-to-audio' ? ' Â· from video' : ' Â· stems'}
+                            </p>
+                          </div>
+                          <button onClick={async (e) => {
+                            e.stopPropagation()
+                            const playlist = group.extracts.map((ex: any) => ({ id: ex.id, audioUrl: ex.audioUrl, title: ex.title || ex.stemType || 'Extract', artist: user?.firstName || 'You' }))
+                            await setPlaylist(playlist); await playTrack(playlist[0])
+                          }} className="p-2.5 bg-emerald-500/10 rounded-xl hover:bg-emerald-500/20 transition-all border border-emerald-500/20 flex-shrink-0" title="Play all">
+                            <Play size={16} className="text-emerald-400" />
+                          </button>
+                          <div className="flex-shrink-0">{isExpanded ? <ChevronUp size={16} className="text-white/20" /> : <ChevronDown size={16} className="text-white/20" />}</div>
+                        </button>
+                        {isExpanded && (
+                          <div className="border-t border-white/[0.04]">
+                            {group.extracts.map((extract: any) => {
+                              const label = extract.stemType ? extract.stemType.charAt(0).toUpperCase() + extract.stemType.slice(1) : extract.source === 'video-to-audio' ? 'Full Audio' : 'Extract'
+                              const badgeColor = extract.stemType ? getStemColor(extract.stemType) : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                              return (
+                                <div key={extract.id} className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.03] transition-colors border-b border-white/[0.03] last:border-b-0">
+                                  <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${badgeColor}`}>{label}</span>
+                                  <span className="flex-1 text-white/70 text-sm truncate">{extract.title}</span>
+                                  <button onClick={async () => { const track = { id: extract.id, audioUrl: extract.audioUrl, title: extract.title || label, artist: user?.firstName || 'You' }; await setPlaylist([track]); await playTrack(track) }} className="p-2 rounded-lg hover:bg-emerald-500/10 transition-colors" title={`Play ${label}`}>
+                                    {currentTrack?.id === extract.id && isPlaying ? <Pause size={14} className="text-emerald-400" /> : <Play size={14} className="text-emerald-400" />}
+                                  </button>
+                                  <button onClick={() => handleDownload(extract.audioUrl, `${extract.title || label}.mp3`)} className="p-2 rounded-lg hover:bg-cyan-500/10 transition-colors" title="Download">
+                                    <Download size={14} className="text-cyan-400/50" />
+                                  </button>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* â”€â”€â”€ LOOPS TAB â”€â”€â”€ */}
+          {!isLoading && activeTab === 'loops' && (
+            <div>
+              {loopsItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24">
+                  <div className="relative w-24 h-24 mb-6 rounded-3xl bg-gradient-to-br from-indigo-500/20 to-blue-500/10 border border-indigo-500/20 flex items-center justify-center">
+                    <Repeat size={40} className="text-indigo-400/60" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white/80 mb-2">No loops yet</h3>
+                  <p className="text-white/30 text-sm mb-8">Generate fixed BPM loops to build tracks</p>
+                  <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-indigo-500 to-blue-400 text-white font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-indigo-500/20">
+                    <Repeat size={16} /> Generate Loops
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {loopsItems.map((item: any, idx: number) => {
+                    const audioUrl = item.audioUrl || item.audio_url
+                    const isCurrentlyPlaying = currentTrack?.id === item.id && isPlaying
+                    return (
+                      <div key={item.id} className="group flex items-center gap-4 p-3 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.05] hover:border-indigo-500/15 transition-all duration-300 animate-slide-in-up" style={{ animationDelay: `${Math.min(idx * 30, 400)}ms` }}>
+                        <button onClick={async () => {
+                          if (!audioUrl) return
+                          if (isCurrentlyPlaying) { togglePlayPause() } else {
+                            const tracks = loopsItems.filter((l: any) => l.audioUrl || l.audio_url).map((l: any) => ({ id: l.id, audioUrl: l.audioUrl || l.audio_url, title: l.title || 'Loop', artist: user?.firstName || 'You' }))
+                            await setPlaylist(tracks, tracks.findIndex(t => t.id === item.id))
+                          }
+                        }} className="w-11 h-11 flex-shrink-0 rounded-xl bg-gradient-to-br from-indigo-500/20 to-blue-500/10 border border-indigo-500/20 flex items-center justify-center hover:scale-110 transition-transform">
+                          {isCurrentlyPlaying ? <Pause size={16} className="text-indigo-400" /> : <Play size={16} className="text-indigo-400 ml-0.5" />}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-white/90 font-medium text-sm truncate">{item.title || 'Untitled Loop'}</h3>
+                          <p className="text-indigo-400/30 text-xs mt-0.5 truncate">{item.prompt ? `${item.prompt.substring(0, 50)}${item.prompt.length > 50 ? '...' : ''}` : 'Fixed BPM Loop'}</p>
+                        </div>
+                        <span className="text-[10px] text-white/15 hidden sm:block">{new Date(item.created_at).toLocaleDateString()}</span>
+                        {audioUrl && <button onClick={() => handleDownload(audioUrl, `${item.title || 'loop'}.mp3`, 'mp3')} className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-indigo-500/10 hover:border-indigo-500/20 transition-all" title="Download"><Download size={14} className="text-indigo-400/50" /></button>}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* â”€â”€â”€ SFX / EFFECTS TAB â”€â”€â”€ */}
+          {!isLoading && activeTab === 'effects' && (
+            <div>
+              {effectsItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24">
+                  <div className="relative w-24 h-24 mb-6 rounded-3xl bg-gradient-to-br from-rose-500/20 to-pink-500/10 border border-rose-500/20 flex items-center justify-center">
+                    <Radio size={40} className="text-rose-400/60" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white/80 mb-2">No sound effects yet</h3>
+                  <p className="text-white/30 text-sm mb-8">Generate custom audio effects and SFX</p>
+                  <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-rose-500 to-pink-400 text-white font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-rose-500/20">
+                    <Radio size={16} /> Generate SFX
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {effectsItems.map((item: any, idx: number) => {
+                    const audioUrl = item.audioUrl || item.audio_url
+                    const isCurrentlyPlaying = currentTrack?.id === item.id && isPlaying
+                    return (
+                      <div key={item.id} className="group flex items-center gap-4 p-3 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.05] hover:border-rose-500/15 transition-all duration-300 animate-slide-in-up" style={{ animationDelay: `${Math.min(idx * 30, 400)}ms` }}>
+                        <button onClick={async () => {
+                          if (!audioUrl) return
+                          if (isCurrentlyPlaying) { togglePlayPause() } else {
+                            const tracks = effectsItems.filter((e: any) => e.audioUrl || e.audio_url).map((e: any) => ({ id: e.id, audioUrl: e.audioUrl || e.audio_url, title: e.title || 'SFX', artist: user?.firstName || 'You' }))
+                            await setPlaylist(tracks, tracks.findIndex(t => t.id === item.id))
+                          }
+                        }} className="w-11 h-11 flex-shrink-0 rounded-xl bg-gradient-to-br from-rose-500/20 to-pink-500/10 border border-rose-500/20 flex items-center justify-center hover:scale-110 transition-transform">
+                          {isCurrentlyPlaying ? <Pause size={16} className="text-rose-400" /> : <Play size={16} className="text-rose-400 ml-0.5" />}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-white/90 font-medium text-sm truncate">{item.title || 'Untitled SFX'}</h3>
+                          <p className="text-rose-400/30 text-xs mt-0.5 truncate">{item.prompt ? `${item.prompt.substring(0, 50)}${item.prompt.length > 50 ? '...' : ''}` : 'Sound Effect'}</p>
+                        </div>
+                        <span className="text-[10px] text-white/15 hidden sm:block">{new Date(item.created_at).toLocaleDateString()}</span>
+                        {audioUrl && <button onClick={() => handleDownload(audioUrl, `${item.title || 'sfx'}.mp3`, 'mp3')} className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-rose-500/10 hover:border-rose-500/20 transition-all" title="Download"><Download size={14} className="text-rose-400/50" /></button>}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* â”€â”€â”€ AUTOTUNE TAB â”€â”€â”€ */}
+          {!isLoading && activeTab === 'autotune' && (
+            <div>
+              {autotuneItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24">
+                  <div className="relative w-24 h-24 mb-6 rounded-3xl bg-gradient-to-br from-violet-500/20 to-purple-500/10 border border-violet-500/20 flex items-center justify-center">
+                    <Mic size={40} className="text-violet-400/60" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white/80 mb-2">No autotuned tracks yet</h3>
+                  <p className="text-white/30 text-sm mb-8">Pitch correct any audio to a musical key</p>
+                  <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-400 text-white font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-violet-500/20">
+                    <Mic size={16} /> Autotune a Track
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {autotuneItems.map((item: any, idx: number) => {
+                    const audioUrl = item.audioUrl || item.audio_url
+                    const isCurrentlyPlaying = currentTrack?.id === item.id && isPlaying
+                    return (
+                      <div key={item.id} className="group flex items-center gap-4 p-3 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.05] hover:border-violet-500/15 transition-all duration-300 animate-slide-in-up" style={{ animationDelay: `${Math.min(idx * 30, 400)}ms` }}>
+                        <button onClick={async () => {
+                          if (!audioUrl) return
+                          if (isCurrentlyPlaying) { togglePlayPause() } else {
+                            const tracks = autotuneItems.filter((a: any) => a.audioUrl || a.audio_url).map((a: any) => ({ id: a.id, audioUrl: a.audioUrl || a.audio_url, title: a.title || 'Autotuned', artist: user?.firstName || 'You' }))
+                            await setPlaylist(tracks, tracks.findIndex(t => t.id === item.id))
+                          }
+                        }} className="w-11 h-11 flex-shrink-0 rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-500/10 border border-violet-500/20 flex items-center justify-center hover:scale-110 transition-transform">
+                          {isCurrentlyPlaying ? <Pause size={16} className="text-violet-400" /> : <Play size={16} className="text-violet-400 ml-0.5" />}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-white/90 font-medium text-sm truncate">{item.title || 'Autotuned Audio'}</h3>
+                          <p className="text-violet-400/30 text-xs mt-0.5 truncate">{item.prompt || 'Pitch Corrected'}</p>
+                        </div>
+                        <span className="text-[10px] text-white/15 hidden sm:block">{new Date(item.created_at).toLocaleDateString()}</span>
+                        {audioUrl && <button onClick={() => handleDownload(audioUrl, `${item.title || 'autotuned'}.wav`)} className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-violet-500/10 hover:border-violet-500/20 transition-all" title="Download"><Download size={14} className="text-violet-400/50" /></button>}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* â”€â”€â”€ CHORDS TAB â”€â”€â”€ */}
+          {!isLoading && activeTab === 'chords' && (
+            <div>
+              {chordsItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24">
+                  <div className="relative w-24 h-24 mb-6 rounded-3xl bg-gradient-to-br from-purple-500/20 to-indigo-500/10 border border-purple-500/20 flex items-center justify-center">
+                    <Music size={40} className="text-purple-400/60" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white/80 mb-2">No chords yet</h3>
+                  <p className="text-white/30 text-sm mb-8">Generate chord progressions and rhythms</p>
+                  <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-purple-500 to-indigo-400 text-white font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-purple-500/20">
+                    <Music size={16} /> Generate Chords
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {chordsItems.map((item: any, idx: number) => {
+                    const audioUrl = item.audioUrl || item.audio_url
+                    const isCurrentlyPlaying = currentTrack?.id === item.id && isPlaying
+                    return (
+                      <div key={item.id} className="group flex items-center gap-4 p-3 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.05] hover:border-purple-500/15 transition-all duration-300 animate-slide-in-up" style={{ animationDelay: `${Math.min(idx * 30, 400)}ms` }}>
+                        <button onClick={async () => {
+                          if (!audioUrl) return
+                          if (isCurrentlyPlaying) { togglePlayPause() } else {
+                            const tracks = chordsItems.filter((c: any) => c.audioUrl || c.audio_url).map((c: any) => ({ id: c.id, audioUrl: c.audioUrl || c.audio_url, title: c.title || 'Chords', artist: user?.firstName || 'You' }))
+                            await setPlaylist(tracks, tracks.findIndex(t => t.id === item.id))
+                          }
+                        }} className="w-11 h-11 flex-shrink-0 rounded-xl bg-gradient-to-br from-purple-500/20 to-indigo-500/10 border border-purple-500/20 flex items-center justify-center hover:scale-110 transition-transform">
+                          {isCurrentlyPlaying ? <Pause size={16} className="text-purple-400" /> : <Play size={16} className="text-purple-400 ml-0.5" />}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-white/90 font-medium text-sm truncate">{item.title || 'Untitled Chords'}</h3>
+                          <p className="text-purple-400/30 text-xs mt-0.5 truncate">
+                            {item.chord_progression || item.prompt || 'Chord Progression'}
+                            {item.time_signature && <span className="ml-1 opacity-60">Â· {item.time_signature}</span>}
+                          </p>
+                        </div>
+                        <span className="text-[10px] text-white/15 hidden sm:block">{new Date(item.created_at).toLocaleDateString()}</span>
+                        {audioUrl && <button onClick={() => handleDownload(audioUrl, `${item.title || 'chords'}.mp3`, 'mp3')} className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-purple-500/10 hover:border-purple-500/20 transition-all" title="Download"><Download size={14} className="text-purple-400/50" /></button>}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* â”€â”€â”€ REMIX TAB â”€â”€â”€ */}
+          {!isLoading && activeTab === 'remix' && (
+            <div>
+              {remixItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24">
+                  <div className="relative w-24 h-24 mb-6 rounded-3xl bg-gradient-to-br from-cyan-500/20 to-blue-500/10 border border-cyan-500/20 flex items-center justify-center">
+                    <Music2 size={40} className="text-cyan-400/60" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white/80 mb-2">No remixes yet</h3>
+                  <p className="text-white/30 text-sm mb-8">Upload a beat and remix it with 444 Radio</p>
+                  <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-400 text-white font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-cyan-500/20">
+                    <Music2 size={16} /> Create Remix
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {remixItems.map((item: any, idx: number) => {
+                    const audioUrl = item.audioUrl || item.audio_url
+                    const isCurrentlyPlaying = currentTrack?.id === item.id && isPlaying
+                    return (
+                      <div key={item.id} className="group flex items-center gap-4 p-3 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.05] hover:border-cyan-500/15 transition-all duration-300 animate-slide-in-up" style={{ animationDelay: `${Math.min(idx * 30, 400)}ms` }}>
+                        <button onClick={async () => {
+                          if (!audioUrl) return
+                          if (isCurrentlyPlaying) { togglePlayPause() } else {
+                            const tracks = remixItems.filter((r: any) => r.audioUrl || r.audio_url).map((r: any) => ({ id: r.id, audioUrl: r.audioUrl || r.audio_url, title: r.title || 'Remix', artist: user?.firstName || 'You' }))
+                            await setPlaylist(tracks, tracks.findIndex(t => t.id === item.id))
+                          }
+                        }} className="w-11 h-11 flex-shrink-0 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/10 border border-cyan-500/20 flex items-center justify-center hover:scale-110 transition-transform">
+                          {isCurrentlyPlaying ? <Pause size={16} className="text-cyan-400" /> : <Play size={16} className="text-cyan-400 ml-0.5" />}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-white/90 font-medium text-sm truncate">{item.title || 'Untitled Remix'}</h3>
+                          <p className="text-cyan-400/30 text-xs mt-0.5 truncate">
+                            {item.prompt || 'Remix'}
+                            {item.duration && <span className="ml-1 opacity-60">Â· {item.duration}s</span>}
+                            {item.audio_format && <span className="ml-1 opacity-60">Â· {item.audio_format.toUpperCase()}</span>}
+                          </p>
+                        </div>
+                        <span className="text-[10px] text-white/15 hidden sm:block">{new Date(item.created_at).toLocaleDateString()}</span>
+                        {audioUrl && <button onClick={() => handleDownload(audioUrl, `${item.title || 'remix'}.${item.audio_format || 'wav'}`, item.audio_format || 'wav')} className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-cyan-500/10 hover:border-cyan-500/20 transition-all" title={`Download ${(item.audio_format || 'WAV').toUpperCase()}`}><Download size={14} className="text-cyan-400/50" /></button>}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* â”€â”€â”€ VOICE LABS TAB â”€â”€â”€ */}
+          {!isLoading && activeTab === 'voiceover' && (
+            <div>
+              {voiceoverItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24">
+                  <div className="relative w-24 h-24 mb-6 rounded-3xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/20 flex items-center justify-center">
+                    <Mic2 size={40} className="text-amber-400/60" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white/80 mb-2">No voice generations yet</h3>
+                  <p className="text-white/30 text-sm mb-8">Generate speech and voiceovers in Voice Labs</p>
+                  <Link href="/voice-labs" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-400 text-black font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-amber-500/20">
+                    <Mic2 size={16} /> Open Voice Labs
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {voiceoverItems.map((item, idx) => {
+                    const isCurrentlyPlaying = currentTrack?.id === item.id && isPlaying
+                    const voTitle = item.title && !item.title.startsWith('r2_') && !item.title.includes('user_')
+                      ? item.title
+                      : (item.prompt && item.prompt !== 'Legacy R2 file'
+                        ? (item.prompt.length > 40 ? `${item.prompt.substring(0, 40)}...` : item.prompt)
+                        : 'Untitled Voice Over')
+                    return (
+                      <div key={item.id} className="group flex items-center gap-4 p-3 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.05] hover:border-amber-500/15 transition-all duration-300 animate-slide-in-up" style={{ animationDelay: `${Math.min(idx * 25, 500)}ms` }}>
+                        <div className="relative w-12 h-12 flex-shrink-0 rounded-xl overflow-hidden bg-gradient-to-br from-amber-500/20 to-orange-400/10 border border-amber-500/20 flex items-center justify-center">
+                          <Mic2 size={20} className="text-amber-400/60" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-white/90 font-medium text-sm truncate">{voTitle}</h3>
+                          <p className="text-amber-400/30 text-xs mt-0.5">Voice Labs Â· {new Date(item.created_at).toLocaleDateString()}</p>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0 sm:opacity-40 sm:group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={async () => {
-                              const track = {
-                                id: item.id,
-                                audioUrl: item.audioUrl || item.audio_url,
-                                title: item.title || 'Untitled Voice Over',
-                                artist: user?.firstName || 'You'
-                              }
-
-                              if (currentTrack?.id === item.id) {
-                                togglePlayPause()
-                              } else {
-                                const allTracks = voiceoverItems.map(i => ({
-                                  id: i.id,
-                                  audioUrl: i.audioUrl || i.audio_url,
-                                  title: i.title || 'Untitled Voice Over',
-                                  artist: user?.firstName || 'You',
-                                  userId: user?.id
-                                }))
+                              if (currentTrack?.id === item.id) { togglePlayPause() } else {
+                                const allTracks = voiceoverItems.map(i => ({ id: i.id, audioUrl: i.audioUrl || i.audio_url, title: i.title || 'Voice Over', artist: user?.firstName || 'You', userId: user?.id }))
                                 await setPlaylist(allTracks, voiceoverItems.findIndex(i => i.id === item.id))
                               }
                             }}
-                            className="w-10 h-10 rounded-full bg-gradient-to-r from-amber-500 to-orange-400 hover:from-amber-600 hover:to-orange-500 flex items-center justify-center transition-all shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 active:scale-95"
+                            className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-400 flex items-center justify-center text-black hover:scale-110 transition-transform shadow-lg shadow-amber-500/20"
                           >
-                            {isCurrentlyPlaying ? (
-                              <Pause size={18} className="text-black" />
-                            ) : (
-                              <Play size={18} className="text-black ml-0.5" />
-                            )}
+                            {isCurrentlyPlaying ? <Pause size={14} /> : <Play size={14} className="ml-0.5" />}
                           </button>
-
                           <div className="hidden sm:flex gap-1">
-                            <button
-                              onClick={() => handleDownload(item.audio_url, `${item.title || 'voiceover'}.mp3`, 'mp3')}
-                              className="px-3 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-amber-500/30 hover:border-amber-400 hover:bg-amber-500/20 flex items-center justify-center gap-1.5 transition-all active:scale-95"
-                              title="Download MP3"
-                            >
-                              <Download size={14} className="text-amber-400" />
-                              <span className="text-xs text-amber-400 font-medium">MP3</span>
+                            <button onClick={() => handleDownload(item.audio_url, `${item.title || 'voiceover'}.mp3`, 'mp3')} className="px-2.5 h-8 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-amber-500/10 hover:border-amber-500/20 flex items-center gap-1 transition-all" title="MP3">
+                              <Download size={12} className="text-amber-400/50" /><span className="text-[10px] text-amber-400/50 font-medium">MP3</span>
                             </button>
-                            <button
-                              onClick={() => handleDownload(item.audio_url, `${item.title || 'voiceover'}.mp3`, 'wav')}
-                              className="px-3 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-amber-400/30 hover:border-amber-300 hover:bg-amber-500/20 flex items-center justify-center gap-1.5 transition-all active:scale-95"
-                              title="Download WAV (High Quality)"
-                            >
-                              <Download size={14} className="text-amber-300" />
-                              <span className="text-xs text-amber-300 font-medium">WAV</span>
+                            <button onClick={() => handleDownload(item.audio_url, `${item.title || 'voiceover'}.mp3`, 'wav')} className="px-2.5 h-8 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-amber-500/10 hover:border-amber-500/20 flex items-center gap-1 transition-all" title="WAV">
+                              <Download size={12} className="text-amber-300/50" /><span className="text-[10px] text-amber-300/50 font-medium">WAV</span>
                             </button>
                           </div>
-
-                          <button
-                            onClick={() => handleDelete('music', item.id)}
-                            className="w-10 h-10 rounded-full bg-red-500/10 backdrop-blur-xl border border-red-500/30 hover:border-red-400 hover:bg-red-500/20 flex items-center justify-center transition-all active:scale-95"
-                          >
-                            <Trash2 size={16} className="text-red-400" />
+                          <button onClick={() => handleDelete('music', item.id)} className="w-8 h-8 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-red-500/10 hover:border-red-500/20 flex items-center justify-center transition-all" title="Delete">
+                            <Trash2 size={13} className="text-red-400/50" />
                           </button>
                         </div>
                       </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Beat Maker Tab */}
-        {!isLoading && activeTab === 'beatmaker' && (
-          <div>
-            {beatmakerItems.length === 0 ? (
-              <div className="text-center py-20">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-cyan-400/10 border border-cyan-500/30 flex items-center justify-center">
-                  <Music size={32} className="text-cyan-400" />
+                    )
+                  })}
                 </div>
-                <h3 className="text-xl font-bold text-white/80 mb-2">No beats yet</h3>
-                <p className="text-cyan-400/50 mb-6 text-sm">Generate instrumentals & samples with Beat Maker</p>
-                <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/20">
-                  <Music size={18} />
-                  Open Beat Maker
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {beatmakerItems.map((beat: any) => {
-                  const isCurrentlyPlaying = currentTrack?.id === beat.id && isPlaying
-                  return (
-                    <div
-                      key={beat.id}
-                      className="flex items-center gap-3 p-3 bg-black/40 backdrop-blur-xl rounded-xl transition-all group"
-                      style={{
-                        border: '1px solid rgba(6,182,212,0.08)',
-                        boxShadow: 'inset 0 0 30px rgba(6,182,212,0.02)',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.border = '1px solid rgba(6,182,212,0.2)'
-                        e.currentTarget.style.boxShadow = '0 0 12px rgba(6,182,212,0.06), 0 0 30px rgba(6,182,212,0.04)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.border = '1px solid rgba(6,182,212,0.08)'
-                        e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(6,182,212,0.02)'
-                      }}
-                    >
-                      {/* Play button */}
-                      <button
-                        onClick={async () => {
-                          if (!beat.audioUrl) return
-                          const t = {
-                            id: beat.id,
-                            audioUrl: beat.audioUrl,
-                            title: beat.title || 'Untitled Beat',
-                            artist: user?.firstName || 'You'
-                          }
-                          if (isCurrentlyPlaying) {
-                            togglePlayPause()
-                          } else {
-                            const allTracks = beatmakerItems.filter((b: any) => b.audioUrl).map((b: any) => ({
-                              id: b.id,
-                              audioUrl: b.audioUrl,
-                              title: b.title || 'Untitled Beat',
-                              artist: user?.firstName || 'You'
-                            }))
-                            await setPlaylist(allTracks, allTracks.findIndex((t: any) => t.id === beat.id))
-                          }
-                        }}
-                        className="w-12 h-12 flex-shrink-0 rounded-lg bg-gradient-to-br from-cyan-500/20 to-cyan-500/10 border border-cyan-500/30 flex items-center justify-center hover:scale-105 transition-transform"
-                      >
-                        {isCurrentlyPlaying ? (
-                          <Pause size={18} className="text-cyan-400" />
-                        ) : (
-                          <Play size={18} className="text-cyan-400 ml-0.5" />
-                        )}
-                      </button>
+              )}
+            </div>
+          )}
 
-                      {/* Track info */}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-white font-semibold text-sm truncate">{beat.title || 'Untitled Beat'}</h3>
-                        <p className="text-cyan-400/50 text-xs mt-0.5">
-                          {beat.prompt ? (beat.prompt.length > 60 ? beat.prompt.substring(0, 60) + '…' : beat.prompt) : 'Beat'}
-                          {beat.duration && <span className="ml-2 opacity-70">• {beat.duration}s</span>}
-                          {beat.audio_format && <span className="ml-2 opacity-70">• {beat.audio_format.toUpperCase()}</span>}
-                        </p>
-                      </div>
-
-                      {/* Download */}
-                      {beat.audioUrl && (
-                        <button
-                          onClick={() => handleDownload(beat.audioUrl, `${beat.title || 'beat'}.${beat.audio_format || 'wav'}`, beat.audio_format || 'wav')}
-                          className="px-3 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-500/20 flex items-center justify-center gap-1.5 transition-all active:scale-95"
-                          title={`Download ${(beat.audio_format || 'WAV').toUpperCase()}`}
-                        >
-                          <Download size={14} className="text-cyan-400" />
-                          <span className="text-xs text-cyan-400 font-medium">{(beat.audio_format || 'WAV').toUpperCase()}</span>
+          {/* â”€â”€â”€ BEAT MAKER TAB â”€â”€â”€ */}
+          {!isLoading && activeTab === 'beatmaker' && (
+            <div>
+              {beatmakerItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24">
+                  <div className="relative w-24 h-24 mb-6 rounded-3xl bg-gradient-to-br from-teal-500/20 to-cyan-500/10 border border-teal-500/20 flex items-center justify-center">
+                    <Music size={40} className="text-teal-400/60" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white/80 mb-2">No beats yet</h3>
+                  <p className="text-white/30 text-sm mb-8">Generate instrumentals & samples with Beat Maker</p>
+                  <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-teal-500 to-cyan-400 text-black font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-teal-500/20">
+                    <Music size={16} /> Open Beat Maker
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {beatmakerItems.map((item: any, idx: number) => {
+                    const audioUrl = item.audioUrl || item.audio_url
+                    const isCurrentlyPlaying = currentTrack?.id === item.id && isPlaying
+                    return (
+                      <div key={item.id} className="group flex items-center gap-4 p-3 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.05] hover:border-teal-500/15 transition-all duration-300 animate-slide-in-up" style={{ animationDelay: `${Math.min(idx * 30, 400)}ms` }}>
+                        <button onClick={async () => {
+                          if (!audioUrl) return
+                          if (isCurrentlyPlaying) { togglePlayPause() } else {
+                            const tracks = beatmakerItems.filter((b: any) => b.audioUrl || b.audio_url).map((b: any) => ({ id: b.id, audioUrl: b.audioUrl || b.audio_url, title: b.title || 'Beat', artist: user?.firstName || 'You' }))
+                            await setPlaylist(tracks, tracks.findIndex(t => t.id === item.id))
+                          }
+                        }} className="w-11 h-11 flex-shrink-0 rounded-xl bg-gradient-to-br from-teal-500/20 to-cyan-500/10 border border-teal-500/20 flex items-center justify-center hover:scale-110 transition-transform">
+                          {isCurrentlyPlaying ? <Pause size={16} className="text-teal-400" /> : <Play size={16} className="text-teal-400 ml-0.5" />}
                         </button>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-white/90 font-medium text-sm truncate">{item.title || 'Untitled Beat'}</h3>
+                          <p className="text-teal-400/30 text-xs mt-0.5 truncate">
+                            {item.prompt ? (item.prompt.length > 60 ? item.prompt.substring(0, 60) + 'â€¦' : item.prompt) : 'Beat'}
+                            {item.duration && <span className="ml-1 opacity-60">Â· {item.duration}s</span>}
+                            {item.audio_format && <span className="ml-1 opacity-60">Â· {item.audio_format.toUpperCase()}</span>}
+                          </p>
+                        </div>
+                        <span className="text-[10px] text-white/15 hidden sm:block">{new Date(item.created_at).toLocaleDateString()}</span>
+                        {audioUrl && <button onClick={() => handleDownload(audioUrl, `${item.title || 'beat'}.${item.audio_format || 'wav'}`, item.audio_format || 'wav')} className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-teal-500/10 hover:border-teal-500/20 transition-all" title={`Download ${(item.audio_format || 'WAV').toUpperCase()}`}><Download size={14} className="text-teal-400/50" /></button>}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
-      {/* Lyrics Modal - Lazy Loaded */}
+        </div>{/* END CONTENT AREA */}
+      </div>{/* END MAIN LAYOUT */}
+
+      {/* â•â•â• MODALS â•â•â• */}
       <Suspense fallback={null}>
         {selectedLyricsId && (
-          <LyricsModal
-            isOpen={showLyricsModal}
-            onClose={() => {
-              setShowLyricsModal(false)
-              setSelectedLyricsId(null)
-              setSelectedLyricsTitle(null)
-            }}
-            mediaId={selectedLyricsId}
-            title={selectedLyricsTitle || undefined}
-          />
+          <LyricsModal isOpen={showLyricsModal} onClose={() => { setShowLyricsModal(false); setSelectedLyricsId(null); setSelectedLyricsTitle(null) }} mediaId={selectedLyricsId} title={selectedLyricsTitle || undefined} />
         )}
       </Suspense>
-
-      {/* Cover Art Modal - Lazy Loaded */}
       <Suspense fallback={null}>
         {selectedCoverUrl && (
-          <CoverArtModal
-            isOpen={showCoverModal}
-            onClose={() => {
-              setShowCoverModal(false)
-              setSelectedCoverUrl(null)
-              setSelectedCoverTitle(null)
-            }}
-            imageUrl={selectedCoverUrl}
-            title={selectedCoverTitle || undefined}
-          />
+          <CoverArtModal isOpen={showCoverModal} onClose={() => { setShowCoverModal(false); setSelectedCoverUrl(null); setSelectedCoverTitle(null) }} imageUrl={selectedCoverUrl} title={selectedCoverTitle || undefined} />
         )}
       </Suspense>
-
-      {/* Release Modal - Full 3-Step Flow */}
       <Suspense fallback={null}>
-        <TwoStepReleaseModal
-          isOpen={showReleaseModal}
-          onClose={() => {
-            setShowReleaseModal(false)
-            setSelectedReleaseTrack(null)
-          }}
-          preselectedMusic={selectedReleaseTrack?.id}
-        />
+        <TwoStepReleaseModal isOpen={showReleaseModal} onClose={() => { setShowReleaseModal(false); setSelectedReleaseTrack(null) }} preselectedMusic={selectedReleaseTrack?.id} />
       </Suspense>
-
-      {/* Bought Track Info Modal */}
       {boughtInfoTrack && (
         <Suspense fallback={null}>
           <TrackInfoModal
-            track={{
-              ...boughtInfoTrack,
-              imageUrl: boughtInfoTrack.image_url,
-              audioUrl: boughtInfoTrack.audio_url,
-              username: boughtInfoTrack.seller_username || boughtInfoTrack.username || 'Unknown',
-            }}
+            track={{ ...boughtInfoTrack, imageUrl: boughtInfoTrack.image_url, audioUrl: boughtInfoTrack.audio_url, username: boughtInfoTrack.seller_username || boughtInfoTrack.username || 'Unknown' }}
             onClose={() => setBoughtInfoTrack(null)}
             onPlay={() => {
               if (boughtInfoTrack.audio_url) {
-                const t = {
-                  id: boughtInfoTrack.id,
-                  audioUrl: boughtInfoTrack.audio_url,
-                  title: boughtInfoTrack.title || 'Untitled',
-                  artist: boughtInfoTrack.seller_username || 'Artist',
-                }
+                const t = { id: boughtInfoTrack.id, audioUrl: boughtInfoTrack.audio_url, title: boughtInfoTrack.title || 'Untitled', artist: boughtInfoTrack.seller_username || 'Artist' }
                 setPlaylist([t], 0)
               }
               setBoughtInfoTrack(null)
@@ -2590,10 +1557,10 @@ export default function LibraryPage() {
         </Suspense>
       )}
 
-      {/* Release Success Toast */}
+      {/* Release Toast */}
       {showReleaseToast && (
-        <div className="fixed bottom-6 right-6 z-[110] animate-fadeIn">
-          <div className="bg-gradient-to-r from-green-600 to-emerald-500 text-white px-6 py-4 rounded-xl shadow-2xl shadow-green-500/30 border border-green-400/30 flex items-center gap-3">
+        <div className="fixed bottom-6 right-6 z-[110] animate-slide-in-up">
+          <div className="bg-gradient-to-r from-green-600 to-emerald-500 text-white px-6 py-4 rounded-2xl shadow-2xl shadow-green-500/30 border border-green-400/30 flex items-center gap-3">
             <Send size={20} className="text-white" />
             <div>
               <div className="font-bold">Track Released!</div>
@@ -2605,4 +1572,3 @@ export default function LibraryPage() {
     </div>
   )
 }
-
