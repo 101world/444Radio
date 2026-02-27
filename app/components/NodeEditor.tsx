@@ -7,7 +7,7 @@ import { useKeyChords, buildDiatonicChords } from './node-editor/KeyChords'
 
 const PianoRoll = lazy(() => import('./node-editor/PianoRoll'))
 const DrumSequencer = lazy(() => import('./node-editor/DrumSequencer'))
-const TimelineSidebar = lazy(() => import('./node-editor/TimelineSidebar'))
+const BottomTimeline = lazy(() => import('./node-editor/BottomTimeline'))
 const SoundUploader = lazy(() => import('./node-editor/SoundUploader'))
 const SoundSlicer = lazy(() => import('./node-editor/SoundSlicer'))
 import MiniPianoRoll from './node-editor/MiniPianoRoll'
@@ -2327,7 +2327,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [dropTarget, setDropTarget] = useState<string | null>(null)
   const [allCollapsed, setAllCollapsed] = useState(false)
-  const [timelineOpen, setTimelineOpen] = useState(false)
+  const [timelineOpen, setTimelineOpen] = useState(true)
 
   const [pianoRollOpen, setPianoRollOpen] = useState<{ nodeId: string } | null>(null)
   const [drumSequencerOpen, setDrumSequencerOpen] = useState<{ nodeId: string } | null>(null)
@@ -3632,7 +3632,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
               border: `1px solid ${timelineOpen ? 'rgba(34,211,238,0.2)' : HW.border}`,
               color: timelineOpen ? '#22d3ee' : HW.textDim,
             }}
-            title="Toggle timeline sidebar">
+            title="Toggle bottom timeline">
             ▤ TIMELINE
           </button>
           <div className="relative">
@@ -4671,24 +4671,9 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
       {/* Close sidebar+canvas flex container */}
       </div>
 
-      {/* ══════ STATUS BAR (hidden in headerless mode) ══════ */}
-      {!headerless && (
-      <div className="flex items-center justify-between px-4 py-1 shrink-0"
-        style={{ background: HW.surface, borderTop: `1px solid ${HW.border}` }}>
-        <span className="text-[8px] tracking-wide" style={{ color: HW.textDim }}>
-          knobs show what&apos;s in code · drag effects to add · click sidebar with node selected · 🎲 randomize patterns
-        </span>
-        <div className="flex items-center gap-3 text-[8px] font-mono tabular-nums" style={{ color: HW.textDim }}>
-          <span>{nodes.filter(n => !n.muted).length}/{nodes.length} active</span>
-          <span style={{ color: '#22d3ee80' }}>{bpm || 72} bpm</span>
-          <span style={{ color: '#a78bfa80' }}>{SCALE_PRESETS.find(s => s.value === globalScale)?.label || globalScale}</span>
-        </div>
-      </div>
-      )}
-
-      {/* ══════ TIMELINE SIDEBAR ══════ */}
+      {/* ══════ BOTTOM TIMELINE ══════ */}
       <Suspense fallback={null}>
-        <TimelineSidebar
+        <BottomTimeline
           isOpen={timelineOpen}
           onToggle={() => setTimelineOpen(p => !p)}
           nodes={nodes.map(n => ({
@@ -4708,8 +4693,34 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
           onDeleteNode={deleteNode}
           onToggleMute={toggleMute}
           onToggleSolo={toggleSolo}
+          onAddNode={addNode}
+          onOpenEditor={(nodeId, type) => {
+            const sampleBased = new Set(['drums', 'fx', 'other'])
+            if (sampleBased.has(type)) {
+              setDrumSequencerOpen({ nodeId })
+              setPianoRollOpen(null)
+            } else {
+              setPianoRollOpen({ nodeId })
+              setDrumSequencerOpen(null)
+            }
+          }}
         />
       </Suspense>
+
+      {/* ══════ STATUS BAR (hidden in headerless mode) ══════ */}
+      {!headerless && (
+      <div className="flex items-center justify-between px-4 py-1 shrink-0"
+        style={{ background: HW.surface, borderTop: `1px solid ${HW.border}` }}>
+        <span className="text-[8px] tracking-wide" style={{ color: HW.textDim }}>
+          knobs show what&apos;s in code · drag effects to add · click sidebar with node selected · 🎲 randomize patterns
+        </span>
+        <div className="flex items-center gap-3 text-[8px] font-mono tabular-nums" style={{ color: HW.textDim }}>
+          <span>{nodes.filter(n => !n.muted).length}/{nodes.length} active</span>
+          <span style={{ color: '#22d3ee80' }}>{bpm || 72} bpm</span>
+          <span style={{ color: '#a78bfa80' }}>{SCALE_PRESETS.find(s => s.value === globalScale)?.label || globalScale}</span>
+        </div>
+      </div>
+      )}
 
       {/* ══════ SOUND UPLOADER MODAL ══════ */}
       {soundUploaderOpen && onRegisterSound && (
