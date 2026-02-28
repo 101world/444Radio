@@ -83,6 +83,16 @@ type NodeType = 'drums' | 'bass' | 'melody' | 'chords' | 'fx' | 'vocal' | 'pad' 
 
 // Connection type removed — nodes are independent $: blocks, wires were cosmetic
 
+// ── Arrangement Section (Phase 2) ──
+interface ArrangementSection {
+  id: string
+  bars: number         // duration in bars
+  label: string        // e.g. 'intro', 'verse', 'chorus'
+  activeNodeIds: string[]  // which nodes play in this section
+}
+
+const SECTION_LABELS = ['intro', 'verse', 'pre-chorus', 'chorus', 'bridge', 'drop', 'breakdown', 'outro', 'build', 'ambient'] as const
+
 // Track which fields the user has ACTUALLY changed via knobs (not just detected)
 interface NodeOverrides {
   [nodeId: string]: Partial<Record<string, number | string>>
@@ -1459,10 +1469,24 @@ function parseCodeToNodes(code: string, existingNodes?: PatternNode[]): PatternN
 
   for (let i = 0; i < lines.length; i++) {
     const trimmed = lines[i].trim()
-    // Detect muted blocks (support both $: and $name:)
-    const isMutedStart = trimmed.startsWith('// [muted] $')
-    // Match $: or $name: or $name : (named patterns)
-    const isPatternStart = /^\$\w*\s*:/.test(trimmed)
+    // Detect muted blocks (support both $: and $name: and let)
+    const isMutedStart = trimmed.startsWith('// [muted] $') || trimmed.startsWith('// [muted] let ')
+    // Match $: or $name: or $name : (named patterns) OR let varName = (arrangement mode)
+    const isPatternStart = /^\$\w*\s*:/.test(trimmed) || /^let\s+\w+\s*=/.test(trimmed)
+    // Skip arrangement blocks ($:arrange) — those are auto-generated
+    const isArrangeBlock = /^\$\s*:\s*arrange\s*\(/.test(trimmed)
+    if (isArrangeBlock) {
+      // Skip until we find the closing ) — consume the rest of the arrange block
+      if (currentBlock.length > 0) blocks.push({ name: currentName, code: currentBlock.join('\n'), startLine: blockStartLine })
+      currentBlock = []; currentName = ''
+      // Fast-forward past the arrange block
+      let depth = 0
+      for (let j = i; j < lines.length; j++) {
+        for (const ch of lines[j]) { if (ch === '(') depth++; if (ch === ')') depth-- }
+        if (depth <= 0) { i = j; break }
+      }
+      continue
+    }
 
     if (isPatternStart || isMutedStart) {
       if (currentBlock.length > 0) blocks.push({ name: currentName, code: currentBlock.join('\n'), startLine: blockStartLine })
@@ -1471,13 +1495,14 @@ function parseCodeToNodes(code: string, existingNodes?: PatternNode[]): PatternN
       currentBlock = [lines[i]]
       blockStartLine = i
     } else if (currentBlock.length > 0) {
-      if (trimmed.startsWith('//') && i + 1 < lines.length && (/^\$\w*\s*:/.test(lines[i + 1].trim()) || lines[i + 1].trim().startsWith('// [muted] $'))) {
+      const nextLineTest = (l: string) => /^\$\w*\s*:/.test(l) || /^let\s+\w+\s*=/.test(l) || l.startsWith('// [muted] $') || l.startsWith('// [muted] let ')
+      if (trimmed.startsWith('//') && i + 1 < lines.length && nextLineTest(lines[i + 1].trim())) {
         blocks.push({ name: currentName, code: currentBlock.join('\n'), startLine: blockStartLine })
         currentBlock = []; currentName = ''
       } else if (trimmed === '') {
         let next = i + 1
         while (next < lines.length && lines[next].trim() === '') next++
-        if (next >= lines.length || lines[next].trim().startsWith('//') || /^\$\w*\s*:/.test(lines[next].trim())) {
+        if (next >= lines.length || lines[next].trim().startsWith('//') || /^\$\w*\s*:/.test(lines[next].trim()) || /^let\s+\w+\s*=/.test(lines[next].trim())) {
           blocks.push({ name: currentName, code: currentBlock.join('\n'), startLine: blockStartLine })
           currentBlock = []; currentName = ''
         } else currentBlock.push(lines[i])
@@ -1493,7 +1518,9 @@ function parseCodeToNodes(code: string, existingNodes?: PatternNode[]): PatternN
     // Strip injected .analyze("nde_N") and .orbit(N) tags — these are auto-added by rebuildFullCodeFromNodes
     const stripInjected = (c: string) => c.replace(/\.analyze\s*\(\s*["']nde_\d+["']\s*\)/g, '').replace(/\.orbit\s*\(\s*\d+\s*\)/g, '')
     // For muted blocks, strip the prefix to detect properties
-    const rawCode = stripInjected(isMuted ? block.code.replace(/\/\/ \[muted\] /g, '') : block.code)
+    let rawCode = stripInjected(isMuted ? block.code.replace(/\/\/ \[muted\] /g, '') : block.code)
+    // Normalize `let varName = ...` back to `$:` for internal representation
+    rawCode = rawCode.replace(/^let\s+\w+\s*=\s*\n?/, '$: ')
     const type = detectType(rawCode)
     const sound = detectSound(rawCode)
     const isMelodic = !isSampleBased(type)
@@ -1502,9 +1529,9 @@ function parseCodeToNodes(code: string, existingNodes?: PatternNode[]): PatternN
     nodes.push({
       id: existing?.id ?? `node_${idx}`,
       name: block.name || sound || `Pattern ${idx + 1}`,
-      // ALWAYS store clean code (no // [muted] prefix, no .analyze/.orbit tags). The muted FLAG tracks mute state.
+      // ALWAYS store clean code (no // [muted] prefix, no .analyze/.orbit tags, `let` normalized to $:). The muted FLAG tracks mute state.
       // This prevents prefix accumulation bugs on rapid mute/unmute/re-parse cycles.
-      code: stripInjected(isMuted ? block.code.replace(/\/\/ \[muted\] /g, '') : block.code),
+      code: stripInjected(isMuted ? block.code.replace(/\/\/ \[muted\] /g, '') : block.code).replace(/^let\s+\w+\s*=\s*\n?/, '$: '),
       muted: existing?.muted ?? isMuted,
       solo: existing?.solo ?? false,
       collapsed: existing?.collapsed ?? false,
@@ -2483,6 +2510,16 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   const [fxSearchQuery, setFxSearchQuery] = useState('')
   const [codeGenerating, setCodeGenerating] = useState(false)
 
+  // ── Phase 2: Arrangement Mode ──
+  const [arrangementMode, setArrangementMode] = useState(false)
+  const [sections, setSections] = useState<ArrangementSection[]>([
+    { id: 'sec_1', bars: 4, label: 'intro', activeNodeIds: [] },
+    { id: 'sec_2', bars: 8, label: 'verse', activeNodeIds: [] },
+    { id: 'sec_3', bars: 8, label: 'chorus', activeNodeIds: [] },
+    { id: 'sec_4', bars: 4, label: 'outro', activeNodeIds: [] },
+  ])
+  const [arrangementOpen, setArrangementOpen] = useState(false)
+
   const panStart = useRef({ x: 0, y: 0, px: 0, py: 0 })
   const containerRef = useRef<HTMLDivElement>(null)
   const lastCodeRef = useRef(code)
@@ -2513,6 +2550,11 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   // Track latest knob draft values synchronously (bypasses React render cycle)
   // updateKnob writes here, commitKnob reads — guarantees fresh value on mouseup
   const knobDraftRef = useRef<Map<string, number>>(new Map())
+  // Arrangement mode refs — stale-closure safe for rebuildFullCodeFromNodes
+  const arrangementModeRef = useRef(arrangementMode)
+  arrangementModeRef.current = arrangementMode
+  const sectionsRef = useRef(sections)
+  sectionsRef.current = sections
 
   // ── Expose imperative handle to parent (for headerless mode) ──
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2623,8 +2665,8 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     const nodeCommentRe = /^\/\/\s*[─—]+\s*.+\s*[─—]+\s*$/
     for (const line of lines) {
       const t = line.trim()
-      // Break at first pattern block (anonymous $: or named $name:)
-      if (/^\$\w*\s*:/.test(t) || t.startsWith('// [muted] $')) break
+      // Break at first pattern block (anonymous $: or named $name:), let variable, or muted block
+      if (/^\$\w*\s*:/.test(t) || t.startsWith('// [muted] $') || t.startsWith('// [muted] let ') || /^let\s+\w+\s*=/.test(t)) break
       // Skip node name comments (they'll be re-generated from node.name)
       if (nodeCommentRe.test(t)) continue
       if (!t.startsWith('setcps') && !t.startsWith('setbpm')) preamble.push(line)
@@ -2634,40 +2676,82 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     if (pre) parts.push(pre)
     if (currentBpm > 0) parts.push(`setcps(${currentBpm}/60/4) // ${currentBpm} bpm`)
     parts.push('')
+
     // Track used pattern names to avoid duplicates
     const usedNames = new Set<string>()
+    const nodeVarNames: Map<string, string> = new Map() // nodeId → varName (for arrangement)
+
+    const isArrangeMode = arrangementModeRef.current
+    const curSections = sectionsRef.current
+
     for (let ni = 0; ni < nodeList.length; ni++) {
       const node = nodeList[ni]
       const commentLine = node.name ? `// ── ${node.name} ──` : ''
-      // Generate unique pattern name from node name for $name: registration
+      // Generate unique var/pattern name from node name
       let patName = toPatternName(node.name || node.type || `p${ni}`)
-      // Ensure uniqueness
       if (usedNames.has(patName)) {
         let suffix = 2
         while (usedNames.has(`${patName}${suffix}`)) suffix++
         patName = `${patName}${suffix}`
       }
       usedNames.add(patName)
+      nodeVarNames.set(node.id, patName)
+
       // Inject .analyze("nde_N") for per-node EQ visualization (stripped on re-parse)
       const analyzeTag = `.analyze("nde_${ni}")`
-      if (node.muted) {
+
+      if (node.muted && !isArrangeMode) {
+        // In normal mode, muted nodes get commented out
         const mutedCode = node.code.split('\n')
           .map(l => l.trim().startsWith('// [muted]') ? l : `// [muted] ${l}`)
           .join('\n')
         parts.push(commentLine ? `${commentLine}\n${mutedCode}` : mutedCode)
       } else {
         let cleanCode = node.code.replace(/\/\/ \[muted\] /g, '')
-        // Replace anonymous $: with named $patName: at the start of the code
-        cleanCode = cleanCode.replace(/^(\s*)\$\w*\s*:/, `$1$${patName}:`)
-        // Auto-assign orbit per node to isolate delay/reverb/phaser (Strudel global effects)
-        // Only inject if node doesn't already specify .orbit()
-        const orbitTag = /\.orbit\s*\(/.test(cleanCode) ? '' : `.orbit(${ni + 1})`
-        const codeWithOrbit = orbitTag ? injectBefore(cleanCode, orbitTag) : cleanCode
-        const codeWithAnalyze = injectBefore(codeWithOrbit, analyzeTag)
-        parts.push(commentLine ? `${commentLine}\n${codeWithAnalyze}` : codeWithAnalyze)
+
+        if (isArrangeMode) {
+          // ═══ ARRANGEMENT MODE: output as `let varName = ...` ═══
+          // Strip $: or $name: prefix — we'll use let instead
+          cleanCode = cleanCode.replace(/^\s*\$\w*\s*:\s*/, '')
+          // Auto-assign orbit
+          const orbitTag = /\.orbit\s*\(/.test(cleanCode) ? '' : `.orbit(${ni + 1})`
+          const codeWithOrbit = orbitTag ? injectBefore(cleanCode, orbitTag) : cleanCode
+          const codeWithAnalyze = injectBefore(codeWithOrbit, analyzeTag)
+          const letLine = `let ${patName} =\n${codeWithAnalyze}`
+          parts.push(commentLine ? `${commentLine}\n${letLine}` : letLine)
+        } else {
+          // ═══ NORMAL MODE: output as `$patName: ...` ═══
+          cleanCode = cleanCode.replace(/^(\s*)\$\w*\s*:/, `$1$${patName}:`)
+          const orbitTag = /\.orbit\s*\(/.test(cleanCode) ? '' : `.orbit(${ni + 1})`
+          const codeWithOrbit = orbitTag ? injectBefore(cleanCode, orbitTag) : cleanCode
+          const codeWithAnalyze = injectBefore(codeWithOrbit, analyzeTag)
+          parts.push(commentLine ? `${commentLine}\n${codeWithAnalyze}` : codeWithAnalyze)
+        }
       }
       parts.push('')
     }
+
+    // ═══ ARRANGEMENT MODE: append $:arrange(...) block ═══
+    if (isArrangeMode && curSections.length > 0) {
+      parts.push('// ── arrangement ──')
+      const arrangeParts: string[] = []
+      for (const sec of curSections) {
+        // Only include nodes that exist and have valid var names
+        const activeVars = sec.activeNodeIds
+          .map(id => nodeVarNames.get(id))
+          .filter((v): v is string => !!v)
+        if (activeVars.length === 0) {
+          arrangeParts.push(`  [${sec.bars}, silence]`)
+        } else if (activeVars.length === 1) {
+          arrangeParts.push(`  [${sec.bars}, ${activeVars[0]}]`)
+        } else {
+          arrangeParts.push(`  [${sec.bars}, stack(${activeVars.join(', ')})]`)
+        }
+      }
+      parts.push(`$:arrange(\n${arrangeParts.join(',\n')}\n)`)
+      parts.push('')
+    }
+
     return parts.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n'
   }, [])
 
@@ -2891,6 +2975,60 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     }
     return () => cancelAnimationFrame(raf)
   }, [isPlaying, bpm, getCyclePosition])
+
+  // ═══ Phase 2: Arrangement Management ═══
+  const addSection = useCallback(() => {
+    const id = `sec_${Date.now()}`
+    const labelIdx = sections.length % SECTION_LABELS.length
+    setSections(prev => [...prev, { id, bars: 8, label: SECTION_LABELS[labelIdx], activeNodeIds: [] }])
+  }, [sections.length])
+
+  const removeSection = useCallback((secId: string) => {
+    setSections(prev => prev.filter(s => s.id !== secId))
+  }, [])
+
+  const updateSectionBars = useCallback((secId: string, bars: number) => {
+    setSections(prev => prev.map(s => s.id === secId ? { ...s, bars: Math.max(1, Math.min(64, bars)) } : s))
+  }, [])
+
+  const updateSectionLabel = useCallback((secId: string, label: string) => {
+    setSections(prev => prev.map(s => s.id === secId ? { ...s, label } : s))
+  }, [])
+
+  const toggleNodeInSection = useCallback((secId: string, nodeId: string) => {
+    setSections(prev => prev.map(s => {
+      if (s.id !== secId) return s
+      const has = s.activeNodeIds.includes(nodeId)
+      return { ...s, activeNodeIds: has ? s.activeNodeIds.filter(id => id !== nodeId) : [...s.activeNodeIds, nodeId] }
+    }))
+  }, [])
+
+  // When arrangement changes, rebuild code
+  const prevSectionsJson = useRef('')
+  useEffect(() => {
+    if (!arrangementMode) return
+    const json = JSON.stringify(sections.map(s => ({ b: s.bars, a: s.activeNodeIds, l: s.label })))
+    if (json === prevSectionsJson.current) return
+    prevSectionsJson.current = json
+    // Rebuild code with updated arrangement
+    const code = rebuildFullCodeFromNodes(nodesRef.current, bpm, lastCodeRef.current)
+    sendToParent(code)
+  }, [arrangementMode, sections, bpm, sendToParent, rebuildFullCodeFromNodes])
+
+  // When toggling arrangement mode, rebuild code
+  const toggleArrangementMode = useCallback(() => {
+    setArrangementMode(prev => {
+      const next = !prev
+      // Force rebuild on next tick after ref updates
+      setTimeout(() => {
+        arrangementModeRef.current = next
+        const code = rebuildFullCodeFromNodes(nodesRef.current, bpm, lastCodeRef.current)
+        sendToParent(code)
+      }, 0)
+      return next
+    })
+    setArrangementOpen(true)
+  }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
   // ── Delete / Duplicate ──
   const deleteNode = useCallback((id: string) => {
@@ -4956,6 +5094,151 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
       {/* Close sidebar+canvas flex container */}
       </div>
 
+      {/* ══════ ARRANGEMENT TIMELINE (Phase 2) ══════ */}
+      {arrangementOpen && (
+        <div className="shrink-0" style={{ background: HW.surface, borderTop: `1px solid ${HW.border}` }}>
+          {/* Header */}
+          <div className="flex items-center justify-between px-3 py-1.5" style={{ borderBottom: `1px solid ${HW.border}` }}>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setArrangementOpen(false)} className="text-[9px] cursor-pointer" style={{ color: HW.textDim }}>▼</button>
+              <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: arrangementMode ? '#10b981' : HW.textDim }}>
+                🎬 Arrangement
+              </span>
+              <button
+                onClick={toggleArrangementMode}
+                className="px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider cursor-pointer transition-all"
+                style={{
+                  background: arrangementMode ? '#10b98120' : HW.raised,
+                  color: arrangementMode ? '#10b981' : HW.textDim,
+                  border: `1px solid ${arrangementMode ? '#10b98140' : HW.border}`,
+                }}>
+                {arrangementMode ? 'ON' : 'OFF'}
+              </button>
+              {!arrangementMode && (
+                <span className="text-[7px] italic" style={{ color: HW.textDim }}>
+                  Turn ON to use let + arrange() composition mode
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[7px] tabular-nums" style={{ color: HW.textDim }}>
+                {sections.reduce((t, s) => t + s.bars, 0)} bars total
+              </span>
+              <button onClick={addSection}
+                className="px-2 py-0.5 rounded text-[8px] font-bold cursor-pointer"
+                style={{ background: '#10b98115', color: '#10b981', border: '1px solid #10b98130' }}>
+                + Section
+              </button>
+            </div>
+          </div>
+          {/* Grid: rows = sections, columns = nodes */}
+          {sections.length > 0 && nodes.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-[8px]" style={{ borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom: `1px solid ${HW.border}` }}>
+                    <th className="text-left px-2 py-1 sticky left-0" style={{ background: HW.surface, color: HW.textDim, minWidth: 130 }}>Section</th>
+                    <th className="px-1 py-1" style={{ color: HW.textDim, minWidth: 40 }}>Bars</th>
+                    {nodes.map(n => {
+                      const tc = TYPE_COLORS[n.type] || '#94a3b8'
+                      return (
+                        <th key={n.id} className="px-1 py-1 text-center truncate" style={{ color: tc, maxWidth: 70, minWidth: 50 }}
+                          title={n.name}>
+                          {n.name.slice(0, 8)}
+                        </th>
+                      )
+                    })}
+                    <th className="px-1 py-1" style={{ color: HW.textDim, minWidth: 30 }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sections.map((sec, si) => (
+                    <tr key={sec.id}
+                      style={{ borderBottom: `1px solid ${HW.border}`, background: si % 2 === 0 ? HW.bg : HW.surfaceAlt }}>
+                      {/* Section label */}
+                      <td className="px-2 py-1 sticky left-0" style={{ background: si % 2 === 0 ? HW.bg : HW.surfaceAlt }}>
+                        <select value={sec.label}
+                          onChange={e => updateSectionLabel(sec.id, e.target.value)}
+                          className="bg-transparent text-[8px] font-bold uppercase tracking-wider cursor-pointer outline-none"
+                          style={{ color: '#10b981', border: 'none' }}>
+                          {SECTION_LABELS.map(l => <option key={l} value={l} style={{ background: HW.bg }}>{l}</option>)}
+                        </select>
+                      </td>
+                      {/* Bars */}
+                      <td className="px-1 py-1 text-center">
+                        <div className="flex items-center justify-center gap-0.5">
+                          <button onClick={() => updateSectionBars(sec.id, sec.bars - 1)}
+                            className="text-[7px] cursor-pointer px-0.5" style={{ color: HW.textDim }}>-</button>
+                          <span className="font-mono tabular-nums w-5 text-center" style={{ color: HW.textBright }}>{sec.bars}</span>
+                          <button onClick={() => updateSectionBars(sec.id, sec.bars + 1)}
+                            className="text-[7px] cursor-pointer px-0.5" style={{ color: HW.textDim }}>+</button>
+                        </div>
+                      </td>
+                      {/* Node toggles */}
+                      {nodes.map(n => {
+                        const isActive = sec.activeNodeIds.includes(n.id)
+                        const tc = TYPE_COLORS[n.type] || '#94a3b8'
+                        return (
+                          <td key={n.id} className="px-1 py-1 text-center">
+                            <button
+                              onClick={() => toggleNodeInSection(sec.id, n.id)}
+                              className="w-5 h-5 rounded-sm cursor-pointer transition-all flex items-center justify-center mx-auto"
+                              style={{
+                                background: isActive ? `${tc}25` : 'transparent',
+                                border: `1px solid ${isActive ? `${tc}60` : HW.border}`,
+                                boxShadow: isActive ? `0 0 4px ${tc}20` : 'none',
+                              }}
+                              title={`${n.name} in ${sec.label}`}>
+                              {isActive && <span style={{ color: tc, fontSize: '8px' }}>■</span>}
+                            </button>
+                          </td>
+                        )
+                      })}
+                      {/* Delete section */}
+                      <td className="px-1 py-1 text-center">
+                        {sections.length > 1 && (
+                          <button onClick={() => removeSection(sec.id)}
+                            className="text-[8px] cursor-pointer opacity-40 hover:opacity-100 transition-opacity"
+                            style={{ color: '#ef4444' }}>✕</button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {/* Visual bar timeline */}
+          {sections.length > 0 && (
+            <div className="flex items-center px-3 py-1.5 gap-0.5 overflow-x-auto" style={{ borderTop: `1px solid ${HW.border}` }}>
+              {sections.map(sec => {
+                const totalBars = sections.reduce((t, s) => t + s.bars, 0)
+                const pct = Math.max(3, (sec.bars / totalBars) * 100)
+                const activeCount = sec.activeNodeIds.filter(id => nodes.find(n => n.id === id)).length
+                return (
+                  <div key={sec.id} className="rounded-sm overflow-hidden flex-shrink-0"
+                    style={{
+                      width: `${pct}%`,
+                      minWidth: 30,
+                      height: 18,
+                      background: activeCount > 0 ? '#10b98115' : HW.raised,
+                      border: `1px solid ${activeCount > 0 ? '#10b98130' : HW.border}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                    <span className="text-[6px] font-bold uppercase tracking-wider truncate px-1"
+                      style={{ color: activeCount > 0 ? '#10b981' : HW.textDim }}>
+                      {sec.label} ({sec.bars})
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ══════ BOTTOM TIMELINE ══════ */}
       <Suspense fallback={null}>
         <BottomTimeline
@@ -5000,6 +5283,16 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
           knobs show what&apos;s in code · drag effects to add · click sidebar with node selected · 🎲 randomize patterns
         </span>
         <div className="flex items-center gap-3 text-[8px] font-mono tabular-nums" style={{ color: HW.textDim }}>
+          <button onClick={() => setArrangementOpen(p => !p)}
+            className="cursor-pointer px-1.5 py-0.5 rounded transition-all"
+            style={{
+              color: arrangementMode ? '#10b981' : HW.textDim,
+              background: arrangementOpen ? '#10b98110' : 'transparent',
+              border: `1px solid ${arrangementOpen ? '#10b98130' : 'transparent'}`,
+            }}
+            title="Toggle arrangement timeline">
+            🎬 {arrangementMode ? 'ARR' : 'arr'}
+          </button>
           <span>{nodes.filter(n => !n.muted).length}/{nodes.length} active</span>
           <span style={{ color: '#22d3ee80' }}>{bpm || 72} bpm</span>
           <span style={{ color: '#a78bfa80' }}>{SCALE_PRESETS.find(s => s.value === globalScale)?.label || globalScale}</span>
