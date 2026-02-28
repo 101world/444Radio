@@ -2806,15 +2806,15 @@ function CreatePageContent() {
       {/* Ambient Glow Overlays — Cyan default, PUNCHY Red in Pro Mode */}
       <div className="fixed inset-0 pointer-events-none z-0" aria-hidden="true">
         <div className={`absolute top-0 left-1/4 w-[600px] h-[600px] rounded-full blur-[120px] transition-colors duration-1000 ${isProMode ? 'bg-red-500/[0.08]' : 'bg-cyan-500/[0.03]'}`} />
-        <div className={`absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full blur-[100px] transition-colors duration-1000 ${isProMode ? 'bg-rose-600/[0.07]' : 'bg-teal-500/[0.025]'}`} />
+        <div className={`absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full blur-[100px] transition-colors duration-1000 ${isProMode ? 'bg-red-600/[0.07]' : 'bg-teal-500/[0.025]'}`} />
         <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] rounded-full blur-[150px] transition-colors duration-1000 ${isProMode ? 'bg-red-500/[0.05]' : 'bg-cyan-400/[0.015]'}`} />
         {/* Pro Mode extra neon accents — punchy red pulses */}
         {isProMode && (
           <>
             <div className="absolute top-[5%] right-[10%] w-[400px] h-[400px] bg-red-600/[0.08] rounded-full blur-[100px] animate-pulse" />
             <div className="absolute bottom-[15%] left-[5%] w-[500px] h-[300px] bg-red-500/[0.06] rounded-full blur-[120px]" />
-            <div className="absolute top-[40%] right-[30%] w-[300px] h-[300px] bg-rose-500/[0.05] rounded-full blur-[90px] animate-pulse" style={{ animationDelay: '1.5s' }} />
-            <div className="absolute bottom-[35%] left-[25%] w-[250px] h-[250px] bg-red-700/[0.04] rounded-full blur-[80px] animate-pulse" style={{ animationDelay: '3s' }} />
+            <div className="absolute top-[40%] right-[30%] w-[300px] h-[300px] bg-red-500/[0.05] rounded-full blur-[90px] animate-pulse" style={{ animationDelay: '1.5s' }} />
+            <div className="absolute bottom-[35%] left-[25%] w-[250px] h-[250px] bg-red-600/[0.04] rounded-full blur-[80px] animate-pulse" style={{ animationDelay: '3s' }} />
           </>
         )}
       </div>
@@ -2860,6 +2860,7 @@ function CreatePageContent() {
           onClose={() => setShowFeaturesSidebar(false)}
           selectedType={selectedType}
           isInstrumental={isInstrumental}
+          isProMode={isProMode}
           isRecording={isRecording}
           showAdvancedButtons={showAdvancedButtons}
           userCredits={userCredits}
@@ -2962,7 +2963,7 @@ function CreatePageContent() {
           {/* Dew-like gradient overlay */}
           <div className={`absolute inset-0 rounded-3xl pointer-events-none transition-all duration-700 ${
             isProMode
-              ? 'bg-gradient-to-br from-red-500/5 via-transparent to-rose-500/5'
+              ? 'bg-gradient-to-br from-red-500/5 via-transparent to-red-600/5'
               : 'bg-gradient-to-br from-cyan-400/5 via-transparent to-cyan-500/5'
           }`}></div>
           
@@ -2981,7 +2982,7 @@ function CreatePageContent() {
                     <div className={`inline-block px-4 py-2.5 rounded-2xl backdrop-blur-xl transition-all duration-500 ${
                       message.type === 'user' 
                         ? (isProMode
-                            ? 'bg-gradient-to-br from-red-500/15 via-rose-600/10 to-red-500/15 border border-red-400/40 shadow-lg shadow-red-500/15'
+                            ? 'bg-gradient-to-br from-red-500/15 via-red-600/10 to-red-500/15 border border-red-400/40 shadow-lg shadow-red-500/15'
                             : 'bg-gradient-to-br from-cyan-500/15 via-cyan-600/10 to-blue-500/15 border border-cyan-400/40 shadow-lg shadow-cyan-500/15')
                         : (isProMode
                             ? 'bg-gradient-to-br from-white/8 to-white/4 border border-white/15 shadow-lg shadow-red-500/[0.05]'
@@ -3638,7 +3639,7 @@ function CreatePageContent() {
             className="group relative w-full max-w-3xl mx-auto"
           >
             {/* Ambient Glow Effect */}
-            {!isMobile && <div className={`absolute -inset-1 rounded-[28px] blur-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 ${isProMode ? 'bg-gradient-to-r from-red-500/20 via-rose-500/15 to-red-600/20' : 'bg-gradient-to-r from-cyan-500/15 via-blue-500/15 to-purple-500/15'}`}></div>}
+            {!isMobile && <div className={`absolute -inset-1 rounded-[28px] blur-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 ${isProMode ? 'bg-gradient-to-r from-red-500/20 via-red-600/15 to-red-500/20' : 'bg-gradient-to-r from-cyan-500/15 via-blue-500/15 to-purple-500/15'}`}></div>}
             
             {/* Hidden file inputs */}
             <input ref={instrumentalRefInputRef} type="file" accept=".wav,.mp3" className="hidden" onChange={e => {
@@ -3713,12 +3714,12 @@ function CreatePageContent() {
                   disabled={!input.trim() || selectedType === 'video'}
                   className={`relative flex-shrink-0 w-11 h-11 sm:w-11 sm:h-11 md:w-11 md:h-11 rounded-xl flex items-center justify-center transition-all duration-500 disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 active:scale-95 mb-0.5 ${
                     isProMode
-                      ? 'bg-gradient-to-br from-red-500 via-red-600 to-rose-700 hover:from-red-400 hover:via-red-500 hover:to-rose-600 shadow-xl shadow-red-500/40 hover:shadow-red-500/60'
+                      ? 'bg-gradient-to-br from-red-500 via-red-600 to-red-700 hover:from-red-400 hover:via-red-500 hover:to-red-600 shadow-xl shadow-red-500/40 hover:shadow-red-500/60'
                       : 'bg-gradient-to-br from-cyan-400 via-cyan-500 to-blue-600 hover:from-cyan-500 hover:via-cyan-600 hover:to-blue-700 shadow-xl shadow-cyan-500/40 hover:shadow-cyan-500/60'
                   }`}
                 >
                   {activeGenerations.size > 0 && (
-                    <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gradient-to-br from-red-500 to-rose-600 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-lg shadow-red-500/50 animate-pulse">
+                    <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-lg shadow-red-500/50 animate-pulse">
                       {activeGenerations.size}
                     </div>
                   )}
@@ -4127,7 +4128,7 @@ function CreatePageContent() {
         <div className={`hidden md:block fixed bottom-0 left-[312px] right-0 h-36 z-20 bg-gradient-to-t from-black via-black/95 to-transparent ${isProMode ? 'pro-console-filter' : ''}`}>
           <div className={`h-full border-t ${isProMode ? 'border-red-500/30' : 'border-cyan-500/20'}`}>
             <Suspense fallback={<div className="h-full bg-black" />}>
-              <MatrixConsole isGenerating={activeGenerations.size > 0} isPlaying={isPlaying} />
+              <MatrixConsole isGenerating={activeGenerations.size > 0} isPlaying={isPlaying} isProMode={isProMode} />
             </Suspense>
           </div>
         </div>

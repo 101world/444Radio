@@ -44,6 +44,7 @@ interface FeaturesSidebarProps {
   onTagClick: (tag: string) => void
   onGenerateIdea: (genre: string, type: 'song' | 'beat') => void
   isGeneratingIdea: boolean
+  isProMode?: boolean
 }
 
 export default function FeaturesSidebar({
@@ -85,6 +86,7 @@ export default function FeaturesSidebar({
   onTagClick,
   onGenerateIdea,
   isGeneratingIdea,
+  isProMode = false,
 }: FeaturesSidebarProps) {
   const [showIdeas, setShowIdeas] = useState(false)
   const [ideasView, setIdeasView] = useState<'tags' | 'type' | 'genre' | 'generating'>('tags')
@@ -289,12 +291,12 @@ export default function FeaturesSidebar({
       <div className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50" onClick={onClose} />
 
       {/* Sidebar panel — fullscreen on mobile, docked sidebar on desktop */}
-      <div className="fixed inset-0 md:inset-auto md:left-14 md:top-0 md:h-screen md:w-64 bg-black/95 backdrop-blur-2xl md:border-r md:border-white/10 z-50 md:z-40 flex flex-col animate-slideInLeft">
+      <div className={`fixed inset-0 md:inset-auto md:left-14 md:top-0 md:h-screen md:w-64 bg-black/95 backdrop-blur-2xl md:border-r z-50 md:z-40 flex flex-col animate-slideInLeft ${isProMode ? 'md:border-red-500/20' : 'md:border-white/10'}`}>
 
       {/* Header */}
-      <div className="flex items-center justify-between px-4 h-12 border-b border-white/10 shrink-0">
+      <div className={`flex items-center justify-between px-4 h-12 border-b shrink-0 ${isProMode ? 'border-red-500/20' : 'border-white/10'}`}>
         <div className="flex items-center gap-2">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-cyan-400">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={isProMode ? 'text-red-500' : 'text-cyan-400'}>
             <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
             <rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
             <rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
@@ -311,9 +313,9 @@ export default function FeaturesSidebar({
       </div>
 
       {/* Credits + Mode Toggle */}
-      <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2 shrink-0">
-        <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
-          <Zap size={12} className="text-cyan-400" />
+      <div className={`px-3 py-2 border-b flex items-center gap-2 shrink-0 ${isProMode ? 'border-red-500/20' : 'border-white/10'}`}>
+        <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border ${isProMode ? 'bg-red-500/10 border-red-500/30' : 'bg-cyan-500/10 border-cyan-500/30'}`}>
+          <Zap size={12} className={isProMode ? 'text-red-500' : 'text-cyan-400'} />
           <span className="text-white font-bold text-xs">
             {isLoadingCredits ? '...' : userCredits}
           </span>
@@ -323,7 +325,7 @@ export default function FeaturesSidebar({
             onClick={() => { if (isInstrumental) onToggleInstrumental() }}
             className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${
               !isInstrumental
-                ? 'bg-cyan-500 text-black'
+                ? (isProMode ? 'bg-red-500 text-white' : 'bg-cyan-500 text-black')
                 : 'bg-white/5 text-gray-400 hover:bg-white/10'
             }`}
           >
@@ -354,12 +356,12 @@ export default function FeaturesSidebar({
       </div>
 
       {/* Prompt Input */}
-      <div className="px-3 py-2 border-b border-white/10 shrink-0">
+      <div className={`px-3 py-2 border-b shrink-0 ${isProMode ? 'border-red-500/20' : 'border-white/10'}`}>
         <textarea
           value={promptText}
           onChange={(e) => onPromptChange(e.target.value)}
           placeholder="Describe your music..."
-          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-gray-500 resize-none focus:outline-none focus:border-cyan-500/50 transition-colors"
+          className={`w-full bg-white/5 border rounded-lg px-3 py-2 text-xs text-white placeholder-gray-500 resize-none focus:outline-none transition-colors ${isProMode ? 'border-red-500/30 focus:border-red-500/60' : 'border-white/10 focus:border-cyan-500/50'}`}
           rows={3}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -395,7 +397,7 @@ export default function FeaturesSidebar({
           <button
             onClick={onSubmitPrompt}
             disabled={isGenerating || !promptText.trim()}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-lg text-black text-[10px] font-bold hover:from-cyan-500 hover:to-cyan-300 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed ${isProMode ? 'bg-gradient-to-r from-red-600 to-red-500 text-white hover:from-red-500 hover:to-red-400' : 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-black hover:from-cyan-500 hover:to-cyan-300'}`}
           >
             <Zap size={10} />
             Generate
@@ -445,7 +447,7 @@ export default function FeaturesSidebar({
                     <button
                       key={tag}
                       onClick={() => onTagClick(tag)}
-                      className="px-2.5 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/25 border border-cyan-500/30 hover:border-cyan-400/60 rounded-lg text-xs font-medium text-cyan-200 hover:text-white transition-all hover:scale-105"
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105 border ${isProMode ? 'bg-red-500/10 hover:bg-red-500/25 border-red-500/30 hover:border-red-400/60 text-red-200 hover:text-white' : 'bg-cyan-500/10 hover:bg-cyan-500/25 border-cyan-500/30 hover:border-cyan-400/60 text-cyan-200 hover:text-white'}`}
                     >
                       {tag}
                     </button>
@@ -487,7 +489,7 @@ export default function FeaturesSidebar({
             {ideasView === 'genre' && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <button onClick={() => setIdeasView('type')} className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1">
+                  <button onClick={() => setIdeasView('type')} className={`text-xs hover:opacity-80 flex items-center gap-1 ${isProMode ? 'text-red-400' : 'text-cyan-400'}`}>
                     <ChevronLeft size={14} /> Back
                   </button>
                   <h3 className="text-sm font-bold text-white">🎵 Select Genre</h3>
@@ -512,7 +514,7 @@ export default function FeaturesSidebar({
                         setTimeout(() => setIdeasView('tags'), 5000)
                       }}
                       disabled={isGeneratingIdea}
-                      className="px-2 py-2 bg-cyan-500/10 hover:bg-cyan-500/25 border border-cyan-500/30 hover:border-cyan-400/60 rounded-xl text-xs font-medium text-cyan-200 hover:text-white transition-all hover:scale-105 disabled:opacity-50"
+                      className={`px-2 py-2 rounded-xl text-xs font-medium transition-all hover:scale-105 disabled:opacity-50 border ${isProMode ? 'bg-red-500/10 hover:bg-red-500/25 border-red-500/30 hover:border-red-400/60 text-red-200 hover:text-white' : 'bg-cyan-500/10 hover:bg-cyan-500/25 border-cyan-500/30 hover:border-cyan-400/60 text-cyan-200 hover:text-white'}`}
                     >
                       {g}
                     </button>
@@ -524,7 +526,7 @@ export default function FeaturesSidebar({
             {ideasView === 'generating' && (
               <div className="space-y-4 text-center py-6">
                 <div className="relative">
-                  <div className="w-12 h-12 mx-auto border-4 border-cyan-500/20 border-t-cyan-400 rounded-full animate-spin"></div>
+                  <div className={`w-12 h-12 mx-auto border-4 rounded-full animate-spin ${isProMode ? 'border-red-500/20 border-t-red-400' : 'border-cyan-500/20 border-t-cyan-400'}`}></div>
                   <div className="absolute inset-0 flex items-center justify-center">
                     <span className="text-xl">🎨</span>
                   </div>
@@ -553,7 +555,20 @@ export default function FeaturesSidebar({
                 <div className="space-y-0.5">
                   {visibleFeatures.map((feature: Feature) => {
                     const Icon = feature.icon
-                    const colorMap: Record<string, string> = {
+                    const colorMap: Record<string, string> = isProMode ? {
+                      cyan: feature.active
+                        ? 'bg-red-500/15 border-red-400/50 text-red-300'
+                        : 'border-transparent text-red-400 hover:bg-red-500/10 hover:border-red-400/30',
+                      purple: feature.active
+                        ? 'bg-red-500/15 border-red-400/50 text-red-300'
+                        : 'border-transparent text-red-400 hover:bg-red-500/10 hover:border-red-400/30',
+                      orange: feature.active
+                        ? 'bg-red-500/15 border-red-400/50 text-red-300'
+                        : 'border-transparent text-red-400 hover:bg-red-500/10 hover:border-red-400/30',
+                      pink: feature.active
+                        ? 'bg-red-500/15 border-red-400/50 text-red-300'
+                        : 'border-transparent text-red-400 hover:bg-red-500/10 hover:border-red-400/30',
+                    } : {
                       cyan: feature.active
                         ? 'bg-cyan-500/15 border-cyan-400/50 text-cyan-300'
                         : 'border-transparent text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-400/30',

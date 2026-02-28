@@ -52,8 +52,12 @@ function VerticalWaveform({ audioElement, isPlaying }: { audioElement: HTMLAudio
         const barW = Math.max(2, v * W * 0.85)
         const y = i * (barH + gap)
         const x = (W - barW) / 2
-        c.fillStyle = `rgba(34, 211, 238, ${0.4 + v * 0.6})`
-        c.shadowColor = 'rgba(34, 211, 238, 0.4)'
+        c.fillStyle = document.documentElement.classList.contains('pro-mode-active')
+          ? `rgba(255, 0, 0, ${0.4 + v * 0.6})`
+          : `rgba(34, 211, 238, ${0.4 + v * 0.6})`
+        c.shadowColor = document.documentElement.classList.contains('pro-mode-active')
+          ? 'rgba(255, 0, 0, 0.5)'
+          : 'rgba(34, 211, 238, 0.4)'
         c.shadowBlur = v * 5
         const r = Math.min(barH / 2, 1.5)
         c.beginPath()
@@ -128,8 +132,11 @@ function HorizontalWaveform({ audioElement, isPlaying, progress }: { audioElemen
         const pct = (i / barCount) * 100
 
         if (pct <= progress) {
-          c.fillStyle = `rgba(34, 211, 238, ${0.5 + v * 0.5})`
-          c.shadowColor = 'rgba(34, 211, 238, 0.3)'
+          const isPro = document.documentElement.classList.contains('pro-mode-active')
+          c.fillStyle = isPro
+            ? `rgba(255, 0, 0, ${0.5 + v * 0.5})`
+            : `rgba(34, 211, 238, ${0.5 + v * 0.5})`
+          c.shadowColor = isPro ? 'rgba(255, 0, 0, 0.4)' : 'rgba(34, 211, 238, 0.3)'
           c.shadowBlur = v * 4
         } else {
           c.fillStyle = `rgba(255, 255, 255, ${0.06 + v * 0.12})`
@@ -208,16 +215,21 @@ function CircularVisualizer({ audioElement, isPlaying }: { audioElement: HTMLAud
       // Outer pulsing ring
       const avgLevel = prevData.reduce((s, v) => s + v, 0) / bufLen / 255
       const pulseR = baseR + (maxR - baseR) * 0.6 + avgLevel * 12
+      const isPro = document.documentElement.classList.contains('pro-mode-active')
       c.beginPath()
       c.arc(cx, cy, pulseR, 0, Math.PI * 2)
-      c.strokeStyle = `rgba(34, 211, 238, ${0.04 + avgLevel * 0.12})`
+      c.strokeStyle = isPro
+        ? `rgba(255, 0, 0, ${0.06 + avgLevel * 0.15})`
+        : `rgba(34, 211, 238, ${0.04 + avgLevel * 0.12})`
       c.lineWidth = 1.5
       c.stroke()
 
       // Secondary inner pulse ring
       c.beginPath()
       c.arc(cx, cy, baseR + avgLevel * 20, 0, Math.PI * 2)
-      c.strokeStyle = `rgba(20, 184, 166, ${0.06 + avgLevel * 0.15})`
+      c.strokeStyle = isPro
+        ? `rgba(200, 0, 0, ${0.08 + avgLevel * 0.18})`
+        : `rgba(20, 184, 166, ${0.06 + avgLevel * 0.15})`
       c.lineWidth = 1
       c.stroke()
 
@@ -233,14 +245,18 @@ function CircularVisualizer({ audioElement, isPlaying }: { audioElement: HTMLAud
         const x2 = cx + Math.cos(angle) * r
         const y2 = cy + Math.sin(angle) * r
 
-        // Gradient from cyan to teal based on frequency
-        const hue = 175 + (i / barCount) * 15
+        // Gradient from cyan to teal (or pure red in pro)
+        const hue = isPro ? 0 : (175 + (i / barCount) * 15)
         c.beginPath()
         c.moveTo(x1, y1)
         c.lineTo(x2, y2)
         c.lineWidth = 1.8
-        c.strokeStyle = `hsla(${hue}, 80%, 65%, ${0.2 + v * 0.8})`
-        c.shadowColor = `hsla(${hue}, 90%, 60%, ${v * 0.5})`
+        c.strokeStyle = isPro
+          ? `rgba(255, 0, 0, ${0.2 + v * 0.8})`
+          : `hsla(${hue}, 80%, 65%, ${0.2 + v * 0.8})`
+        c.shadowColor = isPro
+          ? `rgba(255, 0, 0, ${v * 0.6})`
+          : `hsla(${hue}, 90%, 60%, ${v * 0.5})`
         c.shadowBlur = v * 10
         c.stroke()
       }
@@ -262,16 +278,24 @@ function CircularVisualizer({ audioElement, isPlaying }: { audioElement: HTMLAud
         c.moveTo(x1, y1)
         c.lineTo(x2, y2)
         c.lineWidth = 1
-        c.strokeStyle = `rgba(34, 211, 238, ${0.1 + v * 0.3})`
+        c.strokeStyle = isPro
+          ? `rgba(255, 0, 0, ${0.1 + v * 0.35})`
+          : `rgba(34, 211, 238, ${0.1 + v * 0.3})`
         c.shadowBlur = 0
         c.stroke()
       }
 
       // Center glow — reactive
       const grad = c.createRadialGradient(cx, cy, 0, cx, cy, baseR * 1.1)
-      grad.addColorStop(0, `rgba(34, 211, 238, ${0.06 + avgLevel * 0.12})`)
-      grad.addColorStop(0.5, `rgba(20, 184, 166, ${0.03 + avgLevel * 0.06})`)
-      grad.addColorStop(1, 'rgba(34, 211, 238, 0)')
+      if (isPro) {
+        grad.addColorStop(0, `rgba(255, 0, 0, ${0.08 + avgLevel * 0.15})`)
+        grad.addColorStop(0.5, `rgba(200, 0, 0, ${0.04 + avgLevel * 0.08})`)
+        grad.addColorStop(1, 'rgba(255, 0, 0, 0)')
+      } else {
+        grad.addColorStop(0, `rgba(34, 211, 238, ${0.06 + avgLevel * 0.12})`)
+        grad.addColorStop(0.5, `rgba(20, 184, 166, ${0.03 + avgLevel * 0.06})`)
+        grad.addColorStop(1, 'rgba(34, 211, 238, 0)')
+      }
       c.fillStyle = grad
       c.beginPath()
       c.arc(cx, cy, baseR * 1.1, 0, Math.PI * 2)
@@ -279,7 +303,9 @@ function CircularVisualizer({ audioElement, isPlaying }: { audioElement: HTMLAud
 
       // Center icon
       c.shadowBlur = 0
-      c.fillStyle = `rgba(34, 211, 238, ${0.3 + avgLevel * 0.4})`
+      c.fillStyle = isPro
+        ? `rgba(255, 0, 0, ${0.35 + avgLevel * 0.45})`
+        : `rgba(34, 211, 238, ${0.3 + avgLevel * 0.4})`
       c.font = `${Math.round(baseR * 0.5)}px sans-serif`
       c.textAlign = 'center'
       c.textBaseline = 'middle'
@@ -374,6 +400,21 @@ export default function FloatingAudioPlayer() {
   const [activeGenre, setActiveGenre] = useState('All')
   const [activeMood, setActiveMood] = useState('All Vibes')
   const [gridCols, setGridCols] = useState<2 | 3>(2)
+
+  // Detect pro mode from html class (set by create page)
+  const [proMode, setProMode] = useState(false)
+  const proRef = useRef(false)
+  useEffect(() => {
+    const check = () => {
+      const active = document.documentElement.classList.contains('pro-mode-active')
+      setProMode(active)
+      proRef.current = active
+    }
+    check()
+    const observer = new MutationObserver(check)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
@@ -527,12 +568,12 @@ export default function FloatingAudioPlayer() {
     return (
       <div className="fixed top-0 left-0 right-0 z-50" style={{
         background: 'linear-gradient(180deg, rgba(13,13,16,0.98) 0%, rgba(8,8,11,0.99) 100%)',
-        borderBottom: '1px solid rgba(34, 211, 238, 0.08)',
+        borderBottom: proMode ? '1px solid rgba(255, 0, 0, 0.15)' : '1px solid rgba(34, 211, 238, 0.08)',
         boxShadow: '0 4px 30px rgba(0,0,0,0.7)',
         backdropFilter: 'blur(20px)',
       }}>
         <div className="h-[2px] w-full bg-white/5 relative">
-          <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-teal-500 to-cyan-400 transition-all duration-150" style={{ width: `${progress}%` }} />
+          <div className={`absolute top-0 left-0 h-full transition-all duration-150 ${proMode ? 'bg-gradient-to-r from-red-600 to-red-500' : 'bg-gradient-to-r from-teal-500 to-cyan-400'}`} style={{ width: `${progress}%` }} />
         </div>
         <div className="px-3 py-2">
           <div className="flex items-center gap-3">
@@ -544,7 +585,7 @@ export default function FloatingAudioPlayer() {
                 className="w-10 h-10 rounded-lg object-cover flex-shrink-0 ring-1 ring-white/10" />
             ) : (
               <div className="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center flex-shrink-0 ring-1 ring-white/10">
-                <Music size={18} className="text-teal-500/50" />
+                <Music size={18} className={proMode ? 'text-red-500/50' : 'text-teal-500/50'} />
               </div>
             )}
             <div className="min-w-0 flex-1">
@@ -556,7 +597,7 @@ export default function FloatingAudioPlayer() {
                 <button onClick={playPrevious} className="text-gray-400 hover:text-gray-200 p-1"><SkipBack size={15} /></button>
                 <button onClick={togglePlayPause}
                   className="w-8 h-8 rounded-full flex items-center justify-center active:scale-95"
-                  style={{ background: 'linear-gradient(135deg, #14b8a6, #22d3ee)' }}
+                  style={{ background: proMode ? 'linear-gradient(135deg, #dc2626, #ff0000)' : 'linear-gradient(135deg, #14b8a6, #22d3ee)' }}
                 >
                   {isPlaying ? <Pause size={13} className="text-gray-900" fill="currentColor" /> : <Play size={13} className="text-gray-900 ml-0.5" fill="currentColor" />}
                 </button>
@@ -566,13 +607,13 @@ export default function FloatingAudioPlayer() {
             {collapsed && (
               <button onClick={togglePlayPause}
                 className="w-8 h-8 rounded-full flex items-center justify-center active:scale-95"
-                style={{ background: 'linear-gradient(135deg, #14b8a6, #22d3ee)' }}
+                style={{ background: proMode ? 'linear-gradient(135deg, #dc2626, #ff0000)' : 'linear-gradient(135deg, #14b8a6, #22d3ee)' }}
               >
                 {isPlaying ? <Pause size={12} className="text-gray-900" fill="currentColor" /> : <Play size={12} className="text-gray-900 ml-0.5" fill="currentColor" />}
               </button>
             )}
-            <button onClick={() => setShowQueue(!showQueue)} className="text-gray-500 hover:text-teal-400 p-1"><List size={16} /></button>
-            <button onClick={() => setCollapsed(!collapsed)} className="text-gray-500 hover:text-teal-400 p-1">
+            <button onClick={() => setShowQueue(!showQueue)} className={`text-gray-500 p-1 ${proMode ? 'hover:text-red-400' : 'hover:text-teal-400'}`}><List size={16} /></button>
+            <button onClick={() => setCollapsed(!collapsed)} className={`text-gray-500 p-1 ${proMode ? 'hover:text-red-400' : 'hover:text-teal-400'}`}>
               {collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
             </button>
           </div>
@@ -580,7 +621,7 @@ export default function FloatingAudioPlayer() {
             <div className="mt-2 flex items-center gap-2">
               <span className="text-[9px] text-gray-500 w-8 text-right font-mono">{formatTime(currentTime)}</span>
               <div className="flex-1 h-1 bg-white/5 rounded-full cursor-pointer relative group" onClick={handleHorizontalSeek}>
-                <div className="absolute top-0 left-0 h-full rounded-full bg-gradient-to-r from-teal-500 to-cyan-400 transition-all duration-100" style={{ width: `${progress}%` }} />
+                <div className={`absolute top-0 left-0 h-full rounded-full transition-all duration-100 ${proMode ? 'bg-gradient-to-r from-red-600 to-red-500' : 'bg-gradient-to-r from-teal-500 to-cyan-400'}`} style={{ width: `${progress}%` }} />
               </div>
               <span className="text-[9px] text-gray-500 w-8 font-mono">{formatTime(duration)}</span>
             </div>
@@ -592,10 +633,10 @@ export default function FloatingAudioPlayer() {
               ) : playlist.map((track, i) => {
                 const isCurrent = currentTrack?.id === track.id
                 return (
-                  <div key={`${track.id}-${i}`} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg mb-0.5 ${isCurrent ? 'bg-teal-500/10' : 'hover:bg-white/[0.03]'}`}>
+                  <div key={`${track.id}-${i}`} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg mb-0.5 ${isCurrent ? (proMode ? 'bg-red-500/10' : 'bg-teal-500/10') : 'hover:bg-white/[0.03]'}`}>
                     <button onClick={() => playTrack(track)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
                       <span className="text-[9px] text-gray-600 w-4 font-mono">{i + 1}</span>
-                      <p className={`text-[10px] truncate flex-1 ${isCurrent ? 'text-teal-400 font-semibold' : 'text-gray-300'}`}>{track.title}</p>
+                      <p className={`text-[10px] truncate flex-1 ${isCurrent ? (proMode ? 'text-red-400 font-semibold' : 'text-teal-400 font-semibold') : 'text-gray-300'}`}>{track.title}</p>
                     </button>
                     <button onClick={() => removeFromPlaylist(track.id)} className="text-gray-600 hover:text-red-400 p-1"><X size={12} /></button>
                   </div>
@@ -619,8 +660,8 @@ export default function FloatingAudioPlayer() {
         className="fixed top-0 right-0 h-screen w-[104px] z-[55] flex flex-col items-center py-2 transition-all duration-300 overflow-hidden"
         style={{
           background: 'linear-gradient(180deg, rgba(8,8,12,0.95) 0%, rgba(4,4,8,0.98) 100%)',
-          borderLeft: '1px solid rgba(34, 211, 238, 0.06)',
-          boxShadow: '-4px 0 30px rgba(0,0,0,0.5), -1px 0 10px rgba(34,211,238,0.02)',
+          borderLeft: proMode ? '1px solid rgba(255, 0, 0, 0.1)' : '1px solid rgba(34, 211, 238, 0.06)',
+          boxShadow: proMode ? '-4px 0 30px rgba(0,0,0,0.5), -1px 0 10px rgba(255,0,0,0.04)' : '-4px 0 30px rgba(0,0,0,0.5), -1px 0 10px rgba(34,211,238,0.02)',
           backdropFilter: 'blur(24px)',
           WebkitBackdropFilter: 'blur(24px)',
         }}
@@ -628,21 +669,21 @@ export default function FloatingAudioPlayer() {
         {/* Accent glow line at top */}
         <div className="w-full h-[1px] flex-shrink-0 mb-2" style={{
           background: isPlaying
-            ? 'linear-gradient(90deg, transparent, rgba(34,211,238,0.3) 50%, transparent)'
-            : 'linear-gradient(90deg, transparent, rgba(34,211,238,0.08) 50%, transparent)',
+            ? (proMode ? 'linear-gradient(90deg, transparent, rgba(255,0,0,0.4) 50%, transparent)' : 'linear-gradient(90deg, transparent, rgba(34,211,238,0.3) 50%, transparent)')
+            : (proMode ? 'linear-gradient(90deg, transparent, rgba(255,0,0,0.1) 50%, transparent)' : 'linear-gradient(90deg, transparent, rgba(34,211,238,0.08) 50%, transparent)'),
         }} />
         {/* Album art — click to expand */}
         <div className="mb-3 cursor-pointer group/art" onClick={() => setExpanded(true)} title="Expand player">
           <div className="relative">
             {currentTrack.videoUrl ? (
               <video src={computeUrl(currentTrack.videoUrl)} autoPlay loop muted playsInline
-                className="w-[72px] h-[72px] rounded-2xl object-cover ring-1 ring-white/[0.08] shadow-xl shadow-black/60 group-hover/art:ring-teal-500/30 group-hover/art:shadow-teal-500/10 transition-all duration-300" />
+                className={`w-[72px] h-[72px] rounded-2xl object-cover ring-1 ring-white/[0.08] shadow-xl shadow-black/60 transition-all duration-300 ${proMode ? 'group-hover/art:ring-red-500/30 group-hover/art:shadow-red-500/10' : 'group-hover/art:ring-teal-500/30 group-hover/art:shadow-teal-500/10'}`} />
             ) : currentTrack.imageUrl ? (
               <Image src={currentTrack.imageUrl} alt={currentTrack.title} width={72} height={72}
-                className="w-[72px] h-[72px] rounded-2xl object-cover ring-1 ring-white/[0.08] shadow-xl shadow-black/60 group-hover/art:ring-teal-500/30 group-hover/art:shadow-teal-500/10 transition-all duration-300" />
+                className={`w-[72px] h-[72px] rounded-2xl object-cover ring-1 ring-white/[0.08] shadow-xl shadow-black/60 transition-all duration-300 ${proMode ? 'group-hover/art:ring-red-500/30 group-hover/art:shadow-red-500/10' : 'group-hover/art:ring-teal-500/30 group-hover/art:shadow-teal-500/10'}`} />
             ) : (
-              <div className="w-[72px] h-[72px] rounded-2xl bg-gradient-to-br from-gray-800/80 to-gray-900 flex items-center justify-center ring-1 ring-white/[0.08] group-hover/art:ring-teal-500/30 transition-all">
-                <Music size={24} className="text-teal-500/40" />
+              <div className={`w-[72px] h-[72px] rounded-2xl bg-gradient-to-br from-gray-800/80 to-gray-900 flex items-center justify-center ring-1 ring-white/[0.08] transition-all ${proMode ? 'group-hover/art:ring-red-500/30' : 'group-hover/art:ring-teal-500/30'}`}>
+                <Music size={24} className={proMode ? 'text-red-500/40' : 'text-teal-500/40'} />
               </div>
             )}
             <div className="absolute inset-0 rounded-2xl bg-black/0 group-hover/art:bg-black/30 flex items-center justify-center transition-all">
@@ -650,7 +691,7 @@ export default function FloatingAudioPlayer() {
             </div>
             {isPlaying && (
               <div className="absolute -inset-1 rounded-2xl opacity-40 animate-pulse pointer-events-none"
-                style={{ background: 'radial-gradient(circle, rgba(34,211,238,0.15) 0%, transparent 70%)' }} />
+                style={{ background: proMode ? 'radial-gradient(circle, rgba(255,0,0,0.2) 0%, transparent 70%)' : 'radial-gradient(circle, rgba(34,211,238,0.15) 0%, transparent 70%)' }} />
             )}
           </div>
           <p className="text-[8px] text-gray-500 text-center mt-1.5 px-1 truncate w-[88px] mx-auto leading-tight font-medium">{currentTrack.title}</p>
@@ -667,7 +708,7 @@ export default function FloatingAudioPlayer() {
           }} />
           {/* Thin progress line at bottom of waveform */}
           <div className="absolute bottom-0 left-0 w-full h-[2px] bg-white/[0.06]">
-            <div className="h-full bg-teal-400/80 transition-all duration-200" style={{ width: `${progress}%` }} />
+            <div className={`h-full transition-all duration-200 ${proMode ? 'bg-red-500/80' : 'bg-teal-400/80'}`} style={{ width: `${progress}%` }} />
           </div>
         </div>
 
@@ -679,7 +720,7 @@ export default function FloatingAudioPlayer() {
 
         {/* Controls */}
         <div className="flex flex-col items-center gap-0.5">
-          <button onClick={toggleShuffle} className={`p-2 rounded-xl transition-all ${isShuffled ? 'text-teal-400 bg-teal-500/10' : 'text-gray-600 hover:text-gray-300 hover:bg-white/[0.04]'}`} title="Shuffle">
+          <button onClick={toggleShuffle} className={`p-2 rounded-xl transition-all ${isShuffled ? (proMode ? 'text-red-400 bg-red-500/10' : 'text-teal-400 bg-teal-500/10') : 'text-gray-600 hover:text-gray-300 hover:bg-white/[0.04]'}`} title="Shuffle">
             <Shuffle size={13} />
           </button>
           <button onClick={playPrevious} className="text-gray-500 hover:text-gray-200 p-2 rounded-xl hover:bg-white/[0.04] transition-all" title="Previous">
@@ -689,8 +730,10 @@ export default function FloatingAudioPlayer() {
             onClick={togglePlayPause}
             className="w-12 h-12 rounded-2xl flex items-center justify-center active:scale-95 transition-all my-0.5"
             style={{
-              background: 'linear-gradient(135deg, #0d9488, #22d3ee)',
-              boxShadow: isPlaying ? '0 0 24px rgba(34,211,238,0.25), inset 0 1px 0 rgba(255,255,255,0.1)' : '0 4px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
+              background: proMode ? 'linear-gradient(135deg, #dc2626, #ff0000)' : 'linear-gradient(135deg, #0d9488, #22d3ee)',
+              boxShadow: isPlaying
+                ? (proMode ? '0 0 24px rgba(255,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)' : '0 0 24px rgba(34,211,238,0.25), inset 0 1px 0 rgba(255,255,255,0.1)')
+                : '0 4px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
             }}
           >
             {isPlaying ? <Pause size={17} className="text-white" fill="currentColor" /> : <Play size={17} className="text-white ml-0.5" fill="currentColor" />}
@@ -698,14 +741,14 @@ export default function FloatingAudioPlayer() {
           <button onClick={playNext} className="text-gray-500 hover:text-gray-200 p-2 rounded-xl hover:bg-white/[0.04] transition-all" title="Next">
             <SkipForward size={15} />
           </button>
-          <button onClick={toggleLoop} className={`p-2 rounded-xl transition-all ${isLooping ? 'text-teal-400 bg-teal-500/10' : 'text-gray-600 hover:text-gray-300 hover:bg-white/[0.04]'}`} title="Loop">
+          <button onClick={toggleLoop} className={`p-2 rounded-xl transition-all ${isLooping ? (proMode ? 'text-red-400 bg-red-500/10' : 'text-teal-400 bg-teal-500/10') : 'text-gray-600 hover:text-gray-300 hover:bg-white/[0.04]'}`} title="Loop">
             <Repeat size={13} />
           </button>
         </div>
 
         {/* Volume — modern vertical slider */}
         <div className="flex flex-col items-center gap-1 mt-2 mb-2">
-          <button onClick={() => setVolume(volume === 0 ? 0.7 : 0)} className="text-gray-500 hover:text-teal-400 p-1 transition-colors">
+          <button onClick={() => setVolume(volume === 0 ? 0.7 : 0)} className={`p-1 transition-colors ${proMode ? 'text-gray-500 hover:text-red-400' : 'text-gray-500 hover:text-teal-400'}`}>
             {volume === 0 ? <VolumeX size={13} /> : <Volume2 size={13} />}
           </button>
           <div className="w-[6px] h-16 bg-white/[0.06] rounded-full relative cursor-pointer group/vol overflow-hidden"
@@ -718,11 +761,11 @@ export default function FloatingAudioPlayer() {
             <div className="absolute bottom-0 left-0 w-full rounded-full transition-all duration-200"
               style={{
                 height: `${volume * 100}%`,
-                background: 'linear-gradient(to top, rgba(34,211,238,0.7), rgba(20,184,166,0.5))',
-                boxShadow: '0 0 8px rgba(34,211,238,0.3)',
+                background: proMode ? 'linear-gradient(to top, rgba(255,0,0,0.7), rgba(220,38,38,0.5))' : 'linear-gradient(to top, rgba(34,211,238,0.7), rgba(20,184,166,0.5))',
+                boxShadow: proMode ? '0 0 8px rgba(255,0,0,0.3)' : '0 0 8px rgba(34,211,238,0.3)',
               }}
             />
-            <div className="absolute left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-teal-400 shadow-lg shadow-teal-500/30 transition-all duration-200 opacity-0 group-hover/vol:opacity-100"
+            <div className={`absolute left-1/2 -translate-x-1/2 w-3 h-3 rounded-full shadow-lg transition-all duration-200 opacity-0 group-hover/vol:opacity-100 ${proMode ? 'bg-red-400 shadow-red-500/30' : 'bg-teal-400 shadow-teal-500/30'}`}
               style={{ bottom: `calc(${volume * 100}% - 6px)` }}
             />
           </div>
@@ -740,8 +783,8 @@ export default function FloatingAudioPlayer() {
       className="fixed top-0 right-0 h-screen w-[620px] z-[55] flex flex-col transition-all duration-300"
       style={{
         background: 'linear-gradient(180deg, rgba(8,8,12,0.98) 0%, rgba(4,4,8,0.99) 100%)',
-        borderLeft: '1px solid rgba(34, 211, 238, 0.06)',
-        boxShadow: '-12px 0 80px rgba(0,0,0,0.8), -2px 0 20px rgba(34,211,238,0.03)',
+        borderLeft: proMode ? '1px solid rgba(255, 0, 0, 0.1)' : '1px solid rgba(34, 211, 238, 0.06)',
+        boxShadow: proMode ? '-12px 0 80px rgba(0,0,0,0.8), -2px 0 20px rgba(255,0,0,0.05)' : '-12px 0 80px rgba(0,0,0,0.8), -2px 0 20px rgba(34,211,238,0.03)',
         backdropFilter: 'blur(40px)',
         WebkitBackdropFilter: 'blur(40px)',
       }}
@@ -749,20 +792,20 @@ export default function FloatingAudioPlayer() {
       {/* Accent glow line at top */}
       <div className="h-[1px] w-full flex-shrink-0" style={{
         background: isPlaying
-          ? 'linear-gradient(90deg, transparent, rgba(34,211,238,0.4) 30%, rgba(20,184,166,0.5) 50%, rgba(34,211,238,0.4) 70%, transparent)'
-          : 'linear-gradient(90deg, transparent, rgba(34,211,238,0.1) 50%, transparent)',
+          ? (proMode ? 'linear-gradient(90deg, transparent, rgba(255,0,0,0.5) 30%, rgba(255,0,0,0.6) 50%, rgba(255,0,0,0.5) 70%, transparent)' : 'linear-gradient(90deg, transparent, rgba(34,211,238,0.4) 30%, rgba(20,184,166,0.5) 50%, rgba(34,211,238,0.4) 70%, transparent)')
+          : (proMode ? 'linear-gradient(90deg, transparent, rgba(255,0,0,0.15) 50%, transparent)' : 'linear-gradient(90deg, transparent, rgba(34,211,238,0.1) 50%, transparent)'),
       }} />
 
       {/* ─── Header ─── */}
       <div className="flex items-center justify-between px-6 h-14 border-b border-white/[0.03] flex-shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="relative">
-            <div className="w-2 h-2 rounded-full bg-teal-500" />
-            {isPlaying && <div className="absolute inset-0 w-2 h-2 rounded-full bg-teal-500 animate-ping opacity-40" />}
+            <div className={`w-2 h-2 rounded-full ${proMode ? 'bg-red-500' : 'bg-teal-500'}`} />
+            {isPlaying && <div className={`absolute inset-0 w-2 h-2 rounded-full animate-ping opacity-40 ${proMode ? 'bg-red-500' : 'bg-teal-500'}`} />}
           </div>
           <span className="text-[11px] text-gray-400 font-medium tracking-widest uppercase">Now Playing</span>
         </div>
-        <button onClick={() => setExpanded(false)} className="p-2 text-gray-600 hover:text-teal-400 hover:bg-white/[0.04] rounded-xl transition-all group/collapse" title="Collapse">
+        <button onClick={() => setExpanded(false)} className={`p-2 text-gray-600 hover:bg-white/[0.04] rounded-xl transition-all group/collapse ${proMode ? 'hover:text-red-400' : 'hover:text-teal-400'}`} title="Collapse">
           <ChevronRight size={16} className="group-hover/collapse:translate-x-0.5 transition-transform" />
         </button>
       </div>
@@ -774,7 +817,7 @@ export default function FloatingAudioPlayer() {
           {/* Ambient glow behind art */}
           {isPlaying && (
             <div className="absolute -inset-3 rounded-3xl opacity-30 blur-xl pointer-events-none"
-              style={{ background: 'radial-gradient(circle, rgba(34,211,238,0.2) 0%, rgba(20,184,166,0.1) 50%, transparent 70%)' }} />
+              style={{ background: proMode ? 'radial-gradient(circle, rgba(255,0,0,0.25) 0%, rgba(220,38,38,0.12) 50%, transparent 70%)' : 'radial-gradient(circle, rgba(34,211,238,0.2) 0%, rgba(20,184,166,0.1) 50%, transparent 70%)' }} />
           )}
           <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
             <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="1.5" />
@@ -784,8 +827,8 @@ export default function FloatingAudioPlayer() {
               className="transition-all duration-200" />
             <defs>
               <linearGradient id="progressGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="rgba(20,184,166,0.8)" />
-                <stop offset="100%" stopColor="rgba(34,211,238,0.6)" />
+                <stop offset="0%" stopColor={proMode ? 'rgba(255,0,0,0.8)' : 'rgba(20,184,166,0.8)'} />
+                <stop offset="100%" stopColor={proMode ? 'rgba(255,0,0,0.6)' : 'rgba(34,211,238,0.6)'} />
               </linearGradient>
             </defs>
           </svg>
@@ -802,7 +845,7 @@ export default function FloatingAudioPlayer() {
           </div>
           {isPlaying && (
             <div className="absolute inset-[6px] rounded-2xl pointer-events-none"
-              style={{ boxShadow: 'inset 0 0 20px rgba(34,211,238,0.06)' }} />
+              style={{ boxShadow: proMode ? 'inset 0 0 20px rgba(255,0,0,0.08)' : 'inset 0 0 20px rgba(34,211,238,0.06)' }} />
           )}
         </div>
 
@@ -814,7 +857,7 @@ export default function FloatingAudioPlayer() {
           {(currentTrack.genre || currentTrack.mood || (currentTrack.tags && currentTrack.tags.length > 0)) && (
             <div className="flex flex-wrap gap-1 mt-2 justify-center">
               {currentTrack.genre && (
-                <span className="text-[9px] px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/15 font-medium">{currentTrack.genre}</span>
+                <span className={`text-[9px] px-2 py-0.5 rounded-full font-medium ${proMode ? 'bg-red-500/10 text-red-400 border border-red-500/15' : 'bg-teal-500/10 text-teal-400 border border-teal-500/15'}`}>{currentTrack.genre}</span>
               )}
               {currentTrack.mood && (
                 <span className="text-[9px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/15 font-medium">{currentTrack.mood}</span>
@@ -831,12 +874,12 @@ export default function FloatingAudioPlayer() {
               <Heart size={15} fill={liked ? 'currentColor' : 'none'} />
             </button>
             <button onClick={() => addToPlaylist(currentTrack)}
-              className="p-2 rounded-xl text-gray-600 hover:text-teal-400 hover:bg-white/[0.04] transition-all" title="Add to queue">
+              className={`p-2 rounded-xl text-gray-600 hover:bg-white/[0.04] transition-all ${proMode ? 'hover:text-red-400' : 'hover:text-teal-400'}`} title="Add to queue">
               <List size={15} />
             </button>
             <div className="relative">
               <button onClick={() => setShowSpeed(!showSpeed)}
-                className={`px-2.5 py-1.5 rounded-xl text-[11px] font-mono font-medium transition-all ${playbackRate !== 1 ? 'text-teal-400 bg-teal-500/10' : 'text-gray-600 hover:text-gray-300 hover:bg-white/[0.04]'}`}
+                className={`px-2.5 py-1.5 rounded-xl text-[11px] font-mono font-medium transition-all ${playbackRate !== 1 ? (proMode ? 'text-red-400 bg-red-500/10' : 'text-teal-400 bg-teal-500/10') : 'text-gray-600 hover:text-gray-300 hover:bg-white/[0.04]'}`}
                 title="Playback speed">
                 {playbackRate}×
               </button>
@@ -844,7 +887,7 @@ export default function FloatingAudioPlayer() {
                 <div className="absolute bottom-full left-0 mb-2 bg-gray-900/95 border border-white/[0.08] rounded-2xl p-1.5 flex gap-1 shadow-2xl z-10 backdrop-blur-xl">
                   {speeds.map(s => (
                     <button key={s} onClick={() => { setPlaybackRate(s); setShowSpeed(false) }}
-                      className={`px-2.5 py-1.5 rounded-xl text-[11px] font-mono transition-all ${s === playbackRate ? 'text-teal-400 bg-teal-500/10' : 'text-gray-500 hover:text-gray-200 hover:bg-white/[0.04]'}`}>
+                      className={`px-2.5 py-1.5 rounded-xl text-[11px] font-mono transition-all ${s === playbackRate ? (proMode ? 'text-red-400 bg-red-500/10' : 'text-teal-400 bg-teal-500/10') : 'text-gray-500 hover:text-gray-200 hover:bg-white/[0.04]'}`}>
                       {s}×
                     </button>
                   ))}
@@ -874,7 +917,7 @@ export default function FloatingAudioPlayer() {
 
       {/* ─── Transport Controls ─── */}
       <div className="px-6 py-3 flex items-center justify-center gap-6 flex-shrink-0">
-        <button onClick={toggleShuffle} className={`p-2 rounded-xl transition-all ${isShuffled ? 'text-teal-400 bg-teal-500/10 shadow-sm shadow-teal-500/10' : 'text-gray-600 hover:text-gray-300 hover:bg-white/[0.04]'}`} title="Shuffle">
+        <button onClick={toggleShuffle} className={`p-2 rounded-xl transition-all ${isShuffled ? (proMode ? 'text-red-400 bg-red-500/10 shadow-sm shadow-red-500/10' : 'text-teal-400 bg-teal-500/10 shadow-sm shadow-teal-500/10') : 'text-gray-600 hover:text-gray-300 hover:bg-white/[0.04]'}`} title="Shuffle">
           <Shuffle size={15} />
         </button>
         <button onClick={playPrevious} className="text-gray-400 hover:text-gray-200 p-1.5 rounded-xl hover:bg-white/[0.04] transition-all" title="Previous">
@@ -884,9 +927,9 @@ export default function FloatingAudioPlayer() {
           onClick={togglePlayPause}
           className="w-16 h-16 rounded-[22px] flex items-center justify-center active:scale-95 transition-all relative"
           style={{
-            background: 'linear-gradient(135deg, #0d9488, #22d3ee)',
+            background: proMode ? 'linear-gradient(135deg, #dc2626, #ff0000)' : 'linear-gradient(135deg, #0d9488, #22d3ee)',
             boxShadow: isPlaying
-              ? '0 0 40px rgba(34,211,238,0.25), 0 0 80px rgba(34,211,238,0.08), inset 0 1px 0 rgba(255,255,255,0.15)'
+              ? (proMode ? '0 0 40px rgba(255,0,0,0.3), 0 0 80px rgba(255,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.15)' : '0 0 40px rgba(34,211,238,0.25), 0 0 80px rgba(34,211,238,0.08), inset 0 1px 0 rgba(255,255,255,0.15)')
               : '0 4px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15)',
           }}
           title="Play/Pause (Space)"
@@ -896,14 +939,14 @@ export default function FloatingAudioPlayer() {
         <button onClick={playNext} className="text-gray-400 hover:text-gray-200 p-1.5 rounded-xl hover:bg-white/[0.04] transition-all" title="Next">
           <SkipForward size={20} />
         </button>
-        <button onClick={toggleLoop} className={`p-2 rounded-xl transition-all ${isLooping ? 'text-teal-400 bg-teal-500/10 shadow-sm shadow-teal-500/10' : 'text-gray-600 hover:text-gray-300 hover:bg-white/[0.04]'}`} title="Loop">
+        <button onClick={toggleLoop} className={`p-2 rounded-xl transition-all ${isLooping ? (proMode ? 'text-red-400 bg-red-500/10 shadow-sm shadow-red-500/10' : 'text-teal-400 bg-teal-500/10 shadow-sm shadow-teal-500/10') : 'text-gray-600 hover:text-gray-300 hover:bg-white/[0.04]'}`} title="Loop">
           <Repeat size={15} />
         </button>
       </div>
 
       {/* ─── Volume — modern horizontal slider ─── */}
       <div className="px-6 pb-4 flex items-center gap-3 flex-shrink-0">
-        <button onClick={() => setVolume(volume === 0 ? 0.7 : 0)} className="text-gray-500 hover:text-teal-400 transition-colors">
+        <button onClick={() => setVolume(volume === 0 ? 0.7 : 0)} className={`transition-colors ${proMode ? 'text-gray-500 hover:text-red-400' : 'text-gray-500 hover:text-teal-400'}`}>
           {volume === 0 ? <VolumeX size={15} /> : <Volume2 size={15} />}
         </button>
         <div className="flex-1 h-[6px] bg-white/[0.04] rounded-full relative cursor-pointer group/vol overflow-hidden"
@@ -916,15 +959,15 @@ export default function FloatingAudioPlayer() {
           <div className="absolute top-0 left-0 h-full rounded-full transition-all duration-150"
             style={{
               width: `${volume * 100}%`,
-              background: 'linear-gradient(90deg, rgba(20,184,166,0.6), rgba(34,211,238,0.8))',
-              boxShadow: '0 0 10px rgba(34,211,238,0.2)',
+              background: proMode ? 'linear-gradient(90deg, rgba(255,0,0,0.6), rgba(255,0,0,0.8))' : 'linear-gradient(90deg, rgba(20,184,166,0.6), rgba(34,211,238,0.8))',
+              boxShadow: proMode ? '0 0 10px rgba(255,0,0,0.2)' : '0 0 10px rgba(34,211,238,0.2)',
             }}
           />
           <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full transition-all duration-150 opacity-0 group-hover/vol:opacity-100"
             style={{
               left: `calc(${volume * 100}% - 8px)`,
-              background: 'linear-gradient(135deg, #14b8a6, #22d3ee)',
-              boxShadow: '0 0 10px rgba(34,211,238,0.4), 0 2px 4px rgba(0,0,0,0.3)',
+              background: proMode ? 'linear-gradient(135deg, #dc2626, #ff0000)' : 'linear-gradient(135deg, #14b8a6, #22d3ee)',
+              boxShadow: proMode ? '0 0 10px rgba(255,0,0,0.4), 0 2px 4px rgba(0,0,0,0.3)' : '0 0 10px rgba(34,211,238,0.4), 0 2px 4px rgba(0,0,0,0.3)',
             }}
           />
         </div>
@@ -939,7 +982,7 @@ export default function FloatingAudioPlayer() {
           <span className="flex items-center gap-2 font-semibold tracking-widest uppercase">
             <List size={12} /> Queue
             {playlist.length > 0 && (
-              <span className="text-[9px] text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded-full font-bold">{playlist.length}</span>
+              <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold ${proMode ? 'text-red-400 bg-red-500/10' : 'text-teal-400 bg-teal-500/10'}`}>{playlist.length}</span>
             )}
           </span>
           {showQueue ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
@@ -953,19 +996,19 @@ export default function FloatingAudioPlayer() {
           ) : playlist.map((track, i) => {
             const isCurrent = currentTrack?.id === track.id
             return (
-              <div key={`${track.id}-${i}`} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl mb-0.5 transition-all ${isCurrent ? 'bg-teal-500/[0.06] border-l-2 border-teal-400' : 'hover:bg-white/[0.02] border-l-2 border-transparent'}`}>
+              <div key={`${track.id}-${i}`} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl mb-0.5 transition-all ${isCurrent ? (proMode ? 'bg-red-500/[0.06] border-l-2 border-red-400' : 'bg-teal-500/[0.06] border-l-2 border-teal-400') : 'hover:bg-white/[0.02] border-l-2 border-transparent'}`}>
                 <button onClick={() => playTrack(track)} className="flex items-center gap-2.5 flex-1 min-w-0 text-left">
                   <span className="text-[9px] text-gray-700 w-4 font-mono">{i + 1}</span>
                   {track.imageUrl && <Image src={track.imageUrl} alt={track.title} width={24} height={24} className="w-6 h-6 rounded-lg object-cover ring-1 ring-white/5" />}
                   <div className="min-w-0 flex-1">
-                    <p className={`text-[10px] truncate ${isCurrent ? 'text-teal-400 font-semibold' : 'text-gray-400'}`}>{track.title}</p>
+                    <p className={`text-[10px] truncate ${isCurrent ? (proMode ? 'text-red-400 font-semibold' : 'text-teal-400 font-semibold') : 'text-gray-400'}`}>{track.title}</p>
                     {track.artist && <p className="text-[8px] text-gray-700 truncate">{track.artist}</p>}
                   </div>
                   {isCurrent && isPlaying && (
                     <div className="flex gap-[2px]">
-                      <div className="w-[2px] h-2.5 bg-teal-400 rounded-full animate-pulse" />
-                      <div className="w-[2px] h-2.5 bg-teal-400 rounded-full animate-pulse" style={{ animationDelay: '0.15s' }} />
-                      <div className="w-[2px] h-2.5 bg-teal-400 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }} />
+                      <div className={`w-[2px] h-2.5 rounded-full animate-pulse ${proMode ? 'bg-red-400' : 'bg-teal-400'}`} />
+                      <div className={`w-[2px] h-2.5 rounded-full animate-pulse ${proMode ? 'bg-red-400' : 'bg-teal-400'}`} style={{ animationDelay: '0.15s' }} />
+                      <div className={`w-[2px] h-2.5 rounded-full animate-pulse ${proMode ? 'bg-red-400' : 'bg-teal-400'}`} style={{ animationDelay: '0.3s' }} />
                     </div>
                   )}
                 </button>
@@ -1018,12 +1061,12 @@ export default function FloatingAudioPlayer() {
                   onClick={() => setActiveGenre(g)}
                   className={`flex-shrink-0 px-3 py-1 rounded-lg text-[10px] font-medium transition-all whitespace-nowrap ${
                     isActive
-                      ? 'bg-teal-500/15 text-teal-400 border border-teal-500/20 shadow-sm shadow-teal-500/10'
+                      ? (proMode ? 'bg-red-500/15 text-red-400 border border-red-500/20 shadow-sm shadow-red-500/10' : 'bg-teal-500/15 text-teal-400 border border-teal-500/20 shadow-sm shadow-teal-500/10')
                       : 'bg-white/[0.02] text-gray-600 border border-white/[0.04] hover:text-gray-400 hover:border-white/[0.08]'
                   }`}
                 >
                   {g}
-                  {count > 0 && <span className={`ml-1 text-[8px] ${isActive ? 'text-teal-500/70' : 'text-gray-700'}`}>{count}</span>}
+                  {count > 0 && <span className={`ml-1 text-[8px] ${isActive ? (proMode ? 'text-red-500/70' : 'text-teal-500/70') : 'text-gray-700'}`}>{count}</span>}
                 </button>
               )
             })}
@@ -1060,14 +1103,14 @@ export default function FloatingAudioPlayer() {
           </span>
           <div className="flex items-center gap-1">
             <button onClick={() => setGridCols(2)}
-              className={`p-1 rounded-lg transition-all ${gridCols === 2 ? 'text-teal-400 bg-teal-500/10' : 'text-gray-700 hover:text-gray-500'}`} title="2 columns">
+              className={`p-1 rounded-lg transition-all ${gridCols === 2 ? (proMode ? 'text-red-400 bg-red-500/10' : 'text-teal-400 bg-teal-500/10') : 'text-gray-700 hover:text-gray-500'}`} title="2 columns">
               <div className="grid grid-cols-2 gap-[2px] w-3 h-3">
                 <div className="bg-current rounded-[1px]" /><div className="bg-current rounded-[1px]" />
                 <div className="bg-current rounded-[1px]" /><div className="bg-current rounded-[1px]" />
               </div>
             </button>
             <button onClick={() => setGridCols(3)}
-              className={`p-1 rounded-lg transition-all ${gridCols === 3 ? 'text-teal-400 bg-teal-500/10' : 'text-gray-700 hover:text-gray-500'}`} title="3 columns">
+              className={`p-1 rounded-lg transition-all ${gridCols === 3 ? (proMode ? 'text-red-400 bg-red-500/10' : 'text-teal-400 bg-teal-500/10') : 'text-gray-700 hover:text-gray-500'}`} title="3 columns">
               <div className="grid grid-cols-3 gap-[1.5px] w-3 h-3">
                 <div className="bg-current rounded-[0.5px]" /><div className="bg-current rounded-[0.5px]" /><div className="bg-current rounded-[0.5px]" />
                 <div className="bg-current rounded-[0.5px]" /><div className="bg-current rounded-[0.5px]" /><div className="bg-current rounded-[0.5px]" />
@@ -1081,7 +1124,7 @@ export default function FloatingAudioPlayer() {
         <div className="flex-1 overflow-y-auto px-4 pb-4 scrollbar-hide">
           {exploreLoading ? (
             <div className="py-10 text-center">
-              <div className="w-6 h-6 border-2 border-teal-500/30 border-t-teal-400 rounded-full animate-spin mx-auto mb-3" />
+              <div className={`w-6 h-6 border-2 rounded-full animate-spin mx-auto mb-3 ${proMode ? 'border-red-500/30 border-t-red-400' : 'border-teal-500/30 border-t-teal-400'}`} />
               <p className="text-[11px] text-gray-700">Loading tracks...</p>
             </div>
           ) : filteredExplore.length === 0 ? (
@@ -1090,7 +1133,7 @@ export default function FloatingAudioPlayer() {
               <p className="text-[12px] text-gray-600 font-medium">{exploreSearch || activeGenre !== 'All' || activeMood !== 'All Vibes' ? 'No matches found' : 'No tracks available'}</p>
               {(activeGenre !== 'All' || activeMood !== 'All Vibes') && (
                 <button onClick={() => { setActiveGenre('All'); setActiveMood('All Vibes') }}
-                  className="mt-2 text-[10px] text-teal-500 hover:text-teal-400 transition-colors">
+                  className={`mt-2 text-[10px] transition-colors ${proMode ? 'text-red-500 hover:text-red-400' : 'text-teal-500 hover:text-teal-400'}`}>
                   Clear filters
                 </button>
               )}
@@ -1106,7 +1149,7 @@ export default function FloatingAudioPlayer() {
                     key={song.id}
                     className={`group/card relative rounded-2xl overflow-hidden transition-all duration-200 cursor-pointer ${
                       isCurrent
-                        ? 'ring-1 ring-teal-500/30 bg-teal-500/[0.04]'
+                        ? (proMode ? 'ring-1 ring-red-500/30 bg-red-500/[0.04]' : 'ring-1 ring-teal-500/30 bg-teal-500/[0.04]')
                         : 'ring-1 ring-white/[0.04] hover:ring-white/[0.1] hover:bg-white/[0.02]'
                     }`}
                   >
@@ -1116,15 +1159,15 @@ export default function FloatingAudioPlayer() {
                           <Image src={imgUrl} alt={song.title} fill className="object-cover group-hover/card:scale-105 transition-transform duration-500" />
                         ) : (
                           <div className="w-full h-full bg-gradient-to-br from-gray-800/60 to-gray-900/80 flex items-center justify-center">
-                            <Music size={gridCols === 3 ? 18 : 24} className="text-teal-500/15" />
+                            <Music size={gridCols === 3 ? 18 : 24} className={proMode ? 'text-red-500/15' : 'text-teal-500/15'} />
                           </div>
                         )}
                         {/* Play overlay */}
                         <div className="absolute inset-0 bg-black/0 group-hover/card:bg-black/40 transition-all duration-200 flex items-center justify-center">
                           <div className={`${gridCols === 3 ? 'w-8 h-8' : 'w-10 h-10'} rounded-full flex items-center justify-center opacity-0 group-hover/card:opacity-100 scale-75 group-hover/card:scale-100 transition-all duration-200`}
                             style={{
-                              background: 'linear-gradient(135deg, rgba(20,184,166,0.9), rgba(34,211,238,0.9))',
-                              boxShadow: '0 4px 16px rgba(34,211,238,0.3)',
+                              background: proMode ? 'linear-gradient(135deg, rgba(220,38,38,0.9), rgba(255,0,0,0.9))' : 'linear-gradient(135deg, rgba(20,184,166,0.9), rgba(34,211,238,0.9))',
+                              boxShadow: proMode ? '0 4px 16px rgba(255,0,0,0.3)' : '0 4px 16px rgba(34,211,238,0.3)',
                             }}>
                             {isCurrent && isPlaying ? (
                               <Pause size={gridCols === 3 ? 12 : 14} className="text-white" fill="currentColor" />
@@ -1142,9 +1185,9 @@ export default function FloatingAudioPlayer() {
                         {/* Playing bars */}
                         {isCurrent && isPlaying && (
                           <div className="absolute bottom-1.5 left-1.5 flex gap-[2px] px-1.5 py-1 rounded-md bg-black/50 backdrop-blur-md">
-                            <div className="w-[2px] h-3 bg-teal-400 rounded-full animate-pulse" />
-                            <div className="w-[2px] h-3 bg-teal-400 rounded-full animate-pulse" style={{ animationDelay: '0.15s' }} />
-                            <div className="w-[2px] h-3 bg-teal-400 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }} />
+                            <div className={`w-[2px] h-3 rounded-full animate-pulse ${proMode ? 'bg-red-400' : 'bg-teal-400'}`} />
+                            <div className={`w-[2px] h-3 rounded-full animate-pulse ${proMode ? 'bg-red-400' : 'bg-teal-400'}`} style={{ animationDelay: '0.15s' }} />
+                            <div className={`w-[2px] h-3 rounded-full animate-pulse ${proMode ? 'bg-red-400' : 'bg-teal-400'}`} style={{ animationDelay: '0.3s' }} />
                           </div>
                         )}
                         {/* Plays count */}
@@ -1156,7 +1199,7 @@ export default function FloatingAudioPlayer() {
                       </div>
                       {/* Info */}
                       <div className={`px-2.5 ${gridCols === 3 ? 'py-1.5' : 'py-2'}`}>
-                        <p className={`${gridCols === 3 ? 'text-[9px]' : 'text-[11px]'} truncate leading-tight font-medium ${isCurrent ? 'text-teal-400' : 'text-gray-300'}`}>
+                        <p className={`${gridCols === 3 ? 'text-[9px]' : 'text-[11px]'} truncate leading-tight font-medium ${isCurrent ? (proMode ? 'text-red-400' : 'text-teal-400') : 'text-gray-300'}`}>
                           {song.title}
                         </p>
                         <p className={`${gridCols === 3 ? 'text-[7px]' : 'text-[9px]'} text-gray-600 truncate mt-0.5`}>{artist}</p>
@@ -1175,7 +1218,7 @@ export default function FloatingAudioPlayer() {
                     {/* Queue button */}
                     <button
                       onClick={(e) => queueExploreTrack(e, song)}
-                      className="absolute top-1.5 right-1.5 p-1.5 rounded-xl bg-black/50 text-gray-400 hover:text-teal-400 opacity-0 group-hover/card:opacity-100 transition-all backdrop-blur-md hover:bg-black/70"
+                      className={`absolute top-1.5 right-1.5 p-1.5 rounded-xl bg-black/50 text-gray-400 opacity-0 group-hover/card:opacity-100 transition-all backdrop-blur-md hover:bg-black/70 ${proMode ? 'hover:text-red-400' : 'hover:text-teal-400'}`}
                       title="Add to queue"
                     >
                       <List size={11} />

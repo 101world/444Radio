@@ -807,16 +807,16 @@ input[placeholder*="Video"]:focus {
   100% { opacity: 1; }
 }
 
-/* Pro Mode: Neon scanline — bolder */
+/* Pro Mode: Neon scanline — crisp pure red */
 .pro-mode::before {
   content: '';
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, transparent 5%, rgba(239, 68, 68, 0.6) 30%, rgba(255, 100, 100, 1) 50%, rgba(239, 68, 68, 0.6) 70%, transparent 95%);
-  box-shadow: 0 0 20px rgba(239, 68, 68, 0.6), 0 0 60px rgba(239, 68, 68, 0.3);
+  height: 2px;
+  background: linear-gradient(90deg, transparent 2%, rgba(255, 0, 0, 0.7) 25%, #ff0000 50%, rgba(255, 0, 0, 0.7) 75%, transparent 98%);
+  box-shadow: 0 0 15px rgba(255, 0, 0, 0.8), 0 0 40px rgba(255, 0, 0, 0.4), 0 0 80px rgba(255, 0, 0, 0.15);
   z-index: 100;
   animation: pro-scanline 4s ease-in-out infinite;
   pointer-events: none;
@@ -831,173 +831,268 @@ input[placeholder*="Video"]:focus {
 
 /* ── Pro Mode: Force ALL cyan/teal/blue accent colors → red neon ── */
 
-/* ─── 3D Background canvas hue shift ─── */
+/* ─── 3D Background canvas — pure red tint instead of hue-rotate ─── */
 .pro-3d-filter canvas {
-  filter: hue-rotate(160deg) saturate(2.5) brightness(0.85) !important;
+  filter: grayscale(1) brightness(0.6) contrast(1.2) !important;
+}
+.pro-3d-filter::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 0, 0, 0.08);
+  mix-blend-mode: color;
+  pointer-events: none;
 }
 
-/* ─── GPU Console canvas hue shift ─── */
-.pro-console-filter canvas {
-  filter: hue-rotate(160deg) saturate(2) !important;
-}
+/* ─── GPU Console canvas — no hue-rotate; canvas colors handled in JS ─── */
+/* The MatrixConsole component now reads isProMode and draws pure red */
 
-/* ─── Text colors: cyan/teal/blue → red ─── */
-.pro-mode .text-cyan-100     { color: #fecaca !important; }
-.pro-mode .text-cyan-200     { color: #fca5a5 !important; }
-.pro-mode .text-cyan-300     { color: #f87171 !important; }
-.pro-mode .text-cyan-400     { color: #ef4444 !important; }
-.pro-mode .text-cyan-500     { color: #dc2626 !important; }
-.pro-mode .text-cyan-600     { color: #b91c1c !important; }
-.pro-mode .text-teal-100     { color: #fecaca !important; }
-.pro-mode .text-teal-200     { color: #fca5a5 !important; }
-.pro-mode .text-teal-300     { color: #f87171 !important; }
-.pro-mode .text-teal-400     { color: #ef4444 !important; }
-.pro-mode .text-teal-500     { color: #dc2626 !important; }
-.pro-mode .text-blue-300     { color: #f87171 !important; }
-.pro-mode .text-blue-400     { color: #ef4444 !important; }
-.pro-mode .text-blue-500     { color: #dc2626 !important; }
-.pro-mode .text-blue-600     { color: #b91c1c !important; }
+/* ─── Text colors: cyan/teal/blue → pure crisp red ─── */
+.pro-mode .text-cyan-100     { color: #fca5a5 !important; }
+.pro-mode .text-cyan-200     { color: #ff6b6b !important; }
+.pro-mode .text-cyan-300     { color: #ff4444 !important; }
+.pro-mode .text-cyan-400     { color: #ff0000 !important; }
+.pro-mode .text-cyan-500     { color: #e60000 !important; }
+.pro-mode .text-cyan-600     { color: #cc0000 !important; }
+.pro-mode .text-teal-100     { color: #fca5a5 !important; }
+.pro-mode .text-teal-200     { color: #ff6b6b !important; }
+.pro-mode .text-teal-300     { color: #ff4444 !important; }
+.pro-mode .text-teal-400     { color: #ff0000 !important; }
+.pro-mode .text-teal-500     { color: #e60000 !important; }
+.pro-mode .text-blue-300     { color: #ff4444 !important; }
+.pro-mode .text-blue-400     { color: #ff0000 !important; }
+.pro-mode .text-blue-500     { color: #e60000 !important; }
+.pro-mode .text-blue-600     { color: #cc0000 !important; }
+/* Purple/pink text → red in pro mode */
+.pro-mode .text-purple-300   { color: #ff4444 !important; }
+.pro-mode .text-purple-400   { color: #ff0000 !important; }
+.pro-mode .text-purple-500   { color: #e60000 !important; }
+.pro-mode .text-pink-300     { color: #ff4444 !important; }
+.pro-mode .text-pink-400     { color: #ff0000 !important; }
 
-/* ─── Border colors: ALL cyan/teal/blue → red ─── */
+/* ─── Border colors: ALL cyan/teal/blue/purple → red ─── */
 .pro-mode [class*="border-cyan"] {
-  border-color: rgba(239, 68, 68, 0.3) !important;
+  border-color: rgba(255, 0, 0, 0.35) !important;
 }
 .pro-mode [class*="hover\:border-cyan"]:hover {
-  border-color: rgba(239, 68, 68, 0.5) !important;
+  border-color: rgba(255, 0, 0, 0.6) !important;
 }
 .pro-mode [class*="focus-within\:border-cyan"]:focus-within,
 .pro-mode [class*="focus\:border-cyan"]:focus {
-  border-color: rgba(239, 68, 68, 0.5) !important;
+  border-color: rgba(255, 0, 0, 0.6) !important;
 }
 .pro-mode [class*="border-teal"] {
-  border-color: rgba(239, 68, 68, 0.25) !important;
+  border-color: rgba(255, 0, 0, 0.3) !important;
 }
 .pro-mode [class*="border-blue"] {
-  border-color: rgba(239, 68, 68, 0.3) !important;
+  border-color: rgba(255, 0, 0, 0.35) !important;
+}
+.pro-mode [class*="border-purple"] {
+  border-color: rgba(255, 0, 0, 0.3) !important;
+}
+.pro-mode [class*="border-pink"] {
+  border-color: rgba(255, 0, 0, 0.3) !important;
 }
 .pro-mode [class*="border-t-cyan"] {
-  border-top-color: #ef4444 !important;
+  border-top-color: #ff0000 !important;
+}
+/* White borders in pro mode → crisp white with slight red glow */
+.pro-mode [class*="border-white\/10"],
+.pro-mode [class*="border-white\/15"],
+.pro-mode [class*="border-white\/20"] {
+  border-color: rgba(255, 255, 255, 0.15) !important;
 }
 
 /* ─── Solid cyan/blue backgrounds → red ─── */
-.pro-mode .bg-cyan-400 { background-color: #ef4444 !important; }
-.pro-mode .bg-cyan-500 { background-color: #dc2626 !important; }
-.pro-mode .bg-cyan-600 { background-color: #b91c1c !important; }
-.pro-mode .bg-blue-400  { background-color: #ef4444 !important; }
-.pro-mode .bg-blue-500  { background-color: #dc2626 !important; }
-.pro-mode .bg-blue-600  { background-color: #b91c1c !important; }
+.pro-mode .bg-cyan-400 { background-color: #ff0000 !important; }
+.pro-mode .bg-cyan-500 { background-color: #e60000 !important; }
+.pro-mode .bg-cyan-600 { background-color: #cc0000 !important; }
+.pro-mode .bg-blue-400  { background-color: #ff0000 !important; }
+.pro-mode .bg-blue-500  { background-color: #e60000 !important; }
+.pro-mode .bg-blue-600  { background-color: #cc0000 !important; }
+.pro-mode .bg-purple-500 { background-color: #e60000 !important; }
 
-/* ─── Cyan/blue backgrounds with any opacity → red ─── */
+/* ─── Cyan/blue/purple backgrounds with any opacity → red ─── */
 .pro-mode [class*="bg-cyan-500\/"],
 .pro-mode [class*="bg-cyan-400\/"],
 .pro-mode [class*="bg-cyan-300\/"] {
-  background-color: rgba(239, 68, 68, 0.12) !important;
+  background-color: rgba(255, 0, 0, 0.12) !important;
 }
 .pro-mode [class*="bg-blue-500\/"],
 .pro-mode [class*="bg-blue-400\/"] {
-  background-color: rgba(239, 68, 68, 0.12) !important;
+  background-color: rgba(255, 0, 0, 0.12) !important;
 }
 .pro-mode [class*="bg-teal-500\/"],
 .pro-mode [class*="bg-teal-400\/"] {
-  background-color: rgba(239, 68, 68, 0.1) !important;
+  background-color: rgba(255, 0, 0, 0.1) !important;
+}
+.pro-mode [class*="bg-purple-500\/"],
+.pro-mode [class*="bg-purple-400\/"] {
+  background-color: rgba(255, 0, 0, 0.12) !important;
 }
 
 /* ─── Hover backgrounds ─── */
 .pro-mode [class*="hover\:bg-cyan"]:hover {
-  background-color: rgba(239, 68, 68, 0.2) !important;
+  background-color: rgba(255, 0, 0, 0.2) !important;
 }
 .pro-mode [class*="hover\:bg-blue"]:hover {
-  background-color: rgba(239, 68, 68, 0.18) !important;
+  background-color: rgba(255, 0, 0, 0.18) !important;
+}
+.pro-mode [class*="hover\:bg-purple"]:hover {
+  background-color: rgba(255, 0, 0, 0.18) !important;
 }
 
-/* ─── Gradient overrides: from/via/to cyan/teal/blue → red ─── */
+/* ─── Gradient overrides: from/via/to cyan/teal/blue → pure red ─── */
 .pro-mode [class*="from-cyan"] {
-  --tw-gradient-from: #dc2626 !important;
+  --tw-gradient-from: #e60000 !important;
 }
 .pro-mode [class*="via-cyan"] {
-  --tw-gradient-via: #ef4444 !important;
+  --tw-gradient-via: #ff0000 !important;
 }
 .pro-mode [class*="to-cyan"] {
-  --tw-gradient-to: #f87171 !important;
+  --tw-gradient-to: #ff3333 !important;
 }
 .pro-mode [class*="from-blue"] {
-  --tw-gradient-from: #991b1b !important;
+  --tw-gradient-from: #b30000 !important;
 }
 .pro-mode [class*="to-blue"] {
-  --tw-gradient-to: #7f1d1d !important;
+  --tw-gradient-to: #990000 !important;
 }
 .pro-mode [class*="from-teal"] {
-  --tw-gradient-from: #b91c1c !important;
+  --tw-gradient-from: #cc0000 !important;
 }
 .pro-mode [class*="to-teal"] {
-  --tw-gradient-to: #991b1b !important;
+  --tw-gradient-to: #b30000 !important;
+}
+.pro-mode [class*="from-purple"] {
+  --tw-gradient-from: #cc0000 !important;
+}
+.pro-mode [class*="to-purple"] {
+  --tw-gradient-to: #990000 !important;
 }
 
 /* ─── Hover gradient overrides ─── */
 .pro-mode [class*="hover\:from-cyan"]:hover {
-  --tw-gradient-from: #ef4444 !important;
+  --tw-gradient-from: #ff0000 !important;
 }
 .pro-mode [class*="hover\:to-cyan"]:hover {
-  --tw-gradient-to: #fca5a5 !important;
+  --tw-gradient-to: #ff4444 !important;
 }
 
-/* ─── Shadow overrides: cyan/blue → red neon glow ─── */
+/* ─── Shadow overrides: cyan/blue → pure red neon glow ─── */
 .pro-mode [class*="shadow-cyan"] {
-  --tw-shadow-color: rgba(239, 68, 68, 0.3) !important;
-  --tw-shadow: 0 0 15px rgba(239, 68, 68, 0.2) !important;
+  --tw-shadow-color: rgba(255, 0, 0, 0.35) !important;
+  --tw-shadow: 0 0 15px rgba(255, 0, 0, 0.25) !important;
 }
 .pro-mode [class*="hover\:shadow-cyan"]:hover {
-  --tw-shadow-color: rgba(239, 68, 68, 0.5) !important;
-  --tw-shadow: 0 0 25px rgba(239, 68, 68, 0.35) !important;
+  --tw-shadow-color: rgba(255, 0, 0, 0.6) !important;
+  --tw-shadow: 0 0 25px rgba(255, 0, 0, 0.4) !important;
 }
 .pro-mode [class*="shadow-blue"] {
-  --tw-shadow-color: rgba(239, 68, 68, 0.25) !important;
-  --tw-shadow: 0 0 12px rgba(239, 68, 68, 0.15) !important;
+  --tw-shadow-color: rgba(255, 0, 0, 0.3) !important;
+  --tw-shadow: 0 0 12px rgba(255, 0, 0, 0.2) !important;
+}
+.pro-mode [class*="shadow-purple"] {
+  --tw-shadow-color: rgba(255, 0, 0, 0.3) !important;
+  --tw-shadow: 0 0 12px rgba(255, 0, 0, 0.2) !important;
 }
 
 /* ─── Drop-shadow & focus-within glow overrides ─── */
 .pro-mode [class*="drop-shadow-\[0_0_6px_rgba(34"] {
-  filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.9)) !important;
+  filter: drop-shadow(0 0 8px rgba(255, 0, 0, 0.9)) !important;
 }
 .pro-mode [class*="focus-within\:shadow-\[0_0_30px"]:focus-within {
-  box-shadow: 0 0 30px rgba(239, 68, 68, 0.12) !important;
+  box-shadow: 0 0 30px rgba(255, 0, 0, 0.15) !important;
 }
 
 /* ─── GPU Console corner dot & label override ─── */
-.pro-console-filter .bg-cyan-500 { background-color: #ef4444 !important; }
-.pro-console-filter .text-cyan-500\/60 { color: rgba(239, 68, 68, 0.6) !important; }
-.pro-console-filter [class*="border-cyan"] { border-color: rgba(239, 68, 68, 0.2) !important; }
+.pro-console-filter .bg-cyan-500,
+.pro-console-filter .bg-purple-500,
+.pro-console-filter .bg-orange-500 { background-color: #ff0000 !important; }
+.pro-console-filter .text-cyan-500\/60,
+.pro-console-filter .text-purple-500\/60,
+.pro-console-filter .text-orange-500\/60 { color: rgba(255, 0, 0, 0.7) !important; }
+.pro-console-filter [class*="border-cyan"],
+.pro-console-filter [class*="border-purple"],
+.pro-console-filter [class*="border-orange"] { border-color: rgba(255, 0, 0, 0.3) !important; }
 
 /* ─── Ring/outline overrides ─── */
 .pro-mode [class*="ring-cyan"] {
-  --tw-ring-color: rgba(239, 68, 68, 0.4) !important;
+  --tw-ring-color: rgba(255, 0, 0, 0.45) !important;
 }
 .pro-mode [class*="ring-blue"] {
-  --tw-ring-color: rgba(239, 68, 68, 0.35) !important;
+  --tw-ring-color: rgba(255, 0, 0, 0.4) !important;
+}
+.pro-mode [class*="ring-teal"],
+.pro-mode [class*="ring-white"] {
+  --tw-ring-color: rgba(255, 0, 0, 0.3) !important;
 }
 
 /* ─── Placeholder text in Pro Mode ─── */
 .pro-mode input::placeholder,
 .pro-mode textarea::placeholder {
-  color: rgba(239, 68, 68, 0.3) !important;
+  color: rgba(255, 0, 0, 0.35) !important;
+}
+
+/* ─── Pro Mode: Audio player overrides (FloatingAudioPlayer is outside .pro-mode) ─── */
+html.pro-mode-active .fixed[style*="border-left: 1px solid rgba(34"] {
+  border-left-color: rgba(255, 0, 0, 0.15) !important;
+}
+html.pro-mode-active .bg-gradient-to-r.from-teal-500.to-cyan-400 {
+  background: linear-gradient(to right, #cc0000, #ff0000) !important;
+}
+html.pro-mode-active .bg-teal-500\/10 {
+  background-color: rgba(255, 0, 0, 0.1) !important;
+}
+html.pro-mode-active .text-teal-400 {
+  color: #ff0000 !important;
+}
+html.pro-mode-active .text-teal-500 {
+  color: #e60000 !important;
+}
+html.pro-mode-active .text-teal-500\/50,
+html.pro-mode-active .text-teal-500\/40 {
+  color: rgba(255, 0, 0, 0.5) !important;
+}
+html.pro-mode-active .bg-teal-400\/80 {
+  background-color: rgba(255, 0, 0, 0.8) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════
    PRO MODE — Layout-level overrides (CreditBadge, NotificationBell)
    These are outside the .pro-mode div, so we use html.pro-mode-active
    ═══════════════════════════════════════════════════════════ */
-html.pro-mode-active .text-cyan-300 { color: #f87171 !important; }
-html.pro-mode-active .text-cyan-400 { color: #ef4444 !important; }
+html.pro-mode-active .text-cyan-300 { color: #ff4444 !important; }
+html.pro-mode-active .text-cyan-400 { color: #ff0000 !important; }
+html.pro-mode-active .text-cyan-200 { color: #ff6b6b !important; }
 html.pro-mode-active [class*="border-cyan"] {
-  border-color: rgba(239, 68, 68, 0.3) !important;
+  border-color: rgba(255, 0, 0, 0.35) !important;
 }
 html.pro-mode-active [class*="hover\:border-cyan"]:hover {
-  border-color: rgba(239, 68, 68, 0.5) !important;
+  border-color: rgba(255, 0, 0, 0.6) !important;
 }
 html.pro-mode-active [class*="shadow-cyan"] {
-  --tw-shadow-color: rgba(239, 68, 68, 0.3) !important;
-  --tw-shadow: 0 0 15px rgba(239, 68, 68, 0.15) !important;
+  --tw-shadow-color: rgba(255, 0, 0, 0.35) !important;
+  --tw-shadow: 0 0 15px rgba(255, 0, 0, 0.2) !important;
 }
 html.pro-mode-active [class*="hover\:shadow-cyan"]:hover {
-  --tw-shadow-color: rgba(239, 68, 68, 0.5) !important;
+  --tw-shadow-color: rgba(255, 0, 0, 0.6) !important;
+}
+/* Pro mode: purple accents in layout → red */
+html.pro-mode-active .text-purple-400 { color: #ff0000 !important; }
+html.pro-mode-active .text-purple-300 { color: #ff4444 !important; }
+html.pro-mode-active [class*="border-purple"] {
+  border-color: rgba(255, 0, 0, 0.3) !important;
+}
+html.pro-mode-active [class*="shadow-purple"] {
+  --tw-shadow-color: rgba(255, 0, 0, 0.3) !important;
+}
+
+/* ─── Pro Mode: Pulsing cyan-to-red RGB feel on key elements ─── */
+@keyframes pro-rgb-pulse {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(255, 0, 0, 0.6)); }
+  50% { filter: drop-shadow(0 0 12px rgba(255, 50, 50, 0.9)); }
+}
+.pro-mode .animate-pro-glow {
+  animation: pro-rgb-pulse 2s ease-in-out infinite;
 }

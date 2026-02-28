@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react'
 interface MatrixConsoleProps {
   isGenerating?: boolean
   isPlaying?: boolean
+  isProMode?: boolean
 }
 
 // ─── Pixel art sprite definitions (5 band members) ──────────────
@@ -174,7 +175,8 @@ function drawStage(ctx: CanvasRenderingContext2D, w: number, h: number, stageY: 
   ctx.fillRect(0, stageY, w, h - stageY)
 
   // Stage edge line with glow
-  ctx.strokeStyle = 'rgba(34, 211, 238, 0.3)'
+  const proActive = typeof window !== 'undefined' && document.documentElement.classList.contains('pro-mode-active')
+  ctx.strokeStyle = proActive ? 'rgba(255, 0, 0, 0.4)' : 'rgba(34, 211, 238, 0.3)'
   ctx.lineWidth = 2
   ctx.beginPath()
   ctx.moveTo(0, stageY)
@@ -208,10 +210,11 @@ interface NoteParticle {
   char: string; opacity: number; size: number
 }
 
-export default function MatrixConsole({ isGenerating = false, isPlaying = false }: MatrixConsoleProps) {
+export default function MatrixConsole({ isGenerating = false, isPlaying = false, isProMode = false }: MatrixConsoleProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const isGenRef = useRef(isGenerating)
   const isPlayRef = useRef(isPlaying)
+  const isProRef = useRef(isProMode)
 
   useEffect(() => {
     isGenRef.current = isGenerating
@@ -220,6 +223,10 @@ export default function MatrixConsole({ isGenerating = false, isPlaying = false 
   useEffect(() => {
     isPlayRef.current = isPlaying
   }, [isPlaying])
+
+  useEffect(() => {
+    isProRef.current = isProMode
+  }, [isProMode])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -398,7 +405,9 @@ export default function MatrixConsole({ isGenerating = false, isPlaying = false 
           p.opacity -= 0.008
           if (p.opacity <= 0) return false
 
-          ctx.fillStyle = `rgba(34, 211, 238, ${p.opacity * 0.8})`
+          ctx.fillStyle = isProRef.current
+            ? `rgba(255, 0, 0, ${p.opacity * 0.8})`
+            : `rgba(34, 211, 238, ${p.opacity * 0.8})`
           ctx.font = `${p.size}px monospace`
           ctx.fillText(p.char, p.x, p.y)
           return true
@@ -420,20 +429,24 @@ export default function MatrixConsole({ isGenerating = false, isPlaying = false 
           line.y -= line.speed
           line.opacity -= 0.003
           if (line.opacity <= 0 || line.y < stageY + 20) return false
-          ctx.fillStyle = `rgba(34, 211, 238, ${line.opacity * 0.5})`
+          ctx.fillStyle = isProRef.current
+            ? `rgba(255, 0, 0, ${line.opacity * 0.5})`
+            : `rgba(34, 211, 238, ${line.opacity * 0.5})`
           ctx.fillText(line.text, 8, line.y)
           return true
         })
 
         // Top status bar
-        ctx.fillStyle = 'rgba(34, 211, 238, 0.6)'
+        ctx.fillStyle = isProRef.current ? 'rgba(255, 0, 0, 0.7)' : 'rgba(34, 211, 238, 0.6)'
         ctx.font = 'bold 9px monospace'
         const dots = '.'.repeat(Math.floor(t / 500) % 4)
         ctx.fillText(`⚡ GENERATING${dots}`, 8, 14)
 
         // Beat pulse ring
         const beat = Math.sin(t * 0.008) * 0.5 + 0.5
-        ctx.strokeStyle = `rgba(34, 211, 238, ${beat * 0.15})`
+        ctx.strokeStyle = isProRef.current
+          ? `rgba(255, 0, 0, ${beat * 0.2})`
+          : `rgba(34, 211, 238, ${beat * 0.15})`
         ctx.lineWidth = 1
         ctx.beginPath()
         ctx.arc(w / 2, stageY - 15, 50 + beat * 10, 0, Math.PI * 2)
@@ -446,9 +459,10 @@ export default function MatrixConsole({ isGenerating = false, isPlaying = false 
         ctx.fillStyle = 'rgba(0, 0, 0, 0.08)'
         ctx.fillRect(0, 0, w, h)
 
-        // Reactive hue: slowly cycle when playing, fixed cyan when idle
+        // Reactive hue: pro mode uses pure red (0), otherwise cyan (186) or cycling
         const playing = isPlayRef.current
-        const hue = playing ? (t * 0.04) % 360 : 186 // 186 ≈ cyan
+        const pro = isProRef.current
+        const hue = pro ? 0 : (playing ? (t * 0.04) % 360 : 186) // 0 = pure red, 186 ≈ cyan
 
         ctx.font = `${fontSize}px monospace`
         columns = Math.floor(w / fontSize)
@@ -460,12 +474,23 @@ export default function MatrixConsole({ isGenerating = false, isPlaying = false 
           const y = drops[i] * fontSize
 
           const brightness = Math.random()
-          if (brightness > 0.95) {
-            ctx.fillStyle = `hsl(${hue}, 80%, 65%)`
-          } else if (brightness > 0.8) {
-            ctx.fillStyle = `hsla(${hue}, 80%, 55%, 0.8)`
+          if (pro) {
+            // Pure red matrix rain — crisp RGB feel
+            if (brightness > 0.95) {
+              ctx.fillStyle = `rgba(255, 0, 0, 0.95)`
+            } else if (brightness > 0.8) {
+              ctx.fillStyle = `rgba(255, 0, 0, 0.7)`
+            } else {
+              ctx.fillStyle = `rgba(255, 0, 0, ${0.1 + Math.random() * 0.25})`
+            }
           } else {
-            ctx.fillStyle = `hsla(${hue}, 80%, 50%, ${0.1 + Math.random() * 0.3})`
+            if (brightness > 0.95) {
+              ctx.fillStyle = `hsl(${hue}, 80%, 65%)`
+            } else if (brightness > 0.8) {
+              ctx.fillStyle = `hsla(${hue}, 80%, 55%, 0.8)`
+            } else {
+              ctx.fillStyle = `hsla(${hue}, 80%, 50%, ${0.1 + Math.random() * 0.3})`
+            }
           }
           ctx.fillText(char, x, y)
 
@@ -493,7 +518,9 @@ export default function MatrixConsole({ isGenerating = false, isPlaying = false 
           line.y -= line.speed
           line.opacity -= 0.002
           if (line.opacity <= 0 || line.y < 0) return false
-          ctx.fillStyle = `hsla(${hue}, 80%, 55%, ${line.opacity * 0.7})`
+          ctx.fillStyle = pro
+            ? `rgba(255, 0, 0, ${line.opacity * 0.7})`
+            : `hsla(${hue}, 80%, 55%, ${line.opacity * 0.7})`
           ctx.fillText(line.text, 10, line.y)
           return true
         })
@@ -511,12 +538,17 @@ export default function MatrixConsole({ isGenerating = false, isPlaying = false 
           const amp = Math.abs(waveAmplitudes[i])
           const barH = amp * waveH
           const x = i * barWidth
-          const barHue = playing ? (hue + i * 3) % 360 : hue
-          ctx.fillStyle = `hsla(${barHue}, 80%, 55%, ${0.2 + amp * 0.5})`
+          if (pro) {
+            // Pure red waveform bars
+            ctx.fillStyle = `rgba(255, 0, 0, ${0.25 + amp * 0.55})`
+          } else {
+            const barHue = playing ? (hue + i * 3) % 360 : hue
+            ctx.fillStyle = `hsla(${barHue}, 80%, 55%, ${0.2 + amp * 0.5})`
+          }
           ctx.fillRect(x + 1, waveY + waveH / 2 - barH / 2, barWidth - 2, barH)
         }
 
-        ctx.fillStyle = `hsla(${hue}, 80%, 55%, 0.4)`
+        ctx.fillStyle = pro ? 'rgba(255, 0, 0, 0.5)' : `hsla(${hue}, 80%, 55%, 0.4)`
         ctx.font = '9px monospace'
         ctx.fillText(playing ? '♫ WAVEFORM PLAYBACK' : 'WAVEFORM OUTPUT', 10, waveY - 3)
       }
@@ -534,7 +566,7 @@ export default function MatrixConsole({ isGenerating = false, isPlaying = false 
   }, [])
 
   return (
-    <div className={`relative w-full h-full bg-black rounded-xl overflow-hidden border transition-colors duration-700 ${isPlaying ? 'border-purple-500/30' : isGenerating ? 'border-orange-500/30' : 'border-cyan-500/20'}`}>
+    <div className={`relative w-full h-full bg-black rounded-xl overflow-hidden border transition-colors duration-700 ${isProMode ? (isPlaying ? 'border-red-500/40' : isGenerating ? 'border-red-500/30' : 'border-red-500/20') : (isPlaying ? 'border-purple-500/30' : isGenerating ? 'border-orange-500/30' : 'border-cyan-500/20')}`}>
       {/* Scanline overlay */}
       <div className="absolute inset-0 pointer-events-none z-10" style={{
         background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 4px)',
@@ -542,8 +574,8 @@ export default function MatrixConsole({ isGenerating = false, isPlaying = false 
 
       {/* Corner decoration */}
       <div className="absolute top-2 left-3 z-10 flex items-center gap-2">
-        <div className={`w-2 h-2 rounded-full animate-pulse ${isPlaying ? 'bg-purple-500' : isGenerating ? 'bg-orange-500' : 'bg-cyan-500'}`} />
-        <span className={`text-[10px] font-mono ${isPlaying ? 'text-purple-500/60' : isGenerating ? 'text-orange-500/60' : 'text-cyan-500/60'}`}>444RADIO GPU CONSOLE</span>
+        <div className={`w-2 h-2 rounded-full animate-pulse ${isProMode ? 'bg-red-500' : (isPlaying ? 'bg-purple-500' : isGenerating ? 'bg-orange-500' : 'bg-cyan-500')}`} />
+        <span className={`text-[10px] font-mono ${isProMode ? 'text-red-500/70' : (isPlaying ? 'text-purple-500/60' : isGenerating ? 'text-orange-500/60' : 'text-cyan-500/60')}`}>444RADIO GPU CONSOLE</span>
       </div>
 
       <canvas
