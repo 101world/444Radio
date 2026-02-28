@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { corsResponse, handleOptions } from '@/lib/cors'
-import { logCreditTransaction } from '@/lib/credit-transactions'
+import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { refundCredits } from '@/lib/refund-credits'
 import { downloadAndUploadToR2 } from '@/lib/storage'
 
@@ -189,6 +189,16 @@ export async function POST(req: NextRequest) {
     }
 
     console.log('✅ Voice trained! voice_id:', voiceId)
+
+    // Update transaction with the trained voice for admin tracking
+    updateTransactionMedia({
+      userId,
+      type: 'other',
+      mediaUrl: previewUrl || permanentSourceUrl,
+      mediaType: 'audio',
+      title: `Voice Train: ${trimmedName}`,
+      extraMeta: { voice_id: voiceId, model: 'speech-02-turbo' },
+    }).catch(() => {})
 
     // Save to voice_trainings table
     const insertRes = await fetch(`${supabaseUrl}/rest/v1/voice_trainings`, {

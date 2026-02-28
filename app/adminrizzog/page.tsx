@@ -853,7 +853,12 @@ function TransactionTable({ rows, onViewUser }: { rows: Transaction[]; onViewUse
                           {playingAudio === media.url ? '⏸' : '▶'}
                         </button>
                       ) : (
-                        <span className="text-gray-600 text-[10px]">🎬</span>
+                        <a href={media.url} target="_blank" rel="noopener noreferrer"
+                          className="w-8 h-8 rounded-lg flex items-center justify-center bg-purple-500/20 border border-purple-500/30 text-purple-400 hover:text-purple-300 transition text-xs"
+                          title={media.title || 'View video'}
+                        >
+                          🎬
+                        </a>
                       )
                     ) : (
                       <span className="text-gray-700">—</span>
@@ -899,6 +904,17 @@ function TransactionTable({ rows, onViewUser }: { rows: Transaction[]; onViewUse
                         <div className="mt-3 flex items-center gap-3">
                           <img src={media.url} alt={media.title || 'Generated image'} className="w-24 h-24 rounded-lg object-cover border border-gray-700" />
                           <span className="text-[10px] text-gray-500">{media.title || 'Image output'}</span>
+                        </div>
+                      )}
+                      {media && media.type === 'video' && (
+                        <div className="mt-3 flex items-center gap-3">
+                          <video src={media.url} controls className="w-48 rounded-lg border border-gray-700" style={{ maxHeight: 120 }} />
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[10px] text-gray-500">{media.title || 'Video output'}</span>
+                            <a href={media.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-cyan-400 hover:text-cyan-300">
+                              Download ↗
+                            </a>
+                          </div>
                         </div>
                       )}
                     </td>

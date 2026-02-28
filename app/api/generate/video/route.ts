@@ -4,6 +4,7 @@ import Replicate from 'replicate'
 import { uploadToR2 } from '@/lib/r2-upload'
 import { SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 import { notifyGenerationComplete } from '@/lib/notifications'
+import { updateTransactionMedia } from '@/lib/credit-transactions'
 
 // Allow up to 5 minutes for video generation (Vercel Pro limit: 300s)
 export const maxDuration = 300
@@ -86,6 +87,16 @@ export async function POST(req: NextRequest) {
     
     const permanentVideoUrl = uploadResult.url
     console.log('✅ Video generated and stored:', permanentVideoUrl)
+
+    // Update the orchestrator's transaction with the video output for admin tracking
+    updateTransactionMedia({
+      userId,
+      type: 'generation_image', // Matches orchestrator's logged type
+      mediaUrl: permanentVideoUrl,
+      mediaType: 'video',
+      title: `Video: ${prompt.substring(0, 50)}`,
+      extraMeta: { model: 'seedance-1-lite', song_id: songId },
+    }).catch(() => {})
 
     // Update song in database with cover video URL
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!

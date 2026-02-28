@@ -123,10 +123,11 @@ export async function updateTransactionMedia(params: {
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
     if (!supabaseUrl || !supabaseKey) return
 
-    // Find the most recent transaction for this user+type (within last 5 min)
-    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+    // Find the most recent transaction for this user+type (within last 10 min)
+    // Extended from 5 min to handle long-running generations (music can take up to 270s)
+    const windowAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString()
     const findRes = await fetch(
-      `${supabaseUrl}/rest/v1/credit_transactions?user_id=eq.${params.userId}&type=eq.${params.type}&created_at=gte.${fiveMinAgo}&order=created_at.desc&limit=1&select=id,metadata`,
+      `${supabaseUrl}/rest/v1/credit_transactions?user_id=eq.${params.userId}&type=eq.${params.type}&created_at=gte.${windowAgo}&order=created_at.desc&limit=1&select=id,metadata`,
       { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
     )
     if (!findRes.ok) return

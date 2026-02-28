@@ -8,8 +8,8 @@ import { sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 import { refundCredits } from '@/lib/refund-credits'
 import { notifyGenerationComplete, notifyGenerationFailed, notifyCreditDeduct } from '@/lib/notifications'
 
-// Allow up to 3 minutes for Chords generation
-export const maxDuration = 180
+// Allow up to 5 minutes for Chords generation (queue wait can be 2+ min)
+export const maxDuration = 300
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_KEY_LATEST2!,
@@ -147,15 +147,21 @@ export async function POST(req: NextRequest) {
 
       console.log('🔄 Prediction created:', prediction.id)
 
-      // Poll until completed
+      // Poll until completed — use 2s intervals, 135 attempts = 270s max
+      // Replicate queue can take 2+ min before generation even starts
       let finalPrediction = prediction
       let pollAttempts = 0
-      const maxPollAttempts = 120 // 120 seconds max
+      const maxPollAttempts = 135 // 270 seconds total (135 × 2s)
       
-      while (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed' && pollAttempts < maxPollAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 1000))
+      while (
+        finalPrediction.status !== 'succeeded' &&
+        finalPrediction.status !== 'failed' &&
+        finalPrediction.status !== 'canceled' &&
+        pollAttempts < maxPollAttempts
+      ) {
+        await new Promise(resolve => setTimeout(resolve, 2000))
         finalPrediction = await replicate.predictions.get(prediction.id)
-        console.log(`🔄 Status: ${finalPrediction.status} (${pollAttempts}s elapsed)`)
+        console.log(`🔄 Status: ${finalPrediction.status} (${pollAttempts * 2}s elapsed)`)
         pollAttempts++
       }
 
@@ -164,7 +170,8 @@ export async function POST(req: NextRequest) {
       }
 
       if (finalPrediction.status !== 'succeeded') {
-        throw new Error('Generation timed out')
+        console.error(`⏰ Chords generation timed out after ${pollAttempts * 2}s (status: ${finalPrediction.status})`)
+        throw new Error('Generation timed out after 270 seconds. The generation may still complete on Replicate.')
       }
 
       const outputUrl = finalPrediction.output as string

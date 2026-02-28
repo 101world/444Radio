@@ -4,6 +4,7 @@ import Replicate from 'replicate'
 import { trackQuestProgress } from '@/lib/quest-progress'
 import { SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 import { logGeneration } from '@/lib/activity-logger'
+import { updateTransactionMedia } from '@/lib/credit-transactions'
 
 // Allow up to 5 minutes for music generation (Vercel Pro limit: 300s)
 export const maxDuration = 300
@@ -191,6 +192,16 @@ export async function POST(req: NextRequest) {
 
     const permanentAudioUrl = r2Result.url
     console.log('✅ Audio uploaded to R2:', permanentAudioUrl)
+
+    // Update the orchestrator's transaction with the audio output for admin tracking
+    updateTransactionMedia({
+      userId,
+      type: 'generation_image', // Matches orchestrator's logged type
+      mediaUrl: permanentAudioUrl,
+      mediaType: 'audio',
+      title: `Music: ${prompt.substring(0, 50)}`,
+      extraMeta: { model: isEnglish ? 'minimax-music-1.5' : 'ace-step', language, song_id: songId },
+    }).catch(() => {})
 
     // Update song in database with permanent R2 URL and status
     const updateRes = await fetch(`${supabaseUrl}/rest/v1/songs?id=eq.${songId}`, {

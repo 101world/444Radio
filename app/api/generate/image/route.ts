@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { uploadToR2 } from '@/lib/r2-upload'
 import { logGeneration } from '@/lib/activity-logger'
+import { updateTransactionMedia } from '@/lib/credit-transactions'
 
 // Allow up to 5 minutes for image generation (Vercel Pro limit: 300s)
 export const maxDuration = 300
@@ -144,6 +145,16 @@ export async function POST(req: NextRequest) {
     
     const permanentImageUrl = uploadResult.url
     console.log('✅ Cover art generated and stored:', permanentImageUrl)
+
+    // Update the orchestrator's transaction with the cover art output for admin tracking
+    updateTransactionMedia({
+      userId,
+      type: 'generation_image',
+      mediaUrl: permanentImageUrl,
+      mediaType: 'image',
+      title: `Cover: ${prompt.substring(0, 50)}`,
+      extraMeta: { model: 'z-image-turbo', song_id: songId },
+    }).catch(() => {})
 
     // Update song in database with cover URL
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!

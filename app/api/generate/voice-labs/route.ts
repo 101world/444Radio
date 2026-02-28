@@ -2,7 +2,7 @@
 import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { corsResponse, handleOptions } from '@/lib/cors'
-import { logCreditTransaction } from '@/lib/credit-transactions'
+import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { refundCredits } from '@/lib/refund-credits'
 import { notifyGenerationComplete, notifyCreditDeduct } from '@/lib/notifications'
 import { downloadAndUploadToR2 } from '@/lib/storage'
@@ -418,6 +418,18 @@ export async function POST(req: NextRequest) {
       settings: { speed, pitch, volume, emotion, audio_format, sample_rate, bitrate, channel, language_boost },
       metadata: { prediction_id: prediction.id },
     })
+
+    // Update transaction with the generated audio for admin tracking
+    if (creditsUsed > 0) {
+      updateTransactionMedia({
+        userId,
+        type: 'other',
+        mediaUrl: permanentUrl,
+        mediaType: 'audio',
+        title: `Voice Labs: ${title.substring(0, 50)}`,
+        extraMeta: { voice_id, text_length: text.length, format: audio_format },
+      }).catch(() => {})
+    }
 
     // Notify user of generation
     notifyGenerationComplete(userId, '', 'voice', title).catch(() => {})
