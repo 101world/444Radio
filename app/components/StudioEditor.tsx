@@ -8,6 +8,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import type { StrudelEngine } from '@/lib/strudel-engine'
+import { fixSoundfontNames } from '@/lib/strudel-engine'
 
 // Sub-components
 import StudioTopBar from './studio/StudioTopBar'
@@ -105,26 +106,12 @@ export default function StudioEditor() {
         if (cancelled) return
         engineRef.current = engine
 
-        // Master gain node
-        const ctx = engine.webaudio.getAudioContext()
-        const master = ctx.createGain()
+        // Volume control: use superdough's built-in destinationGain (same as InputEditor)
+        // Do NOT monkey-patch ctx.destination — it breaks superdough's AudioController
+        // which expects destination.maxChannelCount (only on AudioDestinationNode)
         const savedVol = typeof window !== 'undefined' ? localStorage.getItem('444-studio-volume') : null
         const vol = savedVol ? parseFloat(savedVol) : 0.75
-        master.gain.value = vol
         setMasterVolume(vol)
-        master.connect(ctx.destination)
-        masterGainRef.current = master
-
-        // Monkey-patch destination to route through master
-        const origDest = Object.getOwnPropertyDescriptor(AudioContext.prototype, 'destination') ||
-                         Object.getOwnPropertyDescriptor(BaseAudioContext.prototype, 'destination')
-        if (origDest?.get) {
-          const origGet = origDest.get
-          Object.defineProperty(ctx, 'destination', {
-            get: function() { return masterGainRef.current || origGet.call(this) },
-            configurable: true,
-          })
-        }
 
         // Drawer for inline visuals
         if (DrawerClass) {
@@ -194,8 +181,31 @@ export default function StudioEditor() {
         await engine.webaudio.getAudioContext().resume()
         drawStateRef.current.counter = 0
         lastEvaluatedRef.current = ''
-        await engine.evaluate(src)
+        await engine.evaluate(fixSoundfontNames(src))
         setSliderDefs({ ...sliderDefsRef.current })
+
+        // Grab master gain from superdough's internal audio controller (like InputEditor)
+        try {
+          const controller = (engine.webaudio as any).getSuperdoughAudioController?.()
+          if (controller?.output?.destinationGain) {
+            masterGainRef.current = controller.output.destinationGain
+            // Apply saved volume
+            const savedVol = localStorage.getItem('444-studio-volume')
+            const vol = savedVol !== null ? parseFloat(savedVol) : 0.75
+            if (!isNaN(vol)) masterGainRef.current!.gain.value = vol
+            console.log('[444 STUDIO] master volume connected')
+          }
+          // Pre-initialize orbits 0-11 so duck() always has valid targets
+          if (controller?.getOrbit) {
+            for (let i = 0; i < 12; i++) {
+              controller.getOrbit(i)
+            }
+            console.log('[444 STUDIO] pre-initialized 12 orbits for duck()')
+          }
+        } catch (err) {
+          console.log('[444 STUDIO] master gain not available:', err)
+        }
+
         if (drawerRef.current && engine.scheduler) {
           try {
             const hasPainters = engine.scheduler.pattern?.getPainters?.()?.length > 0
@@ -231,7 +241,7 @@ export default function StudioEditor() {
       sliderDefsRef.current = {}
       await engine.webaudio.getAudioContext().resume()
       drawStateRef.current.counter = 0
-      await engine.evaluate(src)
+      await engine.evaluate(fixSoundfontNames(src))
       if (engine.scheduler?.clock) {
         setTimeout(() => {
           try { engine.scheduler.clock.pause(); engine.scheduler.clock.start() } catch {}
