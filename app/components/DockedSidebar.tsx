@@ -142,7 +142,7 @@ export default function DockedSidebar() {
       {/* Logo / Brand */}
       <div className="flex items-center justify-center h-14 border-b border-white/10">
         <Link href="/" className="flex items-center gap-2">
-          <div className={`w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-md flex items-center justify-center font-bold text-white text-base transition-all ${
+          <div className={`w-8 h-8 bg-red-600 rounded-md flex items-center justify-center font-bold text-white text-base transition-all ${
             isExpanded ? 'scale-100' : 'scale-90'
           }`}>
             4
