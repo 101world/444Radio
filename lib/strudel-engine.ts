@@ -12,6 +12,8 @@ export interface StrudelEngine {
   core: any
   scheduler: any
   soundMap: any
+  /** Last eval error captured from the REPL (null if last eval succeeded) */
+  lastEvalError: { error: Error | null }
 }
 
 export interface StrudelLoadProgress {
@@ -166,13 +168,31 @@ export async function initStrudelEngine(
   }
 
   // Create REPL evaluate function
+  // IMPORTANT: The REPL's evaluate() catches errors INTERNALLY and does NOT re-throw.
+  // We use onEvalError to capture the error so callers can detect failure.
+  const lastEvalError: { error: Error | null } = { error: null }
+
   const replResult = core.repl({
     defaultOutput: webaudio.webaudioOutput,
     getTime: () => webaudio.getAudioContext().currentTime,
     transpiler: transpilerMod.transpiler,
+    onEvalError: (err: Error) => {
+      lastEvalError.error = err
+      console.error('[strudel-engine] eval error:', err)
+    },
   }) as any
 
-  const { evaluate } = replResult
+  const rawEvaluate = replResult.evaluate
+  // Wrap evaluate to clear/check error state
+  const evaluate = async (code: string) => {
+    lastEvalError.error = null
+    const result = await rawEvaluate(code)
+    // If evaluate returned undefined AND error was captured, throw it
+    if (result === undefined && lastEvalError.error) {
+      throw lastEvalError.error
+    }
+    return result
+  }
   const scheduler = replResult.scheduler
 
   // Get Drawer class for visuals
@@ -193,6 +213,7 @@ export async function initStrudelEngine(
       core,
       scheduler,
       soundMap: webaudio.soundMap,
+      lastEvalError,
     },
     DrawerClass,
   }

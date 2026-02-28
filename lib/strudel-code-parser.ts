@@ -173,9 +173,9 @@ export function parseStrudelCode(code: string): ParsedChannel[] {
       if (fxRegex.test(rawCode)) effects.push(fx)
     }
 
-    // Check for _scope, _pianoroll
-    if (/\._scope\(\)/.test(rawCode)) effects.push('scope')
-    if (/\._pianoroll\(\)/.test(rawCode)) effects.push('pianoroll')
+    // Check for scope, pianoroll (with or without underscore prefix)
+    if (/\.(?:_)?scope\(\)/.test(rawCode)) effects.push('scope')
+    if (/\.(?:_)?pianoroll\(\)/.test(rawCode)) effects.push('pianoroll')
 
     // Build channel name
     const displayName = start.name || `ch${b + 1}`
