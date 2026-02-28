@@ -2478,6 +2478,9 @@ export interface NodeEditorHandle {
   handleTimeSigChange: (v: string) => void
   handleGlobalScaleChange: (v: string) => void
   selectedNode: string | null
+  toggleArrangement: () => void
+  arrangementMode: boolean
+  arrangementOpen: boolean
 }
 
 const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEditor({ code, isPlaying, onCodeChange, onUpdate, onRegisterSound, analyserNode, getAnalyserById, headerless, getCyclePosition }, ref) {
@@ -2511,14 +2514,14 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   const [codeGenerating, setCodeGenerating] = useState(false)
 
   // ── Phase 2: Arrangement Mode ──
-  const [arrangementMode, setArrangementMode] = useState(false)
+  const [arrangementMode, setArrangementMode] = useState(true)
   const [sections, setSections] = useState<ArrangementSection[]>([
     { id: 'sec_1', bars: 4, label: 'intro', activeNodeIds: [] },
     { id: 'sec_2', bars: 8, label: 'verse', activeNodeIds: [] },
     { id: 'sec_3', bars: 8, label: 'chorus', activeNodeIds: [] },
     { id: 'sec_4', bars: 4, label: 'outro', activeNodeIds: [] },
   ])
-  const [arrangementOpen, setArrangementOpen] = useState(false)
+  const [arrangementOpen, setArrangementOpen] = useState(true)
 
   const panStart = useRef({ x: 0, y: 0, px: 0, py: 0 })
   const containerRef = useRef<HTMLDivElement>(null)
@@ -2580,6 +2583,9 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     handleTimeSigChange,
     handleGlobalScaleChange,
     selectedNode,
+    toggleArrangement: () => { toggleArrangementMode(); setArrangementOpen(true) },
+    arrangementMode,
+    arrangementOpen,
   }))
 
   // ── Fetch user's uploaded samples on mount ──
@@ -3039,6 +3045,8 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
       prevNodeCount.current = updated.length
       return updated
     })
+    // Remove deleted node from all arrangement sections
+    setSections(prev => prev.map(s => ({ ...s, activeNodeIds: s.activeNodeIds.filter(nid => nid !== id) })))
     if (codeToSend !== null) sendToParent(codeToSend)
   }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
@@ -3291,6 +3299,16 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     // Phase 3: Auto-open the visual editor for the new node
     const newNode = parsed[parsed.length - 1]
     if (newNode) {
+      // Auto-add new node to main sections (verse, chorus, drop) in arrangement mode
+      if (arrangementModeRef.current) {
+        setSections(prev => prev.map(sec => {
+          const mainSections = new Set(['verse', 'chorus', 'drop', 'bridge', 'pre-chorus'])
+          if (mainSections.has(sec.label)) {
+            return { ...sec, activeNodeIds: [...sec.activeNodeIds, newNode.id] }
+          }
+          return sec
+        }))
+      }
       const sampleBased = new Set(['drums', 'fx', 'other'])
       if (sampleBased.has(newNode.type)) {
         setDrumSequencerOpen({ nodeId: newNode.id })

@@ -9093,6 +9093,16 @@ $: s("bd:3").bank("RolandTR808")
             </button>
           )}
 
+          {/* Arrangement toggle — only when node view is active */}
+          {showNodes && nodeEditorRef.current && (
+            <button
+              onClick={() => nodeEditorRef.current?.toggleArrangement()}
+              className={`w-7 h-7 flex items-center justify-center rounded-md transition-all cursor-pointer shrink-0 text-[11px] ${nodeEditorRef.current.arrangementMode ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25' : 'text-white/25 hover:text-white/50 border border-white/[0.06]'}`}
+              title={nodeEditorRef.current.arrangementMode ? 'Arrangement mode ON — click to toggle' : 'Arrangement mode OFF — click to enable'}>
+              🎬
+            </button>
+          )}
+
           {/* Active sounds indicator — flashes when haps trigger */}
           {isPlaying && activeHaps.length > 0 && (
             <div className="flex items-center gap-1 ml-1 max-w-[140px] overflow-hidden shrink-0">
