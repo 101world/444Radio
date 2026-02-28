@@ -3003,7 +3003,11 @@ function CreatePageContent() {
                     <div className="flex items-center gap-3 p-4 border-b border-white/10">
                       <button
                         onClick={() => handlePlayPause(message.id, message.result!.audioUrl!, message.result!.title || 'Generated Track')}
-                        className="w-12 h-12 rounded-full bg-red-600 hover:bg-red-700 flex items-center justify-center flex-shrink-0 shadow-lg shadow-red-500/30 transition-all active:scale-95 hover:scale-105"
+                        className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all active:scale-95 hover:scale-105 ${
+                          isProMode
+                            ? 'bg-red-600 hover:bg-red-700 shadow-lg shadow-red-500/40 ring-1 ring-red-400/30'
+                            : 'bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 hover:from-cyan-700 hover:via-cyan-600 hover:to-cyan-500 shadow-lg shadow-cyan-500/30'
+                        }`}
                       >
                         {currentTrack?.id === message.id && isPlaying ? <Pause size={20} className="text-black" /> : <Play size={20} className="text-black ml-0.5" />}
                       </button>

@@ -26,6 +26,18 @@ export default function DockedSidebar() {
   const [username, setUsername] = useState<string>('')
   const [avatarUrl, setAvatarUrl] = useState<string>('')
   const [forceHidden, setForceHidden] = useState(false)
+  const [isProMode, setIsProMode] = useState(false)
+
+  // Listen for pro-mode-active class on <html>
+  useEffect(() => {
+    const html = document.documentElement
+    setIsProMode(html.classList.contains('pro-mode-active'))
+    const observer = new MutationObserver(() => {
+      setIsProMode(html.classList.contains('pro-mode-active'))
+    })
+    observer.observe(html, { attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
+  }, [])
 
   const isVoiceLabs = pathname === '/voice-labs'
 
@@ -142,7 +154,9 @@ export default function DockedSidebar() {
       {/* Logo / Brand */}
       <div className="flex items-center justify-center h-14 border-b border-white/10">
         <Link href="/" className="flex items-center gap-2">
-          <div className={`w-8 h-8 bg-red-600 rounded-md flex items-center justify-center font-bold text-white text-base transition-all ${
+          <div className={`w-8 h-8 rounded-md flex items-center justify-center font-bold text-white text-base transition-all ${
+            isProMode ? 'bg-red-600 shadow-[0_0_12px_rgba(239,68,68,0.5)]' : 'bg-gradient-to-br from-cyan-500 to-blue-500'
+          } ${
             isExpanded ? 'scale-100' : 'scale-90'
           }`}>
             4
