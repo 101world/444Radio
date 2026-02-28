@@ -60,6 +60,17 @@ interface PatternNode {
   fmi: number
   // Arp
   arp: string
+  // Acid envelope
+  acidenv: number
+  // Duck (sidechain)
+  duck: string
+  duckdepth: number
+  duckattack: number
+  // Transpose & tuning
+  trans: number
+  detune: number
+  // Sample control
+  cut: number
   // Misc
   orbit: number
   scale: string
@@ -177,8 +188,18 @@ const QUICK_ADD_FX: { id: string; label: string; method: string; defaultVal: num
   { id: 'lpenv', label: 'LPE', method: 'lpenv', defaultVal: 4, desc: 'LP filter envelope depth', color: '#60a5fa' },
   { id: 'lpattack', label: 'LPA', method: 'lpattack', defaultVal: 0.1, desc: 'LP envelope attack', color: '#60a5fa' },
   { id: 'lpdecay', label: 'LPD', method: 'lpdecay', defaultVal: 0.2, desc: 'LP envelope decay', color: '#60a5fa' },
+  // ── Acid Envelope (303-style) ──
+  { id: 'acidenv', label: 'ACID', method: 'acidenv', defaultVal: 0.5, desc: 'Acid filter envelope (303 style)', color: '#f59e0b' },
   // ── Pitch Envelope ──
   { id: 'penv', label: 'PENV', method: 'penv', defaultVal: 12, desc: 'Pitch envelope (semitones)', color: '#c084fc' },
+  // ── Transpose & Tuning ──
+  { id: 'trans', label: 'TRANS', method: 'trans', defaultVal: 0, desc: 'Transpose (semitones)', color: '#c084fc' },
+  { id: 'detune', label: 'DTUN', method: 'detune', defaultVal: 0, desc: 'Detune (cents/random)', color: '#c084fc' },
+  // ── Duck / Sidechain ──
+  { id: 'duckdepth', label: 'DKDP', method: 'duckdepth', defaultVal: 0.8, desc: 'Duck depth (0-1)', color: '#f59e0b' },
+  { id: 'duckattack', label: 'DKAT', method: 'duckattack', defaultVal: 0.16, desc: 'Duck attack time', color: '#f59e0b' },
+  // ── Sample Control ──
+  { id: 'cut', label: 'CUT', method: 'cut', defaultVal: 1, desc: 'Cut group (monophonic)', color: '#94a3b8' },
   // ── Post Processing ──
   { id: 'postgain', label: 'POST', method: 'postgain', defaultVal: 1, desc: 'Gain after all effects', color: '#34d399' },
   { id: 'orbit', label: 'ORBT', method: 'orbit', defaultVal: 1, desc: 'Effect bus (isolates delay/reverb)', color: '#94a3b8' },
@@ -685,6 +706,12 @@ const EFFECT_BADGES: { detect: RegExp; label: string; color: string }[] = [
   { detect: /\.djf\s*\(/, label: 'DJF', color: '#60a5fa' },
   { detect: /\.noise\s*\(/, label: 'NOIZ', color: '#94a3b8' },
   { detect: /\.vib\s*\(/, label: 'VIB', color: '#a78bfa' },
+  { detect: /\.acidenv\s*\(/, label: 'ACID', color: '#f59e0b' },
+  { detect: /\.duck\s*\(/, label: 'DUCK', color: '#f59e0b' },
+  { detect: /\.trans\s*\(/, label: 'TRANS', color: '#c084fc' },
+  { detect: /\.detune\s*\(/, label: 'DTUN', color: '#c084fc' },
+  { detect: /\.cut\s*\(/, label: 'CUT', color: '#94a3b8' },
+  { detect: /\.rib\s*\(/, label: 'RIB', color: '#a78bfa' },
   { detect: /\.loopAt\s*\(/, label: 'LOOP', color: '#fb923c' },
   { detect: /\.segment\s*\(/, label: 'SEG', color: '#22d3ee' },
   { detect: /\.density\s*\(/, label: 'DENS', color: '#22d3ee' },
@@ -709,7 +736,7 @@ interface QuickFX {
   id: string
   label: string
   icon: string
-  category: 'pattern' | 'time' | 'stereo' | 'glitch' | 'groove' | 'lfo'
+  category: 'pattern' | 'time' | 'stereo' | 'glitch' | 'groove' | 'lfo' | 'generative'
   code: string           // Strudel code to inject
   detect: RegExp         // regex to detect if already present
   color: string
@@ -777,6 +804,13 @@ const QUICK_FX: QuickFX[] = [
   // Euclid additional
   { id: 'euclid716', label: 'E(7,16)', icon: '◇', category: 'groove', code: '.euclid(7,16)', detect: /\.euclid\s*\(\s*7\s*,\s*16/, color: '#34d399', desc: 'Euclidean 7/16 (complex groove)' },
   { id: 'euclid916', label: 'E(9,16)', icon: '◆', category: 'groove', code: '.euclid(9,16)', detect: /\.euclid\s*\(\s*9\s*,\s*16/, color: '#34d399', desc: 'Euclidean 9/16 (dense)' },
+  // Generative — algorithmic variation
+  { id: 'randSeg', label: 'RSEG', icon: '🎲', category: 'generative', code: '.segment(8).add(irand(8))', detect: /\.segment\s*\(\s*\d+\s*\)\s*\.add\s*\(irand/, color: '#10b981', desc: 'Random notes segmented 8/cycle' },
+  { id: 'perlinLpf', label: 'P~LPF', icon: '🌊', category: 'generative', code: '.lpf(perlin.range(200, 4000))', detect: /\.lpf\s*\(\s*perlin/, color: '#10b981', desc: 'Perlin noise sweep filter' },
+  { id: 'sineSeg', label: 'S~SEG', icon: '∿', category: 'generative', code: '.add(sine.segment(16).range(0, 7).floor())', detect: /sine\.segment/, color: '#10b981', desc: 'Sine-driven note selection' },
+  { id: 'randFast', label: 'R~SPD', icon: '⚡', category: 'generative', code: '.fast(irand(3).add(1).segment(4))', detect: /\.fast\s*\(\s*irand/, color: '#10b981', desc: 'Random speed per segment' },
+  { id: 'perlinPan', label: 'P~PAN', icon: '🌀', category: 'generative', code: '.pan(perlin.range(0, 1))', detect: /\.pan\s*\(\s*perlin/, color: '#10b981', desc: 'Perlin auto-pan' },
+  { id: 'degradeRand', label: 'D~RND', icon: '▒', category: 'generative', code: '.degradeBy(perlin.range(0, 0.6))', detect: /\.degradeBy\s*\(\s*perlin/, color: '#10b981', desc: 'Perlin-controlled dropout' },
 ]
 
 // LFO presets — inject as replacement for a knob's static value
@@ -834,7 +868,15 @@ const SIDEBAR_CATEGORIES: { id: string; label: string; icon: string; color: stri
       { id: 'fx_fm', label: 'FM Synthesis', icon: '📡', desc: 'Frequency mod .fmi(2)', color: '#818cf8', dragType: 'effect', payload: '.fmi(2)', method: 'fmi' },
       // Dynamics
       { id: 'fx_compress', label: 'Compressor', icon: '🔧', desc: 'Dynamic range .compressor(-20,10,4)', color: '#94a3b8', dragType: 'effect', payload: '.compressor(-20,10,4)' },
-      { id: 'fx_sidechain', label: 'Sidechain', icon: '📊', desc: 'Pumping sidechain .csid("bd",0.3,0.2)', color: '#f59e0b', dragType: 'effect', payload: '.csid("bd",0.3,0.2)' },
+      { id: 'fx_sidechain', label: 'Sidechain (old)', icon: '📊', desc: 'Pumping sidechain .csid("bd",0.3,0.2)', color: '#f59e0b', dragType: 'effect', payload: '.csid("bd",0.3,0.2)' },
+      // Duck sidechain (modern — used by pros)
+      { id: 'fx_duck', label: 'Duck', icon: '📉', desc: 'Sidechain duck .duck("|").duckdepth(.8).duckattack(.16)', color: '#f59e0b', dragType: 'effect', payload: '.duck("|").duckdepth(.8).duckattack(.16)' },
+      { id: 'fx_duck_pattern', label: 'Duck to Pattern', icon: '📉', desc: 'Duck to specific patterns .duck("2:3:4")', color: '#f59e0b', dragType: 'effect', payload: '.duck("2:3:4").duckdepth(.8).duckattack(.2)' },
+      // Transpose
+      { id: 'fx_trans', label: 'Transpose', icon: '🔀', desc: 'Transpose semitones .trans(-12)', color: '#c084fc', dragType: 'effect', payload: '.trans(-12)', method: 'trans' },
+      { id: 'fx_detune', label: 'Detune', icon: '〰️', desc: 'Detune for width .detune(0.1)', color: '#c084fc', dragType: 'effect', payload: '.detune(0.1)', method: 'detune' },
+      // Sample control
+      { id: 'fx_cut', label: 'Cut Group', icon: '✂️', desc: 'Monophonic cut .cut(1)', color: '#94a3b8', dragType: 'effect', payload: '.cut(1)', method: 'cut' },
     ]
   },
   {
@@ -943,9 +985,12 @@ const SIDEBAR_CATEGORIES: { id: string; label: string; icon: string; color: stri
       { id: 'syn_end', label: 'End', icon: '⏹️', desc: 'Sample end .end(0.75)', color: '#f59e0b', dragType: 'effect', payload: '.end(0.75)', method: 'end' },
       { id: 'syn_n', label: 'N (Variation)', icon: '#️⃣', desc: 'Sample/note index .n(2)', color: '#f59e0b', dragType: 'effect', payload: '.n(2)', method: 'n' },
       { id: 'syn_octave', label: 'Octave', icon: '🎼', desc: 'Octave shift .octave(4)', color: '#c084fc', dragType: 'effect', payload: '.octave(4)', method: 'octave' },
-      { id: 'syn_cut', label: 'Cut Group', icon: '✂️', desc: 'Monophonic cut .cut(1)', color: '#94a3b8', dragType: 'effect', payload: '.cut(1)' },
+      { id: 'syn_cut', label: 'Cut Group', icon: '✂️', desc: 'Monophonic cut .cut(1)', color: '#94a3b8', dragType: 'effect', payload: '.cut(1)', method: 'cut' },
       { id: 'syn_legato', label: 'Legato', icon: '🎶', desc: 'Note overlap .legato(0.8)', color: '#818cf8', dragType: 'effect', payload: '.legato(0.8)' },
       { id: 'syn_orbit', label: 'Orbit', icon: '🔄', desc: 'Effect bus .orbit(1)', color: '#94a3b8', dragType: 'effect', payload: '.orbit(1)' },
+      { id: 'syn_trans', label: 'Transpose', icon: '🔀', desc: 'Transpose .trans(-12)', color: '#c084fc', dragType: 'effect', payload: '.trans(-12)', method: 'trans' },
+      { id: 'syn_detune', label: 'Detune', icon: '〰️', desc: 'Detune .detune(0.1)', color: '#c084fc', dragType: 'effect', payload: '.detune(0.1)', method: 'detune' },
+      { id: 'syn_rib', label: 'Rib (Spectral)', icon: '🌈', desc: 'Spectral processing .rib(46,1)', color: '#a78bfa', dragType: 'effect', payload: '.rib(46,1)' },
       // Envelope params
       { id: 'syn_decay', label: 'Decay', icon: '📐', desc: 'Decay time .decay(0.2)', color: '#818cf8', dragType: 'effect', payload: '.decay(0.2)', method: 'decay' },
       { id: 'syn_sustain', label: 'Sustain', icon: '📐', desc: 'Sustain level .sustain(0.5)', color: '#818cf8', dragType: 'effect', payload: '.sustain(0.5)', method: 'sustain' },
@@ -970,6 +1015,10 @@ const SIDEBAR_CATEGORIES: { id: string; label: string; icon: string; color: stri
       { id: 'fenv_lpd', label: 'LP Env Decay', icon: '📐', desc: 'Filter env decay .lpdecay(0.2)', color: '#60a5fa', dragType: 'effect', payload: '.lpdecay(0.2)', method: 'lpdecay' },
       { id: 'fenv_lps', label: 'LP Env Sustain', icon: '📐', desc: 'Filter env sustain .lpsustain(0.5)', color: '#60a5fa', dragType: 'effect', payload: '.lpsustain(0.5)', method: 'lpsustain' },
       { id: 'fenv_lpr', label: 'LP Env Release', icon: '📐', desc: 'Filter env release .lprelease(0.5)', color: '#60a5fa', dragType: 'effect', payload: '.lprelease(0.5)', method: 'lprelease' },
+      // Acid envelope (303-style)
+      { id: 'acid_env', label: 'Acid Env', icon: '🧪', desc: 'Acid filter envelope .acidenv(0.5)', color: '#f59e0b', dragType: 'effect', payload: '.acidenv(0.5)', method: 'acidenv' },
+      { id: 'acid_env_low', label: 'Acid Subtle', icon: '🧪', desc: 'Subtle acid .acidenv(0.2)', color: '#f59e0b', dragType: 'effect', payload: '.acidenv(0.2)', method: 'acidenv' },
+      { id: 'acid_env_high', label: 'Acid Screech', icon: '🧪', desc: 'Heavy acid .acidenv(0.85)', color: '#f59e0b', dragType: 'effect', payload: '.acidenv(0.85)', method: 'acidenv' },
       // Pitch envelope
       { id: 'penv_depth', label: 'Pitch Env', icon: '🎵', desc: 'Pitch envelope .penv(12)', color: '#c084fc', dragType: 'effect', payload: '.penv(12)', method: 'penv' },
       { id: 'penv_att', label: 'Pitch Att', icon: '🎵', desc: 'Pitch env attack .pattack(0.01)', color: '#c084fc', dragType: 'effect', payload: '.pattack(0.01)', method: 'pattack' },
@@ -996,6 +1045,10 @@ const SIDEBAR_CATEGORIES: { id: string; label: string; icon: string; color: stri
       { id: 'env_stab', label: 'Stab', icon: '🗡️', desc: 'Punch, short', color: '#818cf8', dragType: 'effect', payload: '.attack(0.001).decay(0.1).sustain(0).release(0.05)' },
       { id: 'env_swell', label: 'Swell', icon: '🌊', desc: 'Slow in, slow out', color: '#818cf8', dragType: 'effect', payload: '.attack(1).decay(0.5).sustain(0.5).release(1.5)' },
       { id: 'env_perc', label: 'Percussive', icon: '🥁', desc: 'Sharp hit, fast decay', color: '#818cf8', dragType: 'effect', payload: '.attack(0).decay(0.15).sustain(0).release(0.08)' },
+      // Acid presets (303-style with sawtooth + acidenv)
+      { id: 'env_acid_303', label: 'Acid 303', icon: '🧪', desc: 'Classic acid line', color: '#f59e0b', dragType: 'effect', payload: '.s("sawtooth").acidenv(0.5)' },
+      { id: 'env_acid_screech', label: 'Acid Screech', icon: '🧪', desc: 'Screaming acid', color: '#f59e0b', dragType: 'effect', payload: '.s("sawtooth").acidenv(0.85).lpq(8)' },
+      { id: 'env_acid_supersaw', label: 'Acid Supersaw', icon: '🧪', desc: 'Wide acid trance', color: '#f59e0b', dragType: 'effect', payload: '.s("supersaw").acidenv(0.6)' },
     ]
   },
   {
@@ -1369,6 +1422,20 @@ function detectArp(code: string): string {
   return m ? m[1] : ''
 }
 
+function detectDuck(code: string): string {
+  const m = code.match(/\.duck\s*\(\s*["']([^"']*)["']/)
+  return m ? m[1] : ''
+}
+
+/**
+ * Sanitize a node name into a valid Strudel pattern name.
+ * Converts spaces/special chars to underscores, lowercases.
+ * e.g. "My Bass 808" → "mybass808"
+ */
+function toPatternName(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20) || 'pattern'
+}
+
 // ═══════════════════════════════════════════════════════════════
 //  CODE ↔ NODE CONVERSION
 //
@@ -1392,23 +1459,25 @@ function parseCodeToNodes(code: string, existingNodes?: PatternNode[]): PatternN
 
   for (let i = 0; i < lines.length; i++) {
     const trimmed = lines[i].trim()
-    // Detect muted blocks
-    const isMutedStart = trimmed.startsWith('// [muted] $:')
+    // Detect muted blocks (support both $: and $name:)
+    const isMutedStart = trimmed.startsWith('// [muted] $')
+    // Match $: or $name: or $name : (named patterns)
+    const isPatternStart = /^\$\w*\s*:/.test(trimmed)
 
-    if (trimmed.startsWith('$:') || isMutedStart) {
+    if (isPatternStart || isMutedStart) {
       if (currentBlock.length > 0) blocks.push({ name: currentName, code: currentBlock.join('\n'), startLine: blockStartLine })
       const prev = i > 0 ? lines[i - 1].trim() : ''
       currentName = prev.startsWith('//') && !prev.startsWith('// [muted]') ? prev.replace(/^\/\/\s*/, '').replace(/[─—-]+/g, '').trim() : ''
       currentBlock = [lines[i]]
       blockStartLine = i
     } else if (currentBlock.length > 0) {
-      if (trimmed.startsWith('//') && i + 1 < lines.length && (lines[i + 1].trim().startsWith('$:') || lines[i + 1].trim().startsWith('// [muted] $:'))) {
+      if (trimmed.startsWith('//') && i + 1 < lines.length && (/^\$\w*\s*:/.test(lines[i + 1].trim()) || lines[i + 1].trim().startsWith('// [muted] $'))) {
         blocks.push({ name: currentName, code: currentBlock.join('\n'), startLine: blockStartLine })
         currentBlock = []; currentName = ''
       } else if (trimmed === '') {
         let next = i + 1
         while (next < lines.length && lines[next].trim() === '') next++
-        if (next >= lines.length || lines[next].trim().startsWith('//') || lines[next].trim().startsWith('$:')) {
+        if (next >= lines.length || lines[next].trim().startsWith('//') || /^\$\w*\s*:/.test(lines[next].trim())) {
           blocks.push({ name: currentName, code: currentBlock.join('\n'), startLine: blockStartLine })
           currentBlock = []; currentName = ''
         } else currentBlock.push(lines[i])
@@ -1458,6 +1527,13 @@ function parseCodeToNodes(code: string, existingNodes?: PatternNode[]): PatternN
       speed: detectNum(rawCode, 'slow', 1),
       vowel: detectVowel(rawCode),
       arp: detectArp(rawCode),
+      acidenv: detectNum(rawCode, 'acidenv', 0),
+      duck: detectDuck(rawCode),
+      duckdepth: detectNum(rawCode, 'duckdepth', 0.8),
+      duckattack: detectNum(rawCode, 'duckattack', 0.16),
+      trans: detectNum(rawCode, 'trans', 0),
+      detune: detectNum(rawCode, 'detune', 0),
+      cut: detectNum(rawCode, 'cut', 0),
       velocity: detectNum(rawCode, 'velocity', 1),
       attack: detectNum(rawCode, 'attack', 0.001),
       decay: detectNum(rawCode, 'decay', 0.1),
@@ -1510,6 +1586,13 @@ function reparseNodeFromCode(node: PatternNode): PatternNode {
     speed: detectNum(rawCode, 'slow', 1),
     vowel: detectVowel(rawCode),
     arp: detectArp(rawCode) || node.arp,
+    acidenv: detectNum(rawCode, 'acidenv', 0),
+    duck: detectDuck(rawCode) || node.duck,
+    duckdepth: detectNum(rawCode, 'duckdepth', 0.8),
+    duckattack: detectNum(rawCode, 'duckattack', 0.16),
+    trans: detectNum(rawCode, 'trans', 0),
+    detune: detectNum(rawCode, 'detune', 0),
+    cut: detectNum(rawCode, 'cut', 0),
     velocity: detectNum(rawCode, 'velocity', 1),
     attack: detectNum(rawCode, 'attack', 0.001),
     decay: detectNum(rawCode, 'decay', 0.1),
@@ -1558,6 +1641,18 @@ function applyEffect(code: string, method: string, value: number | string, remov
       }
       if (re.test(code)) return code.replace(re, `.arp("${value}")`)
       return injectBefore(code, `.arp("${value}")`)
+    }
+    if (method === 'duck') {
+      const re = /\.duck\s*\(\s*["'][^"']*["']\s*\)/
+      if (!value || value === '') {
+        // Remove duck and its companion params
+        let c = code.replace(re, '')
+        c = c.replace(/\.duckdepth\s*\(\s*[0-9.]+\s*\)/, '')
+        c = c.replace(/\.duckattack\s*\(\s*[0-9.]+\s*\)/, '')
+        return c
+      }
+      if (re.test(code)) return code.replace(re, `.duck("${value}")`)
+      return injectBefore(code, `.duck("${value}")`)
     }
     if (method === 'bank') {
       const re = /\.bank\s*\(\s*["'][^"']*["']\s*\)/
@@ -2528,7 +2623,8 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     const nodeCommentRe = /^\/\/\s*[─—]+\s*.+\s*[─—]+\s*$/
     for (const line of lines) {
       const t = line.trim()
-      if (t.startsWith('$:') || t.startsWith('// [muted] $:')) break
+      // Break at first pattern block (anonymous $: or named $name:)
+      if (/^\$\w*\s*:/.test(t) || t.startsWith('// [muted] $')) break
       // Skip node name comments (they'll be re-generated from node.name)
       if (nodeCommentRe.test(t)) continue
       if (!t.startsWith('setcps') && !t.startsWith('setbpm')) preamble.push(line)
@@ -2538,9 +2634,20 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     if (pre) parts.push(pre)
     if (currentBpm > 0) parts.push(`setcps(${currentBpm}/60/4) // ${currentBpm} bpm`)
     parts.push('')
+    // Track used pattern names to avoid duplicates
+    const usedNames = new Set<string>()
     for (let ni = 0; ni < nodeList.length; ni++) {
       const node = nodeList[ni]
       const commentLine = node.name ? `// ── ${node.name} ──` : ''
+      // Generate unique pattern name from node name for $name: registration
+      let patName = toPatternName(node.name || node.type || `p${ni}`)
+      // Ensure uniqueness
+      if (usedNames.has(patName)) {
+        let suffix = 2
+        while (usedNames.has(`${patName}${suffix}`)) suffix++
+        patName = `${patName}${suffix}`
+      }
+      usedNames.add(patName)
       // Inject .analyze("nde_N") for per-node EQ visualization (stripped on re-parse)
       const analyzeTag = `.analyze("nde_${ni}")`
       if (node.muted) {
@@ -2549,7 +2656,9 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
           .join('\n')
         parts.push(commentLine ? `${commentLine}\n${mutedCode}` : mutedCode)
       } else {
-        const cleanCode = node.code.replace(/\/\/ \[muted\] /g, '')
+        let cleanCode = node.code.replace(/\/\/ \[muted\] /g, '')
+        // Replace anonymous $: with named $patName: at the start of the code
+        cleanCode = cleanCode.replace(/^(\s*)\$\w*\s*:/, `$1$${patName}:`)
         // Auto-assign orbit per node to isolate delay/reverb/phaser (Strudel global effects)
         // Only inject if node doesn't already specify .orbit()
         const orbitTag = /\.orbit\s*\(/.test(cleanCode) ? '' : `.orbit(${ni + 1})`
@@ -3025,9 +3134,9 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     const tc = TYPE_COLORS
     const templates: Record<string, string> = {
       drums: `$: s("bd [~ bd] ~ ~, ~ cp ~ ~, hh*8")\n  .bank("RolandTR808").gain(0.7)\n  .scope({color:"${tc.drums}",thickness:2,smear:.88})`,
-      bass: `$: n("<0 3 4 0>").scale("C2:major")\n  .s("sawtooth").lpf(400).gain(0.35)\n  .scope({color:"${tc.bass}",thickness:2.5,smear:.96})`,
+      bass: `$: n("<0 3 4 0>*4").scale("C2:minor")\n  .s("sawtooth").lpf(200).lpenv(2).lpq(8).gain(0.35)\n  .scope({color:"${tc.bass}",thickness:2.5,smear:.96})`,
       melody: `$: n("0 2 4 7 4 2").scale("C4:major")\n  .s("gm_piano").gain(0.3)\n  .room(0.4).delay(0.15)\n  .scope({color:"${tc.melody}",thickness:1,smear:.91})`,
-      chords: `$: n("<[0,2,4] [-2,0,2] [-4,-2,0] [-3,-1,1]>").scale("C4:major")\n  .s("gm_epiano1").gain(0.25)\n  .lpf(1800).room(0.5)\n  .slow(2)\n  .scope({color:"${tc.chords}",thickness:1,smear:.93})`,
+      chords: `$: note("<[c3,e3,g3] [a2,c3,e3] [f2,a2,c3] [g2,b2,d3]>")\n  .s("gm_epiano1").gain(0.25)\n  .lpf(1800).room(0.5)\n  .scope({color:"${tc.chords}",thickness:1,smear:.93})`,
       pad: `$: n("<[0,4,9] [-2,2,7]>").scale("C3:major")\n  .s("sawtooth").lpf(800).gain(0.08)\n  .room(0.9).delay(0.3).delayfeedback(0.5)\n  .slow(4)\n  .fscope()`,
       vocal: `$: n("<0 2 4 7>").scale("C4:major")\n  .s("gm_choir_aahs").gain(0.3)\n  .room(0.5).lpf(3000)\n  .slow(2)\n  .scope({color:"${tc.vocal}",thickness:1,smear:.93})`,
       fx: `$: s("hh*16").gain(0.06)\n  .delay(0.25).delayfeedback(0.5)\n  .room(0.6).lpf(2000).speed(2.5)\n  .scope({color:"${tc.fx}",thickness:1,smear:.95})`,
@@ -3096,6 +3205,12 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                       (method === 'lpq' && Math.abs(v - 1) < 0.1) ||
                       (method === 'hpq' && Math.abs(v - 1) < 0.1) ||
                       (method === 'fmi' && v <= 0) ||
+                      (method === 'acidenv' && v <= 0) ||
+                      (method === 'trans' && v === 0) ||
+                      (method === 'detune' && v <= 0) ||
+                      (method === 'cut' && v <= 0) ||
+                      (method === 'duckdepth' && Math.abs(v - 0.8) < 0.01) ||
+                      (method === 'duckattack' && Math.abs(v - 0.16) < 0.01) ||
                       (method === 'velocity' && Math.abs(v - 1) < 0.01) ||
                       (method === 'orbit' && v <= 0)
 
@@ -4418,7 +4533,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                           autoFocus
                         />
                         <div className="max-h-[180px] overflow-y-auto p-1">
-                          {(['pattern', 'groove', 'time', 'stereo', 'glitch', 'lfo'] as const).map(cat => {
+                          {(['pattern', 'groove', 'time', 'stereo', 'glitch', 'lfo', 'generative'] as const).map(cat => {
                             const fxInCat = QUICK_FX.filter(fx => fx.category === cat && (fxSearchQuery === '' || fx.label.toLowerCase().includes(fxSearchQuery.toLowerCase()) || fx.desc.toLowerCase().includes(fxSearchQuery.toLowerCase())))
                             if (fxInCat.length === 0) return null
                             return (
