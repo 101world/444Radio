@@ -92,6 +92,28 @@ function ChannelStrip({
     })).filter(g => g.active || g.params.length > 0)
   }, [channel])
 
+  // Track drag enter/leave count to prevent flicker from child elements
+  const dragCountRef = useRef(0)
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    dragCountRef.current++
+    if (dragCountRef.current === 1) onDragOver(e)
+  }, [onDragOver])
+
+  const handleDragLeaveLocal = useCallback((e: React.DragEvent) => {
+    dragCountRef.current--
+    if (dragCountRef.current <= 0) {
+      dragCountRef.current = 0
+      onDragLeave()
+    }
+  }, [onDragLeave])
+
+  const handleDropLocal = useCallback((e: React.DragEvent) => {
+    dragCountRef.current = 0
+    onDrop(e)
+  }, [onDrop])
+
   return (
     <div
       className={`border rounded-lg overflow-hidden transition-all ${
@@ -102,9 +124,10 @@ function ChannelStrip({
             : 'border-white/[0.06]'
       } ${isMuted ? 'opacity-40' : ''}`}
       style={{ borderColor: isExpanded && !isDragOver ? `${channel.color}20` : undefined }}
-      onDragOver={(e) => { e.preventDefault(); onDragOver(e) }}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
+      onDragOver={(e) => e.preventDefault()}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeaveLocal}
+      onDrop={handleDropLocal}
     >
       {/* ── Channel Header ── */}
       <div className="flex items-center gap-1 px-2 py-1.5">

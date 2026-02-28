@@ -347,23 +347,28 @@ export function insertEffectInChannel(
 
   const lines = code.split('\n')
 
-  // Find last meaningful line of the block
-  let insertLineIdx = ch.lineEnd - 1
-  while (insertLineIdx > ch.lineStart && lines[insertLineIdx].trim() === '') {
-    insertLineIdx--
+  // Find the last non-empty line of the block
+  let lastContentLine = ch.lineEnd - 1
+  while (lastContentLine > ch.lineStart && lines[lastContentLine].trim() === '') {
+    lastContentLine--
   }
 
-  const lastLine = lines[insertLineIdx]
+  // Detect indentation: use 2 spaces as the chain indent,
+  // or match the indentation of the last content line
+  const existingIndent = lines[lastContentLine].match(/^(\s*)/)?.[1] || ''
+  const chainIndent = existingIndent || '  '
 
-  // If last line has .scope() or .pianoroll(), insert before it
-  const visualMatch = lastLine.match(/^(\s*)\.(?:scope|pianoroll)\(\)\s*$/)
-  if (visualMatch) {
-    const indent = visualMatch[1] || '  '
-    lines.splice(insertLineIdx, 0, `${indent}${effectCode}`)
+  // Check if the last content line ends with .scope() or .pianoroll()
+  // (strip trailing whitespace for the check)
+  const trimmedLast = lines[lastContentLine].trimEnd()
+  const endsWithVisual = /\.(?:scope|pianoroll)\(\)$/.test(trimmedLast)
+
+  if (endsWithVisual) {
+    // Insert a new line BEFORE the visual line
+    lines.splice(lastContentLine, 0, `${chainIndent}${effectCode}`)
   } else {
-    // Detect indentation from the current last line
-    const indent = lastLine.match(/^(\s*)/)?.[1] || '  '
-    lines.splice(insertLineIdx + 1, 0, `${indent}${effectCode}`)
+    // Insert after the last content line
+    lines.splice(lastContentLine + 1, 0, `${chainIndent}${effectCode}`)
   }
 
   return lines.join('\n')

@@ -71,11 +71,13 @@ const StudioCodeEditor = forwardRef<StudioCodeEditorHandle, StudioCodeEditorProp
               onChange={(e) => onChange(e.target.value)}
               onKeyDown={onKeyDown}
               spellCheck={false}
-              className="flex-1 resize-none bg-transparent text-[13px] leading-[1.6] font-mono text-cyan-100 caret-cyan-400 outline-none p-3 pb-16 min-w-0 whitespace-pre"
+              className="flex-1 resize-none bg-transparent text-[13px] leading-[1.6] font-mono text-cyan-100 caret-cyan-400 outline-none p-3 pb-16 min-w-0 whitespace-pre overflow-x-auto"
               style={{
                 tabSize: 2,
                 fontFamily: '"JetBrains Mono", "Fira Code", "SF Mono", "Cascadia Code", monospace',
                 textShadow: '0 0 20px rgba(34,211,238,0.08)',
+                overflowWrap: 'normal',
+                wordBreak: 'keep-all',
               }}
             />
           </div>
@@ -87,7 +89,7 @@ const StudioCodeEditor = forwardRef<StudioCodeEditorHandle, StudioCodeEditorProp
             {lineCount} lines · {code.length} chars
           </span>
           <span className="text-[8px] text-white/15 font-mono">
-            Strudel Live Coding · ._scope() ._pianoroll() .punchcard() for inline visuals
+            Strudel Live Coding · .scope() .pianoroll() for inline visuals
           </span>
         </div>
       </div>
