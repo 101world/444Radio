@@ -58,6 +58,8 @@ interface PatternNode {
   hpq: number
   // FM
   fmi: number
+  // Arp
+  arp: string
   // Misc
   orbit: number
   scale: string
@@ -388,6 +390,37 @@ const VOWELS = [
   { label: 'i', value: 'i' },
   { label: 'o', value: 'o' },
   { label: 'u', value: 'u' },
+]
+
+// ── Arpeggiator constants (Moog-style) ──────────────────────────
+// Direction modes — the core arp directions found on hardware synths
+const ARP_DIRECTIONS: { value: string; label: string; icon: string; desc: string }[] = [
+  { value: 'up',       label: 'UP',  icon: '↑', desc: 'Ascending through chord tones' },
+  { value: 'down',     label: 'DN',  icon: '↓', desc: 'Descending through chord tones' },
+  { value: 'updown',   label: 'U/D', icon: '↕', desc: 'Ascend then descend (ping-pong)' },
+  { value: 'downup',   label: 'D/U', icon: '⇅', desc: 'Descend then ascend' },
+  { value: 'random',   label: 'RND', icon: '🎲', desc: 'Random order each cycle' },
+  { value: 'converge', label: 'CNV', icon: '⟩⟨', desc: 'Outside notes move inward' },
+  { value: 'diverge',  label: 'DIV', icon: '⟨⟩', desc: 'Inside notes move outward' },
+]
+
+// Pattern presets — index-based sequences for more musical variation
+const ARP_PATTERNS: { value: string; label: string; desc: string }[] = [
+  { value: '0 1 2 3',               label: '1-2-3-4',       desc: 'Sequential 4-step' },
+  { value: '0 2 1 3',               label: '1-3-2-4',       desc: 'Interleaved' },
+  { value: '0 0 1 2',               label: '1-1-2-3',       desc: 'Repeated root' },
+  { value: '0 1 2 1',               label: '1-2-3-2',       desc: 'Mirror bounce' },
+  { value: '0 [0,2] 1 [1,3]',       label: 'Stacked',       desc: 'Alternating single + double' },
+  { value: '<0 1> <2 3>',           label: 'Alternate',      desc: 'Alternating pairs per cycle' },
+  { value: '0 1 2 3 2 1',           label: 'Wave',           desc: 'Up then back down' },
+  { value: '0*2 1 2*2 3',           label: 'Dotted',         desc: 'Rhythmic emphasis' },
+]
+
+// Full mode list for HardwareSelect dropdown
+const ARP_MODES = [
+  { label: 'None', value: '' },
+  ...ARP_DIRECTIONS.map(d => ({ label: `${d.icon} ${d.label}`, value: d.value })),
+  ...ARP_PATTERNS.map(p => ({ label: p.label, value: p.value })),
 ]
 
 const DISTORT_TYPES = [
@@ -1331,6 +1364,11 @@ function detectVowel(code: string): string {
   return m ? m[1] : ''
 }
 
+function detectArp(code: string): string {
+  const m = code.match(/\.arp\s*\(\s*["']([^"']+)["']/)
+  return m ? m[1] : ''
+}
+
 // ═══════════════════════════════════════════════════════════════
 //  CODE ↔ NODE CONVERSION
 //
@@ -1383,10 +1421,10 @@ function parseCodeToNodes(code: string, existingNodes?: PatternNode[]): PatternN
   blocks.forEach((block, idx) => {
     const existing = existingByIdx.get(idx)
     const isMuted = block.code.trim().startsWith('// [muted]')
-    // Strip injected .analyze("nde_N") tags — these are added by rebuildFullCodeFromNodes for per-node EQ
-    const stripAnalyze = (c: string) => c.replace(/\.analyze\s*\(\s*["']nde_\d+["']\s*\)/g, '')
+    // Strip injected .analyze("nde_N") and .orbit(N) tags — these are auto-added by rebuildFullCodeFromNodes
+    const stripInjected = (c: string) => c.replace(/\.analyze\s*\(\s*["']nde_\d+["']\s*\)/g, '').replace(/\.orbit\s*\(\s*\d+\s*\)/g, '')
     // For muted blocks, strip the prefix to detect properties
-    const rawCode = stripAnalyze(isMuted ? block.code.replace(/\/\/ \[muted\] /g, '') : block.code)
+    const rawCode = stripInjected(isMuted ? block.code.replace(/\/\/ \[muted\] /g, '') : block.code)
     const type = detectType(rawCode)
     const sound = detectSound(rawCode)
     const isMelodic = !isSampleBased(type)
@@ -1395,9 +1433,9 @@ function parseCodeToNodes(code: string, existingNodes?: PatternNode[]): PatternN
     nodes.push({
       id: existing?.id ?? `node_${idx}`,
       name: block.name || sound || `Pattern ${idx + 1}`,
-      // ALWAYS store clean code (no // [muted] prefix, no .analyze tags). The muted FLAG tracks mute state.
+      // ALWAYS store clean code (no // [muted] prefix, no .analyze/.orbit tags). The muted FLAG tracks mute state.
       // This prevents prefix accumulation bugs on rapid mute/unmute/re-parse cycles.
-      code: stripAnalyze(isMuted ? block.code.replace(/\/\/ \[muted\] /g, '') : block.code),
+      code: stripInjected(isMuted ? block.code.replace(/\/\/ \[muted\] /g, '') : block.code),
       muted: existing?.muted ?? isMuted,
       solo: existing?.solo ?? false,
       collapsed: existing?.collapsed ?? false,
@@ -1419,6 +1457,7 @@ function parseCodeToNodes(code: string, existingNodes?: PatternNode[]): PatternN
       distort: detectNum(rawCode, 'distort', 0),
       speed: detectNum(rawCode, 'slow', 1),
       vowel: detectVowel(rawCode),
+      arp: detectArp(rawCode),
       velocity: detectNum(rawCode, 'velocity', 1),
       attack: detectNum(rawCode, 'attack', 0.001),
       decay: detectNum(rawCode, 'decay', 0.1),
@@ -1470,6 +1509,7 @@ function reparseNodeFromCode(node: PatternNode): PatternNode {
     distort: detectNum(rawCode, 'distort', 0),
     speed: detectNum(rawCode, 'slow', 1),
     vowel: detectVowel(rawCode),
+    arp: detectArp(rawCode) || node.arp,
     velocity: detectNum(rawCode, 'velocity', 1),
     attack: detectNum(rawCode, 'attack', 0.001),
     decay: detectNum(rawCode, 'decay', 0.1),
@@ -1510,6 +1550,14 @@ function applyEffect(code: string, method: string, value: number | string, remov
       }
       if (re.test(code)) return code.replace(re, `.vowel("${value}")`)
       return injectBefore(code, `.vowel("${value}")`)
+    }
+    if (method === 'arp') {
+      const re = /\.arp(eggiate)?\s*\(\s*["'][^"']*["']\s*\)/
+      if (!value || value === '') {
+        return code.replace(re, '') // Remove arp
+      }
+      if (re.test(code)) return code.replace(re, `.arp("${value}")`)
+      return injectBefore(code, `.arp("${value}")`)
     }
     if (method === 'bank') {
       const re = /\.bank\s*\(\s*["'][^"']*["']\s*\)/
@@ -2273,8 +2321,8 @@ function MasterVisualizer({ analyserNode, isPlaying }: { analyserNode?: Analyser
 interface NodeEditorProps {
   code: string
   isPlaying: boolean
-  onCodeChange: (newCode: string) => void
-  onUpdate: () => void
+  onCodeChange: (newCode: string, immediate?: boolean) => void
+  onUpdate: (force?: boolean) => void
   onRegisterSound?: (name: string, urls: string[]) => Promise<void>
   analyserNode?: AnalyserNode | null
   /** Retrieve a per-node AnalyserNode by ID (from superdough's analysers map) */
@@ -2344,7 +2392,6 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   const containerRef = useRef<HTMLDivElement>(null)
   const lastCodeRef = useRef(code)
   const commitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const pendingMicrotask = useRef(false)
   // ── Touch state refs (mutable to avoid stale closures in imperative listeners) ──
   const touchDragRef = useRef<{ id: string; ox: number; oy: number } | null>(null)
   const touchPanRef = useRef<{ active: boolean; startX: number; startY: number; px: number; py: number }>({ active: false, startX: 0, startY: 0, px: 0, py: 0 })
@@ -2453,25 +2500,17 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
   // The code text is pushed to the parent immediately (so Undo history stays current),
   // but the expensive Strudel evaluate() is debounced to prevent thrashing.
   //
-  // Solo/mute uses queueMicrotask — fires before the next paint, can NOT be
-  // cancelled or lost (unlike setTimeout which PianoRoll timers could interfere with).
-  // Normal edits use a 200ms setTimeout debounce.
+  // Solo/mute passes immediate=true — InputEditor evaluates directly (no microtask,
+  // no stale-ref timing issues). Normal edits use a 200ms setTimeout debounce.
   const sendToParent = useCallback((newCode: string, immediate?: boolean) => {
     lastCodeRef.current = newCode
     isInternalChange.current = true
     lastSentCodeRef.current = newCode
-    onCodeChange(newCode)
+    // Pass immediate flag through — InputEditor handles evaluation directly
+    onCodeChange(newCode, immediate)
     if (immediate) {
-      // Solo/mute: cancel pending normal debounce (immediate supersedes)
+      // Solo/mute: cancel pending normal debounce (immediate evaluation handled by parent)
       if (commitTimer.current) { clearTimeout(commitTimer.current); commitTimer.current = null }
-      // Use microtask — runs before next paint, can't be cancelled by normal sends
-      if (!pendingMicrotask.current) {
-        pendingMicrotask.current = true
-        queueMicrotask(() => {
-          pendingMicrotask.current = false
-          onUpdateRef.current()
-        })
-      }
     } else {
       // Normal edit: debounced. Don't touch pending microtasks.
       if (commitTimer.current) clearTimeout(commitTimer.current)
@@ -2674,7 +2713,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
       codeToSend = rebuildFullCodeFromNodes(updated, bpm, lastCodeRef.current)
       return updated
     })
-    // immediate=true → bypass 500ms debounce so solo takes effect instantly
+    // immediate=true → parent evaluates directly, no microtask delay
     if (codeToSend !== null) sendToParent(codeToSend, true)
   }, [bpm, sendToParent, rebuildFullCodeFromNodes])
 
@@ -4533,6 +4572,118 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
                         onChange={v => applyNodeEffect(node.id, 'vowel', v)} color={color} />
                     )}
                   </div>
+
+                  {/* ══════ ARPEGGIATOR — Moog-style dedicated panel (melodic only) ══════ */}
+                  {isMelodic && (
+                    <div className="px-3 pb-2">
+                      {/* Section header */}
+                      <div className="flex items-center gap-1 mb-1.5">
+                        <div className="h-px flex-1" style={{ background: node.arp ? `${color}30` : HW.border }} />
+                        <span className="text-[7px] font-bold tracking-[0.2em] uppercase" style={{ color: node.arp ? color : HW.textDim }}>
+                          🎹 ARPEGGIATOR
+                        </span>
+                        <div className="h-px flex-1" style={{ background: node.arp ? `${color}30` : HW.border }} />
+                      </div>
+
+                      {/* Hardware panel */}
+                      <div
+                        className="rounded-lg overflow-hidden transition-all"
+                        style={{
+                          background: node.arp ? `${color}06` : HW.surface,
+                          border: `1px solid ${node.arp ? `${color}25` : HW.border}`,
+                          boxShadow: node.arp ? `0 0 12px ${color}08, inset 0 1px 0 ${color}10` : 'none',
+                        }}
+                      >
+                        {/* Top bar: ON/OFF toggle + mode dropdown */}
+                        <div className="flex items-center gap-1.5 px-2 py-1.5" style={{ borderBottom: `1px solid ${node.arp ? `${color}15` : HW.border}` }}>
+                          {/* Power toggle */}
+                          <button
+                            onClick={e => {
+                              e.stopPropagation()
+                              applyNodeEffect(node.id, 'arp', node.arp ? '' : 'up')
+                            }}
+                            className="flex items-center gap-1 px-1.5 py-[3px] rounded text-[7px] font-black tracking-wider uppercase cursor-pointer transition-all"
+                            style={{
+                              background: node.arp ? `${color}20` : HW.raised,
+                              color: node.arp ? color : HW.textDim,
+                              border: `1px solid ${node.arp ? `${color}40` : HW.border}`,
+                              boxShadow: node.arp ? `0 0 8px ${color}20` : 'none',
+                              minWidth: 36,
+                              justifyContent: 'center',
+                            }}
+                            title={node.arp ? 'Turn arpeggiator off' : 'Turn arpeggiator on'}
+                          >
+                            <span style={{ fontSize: 6 }}>{node.arp ? '●' : '○'}</span>
+                            {node.arp ? 'ON' : 'OFF'}
+                          </button>
+
+                          {/* Mode dropdown */}
+                          <div className="flex-1">
+                            <HardwareSelect
+                              label="MODE"
+                              value={node.arp}
+                              options={ARP_MODES}
+                              onChange={v => applyNodeEffect(node.id, 'arp', v)}
+                              color={color}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Direction buttons — hardware-style mode selector */}
+                        <div className="px-2 py-1.5" style={{ borderBottom: `1px solid ${node.arp ? `${color}10` : HW.border}` }}>
+                          <div className="text-[6px] font-bold uppercase tracking-wider mb-1" style={{ color: HW.textDim }}>Direction</div>
+                          <div className="flex gap-[3px] flex-wrap">
+                            {ARP_DIRECTIONS.map(dir => {
+                              const isActive = node.arp === dir.value
+                              return (
+                                <button
+                                  key={dir.value}
+                                  onClick={e => { e.stopPropagation(); applyNodeEffect(node.id, 'arp', isActive ? '' : dir.value) }}
+                                  title={dir.desc}
+                                  className="px-1.5 py-[3px] rounded text-[7px] font-bold tracking-wider cursor-pointer transition-all whitespace-nowrap"
+                                  style={{
+                                    background: isActive ? `${color}25` : HW.raised,
+                                    color: isActive ? color : HW.textDim,
+                                    border: `1px solid ${isActive ? `${color}50` : HW.border}`,
+                                    boxShadow: isActive ? `0 0 8px ${color}20, inset 0 0 4px ${color}10` : 'inset 0 1px 2px rgba(0,0,0,0.3)',
+                                    textShadow: isActive ? `0 0 6px ${color}40` : 'none',
+                                  }}
+                                >
+                                  <span className="mr-0.5 text-[8px]">{dir.icon}</span>{dir.label}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Pattern presets — musical sequence variations */}
+                        <div className="px-2 py-1.5">
+                          <div className="text-[6px] font-bold uppercase tracking-wider mb-1" style={{ color: HW.textDim }}>Pattern</div>
+                          <div className="flex gap-[3px] flex-wrap">
+                            {ARP_PATTERNS.map(pat => {
+                              const isActive = node.arp === pat.value
+                              return (
+                                <button
+                                  key={pat.value}
+                                  onClick={e => { e.stopPropagation(); applyNodeEffect(node.id, 'arp', isActive ? '' : pat.value) }}
+                                  title={pat.desc}
+                                  className="px-1.5 py-[3px] rounded text-[7px] font-bold tracking-wider cursor-pointer transition-all whitespace-nowrap"
+                                  style={{
+                                    background: isActive ? `${color}20` : HW.raised,
+                                    color: isActive ? color : HW.textDim,
+                                    border: `1px solid ${isActive ? `${color}40` : HW.border}`,
+                                    boxShadow: isActive ? `0 0 6px ${color}15` : 'none',
+                                  }}
+                                >
+                                  {pat.label}{isActive ? ' ✕' : ''}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* FOOTER */}
                   <div className="flex items-center justify-between px-3 py-1.5 rounded-b-xl"

@@ -7231,6 +7231,10 @@ $: s("bd:3").bank("RolandTR808")
   const webaudioRef = useRef<any>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
   const lastEvaluatedRef = useRef('') // Tracks last evaluated code to skip redundant evaluates
+  const isPlayingRef = useRef(false)
+  const handleUpdateRef = useRef<(force?: boolean) => Promise<void>>(async () => {})
+  // Sync isPlayingRef whenever isPlaying changes (for use in stable callbacks)
+  useEffect(() => { isPlayingRef.current = isPlaying }, [isPlaying])
   const glowRef = useRef<HTMLDivElement>(null)
   const glowRafRef = useRef<number>(0)
   const activeHapsRef = useRef<Set<string>>(new Set())
@@ -8199,15 +8203,16 @@ $: s("bd:3").bank("RolandTR808")
   }, [isPlaying, fixSoundfontNames])
 
   // Update: re-evaluate code WITHOUT stopping — code changes take effect live
-  const handleUpdate = useCallback(async () => {
-    if (!strudelRef.current?.evaluate || !isPlaying) return
+  const handleUpdate = useCallback(async (force?: boolean) => {
+    if (!strudelRef.current?.evaluate || !isPlayingRef.current) return
     try {
       setError(null)
       const src = codeRef.current.trim()
       if (!src) return
       // Skip if code hasn't changed since last evaluate (prevents redundant hush+re-register
-      // when both immediate and normal timers fire for the same code change)
-      if (src === lastEvaluatedRef.current) return
+      // when both immediate and normal timers fire for the same code change).
+      // Solo/mute passes force=true to bypass this check.
+      if (!force && src === lastEvaluatedRef.current) return
       lastEvaluatedRef.current = src
       // Flash effect on evaluation
       if (flashOnEval && editorContainerRef.current) {
@@ -8220,10 +8225,14 @@ $: s("bd:3").bank("RolandTR808")
       drawStateRef.current.counter = 0  // Reset draw IDs for fresh evaluation
       await evaluate(fixSoundfontNames(src))
       // Force immediate re-sync: restart scheduler clock so new pattern triggers instantly
-      // Without this, the clock's 100ms interval causes perceived delay before new sounds play
+      // Delayed slightly to allow Strudel time to load any newly-needed samples
       if (scheduler?.clock) {
-        scheduler.clock.pause()
-        scheduler.clock.start()
+        setTimeout(() => {
+          try {
+            scheduler.clock.pause()
+            scheduler.clock.start()
+          } catch (e) { /* sounds still loading — clock will catch up naturally */ }
+        }, 100)
       }
       // Invalidate Drawer so onPaint painters are re-collected from new pattern
       if (drawerRef.current && scheduler) {
@@ -8238,7 +8247,10 @@ $: s("bd:3").bank("RolandTR808")
       console.error('Update error:', err)
       setError(err.message || 'Update failed')
     }
-  }, [isPlaying, fixSoundfontNames, flashOnEval])
+  }, [fixSoundfontNames, flashOnEval])
+
+  // Keep handleUpdateRef always fresh
+  handleUpdateRef.current = handleUpdate
 
   const handleStop = useCallback(async () => {
     // Auto-stop recording if active
@@ -8485,13 +8497,49 @@ $: s("bd:3").bank("RolandTR808")
 
   // Stable callback for NodeEditor code changes — memoized to prevent
   // sendToParent/toggleSolo from being recreated on every InputEditor render.
-  const handleNodeCodeChange = useCallback((newCode: string) => {
-    codeRef.current = newCode  // sync ref immediately so handleUpdate evaluates the right code
+  // When immediate=true (solo/mute), evaluates Strudel DIRECTLY — no ref chain,
+  // no handleUpdate indirection, no stale closures that can silently abort.
+  const handleNodeCodeChange = useCallback((newCode: string, immediate?: boolean) => {
+    codeRef.current = newCode  // sync ref immediately
+    lastEvaluatedRef.current = '' // Clear dedup — solo/mute MUST re-evaluate
     setCodeWithUndo(newCode)
-  }, [setCodeWithUndo])
+    if (immediate) {
+      // ── DIRECT Strudel evaluation for solo/mute ──
+      // Bypasses handleUpdate entirely — that function's isPlayingRef guard
+      // and async ref chain create timing windows that can silently skip evaluation.
+      const strudel = strudelRef.current
+      if (strudel?.evaluate && isPlayingRef.current) {
+        const src = fixSoundfontNames(newCode.trim())
+        ;(async () => {
+          try {
+            sliderDefsRef.current = {}
+            await strudel.webaudio.getAudioContext().resume()
+            drawStateRef.current.counter = 0
+            await strudel.evaluate(src)
+            lastEvaluatedRef.current = newCode.trim()
+            // NOTE: Do NOT restart scheduler clock here. Solo/mute only changes
+            // which $: blocks are commented out — evaluate() handles that.
+            // Clock restart forces immediate playback before sounds are loaded,
+            // causing "sound X not found! Is it loaded?" errors.
+            // Re-sync Drawer painters
+            if (drawerRef.current && strudel.scheduler) {
+              try {
+                const hasPainters = strudel.scheduler.pattern?.getPainters?.()?.length > 0
+                drawerRef.current.setDrawTime(hasPainters ? [-2, 2] : [-0.1, 0.1])
+                drawerRef.current.invalidate(strudel.scheduler)
+              } catch {}
+            }
+            setSliderDefs({ ...sliderDefsRef.current })
+          } catch (err: any) {
+            console.error('[444 SOLO/MUTE] evaluate error:', err)
+          }
+        })()
+      }
+    }
+  }, [setCodeWithUndo, fixSoundfontNames])  // fixSoundfontNames has deps=[] so this stays stable
 
-  // Stable callback for NodeEditor evaluate trigger
-  const handleNodeUpdate = useCallback(() => handleUpdate(), [handleUpdate])
+  // Stable callback for NodeEditor evaluate trigger (debounced path)
+  const handleNodeUpdate = useCallback(() => handleUpdateRef.current(), [])
 
   // Pattern loader (defined after setCodeWithUndo)
   const loadPattern = useCallback((patternCode: string) => {
@@ -9072,7 +9120,7 @@ $: s("bd:3").bank("RolandTR808")
           >
             {isPlaying ? <><Square size={9} className="fill-current" /> stop</> : <><Play size={9} className="fill-current" /> play</>}
           </button>
-          <button onClick={handleUpdate} disabled={!isPlaying}
+          <button onClick={() => handleUpdate()} disabled={!isPlaying}
             className="px-2 py-1 rounded-md text-[11px] border border-white/[0.06] text-white/20 hover:text-cyan-400 hover:border-cyan-500/20 transition disabled:opacity-15 cursor-pointer">
             update
           </button>
