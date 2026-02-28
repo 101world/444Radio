@@ -15,8 +15,8 @@ import { ChevronDown, ChevronRight, Plus, Volume2, Layers, VolumeX, Headphones, 
 import StudioKnob from './StudioKnob'
 import {
   parseStrudelCode, updateParamInCode, insertEffectInChannel,
-  getParamDef, formatParamValue,
-  DRAGGABLE_EFFECTS, type ParsedChannel, type ParamDef,
+  getParamDef,
+  DRAGGABLE_EFFECTS, type ParsedChannel,
 } from '@/lib/strudel-code-parser'
 
 // ─── Effect category grouping for nested rack display ───
@@ -290,6 +290,11 @@ export default function StudioMixerRack({ code, onCodeChange, onMixerStateChange
   const [soloedChannels, setSoloedChannels] = useState<Set<number>>(new Set())
   const [dragOverChannel, setDragOverChannel] = useState<number | null>(null)
 
+  // Keep a ref to code so callbacks always see the latest value
+  // (prevents stale closure during fast knob drags)
+  const codeRef = useRef(code)
+  codeRef.current = code
+
   // Reset mute/solo when channel count changes (user added/removed blocks)
   const prevChannelCount = useRef(0)
   useEffect(() => {
@@ -344,25 +349,21 @@ export default function StudioMixerRack({ code, onCodeChange, onMixerStateChange
     })
   }, [])
 
-  // ── Param change handler (with insert fallback) ──
+  // ── Param change handler ──
+  // Uses codeRef (not closure `code`) to always read latest code.
+  // NO insert fallback — if the param doesn't exist or has a pattern
+  // value, the knob simply does nothing. Use drag-and-drop to add
+  // new effects. This prevents the duplicate-insert bug where
+  // identical-value replacements triggered the fallback.
   const handleParamChange = useCallback(
     (channelIdx: number, paramKey: string, value: number) => {
-      let newCode = updateParamInCode(code, channelIdx, paramKey, value)
-
-      // If param didn't exist in code, insert it as a new effect
-      if (newCode === code) {
-        const paramDef = getParamDef(paramKey)
-        if (paramDef) {
-          const formatted = formatParamValue(value, paramDef.step)
-          newCode = insertEffectInChannel(code, channelIdx, `.${paramKey}(${formatted})`)
-        }
-      }
-
-      if (newCode !== code) {
+      const currentCode = codeRef.current
+      const newCode = updateParamInCode(currentCode, channelIdx, paramKey, value)
+      if (newCode !== currentCode) {
         onCodeChange(newCode)
       }
     },
-    [code, onCodeChange],
+    [onCodeChange],
   )
 
   // ── Drag & drop handlers ──
@@ -383,13 +384,14 @@ export default function StudioMixerRack({ code, onCodeChange, onMixerStateChange
         const data = e.dataTransfer.getData('application/x-strudel-fx')
         if (!data) return
         const effect = JSON.parse(data)
-        const newCode = insertEffectInChannel(code, channelIdx, effect.code)
-        if (newCode !== code) onCodeChange(newCode)
+        const currentCode = codeRef.current
+        const newCode = insertEffectInChannel(currentCode, channelIdx, effect.code)
+        if (newCode !== currentCode) onCodeChange(newCode)
       } catch {
         // Invalid drop data
       }
     },
-    [code, onCodeChange],
+    [onCodeChange],
   )
 
   return (
