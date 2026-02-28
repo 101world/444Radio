@@ -18,6 +18,7 @@ interface StudioKnobProps {
   unit?: string
   onChange: (value: number) => void
   formatValue?: (v: number) => string
+  isComplex?: boolean   // Show modulation indicator (~ symbol)
 }
 
 export default function StudioKnob({
@@ -31,6 +32,7 @@ export default function StudioKnob({
   unit = '',
   onChange,
   formatValue,
+  isComplex = false,
 }: StudioKnobProps) {
   const dragRef = useRef<{ startY: number; startVal: number } | null>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -132,7 +134,7 @@ export default function StudioKnob({
     >
       {/* Label */}
       <span className="text-[7px] font-bold uppercase tracking-[.15em] text-white/25 truncate w-full text-center leading-none">
-        {label}
+        {label}{isComplex && <span className="text-amber-400/50 ml-0.5" title="Modulated — turning overrides expression">~</span>}
       </span>
 
       {/* SVG Knob */}

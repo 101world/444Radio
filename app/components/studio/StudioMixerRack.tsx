@@ -1,29 +1,54 @@
 'use client'
 
 // ═══════════════════════════════════════════════════════════════
-//  STUDIO MIXER RACK — Right sidebar hardware rack mixer
-//  Auto-parses code into channel strips. Each channel shows:
-//    - Sound source with icon
-//    - Gain knob (main fader equivalent)
-//    - Nested effect racks with knobs for each parameter
-//    - Visual indicators for active effects
-//  Turning knobs directly updates the code (bidirectional sync).
+//  STUDIO MIXER RACK v2 — Right sidebar hardware rack mixer
+//  Features:
+//    - Auto-parses code into channel strips with knobs
+//    - Solo (S) / Mute (M) per channel — affects evaluation only
+//    - Drag & drop effects from palette onto channels
+//    - Knobs use position-based code replacement (never fails)
+//    - Visual indicators for complex/modulated params (~)
 // ═══════════════════════════════════════════════════════════════
 
-import { useMemo, useCallback, useState } from 'react'
-import { ChevronDown, ChevronRight, Plus, Volume2, Layers } from 'lucide-react'
+import { useMemo, useCallback, useState, useEffect, useRef } from 'react'
+import { ChevronDown, ChevronRight, Plus, Volume2, Layers, VolumeX, Headphones, GripVertical } from 'lucide-react'
 import StudioKnob from './StudioKnob'
-import { parseStrudelCode, updateParamInCode, getParamDef, type ParsedChannel } from '@/lib/strudel-code-parser'
+import {
+  parseStrudelCode, updateParamInCode, insertEffectInChannel,
+  getParamDef, formatParamValue,
+  DRAGGABLE_EFFECTS, type ParsedChannel, type ParamDef,
+} from '@/lib/strudel-code-parser'
 
 // ─── Effect category grouping for nested rack display ───
 
 const FX_GROUPS: { label: string; icon: string; keys: string[] }[] = [
-  { label: 'FILTER', icon: '🔽', keys: ['lpf', 'hpf', 'lpq', 'lpenv'] },
+  { label: 'FILTER', icon: '🔽', keys: ['lpf', 'hpf', 'lpq', 'lpenv', 'lps', 'lpd'] },
   { label: 'DRIVE',  icon: '🔥', keys: ['shape', 'distort', 'crush'] },
-  { label: 'SPACE',  icon: '🌌', keys: ['room', 'delay', 'delayfeedback'] },
+  { label: 'SPACE',  icon: '🌌', keys: ['room', 'delay', 'delayfeedback', 'delaytime'] },
   { label: 'DUCK',   icon: '🦆', keys: ['duckdepth', 'duckattack'] },
-  { label: 'PITCH',  icon: '🎵', keys: ['detune', 'speed', 'rel'] },
+  { label: 'PITCH',  icon: '🎵', keys: ['detune', 'speed', 'rel', 'velocity'] },
 ]
+
+// ─── Draggable Effect Badge ───
+
+function EffectBadge({ effect }: { effect: typeof DRAGGABLE_EFFECTS[number] }) {
+  return (
+    <div
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData('application/x-strudel-fx', JSON.stringify(effect))
+        e.dataTransfer.effectAllowed = 'copy'
+      }}
+      className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/[0.03] border border-white/[0.06]
+        hover:bg-white/[0.06] hover:border-white/[0.12] cursor-grab active:cursor-grabbing
+        transition-all text-[8px] select-none shrink-0"
+      title={`Drag onto a channel to add ${effect.label}`}
+    >
+      <span className="text-[9px]">{effect.icon}</span>
+      <span className="text-white/30 font-bold uppercase tracking-wide">{effect.label}</span>
+    </div>
+  )
+}
 
 // ─── Single Channel Strip ───
 
@@ -31,18 +56,34 @@ function ChannelStrip({
   channel,
   channelIdx,
   isExpanded,
+  isMuted,
+  isSoloed,
+  isDragOver,
   onToggle,
   onParamChange,
+  onMute,
+  onSolo,
+  onDragOver,
+  onDragLeave,
+  onDrop,
 }: {
   channel: ParsedChannel
   channelIdx: number
   isExpanded: boolean
+  isMuted: boolean
+  isSoloed: boolean
+  isDragOver: boolean
   onToggle: () => void
   onParamChange: (channelIdx: number, paramKey: string, value: number) => void
+  onMute: (idx: number) => void
+  onSolo: (idx: number, exclusive: boolean) => void
+  onDragOver: (e: React.DragEvent) => void
+  onDragLeave: () => void
+  onDrop: (e: React.DragEvent) => void
 }) {
   const gainParam = channel.params.find(p => p.key === 'gain')
 
-  // Group effects by category for nesting
+  // Group effects by category
   const fxGroups = useMemo(() => {
     return FX_GROUPS.map(group => ({
       ...group,
@@ -53,34 +94,92 @@ function ChannelStrip({
 
   return (
     <div
-      className="border border-white/[0.06] rounded-lg overflow-hidden transition-all"
-      style={{ borderColor: isExpanded ? `${channel.color}20` : undefined }}
+      className={`border rounded-lg overflow-hidden transition-all ${
+        isDragOver
+          ? 'border-cyan-400/40 bg-cyan-400/[0.03] shadow-lg shadow-cyan-500/10'
+          : isExpanded
+            ? 'border-white/[0.08]'
+            : 'border-white/[0.06]'
+      } ${isMuted ? 'opacity-40' : ''}`}
+      style={{ borderColor: isExpanded && !isDragOver ? `${channel.color}20` : undefined }}
+      onDragOver={(e) => { e.preventDefault(); onDragOver(e) }}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
     >
       {/* ── Channel Header ── */}
-      <button
-        onClick={onToggle}
-        className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-white/[0.02] transition-colors cursor-pointer"
-      >
-        {/* Source icon */}
-        <span className="text-sm">{channel.icon}</span>
+      <div className="flex items-center gap-1 px-2 py-1.5">
+        {/* Solo button */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onSolo(channelIdx, !e.ctrlKey && !e.shiftKey) }}
+          className={`w-4 h-4 rounded text-[7px] font-black flex items-center justify-center transition-all cursor-pointer ${
+            isSoloed
+              ? 'bg-amber-400/20 text-amber-400 border border-amber-400/40'
+              : 'bg-white/[0.02] text-white/15 border border-white/[0.06] hover:text-white/30'
+          }`}
+          title={`Solo${'\n'}Ctrl+click for multi-solo`}
+        >
+          S
+        </button>
 
-        {/* Name + source */}
-        <div className="flex-1 text-left min-w-0">
-          <div className="flex items-center gap-1.5">
+        {/* Mute button */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onMute(channelIdx) }}
+          className={`w-4 h-4 rounded text-[7px] font-black flex items-center justify-center transition-all cursor-pointer ${
+            isMuted
+              ? 'bg-red-400/20 text-red-400 border border-red-400/40'
+              : 'bg-white/[0.02] text-white/15 border border-white/[0.06] hover:text-white/30'
+          }`}
+          title="Mute"
+        >
+          M
+        </button>
+
+        {/* Expand toggle + channel info */}
+        <button
+          onClick={onToggle}
+          className="flex-1 flex items-center gap-1.5 min-w-0 hover:bg-white/[0.02] rounded px-1 py-0.5 transition-colors cursor-pointer"
+        >
+          {/* Source icon */}
+          <span className="text-sm shrink-0">{channel.icon}</span>
+
+          {/* Name + source */}
+          <div className="flex-1 text-left min-w-0">
+            <div className="flex items-center gap-1">
+              <span
+                className="text-[10px] font-bold tracking-wide uppercase"
+                style={{ color: channel.color }}
+              >
+                {channel.name}
+              </span>
+              {channel.sourceType === 'stack' && (
+                <Layers size={8} className="text-white/20" />
+              )}
+            </div>
+            <div className="text-[7px] text-white/20 font-mono truncate">
+              {channel.source}
+            </div>
+          </div>
+
+          {/* FX count badge */}
+          {channel.effects.length > 0 && (
             <span
-              className="text-[10px] font-bold tracking-wide uppercase"
-              style={{ color: channel.color }}
+              className="text-[7px] font-bold px-1 py-0.5 rounded-full shrink-0"
+              style={{
+                backgroundColor: `${channel.color}15`,
+                color: `${channel.color}90`,
+              }}
             >
-              {channel.name}
+              {channel.effects.length}fx
             </span>
-            {channel.sourceType === 'stack' && (
-              <Layers size={8} className="text-white/20" />
-            )}
-          </div>
-          <div className="text-[8px] text-white/20 font-mono truncate">
-            {channel.source}
-          </div>
-        </div>
+          )}
+
+          {/* Expand arrow */}
+          {isExpanded ? (
+            <ChevronDown size={10} className="text-white/20 shrink-0" />
+          ) : (
+            <ChevronRight size={10} className="text-white/20 shrink-0" />
+          )}
+        </button>
 
         {/* Quick gain knob (always visible) */}
         <div
@@ -95,30 +194,18 @@ function ChannelStrip({
             step={0.01}
             size={28}
             color={channel.color}
+            isComplex={gainParam?.isComplex}
             onChange={(v) => onParamChange(channelIdx, 'gain', v)}
           />
         </div>
+      </div>
 
-        {/* FX count badge */}
-        {channel.effects.length > 0 && (
-          <span
-            className="text-[7px] font-bold px-1 py-0.5 rounded-full"
-            style={{
-              backgroundColor: `${channel.color}15`,
-              color: `${channel.color}90`,
-            }}
-          >
-            {channel.effects.length}fx
-          </span>
-        )}
-
-        {/* Expand arrow */}
-        {isExpanded ? (
-          <ChevronDown size={10} className="text-white/20 shrink-0" />
-        ) : (
-          <ChevronRight size={10} className="text-white/20 shrink-0" />
-        )}
-      </button>
+      {/* ── Drop indicator ── */}
+      {isDragOver && (
+        <div className="px-3 py-1 text-[8px] text-cyan-400/60 text-center bg-cyan-400/[0.05] border-t border-cyan-400/20 font-mono">
+          ⬇ DROP TO ADD EFFECT
+        </div>
+      )}
 
       {/* ── Expanded: Nested Effect Racks ── */}
       {isExpanded && (
@@ -164,6 +251,7 @@ function ChannelStrip({
                       size={32}
                       color={channel.color}
                       unit={def.unit}
+                      isComplex={param.isComplex}
                       onChange={(v) => onParamChange(channelIdx, param.key, v)}
                     />
                   )
@@ -192,11 +280,30 @@ function ChannelStrip({
 interface StudioMixerRackProps {
   code: string
   onCodeChange: (code: string) => void
+  onMixerStateChange?: (state: { muted: Set<number>; soloed: Set<number> }) => void
 }
 
-export default function StudioMixerRack({ code, onCodeChange }: StudioMixerRackProps) {
+export default function StudioMixerRack({ code, onCodeChange, onMixerStateChange }: StudioMixerRackProps) {
   const channels = useMemo(() => parseStrudelCode(code), [code])
   const [expandedChannels, setExpandedChannels] = useState<Set<string>>(new Set())
+  const [mutedChannels, setMutedChannels] = useState<Set<number>>(new Set())
+  const [soloedChannels, setSoloedChannels] = useState<Set<number>>(new Set())
+  const [dragOverChannel, setDragOverChannel] = useState<number | null>(null)
+
+  // Reset mute/solo when channel count changes (user added/removed blocks)
+  const prevChannelCount = useRef(0)
+  useEffect(() => {
+    if (channels.length !== prevChannelCount.current) {
+      prevChannelCount.current = channels.length
+      setMutedChannels(new Set())
+      setSoloedChannels(new Set())
+    }
+  }, [channels.length])
+
+  // Notify parent when mute/solo state changes
+  useEffect(() => {
+    onMixerStateChange?.({ muted: mutedChannels, soloed: soloedChannels })
+  }, [mutedChannels, soloedChannels, onMixerStateChange])
 
   const toggleChannel = useCallback((id: string) => {
     setExpandedChannels(prev => {
@@ -207,11 +314,79 @@ export default function StudioMixerRack({ code, onCodeChange }: StudioMixerRackP
     })
   }, [])
 
+  // ── Solo handler ──
+  // Click = exclusive solo (only this channel).
+  // Ctrl/Shift+click = additive (toggle this channel in solo set).
+  const handleSolo = useCallback((idx: number, exclusive: boolean) => {
+    setSoloedChannels(prev => {
+      if (exclusive) {
+        // If already the only solo → clear all solos
+        if (prev.has(idx) && prev.size === 1) return new Set()
+        // Otherwise solo only this channel
+        return new Set([idx])
+      } else {
+        // Additive toggle
+        const next = new Set(prev)
+        if (next.has(idx)) next.delete(idx)
+        else next.add(idx)
+        return next
+      }
+    })
+  }, [])
+
+  // ── Mute handler ──
+  const handleMute = useCallback((idx: number) => {
+    setMutedChannels(prev => {
+      const next = new Set(prev)
+      if (next.has(idx)) next.delete(idx)
+      else next.add(idx)
+      return next
+    })
+  }, [])
+
+  // ── Param change handler (with insert fallback) ──
   const handleParamChange = useCallback(
     (channelIdx: number, paramKey: string, value: number) => {
-      const newCode = updateParamInCode(code, channelIdx, paramKey, value)
+      let newCode = updateParamInCode(code, channelIdx, paramKey, value)
+
+      // If param didn't exist in code, insert it as a new effect
+      if (newCode === code) {
+        const paramDef = getParamDef(paramKey)
+        if (paramDef) {
+          const formatted = formatParamValue(value, paramDef.step)
+          newCode = insertEffectInChannel(code, channelIdx, `.${paramKey}(${formatted})`)
+        }
+      }
+
       if (newCode !== code) {
         onCodeChange(newCode)
+      }
+    },
+    [code, onCodeChange],
+  )
+
+  // ── Drag & drop handlers ──
+  const handleDragOver = useCallback((idx: number) => {
+    setDragOverChannel(idx)
+  }, [])
+
+  const handleDragLeave = useCallback(() => {
+    setDragOverChannel(null)
+  }, [])
+
+  const handleDrop = useCallback(
+    (channelIdx: number, e: React.DragEvent) => {
+      e.preventDefault()
+      setDragOverChannel(null)
+
+      try {
+        const data = e.dataTransfer.getData('application/x-strudel-fx')
+        if (!data) return
+        const effect = JSON.parse(data)
+        const newCode = insertEffectInChannel(code, channelIdx, effect.code)
+        if (newCode !== code) onCodeChange(newCode)
+      } catch {
+        // Invalid drop data
       }
     },
     [code, onCodeChange],
@@ -230,6 +405,30 @@ export default function StudioMixerRack({ code, onCodeChange }: StudioMixerRackP
             {channels.length} ch
           </span>
         </div>
+
+        {/* Solo/Mute status indicators */}
+        {(soloedChannels.size > 0 || mutedChannels.size > 0) && (
+          <div className="flex items-center gap-2 mt-1">
+            {soloedChannels.size > 0 && (
+              <span className="text-[7px] font-bold text-amber-400/60 flex items-center gap-0.5">
+                <Headphones size={8} />
+                {soloedChannels.size} SOLO
+              </span>
+            )}
+            {mutedChannels.size > 0 && (
+              <span className="text-[7px] font-bold text-red-400/60 flex items-center gap-0.5">
+                <VolumeX size={8} />
+                {mutedChannels.size} MUTED
+              </span>
+            )}
+            <button
+              onClick={() => { setMutedChannels(new Set()); setSoloedChannels(new Set()) }}
+              className="text-[7px] text-white/20 hover:text-white/40 ml-auto cursor-pointer"
+            >
+              CLEAR
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Channel Strips */}
@@ -251,22 +450,51 @@ export default function StudioMixerRack({ code, onCodeChange }: StudioMixerRackP
               channel={ch}
               channelIdx={idx}
               isExpanded={expandedChannels.has(ch.id)}
+              isMuted={mutedChannels.has(idx)}
+              isSoloed={soloedChannels.has(idx)}
+              isDragOver={dragOverChannel === idx}
               onToggle={() => toggleChannel(ch.id)}
               onParamChange={handleParamChange}
+              onMute={handleMute}
+              onSolo={handleSolo}
+              onDragOver={() => handleDragOver(idx)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(idx, e)}
             />
           ))
         )}
       </div>
 
-      {/* Signal flow indicator at bottom */}
+      {/* ── FX Palette (draggable effects) ── */}
+      {channels.length > 0 && (
+        <div className="shrink-0 border-t border-white/[0.06] px-2 py-2">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <GripVertical size={8} className="text-white/15" />
+            <span className="text-[7px] font-bold uppercase tracking-[.2em] text-white/20">
+              FX PALETTE
+            </span>
+            <span className="text-[7px] text-white/10 ml-auto">drag → channel</span>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {DRAGGABLE_EFFECTS.map(fx => (
+              <EffectBadge key={fx.id} effect={fx} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Signal flow indicator */}
       {channels.length > 0 && (
         <div className="shrink-0 px-3 py-1.5 border-t border-white/[0.06]">
           <div className="flex items-center justify-center gap-1">
             {channels.map((ch, i) => (
               <span key={ch.id} className="flex items-center gap-1">
                 <span
-                  className="w-1.5 h-1.5 rounded-full"
-                  style={{ backgroundColor: ch.color, opacity: 0.5 }}
+                  className={`w-1.5 h-1.5 rounded-full transition-opacity ${
+                    mutedChannels.has(i) || (soloedChannels.size > 0 && !soloedChannels.has(i))
+                      ? 'opacity-10' : 'opacity-50'
+                  }`}
+                  style={{ backgroundColor: ch.color }}
                 />
                 {i < channels.length - 1 && (
                   <span className="text-white/10 text-[6px]">·</span>

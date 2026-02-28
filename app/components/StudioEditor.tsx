@@ -9,6 +9,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import type { StrudelEngine } from '@/lib/strudel-engine'
 import { fixSoundfontNames } from '@/lib/strudel-engine'
+import { applyMixerOverrides } from '@/lib/strudel-code-parser'
 
 // Sub-components
 import StudioTopBar from './studio/StudioTopBar'
@@ -49,6 +50,7 @@ export default function StudioEditor() {
   const sliderValuesRef = useRef<Record<string, number>>({})
   const sliderDefsRef = useRef<Record<string, { min: number; max: number; value: number }>>({})
   const drawStateRef = useRef({ counter: 0 })
+  const mixerStateRef = useRef<{ muted: Set<number>; soloed: Set<number> }>({ muted: new Set(), soloed: new Set() })
 
   useEffect(() => { isPlayingRef.current = isPlaying }, [isPlaying])
 
@@ -182,7 +184,7 @@ export default function StudioEditor() {
         await engine.webaudio.getAudioContext().resume()
         drawStateRef.current.counter = 0
         lastEvaluatedRef.current = ''
-        await engine.evaluate(fixSoundfontNames(src))
+        await engine.evaluate(applyMixerOverrides(fixSoundfontNames(src), mixerStateRef.current.muted, mixerStateRef.current.soloed))
         setSliderDefs({ ...sliderDefsRef.current })
 
         // Grab master gain from superdough's internal audio controller (like InputEditor)
@@ -242,7 +244,7 @@ export default function StudioEditor() {
       sliderDefsRef.current = {}
       await engine.webaudio.getAudioContext().resume()
       drawStateRef.current.counter = 0
-      await engine.evaluate(fixSoundfontNames(src))
+      await engine.evaluate(applyMixerOverrides(fixSoundfontNames(src), mixerStateRef.current.muted, mixerStateRef.current.soloed))
       if (engine.scheduler?.clock) {
         setTimeout(() => {
           try { engine.scheduler.clock.pause(); engine.scheduler.clock.start() } catch {}
@@ -323,6 +325,20 @@ export default function StudioEditor() {
     setSliderDefs(prev => ({ ...prev, [id]: { ...prev[id], value: val } }))
   }, [])
 
+  // ── Mixer solo/mute ──
+  const handleMixerStateChange = useCallback((state: { muted: Set<number>; soloed: Set<number> }) => {
+    mixerStateRef.current = state
+    // Re-evaluate immediately if playing so user hears the change
+    if (isPlayingRef.current && engineRef.current?.evaluate) {
+      const src = codeRef.current.trim()
+      if (!src) return
+      const finalCode = applyMixerOverrides(fixSoundfontNames(src), state.muted, state.soloed)
+      engineRef.current.evaluate(finalCode).catch(err => {
+        console.error('[444 STUDIO] mixer state update error:', err)
+      })
+    }
+  }, [])
+
   // ═══════════════════════════════════════════════════════════════
   //  RENDER
   // ═══════════════════════════════════════════════════════════════
@@ -377,7 +393,8 @@ export default function StudioEditor() {
         <div className="w-56 shrink-0 border-l border-white/[0.06]">
           <StudioMixerRack
             code={code}
-            onCodeChange={(c) => setCodeWithUndo(c)}
+            onCodeChange={(c: string) => setCodeWithUndo(c)}
+            onMixerStateChange={handleMixerStateChange}
           />
         </div>
       </div>

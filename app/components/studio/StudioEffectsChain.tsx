@@ -250,7 +250,7 @@ const EFFECTS: EffectDef[] = [
     description: 'Shows the waveform of this sound in real-time. Great for seeing if your sound is too loud or clipping.',
     signalLabel: 'SCOPE',
     params: [],
-    toCode: (_p, on) => on ? '._scope()' : '',
+    toCode: (_p, on) => on ? '.scope()' : '',
   },
   {
     id: 'pianoroll',
@@ -261,7 +261,7 @@ const EFFECTS: EffectDef[] = [
     description: 'Shows notes on a piano roll as they play. Perfect for melodic patterns to see pitch over time.',
     signalLabel: 'ROLL',
     params: [],
-    toCode: (_p, on) => on ? '._pianoroll()' : '',
+    toCode: (_p, on) => on ? '.pianoroll()' : '',
   },
 ]
 
