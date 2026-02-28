@@ -15,8 +15,8 @@ import StudioTopBar from './studio/StudioTopBar'
 import StudioGenreSelector, { GENRE_TEMPLATES } from './studio/StudioGenreSelector'
 import StudioSliderPanel from './studio/StudioSliderPanel'
 import StudioMethodsPanel from './studio/StudioMethodsPanel'
-import StudioEffectsChain from './studio/StudioEffectsChain'
 import StudioCodeEditor, { type StudioCodeEditorHandle } from './studio/StudioCodeEditor'
+import StudioMixerRack from './studio/StudioMixerRack'
 
 export default function StudioEditor() {
   // ── State ──
@@ -28,6 +28,7 @@ export default function StudioEditor() {
   const [masterVolume, setMasterVolume] = useState(0.75)
   const [activeGenre, setActiveGenre] = useState('acid')
   const [sliderDefs, setSliderDefs] = useState<Record<string, { min: number; max: number; value: number }>>({})
+  const [leftPanelOpen, setLeftPanelOpen] = useState(true)
 
   // Undo/Redo
   const undoStack = useRef<string[]>([])
@@ -322,11 +323,6 @@ export default function StudioEditor() {
     setSliderDefs(prev => ({ ...prev, [id]: { ...prev[id], value: val } }))
   }, [])
 
-  // ── Effects chain change ──
-  const handleFxChainChange = useCallback((_fxCode: string) => {
-    // FX chain code is shown in the panel; user clicks INSERT to add
-  }, [])
-
   // ═══════════════════════════════════════════════════════════════
   //  RENDER
   // ═══════════════════════════════════════════════════════════════
@@ -347,15 +343,25 @@ export default function StudioEditor() {
 
       {/* ── MAIN BODY ── */}
       <div className="flex-1 flex overflow-hidden">
-        {/* ── LEFT PANEL ── */}
-        <div className="w-64 shrink-0 border-r border-white/[0.06] bg-[#0c0c10] flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto">
-            <StudioGenreSelector activeGenre={activeGenre} onSelect={loadTemplate} />
-            <StudioSliderPanel sliderDefs={sliderDefs} sliderValues={sliderValuesRef} onChange={handleSliderChange} />
-            <StudioEffectsChain onChainChange={handleFxChainChange} onInsertSnippet={insertAtCursor} />
-            <StudioMethodsPanel onInsert={insertAtCursor} />
-          </div>
+        {/* ── LEFT PANEL (collapsible) ── */}
+        <div className={`shrink-0 border-r border-white/[0.06] bg-[#0c0c10] flex flex-col overflow-hidden transition-all duration-200 ${leftPanelOpen ? 'w-52' : 'w-0'}`}>
+          {leftPanelOpen && (
+            <div className="flex-1 overflow-y-auto w-52">
+              <StudioGenreSelector activeGenre={activeGenre} onSelect={loadTemplate} />
+              <StudioSliderPanel sliderDefs={sliderDefs} sliderValues={sliderValuesRef} onChange={handleSliderChange} />
+              <StudioMethodsPanel onInsert={insertAtCursor} />
+            </div>
+          )}
         </div>
+
+        {/* ── LEFT PANEL TOGGLE ── */}
+        <button
+          onClick={() => setLeftPanelOpen(p => !p)}
+          className="shrink-0 w-4 flex items-center justify-center border-r border-white/[0.04] bg-[#0a0a0e] hover:bg-white/[0.03] text-white/15 hover:text-white/30 transition-colors cursor-pointer"
+          title={leftPanelOpen ? 'Collapse panel' : 'Expand panel'}
+        >
+          <span className="text-[8px] font-mono">{leftPanelOpen ? '◂' : '▸'}</span>
+        </button>
 
         {/* ── CENTER: Code Editor + Visuals Canvas ── */}
         <StudioCodeEditor
@@ -366,6 +372,14 @@ export default function StudioEditor() {
           canvasRef={canvasRef}
           editorRef={editorDivRef}
         />
+
+        {/* ── RIGHT PANEL: Hardware Mixer Rack ── */}
+        <div className="w-56 shrink-0 border-l border-white/[0.06]">
+          <StudioMixerRack
+            code={code}
+            onCodeChange={(c) => setCodeWithUndo(c)}
+          />
+        </div>
       </div>
 
       <style jsx global>{`
