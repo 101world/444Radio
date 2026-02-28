@@ -12,10 +12,20 @@ export async function GET() {
         audio_url,
         image_url,
         video_url,
+        audio_prompt,
+        image_prompt,
         user_id,
         likes,
         plays,
-        created_at
+        created_at,
+        genre,
+        mood,
+        bpm,
+        vocals,
+        tags,
+        description,
+        artist_name,
+        duration_seconds
       `)
       .not('video_url', 'is', null)
       .eq('is_public', true)
@@ -42,21 +52,16 @@ export async function GET() {
       }
     }
 
-    // Transform the data to match expected format
+    // Transform the data to match CombinedMedia shape expected by the radio page
     const transformedVideos = (videos || []).map((video: Record<string, unknown>) => {
       const user = userMap[video.user_id as string]
       return {
-        id: video.id,
-        title: video.title,
-        audio_url: video.audio_url,
-        image_url: video.image_url,
-        video_url: video.video_url,
-        user_id: video.user_id,
+        ...video,
         username: user?.username || 'Unknown',
-        avatar_url: user?.avatar_url || null,
-        likes: video.likes || 0,
-        plays: video.plays || 0,
-        created_at: video.created_at,
+        users: {
+          username: user?.username || 'Unknown',
+          avatar_url: user?.avatar_url || null,
+        },
       }
     })
 

@@ -14,6 +14,8 @@ const isPublicRoute = createRouteMatcher([
   '/api/songs/track-play',
   '/api/media/radio(.*)',
   '/api/radio/genre-summary(.*)',
+  '/api/library/videos(.*)',
+  '/api/station(.*)',
   '/api/plugin/(.*)',  // Plugin API uses Bearer token auth, not Clerk sessions
   '/plugin',           // Plugin WebView page (auth via token, not Clerk)
   '/api/r2/proxy(.*)', // R2 file proxy — must be public so audio downloads work in plugin/DAW

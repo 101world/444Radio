@@ -423,6 +423,18 @@ export default function FloatingAudioPlayer() {
     return () => window.removeEventListener('resize', check)
   }, [])
 
+  // Broadcast player width to CSS custom property so other components can react
+  useEffect(() => {
+    if (!currentTrack || isMobile) {
+      document.documentElement.style.setProperty('--player-right-width', '0px')
+    } else {
+      document.documentElement.style.setProperty('--player-right-width', expanded ? '620px' : '104px')
+    }
+    return () => {
+      document.documentElement.style.setProperty('--player-right-width', '0px')
+    }
+  }, [currentTrack, isMobile, expanded])
+
   useEffect(() => {
     const el = getAudioElement()
     if (el) setAudioEl(el)

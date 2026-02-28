@@ -1,7 +1,8 @@
 'use client'
 
-import { X, Play, Heart, Download, Clock, Music, Disc3, Mic2, Hash, MapPin, Tag, Users, Shield } from 'lucide-react'
+import { X, Play, Pause, Heart, Download, Clock, Music, Disc3, Mic2, Hash, MapPin, Tag, Users, Shield, Sparkles } from 'lucide-react'
 import Image from 'next/image'
+import Link from 'next/link'
 
 interface TrackInfo {
   id: string
@@ -39,12 +40,18 @@ interface TrackInfo {
   copyright_year?: number
   publisher?: string
   users?: { username: string }
+  video_url?: string
+  audio_prompt?: string | null
+  image_prompt?: string | null
+  prompt?: string | null
+  prompt_visibility?: 'public' | 'private' | string | null
 }
 
 interface TrackInfoModalProps {
   track: TrackInfo
   onClose: () => void
   onPlay?: () => void
+  isCurrentlyPlaying?: boolean
 }
 
 function formatDuration(s: number): string {
@@ -57,8 +64,9 @@ function formatDate(d: string): string {
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-export default function TrackInfoModal({ track, onClose, onPlay }: TrackInfoModalProps) {
+export default function TrackInfoModal({ track, onClose, onPlay, isCurrentlyPlaying }: TrackInfoModalProps) {
   const coverUrl = track.image_url || track.imageUrl
+  const videoUrl = track.video_url
   const artist = track.artist_name || track.users?.username || track.username || 'Unknown'
 
   return (
@@ -74,9 +82,18 @@ export default function TrackInfoModal({ track, onClose, onPlay }: TrackInfoModa
           <X size={14} />
         </button>
 
-        {/* Cover art */}
+        {/* Cover art / Video */}
         <div className="relative w-full aspect-square max-h-[240px] overflow-hidden rounded-t-2xl">
-          {coverUrl ? (
+          {videoUrl ? (
+            <video
+              src={videoUrl}
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          ) : coverUrl ? (
             <Image src={coverUrl} alt={track.title} fill className="object-cover" unoptimized />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center">
@@ -84,9 +101,12 @@ export default function TrackInfoModal({ track, onClose, onPlay }: TrackInfoModa
             </div>
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-transparent to-transparent" />
+
           {onPlay && (
-            <button onClick={onPlay} className="absolute bottom-4 right-4 w-10 h-10 rounded-full bg-cyan-500 flex items-center justify-center shadow-lg shadow-cyan-500/30 hover:bg-cyan-400 transition">
-              <Play size={18} className="text-black ml-0.5" fill="currentColor" />
+            <button onClick={onPlay} className="absolute bottom-4 right-4 w-10 h-10 rounded-full bg-cyan-500 flex items-center justify-center shadow-lg shadow-cyan-500/30 hover:bg-cyan-400 transition z-10">
+              {isCurrentlyPlaying
+                ? <Pause size={18} className="text-black" fill="currentColor" />
+                : <Play size={18} className="text-black ml-0.5" fill="currentColor" />}
             </button>
           )}
         </div>
@@ -114,6 +134,15 @@ export default function TrackInfoModal({ track, onClose, onPlay }: TrackInfoModa
 
           {/* Metadata grid */}
           <div className="mt-4 space-y-0">
+            {track.user_id ? (
+              <Link href={`/profile/${track.user_id}`} className="flex items-center gap-3 py-2 border-b border-white/[0.03] group/artist">
+                <span className="text-gray-600"><Users size={12} /></span>
+                <span className="text-[10px] text-gray-500 w-16">Artist</span>
+                <span className="text-xs text-cyan-400 group-hover/artist:text-cyan-300 transition-colors">{artist}</span>
+              </Link>
+            ) : (
+              <MetaRow icon={<Users size={12} />} label="Artist" value={artist} />
+            )}
             {track.genre && (
               <MetaRow icon={<Disc3 size={12} />} label="Genre" value={track.secondary_genre ? `${track.genre} / ${track.secondary_genre}` : track.genre} />
             )}
@@ -157,6 +186,28 @@ export default function TrackInfoModal({ track, onClose, onPlay }: TrackInfoModa
               <MetaRow icon={<Tag size={12} />} label="Publisher" value={track.publisher} />
             )}
           </div>
+
+          {/* AI Prompts (only when artist opted to show) */}
+          {track.prompt_visibility === 'public' && (track.audio_prompt || track.image_prompt || track.prompt) && (
+            <div className="mt-4">
+              <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                <Sparkles size={10} className="text-cyan-400/60" />
+                AI Generation Prompts
+              </p>
+              {(track.audio_prompt || track.prompt) && (
+                <div className="p-3 rounded-lg bg-white/[0.03] border border-white/[0.06] mb-2">
+                  <p className="text-[9px] text-cyan-400/70 uppercase tracking-wider mb-1">Music Prompt</p>
+                  <p className="text-xs text-gray-300 leading-relaxed">{track.audio_prompt || track.prompt}</p>
+                </div>
+              )}
+              {track.image_prompt && (
+                <div className="p-3 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+                  <p className="text-[9px] text-purple-400/70 uppercase tracking-wider mb-1">Cover Art Prompt</p>
+                  <p className="text-xs text-gray-300 leading-relaxed">{track.image_prompt}</p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Contributors */}
           {track.contributors && track.contributors.length > 0 && (

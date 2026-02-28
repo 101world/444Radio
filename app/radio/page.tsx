@@ -3,13 +3,14 @@
 import { useState, useEffect, lazy, Suspense, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import FloatingMenu from '../components/FloatingMenu'
-import { Search, Play, Pause, ArrowLeft, FileText, Radio as RadioIcon, Users, Music, X, SlidersHorizontal, Heart, TrendingUp, Disc3, Headphones, ChevronRight, Sparkles, Flame, Info, Video, MessageCircle, ThumbsDown, Volume2, VolumeX } from 'lucide-react'
+import { Search, Play, Pause, ArrowLeft, FileText, Radio as RadioIcon, Users, Music, X, SlidersHorizontal, Heart, TrendingUp, Disc3, Headphones, ChevronRight, Sparkles, Flame, Info, Video, MessageCircle, ThumbsDown, Volume2, VolumeX, Copy, Upload, Check, Share2 } from 'lucide-react'
 import { useAudioPlayer, computeUrl } from '../contexts/AudioPlayerContext'
 import { supabase } from '@/lib/supabase'
 import { ExploreGridSkeleton } from '../components/LoadingSkeleton'
 import LikeButton from '../components/LikeButton'
+import ReleasePatternModal from '../components/ReleasePatternModal'
 import ErrorBoundary from '../components/ErrorBoundary'
 import TrackInfoModal from '../components/TrackInfoModal'
 
@@ -28,6 +29,7 @@ interface CombinedMedia {
   record_label?: string; version_tag?: string
   contributors?: { name: string; role: string }[]; songwriters?: { name: string; role: string }[]
   copyright_holder?: string; copyright_year?: number; publisher?: string
+  prompt?: string | null; prompt_visibility?: 'public' | 'private' | string | null
 }
 interface Artist { username: string; user_id: string; avatar: string; trackCount: number }
 interface LiveStation {
@@ -208,9 +210,9 @@ function Genre3DCard({ genre, trackCount, coverImages, isSelected, onClick }: {
 // ═══════════════════════════════════════════════
 // 3D TRACK CARD — Compact card for expanded genre
 // ═══════════════════════════════════════════════
-function Genre3DTrackCard({ media, index, isCurrentlyPlaying, isPlaying, onPlay, onLyrics, onInfo }: {
+function Genre3DTrackCard({ media, index, isCurrentlyPlaying, isPlaying, onPlay, onLyrics, onInfo, onShare }: {
   media: CombinedMedia; index: number; isCurrentlyPlaying: boolean; isPlaying: boolean
-  onPlay: () => void; onLyrics: () => void; onInfo?: () => void
+  onPlay: () => void; onLyrics: () => void; onInfo?: () => void; onShare?: () => void
 }) {
   const gs = getGenreStyle(media.genre)
   const cardRef = useRef<HTMLDivElement>(null)
@@ -301,6 +303,15 @@ function Genre3DTrackCard({ media, index, isCurrentlyPlaying, isPlaying, onPlay,
             </button>
           )}
 
+          {/* Share button */}
+          {onShare && (
+            <button onClick={e => { e.stopPropagation(); onShare() }}
+              className="absolute bottom-1.5 right-1.5 w-5 h-5 rounded-full bg-black/50 backdrop-blur flex items-center justify-center text-gray-400 hover:text-cyan-400 opacity-0 group-hover:opacity-100 transition-all z-10"
+              title="Share track">
+              <Share2 size={8} />
+            </button>
+          )}
+
           {/* Shine effect */}
           {isHovered && (
             <div className="absolute inset-0 pointer-events-none"
@@ -348,8 +359,8 @@ function formatPlays(n: number) {
 // ═══════════════════════════════════════════════
 // GRID TRACK CARD — Square cover art, stacked info
 // ═══════════════════════════════════════════════
-function GridTrackCard({ media, isCurrentlyPlaying, isPlaying, onPlay, onLyrics, onInfo }: {
-  media: CombinedMedia; isCurrentlyPlaying: boolean; isPlaying: boolean; onPlay: () => void; onLyrics: () => void; onInfo?: () => void
+function GridTrackCard({ media, isCurrentlyPlaying, isPlaying, onPlay, onLyrics, onInfo, onShare }: {
+  media: CombinedMedia; isCurrentlyPlaying: boolean; isPlaying: boolean; onPlay: () => void; onLyrics: () => void; onInfo?: () => void; onShare?: () => void
 }) {
   const gs = getGenreStyle(media.genre)
   return (
@@ -413,6 +424,14 @@ function GridTrackCard({ media, isCurrentlyPlaying, isPlaying, onPlay, onLyrics,
             className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-gray-400 hover:text-cyan-400 opacity-0 group-hover:opacity-100 transition-all z-10"
             title="Track info">
             <Info size={10} />
+          </button>
+        )}
+        {/* Share button bottom-right */}
+        {onShare && (
+          <button onClick={e => { e.stopPropagation(); onShare() }}
+            className="absolute bottom-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-gray-400 hover:text-cyan-400 opacity-0 group-hover:opacity-100 transition-all z-10"
+            title="Share track">
+            <Share2 size={10} />
           </button>
         )}
       </div>
@@ -480,7 +499,7 @@ function ListTrackRow({ media, index, isCurrentlyPlaying, isPlaying, onPlay, onL
         )}
       </div>
       {/* Title + artist */}
-      <div className="flex-1 min-w-0">
+      <div className="min-w-0 max-w-[45%]">
         <h3 className={`text-sm font-semibold truncate ${isCurrentlyPlaying ? 'text-cyan-300' : 'text-white'}`}>{media.title}</h3>
         <div className="flex items-center gap-1.5 mt-0.5">
           {media.user_id && media.user_id !== 'undefined' ? (
@@ -493,9 +512,9 @@ function ListTrackRow({ media, index, isCurrentlyPlaying, isPlaying, onPlay, onL
         </div>
       </div>
       {/* Right side — plays + like + lyrics */}
-      <div className="flex items-center gap-3 flex-shrink-0" onClick={e => e.stopPropagation()}>
-        <span className="text-xs text-gray-400 flex items-center gap-1 tabular-nums font-medium">
-          <Headphones size={12} className="text-gray-500" />{formatPlays(media.plays || 0)}
+      <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
+        <span className="text-[11px] text-gray-500 flex items-center gap-0.5 tabular-nums">
+          <Headphones size={11} className="text-gray-600" />{formatPlays(media.plays || 0)}
         </span>
         <LikeButton releaseId={media.id} initialLikesCount={media.likes || 0} size="sm" showCount={true} />
         <button onClick={e => { e.stopPropagation(); onLyrics() }} className="p-1.5 hover:bg-purple-500/15 rounded-lg transition-colors opacity-0 group-hover:opacity-100" title="Lyrics">
@@ -511,6 +530,7 @@ function ListTrackRow({ media, index, isCurrentlyPlaying, isPlaying, onPlay, onL
 // ═══════════════════════════════════════════════
 function RadioPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [combinedMedia, setCombinedMedia] = useState<CombinedMedia[]>([])
   const [artists, setArtists] = useState<Artist[]>([])
   const [liveStations, setLiveStations] = useState<LiveStation[]>([])
@@ -541,12 +561,28 @@ function RadioPageContent() {
   const [talesSwipeOffset, setTalesSwipeOffset] = useState(0)
   const [talesVerticalOffset, setTalesVerticalOffset] = useState(0)
   const [isSwiping, setIsSwiping] = useState(false)
-  const [hoveredVideoId, setHoveredVideoId] = useState<string | null>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const [patterns, setPatterns] = useState<{id:string;user_id:string;username:string;title:string;description:string;code:string;genre:string|null;copies:number;likes:number;created_at:string}[]>([])
+  const [showReleaseModal, setShowReleaseModal] = useState(false)
+  const [copiedPatternId, setCopiedPatternId] = useState<string|null>(null)
 
-  const { currentTrack: globalCurrentTrack, isPlaying: globalIsPlaying, playTrack, togglePlayPause, setPlaylist } = useAudioPlayer()
+  const { currentTrack: globalCurrentTrack, isPlaying: globalIsPlaying, playTrack, togglePlayPause, setPlaylist, volume, setVolume } = useAudioPlayer()
   const playingId = globalCurrentTrack?.id || null
   const isPlaying = globalIsPlaying
+  const preMuteVolumeRef = useRef(volume || 0.7)
+
+  const handleMuteToggle = useCallback(() => {
+    if (talesMuted) {
+      // Unmute: restore previous volume
+      setVolume(preMuteVolumeRef.current)
+      setTalesMuted(false)
+    } else {
+      // Mute: save current volume, set to 0
+      preMuteVolumeRef.current = volume > 0 ? volume : 0.7
+      setVolume(0)
+      setTalesMuted(true)
+    }
+  }, [talesMuted, volume, setVolume])
 
   useEffect(() => {
     const handleEscKey = (e: KeyboardEvent) => { if (e.key === 'Escape') router.push('/create') }
@@ -560,6 +596,28 @@ function RadioPageContent() {
     const interval = setInterval(fetchLiveStations, 30000)
     return () => clearInterval(interval)
   }, [])
+
+  // Auto-play shared track from URL param (?track=<id>)
+  const autoPlayedRef = useRef(false)
+  useEffect(() => {
+    if (autoPlayedRef.current || loading || combinedMedia.length === 0) return
+    const trackId = searchParams.get('track')
+    if (!trackId) return
+    const target = combinedMedia.find(m => m.id === trackId)
+    if (target) {
+      autoPlayedRef.current = true
+      // Build full playlist starting from shared track so queue works
+      const playlistTracks = combinedMedia.map(m => ({
+        id: m.id, title: m.title, audioUrl: m.audioUrl || m.audio_url, imageUrl: m.imageUrl || m.image_url,
+        videoUrl: m.video_url || undefined,
+        artist: m.artist_name || m.users?.username || m.username || 'Unknown Artist', userId: m.user_id,
+        genre: m.genre || undefined, mood: m.mood || undefined, tags: m.tags || undefined
+      }))
+      const startIndex = combinedMedia.findIndex(m => m.id === trackId)
+      // Delay to let audio context + player fully mount
+      setTimeout(() => setPlaylist(playlistTracks, startIndex >= 0 ? startIndex : 0), 600)
+    }
+  }, [loading, combinedMedia, searchParams, setPlaylist])
 
   useEffect(() => {
     const channel = supabase
@@ -579,6 +637,7 @@ function RadioPageContent() {
   const fetchLiveStations = async () => {
     try {
       const res = await fetch('/api/station')
+      if (!res.ok) { console.warn('Station API returned', res.status); return }
       const data = await res.json()
       if (data.success && data.stations) {
         setLiveStations(data.stations.map((s: Record<string, unknown>) => ({
@@ -590,10 +649,21 @@ function RadioPageContent() {
     } catch (error) { console.error('Failed to fetch live stations:', error) }
   }
 
+  // Fetch patterns when Patterns tab is active
+  useEffect(() => {
+    if (activeTab === 'stations') {
+      fetch('/api/patterns')
+        .then(r => r.json())
+        .then(d => { if (d.success) setPatterns(d.patterns) })
+        .catch(err => console.error('Failed to fetch patterns:', err))
+    }
+  }, [activeTab])
+
   const fetchCombinedMedia = async () => {
     setLoading(true)
     try {
       const res = await fetch('/api/media/radio?limit=500')
+      if (!res.ok) { console.warn('Media API returned', res.status); return }
       const data = await res.json()
       if (data.success) {
         setCombinedMedia(data.combinedMedia)
@@ -609,6 +679,7 @@ function RadioPageContent() {
         setArtists(Array.from(artistMap.values()).filter(a => a.user_id && a.user_id !== 'undefined').slice(0, 20))
         try {
           const genreRes = await fetch('/api/radio/genre-summary')
+          if (!genreRes.ok) throw new Error('Genre API ' + genreRes.status)
           const genreData = await genreRes.json()
           if (genreData.success && Array.isArray(genreData.genres) && genreData.genres.length > 0) {
             setGenres(genreData.genres)
@@ -636,6 +707,7 @@ function RadioPageContent() {
       if (filters.sort) params.set('sort', filters.sort)
       params.set('limit', '100')
       const res = await fetch(`/api/search?${params.toString()}`)
+      if (!res.ok) { console.warn('Search API returned', res.status); setSearchResults([]); return }
       const data = await res.json()
       setSearchResults(data.success ? data.results : [])
     } catch { setSearchResults([]) }
@@ -655,6 +727,24 @@ function RadioPageContent() {
     setSearchQuery(''); setSearchResults([]); setIsSearchActive(false); setShowFilters(false)
     setSearchFilters({ genre: '', mood: '', bpm_min: '', bpm_max: '', key: '', vocals: '', sort: 'relevance' })
   }
+
+  const handleShareTrack = useCallback(async (media: CombinedMedia) => {
+    const shareUrl = `${window.location.origin}/radio?track=${media.id}`
+    const shareData = {
+      title: media.title,
+      text: `Listen to "${media.title}" by ${media.artist_name || media.users?.username || media.username || 'Unknown'} on 444 Radio`,
+      url: shareUrl,
+    }
+    if (navigator.share) {
+      try { await navigator.share(shareData) } catch { /* user cancelled */ }
+    } else {
+      try {
+        await navigator.clipboard.writeText(shareUrl)
+        // Brief visual feedback via a temporary toast-like approach
+        alert('Link copied! Share it anywhere.')
+      } catch { /* clipboard failed */ }
+    }
+  }, [])
 
   const handlePlay = (media: CombinedMedia) => {
     if (playingId === media.id && isPlaying) { togglePlayPause() } else {
@@ -679,7 +769,7 @@ function RadioPageContent() {
     if (activeTab === 'tales' && talesVideos.length === 0 && !loadingTales) {
       setLoadingTales(true)
       fetch('/api/library/videos')
-        .then(res => res.json())
+        .then(res => { if (!res.ok) throw new Error('Videos API ' + res.status); return res.json() })
         .then(data => {
           if (data.videos && Array.isArray(data.videos)) {
             setTalesVideos(data.videos)
@@ -771,6 +861,92 @@ function RadioPageContent() {
     }, 400)
   }, [talesIndex, talesVideos])
 
+  // Desktop like — just like, don't advance
+  const handleDesktopTalesLike = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    const currentVideo = talesVideos[talesIndex]
+    if (!currentVideo) return
+    fetch('/api/media/like', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ releaseId: currentVideo.id })
+    }).catch(console.error)
+    // Update local like count
+    setTalesVideos(prev => prev.map((v, i) => i === talesIndex ? { ...v, likes: (v.likes || 0) + 1 } : v))
+  }, [talesIndex, talesVideos])
+
+  // Keyboard navigation for desktop Tales
+  useEffect(() => {
+    if (activeTab !== 'tales') return
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault()
+        setTalesIndex(prev => Math.min(prev + 1, talesVideos.length - 1))
+      }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        setTalesIndex(prev => Math.max(prev - 1, 0))
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [activeTab, talesVideos.length])
+
+  // Build tales audio playlist helper
+  const talesVideosRef = useRef(talesVideos)
+  talesVideosRef.current = talesVideos
+
+  const buildTalesPlaylist = useCallback((videos: CombinedMedia[]) => {
+    return videos
+      .filter(v => v.audio_url || v.audioUrl)
+      .map(v => ({
+        id: v.id, title: v.title,
+        audioUrl: v.audioUrl || v.audio_url,
+        imageUrl: v.imageUrl || v.image_url,
+        videoUrl: v.video_url || undefined,
+        artist: v.artist_name || v.users?.username || v.username || 'Unknown Artist',
+        userId: v.user_id,
+        genre: v.genre || undefined, mood: v.mood || undefined, tags: v.tags || undefined
+      }))
+  }, [])
+
+  // Play/pause toggle for tales (used by mobile & desktop play buttons)
+  const handleTalesPlay = useCallback((video: CombinedMedia) => {
+    if (playingId === video.id && isPlaying) {
+      togglePlayPause()
+    } else if (playingId === video.id && !isPlaying) {
+      togglePlayPause()
+    } else {
+      const playlist = buildTalesPlaylist(talesVideosRef.current)
+      const idx = playlist.findIndex(t => t.id === video.id)
+      if (idx >= 0) setPlaylist(playlist, idx)
+    }
+  }, [playingId, isPlaying, togglePlayPause, buildTalesPlaylist, setPlaylist])
+
+  // Auto-play the current tale's audio when talesIndex changes or tales first load
+  const prevTalesKeyRef = useRef('')
+
+  useEffect(() => {
+    if (activeTab !== 'tales') return
+    const videos = talesVideosRef.current
+    if (videos.length === 0) return
+    const video = videos[talesIndex]
+    if (!video || (!video.audio_url && !video.audioUrl)) return
+
+    // Only trigger when the tale actually changes
+    const key = `${talesIndex}-${video.id}`
+    if (key === prevTalesKeyRef.current) return
+    prevTalesKeyRef.current = key
+
+    const playlist = buildTalesPlaylist(videos)
+    const idx = playlist.findIndex(t => t.id === video.id)
+    if (idx >= 0) {
+      setPlaylist(playlist, idx)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [talesIndex, activeTab, talesVideos.length])
+
   // Lock body scroll on mobile when Tales is active
   useEffect(() => {
     if (activeTab === 'tales' && typeof window !== 'undefined') {
@@ -826,12 +1002,10 @@ function RadioPageContent() {
       <main className="relative z-10 md:pl-14 pb-32">
 
         {/* ═══ BANNER VIDEO ═══ (hidden on mobile when Tales active) */}
-        <div className={`relative h-44 md:h-56 overflow-hidden ${activeTab === 'tales' ? 'hidden md:block' : ''}`}>
-          <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover">
-            <source src="/1_1_thm2_rxl1.webm" type="video/webm" />
-          </video>
+        <div className={`relative h-44 md:h-56 overflow-hidden bg-black md:-ml-14 ${activeTab === 'tales' ? 'hidden md:block' : ''}`}>
+          <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" src="/1_1_thm2_rxl1.webm" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 px-4 md:px-6 pb-4">
+          <div className="absolute bottom-0 left-0 right-0 px-4 md:pl-20 md:pr-6 pb-4">
             <span className="text-[10px] uppercase tracking-[0.2em] text-cyan-400 font-semibold">DISCOVER</span>
             <h1 className="text-2xl md:text-3xl font-bold text-white mt-0.5 tracking-tight">Radio</h1>
             <p className="text-gray-400 text-xs mt-1">{combinedMedia.length} tracks &middot; {artists.length} artists</p>
@@ -878,7 +1052,7 @@ function RadioPageContent() {
                 {([
                   { key: 'tracks' as const, label: 'Tracks', icon: Music },
                   { key: 'genres' as const, label: 'Genres', icon: Disc3 },
-                  { key: 'stations' as const, label: 'Live', icon: RadioIcon, count: liveStations.length },
+                  { key: 'stations' as const, label: 'Patterns', icon: SlidersHorizontal },
                   { key: 'tales' as const, label: 'Tales', icon: Video, count: talesVideos.length },
                 ] as const).map(tab => (
                   <button
@@ -986,11 +1160,11 @@ function RadioPageContent() {
                     <p className="text-gray-600 text-xs">Try different keywords or filters</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 pb-4">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3 pb-4">
                     {searchResults.map((media, i) => (
                       <Genre3DTrackCard key={media.id} media={media} index={i}
                         isCurrentlyPlaying={playingId === media.id} isPlaying={isPlaying}
-                        onPlay={() => handlePlay(media)} onLyrics={() => openLyrics(media)} onInfo={() => setInfoMedia(media)} />
+                        onPlay={() => handlePlay(media)} onLyrics={() => openLyrics(media)} onInfo={() => setInfoMedia(media)} onShare={() => handleShareTrack(media)} />
                     ))}
                   </div>
                 )}
@@ -1000,47 +1174,19 @@ function RadioPageContent() {
             {/* ═══ TRACKS TAB ═══ */}
             {activeTab === 'tracks' && !isSearchActive && (
               <div className="space-y-0">
-                {/* LIVE NOW */}
-                {liveStations.length > 0 && (
-                  <div className="px-4 md:px-6 pt-4 pb-3">
-                    <div className="flex items-center gap-2 mb-2.5">
-                      <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                      <span className="text-xs font-bold text-red-400 uppercase tracking-wider">Live</span>
-                    </div>
-                    <div className="flex gap-4 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-                      {liveStations.filter(s => s.owner.userId && s.owner.userId !== 'undefined').map(station => (
-                        <Link key={station.id} href={`/profile/${station.owner.userId}`} className="flex-shrink-0 group">
-                          <div className="flex flex-col items-center gap-1">
-                            <div className="w-12 h-12 rounded-full overflow-hidden ring-2 ring-red-500/60 ring-offset-2 ring-offset-black">
-                              {station.owner.profileImage ? (
-                                <Image src={station.owner.profileImage} alt={station.owner.username} width={48} height={48} className="w-full h-full object-cover" unoptimized />
-                              ) : (
-                                <div className="w-full h-full bg-gradient-to-br from-red-600/40 to-pink-600/40 flex items-center justify-center">
-                                  <Users size={18} className="text-white/60" />
-                                </div>
-                              )}
-                            </div>
-                            <span className="text-[9px] font-medium text-gray-500 truncate w-12 text-center group-hover:text-white transition-colors">{station.owner.username}</span>
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                 {/* NEW RELEASES — Horizontal scroll */}
                 {newReleases.length > 0 && (
                   <section className="pt-3 pb-4">
                     <div className="px-4 md:px-6">
                       <SectionHeader icon={Sparkles} label="New Releases" iconColor="text-green-400" gradientFrom="from-green-500/20" gradientTo="to-emerald-500/20" />
                     </div>
-                    <div className="flex gap-3 overflow-x-auto px-4 md:px-6 pb-2" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                    <ScrollableRow className="flex gap-3 overflow-x-auto px-4 md:px-6 pb-2" delay={200}>
                       {newReleases.map(media => (
                         <GridTrackCard key={`new-${media.id}`} media={media}
                           isCurrentlyPlaying={playingId === media.id} isPlaying={isPlaying}
-                          onPlay={() => handlePlay(media)} onLyrics={() => openLyrics(media)} onInfo={() => setInfoMedia(media)} />
+                          onPlay={() => handlePlay(media)} onLyrics={() => openLyrics(media)} onInfo={() => setInfoMedia(media)} onShare={() => handleShareTrack(media)} />
                       ))}
-                    </div>
+                    </ScrollableRow>
                   </section>
                 )}
 
@@ -1049,7 +1195,7 @@ function RadioPageContent() {
                   <div className="px-4 md:px-6">
                     <SectionHeader icon={Users} label="Artists" iconColor="text-cyan-400" gradientFrom="from-cyan-500/20" gradientTo="to-blue-500/20" />
                   </div>
-                  <div className="flex gap-4 overflow-x-auto px-4 md:px-6 pb-2" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                  <ScrollableRow className="flex gap-4 overflow-x-auto px-4 md:px-6 pb-2" delay={400}>
                     {artists.map(artist => (
                       <Link key={artist.user_id} href={`/profile/${artist.user_id}`} className="flex-shrink-0 group">
                         <div className="flex flex-col items-center gap-1">
@@ -1064,7 +1210,7 @@ function RadioPageContent() {
                         </div>
                       </Link>
                     ))}
-                  </div>
+                  </ScrollableRow>
                 </section>
 
                 {/* HOT RIGHT NOW — Horizontal scroll */}
@@ -1072,13 +1218,13 @@ function RadioPageContent() {
                   <div className="px-4 md:px-6">
                     <SectionHeader icon={Flame} label="Hot Right Now" iconColor="text-orange-400" gradientFrom="from-orange-500/20" gradientTo="to-red-500/20" />
                   </div>
-                  <div className="flex gap-3 overflow-x-auto px-4 md:px-6 pb-2" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                  <ScrollableRow className="flex gap-3 overflow-x-auto px-4 md:px-6 pb-2" delay={600}>
                     {hotTracks.map(media => (
                       <GridTrackCard key={media.id} media={media}
                         isCurrentlyPlaying={playingId === media.id} isPlaying={isPlaying}
-                        onPlay={() => handlePlay(media)} onLyrics={() => openLyrics(media)} onInfo={() => setInfoMedia(media)} />
+                        onPlay={() => handlePlay(media)} onLyrics={() => openLyrics(media)} onInfo={() => setInfoMedia(media)} onShare={() => handleShareTrack(media)} />
                     ))}
-                  </div>
+                  </ScrollableRow>
                 </section>
 
                 {/* PER-GENRE ROWS removed from tracks tab — shown in genres tab */}
@@ -1174,7 +1320,7 @@ function RadioPageContent() {
                           <p className="text-gray-600 text-xs">Be the first to create something!</p>
                         </div>
                       ) : (
-                        <div className="px-4 md:px-6 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3 pb-8">
+                        <div className="px-4 md:px-6 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 gap-3 pb-8">
                           {genreTracks.map((media, i) => (
                             <Genre3DTrackCard
                               key={`expanded-${media.id}`}
@@ -1185,6 +1331,7 @@ function RadioPageContent() {
                               onPlay={() => handlePlay(media)}
                               onLyrics={() => openLyrics(media)}
                               onInfo={() => setInfoMedia(media)}
+                              onShare={() => handleShareTrack(media)}
                             />
                           ))}
                         </div>
@@ -1204,7 +1351,7 @@ function RadioPageContent() {
                         <p className="text-gray-600 text-xs">Genres appear as artists release tracks</p>
                       </div>
                     ) : (
-                      <div className="px-4 md:px-6 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 pb-8">
+                      <div className="px-4 md:px-6 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 gap-3 pb-8">
                         {genres.map((genre, gi) => {
                           const genreTracks = nonStemMedia.filter(m => m.genre?.toLowerCase() === genre.toLowerCase())
                           if (genreTracks.length === 0) return null
@@ -1228,6 +1375,92 @@ function RadioPageContent() {
                     )}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* ═══ PATTERNS TAB ═══ */}
+            {activeTab === 'stations' && !isSearchActive && (
+              <div className="px-4 md:px-6 py-4 space-y-4">
+                {/* Header + Release button */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-base font-bold text-white">Patterns</h2>
+                    <p className="text-gray-500 text-[11px]">Share input patterns · Copy and paste into your terminal</p>
+                  </div>
+                  <button
+                    onClick={() => setShowReleaseModal(true)}
+                    className="flex items-center gap-1.5 bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/25 text-cyan-400 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all"
+                  >
+                    <Upload size={12} />
+                    Release
+                  </button>
+                </div>
+
+                {/* Pattern Cards */}
+                {patterns.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <SlidersHorizontal size={32} className="text-cyan-400/30 mb-3" />
+                    <h3 className="text-sm font-bold text-white mb-1">No patterns yet</h3>
+                    <p className="text-gray-500 text-xs max-w-xs">Be the first to release a pattern. Share your input code so others can create with it.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {patterns.map(p => (
+                      <div key={p.id} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 hover:border-cyan-500/20 transition-colors">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-sm font-semibold text-white truncate">{p.title}</h3>
+                            <Link href={`/profile/${p.user_id}`} className="text-[10px] text-gray-500 hover:text-cyan-400 transition-colors">
+                              @{p.username}
+                            </Link>
+                          </div>
+                          {p.genre && (
+                            <span className="text-[9px] bg-cyan-500/10 text-cyan-400/70 px-1.5 py-0.5 rounded-full flex-shrink-0 ml-2">{p.genre}</span>
+                          )}
+                        </div>
+                        {p.description && (
+                          <p className="text-gray-500 text-[11px] mb-2 line-clamp-2">{p.description}</p>
+                        )}
+                        {/* Code preview */}
+                        <pre className="bg-black/40 border border-white/5 rounded-lg p-2.5 text-[10px] text-gray-400 font-mono whitespace-pre-wrap break-all max-h-32 overflow-y-auto mb-3">{p.code}</pre>
+                        {/* Actions */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-gray-600">{p.copies} {p.copies === 1 ? 'copy' : 'copies'}</span>
+                          <button
+                            onClick={async () => {
+                              await navigator.clipboard.writeText(p.code)
+                              setCopiedPatternId(p.id)
+                              setTimeout(() => setCopiedPatternId(null), 2000)
+                              fetch('/api/patterns/copy', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ patternId: p.id }),
+                              }).catch(() => {})
+                            }}
+                            className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg transition-all ${
+                              copiedPatternId === p.id
+                                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                : 'bg-white/5 hover:bg-cyan-500/15 text-gray-400 hover:text-cyan-400 border border-white/10'
+                            }`}
+                          >
+                            {copiedPatternId === p.id ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Release Pattern Modal */}
+                <ReleasePatternModal
+                  isOpen={showReleaseModal}
+                  onClose={() => setShowReleaseModal(false)}
+                  onSuccess={() => {
+                    fetch('/api/patterns').then(r => r.json()).then(d => {
+                      if (d.success) setPatterns(d.patterns)
+                    })
+                  }}
+                />
               </div>
             )}
 
@@ -1311,7 +1544,7 @@ function RadioPageContent() {
                                 src={video.video_url || video.image_url}
                                 autoPlay
                                 loop
-                                muted={talesMuted}
+                                muted
                                 playsInline
                                 className="absolute inset-0 w-full h-full object-cover"
                               />
@@ -1380,8 +1613,8 @@ function RadioPageContent() {
                                 <span className="text-[10px] text-white font-semibold">Info</span>
                               </button>
 
-                              {/* Play audio */}
-                              <button onClick={() => handlePlay(video)} className="flex flex-col items-center gap-1">
+                              {/* Play/Pause audio */}
+                              <button onClick={() => handleTalesPlay(video)} className="flex flex-col items-center gap-1">
                                 <div className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center">
                                   {playingId === video.id && isPlaying
                                     ? <Pause size={22} className="text-white" />
@@ -1391,7 +1624,7 @@ function RadioPageContent() {
                               </button>
 
                               {/* Mute toggle */}
-                              <button onClick={() => setTalesMuted(!talesMuted)} className="flex flex-col items-center gap-1">
+                              <button onClick={handleMuteToggle} className="flex flex-col items-center gap-1">
                                 <div className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center">
                                   {talesMuted ? <VolumeX size={22} className="text-white" /> : <Volume2 size={22} className="text-white" />}
                                 </div>
@@ -1449,14 +1682,19 @@ function RadioPageContent() {
                   )}
                 </div>
 
-                {/* ── DESKTOP: Grid layout (same as before) ── */}
-                <div className="hidden md:block px-4 md:px-6 pt-4">
+                {/* ── DESKTOP: TikTok-style immersive viewer ── */}
+                <div className="hidden md:block pt-4">
                   <style jsx>{`
                     @keyframes videoCardEnter {
                       0% { opacity: 0; transform: scale(0.95) translateY(10px); }
                       100% { opacity: 1; transform: scale(1) translateY(0); }
                     }
+                    @keyframes talesDesktopSlideUp {
+                      0% { opacity: 0; transform: translateY(40px) scale(0.96); }
+                      100% { opacity: 1; transform: translateY(0) scale(1); }
+                    }
                     .tales-video-card { animation: videoCardEnter 0.4s ease-out both; }
+                    .tales-desktop-enter { animation: talesDesktopSlideUp 0.4s cubic-bezier(0.16,1,0.3,1) forwards; }
                   `}</style>
                   {loadingTales ? (
                     <div className="flex items-center justify-center py-16">
@@ -1473,61 +1711,128 @@ function RadioPageContent() {
                     </div>
                   ) : (
                     <>
-                      <SectionHeader icon={Video} label="Tales" iconColor="text-pink-400" gradientFrom="from-pink-500/20" gradientTo="to-rose-500/20" count={talesVideos.length} />
-                      {/* Desktop TikTok-style: centered vertical video with sidebar */}
-                      <div className="flex justify-center gap-6 pb-8">
-                        <div className="grid grid-cols-3 lg:grid-cols-4 gap-3 max-w-4xl">
-                          {talesVideos.map((video, idx) => (
-                            <div
-                              key={video.id}
-                              className="tales-video-card group relative rounded-xl overflow-hidden cursor-pointer hover:scale-[1.02] transition-transform"
-                              style={{ animationDelay: `${idx * 0.05}s` }}
-                              onMouseEnter={() => setHoveredVideoId(video.id)}
-                              onMouseLeave={() => setHoveredVideoId(null)}
-                              onClick={() => handlePlay(video)}
-                            >
-                              {/* 9:16 aspect ratio */}
-                              <div className="relative w-full pb-[177.78%] bg-gray-900 rounded-xl overflow-hidden">
-                                {hoveredVideoId === video.id && (video.video_url || (video.image_url && /\.(mp4|webm|mov)($|\?)/.test(video.image_url))) ? (
+                      <div className="px-4 md:px-6">
+                        <SectionHeader icon={Video} label="Tales" iconColor="text-pink-400" gradientFrom="from-pink-500/20" gradientTo="to-rose-500/20" count={talesVideos.length} />
+                      </div>
+                      {/* Desktop: Centered immersive viewer + side thumbnails */}
+                      <div className="flex justify-center gap-4 px-4 md:px-6 pb-8">
+                        {/* Main featured tale */}
+                        <div className="tales-desktop-enter relative w-[340px] rounded-2xl overflow-hidden bg-black border border-white/[0.08] shadow-2xl shadow-black/60" style={{ aspectRatio: '9/16' }}>
+                          {(() => {
+                            const video = talesVideos[talesIndex]
+                            if (!video) return null
+                            return (
+                              <>
+                                {/* Video/Image */}
+                                {(video.video_url || (video.image_url && /\.(mp4|webm|mov)($|\?)/.test(video.image_url))) ? (
                                   <video
+                                    key={`desktop-video-${video.id}-${talesIndex}`}
                                     src={video.video_url || video.image_url}
-                                    autoPlay
-                                    loop
-                                    muted
-                                    playsInline
+                                    autoPlay loop muted playsInline
                                     className="absolute inset-0 w-full h-full object-cover"
                                   />
                                 ) : (video.image_url && !/\.(mp4|webm|mov)($|\?)/.test(video.image_url)) || video.imageUrl ? (
-                                  <Image
-                                    src={video.image_url || video.imageUrl || ''}
-                                    alt={video.title}
-                                    fill
-                                    className="object-cover"
-                                    loading="lazy"
-                                    quality={70}
-                                    unoptimized
-                                  />
+                                  <Image src={video.image_url || video.imageUrl || ''} alt={video.title} fill className="object-cover" priority unoptimized />
                                 ) : (
-                                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-pink-900/30 to-purple-900/30">
-                                    <Video size={24} className="text-pink-400/50" />
+                                  <div className="absolute inset-0 bg-gradient-to-br from-pink-900/40 to-purple-900/40 flex items-center justify-center">
+                                    <Video size={48} className="text-pink-400/30" />
                                   </div>
                                 )}
-                                
-                                {/* Gradient overlay */}
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                                
-                                {/* Hover play icon */}
-                                <div className={`absolute inset-0 flex items-center justify-center transition-all duration-200 ${
-                                  hoveredVideoId === video.id ? 'opacity-100' : 'opacity-0'
-                                }`}>
-                                  <div className="w-14 h-14 rounded-full bg-pink-500/90 backdrop-blur flex items-center justify-center shadow-lg">
-                                    <Play size={22} className="text-white ml-0.5" />
+                                {/* Gradient overlays */}
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 pointer-events-none" />
+
+                                {/* Progress dots */}
+                                <div className="absolute top-3 left-3 right-3 z-10">
+                                  <div className="flex gap-0.5">
+                                    {talesVideos.slice(0, Math.min(talesVideos.length, 20)).map((_, i) => (
+                                      <div key={i} className={`h-[2px] flex-1 rounded-full transition-all ${i === talesIndex ? 'bg-white' : i < talesIndex ? 'bg-white/40' : 'bg-white/15'}`} />
+                                    ))}
                                   </div>
                                 </div>
-                                
-                                {/* Now playing indicator */}
-                                {playingId === video.id && isPlaying && (
-                                  <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/70 backdrop-blur px-2 py-1 rounded-full">
+
+                                {/* Right action buttons */}
+                                <div className="absolute right-3 bottom-24 flex flex-col items-center gap-4 z-10">
+                                  <Link href={`/profile/${video.user_id}`} className="flex flex-col items-center gap-1">
+                                    <div className="w-10 h-10 rounded-full border-2 border-white overflow-hidden bg-gray-800">
+                                      {video.users?.avatar_url ? (
+                                        <Image src={video.users.avatar_url} alt="" width={40} height={40} className="w-full h-full object-cover" unoptimized />
+                                      ) : <div className="w-full h-full flex items-center justify-center"><Users size={16} className="text-gray-500" /></div>}
+                                    </div>
+                                  </Link>
+                                  <button onClick={handleDesktopTalesLike} className="flex flex-col items-center gap-0.5">
+                                    <div className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-pink-500/30 transition-colors">
+                                      <Heart size={18} className="text-white" />
+                                    </div>
+                                    <span className="text-[9px] text-white/80">{video.likes || 0}</span>
+                                  </button>
+                                  <button onClick={(e) => { e.stopPropagation(); setInfoMedia(video) }} className="flex flex-col items-center gap-0.5">
+                                    <div className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-colors">
+                                      <Info size={18} className="text-white" />
+                                    </div>
+                                    <span className="text-[9px] text-white/80">Info</span>
+                                  </button>
+                                  <button onClick={(e) => { e.stopPropagation(); handleTalesPlay(video) }} className="flex flex-col items-center gap-0.5">
+                                    <div className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-colors">
+                                      {playingId === video.id && isPlaying ? <Pause size={18} className="text-white" /> : <Play size={18} className="text-white ml-0.5" />}
+                                    </div>
+                                    <span className="text-[9px] text-white/80">{formatPlays(video.plays || 0)}</span>
+                                  </button>
+                                  <button onClick={(e) => { e.stopPropagation(); handleMuteToggle() }} className="flex flex-col items-center gap-0.5">
+                                    <div className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-colors">
+                                      {talesMuted ? <VolumeX size={18} className="text-white" /> : <Volume2 size={18} className="text-white" />}
+                                    </div>
+                                  </button>
+                                </div>
+
+                                {/* Bottom info */}
+                                <div className="absolute bottom-4 left-4 right-14 z-10">
+                                  <span className="text-white font-bold text-sm">@{video.artist_name || video.users?.username || video.username || 'Unknown'}</span>
+                                  <h3 className="text-white font-semibold text-base mt-0.5 truncate">{video.title}</h3>
+                                  {video.genre && (
+                                    <span className="inline-block mt-1 px-2 py-0.5 bg-white/10 backdrop-blur rounded-full text-[10px] text-white/80">{video.genre}</span>
+                                  )}
+                                </div>
+
+                                {/* Navigation arrows */}
+                                <button
+                                  onClick={() => talesIndex > 0 && setTalesIndex(talesIndex - 1)}
+                                  className={`absolute top-1/2 -translate-y-1/2 left-2 w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white/70 hover:text-white hover:bg-black/60 transition-all z-10 ${talesIndex === 0 ? 'opacity-30 pointer-events-none' : ''}`}
+                                >
+                                  <ArrowLeft size={14} />
+                                </button>
+                                <button
+                                  onClick={() => talesIndex < talesVideos.length - 1 && setTalesIndex(talesIndex + 1)}
+                                  className={`absolute top-1/2 -translate-y-1/2 right-2 w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white/70 hover:text-white hover:bg-black/60 transition-all z-10 ${talesIndex >= talesVideos.length - 1 ? 'opacity-30 pointer-events-none' : ''}`}
+                                >
+                                  <ChevronRight size={14} />
+                                </button>
+                              </>
+                            )
+                          })()}
+                        </div>
+
+                        {/* Side thumbnails grid */}
+                        <div className="w-[280px] flex flex-col gap-2 max-h-[604px] overflow-y-auto pr-1" style={{ scrollbarWidth: 'thin' }}>
+                          <div className="text-[10px] text-gray-500 font-medium uppercase tracking-wider mb-1 px-1">Up Next</div>
+                          {talesVideos.map((video, idx) => (
+                            <div
+                              key={video.id}
+                              onClick={() => setTalesIndex(idx)}
+                              className={`tales-video-card flex gap-2.5 p-1.5 rounded-lg cursor-pointer transition-all ${
+                                idx === talesIndex
+                                  ? 'bg-pink-500/10 border border-pink-500/30 ring-1 ring-pink-500/20'
+                                  : 'hover:bg-white/[0.04] border border-transparent'
+                              }`}
+                              style={{ animationDelay: `${idx * 0.03}s` }}
+                            >
+                              <div className="relative w-12 h-16 rounded-md overflow-hidden flex-shrink-0 bg-gray-900">
+                                {(video.image_url && !/\.(mp4|webm|mov)($|\?)/.test(video.image_url)) || video.imageUrl ? (
+                                  <Image src={video.image_url || video.imageUrl || ''} alt={video.title} fill className="object-cover" loading="lazy" quality={50} unoptimized />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center"><Video size={12} className="text-pink-400/40" /></div>
+                                )}
+                                {idx === talesIndex && playingId === video.id && isPlaying && (
+                                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                                     <div className="flex items-end gap-[2px] h-3">
                                       <div className="w-[2px] bg-pink-400 rounded-full animate-pulse" style={{ height: '40%' }} />
                                       <div className="w-[2px] bg-pink-400 rounded-full animate-pulse" style={{ height: '80%', animationDelay: '0.15s' }} />
@@ -1535,27 +1840,26 @@ function RadioPageContent() {
                                     </div>
                                   </div>
                                 )}
-
-                                {/* Bottom info overlay */}
-                                <div className="absolute bottom-0 left-0 right-0 p-3">
-                                  <h3 className="text-xs font-bold text-white truncate">{video.title}</h3>
-                                  <div className="flex items-center justify-between mt-1">
-                                    <span className="text-[10px] text-gray-300 truncate">
-                                      @{video.artist_name || video.users?.username || video.username || 'Unknown'}
-                                    </span>
-                                    <div className="flex items-center gap-2">
-                                      <span className="flex items-center gap-0.5 text-[9px] text-gray-300">
-                                        <Heart size={9} />{video.likes || 0}
-                                      </span>
-                                      <span className="flex items-center gap-0.5 text-[9px] text-gray-300">
-                                        <Play size={9} />{formatPlays(video.plays || 0)}
-                                      </span>
-                                    </div>
-                                  </div>
+                              </div>
+                              <div className="flex-1 min-w-0 py-0.5">
+                                <p className={`text-[11px] font-semibold truncate ${idx === talesIndex ? 'text-pink-300' : 'text-white'}`}>{video.title}</p>
+                                <p className="text-[9px] text-gray-500 truncate mt-0.5">@{video.artist_name || video.users?.username || video.username || 'Unknown'}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="flex items-center gap-0.5 text-[8px] text-gray-600"><Heart size={8} />{video.likes || 0}</span>
+                                  <span className="flex items-center gap-0.5 text-[8px] text-gray-600"><Play size={8} />{formatPlays(video.plays || 0)}</span>
                                 </div>
                               </div>
                             </div>
                           ))}
+                        </div>
+                      </div>
+
+                      {/* Keyboard hint */}
+                      <div className="flex justify-center pb-4">
+                        <div className="flex items-center gap-3 text-[10px] text-gray-600">
+                          <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[9px] font-mono">←</kbd><kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[9px] font-mono">→</kbd> Navigate</span>
+                          <span className="w-px h-3 bg-white/10" />
+                          <span>Click thumbnails to jump</span>
                         </div>
                       </div>
                     </>
@@ -1608,12 +1912,13 @@ function RadioPageContent() {
             },
             {
               key: 'stations' as const,
-              label: 'Live',
+              label: 'Patterns',
               icon: (active: boolean) => (
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#f87171' : '#6b7280'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9" /><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.4" />
-                  <path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.4" /><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19" />
-                  <circle cx="12" cy="12" r="2" />
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#06b6d4' : '#6b7280'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="4" y1="21" x2="4" y2="14" /><line x1="4" y1="10" x2="4" y2="3" />
+                  <line x1="12" y1="21" x2="12" y2="12" /><line x1="12" y1="8" x2="12" y2="3" />
+                  <line x1="20" y1="21" x2="20" y2="16" /><line x1="20" y1="12" x2="20" y2="3" />
+                  <line x1="1" y1="14" x2="7" y2="14" /><line x1="9" y1="8" x2="15" y2="8" /><line x1="17" y1="16" x2="23" y2="16" />
                 </svg>
               ),
             },
@@ -1663,7 +1968,8 @@ function RadioPageContent() {
         <TrackInfoModal
           track={infoMedia}
           onClose={() => setInfoMedia(null)}
-          onPlay={() => { handlePlay(infoMedia); setInfoMedia(null) }}
+          onPlay={() => { handlePlay(infoMedia) }}
+          isCurrentlyPlaying={playingId === infoMedia.id && isPlaying}
         />
       )}
     </div>
@@ -1683,6 +1989,83 @@ function SectionHeader({ icon: Icon, label, iconColor, gradientFrom, gradientTo,
       </div>
       <h2 className="text-sm font-bold text-white">{label}</h2>
       {count !== undefined && <span className="text-[10px] text-gray-600">{count}</span>}
+    </div>
+  )
+}
+
+// ─── Scrollable Row with auto-nudge + scroll hint ───────────────
+function ScrollableRow({ children, className, delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [showHint, setShowHint] = useState(false)
+  const hasNudged = useRef(false)
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el || hasNudged.current) return
+
+    // Only show hint once per session
+    const hintKey = 'radio-scroll-hint-seen'
+    const alreadySeen = sessionStorage.getItem(hintKey)
+
+    const timer = setTimeout(() => {
+      if (!el || hasNudged.current) return
+      hasNudged.current = true
+
+      // Show the pencil-sketch hint (only first row, delay=0)
+      if (!alreadySeen && delay === 0) {
+        setShowHint(true)
+        sessionStorage.setItem(hintKey, '1')
+        setTimeout(() => setShowHint(false), 4500)
+      }
+
+      // Auto-nudge scroll: slide right then back
+      const scrollAmount = Math.min(200, el.scrollWidth - el.clientWidth)
+      if (scrollAmount <= 0) return
+      el.scrollTo({ left: scrollAmount, behavior: 'smooth' })
+      setTimeout(() => el.scrollTo({ left: 0, behavior: 'smooth' }), 700)
+    }, 800 + delay)
+
+    return () => clearTimeout(timer)
+  }, [delay])
+
+  return (
+    <div className="relative group/scroll">
+      <div ref={scrollRef} className={className} style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
+        {children}
+      </div>
+      {/* Fade edge hints */}
+      <div className="pointer-events-none absolute top-0 right-0 bottom-0 w-12 bg-gradient-to-l from-black/60 to-transparent opacity-0 group-hover/scroll:opacity-100 transition-opacity duration-300" />
+      {/* Pencil-sketch scroll hint overlay */}
+      {showHint && (
+        <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none animate-fade-in-hint">
+          <div className="flex items-center gap-3 px-5 py-3 rounded-2xl backdrop-blur-md"
+            style={{
+              background: 'rgba(0,0,0,0.65)',
+              border: '1.5px dashed rgba(255,255,255,0.25)',
+              boxShadow: '0 0 30px rgba(0,0,0,0.5)',
+              fontFamily: '"Segoe Print", "Comic Sans MS", "Caveat", cursive',
+            }}>
+            {/* Scroll wheel sketch */}
+            <svg width="36" height="36" viewBox="0 0 36 36" fill="none" className="opacity-80">
+              {/* Mouse body */}
+              <rect x="8" y="4" width="20" height="28" rx="10" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" strokeDasharray="3 2" fill="none" />
+              {/* Scroll wheel */}
+              <rect x="15.5" y="10" width="5" height="8" rx="2.5" stroke="rgba(34,211,238,0.8)" strokeWidth="1.5" fill="rgba(34,211,238,0.15)" />
+              {/* Scroll arrows */}
+              <path d="M18 8 L16 10.5 M18 8 L20 10.5" stroke="rgba(34,211,238,0.7)" strokeWidth="1" strokeLinecap="round" />
+              <path d="M18 20 L16 17.5 M18 20 L20 17.5" stroke="rgba(34,211,238,0.7)" strokeWidth="1" strokeLinecap="round" />
+            </svg>
+            <div className="flex flex-col gap-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="px-1.5 py-0.5 text-[10px] font-bold text-cyan-300 rounded border border-cyan-500/30 bg-cyan-500/10 tracking-wide" style={{ fontFamily: 'inherit' }}>SHIFT</span>
+                <span className="text-gray-500 text-xs">+</span>
+                <span className="text-gray-300 text-xs" style={{ fontFamily: 'inherit' }}>scroll wheel</span>
+              </div>
+              <span className="text-gray-500 text-[10px]" style={{ fontFamily: 'inherit' }}>to browse more →</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -1709,5 +2092,5 @@ function FilterBadge({ label, onRemove }: { label: string; onRemove: () => void 
 }
 
 export default function RadioPage() {
-  return <ErrorBoundary><RadioPageContent /></ErrorBoundary>
+  return <ErrorBoundary><Suspense fallback={null}><RadioPageContent /></Suspense></ErrorBoundary>
 }

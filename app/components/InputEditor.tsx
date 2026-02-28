@@ -5,6 +5,7 @@ import { Play, Square, Search, Zap, Volume2, ChevronDown, Sparkles, Copy, Check,
 import { lazy, Suspense } from 'react'
 const NodeEditor = lazy(() => import('./NodeEditor'))
 const SoundUploader = lazy(() => import('./node-editor/SoundUploader'))
+import ReleasePatternModal from './ReleasePatternModal'
 import type { NodeEditorHandle } from './NodeEditor'
 
 // ─── Saved Pattern type ───
@@ -7302,6 +7303,7 @@ $: s("bd:3").bank("RolandTR808")
   const [soundSearch, setSoundSearch] = useState('')
   const [allSounds, setAllSounds] = useState<Record<string, any>>({})
   const [showPanel, setShowPanel] = useState(true)
+  const [showReleaseModal, setShowReleaseModal] = useState(false)
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null)
   const [copiedIndex, setCopiedIndex] = useState<string | null>(null)
   const [exampleSearch, setExampleSearch] = useState('')
@@ -9206,6 +9208,16 @@ $: s("bd:3").bank("RolandTR808")
             </button>
           </div>
 
+          {/* Release Pattern button */}
+          <button
+            onClick={() => setShowReleaseModal(true)}
+            className="flex items-center gap-1 px-2 py-1 rounded-md border border-cyan-500/20 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 transition-all text-[10px] font-semibold tracking-wide uppercase cursor-pointer shrink-0"
+            title="Release your pattern code to the community"
+          >
+            <Upload size={10} />
+            Release
+          </button>
+
           {/* ═══ NDE CONTROLS (shown when node view is active) ═══ */}
           {showNodes && nodeEditorRef.current && (() => {
             const nde = nodeEditorRef.current!
@@ -10180,6 +10192,14 @@ $: s("bd:3").bank("RolandTR808")
           />
         </Suspense>
       )}
+
+      {/* Release Pattern Modal — pre-fills with current editor code */}
+      <ReleasePatternModal
+        isOpen={showReleaseModal}
+        onClose={() => setShowReleaseModal(false)}
+        onSuccess={() => setShowReleaseModal(false)}
+        initialCode={codeRef.current}
+      />
     </div>
   )
 }

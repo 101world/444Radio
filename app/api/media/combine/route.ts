@@ -67,6 +67,10 @@ export async function POST(req: NextRequest) {
       plays: 0,
     }
 
+    // Save AI generation prompts (sent from release modal)
+    if (audioPrompt) insertData.audio_prompt = audioPrompt
+    if (imagePrompt) insertData.image_prompt = imagePrompt
+
     // Attach video URL for Spotify Canvas–style looping on Explore
     if (videoUrl) {
       insertData.video_url = videoUrl

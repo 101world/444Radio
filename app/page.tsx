@@ -1,13 +1,14 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Play, Pause, Shuffle, Repeat, Music2, SkipBack, SkipForward, X, Gift } from 'lucide-react'
+import { Play, Pause, Shuffle, Repeat, Music2, X, Gift, LogIn } from 'lucide-react'
 import FloatingMenu from './components/FloatingMenu'
 import SEOHeroSection from './components/SEOHeroSection'
 import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { useAudioPlayer } from './contexts/AudioPlayerContext'
 import { getSharedAnalyser, ensureAudioContextResumed } from '@/lib/shared-audio-analyser'
 import Link from 'next/link'
+import { useUser } from '@clerk/nextjs'
 
 // Lazy load heavy 3D components for better performance
 const HolographicBackgroundClient = lazy(() => import('./components/HolographicBackgroundClient'))
@@ -86,16 +87,26 @@ interface Track {
   artist: string
   audio_url: string
   image_url?: string
+  video_url?: string
   user_id?: string
 }
 
 function HomePageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { isSignedIn } = useUser()
   const [tracks, setTracks] = useState<Track[]>([])
   const [loading, setLoading] = useState(true)
   const [promptText, setPromptText] = useState('')
   const [showSuccessMessage, setShowSuccessMessage] = useState(false)
+  const [tuneRotation, setTuneRotation] = useState(0)
+  const [pulseIntensity, setPulseIntensity] = useState(0)
+  const pulseAnalyserRef = useRef<AnalyserNode | null>(null)
+  const pulseRafRef = useRef<number>(0)
+  const pulseConnectedRef = useRef<HTMLAudioElement | null>(null)
+  const volumeKnobRef = useRef<HTMLDivElement>(null)
+  const tuneKnobRef = useRef<HTMLDivElement>(null)
+  const volumeRef = useRef(0)
   const { 
     setPlaylist, 
     playTrack, 
@@ -110,8 +121,11 @@ function HomePageContent() {
     duration,
     playNext,
     playPrevious,
-    getAudioElement
+    getAudioElement,
+    volume,
+    setVolume
   } = useAudioPlayer()
+  volumeRef.current = volume
 
   // Track the audio element for the visualizer
   const [audioEl, setAudioEl] = useState<HTMLAudioElement | null>(null)
@@ -124,6 +138,39 @@ function HomePageContent() {
     }, 500)
     return () => clearInterval(timer)
   }, [currentTrack, getAudioElement, audioEl])
+
+  // Audio-reactive pulse: read amplitude and drive border/glow colors
+  useEffect(() => {
+    if (!audioEl) return
+    if (pulseConnectedRef.current !== audioEl) {
+      pulseAnalyserRef.current = getSharedAnalyser(audioEl, { fftSize: 256, smoothing: 0.8 })
+      pulseConnectedRef.current = audioEl
+    }
+    const analyser = pulseAnalyserRef.current
+    if (!analyser) return
+
+    const dataArray = new Uint8Array(analyser.frequencyBinCount)
+    const tick = () => {
+      analyser.getByteFrequencyData(dataArray)
+      // Average of low-mid frequencies (bass/kick driven)
+      let sum = 0
+      const count = Math.min(32, dataArray.length)
+      for (let i = 0; i < count; i++) sum += dataArray[i]
+      const avg = sum / count / 255 // 0-1
+      setPulseIntensity(avg)
+      pulseRafRef.current = requestAnimationFrame(tick)
+    }
+    if (isPlaying) {
+      pulseRafRef.current = requestAnimationFrame(tick)
+    }
+    return () => cancelAnimationFrame(pulseRafRef.current)
+  }, [audioEl, isPlaying])
+
+  // When playing: use audio-reactive colors; when paused: fall back to CSS keyframe animation
+  const useAudioPulse = isPlaying && pulseIntensity > 0.01
+  const pulseBorderColor = useAudioPulse ? `rgba(${Math.round(6 + pulseIntensity * 233)}, ${Math.round(182 - pulseIntensity * 114)}, ${Math.round(212 - pulseIntensity * 144)}, ${0.3 + pulseIntensity * 0.5})` : undefined
+  const pulseGlowColor = useAudioPulse ? `rgba(${Math.round(6 + pulseIntensity * 233)}, ${Math.round(182 - pulseIntensity * 114)}, ${Math.round(212 - pulseIntensity * 144)}, ${0.15 + pulseIntensity * 0.35})` : undefined
+  const pulseTextColor = useAudioPulse ? `rgba(${Math.round(6 + pulseIntensity * 249)}, ${Math.round(182 + pulseIntensity * 73)}, ${Math.round(212 + pulseIntensity * 43)}, ${0.7 + pulseIntensity * 0.3})` : undefined
 
   // Check for payment success
   useEffect(() => {
@@ -158,6 +205,118 @@ function HomePageContent() {
     return () => window.removeEventListener('keydown', handleKeyPress)
   }, [tracks, currentTrack, isPlaying])
 
+  // ─── Volume knob: scroll wheel + drag to change volume ───
+  useEffect(() => {
+    const el = volumeKnobRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const newVol = Math.max(0, Math.min(1, volumeRef.current + (e.deltaY < 0 ? 0.05 : -0.05)))
+      setVolume(newVol)
+    }
+    let dragging = false
+    let startX = 0
+    let startY = 0
+    let startVol = 0
+    const onPointerDown = (e: PointerEvent) => {
+      dragging = true
+      startX = e.clientX
+      startY = e.clientY
+      startVol = volumeRef.current
+      el.setPointerCapture(e.pointerId)
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    const onPointerMove = (e: PointerEvent) => {
+      if (!dragging) return
+      e.preventDefault()
+      // Support both horizontal (turning) and vertical (sliding) drag
+      const dx = e.clientX - startX   // right = increase
+      const dy = startY - e.clientY   // up = increase
+      // Use whichever axis has more movement
+      const delta = Math.abs(dx) > Math.abs(dy) ? dx : dy
+      setVolume(Math.max(0, Math.min(1, startVol + delta / 80)))
+    }
+    const onPointerUp = (e: PointerEvent) => {
+      if (dragging) {
+        try { el.releasePointerCapture(e.pointerId) } catch {}
+      }
+      dragging = false
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    el.addEventListener('pointerdown', onPointerDown)
+    el.addEventListener('pointermove', onPointerMove)
+    el.addEventListener('pointerup', onPointerUp)
+    el.addEventListener('pointercancel', onPointerUp)
+    return () => {
+      el.removeEventListener('wheel', onWheel)
+      el.removeEventListener('pointerdown', onPointerDown)
+      el.removeEventListener('pointermove', onPointerMove)
+      el.removeEventListener('pointerup', onPointerUp)
+      el.removeEventListener('pointercancel', onPointerUp)
+    }
+  }, [setVolume])
+
+  // ─── Main tuning dial: drag right=next, left=prev, click=play/pause ───
+  useEffect(() => {
+    const el = tuneKnobRef.current
+    if (!el) return
+    let dragging = false
+    let startX = 0
+    let hasTrigger = false
+    let totalMove = 0
+    const onPointerDown = (e: PointerEvent) => {
+      dragging = true
+      startX = e.clientX
+      hasTrigger = false
+      totalMove = 0
+      el.setPointerCapture(e.pointerId)
+      e.preventDefault()
+    }
+    const onPointerMove = (e: PointerEvent) => {
+      if (!dragging) return
+      const dx = e.clientX - startX
+      totalMove = Math.abs(dx)
+      setTuneRotation(Math.max(-120, Math.min(120, dx * 4)))
+      if (dx > 15 && !hasTrigger) {
+        hasTrigger = true
+        playNext()
+      } else if (dx < -15 && !hasTrigger) {
+        hasTrigger = true
+        playPrevious()
+      }
+    }
+    const onPointerUp = () => {
+      if (dragging && !hasTrigger && totalMove < 6) {
+        handlePlayAll()
+      }
+      dragging = false
+      setTuneRotation(0)
+    }
+    let wheelCooldown = false
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      if (wheelCooldown) return
+      wheelCooldown = true
+      setTimeout(() => { wheelCooldown = false }, 500)
+      if (e.deltaY < 0 || e.deltaX > 0) playNext()
+      else playPrevious()
+    }
+    el.addEventListener('pointerdown', onPointerDown)
+    el.addEventListener('pointermove', onPointerMove)
+    el.addEventListener('pointerup', onPointerUp)
+    el.addEventListener('pointercancel', onPointerUp)
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => {
+      el.removeEventListener('pointerdown', onPointerDown)
+      el.removeEventListener('pointermove', onPointerMove)
+      el.removeEventListener('pointerup', onPointerUp)
+      el.removeEventListener('pointercancel', onPointerUp)
+      el.removeEventListener('wheel', onWheel)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tracks, currentTrack, isPlaying])
+
   const fetchAllTracks = async () => {
     try {
       const res = await fetch('/api/media/radio')
@@ -173,6 +332,7 @@ function HomePageContent() {
           artist?: string
           audio_url?: string
           image_url?: string
+          video_url?: string
           user_id?: string
           users?: { username?: string; avatar_url?: string }
         }
@@ -185,6 +345,7 @@ function HomePageContent() {
             artist: item.users?.username || item.artist || 'Unknown Artist',
             audio_url: item.audio_url!,
             image_url: item.image_url,
+            video_url: item.video_url,
             user_id: item.user_id
           }))
         setTracks(audioTracks)
@@ -213,6 +374,7 @@ function HomePageContent() {
       title: t.title,
       artist: t.artist,
       imageUrl: t.image_url,
+      videoUrl: t.video_url,
       userId: t.user_id // Include userId for play tracking
     }))
     
@@ -276,174 +438,168 @@ function HomePageContent() {
             </div>
 
             {/* Compact Radio Player */}
-            <div className="relative group w-full max-w-md">
+            <div className="relative group w-full max-w-xs mx-auto">
               {/* Glow effect */}
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500/20 via-purple-500/20 to-cyan-500/20 rounded-2xl blur-lg opacity-60 group-hover:opacity-90 transition duration-300" />
+              <div className={`absolute -inset-0.5 rounded-2xl blur-md opacity-40 group-hover:opacity-70 transition-colors duration-100 ${!useAudioPulse ? 'animate-[borderPulse_8s_ease-in-out_infinite]' : ''}`} style={useAudioPulse ? { background: pulseGlowColor } : undefined} />
               
-              <div className="relative bg-black/90 backdrop-blur-2xl border-2 border-cyan-500/50 rounded-2xl p-4 transition-all duration-300 shadow-[0_0_30px_rgba(6,182,212,0.3)]">
-                {/* LED Display Header */}
-                <div className="bg-black/90 border border-cyan-500/30 rounded-lg px-4 py-2 mb-3">
-                  <div 
-                    className="text-center text-cyan-400 text-sm tracking-[0.3em] font-mono font-bold"
-                    style={{ 
-                      textShadow: '0 0 12px rgba(34, 211, 238, 0.6)',
-                      fontFamily: 'Courier New, monospace'
-                    }}
-                  >
-                    AI-MUSIC GENERATOR
+              <div className={`relative bg-black/95 backdrop-blur-2xl border rounded-2xl overflow-hidden transition-colors duration-100 ${!useAudioPulse ? 'animate-[borderColorPulse_8s_ease-in-out_infinite]' : ''}`} style={useAudioPulse ? { borderColor: pulseBorderColor, boxShadow: `0 0 ${10 + pulseIntensity * 20}px ${pulseGlowColor}` } : { boxShadow: '0 0 20px rgba(6,182,212,0.15)' }}>
+                
+                {/* Video / Art — 16:9 hero */}
+                <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
+                  <div className="absolute inset-0 bg-gradient-to-br from-gray-950 via-gray-900 to-black overflow-hidden">
+                  {currentTrack?.videoUrl ? (
+                    <>
+                      <video
+                        src={currentTrack.videoUrl}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="w-full h-full object-cover"
+                      />
+                      {isPlaying && (
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                      )}
+                    </>
+                  ) : currentTrack?.imageUrl ? (
+                    <>
+                      <img 
+                        src={currentTrack.imageUrl} 
+                        alt="Cover" 
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                    </>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      {isPlaying && audioEl ? (
+                        <div className="absolute inset-2">
+                          <MiniVisualizer audioElement={audioEl} isPlaying={isPlaying} />
+                        </div>
+                      ) : (
+                        <span className="text-cyan-400/30 text-sm font-bold tracking-[0.25em] uppercase" style={{ fontFamily: 'Anton, sans-serif' }}>free the music</span>
+                      )}
+                    </div>
+                  )}
+                  {/* Overlay track info on bottom of video */}
+                  <div className="absolute bottom-0 left-0 right-0 px-3 pb-2 pt-5 bg-gradient-to-t from-black/90 to-transparent">
+                    <h3 className="text-white font-semibold text-xs truncate leading-tight">
+                      {currentTrack?.title || 'Welcome to the Future'}
+                    </h3>
+                    {currentTrack?.userId ? (
+                      <Link href={`/profile/${currentTrack.userId}`} className="text-cyan-400/80 hover:text-cyan-300 text-[11px] truncate leading-tight block transition-colors">
+                        {currentTrack?.artist || 'Unknown Artist'}
+                      </Link>
+                    ) : (
+                      <p className="text-cyan-400/60 text-[11px] truncate leading-tight">
+                        {currentTrack?.artist || 'Tap dial to play · Turn for next'}
+                      </p>
+                    )}
+                  </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4">
-                  {/* Vinyl/Disc Visual with Visualizer */}
-                  <div className="relative flex-shrink-0">
-                    <div className="w-28 h-28 rounded-xl bg-gradient-to-br from-gray-900 via-gray-800 to-black border-2 border-cyan-500/40 overflow-hidden relative group/disc shadow-lg shadow-cyan-500/20">
-                      {currentTrack?.imageUrl ? (
-                        <>
-                          <img 
-                            src={currentTrack.imageUrl} 
-                            alt="Cover" 
-                            className="w-full h-full object-cover"
-                          />
-                          {isPlaying && (
-                            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 animate-pulse" />
-                          )}
-                        </>
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          {/* Show visualizer in the album art area when playing */}
-                          {isPlaying && audioEl ? (
-                            <div className="absolute inset-1">
-                              <MiniVisualizer audioElement={audioEl} isPlaying={isPlaying} />
-                            </div>
-                          ) : (
-                            <Music2 className="w-10 h-10 text-cyan-400/50" />
-                          )}
-                        </div>
-                      )}
-                      
-                      {/* Visualizer overlay on album art when playing */}
-                      {isPlaying && currentTrack?.imageUrl && audioEl && (
-                        <div className="absolute inset-0 flex items-end p-1">
-                          <div className="w-full h-1/2 opacity-80">
-                            <MiniVisualizer audioElement={audioEl} isPlaying={isPlaying} />
-                          </div>
-                        </div>
-                      )}
-                      
-                      {/* Vinyl reflection effect */}
-                      {isPlaying && (
-                        <div 
-                          className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none"
-                          style={{
-                            animation: 'spin 3s linear infinite'
-                          }}
-                        />
-                      )}
-                    </div>
+                {/* Controls panel */}
+                <div className="px-3 py-2 space-y-1.5">
+                  {/* Time */}
+                  <div className="flex items-center justify-center">
+                    <span className="text-sm font-bold text-cyan-400 font-mono leading-none tracking-wider">
+                      {formatTime(currentTime)}
+                    </span>
                   </div>
 
-                  {/* Info & Controls */}
-                  <div className="flex-1 min-w-0 flex flex-col justify-center">
-                    {/* Track Info */}
-                    <div className="mb-3">
-                      <h3 className="text-white font-bold text-sm truncate leading-tight mb-0.5">
-                        {currentTrack?.title || 'No Track'}
-                      </h3>
-                      <p className="text-cyan-400/70 text-xs truncate leading-tight">
-                        {currentTrack?.artist || 'Hit play to start'}
-                      </p>
+                  {/* Analog Controls */}
+                  <div className="flex items-center justify-center gap-3">
+                    {/* Volume Knob — scroll wheel + drag to adjust */}
+                    <div ref={volumeKnobRef} className="flex flex-col items-center gap-0.5 cursor-grab active:cursor-grabbing select-none touch-none" title={`Volume: ${Math.round(volume * 100)}% — Scroll or drag to adjust`}>
+                      <svg width="34" height="34" viewBox="0 0 44 44" className="drop-shadow-[0_0_4px_rgba(6,182,212,0.3)] pointer-events-none">
+                        {/* Track arc (background) */}
+                        <circle cx="22" cy="22" r="19" fill="none" stroke="rgba(6,182,212,0.15)" strokeWidth="2.5" strokeDasharray="119" strokeLinecap="round" transform="rotate(-135 22 22)" />
+                        {/* Value arc (filled) */}
+                        <circle cx="22" cy="22" r="19" fill="none" stroke="rgba(6,182,212,0.8)" strokeWidth="2.5" strokeDasharray={`${volume * 89} 119`} strokeLinecap="round" transform="rotate(-135 22 22)" className="transition-[stroke-dasharray] duration-100" />
+                        {/* Outer ring */}
+                        <circle cx="22" cy="22" r="14" fill="rgba(12,12,12,0.95)" stroke="rgba(6,182,212,0.4)" strokeWidth="1" />
+                        {/* Grip notches */}
+                        {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map(deg => (
+                          <line key={deg} x1="22" y1="9.5" x2="22" y2="11.5" stroke="rgba(200,200,200,0.2)" strokeWidth="0.7" transform={`rotate(${deg} 22 22)`} />
+                        ))}
+                        {/* Inner body */}
+                        <circle cx="22" cy="22" r="8.5" fill="rgba(18,18,18,0.9)" stroke="rgba(100,100,100,0.25)" strokeWidth="0.5" />
+                        {/* Pointer */}
+                        <line x1="22" y1="22" x2="22" y2="12.5" stroke="rgba(6,182,212,1)" strokeWidth="2" strokeLinecap="round" transform={`rotate(${-135 + volume * 270} 22 22)`} className="transition-transform duration-100" />
+                        {/* Center dot */}
+                        <circle cx="22" cy="22" r="2" fill="rgba(6,182,212,0.6)" />
+                      </svg>
+                      <span className="text-[6px] text-gray-500 font-mono uppercase tracking-widest">Vol</span>
                     </div>
 
-                    {/* Time Display */}
-                    <div className="flex items-center justify-center mb-3">
-                      <span className="text-2xl font-bold text-cyan-400 font-mono leading-none">
-                        {formatTime(currentTime)}
-                      </span>
+                    {/* Shuffle */}
+                    <button
+                      onClick={toggleShuffle}
+                      className={`p-1.5 rounded-full transition-all duration-200 ${isShuffled ? 'bg-cyan-500/20 text-cyan-400' : 'text-gray-500 hover:text-cyan-400'}`}
+                      title="Shuffle"
+                    >
+                      <Shuffle className="w-3.5 h-3.5" />
+                    </button>
+
+                    {/* ═══ MAIN TUNING DIAL ═══ */}
+                    <div ref={tuneKnobRef} className="flex flex-col items-center gap-0.5 cursor-grab active:cursor-grabbing select-none touch-none" title="Drag right → Next · Drag left → Previous · Tap → Play/Pause">
+                      <svg width="48" height="48" viewBox="0 0 62 62" className="drop-shadow-[0_0_6px_rgba(6,182,212,0.3)]" style={{ transform: `rotate(${tuneRotation}deg)`, transition: tuneRotation === 0 ? 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1)' : 'none' }}>
+                        {/* Outer glow ring */}
+                        <circle cx="31" cy="31" r="29.5" fill="none" stroke="rgba(6,182,212,0.3)" strokeWidth="1" />
+                        {/* Main body */}
+                        <circle cx="31" cy="31" r="27" fill="rgba(10,10,10,0.95)" stroke="rgba(6,182,212,0.5)" strokeWidth="1.5" />
+                        {/* Grip notches — bright cyan ticks */}
+                        {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map(deg => (
+                          <line key={deg} x1="31" y1="5.5" x2="31" y2="9.5" stroke="rgba(6,182,212,0.3)" strokeWidth="1" transform={`rotate(${deg} 31 31)`} />
+                        ))}
+                        {/* Inner ring */}
+                        <circle cx="31" cy="31" r="18" fill="rgba(14,14,14,0.9)" stroke="rgba(6,182,212,0.25)" strokeWidth="0.7" />
+                        {/* Center play/pause icon area */}
+                        <circle cx="31" cy="31" r="11" fill="rgba(16,16,16,0.95)" stroke="rgba(6,182,212,0.35)" strokeWidth="0.5" />
+                        {/* Play triangle or Pause bars in center */}
+                        {isPlaying && currentTrack ? (
+                          <>
+                            <rect x="27" y="25" width="2.5" height="12" rx="1" fill="rgba(6,182,212,0.7)" />
+                            <rect x="32.5" y="25" width="2.5" height="12" rx="1" fill="rgba(6,182,212,0.7)" />
+                          </>
+                        ) : (
+                          <path d="M28 24 L28 38 L40 31 Z" fill="rgba(6,182,212,0.6)" />
+                        )}
+                        {/* Top indicator notch */}
+                        <line x1="31" y1="3" x2="31" y2="10" stroke="rgba(6,182,212,0.9)" strokeWidth="2" strokeLinecap="round" />
+                        {/* Left arrow — visible cyan */}
+                        <path d="M5 31 L11 27 L11 35 Z" fill="rgba(6,182,212,0.35)" stroke="rgba(6,182,212,0.5)" strokeWidth="0.5" />
+                        {/* Right arrow — visible cyan */}
+                        <path d="M57 31 L51 27 L51 35 Z" fill="rgba(6,182,212,0.35)" stroke="rgba(6,182,212,0.5)" strokeWidth="0.5" />
+                      </svg>
+                      <span className="text-[6px] text-cyan-400/60 font-mono uppercase tracking-widest">Tune</span>
                     </div>
 
-                    {/* Track Name Above Controls */}
-                    <div className="text-center mb-2">
-                      <p className="text-white/80 text-xs truncate">
-                        {currentTrack?.title || ''}
-                      </p>
-                    </div>
-
-                    {/* Controls */}
-                    <div className="flex items-center justify-center gap-2">
-                      {/* Shuffle */}
-                      <button
-                        onClick={toggleShuffle}
-                        className={`p-2 rounded-lg transition-all duration-200 ${
-                          isShuffled 
-                            ? 'bg-cyan-500/30 text-cyan-400' 
-                            : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700/50 hover:text-cyan-400'
-                        }`}
-                        title="Shuffle"
-                      >
-                        <Shuffle className="w-4 h-4" />
-                      </button>
-
-                      {/* Previous Track */}
-                      <button
-                        onClick={playPrevious}
-                        className="p-2 rounded-lg bg-gray-800/50 text-gray-400 hover:bg-gray-700/50 hover:text-cyan-400 transition-all duration-200"
-                        title="Previous Track"
-                      >
-                        <SkipBack className="w-4 h-4" />
-                      </button>
-
-                      {/* Play/Pause */}
-                      <button
-                        onClick={handlePlayAll}
-                        className="relative group/play flex-shrink-0"
-                      >
-                        <div className="absolute inset-0 bg-cyan-500 rounded-full blur-md opacity-50 group-hover/play:opacity-80 transition-opacity" />
-                        <div className="relative bg-cyan-500 hover:bg-cyan-400 p-3 rounded-full transition-all duration-200 transform group-hover/play:scale-110 active:scale-95 shadow-lg shadow-cyan-500/50">
-                          {isPlaying && currentTrack ? (
-                            <Pause className="w-5 h-5 text-white" fill="white" />
-                          ) : (
-                            <Play className="w-5 h-5 text-white ml-0.5" fill="white" />
-                          )}
-                        </div>
-                      </button>
-
-                      {/* Next Track */}
-                      <button
-                        onClick={playNext}
-                        className="p-2 rounded-lg bg-gray-800/50 text-gray-400 hover:bg-gray-700/50 hover:text-cyan-400 transition-all duration-200"
-                        title="Next Track"
-                      >
-                        <SkipForward className="w-4 h-4" />
-                      </button>
-
-                      {/* Loop */}
-                      <button
-                        onClick={toggleLoop}
-                        className={`p-2 rounded-lg transition-all duration-200 ${
-                          isLooping 
-                            ? 'bg-cyan-500/30 text-cyan-400' 
-                            : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700/50 hover:text-cyan-400'
-                        }`}
-                        title="Loop"
-                      >
-                        <Repeat className="w-4 h-4" />
-                      </button>
-                    </div>
+                    {/* Loop */}
+                    <button
+                      onClick={toggleLoop}
+                      className={`p-1.5 rounded-full transition-all duration-200 ${isLooping ? 'bg-cyan-500/20 text-cyan-400' : 'text-gray-500 hover:text-cyan-400'}`}
+                      title="Loop"
+                    >
+                      <Repeat className="w-3.5 h-3.5" />
+                    </button>
                   </div>
+
+                  {/* Hint text */}
+                  <p className="text-center text-[7px] text-gray-500 italic tracking-wide">← prev · tap play · next →  ·  scroll vol</p>
                 </div>
               </div>
             </div>
 
             {/* Aesthetic describe your sound bar - navigates to create page */}
-            <div className="w-full max-w-md">
+            <div className="w-full max-w-xs mx-auto">
               <div className="relative group cursor-pointer" onClick={handleInputClick}>
-                <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500/20 via-cyan-400/20 to-cyan-500/20 rounded-2xl blur opacity-50 group-hover:opacity-75 transition duration-300"></div>
+                <div className={`absolute -inset-0.5 rounded-2xl blur opacity-60 group-hover:opacity-90 transition-colors duration-100 ${!useAudioPulse ? 'animate-[borderPulse_8s_ease-in-out_infinite]' : ''}`} style={useAudioPulse ? { background: pulseGlowColor } : undefined}></div>
                 <div className="relative">
-                  <div className="w-full px-6 py-4 bg-black/60 backdrop-blur-2xl border border-cyan-500/30 rounded-2xl text-cyan-400/60 group-hover:text-cyan-400/80 group-hover:border-cyan-400/50 focus:outline-none transition-all duration-300 text-center text-sm md:text-base">
-                    Describe Your Sound...
+                  <div className={`w-full px-6 py-4 bg-black/60 backdrop-blur-2xl border rounded-2xl group-hover:border-white/30 focus:outline-none transition-colors duration-100 text-center text-sm md:text-base ${!useAudioPulse ? 'animate-[borderColorPulse_8s_ease-in-out_infinite]' : ''}`} style={useAudioPulse ? { borderColor: pulseBorderColor } : undefined}>
+                    <span className={`transition-colors duration-100 ${!useAudioPulse ? 'animate-[textPulse_8s_ease-in-out_infinite]' : ''}`} style={useAudioPulse ? { color: pulseTextColor } : undefined}>Describe Your Sound...</span>
                   </div>
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-cyan-500/5 via-transparent to-cyan-500/5 pointer-events-none"></div>
                 </div>
               </div>
             </div>
@@ -494,21 +650,31 @@ function HomePageContent() {
         </div>
       )}
 
-      {/* Claim Free Credits Button - Bottom Left (adjusted for sidebar) */}
-      <Link href="/decrypt">
-        <div className="fixed bottom-6 left-6 md:left-24 z-40 group cursor-pointer">
-          {/* Glowing background effect */}
-          <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-cyan-500 rounded-full blur-md opacity-60 group-hover:opacity-90 transition-all duration-300 animate-pulse"></div>
-          
-          {/* Button content */}
-          <div className="relative bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-400 hover:to-purple-400 rounded-full px-5 py-3 shadow-lg shadow-cyan-500/30 transition-all duration-300 group-hover:scale-110 flex items-center gap-2">
-            <Gift className="w-5 h-5 text-white" />
-            <span className="text-white font-bold text-sm whitespace-nowrap">
-              Claim Free Credits
-            </span>
+      {/* Bottom Left Buttons — inline row */}
+      <div className="fixed bottom-5 left-6 md:left-24 z-40 flex items-center gap-2">
+        {/* Claim Free Credits */}
+        <Link href="/decrypt">
+          <div className="group cursor-pointer relative">
+            <div className={`absolute -inset-0.5 rounded-full blur-sm opacity-50 group-hover:opacity-80 transition-colors duration-100 ${!useAudioPulse ? 'animate-[borderPulse_8s_ease-in-out_infinite]' : ''}`} style={useAudioPulse ? { background: pulseGlowColor } : undefined}></div>
+            <div className={`relative rounded-full px-3 py-1.5 shadow-md transition-colors duration-100 group-hover:scale-105 flex items-center gap-1 border bg-black/70 ${!useAudioPulse ? 'animate-[borderColorPulse_8s_ease-in-out_infinite]' : ''}`} style={useAudioPulse ? { borderColor: pulseBorderColor } : undefined}>
+              <Gift className={`w-3 h-3 ${!useAudioPulse ? 'animate-[textPulse_8s_ease-in-out_infinite]' : ''}`} style={useAudioPulse ? { color: pulseTextColor } : undefined} />
+              <span className={`font-bold text-[11px] whitespace-nowrap ${!useAudioPulse ? 'animate-[textPulse_8s_ease-in-out_infinite]' : ''}`} style={useAudioPulse ? { color: pulseTextColor } : undefined}>Claim Free Credits</span>
+            </div>
           </div>
-        </div>
-      </Link>
+        </Link>
+        {/* Sign In / Sign Up for unauthenticated users */}
+        {!isSignedIn && (
+          <Link href="/sign-in">
+            <div className="group cursor-pointer relative">
+              <div className={`absolute -inset-0.5 rounded-full blur-sm opacity-50 group-hover:opacity-80 transition-colors duration-100 ${!useAudioPulse ? 'animate-[borderPulse_8s_ease-in-out_infinite]' : ''}`} style={useAudioPulse ? { background: pulseGlowColor } : undefined}></div>
+              <div className={`relative bg-black/80 border rounded-full px-3 py-1.5 shadow-md transition-colors duration-100 group-hover:scale-105 flex items-center gap-1 ${!useAudioPulse ? 'animate-[borderColorPulse_8s_ease-in-out_infinite]' : ''}`} style={useAudioPulse ? { borderColor: pulseBorderColor } : undefined}>
+                <LogIn className={`w-3 h-3 ${!useAudioPulse ? 'animate-[textPulse_8s_ease-in-out_infinite]' : ''}`} style={useAudioPulse ? { color: pulseTextColor } : undefined} />
+                <span className={`font-semibold text-[11px] whitespace-nowrap ${!useAudioPulse ? 'animate-[textPulse_8s_ease-in-out_infinite]' : ''}`} style={useAudioPulse ? { color: pulseTextColor } : undefined}>Sign In / Sign Up</span>
+              </div>
+            </div>
+          </Link>
+        )}
+      </div>
 
       {/* Floating Menu */}
       <FloatingMenu />
