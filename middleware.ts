@@ -29,6 +29,7 @@ const isPublicRoute = createRouteMatcher([
   '/radio',
   '/creator-v2',               // Creator V2 - no Clerk auth required, dev mode enabled
   '/input',                    // INPUT live-coding editor - no Clerk auth required
+  '/studio',                   // STUDIO pro live-coding page - no Clerk auth required
   '/sitemap.xml',
   '/robots.txt',
 ])

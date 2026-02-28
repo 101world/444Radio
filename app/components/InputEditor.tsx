@@ -26,10 +26,14 @@ const DEFAULT_PATTERNS: SavedPattern[] = [
     id: 'default_lofi_beat',
     name: 'lofi chill beat',
     code: `// lofi chill beat
-$: s("bd ~ [~ bd] ~, ~ cp ~ ~, [hh hh] [hh hh] [hh hh] [hh oh]")
+let drums = s("bd ~ [~ bd] ~, ~ cp ~ ~, [hh hh] [hh hh] [hh hh] [hh oh]")
   .bank("RolandTR808").gain(0.8)
-$: note("<c3 a2 f2 g2>").sound("sawtooth")
-  .lpf(600).gain(0.4).slow(2)`,
+let melody = note("<c3 a2 f2 g2>").sound("sawtooth")
+  .lpf(600).gain(0.4).slow(2)
+
+$: arrange(
+  [2, drums],
+  [4, stack(drums, melody)])`,
     createdAt: 1732060800000,
     updatedAt: 1732060800000,
   },
@@ -37,9 +41,11 @@ $: note("<c3 a2 f2 g2>").sound("sawtooth")
     id: 'default_synth_pad',
     name: 'ambient pad drift',
     code: `// ambient pad drift
-$: note("<c3,e3,g3 a2,c3,e3 f2,a2,c3 g2,b2,d3>")
+let melody = note("<c3,e3,g3 a2,c3,e3 f2,a2,c3 g2,b2,d3>")
   .sound("sawtooth").lpf(sine.range(400,1500).slow(8))
-  .room(0.9).roomsize(4).gain(0.35).slow(2)`,
+  .room(0.9).roomsize(4).gain(0.35).slow(2)
+
+$: arrange([4, melody])`,
     createdAt: 1732060800000,
     updatedAt: 1732060800000,
   },
@@ -47,10 +53,14 @@ $: note("<c3,e3,g3 a2,c3,e3 f2,a2,c3 g2,b2,d3>")
     id: 'default_dnb_pattern',
     name: 'jungle breaks',
     code: `// jungle breaks
-$: s("bd [~ bd] [~ bd:2] ~, ~ [~ cp] ~ cp, hh*8")
+let drums = s("bd [~ bd] [~ bd:2] ~, ~ [~ cp] ~ cp, hh*8")
   .bank("RolandTR909").fast("<1 1 1.5 1>").gain(0.9)
-$: note("<e2 [e2 g2] a2 [g2 ~]>")
-  .sound("sawtooth").lpf(900).gain(0.5)`,
+let melody = note("<e2 [e2 g2] a2 [g2 ~]>")
+  .sound("sawtooth").lpf(900).gain(0.5)
+
+$: arrange(
+  [2, drums],
+  [4, stack(drums, melody)])`,
     createdAt: 1732060800000,
     updatedAt: 1732060800000,
   },
@@ -58,12 +68,17 @@ $: note("<e2 [e2 g2] a2 [g2 ~]>")
     id: 'default_techno_driver',
     name: 'techno 4/4',
     code: `// techno 4/4
-$: s("bd*4").bank("RolandTR909").gain(1)
-$: s("~ cp ~ cp").bank("RolandTR909").gain(0.7)
-$: s("hh*8").gain("0.4 0.2 0.6 0.2 0.4 0.2 0.8 0.2")
+let kick = s("bd*4").bank("RolandTR909").gain(1)
+let clap = s("~ cp ~ cp").bank("RolandTR909").gain(0.7)
+let hats = s("hh*8").gain("0.4 0.2 0.6 0.2 0.4 0.2 0.8 0.2")
   .bank("RolandTR909")
-$: note("<c2 c2 [c2 c3] c2>").sound("sawtooth")
-  .lpf(sine.range(200,3000).slow(16)).gain(0.5)`,
+let melody = note("<c2 c2 [c2 c3] c2>").sound("sawtooth")
+  .lpf(sine.range(200,3000).slow(16)).gain(0.5)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats)],
+  [4, stack(kick, clap, hats, melody)])`,
     createdAt: 1732060800000,
     updatedAt: 1732060800000,
   },
@@ -81,10 +96,14 @@ note("c4 e4 g4 b4 a4 g4 e4 c4")
     id: 'default_808_trap',
     name: '808 trap groove',
     code: `// 808 trap groove
-$: s("bd ~ ~ bd, ~ ~ cp ~, hh*4 [hh oh] hh*4 [hh oh]")
+let drums = s("bd ~ ~ bd, ~ ~ cp ~, hh*4 [hh oh] hh*4 [hh oh]")
   .bank("RolandTR808").gain(0.85)
-$: note("<c2 ~ [c2 c2] ~ , ~ eb2 ~ ~>")
-  .sound("square").lpf(400).decay(0.3).gain(0.6)`,
+let melody = note("<c2 ~ [c2 c2] ~ , ~ eb2 ~ ~>")
+  .sound("square").lpf(400).decay(0.3).gain(0.6)
+
+$: arrange(
+  [2, drums],
+  [4, stack(drums, melody)])`,
     createdAt: 1732060800000,
     updatedAt: 1732060800000,
   },
@@ -92,10 +111,15 @@ $: note("<c2 ~ [c2 c2] ~ , ~ eb2 ~ ~>")
     id: 'default_euclidean',
     name: 'euclidean polyrhythm',
     code: `// euclidean polyrhythm
-$: s("bd(3,8)").bank("RolandTR808").gain(0.9)
-$: s("cp(2,5)").bank("RolandTR909").gain(0.6)
-$: s("hh(5,8)").gain(0.4)
-$: s("oh(3,8,2)").gain(0.3)`,
+let kick = s("bd(3,8)").bank("RolandTR808").gain(0.9)
+let clap = s("cp(2,5)").bank("RolandTR909").gain(0.6)
+let hats = s("hh(5,8)").gain(0.4)
+let openHat = s("oh(3,8,2)").gain(0.3)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats)],
+  [4, stack(kick, clap, hats, openHat)])`,
     createdAt: 1732060800000,
     updatedAt: 1732060800000,
   },
@@ -212,438 +236,686 @@ const EXAMPLE_CATEGORIES = [
       {
         label: '909 House',
         code: `// classic four-on-floor
-$: s("bd*4").bank("RolandTR909").gain(.85)
-$: s("~ cp ~ ~").bank("RolandTR909").gain(.6)
-$: s("[~ hh]*4").bank("RolandTR909")
-  .gain("[.4 .7 .5 .8]")`,
+let kick = s("bd*4").bank("RolandTR909").gain(.85)
+let clap = s("~ cp ~ ~").bank("RolandTR909").gain(.6)
+let hats = s("[~ hh]*4").bank("RolandTR909")
+  .gain("[.4 .7 .5 .8]")
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, clap)],
+  [4, stack(kick, clap, hats)])`,
       },
       {
         label: '808 Trap',
         code: `// 808 trap groove
-$: s("bd ~ ~ bd ~ ~ bd ~")
+let kick = s("bd ~ ~ bd ~ ~ bd ~")
   .bank("RolandTR808").gain(.9)
-$: s("~ ~ ~ ~ ~ ~ ~ cp")
+let clap = s("~ ~ ~ ~ ~ ~ ~ cp")
   .bank("RolandTR808").gain(.7)
-$: s("hh*8").bank("RolandTR808")
-  .gain("[.3 .6 .4 .8 .3 .7 .4 .9]")`,
+let hats = s("hh*8").bank("RolandTR808")
+  .gain("[.3 .6 .4 .8 .3 .7 .4 .9]")
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, clap)],
+  [4, stack(kick, clap, hats)])`,
       },
       {
         label: 'Boom Bap',
         code: `// boom bap classic
-$: s("bd ~ [~ bd] ~")
+let kick = s("bd ~ [~ bd] ~")
   .bank("RolandTR808").gain(.85)
-$: s("~ sd ~ sd")
+let snare = s("~ sd ~ sd")
   .bank("RolandTR808").gain(.7)
-$: s("[hh hh] [hh oh] [hh hh] [hh ~]")
-  .bank("RolandTR808").gain(.45)`,
+let hats = s("[hh hh] [hh oh] [hh hh] [hh ~]")
+  .bank("RolandTR808").gain(.45)
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, snare)],
+  [4, stack(kick, snare, hats)])`,
       },
       {
         label: 'UK Garage',
         code: `// 2-step garage
-$: s("bd ~ [~ bd] ~")
+let kick = s("bd ~ [~ bd] ~")
   .bank("RolandTR909").gain(.8)
-$: s("~ cp ~ ~").bank("RolandTR909").gain(.6)
-$: s("[hh hh hh ~]*2")
-  .bank("RolandTR909").gain(.5)`,
+let clap = s("~ cp ~ ~").bank("RolandTR909").gain(.6)
+let hats = s("[hh hh hh ~]*2")
+  .bank("RolandTR909").gain(.5)
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, clap)],
+  [4, stack(kick, clap, hats)])`,
       },
       {
         label: 'DnB Roller',
         code: `// drum and bass pattern
-$: s("[bd ~ bd ~] [~ ~ bd ~]").gain(.85)
-$: s("[~ ~ ~ ~] [~ sd ~ ~]").gain(.7)
-$: s("hh*8").gain("[.3 .6 .35 .7 .3 .6 .35 .8]")`,
+let kick = s("[bd ~ bd ~] [~ ~ bd ~]").gain(.85)
+let snare = s("[~ ~ ~ ~] [~ sd ~ ~]").gain(.7)
+let hats = s("hh*8").gain("[.3 .6 .35 .7 .3 .6 .35 .8]")
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, snare)],
+  [4, stack(kick, snare, hats)])`,
       },
       {
         label: 'Clap Stack',
         code: `// layered clap patterns
-$: s("bd*4").bank("RolandTR909").gain(.8)
-$: s("~ cp ~ cp").bank("RolandTR909").gain(.7)
-$: s("~ ~ cp:2 ~").bank("RolandTR808").gain(.4)
-$: s("[~ hh]*4").bank("RolandTR909").gain(.5)`,
+let kick = s("bd*4").bank("RolandTR909").gain(.8)
+let clap = s("~ cp ~ cp").bank("RolandTR909").gain(.7)
+let clap2 = s("~ ~ cp:2 ~").bank("RolandTR808").gain(.4)
+let hats = s("[~ hh]*4").bank("RolandTR909").gain(.5)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, clap2)],
+  [4, stack(kick, clap, clap2, hats)])`,
       },
       {
         label: 'Syncopated Claps',
         code: `// off-beat clap groove
-$: s("bd ~ bd ~").bank("RolandTR808").gain(.8)
-$: s("~ cp ~ [~ cp]").bank("RolandTR808")
+let kick = s("bd ~ bd ~").bank("RolandTR808").gain(.8)
+let clap = s("~ cp ~ [~ cp]").bank("RolandTR808")
   .gain(.65).room(.2)
-$: s("[hh hh hh oh]*2")
-  .bank("RolandTR808").gain(.4)`,
+let hats = s("[hh hh hh oh]*2")
+  .bank("RolandTR808").gain(.4)
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, clap)],
+  [4, stack(kick, clap, hats)])`,
       },
       {
         label: 'Techno Driver',
         code: `// driving techno kick
-$: s("bd*4").gain(.9)
-$: s("~ ~ cp ~").gain(.5).room(.3)
-$: s("[~ hh]*4").gain(.4)
-$: s("~ ~ ~ oh").gain(.35)`,
+let kick = s("bd*4").gain(.9)
+let clap = s("~ ~ cp ~").gain(.5).room(.3)
+let hats = s("[~ hh]*4").gain(.4)
+let openHat = s("~ ~ ~ oh").gain(.35)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats)],
+  [4, stack(kick, clap, hats, openHat)])`,
       },
       {
         label: 'Euclidean Poly',
         code: `// euclidean polyrhythm
-$: s("bd(3,8)").gain(.8)
-$: s("cp(5,8)").gain(.5).room(.2)
-$: s("hh(7,8)").gain(.4)
-$: s("oh(2,8)").gain(.3)`,
+let kick = s("bd(3,8)").gain(.8)
+let clap = s("cp(5,8)").gain(.5).room(.2)
+let hats = s("hh(7,8)").gain(.4)
+let openHat = s("oh(2,8)").gain(.3)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats)],
+  [4, stack(kick, clap, hats, openHat)])`,
       },
       {
         label: 'Afrobeat Poly',
         code: `// afrobeat polyrhythm
-$: s("bd(3,8)").bank("RolandTR808").gain(.8)
-$: s("rim(5,8)").bank("RolandTR808").gain(.45)
-$: s("hh(7,16)").bank("RolandTR808")
+let kick = s("bd(3,8)").bank("RolandTR808").gain(.8)
+let rim = s("rim(5,8)").bank("RolandTR808").gain(.45)
+let hats = s("hh(7,16)").bank("RolandTR808")
   .gain("[.3 .5]*8")
-$: s("cp(2,8)").bank("RolandTR808").gain(.5)`,
+let clap = s("cp(2,8)").bank("RolandTR808").gain(.5)
+
+$: arrange(
+  [2, stack(kick, rim)],
+  [2, stack(kick, rim, hats)],
+  [4, stack(kick, rim, hats, clap)])`,
       },
       {
         label: 'Reggaeton',
         code: `// dembow riddim
-$: s("bd ~ ~ bd ~ ~ bd ~").gain(.85)
-$: s("~ ~ cp ~ ~ ~ cp ~").gain(.6)
-$: s("[hh hh]*4").gain("[.3 .5]*4")`,
+let kick = s("bd ~ ~ bd ~ ~ bd ~").gain(.85)
+let clap = s("~ ~ cp ~ ~ ~ cp ~").gain(.6)
+let hats = s("[hh hh]*4").gain("[.3 .5]*4")
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, clap)],
+  [4, stack(kick, clap, hats)])`,
       },
       {
         label: 'Chopped Breaks',
         code: `// chopped breakbeat
-$: s("[bd ~ bd ~] [~ bd ~ bd]").gain(.8)
-$: s("[~ sd ~ ~] [~ ~ sd ~]").gain(.65)
-$: s("hh*8")
-  .gain("[.35 .6 .4 .7 .35 .6 .4 .75]")`,
+let kick = s("[bd ~ bd ~] [~ bd ~ bd]").gain(.8)
+let snare = s("[~ sd ~ ~] [~ ~ sd ~]").gain(.65)
+let hats = s("hh*8")
+  .gain("[.35 .6 .4 .7 .35 .6 .4 .75]")
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, snare)],
+  [4, stack(kick, snare, hats)])`,
       },
       {
         label: 'Minimal Click',
         code: `// minimal click hat groove
-$: s("bd ~ ~ ~, ~ ~ bd ~").gain(.75)
-$: s("~ rim ~ rim").gain(.3)
-$: s("hh*16").gain("[.2 .35]*8")`,
+let kick = s("bd ~ ~ ~, ~ ~ bd ~").gain(.75)
+let rim = s("~ rim ~ rim").gain(.3)
+let hats = s("hh*16").gain("[.2 .35]*8")
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, rim)],
+  [4, stack(kick, rim, hats)])`,
       },
       {
         label: 'Stuttered Kick',
         code: `// rapid kick stutter
-$: s("[bd bd ~] [~ bd bd] [bd ~ ~] [bd bd bd]")
+let kick = s("[bd bd ~] [~ bd bd] [bd ~ ~] [bd bd bd]")
   .gain(.8)
-$: s("~ cp ~ ~").gain(.6)
-$: s("[~ hh]*4").gain(.45)`,
+let clap = s("~ cp ~ ~").gain(.6)
+let hats = s("[~ hh]*4").gain(.45)
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, clap)],
+  [4, stack(kick, clap, hats)])`,
       },
       {
         label: 'Rim Rider',
         code: `// rim-driven pattern
-$: s("bd ~ ~ bd ~ bd ~ ~").gain(.8)
-$: s("rim*8").gain("[.2 .4 .25 .5 .2 .45 .25 .55]")
-$: s("~ ~ cp ~").gain(.55)`,
+let kick = s("bd ~ ~ bd ~ bd ~ ~").gain(.8)
+let rim = s("rim*8").gain("[.2 .4 .25 .5 .2 .45 .25 .55]")
+let clap = s("~ ~ cp ~").gain(.55)
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, rim)],
+  [4, stack(kick, rim, clap)])`,
       },
       {
         label: 'Latin Clave',
         code: `// son clave rhythm
-$: s("bd ~ ~ bd ~ bd ~ ~")
+let kick = s("bd ~ ~ bd ~ bd ~ ~")
   .bank("RolandTR808").gain(.8)
-$: s("rim ~ rim ~ ~ rim ~ ~")
+let rim = s("rim ~ rim ~ ~ rim ~ ~")
   .bank("RolandTR808").gain(.4)
-$: s("~ ~ ~ ~ cp ~ ~ ~")
-  .bank("RolandTR808").gain(.5)`,
+let clap = s("~ ~ ~ ~ cp ~ ~ ~")
+  .bank("RolandTR808").gain(.5)
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, rim)],
+  [4, stack(kick, rim, clap)])`,
       },
       {
         label: 'Clap Delay',
         code: `// echoing claps
-$: s("bd*4").gain(.8)
-$: s("~ cp ~ ~").gain(.6)
+let kick = s("bd*4").gain(.8)
+let clap = s("~ cp ~ ~").gain(.6)
   .delay(.4).delayfeedback(.5)
   .room(.3)
-$: s("[~ hh]*4").gain(.4)`,
+let hats = s("[~ hh]*4").gain(.4)
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, clap)],
+  [4, stack(kick, clap, hats)])`,
       },
       {
         label: 'Triplet Hats',
         code: `// triplet hi-hat groove
-$: s("bd*4").bank("RolandTR909").gain(.85)
-$: s("~ cp ~ ~").bank("RolandTR909").gain(.6)
-$: s("hh*12").bank("RolandTR909")
-  .gain("[.3 .2 .4]*4")`,
+let kick = s("bd*4").bank("RolandTR909").gain(.85)
+let clap = s("~ cp ~ ~").bank("RolandTR909").gain(.6)
+let hats = s("hh*12").bank("RolandTR909")
+  .gain("[.3 .2 .4]*4")
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, clap)],
+  [4, stack(kick, clap, hats)])`,
       },
       {
         label: 'Open Hat Groove',
         code: `// open hat accents
-$: s("bd ~ bd ~").gain(.8)
-$: s("~ sd ~ sd").gain(.65)
-$: s("[hh hh oh ~]*2").gain(.5)
-$: s("~ ~ ~ cp").gain(.4).room(.2)`,
+let kick = s("bd ~ bd ~").gain(.8)
+let snare = s("~ sd ~ sd").gain(.65)
+let hats = s("[hh hh oh ~]*2").gain(.5)
+let clap = s("~ ~ ~ cp").gain(.4).room(.2)
+
+$: arrange(
+  [2, stack(kick, snare)],
+  [2, stack(kick, snare, hats)],
+  [4, stack(kick, snare, hats, clap)])`,
       },
       {
         label: 'Double Clap',
         code: `// doubled clap hit
-$: s("bd*4").bank("RolandTR909").gain(.85)
-$: s("~ [cp cp] ~ ~").bank("RolandTR909")
+let kick = s("bd*4").bank("RolandTR909").gain(.85)
+let clap = s("~ [cp cp] ~ ~").bank("RolandTR909")
   .gain(.6).room(.15)
-$: s("hh*8").bank("RolandTR909")
-  .gain("[.3 .5 .35 .6 .3 .55 .35 .65]")`,
+let hats = s("hh*8").bank("RolandTR909")
+  .gain("[.3 .5 .35 .6 .3 .55 .35 .65]")
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, clap)],
+  [4, stack(kick, clap, hats)])`,
       },
       {
         label: 'Shuffle Beat',
         code: `// shuffle groove
-$: s("bd [~ bd] sd [~ bd]").bank("RolandTR909").gain(.8)
-$: s("[hh hh hh]*2").bank("RolandTR909").gain("[.3 .5 .4]*2")`,
+let drums = s("bd [~ bd] sd [~ bd]").bank("RolandTR909").gain(.8)
+let hats = s("[hh hh hh]*2").bank("RolandTR909").gain("[.3 .5 .4]*2")
+
+$: arrange(
+  [2, drums],
+  [4, stack(drums, hats)])`,
       },
       {
         label: 'Ghost Snare',
         code: `// ghost note snare
-$: s("bd ~ sd ~").gain(.8)
-$: s("~ [sd:3 ~] ~ [~ sd:3]").gain(.25).room(.2)
-$: s("[~ hh]*4").gain(.4)`,
+let drums = s("bd ~ sd ~").gain(.8)
+let snare = s("~ [sd:3 ~] ~ [~ sd:3]").gain(.25).room(.2)
+let hats = s("[~ hh]*4").gain(.4)
+
+$: arrange(
+  [2, drums],
+  [2, stack(drums, snare)],
+  [4, stack(drums, snare, hats)])`,
       },
       {
         label: 'Half-Time Feel',
         code: `// half-time groove
-$: s("bd ~ ~ ~ bd ~ ~ ~").gain(.85)
-$: s("~ ~ ~ ~ ~ ~ sd ~").gain(.7)
-$: s("hh*8").gain("[.25 .4]*4")`,
+let kick = s("bd ~ ~ ~ bd ~ ~ ~").gain(.85)
+let snare = s("~ ~ ~ ~ ~ ~ sd ~").gain(.7)
+let hats = s("hh*8").gain("[.25 .4]*4")
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, snare)],
+  [4, stack(kick, snare, hats)])`,
       },
       {
         label: 'Breakcore Chop',
         code: `// breakcore stutter
-$: s("[bd bd] [sd bd] [bd sd] [sd sd]").gain(.8)
-$: s("hh*16").gain("[.2 .4 .3 .5]*4")
-$: s("oh(3,8)").gain(.35)`,
+let drums = s("[bd bd] [sd bd] [bd sd] [sd sd]").gain(.8)
+let hats = s("hh*16").gain("[.2 .4 .3 .5]*4")
+let openHat = s("oh(3,8)").gain(.35)
+
+$: arrange(
+  [2, drums],
+  [2, stack(drums, hats)],
+  [4, stack(drums, hats, openHat)])`,
       },
       {
         label: 'Jazz Brush',
         code: `// jazz brush feel
-$: s("bd ~ [~ bd] ~").gain(.6)
-$: s("~ rim ~ rim").gain(.3)
-$: s("hh*8").gain("[.15 .25 .2 .3]*2")`,
+let kick = s("bd ~ [~ bd] ~").gain(.6)
+let rim = s("~ rim ~ rim").gain(.3)
+let hats = s("hh*8").gain("[.15 .25 .2 .3]*2")
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, rim)],
+  [4, stack(kick, rim, hats)])`,
       },
       {
         label: 'Riddim Shell',
         code: `// dancehall riddim
-$: s("bd ~ bd ~").bank("RolandTR808").gain(.85)
-$: s("~ ~ cp ~").bank("RolandTR808").gain(.6)
-$: s("rim*8").bank("RolandTR808").gain("[.2 .35]*4")`,
+let kick = s("bd ~ bd ~").bank("RolandTR808").gain(.85)
+let clap = s("~ ~ cp ~").bank("RolandTR808").gain(.6)
+let rim = s("rim*8").bank("RolandTR808").gain("[.2 .35]*4")
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, clap)],
+  [4, stack(kick, clap, rim)])`,
       },
       {
         label: 'Marching',
         code: `// marching drum pattern
-$: s("bd sd bd sd").gain(.75)
-$: s("bd ~ ~ ~, ~ ~ bd ~").gain(.5)
-$: s("[rim rim]*4").gain(.3)`,
+let drums = s("bd sd bd sd").gain(.75)
+let kick = s("bd ~ ~ ~, ~ ~ bd ~").gain(.5)
+let rim = s("[rim rim]*4").gain(.3)
+
+$: arrange(
+  [2, drums],
+  [2, stack(drums, kick)],
+  [4, stack(drums, kick, rim)])`,
       },
       {
         label: 'Lo-Fi Drums',
         code: `// dusty lo-fi drums
-$: s("[bd:3 ~] [~ bd:3] ~ ~").gain(.4).lpf(800)
-$: s("~ rim ~ rim").gain(.15).lpf(2000)
-$: s("[~ hh:2]*4").gain("[.1 .2]*4").lpf(3500)`,
+let kick = s("[bd:3 ~] [~ bd:3] ~ ~").gain(.4).lpf(800)
+let rim = s("~ rim ~ rim").gain(.15).lpf(2000)
+let hats = s("[~ hh:2]*4").gain("[.1 .2]*4").lpf(3500)
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, rim)],
+  [4, stack(kick, rim, hats)])`,
       },
       {
         label: 'Glitch Kick',
         code: `// glitchy kick pattern
-$: s("bd").chop(16).speed("<1 2 .5 1.5>")
+let kick = s("bd").chop(16).speed("<1 2 .5 1.5>")
   .gain(.7)
-$: s("~ cp ~ ~").gain(.5)`,
+let clap = s("~ cp ~ ~").gain(.5)
+
+$: arrange(
+  [2, kick],
+  [4, stack(kick, clap)])`,
       },
       {
         label: 'Tribal Perc',
         code: `// tribal percussion
-$: s("bd(3,8)").gain(.75)
-$: s("rim(7,16)").gain(.35)
-$: s("hh(5,8)").gain(.3)
-$: s("oh(2,8)").gain(.25).room(.3)`,
+let kick = s("bd(3,8)").gain(.75)
+let rim = s("rim(7,16)").gain(.35)
+let hats = s("hh(5,8)").gain(.3)
+let openHat = s("oh(2,8)").gain(.25).room(.3)
+
+$: arrange(
+  [2, stack(kick, rim)],
+  [2, stack(kick, rim, hats)],
+  [4, stack(kick, rim, hats, openHat)])`,
       },
       {
         label: 'Jersey Club',
         code: `// jersey club bounce
-$: s("bd bd [~ bd] bd bd [~ bd] bd [bd bd]")
+let kick = s("bd bd [~ bd] bd bd [~ bd] bd [bd bd]")
   .bank("RolandTR808").gain(.85)
-$: s("~ ~ cp ~ ~ ~ cp ~")
+let clap = s("~ ~ cp ~ ~ ~ cp ~")
   .bank("RolandTR808").gain(.65)
-$: s("hh*16").bank("RolandTR808")
+let hats = s("hh*16").bank("RolandTR808")
   .gain("[.2 .35 .25 .4]*4")
-$: s("oh(3,16)").bank("RolandTR808").gain(.3)`,
+let openHat = s("oh(3,16)").bank("RolandTR808").gain(.3)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats)],
+  [4, stack(kick, clap, hats, openHat)])`,
       },
       {
         label: 'Soca Riddim',
         code: `// soca carnival riddim
-$: s("bd ~ bd ~").bank("RolandTR808").gain(.85)
-$: s("~ cp ~ cp").bank("RolandTR808").gain(.65)
-$: s("[hh hh hh hh]*4").bank("RolandTR808")
+let kick = s("bd ~ bd ~").bank("RolandTR808").gain(.85)
+let clap = s("~ cp ~ cp").bank("RolandTR808").gain(.65)
+let hats = s("[hh hh hh hh]*4").bank("RolandTR808")
   .gain("[.25 .5 .3 .55]*4")
-$: s("oh(2,8)").bank("RolandTR808").gain(.3)
-$: s("rim(5,16)").bank("RolandTR808").gain(.25)`,
+let openHat = s("oh(2,8)").bank("RolandTR808").gain(.3)
+let rim = s("rim(5,16)").bank("RolandTR808").gain(.25)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats, openHat)],
+  [4, stack(kick, clap, hats, openHat, rim)])`,
       },
       {
         label: 'Footwork 160',
         code: `// footwork 160bpm feel
-$: s("bd bd [~ bd] bd bd [~ bd] bd bd")
+let kick = s("bd bd [~ bd] bd bd [~ bd] bd bd")
   .gain(.8).fast(1.25)
-$: s("~ ~ ~ cp ~ ~ cp ~").gain(.6)
-$: s("hh*16").gain("[.15 .3 .2 .35]*4")
-$: s("oh(3,8)").gain(.25)
-$: s("rim(5,16)").gain(.2)`,
+let clap = s("~ ~ ~ cp ~ ~ cp ~").gain(.6)
+let hats = s("hh*16").gain("[.15 .3 .2 .35]*4")
+let openHat = s("oh(3,8)").gain(.25)
+let rim = s("rim(5,16)").gain(.2)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats, openHat)],
+  [4, stack(kick, clap, hats, openHat, rim)])`,
       },
       {
         label: 'Bossa Nova',
         code: `// bossa nova pattern
-$: s("bd ~ [~ bd] ~ bd ~ [~ bd] ~")
+let kick = s("bd ~ [~ bd] ~ bd ~ [~ bd] ~")
   .gain(.65)
-$: s("rim ~ rim ~ rim ~ rim rim")
+let rim = s("rim ~ rim ~ rim ~ rim rim")
   .gain(.3)
-$: s("[hh hh]*4").gain("[.15 .25]*4")
-$: s("~ ~ ~ ~ ~ oh ~ ~").gain(.2)`,
+let hats = s("[hh hh]*4").gain("[.15 .25]*4")
+let openHat = s("~ ~ ~ ~ ~ oh ~ ~").gain(.2)
+
+$: arrange(
+  [2, stack(kick, rim)],
+  [2, stack(kick, rim, hats)],
+  [4, stack(kick, rim, hats, openHat)])`,
       },
       {
         label: 'Jungle Amen',
         code: `// amen break style
-$: s("[bd ~ bd ~] [~ sd ~ ~] [~ bd ~ ~] [~ sd bd sd]")
+let drums = s("[bd ~ bd ~] [~ sd ~ ~] [~ bd ~ ~] [~ sd bd sd]")
   .gain(.8)
-$: s("hh*16").gain("[.2 .35 .25 .4]*4")
-$: s("oh(2,16)").gain(.25).room(.2)
-$: s("rim(3,16,2)").gain(.2)`,
+let hats = s("hh*16").gain("[.2 .35 .25 .4]*4")
+let openHat = s("oh(2,16)").gain(.25).room(.2)
+let rim = s("rim(3,16,2)").gain(.2)
+
+$: arrange(
+  [2, stack(drums, hats)],
+  [2, stack(drums, hats, openHat)],
+  [4, stack(drums, hats, openHat, rim)])`,
       },
       {
         label: 'Industrial',
         code: `// industrial mechanical beat
-$: s("bd*4").gain(.9).shape(.2)
-$: s("~ sd ~ sd").gain(.7).crush(8)
-$: s("hh*16").gain("[.2 .4]*8").crush(6)
-$: s("oh(3,8)").gain(.3).room(.3)
-$: s("rim*8").gain("[.15 .25]*4").lpf(2000)`,
+let kick = s("bd*4").gain(.9).shape(.2)
+let snare = s("~ sd ~ sd").gain(.7).crush(8)
+let hats = s("hh*16").gain("[.2 .4]*8").crush(6)
+let openHat = s("oh(3,8)").gain(.3).room(.3)
+let rim = s("rim*8").gain("[.15 .25]*4").lpf(2000)
+
+$: arrange(
+  [2, stack(kick, snare)],
+  [2, stack(kick, snare, hats, openHat)],
+  [4, stack(kick, snare, hats, openHat, rim)])`,
       },
       {
         label: 'Grime',
         code: `// grime 140 pattern
-$: s("bd ~ [bd ~] ~ bd ~ [~ bd] ~")
+let kick = s("bd ~ [bd ~] ~ bd ~ [~ bd] ~")
   .bank("RolandTR808").gain(.85)
-$: s("~ ~ ~ ~ ~ ~ cp ~")
+let clap = s("~ ~ ~ ~ ~ ~ cp ~")
   .bank("RolandTR808").gain(.7)
-$: s("hh*8").bank("RolandTR808")
+let hats = s("hh*8").bank("RolandTR808")
   .gain("[.3 .5 .35 .6 .3 .55 .35 .65]")
-$: s("rim(3,8)").bank("RolandTR808").gain(.25)`,
+let rim = s("rim(3,8)").bank("RolandTR808").gain(.25)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats)],
+  [4, stack(kick, clap, hats, rim)])`,
       },
       {
         label: 'Garage 2-Step',
         code: `// UK garage 2-step groove
-$: s("bd ~ [~ bd] ~").bank("RolandTR909").gain(.8)
-$: s("~ cp ~ ~").bank("RolandTR909").gain(.6)
-$: s("[hh hh hh ~]*2").bank("RolandTR909").gain(.45)
-$: s("oh ~ ~ ~").bank("RolandTR909").gain(.25)
-$: s("rim(3,8,1)").bank("RolandTR909").gain(.2)`,
+let kick = s("bd ~ [~ bd] ~").bank("RolandTR909").gain(.8)
+let clap = s("~ cp ~ ~").bank("RolandTR909").gain(.6)
+let hats = s("[hh hh hh ~]*2").bank("RolandTR909").gain(.45)
+let openHat = s("oh ~ ~ ~").bank("RolandTR909").gain(.25)
+let rim = s("rim(3,8,1)").bank("RolandTR909").gain(.2)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats, openHat)],
+  [4, stack(kick, clap, hats, openHat, rim)])`,
       },
       {
         label: 'Baltimore Club',
         code: `// baltimore club pattern
-$: s("bd bd [~ bd] bd bd [~ bd] bd bd")
+let kick = s("bd bd [~ bd] bd bd [~ bd] bd bd")
   .bank("RolandTR808").gain(.85)
-$: s("~ ~ ~ ~ cp ~ ~ ~")
+let clap = s("~ ~ ~ ~ cp ~ ~ ~")
   .bank("RolandTR808").gain(.65)
-$: s("hh*16").bank("RolandTR808")
+let hats = s("hh*16").bank("RolandTR808")
   .gain("[.2 .3]*8")
-$: s("cp(3,8,2)").bank("RolandTR808").gain(.3)`,
+let clap2 = s("cp(3,8,2)").bank("RolandTR808").gain(.3)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats)],
+  [4, stack(kick, clap, hats, clap2)])`,
       },
       {
         label: 'Neo Funk',
         code: `// neo funk drum groove
-$: s("bd ~ [bd ~] ~ bd ~ ~ ~")
+let kick = s("bd ~ [bd ~] ~ bd ~ ~ ~")
   .bank("RolandTR909").gain(.8)
-$: s("~ sd ~ ~, ~ ~ ~ [~ sd]")
+let snare = s("~ sd ~ ~, ~ ~ ~ [~ sd]")
   .bank("RolandTR909").gain(.65)
-$: s("[hh hh oh ~]*2").bank("RolandTR909").gain(.45)
-$: s("rim(5,16)").bank("RolandTR909").gain(.2)
-$: s("oh(2,8,3)").bank("RolandTR909").gain(.25)`,
+let hats = s("[hh hh oh ~]*2").bank("RolandTR909").gain(.45)
+let rim = s("rim(5,16)").bank("RolandTR909").gain(.2)
+let openHat = s("oh(2,8,3)").bank("RolandTR909").gain(.25)
+
+$: arrange(
+  [2, stack(kick, snare)],
+  [2, stack(kick, snare, hats, rim)],
+  [4, stack(kick, snare, hats, rim, openHat)])`,
       },
       {
         label: 'Lo-Fi Swing',
         code: `// lo-fi swing beat
-$: s("[bd:3 ~] [~ bd:3] [bd:3 ~] ~")
+let kick = s("[bd:3 ~] [~ bd:3] [bd:3 ~] ~")
   .gain(.4).lpf(800)
-$: s("~ rim ~ rim").gain(.15).lpf(2000)
-$: s("[hh:2 ~ hh:2 ~]*2")
+let rim = s("~ rim ~ rim").gain(.15).lpf(2000)
+let hats = s("[hh:2 ~ hh:2 ~]*2")
   .gain("[.08 .15 .1 .2]*2").lpf(3500)
-$: s("oh ~ ~ ~").gain(.1).lpf(2500)`,
+let openHat = s("oh ~ ~ ~").gain(.1).lpf(2500)
+
+$: arrange(
+  [2, stack(kick, rim)],
+  [2, stack(kick, rim, hats)],
+  [4, stack(kick, rim, hats, openHat)])`,
       },
       {
         label: 'Amapiano Log',
         code: `// amapiano log drum pattern
-$: s("bd ~ [~ bd] ~ bd ~ ~ ~")
+let kick = s("bd ~ [~ bd] ~ bd ~ ~ ~")
   .bank("RolandTR808").gain(.75)
-$: s("rim*8").bank("RolandTR808")
+let rim = s("rim*8").bank("RolandTR808")
   .gain("[.15 .3 .2 .35 .15 .3 .2 .4]")
-$: s("~ ~ cp ~").bank("RolandTR808").gain(.5)
-$: s("hh*16").bank("RolandTR808").gain("[.1 .2]*8")`,
+let clap = s("~ ~ cp ~").bank("RolandTR808").gain(.5)
+let hats = s("hh*16").bank("RolandTR808").gain("[.1 .2]*8")
+
+$: arrange(
+  [2, stack(kick, rim)],
+  [2, stack(kick, rim, clap)],
+  [4, stack(kick, rim, clap, hats)])`,
       },
       {
         label: 'UK Drill',
         code: `// UK drill pattern
-$: s("bd ~ [~ bd] ~").gain(.85)
-$: s("~ ~ ~ sd").gain(.7)
-$: s("hh*8").gain("[.25 .5 .3 .6 .25 .55 .3 .65]")
-$: s("oh(2,8,3)").gain(.25)
-$: s("rim(3,16)").gain(.2)
-$: s("~ ~ ~ [~ cp]").gain(.4)`,
+let kick = s("bd ~ [~ bd] ~").gain(.85)
+let snare = s("~ ~ ~ sd").gain(.7)
+let hats = s("hh*8").gain("[.25 .5 .3 .6 .25 .55 .3 .65]")
+let openHat = s("oh(2,8,3)").gain(.25)
+let rim = s("rim(3,16)").gain(.2)
+let clap = s("~ ~ ~ [~ cp]").gain(.4)
+
+$: arrange(
+  [2, stack(kick, snare)],
+  [2, stack(kick, snare, hats, openHat)],
+  [4, stack(kick, snare, hats, openHat, rim, clap)])`,
       },
       {
         label: 'Cumbia Digital',
         code: `// digital cumbia groove
-$: s("bd ~ ~ bd ~ ~ bd ~").gain(.75)
-$: s("~ ~ cp ~ ~ ~ cp ~").gain(.55)
-$: s("[hh hh]*4").gain("[.25 .4]*4")
-$: s("rim ~ rim ~ rim ~ rim ~").gain(.2)
-$: s("oh ~ ~ ~ oh ~ ~ ~").gain(.2)`,
+let kick = s("bd ~ ~ bd ~ ~ bd ~").gain(.75)
+let clap = s("~ ~ cp ~ ~ ~ cp ~").gain(.55)
+let hats = s("[hh hh]*4").gain("[.25 .4]*4")
+let rim = s("rim ~ rim ~ rim ~ rim ~").gain(.2)
+let openHat = s("oh ~ ~ ~ oh ~ ~ ~").gain(.2)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats, rim)],
+  [4, stack(kick, clap, hats, rim, openHat)])`,
       },
       {
         label: 'Broken Beat',
         code: `// broken beat groove
-$: s("bd ~ [~ bd] ~ [bd ~] ~ bd ~")
+let kick = s("bd ~ [~ bd] ~ [bd ~] ~ bd ~")
   .bank("RolandTR909").gain(.8)
-$: s("~ ~ ~ sd ~ sd ~ ~")
+let snare = s("~ ~ ~ sd ~ sd ~ ~")
   .bank("RolandTR909").gain(.65)
-$: s("hh*16").bank("RolandTR909")
+let hats = s("hh*16").bank("RolandTR909")
   .gain("[.2 .35]*8")
-$: s("oh(2,8,5)").bank("RolandTR909").gain(.25)`,
+let openHat = s("oh(2,8,5)").bank("RolandTR909").gain(.25)
+
+$: arrange(
+  [2, stack(kick, snare)],
+  [2, stack(kick, snare, hats)],
+  [4, stack(kick, snare, hats, openHat)])`,
       },
       {
         label: 'Electro Body',
         code: `// electro body music
-$: s("bd*4").bank("RolandTR808").gain(.85)
-$: s("~ cp ~ cp").bank("RolandTR808").gain(.6)
-$: s("hh*16").bank("RolandTR808")
+let kick = s("bd*4").bank("RolandTR808").gain(.85)
+let clap = s("~ cp ~ cp").bank("RolandTR808").gain(.6)
+let hats = s("hh*16").bank("RolandTR808")
   .gain("[.15 .3]*8")
-$: s("oh(3,8)").bank("RolandTR808").gain(.25)
-$: s("rim(5,16,2)").bank("RolandTR808").gain(.2)`,
+let openHat = s("oh(3,8)").bank("RolandTR808").gain(.25)
+let rim = s("rim(5,16,2)").bank("RolandTR808").gain(.2)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats, openHat)],
+  [4, stack(kick, clap, hats, openHat, rim)])`,
       },
       {
         label: 'Cross Rhythm',
         code: `// african cross-rhythm
-$: s("bd(3,8)").gain(.8)
-$: s("rim(5,8)").gain(.35)
-$: s("cp(2,8,3)").gain(.45)
-$: s("hh(7,16)").gain("[.2 .35]*8")
-$: s("oh(3,16,5)").gain(.2).room(.2)`,
+let kick = s("bd(3,8)").gain(.8)
+let rim = s("rim(5,8)").gain(.35)
+let clap = s("cp(2,8,3)").gain(.45)
+let hats = s("hh(7,16)").gain("[.2 .35]*8")
+let openHat = s("oh(3,16,5)").gain(.2).room(.2)
+
+$: arrange(
+  [2, stack(kick, rim)],
+  [2, stack(kick, rim, clap, hats)],
+  [4, stack(kick, rim, clap, hats, openHat)])`,
       },
       {
         label: 'Polymetric 5/4',
         code: `// polymetric 5 over 4
-$: s("bd(5,16)").gain(.8)
-$: s("cp(4,16,2)").gain(.55)
-$: s("hh(7,16)").gain(.35)
-$: s("rim(3,16,1)").gain(.25)
-$: s("oh(2,16,7)").gain(.2).room(.3)`,
+let kick = s("bd(5,16)").gain(.8)
+let clap = s("cp(4,16,2)").gain(.55)
+let hats = s("hh(7,16)").gain(.35)
+let rim = s("rim(3,16,1)").gain(.25)
+let openHat = s("oh(2,16,7)").gain(.2).room(.3)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats, rim)],
+  [4, stack(kick, clap, hats, rim, openHat)])`,
       },
       {
         label: 'Drum Fill',
         code: `// drum fill sequence
-$: s("bd sd bd sd bd [sd sd] [bd bd] [sd sd sd sd]")
+let drums = s("bd sd bd sd bd [sd sd] [bd bd] [sd sd sd sd]")
   .bank("RolandTR909").gain(.75)
-$: s("hh*16").bank("RolandTR909")
+let hats = s("hh*16").bank("RolandTR909")
   .gain("[.2 .3 .25 .35]*4")
-$: s("oh ~ ~ ~ oh ~ oh oh")
-  .bank("RolandTR909").gain(.3)`,
+let openHat = s("oh ~ ~ ~ oh ~ oh oh")
+  .bank("RolandTR909").gain(.3)
+
+$: arrange(
+  [2, drums],
+  [2, stack(drums, hats)],
+  [4, stack(drums, hats, openHat)])`,
       },
       {
         label: 'Layered Kit',
         code: `// layered multi-kit drums
-$: s("bd*4").bank("RolandTR909").gain(.8)
-$: s("bd*4").bank("RolandTR808").gain(.3)
-$: s("~ cp ~ ~").bank("RolandTR909").gain(.6)
-$: s("~ sd ~ ~").bank("RolandTR808").gain(.25)
-$: s("[~ hh]*4").bank("RolandTR909").gain(.4)
-$: s("hh*16").bank("RolandTR808").gain("[.1 .2]*8")`,
+let kick = s("bd*4").bank("RolandTR909").gain(.8)
+let kick2 = s("bd*4").bank("RolandTR808").gain(.3)
+let clap = s("~ cp ~ ~").bank("RolandTR909").gain(.6)
+let snare = s("~ sd ~ ~").bank("RolandTR808").gain(.25)
+let hats = s("[~ hh]*4").bank("RolandTR909").gain(.4)
+let hats2 = s("hh*16").bank("RolandTR808").gain("[.1 .2]*8")
+
+$: arrange(
+  [2, stack(kick, kick2)],
+  [2, stack(kick, kick2, clap, snare)],
+  [4, stack(kick, kick2, clap, snare, hats, hats2)])`,
       },
     ],
   },
@@ -654,365 +926,467 @@ $: s("hh*16").bank("RolandTR808").gain("[.1 .2]*8")`,
       {
         label: 'Piano Melody',
         code: `// flowing piano line
-$: note("c4 e4 g4 b4 c5 b4 g4 e4")
-  .s("piano").gain(.6).room(.3)`,
+let piano = note("c4 e4 g4 b4 c5 b4 g4 e4")
+  .s("piano").gain(.6).room(.3)
+
+$: arrange([4, piano])`,
       },
       {
         label: 'Supersaw Arp',
         code: `// supersaw arpeggio
-$: note("c3 e3 g3 b3 c4 b3 g3 e3")
+let synth = note("c3 e3 g3 b3 c4 b3 g3 e3")
   .s("supersaw").gain(.4)
-  .lpf(2500).room(.3)`,
+  .lpf(2500).room(.3)
+
+$: arrange([4, synth])`,
       },
       {
         label: 'FM Bell',
         code: `// fm bell tones
-$: note("<c5 e5 g5 b5>")
+let lead = note("<c5 e5 g5 b5>")
   .s("sine").gain(.4)
   .fmi(2).fmh(3)
-  .room(.5).decay(.8)`,
+  .room(.5).decay(.8)
+
+$: arrange([4, lead])`,
       },
       {
         label: 'Pentatonic Pluck',
         code: `// pentatonic pluck riff
-$: n("0 2 4 6 9 6 4 2")
+let lead = n("0 2 4 6 9 6 4 2")
   .scale("A3:minor pentatonic")
   .s("triangle").gain(.5)
-  .decay(.2).lpf(3000)`,
+  .decay(.2).lpf(3000)
+
+$: arrange([4, lead])`,
       },
       {
         label: 'Piano Phase',
         code: `// piano phasing pattern
-$: note("e4 g4 b4 d5 d5 g4 e4 d5 b4 g4 d5 d5")
-  .s("piano").gain(.5).slow(2)`,
+let piano = note("e4 g4 b4 d5 d5 g4 e4 d5 b4 g4 d5 d5")
+  .s("piano").gain(.5).slow(2)
+
+$: arrange([4, piano])`,
       },
       {
         label: 'Stacked Octaves',
         code: `// octave layering
-$: note("<c3 e3 g3 b3>")
+let synth = note("<c3 e3 g3 b3>")
   .s("sawtooth").gain(.35)
   .add(note("<c4 e4 g4 b4>"))
-  .lpf(2000).room(.3)`,
+  .lpf(2000).room(.3)
+
+$: arrange([4, synth])`,
       },
       {
         label: 'Vibraphone Jazz',
         code: `// jazz vibraphone melody
-$: note("g4 b4 d5 c5 a4 f4 g4 b4")
+let bells = note("g4 b4 d5 c5 a4 f4 g4 b4")
   .s("gm_vibraphone").velocity(.5)
-  .room(.4).delay(.2)`,
+  .room(.4).delay(.2)
+
+$: arrange([4, bells])`,
       },
       {
         label: 'Music Box',
         code: `// delicate music box
-$: note("c5 e5 g5 c6 g5 e5 c5 e5")
+let bells = note("c5 e5 g5 c6 g5 e5 c5 e5")
   .s("gm_music_box").velocity(.4)
-  .room(.5).delay(.2).slow(2)`,
+  .room(.5).delay(.2).slow(2)
+
+$: arrange([4, bells])`,
       },
       {
         label: 'Sine Lead',
         code: `// pure sine lead
-$: note("c4 ~ e4 ~ g4 ~ b4 ~")
+let lead = note("c4 ~ e4 ~ g4 ~ b4 ~")
   .s("sine").gain(.5)
-  .room(.3).delay(.15)`,
+  .room(.3).delay(.15)
+
+$: arrange([4, lead])`,
       },
       {
         label: 'Square Melody',
         code: `// retro square wave
-$: note("a3 c4 e4 a4 g4 e4 c4 a3")
+let synth = note("a3 c4 e4 a4 g4 e4 c4 a3")
   .s("square").gain(.35)
-  .lpf(1800).decay(.3)`,
+  .lpf(1800).decay(.3)
+
+$: arrange([4, synth])`,
       },
       {
         label: 'Flute Line',
         code: `// flute melody
-$: note("d5 f5 a5 g5 f5 d5 c5 d5")
+let flute = note("d5 f5 a5 g5 f5 d5 c5 d5")
   .s("gm_flute").velocity(.5)
-  .room(.4)`,
+  .room(.4)
+
+$: arrange([4, flute])`,
       },
       {
         label: 'Marimba Run',
         code: `// marimba scale run
-$: n("0 1 2 3 4 5 6 7")
+let bells = n("0 1 2 3 4 5 6 7")
   .scale("D4:dorian")
   .s("gm_marimba").velocity(.5)
-  .room(.3)`,
+  .room(.3)
+
+$: arrange([4, bells])`,
       },
       {
         label: 'Trill',
         code: `// rapid note trill
-$: note("[c4 d4]*4")
+let piano = note("[c4 d4]*4")
   .s("piano").gain(.45)
-  .room(.2)`,
+  .room(.2)
+
+$: arrange([4, piano])`,
       },
       {
         label: 'Descending Run',
         code: `// descending scale
-$: n("7 6 5 4 3 2 1 0")
+let lead = n("7 6 5 4 3 2 1 0")
   .scale("A4:minor")
   .s("triangle").gain(.45)
-  .lpf(2500)`,
+  .lpf(2500)
+
+$: arrange([4, lead])`,
       },
       {
         label: 'Chromatic Rise',
         code: `// chromatic ascent
-$: note("c4 d4 d4 e4 e4 f4 g4 g4")
+let synth = note("c4 d4 d4 e4 e4 f4 g4 g4")
   .s("sawtooth").gain(.35)
-  .lpf(2200).decay(.2)`,
+  .lpf(2200).decay(.2)
+
+$: arrange([4, synth])`,
       },
       {
         label: 'Harp Gliss',
         code: `// harp glissando
-$: n("0 2 4 5 7 9 11 12")
+let harp = n("0 2 4 5 7 9 11 12")
   .scale("C4:major")
   .s("gm_harp").velocity(.45)
-  .room(.5).slow(2)`,
+  .room(.5).slow(2)
+
+$: arrange([4, harp])`,
       },
       {
         label: 'Random Notes',
         code: `// random note picker
-$: n(irand(8).segment(8))
+let piano = n(irand(8).segment(8))
   .scale("A3:minor pentatonic")
-  .s("piano").gain(.5)`,
+  .s("piano").gain(.5)
+
+$: arrange([4, piano])`,
       },
       {
         label: 'Delayed Lead',
         code: `// delay-soaked lead
-$: note("c4 e4 g4 c5")
+let lead = note("c4 e4 g4 c5")
   .s("sine").gain(.45)
   .delay(.5).delayfeedback(.55)
-  .room(.3)`,
+  .room(.3)
+
+$: arrange([4, lead])`,
       },
       {
         label: 'Xylophone',
         code: `// bright xylophone
-$: note("e5 g5 a5 b5 a5 g5 e5 d5")
+let bells = note("e5 g5 a5 b5 a5 g5 e5 d5")
   .s("gm_xylophone").velocity(.5)
-  .room(.3)`,
+  .room(.3)
+
+$: arrange([4, bells])`,
       },
       {
         label: 'Glide Saw',
         code: `// portamento sawtooth
-$: note("c3 g3 e4 c4 g3 e3 c3 g2")
+let synth = note("c3 g3 e4 c4 g3 e3 c3 g2")
   .s("sawtooth").gain(.35)
-  .lpf(1500).glide(.1)`,
+  .lpf(1500).glide(.1)
+
+$: arrange([4, synth])`,
       },
       {
         label: 'Pizzicato',
         code: `// pizzicato strings
-$: n("0 4 7 12 7 4 0 -5")
+let strings = n("0 4 7 12 7 4 0 -5")
   .scale("A3:minor")
   .s("gm_pizzicato_strings").velocity(.5)
-  .room(.3)`,
+  .room(.3)
+
+$: arrange([4, strings])`,
       },
       {
         label: 'Organ Lead',
         code: `// organ melody line
-$: note("c4 d4 e4 f4 g4 f4 e4 d4")
+let organ = note("c4 d4 e4 f4 g4 f4 e4 d4")
   .s("gm_drawbar_organ").velocity(.5)
-  .room(.3)`,
+  .room(.3)
+
+$: arrange([4, organ])`,
       },
       {
         label: 'Celesta',
         code: `// celesta sparkle
-$: note("g5 a5 b5 d6 b5 a5 g5 g5")
+let bells = note("g5 a5 b5 d6 b5 a5 g5 g5")
   .s("gm_celesta").velocity(.4)
-  .room(.5).delay(.2)`,
+  .room(.5).delay(.2)
+
+$: arrange([4, bells])`,
       },
       {
         label: 'Whistle',
         code: `// whistle melody
-$: note("c5 d5 e5 g5 e5 d5 c5 a4")
+let whistle = note("c5 d5 e5 g5 e5 d5 c5 a4")
   .s("gm_whistle").velocity(.45)
-  .room(.3)`,
+  .room(.3)
+
+$: arrange([4, whistle])`,
       },
       {
         label: 'Kalimba',
         code: `// kalimba thumb piano
-$: n("0 2 4 7 9 7 4 2")
+let bells = n("0 2 4 7 9 7 4 2")
   .scale("C5:major pentatonic")
   .s("gm_kalimba").velocity(.5)
-  .room(.4)`,
+  .room(.4)
+
+$: arrange([4, bells])`,
       },
       {
         label: 'Recorder',
         code: `// gentle recorder
-$: note("f4 g4 a4 c5 a4 g4 f4 e4")
+let flute = note("f4 g4 a4 c5 a4 g4 f4 e4")
   .s("gm_recorder").velocity(.4)
-  .room(.3)`,
+  .room(.3)
+
+$: arrange([4, flute])`,
       },
       {
         label: 'Synth Brass',
         code: `// synth brass lead
-$: note("c4 ~ e4 ~ g4 ~ c5 ~")
+let brass = note("c4 ~ e4 ~ g4 ~ c5 ~")
   .s("gm_synth_brass1").velocity(.5)
-  .lpf(2500)`,
+  .lpf(2500)
+
+$: arrange([4, brass])`,
       },
       {
         label: 'Arp Up Down',
         code: `// arp up and down
-$: n("0 2 4 7 9 12 9 7 4 2 0 -3")
+let synth = n("0 2 4 7 9 12 9 7 4 2 0 -3")
   .scale("A2:minor pentatonic")
   .s("sawtooth").gain(.35)
-  .lpf(2000).room(.3)`,
+  .lpf(2000).room(.3)
+
+$: arrange([4, synth])`,
       },
       {
         label: 'Pan Flute',
         code: `// pan flute line
-$: note("e4 g4 a4 b4 d5 b4 a4 g4")
+let flute = note("e4 g4 a4 b4 d5 b4 a4 g4")
   .s("gm_pan_flute").velocity(.45)
-  .room(.4)`,
+  .room(.4)
+
+$: arrange([4, flute])`,
       },
       {
         label: 'Trumpet Line',
         code: `// trumpet melody
-$: note("c4 e4 g4 c5 ~ g4 e4 c4")
+let brass = note("c4 e4 g4 c5 ~ g4 e4 c4")
   .s("gm_trumpet").velocity(.45)
-  .room(.3)`,
+  .room(.3)
+
+$: arrange([4, brass])`,
       },
       {
         label: 'Oboe Nocturne',
         code: `// oboe nocturne melody
-$: note("d4 f4 a4 g4 f4 e4 d4 c4 d4 f4 a4 c5 a4 g4 f4 d4")
+let woodwind = note("d4 f4 a4 g4 f4 e4 d4 c4 d4 f4 a4 c5 a4 g4 f4 d4")
   .s("gm_oboe").velocity(.45)
-  .room(.5).delay(.2).slow(2)`,
+  .room(.5).delay(.2).slow(2)
+
+$: arrange([4, woodwind])`,
       },
       {
         label: 'Clarinet Jazz',
         code: `// jazz clarinet run
-$: note("c4 d4 e4 f4 g4 b4 c5 b4 g4 f4 e4 d4 c4 b3 g3 c4")
+let woodwind = note("c4 d4 e4 f4 g4 b4 c5 b4 g4 f4 e4 d4 c4 b3 g3 c4")
   .s("gm_clarinet").velocity(.45)
-  .room(.4).slow(2)`,
+  .room(.4).slow(2)
+
+$: arrange([4, woodwind])`,
       },
       {
         label: 'Banjo Bluegrass',
         code: `// bluegrass banjo roll
-$: note("c4 e4 g4 c5 e4 g4 c5 e5 c5 g4 e4 c4 g3 c4 e4 g4")
+let guitar = note("c4 e4 g4 c5 e4 g4 c5 e5 c5 g4 e4 c4 g3 c4 e4 g4")
   .s("gm_banjo").velocity(.5)
-  .room(.25).slow(2)`,
+  .room(.25).slow(2)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Shakuhachi Zen',
         code: `// zen shakuhachi melody
-$: note("d4 ~ f4 ~ a4 ~ g4 ~ f4 ~ d4 ~ c4 ~ d4 ~")
+let flute = note("d4 ~ f4 ~ a4 ~ g4 ~ f4 ~ d4 ~ c4 ~ d4 ~")
   .s("gm_shakuhachi").velocity(.4)
-  .room(.6).delay(.3).delayfeedback(.4).slow(2)`,
+  .room(.6).delay(.3).delayfeedback(.4).slow(2)
+
+$: arrange([4, flute])`,
       },
       {
         label: 'Sitar Raga',
         code: `// sitar raga phrase
-$: note("c4 d4 e4 f4 g4 a4 b4 c5 b4 a4 g4 f4 e4 d4 c4 d4")
+let sitar = note("c4 d4 e4 f4 g4 a4 b4 c5 b4 a4 g4 f4 e4 d4 c4 d4")
   .s("gm_sitar").velocity(.45)
-  .room(.4).slow(2)`,
+  .room(.4).slow(2)
+
+$: arrange([4, sitar])`,
       },
       {
         label: 'Accordion Waltz',
         code: `// accordion waltz melody
-$: note("c4 e4 g4 e4 c4 g3 c4 e4 f4 a4 c5 a4 f4 c4 f4 a4")
+let accordion = note("c4 e4 g4 e4 c4 g3 c4 e4 f4 a4 c5 a4 f4 c4 f4 a4")
   .s("gm_accordion").velocity(.4)
-  .room(.3).slow(2)`,
+  .room(.3).slow(2)
+
+$: arrange([4, accordion])`,
       },
       {
         label: 'Harmonica Blues',
         code: `// blues harmonica riff
-$: note("c4 e4 f4 g4 g4 ~ b4 g4 f4 e4 c4 ~ b3 c4 e4 ~")
+let harmonica = note("c4 e4 f4 g4 g4 ~ b4 g4 f4 e4 c4 ~ b3 c4 e4 ~")
   .s("gm_harmonica").velocity(.45)
-  .room(.3).slow(2)`,
+  .room(.3).slow(2)
+
+$: arrange([4, harmonica])`,
       },
       {
         label: 'Ocarina Dreamy',
         code: `// dreamy ocarina melody
-$: note("e4 g4 a4 b4 d5 b4 a4 g4 e4 d4 e4 g4 a4 e4 d4 e4")
+let flute = note("e4 g4 a4 b4 d5 b4 a4 g4 e4 d4 e4 g4 a4 e4 d4 e4")
   .s("gm_ocarina").velocity(.4)
-  .room(.5).delay(.25).delayfeedback(.35).slow(2)`,
+  .room(.5).delay(.25).delayfeedback(.35).slow(2)
+
+$: arrange([4, flute])`,
       },
       {
         label: 'Steel Drum Island',
         code: `// island steel drum melody
-$: note("c4 e4 g4 c5 a4 g4 e4 c4 d4 f4 a4 d5 c5 a4 f4 d4")
+let bells = note("c4 e4 g4 c5 a4 g4 e4 c4 d4 f4 a4 d5 c5 a4 f4 d4")
   .s("gm_steel_drum").velocity(.45)
-  .room(.3).slow(2)`,
+  .room(.3).slow(2)
+
+$: arrange([4, bells])`,
       },
       {
         label: 'Glockenspiel Frost',
         code: `// frosty glockenspiel
-$: note("c5 d5 e5 g5 a5 g5 e5 d5 c5 e5 g5 c6 g5 e5 d5 c5")
+let bells = note("c5 d5 e5 g5 a5 g5 e5 d5 c5 e5 g5 c6 g5 e5 d5 c5")
   .s("gm_glockenspiel").velocity(.4)
-  .room(.5).delay(.2).slow(2)`,
+  .room(.5).delay(.2).slow(2)
+
+$: arrange([4, bells])`,
       },
       {
         label: 'Dulcimer Dance',
         code: `// dulcimer folk dance
-$: note("c4 d4 e4 g4 a4 g4 e4 d4 c4 e4 g4 a4 c5 a4 g4 e4")
+let bells = note("c4 d4 e4 g4 a4 g4 e4 d4 c4 e4 g4 a4 c5 a4 g4 e4")
   .s("gm_dulcimer").velocity(.45)
-  .room(.35).slow(2)`,
+  .room(.35).slow(2)
+
+$: arrange([4, bells])`,
       },
       {
         label: 'Piccolo Flight',
         code: `// piccolo flight melody
-$: note("g5 a5 b5 d6 c6 b5 a5 g5 f5 g5 a5 c6 b5 a5 g5 f5")
+let flute = note("g5 a5 b5 d6 c6 b5 a5 g5 f5 g5 a5 c6 b5 a5 g5 f5")
   .s("gm_piccolo").velocity(.4)
-  .room(.35).slow(2)`,
+  .room(.35).slow(2)
+
+$: arrange([4, flute])`,
       },
       {
         label: 'Cello Sorrow',
         code: `// sorrowful cello line
-$: note("c3 d3 e3 g3 f3 e3 d3 c3 b2 c3 d3 f3 e3 d3 c3 b2")
+let strings = note("c3 d3 e3 g3 f3 e3 d3 c3 b2 c3 d3 f3 e3 d3 c3 b2")
   .s("gm_cello").velocity(.45)
-  .room(.5).slow(4)`,
+  .room(.5).slow(4)
+
+$: arrange([4, strings])`,
       },
       {
         label: 'Violin Soaring',
         code: `// soaring violin melody
-$: note("g4 a4 b4 d5 e5 d5 b4 a4 g4 b4 d5 g5 d5 b4 a4 g4")
+let strings = note("g4 a4 b4 d5 e5 d5 b4 a4 g4 b4 d5 g5 d5 b4 a4 g4")
   .s("gm_violin").velocity(.45)
-  .room(.5).delay(.15).slow(2)`,
+  .room(.5).delay(.15).slow(2)
+
+$: arrange([4, strings])`,
       },
       {
         label: 'Koto Garden',
         code: `// japanese koto garden
-$: note("c4 d4 f4 g4 a4 ~ c5 a4 g4 f4 d4 c4 ~ d4 f4 ~")
+let koto = note("c4 d4 f4 g4 a4 ~ c5 a4 g4 f4 d4 c4 ~ d4 f4 ~")
   .s("gm_koto").velocity(.4)
-  .room(.5).delay(.25).delayfeedback(.35).slow(2)`,
+  .room(.5).delay(.25).delayfeedback(.35).slow(2)
+
+$: arrange([4, koto])`,
       },
       {
         label: 'Alto Sax Smooth',
         code: `// smooth alto saxophone
-$: note("c4 d4 e4 g4 f4 e4 d4 c4 b3 c4 d4 f4 e4 d4 c4 b3")
+let sax = note("c4 d4 e4 g4 f4 e4 d4 c4 b3 c4 d4 f4 e4 d4 c4 b3")
   .s("gm_alto_sax").velocity(.45)
-  .room(.4).slow(2)`,
+  .room(.4).slow(2)
+
+$: arrange([4, sax])`,
       },
       {
         label: 'FM Glass',
         code: `// FM glass bell tones
-$: note("c5 e5 g5 b5 c6 b5 g5 e5 d5 f5 a5 c6 a5 f5 d5 c5")
+let lead = note("c5 e5 g5 b5 c6 b5 g5 e5 d5 f5 a5 c6 a5 f5 d5 c5")
   .s("sine").gain(.4)
   .fmi(3).fmh(5)
-  .room(.5).delay(.2).slow(2)`,
+  .room(.5).delay(.2).slow(2)
+
+$: arrange([4, lead])`,
       },
       {
         label: 'Bagpipe March',
         code: `// bagpipe march melody
-$: note("c4 d4 e4 g4 a4 g4 e4 d4 c4 d4 e4 g4 c5 g4 e4 d4")
+let bagpipe = note("c4 d4 e4 g4 a4 g4 e4 d4 c4 d4 e4 g4 c5 g4 e4 d4")
   .s("gm_bagpipe").velocity(.4)
-  .room(.4).slow(2)`,
+  .room(.4).slow(2)
+
+$: arrange([4, bagpipe])`,
       },
       {
         label: 'Dual Melody',
         code: `// dual interweaving melodies
-$: note("c4 ~ e4 ~ g4 ~ b4 ~")
+let flute = note("c4 ~ e4 ~ g4 ~ b4 ~")
   .s("gm_flute").velocity(.4)
   .room(.4)
-$: note("~ g3 ~ b3 ~ d4 ~ f4")
+let woodwind = note("~ g3 ~ b3 ~ d4 ~ f4")
   .s("gm_clarinet").velocity(.35)
-  .room(.35)`,
+  .room(.35)
+
+$: arrange(
+  [2, flute],
+  [4, stack(flute, woodwind)])`,
       },
       {
         label: 'Scale Explorer',
         code: `// whole tone scale explorer
-$: n("0 1 2 3 4 5 4 3 2 1 0 1 2 3 4 5")
+let bells = n("0 1 2 3 4 5 4 3 2 1 0 1 2 3 4 5")
   .scale("C4:major")
   .s("gm_vibraphone").velocity(.45)
-  .room(.4).delay(.15).slow(2)`,
+  .room(.4).delay(.15).slow(2)
+
+$: arrange([4, bells])`,
       },
     ],
   },
@@ -1023,365 +1397,467 @@ $: n("0 1 2 3 4 5 4 3 2 1 0 1 2 3 4 5")
       {
         label: 'House Sub',
         code: `// deep house sub bass
-$: note("<c2 c2 f2 g2>")
+let sub = note("<c2 c2 f2 g2>")
   .s("sine").gain(.6)
-  .lpf(200).shape(.15)`,
+  .lpf(200).shape(.15)
+
+$: arrange([4, sub])`,
       },
       {
         label: 'Acid 303',
         code: `// acid bassline
-$: note("c2 [~ c2] e2 [c2 g1]")
+let bass = note("c2 [~ c2] e2 [c2 g1]")
   .s("sawtooth").gain(.55)
   .lpf(sine.range(400,3000))
-  .lpq(12).decay(.15)`,
+  .lpq(12).decay(.15)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Reese Bass',
         code: `// thick reese bass
-$: note("<c1 c1 e1 f1>")
+let bass = note("<c1 c1 e1 f1>")
   .s("sawtooth").gain(.5)
-  .lpf(500).shape(.3)`,
+  .lpf(500).shape(.3)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'DnB Jump',
         code: `// jumping dnb bass
-$: note("[c2 ~] [~ g2] [e2 ~] [~ c2]")
+let bass = note("[c2 ~] [~ g2] [e2 ~] [~ c2]")
   .s("sawtooth").gain(.55)
-  .lpf(800).shape(.2)`,
+  .lpf(800).shape(.2)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Wobble',
         code: `// wobble bass
-$: note("c2").s("sawtooth")
+let bass = note("c2").s("sawtooth")
   .gain(.5)
   .lpf(sine.range(200,2000).fast(4))
-  .lpq(8)`,
+  .lpq(8)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Funk Slap',
         code: `// funky slap bass
-$: note("c2 ~ g2 ~ a2 ~ g2 e2")
+let bass = note("c2 ~ g2 ~ a2 ~ g2 e2")
   .s("square").gain(.5)
-  .lpf(1200).decay(.12)`,
+  .lpf(1200).decay(.12)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Sub Pulse',
         code: `// pulsing sub
-$: note("c1*4").s("sine")
+let sub = note("c1*4").s("sine")
   .gain("[.4 .6 .5 .7]")
-  .lpf(120)`,
+  .lpf(120)
+
+$: arrange([4, sub])`,
       },
       {
         label: 'Octave Jump',
         code: `// octave-jumping bass
-$: note("c2 c3 c2 c3 e2 e3 g2 g3")
+let bass = note("c2 c3 c2 c3 e2 e3 g2 g3")
   .s("sawtooth").gain(.45)
-  .lpf(1000).decay(.15)`,
+  .lpf(1000).decay(.15)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'FM Bass',
         code: `// fm deep bass
-$: note("<c2 f2 g2 e2>")
+let sub = note("<c2 f2 g2 e2>")
   .s("sine").gain(.5)
   .fmi(1).fmh(2)
-  .lpf(300)`,
+  .lpf(300)
+
+$: arrange([4, sub])`,
       },
       {
         label: 'Dub Bass',
         code: `// dub reggae bass
-$: note("c2 ~ ~ c2 ~ ~ e2 ~")
+let sub = note("c2 ~ ~ c2 ~ ~ e2 ~")
   .s("sine").gain(.55)
   .lpf(300).shape(.2)
-  .room(.3)`,
+  .room(.3)
+
+$: arrange([4, sub])`,
       },
       {
         label: 'Pluck Bass',
         code: `// plucked bass
-$: note("c2 e2 g2 c3")
+let bass = note("c2 e2 g2 c3")
   .s("triangle").gain(.5)
-  .decay(.1).lpf(1500)`,
+  .decay(.1).lpf(1500)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Distorted Sub',
         code: `// distorted sub bass
-$: note("<c1 e1 f1 g1>")
+let sub = note("<c1 e1 f1 g1>")
   .s("sine").gain(.5)
-  .shape(.5).lpf(250)`,
+  .shape(.5).lpf(250)
+
+$: arrange([4, sub])`,
       },
       {
         label: 'Glide Bass',
         code: `// sliding bassline
-$: note("c2 g2 e2 c2")
+let bass = note("c2 g2 e2 c2")
   .s("sawtooth").gain(.45)
-  .glide(.15).lpf(900)`,
+  .glide(.15).lpf(900)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Pulse Width',
         code: `// pulse width bass
-$: note("<c2 f2 e2 g2>")
+let bass = note("<c2 f2 e2 g2>")
   .s("square").gain(.45)
   .pw(sine.range(.1,.9).slow(4))
-  .lpf(800)`,
+  .lpf(800)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Stab Bass',
         code: `// short stab bass
-$: note("c2 ~ ~ c2 e2 ~ ~ ~")
+let bass = note("c2 ~ ~ c2 e2 ~ ~ ~")
   .s("sawtooth").gain(.5)
-  .decay(.08).lpf(1200)`,
+  .decay(.08).lpf(1200)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Rolling Bass',
         code: `// rolling eighth bass
-$: note("c2 c2 e2 e2 f2 f2 g2 g2")
+let sub = note("c2 c2 e2 e2 f2 f2 g2 g2")
   .s("sine").gain(.5)
-  .lpf(400).shape(.15)`,
+  .lpf(400).shape(.15)
+
+$: arrange([4, sub])`,
       },
       {
         label: 'Detuned Bass',
         code: `// detuned thick bass
-$: note("<c2 f2 g2 e2>")
+let bass = note("<c2 f2 g2 e2>")
   .s("sawtooth").gain(.4)
-  .detune(12).lpf(700)`,
+  .detune(12).lpf(700)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Synth Bass',
         code: `// synth bass riff
-$: note("c2 ~ e2 c2 g1 ~ c2 ~")
+let bass = note("c2 ~ e2 c2 g1 ~ c2 ~")
   .s("square").gain(.45)
   .lpf(sine.range(500,1500))
-  .decay(.15)`,
+  .decay(.15)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Filtered Sub',
         code: `// filter sweep sub
-$: note("c1*2").s("sine").gain(.55)
+let sub = note("c1*2").s("sine").gain(.55)
   .lpf(sine.range(80,300).slow(8))
-  .shape(.2)`,
+  .shape(.2)
+
+$: arrange([4, sub])`,
       },
       {
         label: 'Trap 808',
         code: `// long 808 bass
-$: note("c1 ~ ~ ~ e1 ~ ~ ~")
+let sub = note("c1 ~ ~ ~ e1 ~ ~ ~")
   .s("sine").gain(.6)
   .decay(1).lpf(200)
-  .shape(.25)`,
+  .shape(.25)
+
+$: arrange([4, sub])`,
       },
       {
         label: 'Squelch Bass',
         code: `// squelchy acid bass
-$: note("c2 c2 [c2 e2] c2")
+let bass = note("c2 c2 [c2 e2] c2")
   .s("sawtooth").gain(.5)
   .lpf(sine.range(300,2500).fast(2))
-  .lpq(15).decay(.12)`,
+  .lpq(15).decay(.12)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Finger Bass',
         code: `// finger bass pluck
-$: note("c2 ~ g2 ~ a2 ~ g2 e2")
-  .s("gm_electric_bass_finger").velocity(.55)`,
+let bass = note("c2 ~ g2 ~ a2 ~ g2 e2")
+  .s("gm_electric_bass_finger").velocity(.55)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Fretless Bass',
         code: `// fretless smooth
-$: note("c2 d2 e2 f2 g2 f2 e2 d2")
+let bass = note("c2 d2 e2 f2 g2 f2 e2 d2")
   .s("gm_fretless_bass").velocity(.5)
-  .room(.2)`,
+  .room(.2)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Slap Pick',
         code: `// slap bass pick
-$: note("c2 ~ c2 g2 ~ g2 b2 ~")
-  .s("gm_slap_bass1").velocity(.55)`,
+let bass = note("c2 ~ c2 g2 ~ g2 b2 ~")
+  .s("gm_slap_bass1").velocity(.55)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Chorus Bass',
         code: `// chorus detuned bass
-$: note("<c2 e2 f2 g2>")
+let bass = note("<c2 e2 f2 g2>")
   .s("sawtooth").gain(.4)
   .detune(15).lpf(600)
-  .room(.2)`,
+  .room(.2)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Muted Bass',
         code: `// muted staccato
-$: note("c2 c2 ~ c2 e2 e2 ~ e2")
+let bass = note("c2 c2 ~ c2 e2 e2 ~ e2")
   .s("triangle").gain(.5)
-  .decay(.05).lpf(800)`,
+  .decay(.05).lpf(800)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Portamento Bass',
         code: `// sliding bass
-$: note("c2 e2 g2 c3 g2 e2")
+let sub = note("c2 e2 g2 c3 g2 e2")
   .s("sine").gain(.5)
-  .glide(.2).lpf(400)`,
+  .glide(.2).lpf(400)
+
+$: arrange([4, sub])`,
       },
       {
         label: 'Phat Sub',
         code: `// phat layered sub
-$: note("<c1 e1 f1 g1>")
+let sub = note("<c1 e1 f1 g1>")
   .s("sine").gain(.55)
   .shape(.3).lpf(150)
-$: note("<c2 e2 f2 g2>")
+let bass = note("<c2 e2 f2 g2>")
   .s("triangle").gain(.25)
-  .lpf(500)`,
+  .lpf(500)
+
+$: arrange(
+  [2, sub],
+  [4, stack(sub, bass)])`,
       },
       {
         label: 'Arpeggio Bass',
         code: `// arpeggiated bass
-$: note("c2 g2 e2 g2 c2 b1 e2 b1")
+let bass = note("c2 g2 e2 g2 c2 b1 e2 b1")
   .s("sawtooth").gain(.45)
-  .lpf(1200).decay(.1)`,
+  .lpf(1200).decay(.1)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Sine Kick Bass',
         code: `// kick-like sine bass
-$: note("c1*4").s("sine")
+let sub = note("c1*4").s("sine")
   .gain(.6).decay(.3)
-  .lpf(100).shape(.4)`,
+  .lpf(100).shape(.4)
+
+$: arrange([4, sub])`,
       },
       {
         label: 'Funk Thumb',
         code: `// funk thumb bass groove
-$: note("c2 ~ c2 g2 ~ g2 b2 c3 c2 ~ e2 c2 g1 ~ c2 ~")
+let bass = note("c2 ~ c2 g2 ~ g2 b2 c3 c2 ~ e2 c2 g1 ~ c2 ~")
   .s("gm_electric_bass_finger").velocity(.55)
-  .room(.2).slow(2)`,
+  .room(.2).slow(2)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Reggae Offbeat',
         code: `// reggae offbeat bass
-$: note("~ c2 ~ c2 ~ e2 ~ c2 ~ c2 ~ g2 ~ f2 ~ c2")
+let sub = note("~ c2 ~ c2 ~ e2 ~ c2 ~ c2 ~ g2 ~ f2 ~ c2")
   .s("sine").gain(.55)
-  .lpf(300).shape(.2).slow(2)`,
+  .lpf(300).shape(.2).slow(2)
+
+$: arrange([4, sub])`,
       },
       {
         label: 'Prog Sequence',
         code: `// progressive bass sequence
-$: note("c2 d2 e2 f2 g2 a2 b2 c3 b2 a2 g2 f2 e2 d2 c2 g1")
+let bass = note("c2 d2 e2 f2 g2 a2 b2 c3 b2 a2 g2 f2 e2 d2 c2 g1")
   .s("sawtooth").gain(.45)
   .lpf(sine.range(400,1500).slow(8))
-  .room(.2).slow(2)`,
+  .room(.2).slow(2)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Disco Octave',
         code: `// disco octave bass
-$: note("c2 c3 c2 c3 f2 f3 f2 f3 g2 g3 g2 g3 b2 b3 b2 b3")
+let bass = note("c2 c3 c2 c3 f2 f3 f2 f3 g2 g3 g2 g3 b2 b3 b2 b3")
   .s("square").gain(.45)
-  .lpf(1200).decay(.1).slow(2)`,
+  .lpf(1200).decay(.1).slow(2)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Electro Pulse',
         code: `// electro synth bass pulse
-$: note("c2 c2 [c2 e2] c2 c2 [c2 g2] c2 c2")
+let bass = note("c2 c2 [c2 e2] c2 c2 [c2 g2] c2 c2")
   .s("sawtooth").gain(.5)
   .lpf(sine.range(300,2000).fast(2))
-  .lpq(8).shape(.15)`,
+  .lpq(8).shape(.15)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Motown Walking',
         code: `// motown walking bass
-$: note("c2 d2 e2 f2 g2 a2 b2 c3 g2 f2 e2 d2 c2 b1 a1 g1")
+let bass = note("c2 d2 e2 f2 g2 a2 b2 c3 g2 f2 e2 d2 c2 b1 a1 g1")
   .s("gm_acoustic_bass").velocity(.5)
-  .room(.2).slow(2)`,
+  .room(.2).slow(2)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Neuro Riff',
         code: `// neuro bass riff
-$: note("c1 c1 [e1 c1] g1 c1 c1 [f1 e1] c1")
+let bass = note("c1 c1 [e1 c1] g1 c1 c1 [f1 e1] c1")
   .s("sawtooth").gain(.5)
   .lpf(sine.range(200,3000).fast(4))
-  .lpq(12).shape(.3).crush(12)`,
+  .lpq(12).shape(.3).crush(12)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Latin Bass',
         code: `// latin bass montuno
-$: note("c2 ~ e2 c2 g2 ~ c2 ~ f2 ~ a2 f2 c3 ~ f2 ~")
+let bass = note("c2 ~ e2 c2 g2 ~ c2 ~ f2 ~ a2 f2 c3 ~ f2 ~")
   .s("gm_acoustic_bass").velocity(.5)
-  .room(.2).slow(2)`,
+  .room(.2).slow(2)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Deep Dub',
         code: `// deep dub bass drop
-$: note("c2 ~ ~ c2 ~ ~ e2 ~ ~ ~ g2 ~ ~ ~ c2 ~")
+let sub = note("c2 ~ ~ c2 ~ ~ e2 ~ ~ ~ g2 ~ ~ ~ c2 ~")
   .s("sine").gain(.6)
   .lpf(250).shape(.25)
-  .room(.4).delay(.4).delayfeedback(.5).slow(2)`,
+  .room(.4).delay(.4).delayfeedback(.5).slow(2)
+
+$: arrange([4, sub])`,
       },
       {
         label: 'Synth Bass Arp',
         code: `// synth bass arpeggio
-$: note("c2 g2 e2 g2 c3 g2 e2 c2 b1 f2 d2 f2 b2 f2 d2 b1")
+let bass = note("c2 g2 e2 g2 c3 g2 e2 c2 b1 f2 d2 f2 b2 f2 d2 b1")
   .s("square").gain(.45)
-  .lpf(1500).decay(.1).slow(2)`,
+  .lpf(1500).decay(.1).slow(2)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Picked Electric',
         code: `// electric bass picked
-$: note("c2 c2 g2 g2 a2 a2 g2 e2")
-  .s("gm_electric_bass_pick").velocity(.55)`,
+let bass = note("c2 c2 g2 g2 a2 a2 g2 e2")
+  .s("gm_electric_bass_pick").velocity(.55)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Fretless Glide',
         code: `// fretless gliding bass
-$: note("c2 d2 e2 g2 a2 g2 e2 d2 c2 b1 a1 b1 c2 e2 g2 c3")
+let bass = note("c2 d2 e2 g2 a2 g2 e2 d2 c2 b1 a1 b1 c2 e2 g2 c3")
   .s("gm_fretless_bass").velocity(.5)
-  .glide(.1).room(.25).slow(2)`,
+  .glide(.1).room(.25).slow(2)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Dubstep Half',
         code: `// dubstep half-time bass
-$: note("c1 ~ ~ ~ ~ ~ ~ ~ e1 ~ ~ ~ ~ ~ ~ ~")
+let bass = note("c1 ~ ~ ~ ~ ~ ~ ~ e1 ~ ~ ~ ~ ~ ~ ~")
   .s("sawtooth").gain(.55)
   .lpf(sine.range(100,2500).fast(4))
-  .lpq(10).shape(.3).slow(2)`,
+  .lpq(10).shape(.3).slow(2)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Trance Pulse',
         code: `// trance bass pulse
-$: note("c2 c2 c2 c2 c2 c2 c2 c2")
+let bass = note("c2 c2 c2 c2 c2 c2 c2 c2")
   .s("sawtooth").gain(.45)
   .lpf(sine.range(300,1500).slow(8))
-  .decay(.1).shape(.15)`,
+  .decay(.1).shape(.15)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Hip-Hop 808 Slide',
         code: `// hip-hop 808 slide
-$: note("c1 ~ ~ ~ e1 ~ c1 ~")
+let sub = note("c1 ~ ~ ~ e1 ~ c1 ~")
   .s("sine").gain(.6)
   .glide(.15).decay(.8)
-  .lpf(180).shape(.3)`,
+  .lpf(180).shape(.3)
+
+$: arrange([4, sub])`,
       },
       {
         label: 'Jazz Walking',
         code: `// jazz walking bass line
-$: note("c2 e2 g2 a2 b2 a2 g2 e2 f2 a2 c3 d3 c3 a2 f2 c2")
+let bass = note("c2 e2 g2 a2 b2 a2 g2 e2 f2 a2 c3 d3 c3 a2 f2 c2")
   .s("gm_acoustic_bass").velocity(.5)
-  .room(.3).slow(2)`,
+  .room(.3).slow(2)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Techno Acid Long',
         code: `// long acid techno bass
-$: note("c2 [~ c2] e2 [c2 g1] f2 [~ f2] e2 [c2 b1]")
+let bass = note("c2 [~ c2] e2 [c2 g1] f2 [~ f2] e2 [c2 b1]")
   .s("sawtooth").gain(.5)
   .lpf(sine.range(300,4000).fast(2))
-  .lpq(14).decay(.12)`,
+  .lpq(14).decay(.12)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Choir Sub',
         code: `// choir sub layer bass
-$: note("<c2 a1 b1 g1>")
+let sub = note("<c2 a1 b1 g1>")
   .s("sine").gain(.55)
   .lpf(200).shape(.2).slow(2)
-$: note("<c3 a2 b2 g2>")
+let lead = note("<c3 a2 b2 g2>")
   .s("triangle").gain(.2)
-  .lpf(600).slow(2)`,
+  .lpf(600).slow(2)
+
+$: arrange(
+  [2, sub],
+  [4, stack(sub, lead)])`,
       },
       {
         label: 'Multi-Octave Bass',
         code: `// multi-octave bass riff
-$: note("c1 c2 c3 c2 e1 e2 e3 e2 f1 f2 f3 f2 g1 g2 g3 g2")
+let bass = note("c1 c2 c3 c2 e1 e2 e3 e2 f1 f2 f3 f2 g1 g2 g3 g2")
   .s("sawtooth").gain(.4)
-  .lpf(1000).decay(.1).slow(2)`,
+  .lpf(1000).decay(.1).slow(2)
+
+$: arrange([4, bass])`,
       },
     ],
   },
@@ -1392,369 +1868,479 @@ $: note("c1 c2 c3 c2 e1 e2 e3 e2 f1 f2 f3 f2 g1 g2 g3 g2")
       {
         label: 'Supersaw Pad',
         code: `// lush supersaw pad
-$: note("<[c3,e3,g3] [a2,c3,e3] [b2,d3,f3] [g2,b2,d3]>")
+let pad = note("<[c3,e3,g3] [a2,c3,e3] [b2,d3,f3] [g2,b2,d3]>")
   .s("supersaw").gain(.35)
-  .lpf(2000).room(.4).slow(2)`,
+  .lpf(2000).room(.4).slow(2)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Piano Chords',
         code: `// smooth piano chords
-$: note("<[c3,e3,g3,b3] [f3,a3,c4] [g3,b3,d4] [e3,g3,b3]>")
-  .s("piano").gain(.5).room(.3).slow(2)`,
+let keys = note("<[c3,e3,g3,b3] [f3,a3,c4] [g3,b3,d4] [e3,g3,b3]>")
+  .s("piano").gain(.5).room(.3).slow(2)
+
+$: arrange([4, keys])`,
       },
       {
         label: 'Rhodes Chords',
         code: `// electric piano rhodes
-$: note("<[e3,g3,b3] [a3,c4,e4] [b3,d4,f4] [g3,b3,d4]>")
+let keys = note("<[e3,g3,b3] [a3,c4,e4] [b3,d4,f4] [g3,b3,d4]>")
   .s("gm_epiano1").velocity(.4)
-  .room(.4).slow(2)`,
+  .room(.4).slow(2)
+
+$: arrange([4, keys])`,
       },
       {
         label: 'Ambient Pad',
         code: `// ambient wash pad
-$: note("<[c3,g3,c4] [a2,e3,a3]>")
+let pad = note("<[c3,g3,c4] [a2,e3,a3]>")
   .s("sine").gain(.3)
   .room(.7).roomsize(5)
-  .lpf(1500).slow(4)`,
+  .lpf(1500).slow(4)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Chord Stabs',
         code: `// rhythmic chord stabs
-$: note("[c3,e3,g3] ~ [a2,c3,e3] ~")
+let pad = note("[c3,e3,g3] ~ [a2,c3,e3] ~")
   .s("supersaw").gain(.4)
-  .lpf(2500).decay(.15)`,
+  .lpf(2500).decay(.15)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Jazz Voicings',
         code: `// jazz chord voicings
-$: note("<[d3,g3,a3,c4] [g3,b3,d4,f4] [c3,e3,g3,b3] [a2,d3,e3,g3]>")
-  .s("piano").gain(.45).room(.3).slow(2)`,
+let keys = note("<[d3,g3,a3,c4] [g3,b3,d4,f4] [c3,e3,g3,b3] [a2,d3,e3,g3]>")
+  .s("piano").gain(.45).room(.3).slow(2)
+
+$: arrange([4, keys])`,
       },
       {
         label: 'Organ Chords',
         code: `// organ chord progression
-$: note("<[c3,e3,g3] [f3,a3,c4] [b2,d3,f3] [e3,g3,b3]>")
+let organ = note("<[c3,e3,g3] [f3,a3,c4] [b2,d3,f3] [e3,g3,b3]>")
   .s("gm_organ1").velocity(.4)
-  .room(.3).slow(2)`,
+  .room(.3).slow(2)
+
+$: arrange([4, organ])`,
       },
       {
         label: 'Vowel Pad',
         code: `// vowel-like pad
-$: note("<[c3,e3,g3] [a2,c3,e3]>")
+let pad = note("<[c3,e3,g3] [a2,c3,e3]>")
   .s("sawtooth").gain(.3)
   .vowel("<a e i o>")
-  .room(.5).slow(4)`,
+  .room(.5).slow(4)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'String Pad',
         code: `// orchestral strings
-$: note("<[c3,e3,g3,c4] [a2,c3,e3,a3]>")
+let strings = note("<[c3,e3,g3,c4] [a2,c3,e3,a3]>")
   .s("gm_strings1").velocity(.4)
-  .room(.4).slow(4)`,
+  .room(.4).slow(4)
+
+$: arrange([4, strings])`,
       },
       {
         label: 'Drone',
         code: `// deep drone pad
-$: note("[c2,g2,c3]")
+let bass = note("[c2,g2,c3]")
   .s("sawtooth").gain(.25)
-  .lpf(400).room(.8).roomsize(6)`,
+  .lpf(400).room(.8).roomsize(6)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Minor 7th Stack',
         code: `// stacked minor 7ths
-$: note("<[a2,c3,e3,g3] [d3,f3,a3,c4] [e3,g3,b3,d4] [a3,c4,e4,g4]>")
+let pad = note("<[a2,c3,e3,g3] [d3,f3,a3,c4] [e3,g3,b3,d4] [a3,c4,e4,g4]>")
   .s("supersaw").gain(.3)
-  .lpf(1800).room(.4).slow(2)`,
+  .lpf(1800).room(.4).slow(2)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Bright Saw Chords',
         code: `// bright sawtooth chords
-$: note("<[c4,e4,g4] [f4,a4,c5] [g4,b4,d5] [c4,e4,g4]>")
+let pad = note("<[c4,e4,g4] [f4,a4,c5] [g4,b4,d5] [c4,e4,g4]>")
   .s("sawtooth").gain(.35)
-  .lpf(3000).room(.3)`,
+  .lpf(3000).room(.3)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Power Chords',
         code: `// synth power chords
-$: note("<[c2,g2,c3] [b1,f2,b2] [a1,e2,a2] [b1,f2,b2]>")
+let bass = note("<[c2,g2,c3] [b1,f2,b2] [a1,e2,a2] [b1,f2,b2]>")
   .s("sawtooth").gain(.4)
-  .lpf(1200).shape(.15).slow(2)`,
+  .lpf(1200).shape(.15).slow(2)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Pluck Chords',
         code: `// plucked chord stabs
-$: note("[c4,e4,g4] ~ ~ [a3,c4,e4]")
+let pad = note("[c4,e4,g4] ~ ~ [a3,c4,e4]")
   .s("triangle").gain(.45)
-  .decay(.2).room(.3)`,
+  .decay(.2).room(.3)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Wide Stereo Pad',
         code: `// stereo-wide pad
-$: note("<[c3,e3,g3] [f3,a3,c4]>")
+let pad = note("<[c3,e3,g3] [f3,a3,c4]>")
   .s("supersaw").gain(.3)
   .pan(sine.range(.2,.8).slow(8))
-  .room(.5).slow(4)`,
+  .room(.5).slow(4)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Glass Pad',
         code: `// glassy bell pad
-$: note("<[c4,e4,g4,b4] [a3,c4,e4,g4]>")
+let pad = note("<[c4,e4,g4,b4] [a3,c4,e4,g4]>")
   .s("sine").gain(.35)
   .fmi(1).fmh(5)
-  .room(.6).slow(4)`,
+  .room(.6).slow(4)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Detune Wash',
         code: `// detuned wash
-$: note("<[c3,e3,g3]>")
+let pad = note("<[c3,e3,g3]>")
   .s("sawtooth").gain(.3)
   .detune(15).lpf(1500)
-  .room(.6).roomsize(4)`,
+  .room(.6).roomsize(4)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Choir Pad',
         code: `// choir aahs pad
-$: note("<[c3,e3,g3] [a2,c3,e3] [b2,d3,f3] [g2,b2,d3]>")
+let choir = note("<[c3,e3,g3] [a2,c3,e3] [b2,d3,f3] [g2,b2,d3]>")
   .s("gm_choir_aahs").velocity(.4)
-  .room(.5).slow(2)`,
+  .room(.5).slow(2)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Maj7 Shimmer',
         code: `// shimmering major 7th
-$: note("<[c3,e3,g3,b3] [f3,a3,c4,e4]>")
+let pad = note("<[c3,e3,g3,b3] [f3,a3,c4,e4]>")
   .s("supersaw").gain(.3)
   .lpf(2200).delay(.3)
-  .delayfeedback(.4).room(.4).slow(4)`,
+  .delayfeedback(.4).room(.4).slow(4)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Suspended Pad',
         code: `// suspended chord pad
-$: note("<[c3,f3,g3] [a2,d3,e3]>")
+let pad = note("<[c3,f3,g3] [a2,d3,e3]>")
   .s("sine").gain(.35)
   .room(.6).roomsize(4)
-  .lpf(1200).slow(4)`,
+  .lpf(1200).slow(4)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Wurlitzer',
         code: `// wurlitzer chords
-$: note("<[c3,e3,g3] [f3,a3,c4] [b2,d3,f3] [e3,g3,b3]>")
+let keys = note("<[c3,e3,g3] [f3,a3,c4] [b2,d3,f3] [e3,g3,b3]>")
   .s("gm_epiano2").velocity(.4)
-  .room(.3).slow(2)`,
+  .room(.3).slow(2)
+
+$: arrange([4, keys])`,
       },
       {
         label: 'Nylon Guitar Chords',
         code: `// acoustic guitar chords
-$: note("<[c3,e3,g3] [a2,c3,e3] [f2,a2,c3] [g2,b2,d3]>")
+let guitar = note("<[c3,e3,g3] [a2,c3,e3] [f2,a2,c3] [g2,b2,d3]>")
   .s("gm_nylon_guitar").velocity(.45)
-  .room(.3).slow(2)`,
+  .room(.3).slow(2)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Harpsichord',
         code: `// harpsichord arpeggiated
-$: note("<[c3,e3,g3] [d3,f3,a3] [e3,g3,b3] [c3,e3,g3]>")
+let keys = note("<[c3,e3,g3] [d3,f3,a3] [e3,g3,b3] [c3,e3,g3]>")
   .s("gm_harpsichord").velocity(.45)
-  .room(.3).slow(2)`,
+  .room(.3).slow(2)
+
+$: arrange([4, keys])`,
       },
       {
         label: 'Dim7 Tension',
         code: `// diminished 7th tension
-$: note("<[c3,e3,g3,a3] [d3,f3,a3,b3]>")
+let keys = note("<[c3,e3,g3,a3] [d3,f3,a3,b3]>")
   .s("piano").gain(.45)
-  .room(.4).slow(2)`,
+  .room(.4).slow(2)
+
+$: arrange([4, keys])`,
       },
       {
         label: 'Stack 5ths',
         code: `// stacked fifths
-$: note("<[c3,g3,d4] [b2,f3,c4] [a2,e3,b3] [b2,f3,c4]>")
+let pad = note("<[c3,g3,d4] [b2,f3,c4] [a2,e3,b3] [b2,f3,c4]>")
   .s("supersaw").gain(.3)
-  .lpf(1800).room(.4).slow(2)`,
+  .lpf(1800).room(.4).slow(2)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Tremolo Pad',
         code: `// tremolo chord pad
-$: note("[c3,e3,g3]*4")
+let pad = note("[c3,e3,g3]*4")
   .s("sine").gain(sine.range(.15,.4).fast(6))
-  .room(.5)`,
+  .room(.5)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Brass Stabs',
         code: `// brass chord stabs
-$: note("[c3,e3,g3] ~ ~ [a2,c3,e3]")
+let brass = note("[c3,e3,g3] ~ ~ [a2,c3,e3]")
   .s("gm_brass1").velocity(.5)
-  .decay(.2)`,
+  .decay(.2)
+
+$: arrange([4, brass])`,
       },
       {
         label: 'Reverse Pad',
         code: `// reverse swell pad
-$: note("<[c3,e3,g3] [a2,c3,e3]>")
+let pad = note("<[c3,e3,g3] [a2,c3,e3]>")
   .s("supersaw").gain(.3)
   .lpf(1500).attack(.8)
-  .room(.5).slow(4)`,
+  .room(.5).slow(4)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Bell Chords',
         code: `// bell-like chords
-$: note("<[c4,e4,g4] [a3,c4,e4]>")
+let pad = note("<[c4,e4,g4] [a3,c4,e4]>")
   .s("sine").gain(.35)
   .fmi(2).fmh(5)
-  .room(.5).slow(2)`,
+  .room(.5).slow(2)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Dark Minor',
         code: `// dark minor progression
-$: note("<[c3,e3,g3,b3] [a2,c3,e3,g3] [b2,d3,f3,a3] [g2,b2,d3,f3]>")
+let pad = note("<[c3,e3,g3,b3] [a2,c3,e3,g3] [b2,d3,f3,a3] [g2,b2,d3,f3]>")
   .s("sawtooth").gain(.3)
-  .lpf(1200).room(.4).slow(2)`,
+  .lpf(1200).room(.4).slow(2)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Gospel Chords',
         code: `// gospel piano chords
-$: note("<[c3,e3,g3,b3] [f3,a3,c4,e4] [d3,g3,a3,c4] [g3,b3,d4,f4]>")
+let keys = note("<[c3,e3,g3,b3] [f3,a3,c4,e4] [d3,g3,a3,c4] [g3,b3,d4,f4]>")
   .s("piano").gain(.5).room(.4).slow(2)
-$: note("<c2 f2 d2 g2>")
-  .s("gm_acoustic_bass").velocity(.4).slow(2)`,
+let bass = note("<c2 f2 d2 g2>")
+  .s("gm_acoustic_bass").velocity(.4).slow(2)
+
+$: arrange(
+  [2, keys],
+  [4, stack(keys, bass)])`,
       },
       {
         label: 'Neo Soul Chords',
         code: `// neo soul extended chords
-$: note("<[d3,g3,a3,c4,e4] [g3,b3,d4,f4,a4] [c3,e3,g3,b3,d4] [a2,d3,e3,g3,b3]>")
+let keys = note("<[d3,g3,a3,c4,e4] [g3,b3,d4,f4,a4] [c3,e3,g3,b3,d4] [a2,d3,e3,g3,b3]>")
   .s("gm_epiano1").velocity(.35)
   .room(.4).slow(2)
-$: note("<d2 g2 c2 a1>")
-  .s("sine").gain(.4).lpf(200).slow(2)`,
+let sub = note("<d2 g2 c2 a1>")
+  .s("sine").gain(.4).lpf(200).slow(2)
+
+$: arrange(
+  [2, keys],
+  [4, stack(keys, sub)])`,
       },
       {
         label: 'Synth Choir Pad',
         code: `// synth choir pad wash
-$: note("<[c3,e3,g3] [a2,c3,e3] [b2,d3,f3] [g2,b2,d3]>")
+let synthChoir = note("<[c3,e3,g3] [a2,c3,e3] [b2,d3,f3] [g2,b2,d3]>")
   .s("gm_synth_choir").velocity(.35)
   .room(.6).roomsize(5).slow(2)
-$: note("<[c4,e4,g4]>")
+let synthChoir2 = note("<[c4,e4,g4]>")
   .s("gm_synth_choir").velocity(.2)
-  .room(.7).slow(4)`,
+  .room(.7).slow(4)
+
+$: arrange(
+  [2, synthChoir],
+  [4, stack(synthChoir, synthChoir2)])`,
       },
       {
         label: 'Augmented Shimmer',
         code: `// augmented chord shimmer
-$: note("<[c3,e3,a3] [a2,c3,e3] [e3,a3,c4] [c3,e3,a3]>")
+let pad = note("<[c3,e3,a3] [a2,c3,e3] [e3,a3,c4] [c3,e3,a3]>")
   .s("supersaw").gain(.3)
   .lpf(2200).delay(.3).delayfeedback(.4)
-  .room(.5).slow(2)`,
+  .room(.5).slow(2)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Warm Pad Layers',
         code: `// layered warm pad
-$: note("<[c3,e3,g3] [a2,c3,e3]>")
+let pad = note("<[c3,e3,g3] [a2,c3,e3]>")
   .s("gm_warm_pad").velocity(.3)
   .room(.6).slow(4)
-$: note("<[c4,e4,g4] [a3,c4,e4]>")
+let pad2 = note("<[c4,e4,g4] [a3,c4,e4]>")
   .s("sine").gain(.2)
-  .room(.5).slow(4)`,
+  .room(.5).slow(4)
+
+$: arrange(
+  [2, pad],
+  [4, stack(pad, pad2)])`,
       },
       {
         label: 'R&B 9th Chords',
         code: `// R&B 9th chord voicings
-$: note("<[e3,g3,b3,d4,f4] [a3,c4,e4,g4,b4] [b3,d4,f4,a4,c5] [g3,b3,d4,f4,a4]>")
+let keys = note("<[e3,g3,b3,d4,f4] [a3,c4,e4,g4,b4] [b3,d4,f4,a4,c5] [g3,b3,d4,f4,a4]>")
   .s("gm_epiano1").velocity(.3)
-  .room(.4).slow(2)`,
+  .room(.4).slow(2)
+
+$: arrange([4, keys])`,
       },
       {
         label: 'Cinematic Strings',
         code: `// cinematic string pad
-$: note("<[c3,e3,g3,c4] [a2,c3,e3,a3] [b2,d3,f3,b3] [g2,b2,d3,g3]>")
+let strings = note("<[c3,e3,g3,c4] [a2,c3,e3,a3] [b2,d3,f3,b3] [g2,b2,d3,g3]>")
   .s("gm_strings1").velocity(.4)
   .room(.5).slow(4)
-$: note("<[c4,e4,g4]>")
+let strings2 = note("<[c4,e4,g4]>")
   .s("gm_strings2").velocity(.25)
-  .room(.6).slow(4)`,
+  .room(.6).slow(4)
+
+$: arrange(
+  [2, strings],
+  [4, stack(strings, strings2)])`,
       },
       {
         label: 'Lydian Float',
         code: `// lydian floating pad
-$: note("<[c3,e3,g3,b3] [g2,b2,d3,g3]>")
+let pad = note("<[c3,e3,g3,b3] [g2,b2,d3,g3]>")
   .s("supersaw").gain(.3)
   .lpf(2000).room(.5)
-  .delay(.3).delayfeedback(.4).slow(4)`,
+  .delay(.3).delayfeedback(.4).slow(4)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Clavichord Pluck',
         code: `// plucked clavichord chords
-$: note("<[c3,e3,g3] [f3,a3,c4] [d3,f3,a3] [g3,b3,d4]>")
+let keys = note("<[c3,e3,g3] [f3,a3,c4] [d3,f3,a3] [g3,b3,d4]>")
   .s("gm_clavichord").velocity(.45)
-  .room(.3).slow(2)`,
+  .room(.3).slow(2)
+
+$: arrange([4, keys])`,
       },
       {
         label: 'Bandcamp Synth',
         code: `// detuned synth pad
-$: note("<[c3,e3,g3] [f3,a3,c4] [b2,d3,f3] [e3,g3,b3]>")
+let pad = note("<[c3,e3,g3] [f3,a3,c4] [b2,d3,f3] [e3,g3,b3]>")
   .s("sawtooth").gain(.3)
   .detune(20).lpf(1800)
   .room(.5).slow(2)
-$: note("<[c4,e4,g4]>")
+let pad2 = note("<[c4,e4,g4]>")
   .s("triangle").gain(.15)
-  .room(.4).slow(4)`,
+  .room(.4).slow(4)
+
+$: arrange(
+  [2, pad],
+  [4, stack(pad, pad2)])`,
       },
       {
         label: 'Church Organ',
         code: `// church organ chords
-$: note("<[c3,e3,g3,c4] [f3,a3,c4,f4] [g3,b3,d4,g4] [c3,e3,g3,c4]>")
+let organ = note("<[c3,e3,g3,c4] [f3,a3,c4,f4] [g3,b3,d4,g4] [c3,e3,g3,c4]>")
   .s("gm_church_organ").velocity(.4)
-  .room(.7).roomsize(6).slow(2)`,
+  .room(.7).roomsize(6).slow(2)
+
+$: arrange([4, organ])`,
       },
       {
         label: 'Bright Poly',
         code: `// bright polysynth chords
-$: note("<[c4,e4,g4,b4] [f4,a4,c5,e5] [g4,b4,d5,f5] [c4,e4,g4,b4]>")
+let lead = note("<[c4,e4,g4,b4] [f4,a4,c5,e5] [g4,b4,d5,f5] [c4,e4,g4,b4]>")
   .s("gm_polysynth").velocity(.35)
-  .room(.4).slow(2)`,
+  .room(.4).slow(2)
+
+$: arrange([4, lead])`,
       },
       {
         label: 'Halo Ambient',
         code: `// halo ambient pad
-$: note("<[c3,g3,c4] [a2,e3,a3] [b2,f3,b3] [g2,d3,g3]>")
+let pad = note("<[c3,g3,c4] [a2,e3,a3] [b2,f3,b3] [g2,d3,g3]>")
   .s("gm_halo_pad").velocity(.3)
-  .room(.7).roomsize(5).slow(4)`,
+  .room(.7).roomsize(5).slow(4)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Crystal Shimmer',
         code: `// crystal shimmer chords
-$: note("<[c4,e4,g4] [a3,c4,e4]>")
+let pad = note("<[c4,e4,g4] [a3,c4,e4]>")
   .s("gm_crystal").velocity(.35)
-  .room(.6).delay(.3).delayfeedback(.45).slow(4)`,
+  .room(.6).delay(.3).delayfeedback(.45).slow(4)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Accordion Folk',
         code: `// folk accordion chords
-$: note("<[c3,e3,g3] [f3,a3,c4] [g3,b3,d4] [c3,e3,g3]>")
+let accordion = note("<[c3,e3,g3] [f3,a3,c4] [g3,b3,d4] [c3,e3,g3]>")
   .s("gm_accordion").velocity(.4)
-  .room(.3).slow(2)`,
+  .room(.3).slow(2)
+
+$: arrange([4, accordion])`,
       },
       {
         label: 'Metallic Pad',
         code: `// metallic ringing pad
-$: note("<[c3,e3,g3,c4] [a2,c3,e3,a3]>")
+let pad = note("<[c3,e3,g3,c4] [a2,c3,e3,a3]>")
   .s("gm_metallic_pad").velocity(.3)
-  .room(.6).roomsize(5).slow(4)`,
+  .room(.6).roomsize(5).slow(4)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Sweep Pad',
         code: `// sweeping filter pad
-$: note("<[c3,e3,g3] [a2,c3,e3] [b2,d3,f3] [g2,b2,d3]>")
+let pad = note("<[c3,e3,g3] [a2,c3,e3] [b2,d3,f3] [g2,b2,d3]>")
   .s("gm_sweep_pad").velocity(.3)
-  .room(.5).slow(2)`,
+  .room(.5).slow(2)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Bowed Glass',
         code: `// bowed glass pad
-$: note("<[c3,g3,c4] [a2,e3,a3]>")
+let pad = note("<[c3,g3,c4] [a2,e3,a3]>")
   .s("gm_bowed_glass").velocity(.3)
-  .room(.7).roomsize(5).slow(4)`,
+  .room(.7).roomsize(5).slow(4)
+
+$: arrange([4, pad])`,
       },
       {
         label: '12-Bar Blues',
         code: `// 12-bar blues chords
-$: note("<[c3,e3,g3,b3] [c3,e3,g3,b3] [c3,e3,g3,b3] [c3,e3,g3,b3] [f3,a3,c4,e4] [f3,a3,c4,e4] [c3,e3,g3,b3] [c3,e3,g3,b3] [g3,b3,d4,f4] [f3,a3,c4,e4] [c3,e3,g3,b3] [g3,b3,d4,f4]>")
-  .s("piano").gain(.45).room(.3).slow(6)`,
+let keys = note("<[c3,e3,g3,b3] [c3,e3,g3,b3] [c3,e3,g3,b3] [c3,e3,g3,b3] [f3,a3,c4,e4] [f3,a3,c4,e4] [c3,e3,g3,b3] [c3,e3,g3,b3] [g3,b3,d4,f4] [f3,a3,c4,e4] [c3,e3,g3,b3] [g3,b3,d4,f4]>")
+  .s("piano").gain(.45).room(.3).slow(6)
+
+$: arrange([4, keys])`,
       },
     ],
   },
@@ -1765,368 +2351,466 @@ $: note("<[c3,e3,g3,b3] [c3,e3,g3,b3] [c3,e3,g3,b3] [c3,e3,g3,b3] [f3,a3,c4,e4] 
       {
         label: 'Filter Sweep',
         code: `// sweeping low-pass filter
-$: note("c3*4").s("sawtooth").gain(.4)
+let synth = note("c3*4").s("sawtooth").gain(.4)
   .lpf(sine.range(200,4000).slow(4))
-  .lpq(6)`,
+  .lpq(6)
+
+$: arrange([4, synth])`,
       },
       {
         label: 'Dub Delay',
         code: `// dub echo effect
-$: s("rim:3 ~ ~ rim:3")
+let rim = s("rim:3 ~ ~ rim:3")
   .gain(.5).delay(.5)
-  .delayfeedback(.65).room(.4)`,
+  .delayfeedback(.65).room(.4)
+
+$: arrange([4, rim])`,
       },
       {
         label: 'Reverb Cathedral',
         code: `// massive reverb space
-$: note("c4 ~ ~ e4 ~ ~ g4 ~")
+let piano = note("c4 ~ ~ e4 ~ ~ g4 ~")
   .s("piano").gain(.45)
-  .room(.9).roomsize(8)`,
+  .room(.9).roomsize(8)
+
+$: arrange([4, piano])`,
       },
       {
         label: 'Bit Crush',
         code: `// lo-fi bit crushing
-$: note("c3 e3 g3 b3")
+let synth = note("c3 e3 g3 b3")
   .s("sawtooth").gain(.4)
-  .crush(6).lpf(2000)`,
+  .crush(6).lpf(2000)
+
+$: arrange([4, synth])`,
       },
       {
         label: 'Chop Glitch',
         code: `// glitchy chop FX
-$: note("c3").s("sawtooth")
+let synth = note("c3").s("sawtooth")
   .chop(16).gain(.4)
-  .speed("<1 2 .5 1.5>")`,
+  .speed("<1 2 .5 1.5>")
+
+$: arrange([4, synth])`,
       },
       {
         label: 'Stutter',
         code: `// stutter repeat effect
-$: note("c4").s("piano")
+let piano = note("c4").s("piano")
   .chop(8).gain(.5)
-  .room(.3)`,
+  .room(.3)
+
+$: arrange([4, piano])`,
       },
       {
         label: 'Vowel Morph',
         code: `// morphing vowel filter
-$: note("c3*4").s("sawtooth")
+let synth = note("c3*4").s("sawtooth")
   .gain(.4)
-  .vowel("<a e i o u>")`,
+  .vowel("<a e i o u>")
+
+$: arrange([4, synth])`,
       },
       {
         label: 'Phaser Effect',
         code: `// phaser on chord
-$: note("[c3,e3,g3]*2")
+let pad = note("[c3,e3,g3]*2")
   .s("sawtooth").gain(.35)
-  .phaser(4).phaserdepth(2)`,
+  .phaser(4).phaserdepth(2)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Pan Stereo',
         code: `// stereo auto-pan
-$: note("c4 e4 g4 b4")
+let lead = note("c4 e4 g4 b4")
   .s("sine").gain(.45)
-  .pan(sine.range(0,1))`,
+  .pan(sine.range(0,1))
+
+$: arrange([4, lead])`,
       },
       {
         label: 'Speed Warp',
         code: `// speed modulation FX
-$: s("bd sd hh cp")
+let drums = s("bd sd hh cp")
   .bank("RolandTR808")
   .speed(perlin.range(.5,2))
-  .gain(.6)`,
+  .gain(.6)
+
+$: arrange([4, drums])`,
       },
       {
         label: 'Feedback Loop',
         code: `// heavy feedback delay
-$: note("c4 ~ ~ ~").s("sine")
+let lead = note("c4 ~ ~ ~").s("sine")
   .gain(.4).delay(.3)
   .delayfeedback(.85)
-  .room(.3)`,
+  .room(.3)
+
+$: arrange([4, lead])`,
       },
       {
         label: 'Ring Mod',
         code: `// ring modulation tone
-$: note("c3").s("sine").gain(.4)
-  .ring(1).ringdf(500)`,
+let lead = note("c3").s("sine").gain(.4)
+  .ring(1).ringdf(500)
+
+$: arrange([4, lead])`,
       },
       {
         label: 'Noise Wash',
         code: `// filtered noise sweep
-$: s("hh*16").gain(.3)
+let hats = s("hh*16").gain(.3)
   .lpf(sine.range(200,8000).slow(8))
-  .room(.5)`,
+  .room(.5)
+
+$: arrange([4, hats])`,
       },
       {
         label: 'Retro Crush',
         code: `// retro crunch FX
-$: note("c3 g3 e3 b3")
+let synth = note("c3 g3 e3 b3")
   .s("square").gain(.35)
-  .crush(4).coarse(3)`,
+  .crush(4).coarse(3)
+
+$: arrange([4, synth])`,
       },
       {
         label: 'Delay Cascade',
         code: `// cascading delay echoes
-$: note("c5 ~ ~ ~ e5 ~ ~ ~")
+let lead = note("c5 ~ ~ ~ e5 ~ ~ ~")
   .s("sine").gain(.4)
   .delay(.6).delayfeedback(.7)
-  .delaytime(.33)`,
+  .delaytime(.33)
+
+$: arrange([4, lead])`,
       },
       {
         label: 'Reverse Feel',
         code: `// reverse-like texture
-$: s("chin:0").speed(-1)
+let vox = s("chin:0").speed(-1)
   .gain(.5).room(.5)
-  .delay(.3)`,
+  .delay(.3)
+
+$: arrange([4, vox])`,
       },
       {
         label: 'Shimmer Verb',
         code: `// shimmering reverb
-$: note("c5 e5 g5 c6").slow(2)
+let lead = note("c5 e5 g5 c6").slow(2)
   .s("sine").gain(.35)
   .room(.9).roomsize(8)
-  .delay(.3).delayfeedback(.4)`,
+  .delay(.3).delayfeedback(.4)
+
+$: arrange([4, lead])`,
       },
       {
         label: 'Granular Chop',
         code: `// granular-style chop
-$: s("bd").chop(32)
+let kick = s("bd").chop(32)
   .speed(perlin.range(.25,3))
-  .gain(.5).room(.3)`,
+  .gain(.5).room(.3)
+
+$: arrange([4, kick])`,
       },
       {
         label: 'Dual Delay',
         code: `// ping-pong style delay
-$: note("c4 ~ e4 ~").s("triangle")
+let lead = note("c4 ~ e4 ~").s("triangle")
   .gain(.4).delay(.5)
   .delayfeedback(.6)
-  .pan("<0 1>")`,
+  .pan("<0 1>")
+
+$: arrange([4, lead])`,
       },
       {
         label: 'Distortion Wall',
         code: `// distorted wall of sound
-$: note("[c2,g2,c3]").s("sawtooth")
+let bass = note("[c2,g2,c3]").s("sawtooth")
   .gain(.35).shape(.6)
-  .lpf(800).room(.3)`,
+  .lpf(800).room(.3)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Tape Stop',
         code: `// tape stop effect
-$: note("c3 e3 g3 c4")
+let synth = note("c3 e3 g3 c4")
   .s("sawtooth").gain(.4)
-  .speed(perlin.range(.2,1)).lpf(2000)`,
+  .speed(perlin.range(.2,1)).lpf(2000)
+
+$: arrange([4, synth])`,
       },
       {
         label: 'Flanger Sweep',
         code: `// flanger on drums
-$: s("bd sd:2 [~ bd] sd")
+let drums = s("bd sd:2 [~ bd] sd")
   .bank("RolandTR808").gain(.7)
-  .phaser(sine.range(1,8).slow(4))`,
+  .phaser(sine.range(1,8).slow(4))
+
+$: arrange([4, drums])`,
       },
       {
         label: 'Grain Cloud',
         code: `// granular cloud texture
-$: s("chin:0").chop(64)
+let vox = s("chin:0").chop(64)
   .speed(perlin.range(.1,4))
-  .gain(.4).room(.6)`,
+  .gain(.4).room(.6)
+
+$: arrange([4, vox])`,
       },
       {
         label: 'Pitch Dive',
         code: `// pitch diving effect
-$: note("c5 c5 c5 c5")
+let lead = note("c5 c5 c5 c5")
   .s("sine").gain(.4)
-  .speed("<1 .5 .25 .12>")`,
+  .speed("<1 .5 .25 .12>")
+
+$: arrange([4, lead])`,
       },
       {
         label: 'Lo-Fi Wash',
         code: `// lo-fi degraded wash
-$: note("[c3,g3]*2").s("sawtooth")
+let pad = note("[c3,g3]*2").s("sawtooth")
   .gain(.35).crush(6).coarse(4)
-  .room(.6).lpf(1500)`,
+  .room(.6).lpf(1500)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Stutter Gate',
         code: `// gate stutter effect
-$: note("c3").s("supersaw")
+let synth = note("c3").s("supersaw")
   .gain("[.5 0 .5 0 .5 0 .5 0]*2")
-  .lpf(2000)`,
+  .lpf(2000)
+
+$: arrange([4, synth])`,
       },
       {
         label: 'Auto Wah',
         code: `// auto wah envelope
-$: note("c3*4").s("sawtooth")
+let synth = note("c3*4").s("sawtooth")
   .gain(.4)
   .lpf(sine.range(300,3000).fast(2))
-  .lpq(10)`,
+  .lpq(10)
+
+$: arrange([4, synth])`,
       },
       {
         label: 'Sidechain Feel',
         code: `// sidechain pump feel
-$: note("[c3,e3,g3]").s("supersaw")
+let pad = note("[c3,e3,g3]").s("supersaw")
   .gain("[.1 .3 .45 .5]*2")
-  .lpf(1800).room(.3)`,
+  .lpf(1800).room(.3)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Freeze Hold',
         code: `// freeze sustain
-$: note("c4").s("sine")
+let lead = note("c4").s("sine")
   .gain(.4).room(.9).roomsize(10)
-  .delay(.8).delayfeedback(.85)`,
+  .delay(.8).delayfeedback(.85)
+
+$: arrange([4, lead])`,
       },
       {
         label: 'Chaos Noise',
         code: `// chaotic noise FX
-$: s("hh*16").speed(perlin.range(.1,5))
+let hats = s("hh*16").speed(perlin.range(.1,5))
   .gain(.3).crush(4)
-  .pan(perlin.range(0,1))`,
+  .pan(perlin.range(0,1))
+
+$: arrange([4, hats])`,
       },
       {
         label: 'Tape Warble',
         code: `// warbling tape effect
-$: note("c3 e3 g3 c4").s("piano")
+let piano = note("c3 e3 g3 c4").s("piano")
   .gain(.4).speed(sine.range(.95,1.05).slow(2))
   .lpf(2500).room(.3)
-  .delay(.2).delayfeedback(.3)`,
+  .delay(.2).delayfeedback(.3)
+
+$: arrange([4, piano])`,
       },
       {
         label: 'Chorus Wash',
         code: `// chorus effect wash
-$: note("[c3,e3,g3]").s("sawtooth")
+let pad = note("[c3,e3,g3]").s("sawtooth")
   .gain(.3).detune(sine.range(0,30).slow(4))
-  .lpf(1500).room(.5)`,
+  .lpf(1500).room(.5)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Glitch Slice',
         code: `// glitch slice machine
-$: s("bd sd hh cp rim oh bd sd")
+let drums = s("bd sd hh cp rim oh bd sd")
   .bank("RolandTR808").gain(.6)
   .chop(8).speed(perlin.range(.25,3))
-  .pan(perlin.range(0,1))`,
+  .pan(perlin.range(0,1))
+
+$: arrange([4, drums])`,
       },
       {
         label: 'Radio Static',
         code: `// radio static effect
-$: s("hh*32").gain("[.05 .15]*16")
+let hats = s("hh*32").gain("[.05 .15]*16")
   .crush(3).coarse(5)
   .lpf(sine.range(500,4000).slow(8))
-  .pan(perlin.range(.3,.7))`,
+  .pan(perlin.range(.3,.7))
+
+$: arrange([4, hats])`,
       },
       {
         label: 'Crystal Echo',
         code: `// crystal echo reflections
-$: note("c5 e5 g5 b5 c6 b5 g5 e5")
+let lead = note("c5 e5 g5 b5 c6 b5 g5 e5")
   .s("sine").gain(.35)
   .fmi(2).fmh(5)
   .delay(.4).delayfeedback(.6)
-  .room(.7).slow(2)`,
+  .room(.7).slow(2)
+
+$: arrange([4, lead])`,
       },
       {
         label: 'Drone Morph',
         code: `// morphing drone texture
-$: note("[c2,g2]").s("sawtooth")
+let bass = note("[c2,g2]").s("sawtooth")
   .gain(.25).lpf(sine.range(200,1500).slow(16))
   .vowel("<a e i o>")
-  .room(.8).roomsize(6)`,
+  .room(.8).roomsize(6)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Wind Chimes',
         code: `// wind chime effect
-$: n(irand(12).segment(16))
+let bells = n(irand(12).segment(16))
   .scale("C5:major pentatonic")
   .s("gm_glockenspiel").velocity(.3)
-  .room(.6).delay(.3).delayfeedback(.5)`,
+  .room(.6).delay(.3).delayfeedback(.5)
+
+$: arrange([4, bells])`,
       },
       {
         label: 'Underwater',
         code: `// underwater effect
-$: note("c3 e3 g3 b3").s("sine")
+let lead = note("c3 e3 g3 b3").s("sine")
   .gain(.35).lpf(sine.range(200,800).slow(4))
   .room(.8).roomsize(8)
-  .delay(.5).delayfeedback(.6)`,
+  .delay(.5).delayfeedback(.6)
+
+$: arrange([4, lead])`,
       },
       {
         label: 'Sample Hold',
         code: `// sample and hold random
-$: note("c3*8").s("square")
+let synth = note("c3*8").s("square")
   .gain(.35).lpf(perlin.range(200,4000))
-  .lpq(8).decay(.1)`,
+  .lpq(8).decay(.1)
+
+$: arrange([4, synth])`,
       },
       {
         label: 'Laser Beam',
         code: `// laser beam effect
-$: note("c6 c5 c4 c3 c2 c3 c4 c5")
+let lead = note("c6 c5 c4 c3 c2 c3 c4 c5")
   .s("sine").gain(.4)
   .fmi(8).fmh(1)
-  .decay(.1).room(.3)`,
+  .decay(.1).room(.3)
+
+$: arrange([4, lead])`,
       },
       {
         label: 'Granular Scatter',
         code: `// granular scatter texture
-$: s("chin:0").chop(64)
+let vox = s("chin:0").chop(64)
   .speed(perlin.range(.1,5))
   .gain(.35).pan(perlin.range(0,1))
-  .room(.5).delay(.3).delayfeedback(.4)`,
+  .room(.5).delay(.3).delayfeedback(.4)
+
+$: arrange([4, vox])`,
       },
       {
         label: 'Metallic Ring',
         code: `// metallic ring modulation
-$: note("c3 e3 g3 c4").s("sine")
+let lead = note("c3 e3 g3 c4").s("sine")
   .gain(.4).ring(1).ringdf(800)
-  .room(.4).delay(.25)`,
+  .room(.4).delay(.25)
+
+$: arrange([4, lead])`,
       },
       {
         label: 'Bit Cascade',
         code: `// bit depth cascade
-$: note("c3 e3 g3 c4 g3 e3 c3 g2")
+let synth = note("c3 e3 g3 c4 g3 e3 c3 g2")
   .s("sawtooth").gain(.35)
   .crush("<12 8 6 4 3 4 6 8>")
-  .lpf(2000)`,
+  .lpf(2000)
+
+$: arrange([4, synth])`,
       },
       {
         label: 'Wobble Gate',
         code: `// wobble gate effect
-$: note("[c3,e3,g3]").s("supersaw")
+let pad = note("[c3,e3,g3]").s("supersaw")
   .gain(sine.range(0,.5).fast(8))
   .lpf(sine.range(400,3000).fast(4))
-  .room(.3)`,
+  .room(.3)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Reverse Swell',
         code: `// reverse swell buildup
-$: note("<[c3,e3,g3]>").s("supersaw")
+let pad = note("<[c3,e3,g3]>").s("supersaw")
   .gain(.35).attack(1.5).decay(.1)
   .lpf(sine.range(500,3000).slow(4))
-  .room(.5)`,
+  .room(.5)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Pitch Rise',
         code: `// rising pitch effect
-$: note("c2 c2 c2 c2 c3 c3 c3 c3 c4 c4 c4 c4 c5 c5 c5 c5")
+let sub = note("c2 c2 c2 c2 c3 c3 c3 c3 c4 c4 c4 c4 c5 c5 c5 c5")
   .s("sine").gain(.4)
   .lpf(sine.range(300,4000).slow(4))
-  .room(.3).slow(4)`,
+  .room(.3).slow(4)
+
+$: arrange([4, sub])`,
       },
       {
         label: 'Texture Cloud',
         code: `// ambient texture cloud
-$: s("hh*16").gain("[.02 .06 .04 .08]*4")
+let hats = s("hh*16").gain("[.02 .06 .04 .08]*4")
   .lpf(sine.range(500,5000).slow(16))
   .room(.8).roomsize(8)
-  .pan(sine.range(.2,.8).slow(6))`,
+  .pan(sine.range(.2,.8).slow(6))
+
+$: arrange([4, hats])`,
       },
       {
         label: 'Vocoder Feel',
         code: `// vocoder-like effect
-$: note("c3*4").s("sawtooth")
+let synth = note("c3*4").s("sawtooth")
   .gain(.35).vowel("<a e i o u e a o>")
   .lpf(3000).room(.3)
-  .pan(sine.range(.3,.7))`,
+  .pan(sine.range(.3,.7))
+
+$: arrange([4, synth])`,
       },
       {
         label: 'Multi FX Chain',
         code: `// stacked FX chain
-$: note("c3 e3 g3 b3").s("sawtooth")
+let synth = note("c3 e3 g3 b3").s("sawtooth")
   .gain(.35).crush(8)
   .lpf(sine.range(500,3000).slow(4))
   .delay(.4).delayfeedback(.5)
-  .room(.5).pan(sine.range(.2,.8))`,
+  .room(.5).pan(sine.range(.2,.8))
+
+$: arrange([4, synth])`,
       },
     ],
   },
@@ -2137,546 +2821,790 @@ $: note("c3 e3 g3 b3").s("sawtooth")
       {
         label: 'Deep House',
         code: `// deep house groove
-$: s("bd*4").bank("RolandTR909").gain(.85)
-$: s("~ cp ~ ~").bank("RolandTR909").gain(.6)
-$: s("[~ hh]*4").bank("RolandTR909").gain(.5)
-$: note("<c2 c2 a1 b1>")
+let kick = s("bd*4").bank("RolandTR909").gain(.85)
+let clap = s("~ cp ~ ~").bank("RolandTR909").gain(.6)
+let hats = s("[~ hh]*4").bank("RolandTR909").gain(.5)
+let bass = note("<c2 c2 a1 b1>")
   .s("sawtooth").gain(.5)
   .lpf(800).shape(.15)
-$: note("<[c3,e3,g3] [c3,e3,g3] [a2,c3,e3] [b2,d3,f3]>")
+let pad = note("<[c3,e3,g3] [c3,e3,g3] [a2,c3,e3] [b2,d3,f3]>")
   .s("supersaw").gain(.3)
-  .lpf(1500).room(.3).slow(2)`,
+  .lpf(1500).room(.3).slow(2)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats, bass)],
+  [4, stack(kick, clap, hats, bass, pad)])`,
       },
       {
         label: 'Dark Techno',
         code: `// dark techno drive
-$: s("bd*4").gain(.9)
-$: s("~ cp ~ ~").gain(.5).room(.3)
-$: s("[~ hh]*4").gain(.4)
-$: s("~ ~ ~ oh").gain(.3)
-$: note("c1*4").s("sawtooth")
-  .gain(.45).lpf(400).shape(.3)`,
+let kick = s("bd*4").gain(.9)
+let clap = s("~ cp ~ ~").gain(.5).room(.3)
+let hats = s("[~ hh]*4").gain(.4)
+let openHat = s("~ ~ ~ oh").gain(.3)
+let bass = note("c1*4").s("sawtooth")
+  .gain(.45).lpf(400).shape(.3)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats, openHat)],
+  [4, stack(kick, clap, hats, openHat, bass)])`,
       },
       {
         label: 'Boom Bap Beat',
         code: `// classic boom bap
-$: s("bd ~ [~ bd] ~").bank("RolandTR808").gain(.85)
-$: s("~ sd ~ sd").bank("RolandTR808").gain(.7)
-$: s("[hh hh] [hh oh] [hh hh] [hh ~]").bank("RolandTR808").gain(.4)
-$: note("<c2 f2 g2 b1>")
-  .s("sine").gain(.5).lpf(200)`,
+let kick = s("bd ~ [~ bd] ~").bank("RolandTR808").gain(.85)
+let snare = s("~ sd ~ sd").bank("RolandTR808").gain(.7)
+let hats = s("[hh hh] [hh oh] [hh hh] [hh ~]").bank("RolandTR808").gain(.4)
+let sub = note("<c2 f2 g2 b1>")
+  .s("sine").gain(.5).lpf(200)
+
+$: arrange(
+  [2, stack(kick, snare)],
+  [2, stack(kick, snare, hats)],
+  [4, stack(kick, snare, hats, sub)])`,
       },
       {
         label: 'Garage Shuffle',
         code: `// 2-step UK garage
-$: s("bd ~ [~ bd] ~").bank("RolandTR909").gain(.8)
-$: s("~ cp ~ ~").bank("RolandTR909").gain(.6)
-$: s("[hh hh hh ~]*2").bank("RolandTR909").gain(.45)
-$: note("<[e3,g3,b3] [a3,c4,e4]>")
+let kick = s("bd ~ [~ bd] ~").bank("RolandTR909").gain(.8)
+let clap = s("~ cp ~ ~").bank("RolandTR909").gain(.6)
+let hats = s("[hh hh hh ~]*2").bank("RolandTR909").gain(.45)
+let keys = note("<[e3,g3,b3] [a3,c4,e4]>")
   .s("gm_epiano1").velocity(.35)
-  .room(.4).slow(2)`,
+  .room(.4).slow(2)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats)],
+  [4, stack(kick, clap, hats, keys)])`,
       },
       {
         label: 'Synthwave',
         code: `// synthwave nostalgia
-$: s("bd*4").gain(.8)
-$: s("~ cp ~ ~").gain(.55)
-$: s("[~ hh]*4").gain(.4)
-$: note("<c2 f2 g2 a2>")
+let kick = s("bd*4").gain(.8)
+let clap = s("~ cp ~ ~").gain(.55)
+let hats = s("[~ hh]*4").gain(.4)
+let bass = note("<c2 f2 g2 a2>")
   .s("sawtooth").gain(.45)
   .lpf(600).shape(.2)
-$: note("<[c4,e4,g4] [f4,a4,c5] [g4,b4,d5] [a4,c5,e5]>")
+let pad = note("<[c4,e4,g4] [f4,a4,c5] [g4,b4,d5] [a4,c5,e5]>")
   .s("supersaw").gain(.3)
-  .lpf(2000).room(.3).slow(2)`,
+  .lpf(2000).room(.3).slow(2)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats, bass)],
+  [4, stack(kick, clap, hats, bass, pad)])`,
       },
       {
         label: 'Trap',
         code: `// modern trap
-$: s("bd ~ ~ bd ~ ~ bd ~").bank("RolandTR808").gain(.9)
-$: s("~ ~ ~ ~ ~ ~ ~ cp").bank("RolandTR808").gain(.7)
-$: s("hh*8").bank("RolandTR808")
+let kick = s("bd ~ ~ bd ~ ~ bd ~").bank("RolandTR808").gain(.9)
+let clap = s("~ ~ ~ ~ ~ ~ ~ cp").bank("RolandTR808").gain(.7)
+let hats = s("hh*8").bank("RolandTR808")
   .gain("[.3 .5 .35 .6 .3 .5 .35 .7]")
-$: note("<c1 ~ e1 ~>")
+let sub = note("<c1 ~ e1 ~>")
   .s("sine").gain(.6).decay(.8)
-  .lpf(180).shape(.25)`,
+  .lpf(180).shape(.25)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats)],
+  [4, stack(kick, clap, hats, sub)])`,
       },
       {
         label: 'DnB',
         code: `// drum and bass
-$: s("[bd ~ bd ~] [~ ~ bd ~]").gain(.85)
-$: s("[~ ~ ~ ~] [~ sd ~ ~]").gain(.7)
-$: s("hh*8").gain("[.3 .5]*4")
-$: note("<c2 e2 f2 g2>")
+let kick = s("[bd ~ bd ~] [~ ~ bd ~]").gain(.85)
+let snare = s("[~ ~ ~ ~] [~ sd ~ ~]").gain(.7)
+let hats = s("hh*8").gain("[.3 .5]*4")
+let bass = note("<c2 e2 f2 g2>")
   .s("sawtooth").gain(.5)
-  .lpf(800).shape(.2)`,
+  .lpf(800).shape(.2)
+
+$: arrange(
+  [2, stack(kick, snare)],
+  [2, stack(kick, snare, hats)],
+  [4, stack(kick, snare, hats, bass)])`,
       },
       {
         label: 'Ambient Drift',
         code: `// ambient texture
-$: note("<[c3,g3,c4] [a2,e3,a3]>")
+let pad = note("<[c3,g3,c4] [a2,e3,a3]>")
   .s("sine").gain(.3)
   .room(.8).roomsize(6)
   .lpf(1500).slow(4)
-$: note("<c5 e5 g5 b5>")
+let lead = note("<c5 e5 g5 b5>")
   .s("sine").gain(.2)
   .delay(.5).delayfeedback(.6)
-  .room(.7).slow(4)`,
+  .room(.7).slow(4)
+
+$: arrange(
+  [2, pad],
+  [4, stack(pad, lead)])`,
       },
       {
         label: 'Trance Build',
         code: `// trance energy
-$: s("bd*4").gain(.85)
-$: s("~ cp ~ ~").gain(.55)
-$: s("[~ hh]*4").gain(.45)
-$: s("~ ~ ~ oh").gain(.35)
-$: note("c3 c3 e3 g3")
+let kick = s("bd*4").gain(.85)
+let clap = s("~ cp ~ ~").gain(.55)
+let hats = s("[~ hh]*4").gain(.45)
+let openHat = s("~ ~ ~ oh").gain(.35)
+let synth = note("c3 c3 e3 g3")
   .s("supersaw").gain(.4)
-  .lpf(sine.range(800,3000).slow(8))`,
+  .lpf(sine.range(800,3000).slow(8))
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats, openHat)],
+  [4, stack(kick, clap, hats, openHat, synth)])`,
       },
       {
         label: 'Phonk',
         code: `// dark phonk
-$: s("bd ~ [bd bd] ~").gain(.85)
-$: s("~ cp ~ cp").gain(.6).room(.2)
-$: s("[~ hh]*4").gain(.45)
-$: note("<c2 c2 b1 c2>")
+let kick = s("bd ~ [bd bd] ~").gain(.85)
+let clap = s("~ cp ~ cp").gain(.6).room(.2)
+let hats = s("[~ hh]*4").gain(.45)
+let sub = note("<c2 c2 b1 c2>")
   .s("sine").gain(.5)
-  .lpf(200).shape(.3)`,
+  .lpf(200).shape(.3)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats)],
+  [4, stack(kick, clap, hats, sub)])`,
       },
       {
         label: 'Drill',
         code: `// drill pattern
-$: s("bd ~ [~ bd] ~").gain(.85)
-$: s("~ ~ ~ sd").gain(.7)
-$: s("hh*8").gain("[.25 .5 .3 .6 .25 .55 .3 .65]")
-$: note("<c2 e2 f2 e2>")
+let kick = s("bd ~ [~ bd] ~").gain(.85)
+let snare = s("~ ~ ~ sd").gain(.7)
+let hats = s("hh*8").gain("[.25 .5 .3 .6 .25 .55 .3 .65]")
+let sub = note("<c2 e2 f2 e2>")
   .s("sine").gain(.5)
-  .lpf(200).decay(.6)`,
+  .lpf(200).decay(.6)
+
+$: arrange(
+  [2, stack(kick, snare)],
+  [2, stack(kick, snare, hats)],
+  [4, stack(kick, snare, hats, sub)])`,
       },
       {
         label: 'Future Bass',
         code: `// future bass vibes
-$: s("bd ~ ~ bd ~ ~ bd ~").gain(.8)
-$: s("~ ~ cp ~ ~ ~ cp ~").gain(.6)
-$: s("[~ hh]*4").gain(.4)
-$: note("<[c4,e4,g4,b4] [a3,c4,e4,g4] [b3,d4,f4,a4] [g3,b3,d4,f4]>")
+let kick = s("bd ~ ~ bd ~ ~ bd ~").gain(.8)
+let clap = s("~ ~ cp ~ ~ ~ cp ~").gain(.6)
+let hats = s("[~ hh]*4").gain(.4)
+let pad = note("<[c4,e4,g4,b4] [a3,c4,e4,g4] [b3,d4,f4,a4] [g3,b3,d4,f4]>")
   .s("supersaw").gain(.35)
-  .lpf(2500).room(.3).slow(2)`,
+  .lpf(2500).room(.3).slow(2)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats)],
+  [4, stack(kick, clap, hats, pad)])`,
       },
       {
         label: 'Dubstep',
         code: `// dubstep half-time
-$: s("bd ~ ~ ~ bd ~ ~ ~").gain(.9)
-$: s("~ ~ ~ ~ ~ ~ cp ~").gain(.7)
-$: s("[~ hh]*4").gain(.4)
-$: note("c1*2").s("sawtooth")
+let kick = s("bd ~ ~ ~ bd ~ ~ ~").gain(.9)
+let clap = s("~ ~ ~ ~ ~ ~ cp ~").gain(.7)
+let hats = s("[~ hh]*4").gain(.4)
+let bass = note("c1*2").s("sawtooth")
   .gain(.5)
   .lpf(sine.range(200,2000).fast(4))
-  .lpq(8).shape(.2)`,
+  .lpq(8).shape(.2)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats)],
+  [4, stack(kick, clap, hats, bass)])`,
       },
       {
         label: 'Afrobeats',
         code: `// afrobeats groove
-$: s("bd(3,8)").bank("RolandTR808").gain(.8)
-$: s("cp(2,8)").bank("RolandTR808").gain(.5)
-$: s("rim(5,8)").bank("RolandTR808").gain(.4)
-$: s("hh(7,16)").bank("RolandTR808").gain("[.3 .5]*8")
-$: note("<c2 f2 g2 f2>")
-  .s("sine").gain(.5).lpf(200)`,
+let kick = s("bd(3,8)").bank("RolandTR808").gain(.8)
+let clap = s("cp(2,8)").bank("RolandTR808").gain(.5)
+let rim = s("rim(5,8)").bank("RolandTR808").gain(.4)
+let hats = s("hh(7,16)").bank("RolandTR808").gain("[.3 .5]*8")
+let sub = note("<c2 f2 g2 f2>")
+  .s("sine").gain(.5).lpf(200)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, rim, hats)],
+  [4, stack(kick, clap, rim, hats, sub)])`,
       },
       {
         label: 'R&B Smooth',
         code: `// smooth R&B
-$: s("[bd ~] [~ bd] [bd ~] [~ ~]").gain(.75)
-$: s("~ rim ~ rim").gain(.3)
-$: s("[~ hh]*4").gain(.35)
-$: note("<[e3,g3,b3,d4] [a3,c4,e4,g4] [b3,d4,f4,a4] [g3,b3,d4,f4]>")
+let kick = s("[bd ~] [~ bd] [bd ~] [~ ~]").gain(.75)
+let rim = s("~ rim ~ rim").gain(.3)
+let hats = s("[~ hh]*4").gain(.35)
+let keys = note("<[e3,g3,b3,d4] [a3,c4,e4,g4] [b3,d4,f4,a4] [g3,b3,d4,f4]>")
   .s("gm_epiano1").velocity(.35)
   .room(.4).slow(2)
-$: note("<e2 a2 b2 g2>")
-  .s("sine").gain(.45).lpf(200)`,
+let sub = note("<e2 a2 b2 g2>")
+  .s("sine").gain(.45).lpf(200)
+
+$: arrange(
+  [2, stack(kick, rim)],
+  [2, stack(kick, rim, hats, keys)],
+  [4, stack(kick, rim, hats, keys, sub)])`,
       },
       {
         label: 'Lo-Fi Hip Hop',
         code: `// lo-fi hip hop beats
-$: s("[bd:3 ~] [~ bd:3] ~ ~").gain(.4).lpf(800)
-$: s("~ rim ~ rim").gain(.15).lpf(2000)
-$: s("[~ hh:2]*4").gain("[.1 .2 .12 .25]").lpf(3500)
-$: note("<[c3,e3,g3,b3] [a2,c3,e3,g3]>")
+let kick = s("[bd:3 ~] [~ bd:3] ~ ~").gain(.4).lpf(800)
+let rim = s("~ rim ~ rim").gain(.15).lpf(2000)
+let hats = s("[~ hh:2]*4").gain("[.1 .2 .12 .25]").lpf(3500)
+let keys = note("<[c3,e3,g3,b3] [a2,c3,e3,g3]>")
   .s("piano").gain(.5).room(.4).slow(2)
-$: note("<c2 a1>")
-  .s("sine").gain(.5).lpf(200).slow(2)`,
+let sub = note("<c2 a1>")
+  .s("sine").gain(.5).lpf(200).slow(2)
+
+$: arrange(
+  [2, stack(kick, rim)],
+  [2, stack(kick, rim, hats, keys)],
+  [4, stack(kick, rim, hats, keys, sub)])`,
       },
       {
         label: 'Electro Funk',
         code: `// electro funk groove
-$: s("bd*4").gain(.85)
-$: s("~ cp ~ ~").gain(.6)
-$: s("[hh hh oh ~]*2").gain(.45)
-$: note("c2 ~ c2 g2 ~ g2 b2 ~")
+let kick = s("bd*4").gain(.85)
+let clap = s("~ cp ~ ~").gain(.6)
+let hats = s("[hh hh oh ~]*2").gain(.45)
+let bass = note("c2 ~ c2 g2 ~ g2 b2 ~")
   .s("square").gain(.45)
-  .lpf(1200).decay(.12)`,
+  .lpf(1200).decay(.12)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats)],
+  [4, stack(kick, clap, hats, bass)])`,
       },
       {
         label: 'IDM Glitch',
         code: `// IDM complexity
-$: s("bd(3,8)").gain(.75)
-$: s("sd(5,8,1)").gain(.55)
-$: s("hh(11,16)").gain(.35)
-$: note("c3 e3 g3 b3 d4 b3 g3 e3")
+let kick = s("bd(3,8)").gain(.75)
+let snare = s("sd(5,8,1)").gain(.55)
+let hats = s("hh(11,16)").gain(.35)
+let lead = note("c3 e3 g3 b3 d4 b3 g3 e3")
   .s("triangle").gain(.4)
-  .chop(4).lpf(2000)`,
+  .chop(4).lpf(2000)
+
+$: arrange(
+  [2, stack(kick, snare)],
+  [2, stack(kick, snare, hats)],
+  [4, stack(kick, snare, hats, lead)])`,
       },
       {
         label: 'Reggaeton',
         code: `// reggaeton dembow
-$: s("bd ~ ~ bd ~ ~ bd ~").gain(.85)
-$: s("~ ~ cp ~ ~ ~ cp ~").gain(.6)
-$: s("[hh hh]*4").gain("[.3 .5]*4")
-$: note("<c2 f2 b1 e2>")
-  .s("sine").gain(.5).lpf(200)`,
+let kick = s("bd ~ ~ bd ~ ~ bd ~").gain(.85)
+let clap = s("~ ~ cp ~ ~ ~ cp ~").gain(.6)
+let hats = s("[hh hh]*4").gain("[.3 .5]*4")
+let sub = note("<c2 f2 b1 e2>")
+  .s("sine").gain(.5).lpf(200)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats)],
+  [4, stack(kick, clap, hats, sub)])`,
       },
       {
         label: 'Minimal Techno',
         code: `// minimal techno loop
-$: s("bd*4").gain(.8)
-$: s("~ rim ~ ~").gain(.3)
-$: s("hh*16").gain("[.15 .3]*8")
-$: note("c2*4").s("sine")
-  .gain(.4).lpf(200).shape(.15)`,
+let kick = s("bd*4").gain(.8)
+let rim = s("~ rim ~ ~").gain(.3)
+let hats = s("hh*16").gain("[.15 .3]*8")
+let sub = note("c2*4").s("sine")
+  .gain(.4).lpf(200).shape(.15)
+
+$: arrange(
+  [2, stack(kick, rim)],
+  [2, stack(kick, rim, hats)],
+  [4, stack(kick, rim, hats, sub)])`,
       },
       {
         label: 'Acid Techno',
         code: `// acid techno
-$: s("bd*4").gain(.9)
-$: s("~ cp ~ ~").gain(.55)
-$: s("[~ hh]*4").gain(.4)
-$: note("c2 [~ c2] e2 [c2 g1]")
+let kick = s("bd*4").gain(.9)
+let clap = s("~ cp ~ ~").gain(.55)
+let hats = s("[~ hh]*4").gain(.4)
+let bass = note("c2 [~ c2] e2 [c2 g1]")
   .s("sawtooth").gain(.5)
-  .lpf(sine.range(400,3000)).lpq(12)`,
+  .lpf(sine.range(400,3000)).lpq(12)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats)],
+  [4, stack(kick, clap, hats, bass)])`,
       },
       {
         label: 'Chill Trap',
         code: `// chill trap
-$: s("bd ~ ~ bd ~ ~ bd ~").bank("RolandTR808").gain(.85)
-$: s("~ ~ ~ ~ ~ ~ ~ cp").bank("RolandTR808").gain(.6)
-$: s("hh*8").bank("RolandTR808").gain("[.2 .4]*4")
-$: note("<[c3,e3,g3] [a2,c3,e3]>")
-  .s("piano").gain(.4).room(.4).slow(2)`,
+let kick = s("bd ~ ~ bd ~ ~ bd ~").bank("RolandTR808").gain(.85)
+let clap = s("~ ~ ~ ~ ~ ~ ~ cp").bank("RolandTR808").gain(.6)
+let hats = s("hh*8").bank("RolandTR808").gain("[.2 .4]*4")
+let keys = note("<[c3,e3,g3] [a2,c3,e3]>")
+  .s("piano").gain(.4).room(.4).slow(2)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats)],
+  [4, stack(kick, clap, hats, keys)])`,
       },
       {
         label: 'House Piano',
         code: `// piano house
-$: s("bd*4").bank("RolandTR909").gain(.85)
-$: s("~ cp ~ ~").bank("RolandTR909").gain(.6)
-$: s("[~ hh]*4").bank("RolandTR909").gain(.5)
-$: note("[c3,e3,g3] ~ [a2,c3,e3] ~")
-  .s("piano").gain(.5).room(.3)`,
+let kick = s("bd*4").bank("RolandTR909").gain(.85)
+let clap = s("~ cp ~ ~").bank("RolandTR909").gain(.6)
+let hats = s("[~ hh]*4").bank("RolandTR909").gain(.5)
+let keys = note("[c3,e3,g3] ~ [a2,c3,e3] ~")
+  .s("piano").gain(.5).room(.3)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats)],
+  [4, stack(kick, clap, hats, keys)])`,
       },
       {
         label: 'Jungle Break',
         code: `// jungle breakbeat
-$: s("[bd ~ bd ~] [~ bd ~ bd]").gain(.8)
-$: s("[~ sd ~ ~] [~ ~ sd ~]").gain(.7)
-$: s("hh*16").gain("[.2 .35]*8")
-$: note("<c2 e2 f2 g2>")
-  .s("sawtooth").gain(.5).lpf(600)`,
+let kick = s("[bd ~ bd ~] [~ bd ~ bd]").gain(.8)
+let snare = s("[~ sd ~ ~] [~ ~ sd ~]").gain(.7)
+let hats = s("hh*16").gain("[.2 .35]*8")
+let bass = note("<c2 e2 f2 g2>")
+  .s("sawtooth").gain(.5).lpf(600)
+
+$: arrange(
+  [2, stack(kick, snare)],
+  [2, stack(kick, snare, hats)],
+  [4, stack(kick, snare, hats, bass)])`,
       },
       {
         label: 'Neo Soul',
         code: `// neo soul
-$: s("[bd ~] [~ bd] [bd ~] ~").gain(.7)
-$: s("~ rim ~ rim").gain(.3)
-$: s("[~ hh]*4").gain(.35)
-$: note("<[d3,g3,a3,c4] [g3,b3,d4,f4] [c3,e3,g3,b3] [a2,d3,e3,g3]>")
-  .s("gm_epiano1").velocity(.35).room(.4).slow(2)`,
+let kick = s("[bd ~] [~ bd] [bd ~] ~").gain(.7)
+let rim = s("~ rim ~ rim").gain(.3)
+let hats = s("[~ hh]*4").gain(.35)
+let keys = note("<[d3,g3,a3,c4] [g3,b3,d4,f4] [c3,e3,g3,b3] [a2,d3,e3,g3]>")
+  .s("gm_epiano1").velocity(.35).room(.4).slow(2)
+
+$: arrange(
+  [2, stack(kick, rim)],
+  [2, stack(kick, rim, hats)],
+  [4, stack(kick, rim, hats, keys)])`,
       },
       {
         label: 'UK Bass',
         code: `// UK bass music
-$: s("bd ~ [~ bd] ~").gain(.85)
-$: s("~ cp ~ ~").gain(.6)
-$: s("[hh hh hh ~]*2").gain(.45)
-$: note("[c2 ~] [~ e2] [c2 ~] [~ g1]")
-  .s("sawtooth").gain(.55).lpf(800).shape(.2)`,
+let kick = s("bd ~ [~ bd] ~").gain(.85)
+let clap = s("~ cp ~ ~").gain(.6)
+let hats = s("[hh hh hh ~]*2").gain(.45)
+let bass = note("[c2 ~] [~ e2] [c2 ~] [~ g1]")
+  .s("sawtooth").gain(.55).lpf(800).shape(.2)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats)],
+  [4, stack(kick, clap, hats, bass)])`,
       },
       {
         label: 'Downtempo',
         code: `// downtempo chill
-$: s("[bd:3 ~] ~ [~ bd:3] ~").gain(.4).lpf(800)
-$: s("~ ~ rim ~").gain(.15)
-$: note("<[c3,e3,g3,b3] [a2,c3,e3,g3]>")
-  .s("gm_epiano1").velocity(.3).room(.5).slow(4)`,
+let kick = s("[bd:3 ~] ~ [~ bd:3] ~").gain(.4).lpf(800)
+let rim = s("~ ~ rim ~").gain(.15)
+let keys = note("<[c3,e3,g3,b3] [a2,c3,e3,g3]>")
+  .s("gm_epiano1").velocity(.3).room(.5).slow(4)
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, rim)],
+  [4, stack(kick, rim, keys)])`,
       },
       {
         label: 'Psytrance',
         code: `// psytrance drive
-$: s("bd*4").gain(.9)
-$: s("[~ hh]*4").gain(.4)
-$: note("c2*8").s("sawtooth")
+let kick = s("bd*4").gain(.9)
+let hats = s("[~ hh]*4").gain(.4)
+let bass = note("c2*8").s("sawtooth")
   .gain(.5).lpf(sine.range(300,2000).fast(4))
-  .lpq(10)`,
+  .lpq(10)
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, hats)],
+  [4, stack(kick, hats, bass)])`,
       },
       {
         label: 'Footwork',
         code: `// footwork juke
-$: s("bd bd [~ bd] bd bd [~ bd] bd [bd bd]").gain(.8)
-$: s("~ ~ cp ~ ~ ~ cp ~").gain(.6)
-$: s("hh*16").gain("[.2 .35]*8")`,
+let kick = s("bd bd [~ bd] bd bd [~ bd] bd [bd bd]").gain(.8)
+let clap = s("~ ~ cp ~ ~ ~ cp ~").gain(.6)
+let hats = s("hh*16").gain("[.2 .35]*8")
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, clap)],
+  [4, stack(kick, clap, hats)])`,
       },
       {
         label: 'Shoegaze',
         code: `// shoegaze wash
-$: s("bd ~ bd ~").gain(.6)
-$: s("~ sd ~ sd").gain(.45)
-$: note("[c3,e3,g3,b3]").s("supersaw")
+let kick = s("bd ~ bd ~").gain(.6)
+let snare = s("~ sd ~ sd").gain(.45)
+let pad = note("[c3,e3,g3,b3]").s("supersaw")
   .gain(.3).room(.9).roomsize(8)
-  .delay(.4).delayfeedback(.6)`,
+  .delay(.4).delayfeedback(.6)
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, snare)],
+  [4, stack(kick, snare, pad)])`,
       },
       {
         label: 'Disco Funk',
         code: `// disco funk groove
-$: s("bd*4").bank("RolandTR909").gain(.85)
-$: s("~ cp ~ cp").bank("RolandTR909").gain(.6)
-$: s("[hh hh oh ~]*2").bank("RolandTR909").gain(.45)
-$: note("c2 c3 c2 c3 f2 f3 f2 f3")
+let kick = s("bd*4").bank("RolandTR909").gain(.85)
+let clap = s("~ cp ~ cp").bank("RolandTR909").gain(.6)
+let hats = s("[hh hh oh ~]*2").bank("RolandTR909").gain(.45)
+let bass = note("c2 c3 c2 c3 f2 f3 f2 f3")
   .s("gm_electric_bass_finger").velocity(.5)
-$: note("<[c3,e3,g3] [f3,a3,c4] [g3,b3,d4] [c3,e3,g3]>")
+let guitar = note("<[c3,e3,g3] [f3,a3,c4] [g3,b3,d4] [c3,e3,g3]>")
   .s("gm_clean_guitar").velocity(.35)
-  .room(.3).slow(2)`,
+  .room(.3).slow(2)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats, bass)],
+  [4, stack(kick, clap, hats, bass, guitar)])`,
       },
       {
         label: 'Chillwave',
         code: `// chillwave dreamy
-$: s("[bd ~] [~ bd] [bd ~] ~").gain(.6)
-$: s("~ rim ~ rim").gain(.2)
-$: s("[~ hh]*4").gain(.3)
-$: note("<[c3,e3,g3,b3] [a2,c3,e3,g3]>")
+let kick = s("[bd ~] [~ bd] [bd ~] ~").gain(.6)
+let rim = s("~ rim ~ rim").gain(.2)
+let hats = s("[~ hh]*4").gain(.3)
+let pad = note("<[c3,e3,g3,b3] [a2,c3,e3,g3]>")
   .s("supersaw").gain(.25)
   .lpf(1500).room(.6).delay(.3).delayfeedback(.4).slow(2)
-$: note("<c2 a1>")
-  .s("sine").gain(.4).lpf(200).slow(2)`,
+let sub = note("<c2 a1>")
+  .s("sine").gain(.4).lpf(200).slow(2)
+
+$: arrange(
+  [2, stack(kick, rim)],
+  [2, stack(kick, rim, hats, pad)],
+  [4, stack(kick, rim, hats, pad, sub)])`,
       },
       {
         label: 'Drum & Bass Full',
         code: `// full drum and bass track
-$: s("[bd ~ bd ~] [~ ~ bd ~]").gain(.85)
-$: s("[~ ~ ~ ~] [~ sd ~ ~]").gain(.7)
-$: s("hh*16").gain("[.2 .35]*8")
-$: note("[c2 ~] [~ g2] [e2 ~] [~ c2]")
+let kick = s("[bd ~ bd ~] [~ ~ bd ~]").gain(.85)
+let snare = s("[~ ~ ~ ~] [~ sd ~ ~]").gain(.7)
+let hats = s("hh*16").gain("[.2 .35]*8")
+let bass = note("[c2 ~] [~ g2] [e2 ~] [~ c2]")
   .s("sawtooth").gain(.55)
   .lpf(800).shape(.2)
-$: note("<[c3,e3,g3]>")
+let pad = note("<[c3,e3,g3]>")
   .s("supersaw").gain(.2)
-  .lpf(1800).room(.3).slow(4)`,
+  .lpf(1800).room(.3).slow(4)
+
+$: arrange(
+  [2, stack(kick, snare)],
+  [2, stack(kick, snare, hats, bass)],
+  [4, stack(kick, snare, hats, bass, pad)])`,
       },
       {
         label: 'Latin Jazz',
         code: `// latin jazz groove
-$: s("bd ~ [~ bd] ~ bd ~ [~ bd] ~").gain(.7)
-$: s("rim ~ rim ~ rim ~ rim rim").gain(.3)
-$: s("[hh hh]*4").gain("[.2 .3]*4")
-$: note("<[d3,g3,a3,c4] [g3,b3,d4,f4] [c3,e3,g3,b3] [a2,d3,e3,g3]>")
+let kick = s("bd ~ [~ bd] ~ bd ~ [~ bd] ~").gain(.7)
+let rim = s("rim ~ rim ~ rim ~ rim rim").gain(.3)
+let hats = s("[hh hh]*4").gain("[.2 .3]*4")
+let bells = note("<[d3,g3,a3,c4] [g3,b3,d4,f4] [c3,e3,g3,b3] [a2,d3,e3,g3]>")
   .s("gm_vibraphone").velocity(.35)
   .room(.4).slow(2)
-$: note("c2 d2 e2 g2 a2 g2 e2 d2")
-  .s("gm_acoustic_bass").velocity(.4)`,
+let bass = note("c2 d2 e2 g2 a2 g2 e2 d2")
+  .s("gm_acoustic_bass").velocity(.4)
+
+$: arrange(
+  [2, stack(kick, rim)],
+  [2, stack(kick, rim, hats, bells)],
+  [4, stack(kick, rim, hats, bells, bass)])`,
       },
       {
         label: 'Reggae Dub',
         code: `// reggae dub track
-$: s("bd ~ ~ bd ~ ~ bd ~").gain(.75)
-$: s("~ ~ cp ~ ~ ~ ~ ~").gain(.55)
+let kick = s("bd ~ ~ bd ~ ~ bd ~").gain(.75)
+let clap = s("~ ~ cp ~ ~ ~ ~ ~").gain(.55)
   .delay(.4).delayfeedback(.55).room(.4)
-$: s("[~ hh]*4").gain(.3)
-$: note("c2 ~ ~ c2 ~ ~ e2 ~")
+let hats = s("[~ hh]*4").gain(.3)
+let sub = note("c2 ~ ~ c2 ~ ~ e2 ~")
   .s("sine").gain(.55)
   .lpf(300).shape(.2).room(.3)
-$: note("<[e3,g3,b3] ~ ~ [a3,c4,e4] ~ ~ ~ ~>")
+let guitar = note("<[e3,g3,b3] ~ ~ [a3,c4,e4] ~ ~ ~ ~>")
   .s("gm_clean_guitar").velocity(.3)
-  .room(.3)`,
+  .room(.3)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats, sub)],
+  [4, stack(kick, clap, hats, sub, guitar)])`,
       },
       {
         label: 'Ambient Techno',
         code: `// ambient techno
-$: s("bd*4").gain(.8)
-$: s("~ rim ~ ~").gain(.25)
-$: s("hh*16").gain("[.1 .2]*8")
-$: note("c2*4").s("sine").gain(.4).lpf(200)
-$: note("<[c3,g3,c4] [a2,e3,a3]>")
+let kick = s("bd*4").gain(.8)
+let rim = s("~ rim ~ ~").gain(.25)
+let hats = s("hh*16").gain("[.1 .2]*8")
+let sub = note("c2*4").s("sine").gain(.4).lpf(200)
+let pad = note("<[c3,g3,c4] [a2,e3,a3]>")
   .s("sine").gain(.2)
   .room(.8).roomsize(6).slow(4)
-$: note("<c5 e5 g5 b5>")
+let lead = note("<c5 e5 g5 b5>")
   .s("sine").gain(.15)
-  .delay(.5).delayfeedback(.6).room(.6).slow(4)`,
+  .delay(.5).delayfeedback(.6).room(.6).slow(4)
+
+$: arrange(
+  [2, stack(kick, rim)],
+  [2, stack(kick, rim, hats, sub)],
+  [4, stack(kick, rim, hats, sub, pad, lead)])`,
       },
       {
         label: 'Garage Revival',
         code: `// UK garage revival
-$: s("bd ~ [~ bd] ~").bank("RolandTR909").gain(.8)
-$: s("~ cp ~ ~").bank("RolandTR909").gain(.55)
-$: s("[hh hh hh ~]*2").bank("RolandTR909").gain(.4)
-$: note("<[e3,g3,b3,d4] [a3,c4,e4,g4]>")
+let kick = s("bd ~ [~ bd] ~").bank("RolandTR909").gain(.8)
+let clap = s("~ cp ~ ~").bank("RolandTR909").gain(.55)
+let hats = s("[hh hh hh ~]*2").bank("RolandTR909").gain(.4)
+let keys = note("<[e3,g3,b3,d4] [a3,c4,e4,g4]>")
   .s("gm_epiano1").velocity(.3)
   .room(.4).slow(2)
-$: note("<e2 a2>")
-  .s("sine").gain(.45).lpf(200).slow(2)`,
+let sub = note("<e2 a2>")
+  .s("sine").gain(.45).lpf(200).slow(2)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats, keys)],
+  [4, stack(kick, clap, hats, keys, sub)])`,
       },
       {
         label: 'Grime Instrumental',
         code: `// grime instrumental
-$: s("bd ~ [bd ~] ~ bd ~ [~ bd] ~")
+let kick = s("bd ~ [bd ~] ~ bd ~ [~ bd] ~")
   .bank("RolandTR808").gain(.85)
-$: s("~ ~ ~ ~ ~ ~ cp ~")
+let clap = s("~ ~ ~ ~ ~ ~ cp ~")
   .bank("RolandTR808").gain(.7)
-$: s("hh*8").bank("RolandTR808")
+let hats = s("hh*8").bank("RolandTR808")
   .gain("[.3 .5 .35 .6 .3 .55 .35 .65]")
-$: note("<c2 c2 b1 c2>")
+let bass = note("<c2 c2 b1 c2>")
   .s("square").gain(.5).lpf(400)
-$: note("<[c3,e3,g3]>")
-  .s("supersaw").gain(.2).lpf(1200)`,
+let pad = note("<[c3,e3,g3]>")
+  .s("supersaw").gain(.2).lpf(1200)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats, bass)],
+  [4, stack(kick, clap, hats, bass, pad)])`,
       },
       {
         label: 'Progressive House',
         code: `// progressive house
-$: s("bd*4").bank("RolandTR909").gain(.85)
-$: s("~ cp ~ ~").bank("RolandTR909").gain(.55)
-$: s("[~ hh]*4").bank("RolandTR909").gain(.4)
-$: s("~ ~ ~ oh").bank("RolandTR909").gain(.3)
-$: note("<c2 c2 a1 b1>")
+let kick = s("bd*4").bank("RolandTR909").gain(.85)
+let clap = s("~ cp ~ ~").bank("RolandTR909").gain(.55)
+let hats = s("[~ hh]*4").bank("RolandTR909").gain(.4)
+let openHat = s("~ ~ ~ oh").bank("RolandTR909").gain(.3)
+let bass = note("<c2 c2 a1 b1>")
   .s("sawtooth").gain(.45)
   .lpf(sine.range(400,1500).slow(16))
-$: note("<[c3,e3,g3] [c3,e3,g3] [a2,c3,e3] [b2,d3,f3]>")
+let pad = note("<[c3,e3,g3] [c3,e3,g3] [a2,c3,e3] [b2,d3,f3]>")
   .s("supersaw").gain(.25)
-  .lpf(sine.range(800,2500).slow(8)).room(.3).slow(2)`,
+  .lpf(sine.range(800,2500).slow(8)).room(.3).slow(2)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats, openHat)],
+  [4, stack(kick, clap, hats, openHat, bass, pad)])`,
       },
       {
         label: 'Funk Rock',
         code: `// funk rock groove
-$: s("bd ~ [bd ~] ~ bd ~ ~ ~")
+let kick = s("bd ~ [bd ~] ~ bd ~ ~ ~")
   .bank("RolandTR909").gain(.8)
-$: s("~ sd ~ ~ ~ sd ~ [~ sd]")
+let snare = s("~ sd ~ ~ ~ sd ~ [~ sd]")
   .bank("RolandTR909").gain(.65)
-$: s("[hh hh oh ~]*2").bank("RolandTR909").gain(.4)
-$: note("e2 ~ e2 g2 ~ g2 a2 b2")
+let hats = s("[hh hh oh ~]*2").bank("RolandTR909").gain(.4)
+let bass = note("e2 ~ e2 g2 ~ g2 a2 b2")
   .s("gm_electric_bass_finger").velocity(.5)
-$: note("e3 g3 a3 e3 g3 a3 b3 a3")
-  .s("gm_overdriven_guitar").velocity(.4)`,
+let guitar = note("e3 g3 a3 e3 g3 a3 b3 a3")
+  .s("gm_overdriven_guitar").velocity(.4)
+
+$: arrange(
+  [2, stack(kick, snare)],
+  [2, stack(kick, snare, hats, bass)],
+  [4, stack(kick, snare, hats, bass, guitar)])`,
       },
       {
         label: 'Cinematic Score',
         code: `// cinematic film score
-$: note("<[c3,e3,g3,c4] [a2,c3,e3,a3] [b2,d3,f3,b3] [g2,b2,d3,g3]>")
+let strings = note("<[c3,e3,g3,c4] [a2,c3,e3,a3] [b2,d3,f3,b3] [g2,b2,d3,g3]>")
   .s("gm_strings1").velocity(.4)
   .room(.6).roomsize(5).slow(4)
-$: note("<c5 e5 g5 b5>")
+let flute = note("<c5 e5 g5 b5>")
   .s("gm_flute").velocity(.3)
   .room(.5).slow(4)
-$: s("~ ~ ~ ~ bd ~ ~ ~").gain(.5)
-$: note("<c2 a1 b1 g1>")
-  .s("gm_contrabass").velocity(.35).slow(4)`,
+let kick = s("~ ~ ~ ~ bd ~ ~ ~").gain(.5)
+let bass = note("<c2 a1 b1 g1>")
+  .s("gm_contrabass").velocity(.35).slow(4)
+
+$: arrange(
+  [2, stack(strings, flute)],
+  [2, stack(strings, flute, kick)],
+  [4, stack(strings, flute, kick, bass)])`,
       },
       {
         label: 'Gospel',
         code: `// gospel praise groove
-$: s("[bd ~] [~ bd] [bd ~] [~ ~]").gain(.75)
-$: s("~ cp ~ cp").gain(.55)
-$: s("[hh hh]*4").gain(.35)
-$: note("<[c3,e3,g3,b3] [f3,a3,c4,e4] [d3,g3,a3,c4] [g3,b3,d4,f4]>")
+let kick = s("[bd ~] [~ bd] [bd ~] [~ ~]").gain(.75)
+let clap = s("~ cp ~ cp").gain(.55)
+let hats = s("[hh hh]*4").gain(.35)
+let keys = note("<[c3,e3,g3,b3] [f3,a3,c4,e4] [d3,g3,a3,c4] [g3,b3,d4,f4]>")
   .s("piano").gain(.5).room(.4).slow(2)
-$: note("<c2 f2 d2 g2>")
+let bass = note("<c2 f2 d2 g2>")
   .s("gm_acoustic_bass").velocity(.4).slow(2)
-$: note("<[c4,e4,g4]>")
-  .s("gm_choir_aahs").velocity(.25).room(.5).slow(4)`,
+let choir = note("<[c4,e4,g4]>")
+  .s("gm_choir_aahs").velocity(.25).room(.5).slow(4)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats, keys)],
+  [4, stack(kick, clap, hats, keys, bass, choir)])`,
       },
       {
         label: 'Breakbeat Science',
         code: `// breakbeat science
-$: s("[bd ~ bd ~] [~ bd ~ bd]").gain(.8)
-$: s("[~ sd ~ ~] [~ ~ sd ~]").gain(.65)
-$: s("hh*16").gain("[.2 .35]*8")
-$: note("c2 e2 g2 c3 g2 e2")
+let kick = s("[bd ~ bd ~] [~ bd ~ bd]").gain(.8)
+let snare = s("[~ sd ~ ~] [~ ~ sd ~]").gain(.65)
+let hats = s("hh*16").gain("[.2 .35]*8")
+let bass = note("c2 e2 g2 c3 g2 e2")
   .s("sawtooth").gain(.45).lpf(1000)
-$: note("<[c3,e3,g3]>")
+let pad = note("<[c3,e3,g3]>")
   .s("supersaw").gain(.2)
   .lpf(1500).room(.3).slow(4)
-$: s("chin:0 ~ chin:1 ~").gain(.3)
-  .room(.3).speed(1.2)`,
+let vox = s("chin:0 ~ chin:1 ~").gain(.3)
+  .room(.3).speed(1.2)
+
+$: arrange(
+  [2, stack(kick, snare)],
+  [2, stack(kick, snare, hats, bass)],
+  [4, stack(kick, snare, hats, bass, pad, vox)])`,
       },
       {
         label: 'Bollywood Fusion',
         code: `// bollywood fusion beat
-$: s("bd ~ [~ bd] ~").gain(.8)
-$: s("~ ~ cp ~").gain(.6)
-$: s("[hh hh]*4").gain("[.25 .4]*4")
-$: note("c4 d4 e4 f4 g4 a4 b4 c5")
+let kick = s("bd ~ [~ bd] ~").gain(.8)
+let clap = s("~ ~ cp ~").gain(.6)
+let hats = s("[hh hh]*4").gain("[.25 .4]*4")
+let sitar = note("c4 d4 e4 f4 g4 a4 b4 c5")
   .s("gm_sitar").velocity(.4)
   .room(.3).slow(2)
-$: note("<[c3,e3,g3] [f3,a3,c4]>")
+let strings = note("<[c3,e3,g3] [f3,a3,c4]>")
   .s("gm_strings1").velocity(.3)
-  .room(.4).slow(2)`,
+  .room(.4).slow(2)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats, sitar)],
+  [4, stack(kick, clap, hats, sitar, strings)])`,
       },
       {
         label: 'Salsa',
         code: `// salsa groove
-$: s("bd ~ ~ bd ~ bd ~ ~")
+let kick = s("bd ~ ~ bd ~ bd ~ ~")
   .bank("RolandTR808").gain(.75)
-$: s("rim ~ rim ~ ~ rim ~ ~")
+let rim = s("rim ~ rim ~ ~ rim ~ ~")
   .bank("RolandTR808").gain(.35)
-$: s("~ ~ ~ ~ cp ~ ~ ~")
+let clap = s("~ ~ ~ ~ cp ~ ~ ~")
   .bank("RolandTR808").gain(.5)
-$: note("c2 ~ e2 c2 g2 ~ c2 ~")
+let bass = note("c2 ~ e2 c2 g2 ~ c2 ~")
   .s("gm_acoustic_bass").velocity(.5)
-$: note("<[c3,e3,g3] [f3,a3,c4]>")
-  .s("piano").gain(.4).slow(2)`,
+let keys = note("<[c3,e3,g3] [f3,a3,c4]>")
+  .s("piano").gain(.4).slow(2)
+
+$: arrange(
+  [2, stack(kick, rim)],
+  [2, stack(kick, rim, clap, bass)],
+  [4, stack(kick, rim, clap, bass, keys)])`,
       },
       {
         label: 'Vaporwave',
         code: `// vaporwave aesthetic
-$: s("bd ~ ~ bd ~ ~ bd ~").gain(.6).lpf(600)
-$: s("~ ~ cp ~ ~ ~ cp ~").gain(.4).room(.5)
-$: note("<[c3,e3,g3] [a2,c3,e3] [f2,a2,c3] [g2,b2,d3]>")
+let kick = s("bd ~ ~ bd ~ ~ bd ~").gain(.6).lpf(600)
+let clap = s("~ ~ cp ~ ~ ~ cp ~").gain(.4).room(.5)
+let keys = note("<[c3,e3,g3] [a2,c3,e3] [f2,a2,c3] [g2,b2,d3]>")
   .s("gm_epiano1").velocity(.25)
   .room(.5).delay(.3).delayfeedback(.4).slow(2)
-$: note("<c2 a1 f1 g1>")
-  .s("sine").gain(.35).lpf(200).slow(2)`,
+let sub = note("<c2 a1 f1 g1>")
+  .s("sine").gain(.35).lpf(200).slow(2)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, keys)],
+  [4, stack(kick, clap, keys, sub)])`,
       },
       {
         label: 'Hyperpop',
         code: `// hyperpop energy
-$: s("bd ~ bd ~ bd ~ bd bd").gain(.85)
-$: s("~ cp ~ cp").gain(.65).crush(10)
-$: s("hh*16").gain("[.25 .4]*8").crush(8)
-$: note("c3 e3 g3 c4 e4 c4 g3 e3")
+let kick = s("bd ~ bd ~ bd ~ bd bd").gain(.85)
+let clap = s("~ cp ~ cp").gain(.65).crush(10)
+let hats = s("hh*16").gain("[.25 .4]*8").crush(8)
+let synth = note("c3 e3 g3 c4 e4 c4 g3 e3")
   .s("supersaw").gain(.4)
   .lpf(3000).crush(10)
-$: note("c1*4").s("sine").gain(.5)
-  .lpf(150).shape(.3)`,
+let sub = note("c1*4").s("sine").gain(.5)
+  .lpf(150).shape(.3)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats, synth)],
+  [4, stack(kick, clap, hats, synth, sub)])`,
       },
       {
         label: 'Bossa Nova Full',
         code: `// bossa nova full arrangement
-$: s("bd ~ [~ bd] ~ bd ~ [~ bd] ~").gain(.6)
-$: s("rim ~ rim ~ rim ~ rim rim").gain(.25)
-$: s("[hh hh]*4").gain("[.12 .2]*4")
-$: note("c2 d2 e2 g2 a2 g2 e2 d2")
+let kick = s("bd ~ [~ bd] ~ bd ~ [~ bd] ~").gain(.6)
+let rim = s("rim ~ rim ~ rim ~ rim rim").gain(.25)
+let hats = s("[hh hh]*4").gain("[.12 .2]*4")
+let bass = note("c2 d2 e2 g2 a2 g2 e2 d2")
   .s("gm_acoustic_bass").velocity(.4)
-$: note("<[d3,f3,a3,c4] [g3,b3,d4,f4] [c3,e3,g3,b3] [a2,c3,e3,g3]>")
+let guitar = note("<[d3,f3,a3,c4] [g3,b3,d4,f4] [c3,e3,g3,b3] [a2,c3,e3,g3]>")
   .s("gm_nylon_guitar").velocity(.35)
-  .room(.3).slow(2)`,
+  .room(.3).slow(2)
+
+$: arrange(
+  [2, stack(kick, rim)],
+  [2, stack(kick, rim, hats, bass)],
+  [4, stack(kick, rim, hats, bass, guitar)])`,
       },
       {
         label: 'Synthpop',
         code: `// synthpop track
-$: s("bd*4").gain(.8)
-$: s("~ cp ~ ~").gain(.55)
-$: s("[~ hh]*4").gain(.4)
-$: note("<c2 f2 g2 c2>")
+let kick = s("bd*4").gain(.8)
+let clap = s("~ cp ~ ~").gain(.55)
+let hats = s("[~ hh]*4").gain(.4)
+let bass = note("<c2 f2 g2 c2>")
   .s("square").gain(.45).lpf(600)
-$: note("c4 d4 e4 g4 f4 e4 d4 c4")
+let lead = note("c4 d4 e4 g4 f4 e4 d4 c4")
   .s("gm_saw_lead").velocity(.35).room(.3)
-$: note("<[c3,e3,g3] [f3,a3,c4]>")
-  .s("supersaw").gain(.25).lpf(1500).slow(2)`,
+let pad = note("<[c3,e3,g3] [f3,a3,c4]>")
+  .s("supersaw").gain(.25).lpf(1500).slow(2)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats, bass)],
+  [4, stack(kick, clap, hats, bass, lead, pad)])`,
       },
     ],
   },
@@ -2687,493 +3615,713 @@ $: note("<[c3,e3,g3] [f3,a3,c4]>")
       {
         label: 'Study Session',
         code: `// warm piano study vibes
-$: note("<[c3,e3,g3,b3] [a2,c3,e3,g3] [b2,d3,f3,a3] [g2,b2,d3,f3]>")
+let keys = note("<[c3,e3,g3,b3] [a2,c3,e3,g3] [b2,d3,f3,a3] [g2,b2,d3,f3]>")
   .s("piano").gain(.5).room(.4).slow(2)
-$: note("<c2 a1 b1 g1>")
+let sub = note("<c2 a1 b1 g1>")
   .s("sine").gain(.5).lpf(200).shape(.15).slow(2)
-$: s("[bd:3 ~] [~ bd:3] ~ ~")
+let kick = s("[bd:3 ~] [~ bd:3] ~ ~")
   .gain(.4).lpf(800).shape(.2)
-$: s("~ rim ~ rim").gain(.15).lpf(2000)
-$: s("[~ hh:2]*4").gain("[.1 .2 .12 .25]").lpf(3500)`,
+let rim = s("~ rim ~ rim").gain(.15).lpf(2000)
+let hats = s("[~ hh:2]*4").gain("[.1 .2 .12 .25]").lpf(3500)
+
+$: arrange(
+  [2, stack(keys, sub)],
+  [2, stack(keys, sub, kick, rim)],
+  [4, stack(keys, sub, kick, rim, hats)])`,
       },
       {
         label: 'Rainy Rhodes',
         code: `// mellow rhodes in the rain
-$: note("<[e3,g3,b3] [f3,a3,c4] [e3,g3,b3] [d3,f3,a3]>")
+let keys = note("<[e3,g3,b3] [f3,a3,c4] [e3,g3,b3] [d3,f3,a3]>")
   .s("gm_epiano1").velocity(.3)
   .room(.5).delay(.3).slow(2)
-$: note("<e2 f2 e2 d2>")
+let sub = note("<e2 f2 e2 d2>")
   .s("sine").gain(.45).lpf(180).slow(2)
-$: s("[bd:3 ~] ~ [~ bd:3] ~")
+let kick = s("[bd:3 ~] ~ [~ bd:3] ~")
   .gain(.35).lpf(600)
-$: s("[~ hh:1]*4").gain("[.08 .15 .1 .2]").lpf(3000)`,
+let hats = s("[~ hh:1]*4").gain("[.08 .15 .1 .2]").lpf(3000)
+
+$: arrange(
+  [2, stack(keys, sub)],
+  [2, stack(keys, sub, kick)],
+  [4, stack(keys, sub, kick, hats)])`,
       },
       {
         label: 'Night Drive',
         code: `// dreamy late-night cruise
-$: note("<[b3,d4,f4] [e3,g3,b3] [f3,a3,c4] [b3,d4,f4]>")
+let keys = note("<[b3,d4,f4] [e3,g3,b3] [f3,a3,c4] [b3,d4,f4]>")
   .s("piano").gain(.35).room(.5)
   .delay(.3).delayfeedback(.35).slow(2)
-$: note("<b1 e2 f2 b1>")
+let sub = note("<b1 e2 f2 b1>")
   .s("sine").gain(.45).lpf(200).shape(.15).slow(2)
-$: s("[bd:3 ~] ~ [~ bd:3] ~")
+let kick = s("[bd:3 ~] ~ [~ bd:3] ~")
   .gain(.35).lpf(600)
-$: s("[~ hh:2]*4").gain("[.08 .18 .1 .2]").lpf(3000)`,
+let hats = s("[~ hh:2]*4").gain("[.08 .18 .1 .2]").lpf(3000)
+
+$: arrange(
+  [2, stack(keys, sub)],
+  [2, stack(keys, sub, kick)],
+  [4, stack(keys, sub, kick, hats)])`,
       },
       {
         label: 'Coffee Shop',
         code: `// cozy morning coffee
-$: note("<[f3,a3,c4] [d3,f3,a3] [b2,d3,f3] [c3,e3,g3]>")
+let keys = note("<[f3,a3,c4] [d3,f3,a3] [b2,d3,f3] [c3,e3,g3]>")
   .s("piano").gain(.5).room(.35).slow(2)
-$: note("<f2 d2 b1 c2>")
+let sub = note("<f2 d2 b1 c2>")
   .s("sine").gain(.45).lpf(200).slow(2)
-$: s("[bd:3 ~ ~] [~ ~ bd:3] ~ ~")
+let kick = s("[bd:3 ~ ~] [~ ~ bd:3] ~ ~")
   .gain(.35).lpf(600)
-$: s("[hh:1 ~ hh:1 ~]*2")
-  .gain("[.08 .15 .1 .18]").lpf(3000)`,
+let hats = s("[hh:1 ~ hh:1 ~]*2")
+  .gain("[.08 .15 .1 .18]").lpf(3000)
+
+$: arrange(
+  [2, stack(keys, sub)],
+  [2, stack(keys, sub, kick)],
+  [4, stack(keys, sub, kick, hats)])`,
       },
       {
         label: 'Sunset Gold',
         code: `// golden hour warmth
-$: note("<[d3,f3,a3,c4] [e3,g3,b3] [d3,f3,a3] [a2,c3,e3]>")
+let keys = note("<[d3,f3,a3,c4] [e3,g3,b3] [d3,f3,a3] [a2,c3,e3]>")
   .s("gm_epiano1").velocity(.25)
   .room(.5).delay(.3).delayfeedback(.35).slow(2)
-$: note("<d2 e2 d2 a1>")
+let sub = note("<d2 e2 d2 a1>")
   .s("sine").gain(.4).lpf(180).slow(2)
-$: s("[bd:3 ~] ~ ~ [~ bd:3]")
-  .gain(.3).lpf(500)`,
+let kick = s("[bd:3 ~] ~ ~ [~ bd:3]")
+  .gain(.3).lpf(500)
+
+$: arrange(
+  [2, keys],
+  [2, stack(keys, sub)],
+  [4, stack(keys, sub, kick)])`,
       },
       {
         label: 'Autumn Leaves',
         code: `// falling leaves nostalgia
-$: note("<[g3,b3,d4] [c3,e3,g3] [d3,f3,a3] [e3,g3,b3]>")
+let keys = note("<[g3,b3,d4] [c3,e3,g3] [d3,f3,a3] [e3,g3,b3]>")
   .s("piano").gain(.5).room(.4)
   .delay(.25).delayfeedback(.3).slow(2)
-$: note("<g1 c2 d2 e2>")
+let sub = note("<g1 c2 d2 e2>")
   .s("sine").gain(.45).lpf(200).slow(2)
-$: s("[bd:3 ~] ~ [~ bd:3] ~")
-  .gain(.35).lpf(600)`,
+let kick = s("[bd:3 ~] ~ [~ bd:3] ~")
+  .gain(.35).lpf(600)
+
+$: arrange(
+  [2, keys],
+  [2, stack(keys, sub)],
+  [4, stack(keys, sub, kick)])`,
       },
       {
         label: 'Moonlight',
         code: `// ethereal moonlit walk
-$: note("<[a3,c4,e4] [f3,a3,c4] [g3,b3,d4] [e3,g3,b3]>")
+let keys = note("<[a3,c4,e4] [f3,a3,c4] [g3,b3,d4] [e3,g3,b3]>")
   .s("piano").gain(.3).room(.5)
   .delay(.3).delayfeedback(.35).slow(2)
-$: note("<a1 f1 g1 e1>")
-  .s("sine").gain(.4).lpf(180).slow(2)`,
+let sub = note("<a1 f1 g1 e1>")
+  .s("sine").gain(.4).lpf(180).slow(2)
+
+$: arrange(
+  [2, keys],
+  [4, stack(keys, sub)])`,
       },
       {
         label: 'Tape Loop',
         code: `// vintage tape rhodes
-$: note("<[e3,a3,b3] [a2,d3,e3] [g2,a2,d3] [b2,e3,g3]>")
+let keys = note("<[e3,a3,b3] [a2,d3,e3] [g2,a2,d3] [b2,e3,g3]>")
   .s("gm_epiano1").velocity(.25)
   .room(.4).delay(.3).slow(2)
-$: note("<e2 a1 g2 b1>")
+let sub = note("<e2 a1 g2 b1>")
   .s("sine").gain(.45).lpf(200).slow(2)
-$: s("[bd:3 ~] [~ bd:3] ~ ~")
-  .gain(.35).lpf(600)`,
+let kick = s("[bd:3 ~] [~ bd:3] ~ ~")
+  .gain(.35).lpf(600)
+
+$: arrange(
+  [2, keys],
+  [2, stack(keys, sub)],
+  [4, stack(keys, sub, kick)])`,
       },
       {
         label: '3AM Thoughts',
         code: `// dark bedroom confessions
-$: note("<[d3,e3,a3] [a2,d3,e3] [b2,e3,g3] [a2,b2,e3]>")
+let keys = note("<[d3,e3,a3] [a2,d3,e3] [b2,e3,g3] [a2,b2,e3]>")
   .s("piano").gain(.45).room(.5)
   .delay(.35).delayfeedback(.4).slow(2)
-$: note("<d2 a1 b1 a1>")
-  .s("sine").gain(.4).lpf(180).slow(2)`,
+let sub = note("<d2 a1 b1 a1>")
+  .s("sine").gain(.4).lpf(180).slow(2)
+
+$: arrange(
+  [2, keys],
+  [4, stack(keys, sub)])`,
       },
       {
         label: 'Morning Light',
         code: `// bright morning warmth
-$: note("<[d3,g3,a3] [g2,b2,d3] [a2,d3,e3] [d3,g3,a3]>")
+let keys = note("<[d3,g3,a3] [g2,b2,d3] [a2,d3,e3] [d3,g3,a3]>")
   .s("piano").gain(.55).room(.35).slow(2)
-$: note("<d2 g1 a1 d2>")
+let sub = note("<d2 g1 a1 d2>")
   .s("sine").gain(.45).lpf(200).slow(2)
-$: s("[bd:3 ~] [~ bd:3] ~ ~")
-  .gain(.35).lpf(600)`,
+let kick = s("[bd:3 ~] [~ bd:3] ~ ~")
+  .gain(.35).lpf(600)
+
+$: arrange(
+  [2, keys],
+  [2, stack(keys, sub)],
+  [4, stack(keys, sub, kick)])`,
       },
       {
         label: 'Vinyl Crackle',
         code: `// lo-fi vinyl warmth
-$: note("<[e3,g3,b3] [a2,c3,e3]>")
+let keys = note("<[e3,g3,b3] [a2,c3,e3]>")
   .s("piano").gain(.45).room(.4).slow(2)
-$: note("<e2 a1>")
+let sub = note("<e2 a1>")
   .s("sine").gain(.45).lpf(180).slow(2)
-$: s("[bd:3 ~] ~ [~ bd:3] ~")
+let kick = s("[bd:3 ~] ~ [~ bd:3] ~")
   .gain(.3).lpf(600)
-$: s("[~ hh:1]*4").gain("[.06 .12 .08 .15]").lpf(2500)`,
+let hats = s("[~ hh:1]*4").gain("[.06 .12 .08 .15]").lpf(2500)
+
+$: arrange(
+  [2, stack(keys, sub)],
+  [2, stack(keys, sub, kick)],
+  [4, stack(keys, sub, kick, hats)])`,
       },
       {
         label: 'Jazz Cafe',
         code: `// smoky jazz cafe
-$: note("<[d3,f3,a3,c4] [g3,b3,d4,f4] [c3,e3,g3,b3] [f3,a3,c4,e4]>")
+let keys = note("<[d3,f3,a3,c4] [g3,b3,d4,f4] [c3,e3,g3,b3] [f3,a3,c4,e4]>")
   .s("gm_epiano1").velocity(.3)
   .room(.4).slow(2)
-$: note("<d2 g2 c2 f2>")
+let sub = note("<d2 g2 c2 f2>")
   .s("sine").gain(.4).lpf(200).slow(2)
-$: s("[bd:3 ~] ~ [~ bd:3] ~")
-  .gain(.3).lpf(500)`,
+let kick = s("[bd:3 ~] ~ [~ bd:3] ~")
+  .gain(.3).lpf(500)
+
+$: arrange(
+  [2, keys],
+  [2, stack(keys, sub)],
+  [4, stack(keys, sub, kick)])`,
       },
       {
         label: 'Dreamy Piano',
         code: `// dreamy piano wash
-$: note("<[f3,a3,c4,e4] [d3,f3,a3,c4]>")
+let keys = note("<[f3,a3,c4,e4] [d3,f3,a3,c4]>")
   .s("piano").gain(.4).room(.6)
   .delay(.35).delayfeedback(.4).slow(4)
-$: note("<f1 d1>")
-  .s("sine").gain(.4).lpf(150).slow(4)`,
+let sub = note("<f1 d1>")
+  .s("sine").gain(.4).lpf(150).slow(4)
+
+$: arrange(
+  [2, keys],
+  [4, stack(keys, sub)])`,
       },
       {
         label: 'Bedroom Pop',
         code: `// bedroom pop feel
-$: note("<[c3,e3,g3] [a2,c3,e3] [f2,a2,c3] [g2,b2,d3]>")
+let keys = note("<[c3,e3,g3] [a2,c3,e3] [f2,a2,c3] [g2,b2,d3]>")
   .s("piano").gain(.5).room(.35).slow(2)
-$: s("[bd:3 ~] [~ bd:3] [bd:3 ~] ~")
+let kick = s("[bd:3 ~] [~ bd:3] [bd:3 ~] ~")
   .gain(.35).lpf(700)
-$: s("~ rim ~ rim").gain(.12)
-$: s("[~ hh:1]*4").gain("[.08 .15 .1 .2]").lpf(3000)`,
+let rim = s("~ rim ~ rim").gain(.12)
+let hats = s("[~ hh:1]*4").gain("[.08 .15 .1 .2]").lpf(3000)
+
+$: arrange(
+  [2, stack(keys, kick)],
+  [2, stack(keys, kick, rim)],
+  [4, stack(keys, kick, rim, hats)])`,
       },
       {
         label: 'Ambient Rain',
         code: `// ambient rain mood
-$: note("<[c3,g3,c4]>")
+let pad = note("<[c3,g3,c4]>")
   .s("sine").gain(.25)
   .room(.8).roomsize(6)
   .lpf(1200).slow(4)
-$: s("hh*16").gain("[.04 .08]*8")
-  .lpf(2000).room(.5)`,
+let hats = s("hh*16").gain("[.04 .08]*8")
+  .lpf(2000).room(.5)
+
+$: arrange(
+  [2, pad],
+  [4, stack(pad, hats)])`,
       },
       {
         label: 'Warm Vibes',
         code: `// warm vibraphone lofi
-$: n("<[~ 0] [4 ~] [~ 7] [4 ~]>")
+let bells = n("<[~ 0] [4 ~] [~ 7] [4 ~]>")
   .scale("A3:minor pentatonic")
   .s("gm_vibraphone").velocity(.2)
   .room(.5).delay(.3).slow(2)
-$: note("<c2 a1>")
+let sub = note("<c2 a1>")
   .s("sine").gain(.4).lpf(180).slow(2)
-$: s("[bd:3 ~] ~ [~ bd:3] ~")
-  .gain(.3).lpf(500)`,
+let kick = s("[bd:3 ~] ~ [~ bd:3] ~")
+  .gain(.3).lpf(500)
+
+$: arrange(
+  [2, bells],
+  [2, stack(bells, sub)],
+  [4, stack(bells, sub, kick)])`,
       },
       {
         label: 'Chill Pad',
         code: `// chillout pad texture
-$: note("<[c3,e3,g3] [a2,c3,e3]>")
+let pad = note("<[c3,e3,g3] [a2,c3,e3]>")
   .s("supersaw").gain(.2)
   .lpf(1200).room(.6).slow(4)
-$: note("<c2 a1>")
-  .s("sine").gain(.4).lpf(160).slow(4)`,
+let sub = note("<c2 a1>")
+  .s("sine").gain(.4).lpf(160).slow(4)
+
+$: arrange(
+  [2, pad],
+  [4, stack(pad, sub)])`,
       },
       {
         label: 'Old Cassette',
         code: `// old cassette tape feel
-$: note("<[g3,b3,d4] [e3,g3,b3] [f3,a3,c4] [d3,f3,a3]>")
+let keys = note("<[g3,b3,d4] [e3,g3,b3] [f3,a3,c4] [d3,f3,a3]>")
   .s("gm_epiano1").velocity(.25)
   .room(.4).slow(2)
-$: note("<g1 e2 f2 d2>")
+let sub = note("<g1 e2 f2 d2>")
   .s("sine").gain(.4).lpf(180).slow(2)
-$: s("[bd:3 ~] ~ [~ bd:3] ~")
+let kick = s("[bd:3 ~] ~ [~ bd:3] ~")
   .gain(.3).lpf(500)
-$: s("~ rim ~ ~").gain(.1).lpf(1500)`,
+let rim = s("~ rim ~ ~").gain(.1).lpf(1500)
+
+$: arrange(
+  [2, stack(keys, sub)],
+  [2, stack(keys, sub, kick)],
+  [4, stack(keys, sub, kick, rim)])`,
       },
       {
         label: 'Lazy Sunday',
         code: `// lazy sunday morning
-$: note("<[b2,d3,f3,a3] [e3,g3,b3,d4] [f3,a3,c4,e4] [b2,d3,f3,a3]>")
+let keys = note("<[b2,d3,f3,a3] [e3,g3,b3,d4] [f3,a3,c4,e4] [b2,d3,f3,a3]>")
   .s("piano").gain(.45).room(.4).slow(2)
-$: note("<b1 e2 f2 b1>")
+let sub = note("<b1 e2 f2 b1>")
   .s("sine").gain(.4).lpf(180).slow(2)
-$: s("[bd:3 ~] [~ bd:3] ~ ~")
-  .gain(.3).lpf(500)`,
+let kick = s("[bd:3 ~] [~ bd:3] ~ ~")
+  .gain(.3).lpf(500)
+
+$: arrange(
+  [2, keys],
+  [2, stack(keys, sub)],
+  [4, stack(keys, sub, kick)])`,
       },
       {
         label: 'Sleepy Haze',
         code: `// sleepy haze
-$: note("<[a2,c3,e3,g3] [d3,f3,a3,c4]>")
+let keys = note("<[a2,c3,e3,g3] [d3,f3,a3,c4]>")
   .s("piano").gain(.35).room(.5)
   .delay(.4).delayfeedback(.45).slow(4)
-$: note("<a1 d2>")
-  .s("sine").gain(.35).lpf(150).slow(4)`,
+let sub = note("<a1 d2>")
+  .s("sine").gain(.35).lpf(150).slow(4)
+
+$: arrange(
+  [2, keys],
+  [4, stack(keys, sub)])`,
       },
       {
         label: 'Dusty Keys',
         code: `// dusty piano keys
-$: note("<[a2,c3,e3,g3] [d3,f3,a3,c4] [g2,b2,d3,f3] [c3,e3,g3,b3]>")
+let keys = note("<[a2,c3,e3,g3] [d3,f3,a3,c4] [g2,b2,d3,f3] [c3,e3,g3,b3]>")
   .s("piano").gain(.45).room(.4).slow(2)
-$: note("<a1 d2 g1 c2>")
-  .s("sine").gain(.4).lpf(180).slow(2)`,
+let sub = note("<a1 d2 g1 c2>")
+  .s("sine").gain(.4).lpf(180).slow(2)
+
+$: arrange(
+  [2, keys],
+  [4, stack(keys, sub)])`,
       },
       {
         label: 'Midnight Walk',
         code: `// midnight walk vibes
-$: note("<[f3,a3,c4] [d3,f3,a3] [e3,g3,b3] [c3,e3,g3]>")
+let keys = note("<[f3,a3,c4] [d3,f3,a3] [e3,g3,b3] [c3,e3,g3]>")
   .s("gm_epiano1").velocity(.25)
   .room(.5).delay(.3).slow(2)
-$: note("<f1 d2 e2 c2>")
-  .s("sine").gain(.4).lpf(170).slow(2)`,
+let sub = note("<f1 d2 e2 c2>")
+  .s("sine").gain(.4).lpf(170).slow(2)
+
+$: arrange(
+  [2, keys],
+  [4, stack(keys, sub)])`,
       },
       {
         label: 'Cloud Nine',
         code: `// floating cloud vibes
-$: note("<[g3,b3,d4,g4] [e3,g3,b3,d4]>")
+let keys = note("<[g3,b3,d4,g4] [e3,g3,b3,d4]>")
   .s("piano").gain(.35).room(.5)
-  .delay(.35).delayfeedback(.4).slow(4)`,
+  .delay(.35).delayfeedback(.4).slow(4)
+
+$: arrange([4, keys])`,
       },
       {
         label: 'Nostalgia',
         code: `// nostalgic warmth
-$: note("<[c3,e3,g3,b3] [a2,c3,e3,g3] [f2,a2,c3,e3] [g2,b2,d3,f3]>")
+let keys = note("<[c3,e3,g3,b3] [a2,c3,e3,g3] [f2,a2,c3,e3] [g2,b2,d3,f3]>")
   .s("piano").gain(.45).room(.4).slow(2)
-$: note("<c2 a1 f1 g1>")
-  .s("sine").gain(.4).lpf(180).slow(2)`,
+let sub = note("<c2 a1 f1 g1>")
+  .s("sine").gain(.4).lpf(180).slow(2)
+
+$: arrange(
+  [2, keys],
+  [4, stack(keys, sub)])`,
       },
       {
         label: 'Melted Ice',
         code: `// melted ice cream mood
-$: note("<[b2,d3,f3,a3] [g2,b2,d3,f3]>")
+let keys = note("<[b2,d3,f3,a3] [g2,b2,d3,f3]>")
   .s("gm_epiano1").velocity(.25)
-  .room(.5).delay(.3).slow(4)`,
+  .room(.5).delay(.3).slow(4)
+
+$: arrange([4, keys])`,
       },
       {
         label: 'Warm Blanket',
         code: `// warm blanket feel
-$: note("<[d3,f3,a3] [b2,d3,f3] [c3,e3,g3] [a2,c3,e3]>")
+let keys = note("<[d3,f3,a3] [b2,d3,f3] [c3,e3,g3] [a2,c3,e3]>")
   .s("piano").gain(.5).room(.4).slow(2)
-$: s("[bd:3 ~] [~ bd:3] ~ ~").gain(.3).lpf(600)
-$: s("[~ hh:1]*4").gain("[.06 .12]*4").lpf(2500)`,
+let kick = s("[bd:3 ~] [~ bd:3] ~ ~").gain(.3).lpf(600)
+let hats = s("[~ hh:1]*4").gain("[.06 .12]*4").lpf(2500)
+
+$: arrange(
+  [2, keys],
+  [2, stack(keys, kick)],
+  [4, stack(keys, kick, hats)])`,
       },
       {
         label: 'Faded Photo',
         code: `// faded photograph
-$: note("<[e3,g3,b3] [c3,e3,g3] [a2,c3,e3] [b2,d3,g3]>")
+let keys = note("<[e3,g3,b3] [c3,e3,g3] [a2,c3,e3] [b2,d3,g3]>")
   .s("piano").gain(.4).room(.5)
-  .delay(.3).delayfeedback(.35).slow(2)`,
+  .delay(.3).delayfeedback(.35).slow(2)
+
+$: arrange([4, keys])`,
       },
       {
         label: 'Window Rain',
         code: `// rain on window
-$: note("<[a2,c3,e3,g3]>")
+let keys = note("<[a2,c3,e3,g3]>")
   .s("gm_epiano1").velocity(.2)
   .room(.7).roomsize(5).slow(4)
-$: s("hh*16").gain("[.03 .06]*8").lpf(2000).room(.4)`,
+let hats = s("hh*16").gain("[.03 .06]*8").lpf(2000).room(.4)
+
+$: arrange(
+  [2, keys],
+  [4, stack(keys, hats)])`,
       },
       {
         label: 'Old Film',
         code: `// old film score feel
-$: note("<[f3,a3,c4] [d3,f3,a3] [g3,b3,d4] [e3,g3,b3]>")
+let keys = note("<[f3,a3,c4] [d3,f3,a3] [g3,b3,d4] [e3,g3,b3]>")
   .s("gm_epiano1").velocity(.25)
   .room(.4).slow(2)
-$: note("<f1 d1 g1 e1>")
-  .s("sine").gain(.4).lpf(160).slow(2)`,
+let sub = note("<f1 d1 g1 e1>")
+  .s("sine").gain(.4).lpf(160).slow(2)
+
+$: arrange(
+  [2, keys],
+  [4, stack(keys, sub)])`,
       },
       {
         label: 'Soft Landing',
         code: `// soft landing pad
-$: note("<[c3,e3,g3,b3]>")
+let keys = note("<[c3,e3,g3,b3]>")
   .s("piano").gain(.3).room(.6)
   .delay(.4).delayfeedback(.5).slow(4)
-$: note("c2").s("sine").gain(.35).lpf(140).slow(4)`,
+let sub = note("c2").s("sine").gain(.35).lpf(140).slow(4)
+
+$: arrange(
+  [2, keys],
+  [4, stack(keys, sub)])`,
       },
       {
         label: 'Sunset Groove',
         code: `// sunset groove session
-$: s("[bd:3 ~] [~ bd:3] [bd:3 ~] ~")
+let kick = s("[bd:3 ~] [~ bd:3] [bd:3 ~] ~")
   .gain(.35).lpf(700)
-$: s("~ rim ~ rim").gain(.12).lpf(1800)
-$: s("[hh:2 ~ hh:2 ~]*2")
+let rim = s("~ rim ~ rim").gain(.12).lpf(1800)
+let hats = s("[hh:2 ~ hh:2 ~]*2")
   .gain("[.06 .12 .08 .15]*2").lpf(3000)
-$: note("<[a2,c3,e3,g3] [d3,f3,a3,c4] [e3,g3,b3,d4] [a2,c3,e3,g3]>")
+let keys = note("<[a2,c3,e3,g3] [d3,f3,a3,c4] [e3,g3,b3,d4] [a2,c3,e3,g3]>")
   .s("gm_epiano1").velocity(.25)
   .room(.5).delay(.25).delayfeedback(.3).slow(2)
-$: note("<a1 d2 e2 a1>")
-  .s("sine").gain(.4).lpf(170).slow(2)`,
+let sub = note("<a1 d2 e2 a1>")
+  .s("sine").gain(.4).lpf(170).slow(2)
+
+$: arrange(
+  [2, stack(kick, rim)],
+  [2, stack(kick, rim, hats, keys)],
+  [4, stack(kick, rim, hats, keys, sub)])`,
       },
       {
         label: 'Library Study',
         code: `// quiet library study
-$: note("<[e3,g3,b3,d4] [a2,c3,e3,g3] [d3,g3,a3,c4] [g2,b2,d3,f3]>")
+let keys = note("<[e3,g3,b3,d4] [a2,c3,e3,g3] [d3,g3,a3,c4] [g2,b2,d3,f3]>")
   .s("piano").gain(.4).room(.35).slow(2)
-$: note("<e2 a1 d2 g1>")
+let sub = note("<e2 a1 d2 g1>")
   .s("sine").gain(.4).lpf(180).slow(2)
-$: s("[bd:3 ~] ~ [~ bd:3] ~")
+let kick = s("[bd:3 ~] ~ [~ bd:3] ~")
   .gain(.3).lpf(600)
-$: s("[~ hh:1]*4").gain("[.05 .1 .07 .12]").lpf(2500)`,
+let hats = s("[~ hh:1]*4").gain("[.05 .1 .07 .12]").lpf(2500)
+
+$: arrange(
+  [2, stack(keys, sub)],
+  [2, stack(keys, sub, kick)],
+  [4, stack(keys, sub, kick, hats)])`,
       },
       {
         label: 'Rooftop View',
         code: `// rooftop city view
-$: note("<[f3,a3,c4,e4] [b2,d3,g3,a3] [e3,g3,b3,d4] [a2,c3,e3,g3]>")
+let keys = note("<[f3,a3,c4,e4] [b2,d3,g3,a3] [e3,g3,b3,d4] [a2,c3,e3,g3]>")
   .s("piano").gain(.45).room(.4)
   .delay(.2).delayfeedback(.3).slow(2)
-$: note("<f2 b1 e2 a1>")
+let sub = note("<f2 b1 e2 a1>")
   .s("sine").gain(.4).lpf(180).slow(2)
-$: s("[bd:3 ~] [~ bd:3] ~ ~")
-  .gain(.3).lpf(550)`,
+let kick = s("[bd:3 ~] [~ bd:3] ~ ~")
+  .gain(.3).lpf(550)
+
+$: arrange(
+  [2, keys],
+  [2, stack(keys, sub)],
+  [4, stack(keys, sub, kick)])`,
       },
       {
         label: 'Rainy Window',
         code: `// rainy window pane
-$: note("<[d3,f3,a3,c4] [g2,b2,d3,f3]>")
+let keys = note("<[d3,f3,a3,c4] [g2,b2,d3,f3]>")
   .s("gm_epiano1").velocity(.2)
   .room(.6).delay(.3).delayfeedback(.35).slow(4)
-$: note("<d2 g1>")
+let sub = note("<d2 g1>")
   .s("sine").gain(.35).lpf(160).slow(4)
-$: s("hh*16").gain("[.02 .05]*8").lpf(1800).room(.4)`,
+let hats = s("hh*16").gain("[.02 .05]*8").lpf(1800).room(.4)
+
+$: arrange(
+  [2, keys],
+  [2, stack(keys, sub)],
+  [4, stack(keys, sub, hats)])`,
       },
       {
         label: 'Bookshop Calm',
         code: `// bookshop afternoon
-$: note("<[g3,b3,d4,g4] [c3,e3,g3,b3] [d3,g3,a3,c4] [e3,g3,b3,d4]>")
+let keys = note("<[g3,b3,d4,g4] [c3,e3,g3,b3] [d3,g3,a3,c4] [e3,g3,b3,d4]>")
   .s("piano").gain(.45).room(.35).slow(2)
-$: note("<g1 c2 d2 e2>")
+let sub = note("<g1 c2 d2 e2>")
   .s("sine").gain(.4).lpf(180).slow(2)
-$: s("[bd:3 ~] ~ [~ bd:3] ~")
+let kick = s("[bd:3 ~] ~ [~ bd:3] ~")
   .gain(.3).lpf(500)
-$: s("~ ~ rim ~").gain(.08).lpf(1500)`,
+let rim = s("~ ~ rim ~").gain(.08).lpf(1500)
+
+$: arrange(
+  [2, stack(keys, sub)],
+  [2, stack(keys, sub, kick)],
+  [4, stack(keys, sub, kick, rim)])`,
       },
       {
         label: 'Garden Peace',
         code: `// peaceful garden walk
-$: note("<[c3,e3,g3,b3] [f3,a3,c4,e4] [d3,f3,a3,c4] [g3,b3,d4,f4]>")
+let keys = note("<[c3,e3,g3,b3] [f3,a3,c4,e4] [d3,f3,a3,c4] [g3,b3,d4,f4]>")
   .s("gm_epiano1").velocity(.2)
   .room(.5).delay(.25).slow(2)
-$: note("<c2 f2 d2 g2>")
-  .s("sine").gain(.35).lpf(170).slow(2)`,
+let sub = note("<c2 f2 d2 g2>")
+  .s("sine").gain(.35).lpf(170).slow(2)
+
+$: arrange(
+  [2, keys],
+  [4, stack(keys, sub)])`,
       },
       {
         label: 'Late Night Radio',
         code: `// late night radio vibes
-$: s("[bd:3 ~] [~ bd:3] [bd:3 ~] ~")
+let kick = s("[bd:3 ~] [~ bd:3] [bd:3 ~] ~")
   .gain(.3).lpf(650)
-$: s("~ rim ~ rim").gain(.1).lpf(1500)
-$: s("[~ hh:1]*4").gain("[.05 .1]*4").lpf(2500)
-$: note("<[b2,d3,f3,a3] [e3,g3,b3,d4] [f3,a3,c4,e4] [b2,d3,f3,a3]>")
+let rim = s("~ rim ~ rim").gain(.1).lpf(1500)
+let hats = s("[~ hh:1]*4").gain("[.05 .1]*4").lpf(2500)
+let keys = note("<[b2,d3,f3,a3] [e3,g3,b3,d4] [f3,a3,c4,e4] [b2,d3,f3,a3]>")
   .s("piano").gain(.4).room(.4).slow(2)
-$: note("<b1 e2 f2 b1>")
-  .s("sine").gain(.4).lpf(170).slow(2)`,
+let sub = note("<b1 e2 f2 b1>")
+  .s("sine").gain(.4).lpf(170).slow(2)
+
+$: arrange(
+  [2, stack(kick, rim)],
+  [2, stack(kick, rim, hats, keys)],
+  [4, stack(kick, rim, hats, keys, sub)])`,
       },
       {
         label: 'Misty Morning',
         code: `// misty morning haze
-$: note("<[e3,g3,b3,d4] [a2,c3,e3,g3]>")
+let keys = note("<[e3,g3,b3,d4] [a2,c3,e3,g3]>")
   .s("piano").gain(.35).room(.5)
   .delay(.35).delayfeedback(.4).slow(4)
-$: note("<e2 a1>")
+let sub = note("<e2 a1>")
   .s("sine").gain(.35).lpf(150).slow(4)
-$: s("hh*16").gain("[.02 .04]*8").lpf(1500).room(.3)`,
+let hats = s("hh*16").gain("[.02 .04]*8").lpf(1500).room(.3)
+
+$: arrange(
+  [2, keys],
+  [2, stack(keys, sub)],
+  [4, stack(keys, sub, hats)])`,
       },
       {
         label: 'Warm Cocoa',
         code: `// warm cocoa evening
-$: note("<[a2,c3,e3,g3] [d3,f3,a3,c4] [f2,a2,c3,e3] [e3,g3,b3,d4]>")
+let keys = note("<[a2,c3,e3,g3] [d3,f3,a3,c4] [f2,a2,c3,e3] [e3,g3,b3,d4]>")
   .s("piano").gain(.45).room(.4).slow(2)
-$: note("<a1 d2 f1 e2>")
+let sub = note("<a1 d2 f1 e2>")
   .s("sine").gain(.4).lpf(180).slow(2)
-$: s("[bd:3 ~] [~ bd:3] ~ ~").gain(.3).lpf(550)
-$: s("~ ~ rim ~").gain(.08).lpf(1200)`,
+let kick = s("[bd:3 ~] [~ bd:3] ~ ~").gain(.3).lpf(550)
+let rim = s("~ ~ rim ~").gain(.08).lpf(1200)
+
+$: arrange(
+  [2, stack(keys, sub)],
+  [2, stack(keys, sub, kick)],
+  [4, stack(keys, sub, kick, rim)])`,
       },
       {
         label: 'Ocean Breeze',
         code: `// ocean breeze chill
-$: note("<[c3,e3,g3] [a2,c3,e3] [f2,a2,c3] [g2,b2,d3]>")
+let keys = note("<[c3,e3,g3] [a2,c3,e3] [f2,a2,c3] [g2,b2,d3]>")
   .s("gm_epiano1").velocity(.2)
   .room(.5).delay(.3).delayfeedback(.35).slow(2)
-$: note("<c2 a1 f1 g1>")
+let sub = note("<c2 a1 f1 g1>")
   .s("sine").gain(.35).lpf(160).slow(2)
-$: s("hh*16").gain("[.03 .06]*8").lpf(2000).room(.3)`,
+let hats = s("hh*16").gain("[.03 .06]*8").lpf(2000).room(.3)
+
+$: arrange(
+  [2, keys],
+  [2, stack(keys, sub)],
+  [4, stack(keys, sub, hats)])`,
       },
       {
         label: 'Candlelight',
         code: `// candlelight dinner
-$: note("<[d3,g3,a3,c4] [g3,b3,d4,f4] [e3,g3,b3,d4] [a2,c3,e3,g3]>")
+let keys = note("<[d3,g3,a3,c4] [g3,b3,d4,f4] [e3,g3,b3,d4] [a2,c3,e3,g3]>")
   .s("piano").gain(.4).room(.4)
   .delay(.2).delayfeedback(.3).slow(2)
-$: note("<d2 g2 e2 a1>")
-  .s("sine").gain(.4).lpf(180).slow(2)`,
+let sub = note("<d2 g2 e2 a1>")
+  .s("sine").gain(.4).lpf(180).slow(2)
+
+$: arrange(
+  [2, keys],
+  [4, stack(keys, sub)])`,
       },
       {
         label: 'Porch Swing',
         code: `// porch swing afternoon
-$: s("[bd:3 ~] [~ bd:3] [bd:3 ~] ~")
+let kick = s("[bd:3 ~] [~ bd:3] [bd:3 ~] ~")
   .gain(.3).lpf(600)
-$: s("~ rim ~ rim").gain(.1).lpf(1500)
-$: note("<[f3,a3,c4,e4] [b2,d3,f3,a3] [c3,e3,g3,b3] [f3,a3,c4,e4]>")
+let rim = s("~ rim ~ rim").gain(.1).lpf(1500)
+let keys = note("<[f3,a3,c4,e4] [b2,d3,f3,a3] [c3,e3,g3,b3] [f3,a3,c4,e4]>")
   .s("gm_epiano1").velocity(.2)
   .room(.5).delay(.25).slow(2)
-$: note("<f1 b1 c2 f1>")
-  .s("sine").gain(.35).lpf(160).slow(2)`,
+let sub = note("<f1 b1 c2 f1>")
+  .s("sine").gain(.35).lpf(160).slow(2)
+
+$: arrange(
+  [2, stack(kick, rim)],
+  [2, stack(kick, rim, keys)],
+  [4, stack(kick, rim, keys, sub)])`,
       },
       {
         label: 'Twilight Zone',
         code: `// twilight zone vibes
-$: note("<[g3,a3,d4,e4] [b2,d3,g3,a3]>")
+let keys = note("<[g3,a3,d4,e4] [b2,d3,g3,a3]>")
   .s("piano").gain(.35).room(.5)
   .delay(.35).delayfeedback(.45).slow(4)
-$: note("<g1 b1>")
-  .s("sine").gain(.35).lpf(150).slow(4)`,
+let sub = note("<g1 b1>")
+  .s("sine").gain(.35).lpf(150).slow(4)
+
+$: arrange(
+  [2, keys],
+  [4, stack(keys, sub)])`,
       },
       {
         label: 'Vintage Soul',
         code: `// vintage soul warmth
-$: s("[bd:3 ~] [~ bd:3] [bd:3 ~] ~")
+let kick = s("[bd:3 ~] [~ bd:3] [bd:3 ~] ~")
   .gain(.35).lpf(700)
-$: s("~ rim ~ rim").gain(.12).lpf(1800)
-$: note("<[e3,g3,b3,d4] [a3,c4,e4,g4] [b3,d4,f4,a4] [g3,b3,d4,f4]>")
+let rim = s("~ rim ~ rim").gain(.12).lpf(1800)
+let keys = note("<[e3,g3,b3,d4] [a3,c4,e4,g4] [b3,d4,f4,a4] [g3,b3,d4,f4]>")
   .s("gm_epiano1").velocity(.25)
   .room(.4).slow(2)
-$: note("<e2 a2 b2 g2>")
-  .s("sine").gain(.4).lpf(180).slow(2)`,
+let sub = note("<e2 a2 b2 g2>")
+  .s("sine").gain(.4).lpf(180).slow(2)
+
+$: arrange(
+  [2, stack(kick, rim)],
+  [2, stack(kick, rim, keys)],
+  [4, stack(kick, rim, keys, sub)])`,
       },
       {
         label: 'Gentle River',
         code: `// gentle river flow
-$: note("<[g3,b3,d4] [c3,e3,g3] [d3,g3,a3] [g3,b3,d4]>")
+let keys = note("<[g3,b3,d4] [c3,e3,g3] [d3,g3,a3] [g3,b3,d4]>")
   .s("piano").gain(.4).room(.45)
   .delay(.3).delayfeedback(.35).slow(2)
-$: note("<g1 c2 d2 g1>")
+let sub = note("<g1 c2 d2 g1>")
   .s("sine").gain(.35).lpf(170).slow(2)
-$: s("hh*16").gain("[.02 .04]*8").lpf(1800)`,
+let hats = s("hh*16").gain("[.02 .04]*8").lpf(1800)
+
+$: arrange(
+  [2, keys],
+  [2, stack(keys, sub)],
+  [4, stack(keys, sub, hats)])`,
       },
       {
         label: 'Train Ride',
         code: `// train ride scenery
-$: s("[bd:3 ~] [bd:3 ~] [bd:3 ~] [bd:3 ~]")
+let kick = s("[bd:3 ~] [bd:3 ~] [bd:3 ~] [bd:3 ~]")
   .gain(.25).lpf(500)
-$: note("<[a2,c3,e3,g3] [d3,f3,a3,c4] [e3,g3,b3,d4] [a2,c3,e3,g3]>")
+let keys = note("<[a2,c3,e3,g3] [d3,f3,a3,c4] [e3,g3,b3,d4] [a2,c3,e3,g3]>")
   .s("piano").gain(.4).room(.4).slow(2)
-$: note("<a1 d2 e2 a1>")
-  .s("sine").gain(.35).lpf(170).slow(2)`,
+let sub = note("<a1 d2 e2 a1>")
+  .s("sine").gain(.35).lpf(170).slow(2)
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, keys)],
+  [4, stack(kick, keys, sub)])`,
       },
       {
         label: 'Cozy Blanket',
         code: `// cozy blanket and tea
-$: note("<[d3,f3,a3,c4] [g2,b2,d3,f3] [a2,c3,e3,g3] [d3,f3,a3,c4]>")
+let keys = note("<[d3,f3,a3,c4] [g2,b2,d3,f3] [a2,c3,e3,g3] [d3,f3,a3,c4]>")
   .s("piano").gain(.4).room(.45).slow(2)
-$: note("<d2 g1 a1 d2>")
+let sub = note("<d2 g1 a1 d2>")
   .s("sine").gain(.35).lpf(160).slow(2)
-$: s("[bd:3 ~] ~ [~ bd:3] ~").gain(.25).lpf(500)`,
+let kick = s("[bd:3 ~] ~ [~ bd:3] ~").gain(.25).lpf(500)
+
+$: arrange(
+  [2, keys],
+  [2, stack(keys, sub)],
+  [4, stack(keys, sub, kick)])`,
       },
       {
         label: 'Stargazing',
         code: `// stargazing at midnight
-$: note("<[a3,c4,e4,g4] [d3,f3,a3,c4]>")
+let keys = note("<[a3,c4,e4,g4] [d3,f3,a3,c4]>")
   .s("gm_epiano1").velocity(.2)
   .room(.6).roomsize(4)
   .delay(.35).delayfeedback(.4).slow(4)
-$: note("<a1 d1>")
-  .s("sine").gain(.3).lpf(140).slow(4)`,
+let sub = note("<a1 d1>")
+  .s("sine").gain(.3).lpf(140).slow(4)
+
+$: arrange(
+  [2, keys],
+  [4, stack(keys, sub)])`,
       },
       {
         label: 'Paper Planes',
         code: `// paper planes floating
-$: note("<[e3,g3,b3,d4] [c3,e3,g3,b3] [a2,c3,e3,g3] [b2,d3,g3,a3]>")
+let keys = note("<[e3,g3,b3,d4] [c3,e3,g3,b3] [a2,c3,e3,g3] [b2,d3,g3,a3]>")
   .s("piano").gain(.4).room(.4)
   .delay(.25).delayfeedback(.3).slow(2)
-$: note("<e2 c2 a1 b1>")
+let sub = note("<e2 c2 a1 b1>")
   .s("sine").gain(.35).lpf(170).slow(2)
-$: s("[bd:3 ~] [~ bd:3] ~ ~").gain(.25).lpf(500)
-$: s("[~ hh:1]*4").gain("[.04 .08]*4").lpf(2200)`,
+let kick = s("[bd:3 ~] [~ bd:3] ~ ~").gain(.25).lpf(500)
+let hats = s("[~ hh:1]*4").gain("[.04 .08]*4").lpf(2200)
+
+$: arrange(
+  [2, stack(keys, sub)],
+  [2, stack(keys, sub, kick)],
+  [4, stack(keys, sub, kick, hats)])`,
       },
     ],
   },
@@ -3194,154 +4342,199 @@ $: s("[~ hh:1]*4").gain("[.04 .08]*4").lpf(2200)`,
       {
         label: 'Scope + Piano',
         code: `// piano melody with oscilloscope
-$: note("c4 e4 g4 b4 c5 b4 g4 e4")
+let piano = note("c4 e4 g4 b4 c5 b4 g4 e4")
   .s("piano").gain(.6).room(.3)
-  .scope()`,
+  .scope()
+
+$: arrange([4, piano])`,
       },
       {
         label: 'Pianoroll + Chords',
         code: `// chord progression pianoroll
-$: note("<[c3,e3,g3] [a2,c3,e3] [b2,d3,f3] [g2,b2,d3]>")
+let keys = note("<[c3,e3,g3] [a2,c3,e3] [b2,d3,f3] [g2,b2,d3]>")
   .s("piano").gain(.5).room(.4).slow(2)
-  .pianoroll({cycles:4})`,
+  .pianoroll({cycles:4})
+
+$: arrange([4, keys])`,
       },
       {
         label: 'Spiral + Arp',
         code: `// arpeggio with spiral visual
-$: note("c3 e3 g3 b3 c4 b3 g3 e3")
+let synth = note("c3 e3 g3 b3 c4 b3 g3 e3")
   .s("supersaw").gain(.4)
   .lpf(2500).room(.3)
-  .spiral()`,
+  .spiral()
+
+$: arrange([4, synth])`,
       },
       {
         label: 'Pitchwheel + Melody',
         code: `// melody with pitch wheel visual
-$: note("c4 d4 e4 g4 f4 e4 d4 c4")
+let bells = note("c4 d4 e4 g4 f4 e4 d4 c4")
   .s("gm_vibraphone").velocity(.5)
   .room(.4)
-  .pitchwheel()`,
+  .pitchwheel()
+
+$: arrange([4, bells])`,
       },
       {
         label: 'Punchcard + Drums',
         code: `// drum pattern punchcard visual
-$: s("bd sd [~ bd] sd, [~ hh]*4, oh(2,8)")
+let drums = s("bd sd [~ bd] sd, [~ hh]*4, oh(2,8)")
   .bank("RolandTR808").gain(.75)
-  .punchcard()`,
+  .punchcard()
+
+$: arrange([4, drums])`,
       },
       {
         label: 'Wordfall + Beats',
         code: `// beat pattern with wordfall labels
-$: s("bd sd hh cp rim oh bd sd")
+let drums = s("bd sd hh cp rim oh bd sd")
   .bank("RolandTR808").gain(.7)
-  .wordfall()`,
+  .wordfall()
+
+$: arrange([4, drums])`,
       },
       {
         label: 'Scope Cyan Thick',
         code: `// thick cyan scope
-$: note("c3 e3 g3 b3")
+let synth = note("c3 e3 g3 b3")
   .s("sawtooth").gain(.4)
   .lpf(2000)
-  .scope({color:"#22d3ee",thickness:3})`,
+  .scope({color:"#22d3ee",thickness:3})
+
+$: arrange([4, synth])`,
       },
       {
         label: 'Scope Pink',
         code: `// pink neon scope
-$: note("c4 e4 g4 c5")
+let lead = note("c4 e4 g4 c5")
   .s("sine").gain(.5)
   .room(.3)
-  .scope({color:"#ff1493",thickness:2})`,
+  .scope({color:"#ff1493",thickness:2})
+
+$: arrange([4, lead])`,
       },
       {
         label: 'Scope Green Smear',
         code: `// smeared green scope trail
-$: note("c3*4").s("sawtooth")
+let synth = note("c3*4").s("sawtooth")
   .gain(.4).lpf(sine.range(200,4000).slow(4))
-  .scope({color:"#4ade80",smear:.95,thickness:2})`,
+  .scope({color:"#4ade80",smear:.95,thickness:2})
+
+$: arrange([4, synth])`,
       },
       {
         label: 'Fscope + Bass',
         code: `// bass frequency spectrum
-$: note("c2 e2 g2 c3")
+let bass = note("c2 e2 g2 c3")
   .s("sawtooth").gain(.5)
   .lpf(1200).shape(.15)
-  .fscope()`,
+  .fscope()
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Pianoroll Wide',
         code: `// wide pianoroll 8 cycles
-$: n("0 2 4 7 9 12 9 7 4 2 0 -3")
+let piano = n("0 2 4 7 9 12 9 7 4 2 0 -3")
   .scale("A2:minor pentatonic")
   .s("piano").gain(.5)
-  .pianoroll({cycles:8})`,
+  .pianoroll({cycles:8})
+
+$: arrange([4, piano])`,
       },
       {
         label: 'Multi Visual Scope',
         code: `// multi-track with scope
-$: s("bd*4").gain(.8)
-$: s("~ cp ~ ~").gain(.6)
-$: note("c3 e3 g3 b3")
+let kick = s("bd*4").gain(.8)
+let clap = s("~ cp ~ ~").gain(.6)
+let synth = note("c3 e3 g3 b3")
   .s("sawtooth").gain(.4).lpf(1500)
-  .scope({color:"#a855f7",thickness:2})`,
+  .scope({color:"#a855f7",thickness:2})
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, clap)],
+  [4, stack(kick, clap, synth)])`,
       },
       {
         label: 'Spiral + Pad',
         code: `// pad with spiral visual
-$: note("<[c3,e3,g3] [a2,c3,e3]>")
+let pad = note("<[c3,e3,g3] [a2,c3,e3]>")
   .s("supersaw").gain(.3)
   .lpf(1500).room(.4).slow(2)
-  .spiral()`,
+  .spiral()
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Pitchwheel + Flute',
         code: `// flute melody with pitchwheel
-$: note("d5 f5 a5 g5 f5 d5 c5 d5")
+let flute = note("d5 f5 a5 g5 f5 d5 c5 d5")
   .s("gm_flute").velocity(.5).room(.4)
-  .pitchwheel()`,
+  .pitchwheel()
+
+$: arrange([4, flute])`,
       },
       {
         label: 'Scope Orange',
         code: `// orange warm scope
-$: note("c4 e4 g4 b4 c5 b4 g4 e4")
+let piano = note("c4 e4 g4 b4 c5 b4 g4 e4")
   .s("gm_epiano1").velocity(.4).room(.3)
-  .scope({color:"#f97316",thickness:2,smear:.8})`,
+  .scope({color:"#f97316",thickness:2,smear:.8})
+
+$: arrange([4, piano])`,
       },
       {
         label: 'Punchcard + Full',
         code: `// full beat with punchcard
-$: s("bd*4, ~ cp ~ ~, [~ hh]*4, oh(2,8)")
+let drums = s("bd*4, ~ cp ~ ~, [~ hh]*4, oh(2,8)")
   .bank("RolandTR909").gain(.7)
-$: note("c2*4").s("sine").gain(.4).lpf(200)
-  .punchcard()`,
+let sub = note("c2*4").s("sine").gain(.4).lpf(200)
+  .punchcard()
+
+$: arrange(
+  [2, drums],
+  [4, stack(drums, sub)])`,
       },
       {
         label: 'Pianoroll + Scale',
         code: `// scale run pianoroll
-$: n("0 1 2 3 4 5 6 7 6 5 4 3 2 1 0 -1")
+let bells = n("0 1 2 3 4 5 6 7 6 5 4 3 2 1 0 -1")
   .scale("D4:dorian")
   .s("gm_marimba").velocity(.5).room(.3)
-  .pianoroll({cycles:4})`,
+  .pianoroll({cycles:4})
+
+$: arrange([4, bells])`,
       },
       {
         label: 'Scope Gold Smear',
         code: `// gold smeared scope
-$: note("c3 g3 e4 c4 g3 e3 c3 g2")
+let synth = note("c3 g3 e4 c4 g3 e3 c3 g2")
   .s("sawtooth").gain(.35).lpf(1500)
-  .scope({color:"#eab308",thickness:2,smear:.9})`,
+  .scope({color:"#eab308",thickness:2,smear:.9})
+
+$: arrange([4, synth])`,
       },
       {
         label: 'Wordfall + Samples',
         code: `// sample names falling
-$: s("bd cp hh oh rim sd bd cp")
+let drums = s("bd cp hh oh rim sd bd cp")
   .bank("RolandTR808").gain(.65)
-  .wordfall()`,
+  .wordfall()
+
+$: arrange([4, drums])`,
       },
       {
         label: 'Scope Red',
         code: `// red hot scope
-$: note("c2*4").s("sawtooth")
+let bass = note("c2*4").s("sawtooth")
   .gain(.5).lpf(sine.range(100,2000).fast(4))
   .shape(.2)
-  .scope({color:"#ef4444",thickness:3})`,
+  .scope({color:"#ef4444",thickness:3})
+
+$: arrange([4, bass])`,
       },
     ],
   },
@@ -3352,228 +4545,299 @@ $: note("c2*4").s("sawtooth")
       {
         label: 'Vocal Chop',
         code: `// rhythmic vocal chop
-$: s("chin*4").gain(.6)
+let vox = s("chin*4").gain(.6)
   .speed("<1 1.5 .75 2>")
-  .room(.4).delay(.25)`,
+  .room(.4).delay(.25)
+
+$: arrange([4, vox])`,
       },
       {
         label: 'Breath Pad',
         code: `// breathy vocal texture
-$: s("breath:0 breath:1 breath:0 breath:2")
+let breath = s("breath:0 breath:1 breath:0 breath:2")
   .gain(.4).room(.7).roomsize(5)
-  .lpf(2000).slow(2)`,
+  .lpf(2000).slow(2)
+
+$: arrange([4, breath])`,
       },
       {
         label: 'Vocal Stack',
         code: `// layered vocal hits
-$: s("chin:0 chin:1 chin:2 chin:3")
+let vox = s("chin:0 chin:1 chin:2 chin:3")
   .gain(.5).room(.4)
-  .speed(1).pan(sine.range(0,1))`,
+  .speed(1).pan(sine.range(0,1))
+
+$: arrange([4, vox])`,
       },
       {
         label: 'Stutter Vox',
         code: `// stuttered vocal
-$: s("chin").chop(8)
+let vox = s("chin").chop(8)
   .speed(perlin.range(.8,1.5))
-  .gain(.5).room(.3)`,
+  .gain(.5).room(.3)
+
+$: arrange([4, vox])`,
       },
       {
         label: 'Glitch Voice',
         code: `// glitched vocal FX
-$: s("chin:1").chop(16)
+let vox = s("chin:1").chop(16)
   .speed("<1 -1 2 .5>")
   .gain(.5).crush(12)
-  .room(.4).delay(.3)`,
+  .room(.4).delay(.3)
+
+$: arrange([4, vox])`,
       },
       {
         label: 'Choir Aahs',
         code: `// soft choir aahs
-$: note("<[c3,e3,g3] [a2,c3,e3] [b2,d3,f3] [g2,b2,d3]>")
+let choir = note("<[c3,e3,g3] [a2,c3,e3] [b2,d3,f3] [g2,b2,d3]>")
   .s("gm_choir_aahs").velocity(.4)
-  .room(.5).slow(2)`,
+  .room(.5).slow(2)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Voice Oohs',
         code: `// voice oohs pad
-$: note("<[c4,e4,g4] [a3,c4,e4]>")
+let oohs = note("<[c4,e4,g4] [a3,c4,e4]>")
   .s("gm_voice_oohs").velocity(.4)
-  .room(.5).slow(4)`,
+  .room(.5).slow(4)
+
+$: arrange([4, oohs])`,
       },
       {
         label: 'Synth Voice',
         code: `// synthetic voice lead
-$: note("c4 e4 g4 b4 c5 b4 g4 e4")
+let synthVox = note("c4 e4 g4 b4 c5 b4 g4 e4")
   .s("gm_synth_voice").velocity(.45)
-  .room(.3)`,
+  .room(.3)
+
+$: arrange([4, synthVox])`,
       },
       {
         label: 'Male Hum Low',
         code: `// low male humming tone
-$: note("<c2 e2 f2 g2>")
+let choir = note("<c2 e2 f2 g2>")
   .s("gm_choir_aahs").velocity(.35)
-  .lpf(600).room(.5).slow(2)`,
+  .lpf(600).room(.5).slow(2)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Female Hum High',
         code: `// high female humming
-$: note("<c4 e4 f4 g4>")
+let oohs = note("<c4 e4 f4 g4>")
   .s("gm_voice_oohs").velocity(.35)
-  .lpf(3000).room(.5).slow(2)`,
+  .lpf(3000).room(.5).slow(2)
+
+$: arrange([4, oohs])`,
       },
       {
         label: 'Vocal Delay Echo',
         code: `// echoed vocal
-$: s("chin:2").slow(2)
+let vox = s("chin:2").slow(2)
   .gain(.5).delay(.5)
-  .delayfeedback(.6).room(.5)`,
+  .delayfeedback(.6).room(.5)
+
+$: arrange([4, vox])`,
       },
       {
         label: 'Reverb Cathedral',
         code: `// cathedral reverb vocal
-$: s("chin:0 ~ chin:1 ~")
+let vox = s("chin:0 ~ chin:1 ~")
   .gain(.5).room(.9).roomsize(8)
-  .slow(2)`,
+  .slow(2)
+
+$: arrange([4, vox])`,
       },
       {
         label: 'Delayed Choir',
         code: `// delayed choir wash
-$: note("<[c3,g3,c4] [a2,e3,a3]>")
+let choir = note("<[c3,g3,c4] [a2,e3,a3]>")
   .s("gm_choir_aahs").velocity(.35)
   .delay(.4).delayfeedback(.5)
-  .room(.6).slow(4)`,
+  .room(.6).slow(4)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Singing Melody',
         code: `// singing melodic line
-$: note("c4 d4 e4 g4 f4 e4 d4 c4")
+let oohs = note("c4 d4 e4 g4 f4 e4 d4 c4")
   .s("gm_voice_oohs").velocity(.45)
-  .room(.4)`,
+  .room(.4)
+
+$: arrange([4, oohs])`,
       },
       {
         label: 'Harmony Stack',
         code: `// stacked vocal harmony
-$: note("<[c3,e3,g3] [a2,c3,e3] [f2,a2,c3] [g2,b2,d3]>")
+let choir = note("<[c3,e3,g3] [a2,c3,e3] [f2,a2,c3] [g2,b2,d3]>")
   .s("gm_choir_aahs").velocity(.4)
   .room(.4).slow(2)
-$: note("<[c4,e4,g4] [a3,c4,e4] [f3,a3,c4] [g3,b3,d4]>")
+let oohs = note("<[c4,e4,g4] [a3,c4,e4] [f3,a3,c4] [g3,b3,d4]>")
   .s("gm_voice_oohs").velocity(.3)
-  .room(.5).slow(2)`,
+  .room(.5).slow(2)
+
+$: arrange(
+  [2, choir],
+  [4, stack(choir, oohs)])`,
       },
       {
         label: 'Numbers Talking',
         code: `// counting beat vocal
-$: s("numbers:0 numbers:1 numbers:2 numbers:3")
+let numbers = s("numbers:0 numbers:1 numbers:2 numbers:3")
   .speed(1.2).gain(.5)
-$: s("bd sd:2 bd sd:3")
-  .bank("RolandTR808").gain(.7)`,
+let drums = s("bd sd:2 bd sd:3")
+  .bank("RolandTR808").gain(.7)
+
+$: arrange(
+  [2, numbers],
+  [4, stack(numbers, drums)])`,
       },
       {
         label: 'East Chant',
         code: `// eastern chant
-$: s("east:0 east:2 east:3 east:6")
+let east = s("east:0 east:2 east:3 east:6")
   .gain(.5).room(.3).slow(2)
-$: s("east:4 east:5").gain(.35)`,
+let east2 = s("east:4 east:5").gain(.35)
+
+$: arrange(
+  [2, east],
+  [4, stack(east, east2)])`,
       },
       {
         label: 'Chopped Choir',
         code: `// chopped choir stutter
-$: note("[c3,e3,g3]")
+let choir = note("[c3,e3,g3]")
   .s("gm_choir_aahs").velocity(.4)
-  .chop(8).room(.3)`,
+  .chop(8).room(.3)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Vocal Crush',
         code: `// crushed bitrate vocal
-$: s("chin:0 chin:2 chin:1 chin:3")
+let vox = s("chin:0 chin:2 chin:1 chin:3")
   .gain(.5).crush(8)
-  .room(.3)`,
+  .room(.3)
+
+$: arrange([4, vox])`,
       },
       {
         label: 'Reversed Vocal',
         code: `// reverse vocal texture
-$: s("chin:0 chin:1")
+let vox = s("chin:0 chin:1")
   .speed(-1).gain(.5)
-  .room(.5).delay(.3).slow(2)`,
+  .room(.5).delay(.3).slow(2)
+
+$: arrange([4, vox])`,
       },
       {
         label: 'Female Singing',
         code: `// female singing line
-$: note("e4 g4 a4 b4 a4 g4 e4 d4")
+let oohs = note("e4 g4 a4 b4 a4 g4 e4 d4")
   .s("gm_voice_oohs").velocity(.45)
-  .room(.4).delay(.15)`,
+  .room(.4).delay(.15)
+
+$: arrange([4, oohs])`,
       },
       {
         label: 'Male Low Choir',
         code: `// deep male choir
-$: note("<[c2,g2,c3] [a1,e2,a2]>")
+let choir = note("<[c2,g2,c3] [a1,e2,a2]>")
   .s("gm_choir_aahs").velocity(.4)
-  .lpf(800).room(.6).slow(4)`,
+  .lpf(800).room(.6).slow(4)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Vocal Shimmer',
         code: `// shimmering vocal pad
-$: note("<[c4,e4,g4,b4]>")
+let oohs = note("<[c4,e4,g4,b4]>")
   .s("gm_voice_oohs").velocity(.3)
   .delay(.4).delayfeedback(.55)
-  .room(.7).slow(4)`,
+  .room(.7).slow(4)
+
+$: arrange([4, oohs])`,
       },
       {
         label: 'Whisper Texture',
         code: `// whisper-like texture
-$: s("breath:0 ~ breath:1 ~")
+let breath = s("breath:0 ~ breath:1 ~")
   .gain(.35).room(.7).roomsize(5)
-  .lpf(3000).slow(2)`,
+  .lpf(3000).slow(2)
+
+$: arrange([4, breath])`,
       },
       {
         label: 'Vocal Drone',
         code: `// droning vocal pad
-$: note("[c3,g3]")
+let choir = note("[c3,g3]")
   .s("gm_choir_aahs").velocity(.3)
   .room(.8).roomsize(6)
-  .lpf(1000)`,
+  .lpf(1000)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Humming Duet',
         code: `// male and female hum duet
-$: note("<c3 d3 e3 d3>")
+let choir = note("<c3 d3 e3 d3>")
   .s("gm_choir_aahs").velocity(.3)
   .lpf(700).room(.5).slow(2)
-$: note("<g4 a4 b4 a4>")
+let oohs = note("<g4 a4 b4 a4>")
   .s("gm_voice_oohs").velocity(.25)
-  .lpf(2500).room(.5).slow(2)`,
+  .lpf(2500).room(.5).slow(2)
+
+$: arrange(
+  [2, choir],
+  [4, stack(choir, oohs)])`,
       },
       {
         label: 'Delayed Oohs',
         code: `// delayed oohs wash
-$: note("c4 ~ e4 ~ g4 ~ c5 ~")
+let oohs = note("c4 ~ e4 ~ g4 ~ c5 ~")
   .s("gm_voice_oohs").velocity(.35)
   .delay(.5).delayfeedback(.6)
-  .room(.5)`,
+  .room(.5)
+
+$: arrange([4, oohs])`,
       },
       {
         label: 'Vocal Over Beat',
         code: `// vocal chop over beats
-$: s("bd sd:2 [~ bd] sd").bank("RolandTR808").gain(.75)
-$: s("[~ hh]*4").bank("RolandTR808").gain(.3)
-$: s("chin:0 ~ chin:1 ~").gain(.5)
+let drums = s("bd sd:2 [~ bd] sd").bank("RolandTR808").gain(.75)
+let hats = s("[~ hh]*4").bank("RolandTR808").gain(.3)
+let vox = s("chin:0 ~ chin:1 ~").gain(.5)
   .speed(1.2).room(.3)
-  .delay(.25).delayfeedback(.4)`,
+  .delay(.25).delayfeedback(.4)
+
+$: arrange(
+  [2, drums],
+  [2, stack(drums, hats)],
+  [4, stack(drums, hats, vox)])`,
       },
       {
         label: 'Choir Swell',
         code: `// swelling choir
-$: note("<[c3,e3,g3,b3]>")
+let choir = note("<[c3,e3,g3,b3]>")
   .s("gm_choir_aahs")
   .velocity(sine.range(.15,.5).slow(4))
-  .room(.6).slow(4)`,
+  .room(.6).slow(4)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Pitch Shift Vox',
         code: `// pitch-shifted vocal
-$: s("chin:0 chin:1 chin:2 chin:0")
+let vox = s("chin:0 chin:1 chin:2 chin:0")
   .speed("<.5 1 1.5 2>")
   .gain(.5).room(.4)
-  .delay(.2)`,
+  .delay(.2)
+
+$: arrange([4, vox])`,
       },
       {
         label: 'R&B Soul Vocal',
@@ -3583,10 +4847,15 @@ $: s("chin:0 chin:1 chin:2 chin:0")
 // Every whisper pulls me closer still
 // Dancing slowly on the windowsill
 // Hold me tight until the morning light
-$: note("c4 d4 e4 g4 f4 e4 d4 c4").s("gm_voice_oohs")
+let oohs = note("c4 d4 e4 g4 f4 e4 d4 c4").s("gm_voice_oohs")
   .velocity(sine.range(.3,.7).slow(8)).room(.5).delay(.15)
-$: note("c3 e3 g3 b3").s("gm_epiano2").velocity(.3).slow(2)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.4)`,
+let piano = note("c3 e3 g3 b3").s("gm_epiano2").velocity(.3).slow(2)
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.4)
+
+$: arrange(
+  [2, oohs],
+  [2, stack(oohs, piano)],
+  [4, stack(oohs, piano, drums)])`,
       },
       {
         label: 'Jazz Scat Vocal',
@@ -3596,10 +4865,15 @@ $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.4)`,
 // Walkin' bass line groovin' down below
 // Trumpet cryin' soft and sweet and slow
 // Midnight jazz that only dreamers know
-$: note("g4 a4 b4 d5 c5 a4 g4 f4").s("gm_choir_aahs")
+let choir = note("g4 a4 b4 d5 c5 a4 g4 f4").s("gm_choir_aahs")
   .velocity("<.5 .6 .7 .5>").delay(.2).room(.6)
-$: note("g2 a2 b2 c3 d3 c3 b2 a2").s("gm_acoustic_bass").velocity(.5)
-$: s("~ hh ~ hh ~ hh ~ hh").bank("RolandTR808").gain(.3)`,
+let bass = note("g2 a2 b2 c3 d3 c3 b2 a2").s("gm_acoustic_bass").velocity(.5)
+let hats = s("~ hh ~ hh ~ hh ~ hh").bank("RolandTR808").gain(.3)
+
+$: arrange(
+  [2, choir],
+  [2, stack(choir, bass)],
+  [4, stack(choir, bass, hats)])`,
       },
       {
         label: 'Gospel Choir',
@@ -3609,11 +4883,16 @@ $: s("~ hh ~ hh ~ hh ~ hh").bank("RolandTR808").gain(.3)`,
 // Every burden laid upon the ground
 // Grace and mercy all around resound
 // Sing it louder let the joy be found
-$: note("[c4,e4,g4] [d4,f4,a4] [e4,g4,b4] [c4,e4,g4]")
+let choir = note("[c4,e4,g4] [d4,f4,a4] [e4,g4,b4] [c4,e4,g4]")
   .s("gm_choir_aahs").velocity(.7).room(.7).slow(2)
-$: note("[c3,g3] [d3,a3] [e3,b3] [c3,g3]")
+let organ = note("[c3,g3] [d3,a3] [e3,b3] [c3,g3]")
   .s("gm_church_organ").velocity(.4).slow(2)
-$: s("bd ~ sd ~ bd bd sd ~").bank("RolandTR808").gain(.5)`,
+let drums = s("bd ~ sd ~ bd bd sd ~").bank("RolandTR808").gain(.5)
+
+$: arrange(
+  [2, choir],
+  [2, stack(choir, organ)],
+  [4, stack(choir, organ, drums)])`,
       },
       {
         label: 'Hip-Hop Hook',
@@ -3623,11 +4902,16 @@ $: s("bd ~ sd ~ bd bd sd ~").bank("RolandTR808").gain(.5)`,
 // Every block I walk I feel the beat
 // Concrete jungle underneath my feet
 // Mic in hand I own this midnight street
-$: note("c4 c4 e4 f4 e4 c4 ~ c4").s("gm_synth_voice")
+let synthVox = note("c4 c4 e4 f4 e4 c4 ~ c4").s("gm_synth_voice")
   .velocity(.6).delay(.1).room(.3)
-$: note("c2 ~ c2 ~ e2 ~ f2 ~").s("gm_synth_bass_1").velocity(.7)
-$: s("bd ~ ~ bd sd ~ bd sd").bank("RolandTR808").gain(.6)
-$: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3)`,
+let bass = note("c2 ~ c2 ~ e2 ~ f2 ~").s("gm_synth_bass_1").velocity(.7)
+let drums = s("bd ~ ~ bd sd ~ bd sd").bank("RolandTR808").gain(.6)
+let hats = s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3)
+
+$: arrange(
+  [2, stack(synthVox, bass)],
+  [2, stack(synthVox, bass, drums)],
+  [4, stack(synthVox, bass, drums, hats)])`,
       },
       {
         label: 'Country Ballad Vox',
@@ -3637,10 +4921,15 @@ $: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3)`,
 // Porch light glowin' like a guiding star
 // Strummin' six string underneath the bar
 // Miles between us but you're never far
-$: note("e4 g4 g4 a4 g4 g4 e4 d4").s("gm_voice_oohs")
+let oohs = note("e4 g4 g4 a4 g4 g4 e4 d4").s("gm_voice_oohs")
   .velocity(sine.range(.3,.6).slow(8)).room(.5)
-$: note("e3 a3 b3 e3 a3 b3 e3 a3").s("gm_steel_guitar").velocity(.35)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
+let guitar = note("e3 a3 b3 e3 a3 b3 e3 a3").s("gm_steel_guitar").velocity(.35)
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)
+
+$: arrange(
+  [2, oohs],
+  [2, stack(oohs, guitar)],
+  [4, stack(oohs, guitar, drums)])`,
       },
       {
         label: 'Reggae Chant',
@@ -3650,11 +4939,16 @@ $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
 // Every riddim makes the people free
 // From the mountain down into the sea
 // Unity is all we need to be
-$: note("g3 b3 c4 d4 c4 b3 g3 ~").s("gm_choir_aahs")
+let choir = note("g3 b3 c4 d4 c4 b3 g3 ~").s("gm_choir_aahs")
   .velocity(.5).room(.6).delay(.25)
-$: note("~ g2 ~ g2 ~ b2 ~ c3").s("gm_electric_bass_finger").velocity(.6)
-$: s("bd ~ ~ bd ~ sd ~ ~").bank("RolandTR808").gain(.5)
-$: s("~ ~ rim ~ ~ ~ rim ~").bank("RolandTR808").gain(.3)`,
+let bass = note("~ g2 ~ g2 ~ b2 ~ c3").s("gm_electric_bass_finger").velocity(.6)
+let drums = s("bd ~ ~ bd ~ sd ~ ~").bank("RolandTR808").gain(.5)
+let rim = s("~ ~ rim ~ ~ ~ rim ~").bank("RolandTR808").gain(.3)
+
+$: arrange(
+  [2, stack(choir, bass)],
+  [2, stack(choir, bass, drums)],
+  [4, stack(choir, bass, drums, rim)])`,
       },
       {
         label: 'Blues Moan Vocal',
@@ -3664,10 +4958,15 @@ $: s("~ ~ rim ~ ~ ~ rim ~").bank("RolandTR808").gain(.3)`,
 // Guitar cryin' what my lips can't say
 // Storm clouds rollin' in to steal the day
 // Got the blues and they are here to stay
-$: note("e3 g3 a3 b3 a3 g3 e3 ~").s("gm_voice_oohs")
+let oohs = note("e3 g3 a3 b3 a3 g3 e3 ~").s("gm_voice_oohs")
   .velocity(sine.range(.4,.7).slow(6)).room(.5).slow(2)
-$: note("e2 a2 b2 e2 g2 a2 b2 e2").s("gm_clean_guitar").velocity(.4)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
+let guitar = note("e2 a2 b2 e2 g2 a2 b2 e2").s("gm_clean_guitar").velocity(.4)
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)
+
+$: arrange(
+  [2, oohs],
+  [2, stack(oohs, guitar)],
+  [4, stack(oohs, guitar, drums)])`,
       },
       {
         label: 'Pop Vocal Hook',
@@ -3677,12 +4976,17 @@ $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
 // Dancing under ultraviolet glow
 // Spinning round and never letting go
 // Turn the music up and steal the show
-$: note("c5 b4 a4 g4 a4 b4 c5 ~").s("gm_voice_oohs")
+let oohs = note("c5 b4 a4 g4 a4 b4 c5 ~").s("gm_voice_oohs")
   .velocity(.6).room(.4).delay(.12)
-$: note("[c4,e4,g4] [a3,c4,e4] [f3,a3,c4] [g3,b3,d4]")
+let keys = note("[c4,e4,g4] [a3,c4,e4] [f3,a3,c4] [g3,b3,d4]")
   .s("gm_bright_piano").velocity(.35).slow(2)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR909").gain(.5)
-$: s("hh hh hh hh hh hh hh hh").bank("RolandTR909").gain(.25)`,
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR909").gain(.5)
+let hats = s("hh hh hh hh hh hh hh hh").bank("RolandTR909").gain(.25)
+
+$: arrange(
+  [2, stack(oohs, keys)],
+  [2, stack(oohs, keys, drums)],
+  [4, stack(oohs, keys, drums, hats)])`,
       },
       {
         label: 'Afrobeat Vocal',
@@ -3692,11 +4996,16 @@ $: s("hh hh hh hh hh hh hh hh").bank("RolandTR909").gain(.25)`,
 // Dust is risin' from the beaten ground
 // Fire burnin' with a sacred sound
 // Every step a blessing to be found
-$: note("d4 f4 g4 a4 g4 f4 d4 f4").s("gm_choir_aahs")
+let choir = note("d4 f4 g4 a4 g4 f4 d4 f4").s("gm_choir_aahs")
   .velocity(.55).room(.4).delay(.18)
-$: note("d2 ~ d2 f2 g2 ~ d2 ~").s("gm_synth_bass_1").velocity(.6)
-$: s("bd ~ bd ~ sd ~ bd sd").bank("RolandTR808").gain(.5)
-$: s("hh oh hh hh oh hh hh oh").bank("RolandTR808").gain(.3)`,
+let bass = note("d2 ~ d2 f2 g2 ~ d2 ~").s("gm_synth_bass_1").velocity(.6)
+let drums = s("bd ~ bd ~ sd ~ bd sd").bank("RolandTR808").gain(.5)
+let hats = s("hh oh hh hh oh hh hh oh").bank("RolandTR808").gain(.3)
+
+$: arrange(
+  [2, stack(choir, bass)],
+  [2, stack(choir, bass, drums)],
+  [4, stack(choir, bass, drums, hats)])`,
       },
       {
         label: 'Latin Vocal Salsa',
@@ -3706,11 +5015,16 @@ $: s("hh oh hh hh oh hh hh oh").bank("RolandTR808").gain(.3)`,
 // Conga drums are calling from the street
 // Every rhythm makes this life complete
 // Dance until the sun and moonlight meet
-$: note("a4 b4 c5 d5 c5 a4 g4 a4").s("gm_voice_oohs")
+let oohs = note("a4 b4 c5 d5 c5 a4 g4 a4").s("gm_voice_oohs")
   .velocity(.5).room(.35).delay(.1)
-$: note("a2 ~ c3 ~ d3 ~ e3 ~").s("gm_acoustic_bass").velocity(.55)
-$: s("bd ~ ~ bd ~ bd ~ sd").bank("RolandTR808").gain(.45)
-$: s("rim ~ rim ~ rim ~ rim ~").bank("RolandTR808").gain(.3)`,
+let bass = note("a2 ~ c3 ~ d3 ~ e3 ~").s("gm_acoustic_bass").velocity(.55)
+let drums = s("bd ~ ~ bd ~ bd ~ sd").bank("RolandTR808").gain(.45)
+let rim = s("rim ~ rim ~ rim ~ rim ~").bank("RolandTR808").gain(.3)
+
+$: arrange(
+  [2, stack(oohs, bass)],
+  [2, stack(oohs, bass, drums)],
+  [4, stack(oohs, bass, drums, rim)])`,
       },
       {
         label: 'Folk Harmony Vox',
@@ -3720,11 +5034,16 @@ $: s("rim ~ rim ~ rim ~ rim ~").bank("RolandTR808").gain(.3)`,
 // Harmonies as old as ancient stone
 // Voices carry seeds the wind has sown
 // Every verse a path that leads us home
-$: note("g4 a4 b4 d5 b4 a4 g4 ~").s("gm_choir_aahs")
+let choir = note("g4 a4 b4 d5 b4 a4 g4 ~").s("gm_choir_aahs")
   .velocity(.45).room(.5)
-$: note("d4 e4 g4 a4 g4 e4 d4 ~").s("gm_voice_oohs")
+let oohs = note("d4 e4 g4 a4 g4 e4 d4 ~").s("gm_voice_oohs")
   .velocity(.35).room(.5)
-$: note("g3 d3 g3 d3 g3 d3 g3 d3").s("gm_nylon_guitar").velocity(.3)`,
+let guitar = note("g3 d3 g3 d3 g3 d3 g3 d3").s("gm_nylon_guitar").velocity(.3)
+
+$: arrange(
+  [2, choir],
+  [2, stack(choir, oohs)],
+  [4, stack(choir, oohs, guitar)])`,
       },
       {
         label: 'Electronic Vox Pad',
@@ -3734,11 +5053,16 @@ $: note("g3 d3 g3 d3 g3 d3 g3 d3").s("gm_nylon_guitar").velocity(.3)`,
 // Pixel stars are scattered all around
 // Binary code becomes a human sound
 // Lost between the silence and the rain
-$: note("<[c4,e4,g4] [b3,d4,f4] [a3,c4,e4] [g3,b3,d4]>")
+let synthChoir = note("<[c4,e4,g4] [b3,d4,f4] [a3,c4,e4] [g3,b3,d4]>")
   .s("gm_synth_choir").velocity(.5).room(.6).slow(4)
-$: note("c5 e5 g5 ~ e5 c5 ~ g4").s("gm_synth_voice")
+let synthVox = note("c5 e5 g5 ~ e5 c5 ~ g4").s("gm_synth_voice")
   .velocity(.3).delay(.3)
-$: s("bd ~ ~ ~ sd ~ ~ ~").bank("RolandTR909").gain(.35)`,
+let drums = s("bd ~ ~ ~ sd ~ ~ ~").bank("RolandTR909").gain(.35)
+
+$: arrange(
+  [2, synthChoir],
+  [2, stack(synthChoir, synthVox)],
+  [4, stack(synthChoir, synthVox, drums)])`,
       },
       {
         label: 'Indie Vocal Layer',
@@ -3748,12 +5072,17 @@ $: s("bd ~ ~ ~ sd ~ ~ ~").bank("RolandTR909").gain(.35)`,
 // Whispered secrets only stars can hear
 // Melodies that make the clouds appear
 // Sing until the dawn is finally near
-$: note("e4 g4 a4 b4 a4 g4 e4 d4").s("gm_voice_oohs")
+let oohs = note("e4 g4 a4 b4 a4 g4 e4 d4").s("gm_voice_oohs")
   .velocity(.5).room(.45).delay(.15)
-$: note("e4 ~ a4 ~ b4 ~ g4 ~").s("gm_choir_aahs")
+let choir = note("e4 ~ a4 ~ b4 ~ g4 ~").s("gm_choir_aahs")
   .velocity(.3).room(.45).delay(.2)
-$: note("e2 b2 e2 a2 g2 e2 b2 e2").s("gm_clean_guitar").velocity(.35)
-$: s("bd ~ sd ~ bd ~ sd bd").bank("RolandTR808").gain(.4)`,
+let guitar = note("e2 b2 e2 a2 g2 e2 b2 e2").s("gm_clean_guitar").velocity(.35)
+let drums = s("bd ~ sd ~ bd ~ sd bd").bank("RolandTR808").gain(.4)
+
+$: arrange(
+  [2, stack(oohs, choir)],
+  [2, stack(oohs, choir, guitar)],
+  [4, stack(oohs, choir, guitar, drums)])`,
       },
       {
         label: 'Techno Vocal Chop',
@@ -3763,11 +5092,16 @@ $: s("bd ~ sd ~ bd ~ sd bd").bank("RolandTR808").gain(.4)`,
 // Strobe lights flashing in a concrete hall
 // Every frequency controls us all
 // Rise and fall and rise and never stall
-$: s("chin:0 ~ chin:2 ~").speed("<1 1.5 .75 2>")
+let vox = s("chin:0 ~ chin:2 ~").speed("<1 1.5 .75 2>")
   .gain(.5).room(.2).delay(.1)
-$: s("bd bd bd bd").bank("RolandTR909").gain(.65)
-$: s("~ hh ~ hh ~ oh ~ hh").bank("RolandTR909").gain(.4)
-$: note("c1 ~ c1 ~ ~ ~ c1 ~").s("sawtooth").lpf(200).gain(.5)`,
+let kick = s("bd bd bd bd").bank("RolandTR909").gain(.65)
+let hats = s("~ hh ~ hh ~ oh ~ hh").bank("RolandTR909").gain(.4)
+let bass = note("c1 ~ c1 ~ ~ ~ c1 ~").s("sawtooth").lpf(200).gain(.5)
+
+$: arrange(
+  [2, stack(vox, kick)],
+  [2, stack(vox, kick, hats)],
+  [4, stack(vox, kick, hats, bass)])`,
       },
       {
         label: 'Lullaby Vocal',
@@ -3777,10 +5111,14 @@ $: note("c1 ~ c1 ~ ~ ~ c1 ~").s("sawtooth").lpf(200).gain(.5)`,
 // Gentle winds will carry you to sleep
 // Counting fireflies and woolen sheep
 // Safe and warm the night will softly keep
-$: note("c5 b4 a4 g4 a4 g4 f4 e4").s("gm_voice_oohs")
+let oohs = note("c5 b4 a4 g4 a4 g4 f4 e4").s("gm_voice_oohs")
   .velocity(sine.range(.2,.45).slow(8)).room(.6).slow(2)
-$: note("<[c4,e4,g4] [a3,c4,e4] [f3,a3,c4] [g3,b3,d4]>")
-  .s("gm_music_box").velocity(.25).slow(4)`,
+let bells = note("<[c4,e4,g4] [a3,c4,e4] [f3,a3,c4] [g3,b3,d4]>")
+  .s("gm_music_box").velocity(.25).slow(4)
+
+$: arrange(
+  [2, oohs],
+  [4, stack(oohs, bells)])`,
       },
       {
         label: 'Funk Vocal Groove',
@@ -3790,11 +5128,16 @@ $: note("<[c4,e4,g4] [a3,c4,e4] [f3,a3,c4] [g3,b3,d4]>")
 // Horns are blaring hot across the stage
 // Every note is turnin up the page
 // Groove so deep it echoes through the age
-$: note("c4 ~ e4 f4 ~ e4 c4 ~").s("gm_synth_voice")
+let synthVox = note("c4 ~ e4 f4 ~ e4 c4 ~").s("gm_synth_voice")
   .velocity(.6).room(.3)
-$: note("c2 ~ c2 e2 f2 ~ c2 ~").s("gm_slap_bass_1").velocity(.65)
-$: s("bd ~ sd ~ bd bd sd ~").bank("RolandTR808").gain(.55)
-$: note("~ [e5,g5] ~ ~ ~ [f5,a5] ~ ~").s("gm_brass1").velocity(.4)`,
+let bass = note("c2 ~ c2 e2 f2 ~ c2 ~").s("gm_slap_bass_1").velocity(.65)
+let drums = s("bd ~ sd ~ bd bd sd ~").bank("RolandTR808").gain(.55)
+let brass = note("~ [e5,g5] ~ ~ ~ [f5,a5] ~ ~").s("gm_brass1").velocity(.4)
+
+$: arrange(
+  [2, stack(synthVox, bass)],
+  [2, stack(synthVox, bass, drums)],
+  [4, stack(synthVox, bass, drums, brass)])`,
       },
       {
         label: 'Choir Hymn Full',
@@ -3804,11 +5147,16 @@ $: note("~ [e5,g5] ~ ~ ~ [f5,a5] ~ ~").s("gm_brass1").velocity(.4)`,
 // Every soul uplifted by the song
 // Together we are where we all belong
 // Carry us oh music all day long
-$: note("[c4,e4,g4,c5] ~ [d4,f4,a4,d5] ~ [e4,g4,b4,e5] ~ [c4,e4,g4,c5] ~")
+let choir = note("[c4,e4,g4,c5] ~ [d4,f4,a4,d5] ~ [e4,g4,b4,e5] ~ [c4,e4,g4,c5] ~")
   .s("gm_choir_aahs").velocity(.65).room(.7).slow(4)
-$: note("[c3,g3] ~ [d3,a3] ~ [e3,b3] ~ [c3,g3] ~")
+let organ = note("[c3,g3] ~ [d3,a3] ~ [e3,b3] ~ [c3,g3] ~")
   .s("gm_church_organ").velocity(.4).slow(4)
-$: s("~ ~ ~ ~ bd ~ ~ ~").bank("RolandTR808").gain(.2)`,
+let kick = s("~ ~ ~ ~ bd ~ ~ ~").bank("RolandTR808").gain(.2)
+
+$: arrange(
+  [2, choir],
+  [2, stack(choir, organ)],
+  [4, stack(choir, organ, kick)])`,
       },
       {
         label: 'Rock Anthem Vox',
@@ -3818,12 +5166,17 @@ $: s("~ ~ ~ ~ bd ~ ~ ~").bank("RolandTR808").gain(.2)`,
 // Every mile a story left behind
 // Searchin' for the freedom we will find
 // Rock and roll forever on my mind
-$: note("e4 e4 g4 a4 b4 a4 g4 e4").s("gm_choir_aahs")
+let choir = note("e4 e4 g4 a4 b4 a4 g4 e4").s("gm_choir_aahs")
   .velocity(.65).room(.4)
-$: note("[e3,b3,e4] ~ [a3,e4,a4] ~ [d3,a3,d4] ~ [e3,b3,e4] ~")
+let guitar = note("[e3,b3,e4] ~ [a3,e4,a4] ~ [d3,a3,d4] ~ [e3,b3,e4] ~")
   .s("gm_overdriven_guitar").velocity(.5).slow(2)
-$: note("e2 ~ e2 ~ a2 ~ b2 ~").s("gm_electric_bass_pick").velocity(.55)
-$: s("bd ~ sd ~ bd bd sd ~").bank("RolandTR909").gain(.55)`,
+let bass = note("e2 ~ e2 ~ a2 ~ b2 ~").s("gm_electric_bass_pick").velocity(.55)
+let drums = s("bd ~ sd ~ bd bd sd ~").bank("RolandTR909").gain(.55)
+
+$: arrange(
+  [2, stack(choir, guitar)],
+  [2, stack(choir, guitar, bass)],
+  [4, stack(choir, guitar, bass, drums)])`,
       },
       {
         label: 'Ambient Vocal Wash',
@@ -3833,11 +5186,15 @@ $: s("bd ~ sd ~ bd bd sd ~").bank("RolandTR909").gain(.55)`,
 // Salt and mist upon the evening breeze
 // Voices carried over emerald seas
 // Peace within the silence if you please
-$: note("<c4 d4 e4 f4 e4 d4 c4 b3>")
+let oohs = note("<c4 d4 e4 f4 e4 d4 c4 b3>")
   .s("gm_voice_oohs").velocity(sine.range(.15,.4).slow(16))
   .room(.8).delay(.35).slow(4)
-$: note("<[c3,e3,g3] [b2,d3,f3] [a2,c3,e3] [g2,b2,d3]>")
-  .s("gm_warm_pad").velocity(.2).slow(8)`,
+let pad = note("<[c3,e3,g3] [b2,d3,f3] [a2,c3,e3] [g2,b2,d3]>")
+  .s("gm_warm_pad").velocity(.2).slow(8)
+
+$: arrange(
+  [2, oohs],
+  [4, stack(oohs, pad)])`,
       },
       {
         label: 'Dancehall Vocal',
@@ -3847,11 +5204,16 @@ $: note("<[c3,e3,g3] [b2,d3,f3] [a2,c3,e3] [g2,b2,d3]>")
 // Selecta play the tune we wanna know
 // Crowd a jump and rock it high and low
 // Dancehall vibes wherever that we go
-$: note("d4 f4 g4 a4 g4 f4 d4 ~").s("gm_synth_voice")
+let synthVox = note("d4 f4 g4 a4 g4 f4 d4 ~").s("gm_synth_voice")
   .velocity(.55).room(.3).delay(.15)
-$: note("~ d2 ~ d2 ~ f2 ~ g2").s("gm_synth_bass_2").velocity(.6)
-$: s("bd ~ ~ bd sd ~ bd ~").bank("RolandTR808").gain(.55)
-$: s("rim ~ rim ~ rim ~ rim ~").bank("RolandTR808").gain(.35)`,
+let bass = note("~ d2 ~ d2 ~ f2 ~ g2").s("gm_synth_bass_2").velocity(.6)
+let drums = s("bd ~ ~ bd sd ~ bd ~").bank("RolandTR808").gain(.55)
+let rim = s("rim ~ rim ~ rim ~ rim ~").bank("RolandTR808").gain(.35)
+
+$: arrange(
+  [2, stack(synthVox, bass)],
+  [2, stack(synthVox, bass, drums)],
+  [4, stack(synthVox, bass, drums, rim)])`,
       },
     ],
   },
@@ -3862,386 +5224,540 @@ $: s("rim ~ rim ~ rim ~ rim ~").bank("RolandTR808").gain(.35)`,
       {
         label: 'Nylon Pluck',
         code: `// nylon guitar pluck
-$: note("c4 e4 g4 c5 g4 e4 c4 e4")
+let guitar = note("c4 e4 g4 c5 g4 e4 c4 e4")
   .s("gm_nylon_guitar").velocity(.5)
-  .room(.3)`,
+  .room(.3)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Steel Arp',
         code: `// steel string arpeggio
-$: note("e3 g3 b3 e4 b3 g3 e3 b2")
+let guitar = note("e3 g3 b3 e4 b3 g3 e3 b2")
   .s("gm_steel_guitar").velocity(.5)
-  .room(.3)`,
+  .room(.3)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Clean Electric',
         code: `// clean electric guitar
-$: note("a3 c4 e4 a4 e4 c4 a3 e3")
+let guitar = note("a3 c4 e4 a4 e4 c4 a3 e3")
   .s("gm_clean_guitar").velocity(.5)
-  .room(.3)`,
+  .room(.3)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Overdriven Riff',
         code: `// overdriven guitar riff
-$: note("e2 e2 g2 a2 e2 e2 b2 a2")
+let guitar = note("e2 e2 g2 a2 e2 e2 b2 a2")
   .s("gm_overdriven_guitar").velocity(.55)
-  .gain(.5)`,
+  .gain(.5)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Distortion Power',
         code: `// distorted power chords
-$: note("<[e2,b2,e3] [c2,g2,c3] [d2,a2,d3] [a1,e2,a2]>")
+let guitar = note("<[e2,b2,e3] [c2,g2,c3] [d2,a2,d3] [a1,e2,a2]>")
   .s("gm_distortion_guitar").velocity(.5)
-  .slow(2)`,
+  .slow(2)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Jazz Clean',
         code: `// jazz guitar clean
-$: note("c3 e3 g3 b3 a3 f3 d3 g3")
+let guitar = note("c3 e3 g3 b3 a3 f3 d3 g3")
   .s("gm_clean_guitar").velocity(.4)
-  .room(.4).delay(.15)`,
+  .room(.4).delay(.15)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Muted Funk',
         code: `// muted funk guitar
-$: note("c3 ~ c3 ~ c3 ~ c3 c3")
+let guitar = note("c3 ~ c3 ~ c3 ~ c3 c3")
   .s("gm_muted_guitar").velocity(.5)
-  .decay(.08)`,
+  .decay(.08)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Harmonics',
         code: `// guitar harmonics
-$: note("e5 b5 e6 b5 g5 e5 b4 e5")
+let guitar = note("e5 b5 e6 b5 g5 e5 b4 e5")
   .s("gm_guitar_harmonics").velocity(.4)
-  .room(.5).delay(.2)`,
+  .room(.5).delay(.2)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Nylon Chords',
         code: `// nylon chord strum
-$: note("<[c3,e3,g3] [a2,c3,e3] [f2,a2,c3] [g2,b2,d3]>")
+let guitar = note("<[c3,e3,g3] [a2,c3,e3] [f2,a2,c3] [g2,b2,d3]>")
   .s("gm_nylon_guitar").velocity(.45)
-  .room(.3).slow(2)`,
+  .room(.3).slow(2)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Blues Lick',
         code: `// blues guitar lick
-$: note("c4 e4 f4 g4 g4 b4 g4 e4")
+let guitar = note("c4 e4 f4 g4 g4 b4 g4 e4")
   .s("gm_clean_guitar").velocity(.5)
-  .room(.3)`,
+  .room(.3)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Country Pick',
         code: `// country picking
-$: note("c3 e3 g3 c4 e3 g3 c4 e4")
-  .s("gm_steel_guitar").velocity(.5)`,
+let guitar = note("c3 e3 g3 c4 e3 g3 c4 e4")
+  .s("gm_steel_guitar").velocity(.5)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Tremolo Pick',
         code: `// tremolo picking
-$: note("[e3 e3 e3 e3]*4")
+let guitar = note("[e3 e3 e3 e3]*4")
   .s("gm_clean_guitar")
-  .velocity("[.3 .5 .35 .55]*4")`,
+  .velocity("[.3 .5 .35 .55]*4")
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Slide Guitar',
         code: `// slide guitar feel
-$: note("c3 d3 e3 g3 c4 g3 e3 d3")
+let guitar = note("c3 d3 e3 g3 c4 g3 e3 d3")
   .s("gm_steel_guitar").velocity(.5)
-  .glide(.15).room(.3)`,
+  .glide(.15).room(.3)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Fingerstyle',
         code: `// fingerstyle pattern
-$: note("c3 g3 e4 g3 c3 g3 e4 c4")
+let guitar = note("c3 g3 e4 g3 c3 g3 e4 c4")
   .s("gm_nylon_guitar").velocity(.45)
-  .room(.3)`,
+  .room(.3)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Surf Rock',
         code: `// surf rock twang
-$: note("e3 g3 a3 b3 e4 b3 a3 g3")
+let guitar = note("e3 g3 a3 b3 e4 b3 a3 g3")
   .s("gm_clean_guitar").velocity(.5)
-  .delay(.3).delayfeedback(.4)`,
+  .delay(.3).delayfeedback(.4)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Power Slide',
         code: `// power chord slide
-$: note("<[e2,b2,e3] [g2,d3,g3] [a2,e3,a3] [g2,d3,g3]>")
+let guitar = note("<[e2,b2,e3] [g2,d3,g3] [a2,e3,a3] [g2,d3,g3]>")
   .s("gm_overdriven_guitar").velocity(.5)
-  .slow(2)`,
+  .slow(2)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Wah Guitar',
         code: `// wah-wah guitar
-$: note("e3 g3 a3 e3 g3 a3 b3 a3")
+let guitar = note("e3 g3 a3 e3 g3 a3 b3 a3")
   .s("gm_clean_guitar").velocity(.5)
-  .lpf(sine.range(500,4000)).lpq(6)`,
+  .lpf(sine.range(500,4000)).lpq(6)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Pedal Steel',
         code: `// pedal steel vibe
-$: note("e3 a3 b3 e4 a4 e4 b3 a3")
+let guitar = note("e3 a3 b3 e4 a4 e4 b3 a3")
   .s("gm_steel_guitar").velocity(.4)
-  .room(.5).delay(.25).slow(2)`,
+  .room(.5).delay(.25).slow(2)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Flamenco Pick',
         code: `// flamenco rapid pick
-$: note("[e4 f4 e4 d4]*2")
+let guitar = note("[e4 f4 e4 d4]*2")
   .s("gm_nylon_guitar").velocity(.5)
-  .decay(.1)`,
+  .decay(.1)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Guitar + Drums',
         code: `// guitar with drums
-$: s("bd ~ bd ~, ~ sd ~ sd").gain(.7)
-$: s("[~ hh]*4").gain(.35)
-$: note("c3 e3 g3 c4 g3 e3")
+let drums = s("bd ~ bd ~, ~ sd ~ sd").gain(.7)
+let hats = s("[~ hh]*4").gain(.35)
+let guitar = note("c3 e3 g3 c4 g3 e3")
   .s("gm_clean_guitar").velocity(.5)
-  .room(.3)`,
+  .room(.3)
+
+$: arrange(
+  [2, drums],
+  [2, stack(drums, hats)],
+  [4, stack(drums, hats, guitar)])`,
       },
       {
         label: 'Acoustic Ballad',
         code: `// acoustic ballad
-$: note("<[c3,e3,g3] [a2,c3,e3] [f2,a2,c3] [g2,b2,d3]>")
+let guitar = note("<[c3,e3,g3] [a2,c3,e3] [f2,a2,c3] [g2,b2,d3]>")
   .s("gm_nylon_guitar").velocity(.4)
-  .room(.4).slow(4)`,
+  .room(.4).slow(4)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Rock Riff',
         code: `// rock guitar riff
-$: note("e2 ~ e3 e2 g2 ~ a2 b2")
-  .s("gm_overdriven_guitar").velocity(.55)`,
+let guitar = note("e2 ~ e3 e2 g2 ~ a2 b2")
+  .s("gm_overdriven_guitar").velocity(.55)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Octave Lead',
         code: `// octave guitar lead
-$: note("c4 c5 e4 e5 g4 g5 b4 b5")
+let guitar = note("c4 c5 e4 e5 g4 g5 b4 b5")
   .s("gm_clean_guitar").velocity(.5)
-  .room(.3)`,
+  .room(.3)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Reverb Nylon',
         code: `// reverb-drenched nylon
-$: note("e4 b4 g4 e4")
+let guitar = note("e4 b4 g4 e4")
   .s("gm_nylon_guitar").velocity(.4)
-  .room(.8).roomsize(6).slow(2)`,
+  .room(.8).roomsize(6).slow(2)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Distort Chug',
         code: `// chugging distortion
-$: note("[e2 e2 ~ e2]*2")
+let guitar = note("[e2 e2 ~ e2]*2")
   .s("gm_distortion_guitar").velocity(.55)
-  .decay(.08)`,
+  .decay(.08)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Clean Chorus',
         code: `// chorus clean tone
-$: note("c4 e4 g4 b4")
+let guitar = note("c4 e4 g4 b4")
   .s("gm_clean_guitar").velocity(.45)
-  .room(.5).delay(.2).delayfeedback(.35).slow(2)`,
+  .room(.5).delay(.2).delayfeedback(.35).slow(2)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Ambient Guitar',
         code: `// ambient guitar pad
-$: note("<[c3,g3] [a2,e3]>")
+let guitar = note("<[c3,g3] [a2,e3]>")
   .s("gm_clean_guitar").velocity(.3)
   .room(.8).roomsize(5)
-  .delay(.4).delayfeedback(.5).slow(4)`,
+  .delay(.4).delayfeedback(.5).slow(4)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Palm Mute',
         code: `// palm mute chug
-$: note("e2*8")
+let guitar = note("e2*8")
   .s("gm_muted_guitar")
-  .velocity("[.3 .5 .35 .55 .3 .5 .35 .6]")`,
+  .velocity("[.3 .5 .35 .55 .3 .5 .35 .6]")
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Staccato Strum',
         code: `// staccato chord strum
-$: note("[c3,e3,g3] ~ ~ [a2,c3,e3] ~ ~")
+let guitar = note("[c3,e3,g3] ~ ~ [a2,c3,e3] ~ ~")
   .s("gm_steel_guitar").velocity(.5)
-  .decay(.1)`,
+  .decay(.1)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Guitar Delay Wash',
         code: `// guitar into delay wash
-$: note("c4 ~ ~ e4 ~ ~ g4 ~")
+let guitar = note("c4 ~ ~ e4 ~ ~ g4 ~")
   .s("gm_clean_guitar").velocity(.4)
   .delay(.5).delayfeedback(.7)
-  .room(.5)`,
+  .room(.5)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Fingerstyle Ballad',
         code: `// fingerstyle ballad
-$: note("e3 b3 g3 d4 b3 g3 e3 b2")
+let guitar = note("e3 b3 g3 d4 b3 g3 e3 b2")
   .s("gm_nylon_guitar").velocity(sine.range(.3,.55).slow(8))
   .room(.45).delay(.1)
-$: note("<[e3,b3,e4] [a2,e3,a3] [d3,a3,d4] [b2,g3,b3]>")
-  .s("gm_nylon_guitar").velocity(.25).slow(4)`,
+let guitar2 = note("<[e3,b3,e4] [a2,e3,a3] [d3,a3,d4] [b2,g3,b3]>")
+  .s("gm_nylon_guitar").velocity(.25).slow(4)
+
+$: arrange(
+  [2, guitar],
+  [4, stack(guitar, guitar2)])`,
       },
       {
         label: 'Flamenco Rasgueado',
         code: `// flamenco rasgueado strum
-$: note("[e3,a3,d4,g4,b4,e5] ~ ~ [e3,a3,d4,g4,b4,e5]")
+let guitar = note("[e3,a3,d4,g4,b4,e5] ~ ~ [e3,a3,d4,g4,b4,e5]")
   .s("gm_nylon_guitar").velocity("<.7 .5 .6 .7>")
   .room(.3)
-$: note("~ [a3,d4,g4] [a3,d4,g4] ~")
+let guitar2 = note("~ [a3,d4,g4] [a3,d4,g4] ~")
   .s("gm_nylon_guitar").velocity(.4)
-$: s("bd ~ ~ bd ~ ~ bd ~").bank("RolandTR808").gain(.3)`,
+let kick = s("bd ~ ~ bd ~ ~ bd ~").bank("RolandTR808").gain(.3)
+
+$: arrange(
+  [2, guitar],
+  [2, stack(guitar, guitar2)],
+  [4, stack(guitar, guitar2, kick)])`,
       },
       {
         label: 'Texas Blues Lick',
         code: `// texas blues guitar lick
-$: note("e4 g4 a4 b4 a4 g4 e4 d4")
+let guitar = note("e4 g4 a4 b4 a4 g4 e4 d4")
   .s("gm_overdriven_guitar").velocity(.55).room(.35)
-$: note("[e3,b3] ~ [a3,e4] ~ [d3,a3] ~ [e3,b3] ~")
+let guitar2 = note("[e3,b3] ~ [a3,e4] ~ [d3,a3] ~ [e3,b3] ~")
   .s("gm_clean_guitar").velocity(.3).slow(2)
-$: note("e2 ~ e2 ~ a2 ~ b2 ~").s("gm_electric_bass_finger").velocity(.5)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.4)`,
+let bass = note("e2 ~ e2 ~ a2 ~ b2 ~").s("gm_electric_bass_finger").velocity(.5)
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.4)
+
+$: arrange(
+  [2, stack(guitar, guitar2)],
+  [2, stack(guitar, guitar2, bass)],
+  [4, stack(guitar, guitar2, bass, drums)])`,
       },
       {
         label: 'Surf Rock Tremolo',
         code: `// surf rock tremolo guitar
-$: note("e4 e4 e4 e4 g4 g4 g4 g4")
+let guitar = note("e4 e4 e4 e4 g4 g4 g4 g4")
   .s("gm_clean_guitar")
   .velocity(perlin.range(.3,.6).fast(8)).room(.4).delay(.2)
-$: note("e2 ~ e2 g2 a2 ~ e2 ~").s("gm_electric_bass_pick").velocity(.5)
-$: s("bd ~ sd ~ bd bd sd ~").bank("RolandTR909").gain(.5)`,
+let bass = note("e2 ~ e2 g2 a2 ~ e2 ~").s("gm_electric_bass_pick").velocity(.5)
+let drums = s("bd ~ sd ~ bd bd sd ~").bank("RolandTR909").gain(.5)
+
+$: arrange(
+  [2, guitar],
+  [2, stack(guitar, bass)],
+  [4, stack(guitar, bass, drums)])`,
       },
       {
         label: 'Jangle Pop Strum',
         code: `// jangle pop strumming
-$: note("<[c4,e4,g4] [a3,c4,e4] [f3,a3,c4] [g3,b3,d4]>")
+let guitar = note("<[c4,e4,g4] [a3,c4,e4] [f3,a3,c4] [g3,b3,d4]>")
   .s("gm_clean_guitar").velocity(.45).room(.35)
-$: note("c4 e4 g4 c5 g4 e4 c4 e4")
+let guitar2 = note("c4 e4 g4 c5 g4 e4 c4 e4")
   .s("gm_steel_guitar").velocity(.3).delay(.15)
-$: note("c2 c2 a2 a2 f2 f2 g2 g2").s("gm_electric_bass_finger").velocity(.45)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.4)`,
+let bass = note("c2 c2 a2 a2 f2 f2 g2 g2").s("gm_electric_bass_finger").velocity(.45)
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.4)
+
+$: arrange(
+  [2, stack(guitar, guitar2)],
+  [2, stack(guitar, guitar2, bass)],
+  [4, stack(guitar, guitar2, bass, drums)])`,
       },
       {
         label: 'Metal Power Chords',
         code: `// metal power chord riff
-$: note("[e2,b2,e3] ~ [g2,d3,g3] [a2,e3,a3] ~ [e2,b2,e3] ~ ~")
+let guitar = note("[e2,b2,e3] ~ [g2,d3,g3] [a2,e3,a3] ~ [e2,b2,e3] ~ ~")
   .s("gm_distortion_guitar").velocity(.7).room(.25)
-$: note("e1 ~ g1 a1 ~ e1 ~ ~").s("gm_synth_bass_1").velocity(.65)
-$: s("bd bd sd ~ bd bd sd bd").bank("RolandTR909").gain(.6)
-$: s("hh hh hh hh hh hh hh hh").bank("RolandTR909").gain(.35)`,
+let bass = note("e1 ~ g1 a1 ~ e1 ~ ~").s("gm_synth_bass_1").velocity(.65)
+let drums = s("bd bd sd ~ bd bd sd bd").bank("RolandTR909").gain(.6)
+let hats = s("hh hh hh hh hh hh hh hh").bank("RolandTR909").gain(.35)
+
+$: arrange(
+  [2, stack(guitar, bass)],
+  [2, stack(guitar, bass, drums)],
+  [4, stack(guitar, bass, drums, hats)])`,
       },
       {
         label: 'Bossa Nova Guitar',
         code: `// bossa nova guitar comp
-$: note("[d3,a3,d4] ~ [d3,a3,d4] ~ [c3,g3,c4] ~ [c3,g3,c4] ~")
+let guitar = note("[d3,a3,d4] ~ [d3,a3,d4] ~ [c3,g3,c4] ~ [c3,g3,c4] ~")
   .s("gm_nylon_guitar").velocity(.4).room(.3)
-$: note("d2 ~ a2 ~ c2 ~ g2 ~").s("gm_acoustic_bass").velocity(.45)
-$: s("~ rim ~ rim ~ rim ~ rim").bank("RolandTR808").gain(.25)`,
+let bass = note("d2 ~ a2 ~ c2 ~ g2 ~").s("gm_acoustic_bass").velocity(.45)
+let rim = s("~ rim ~ rim ~ rim ~ rim").bank("RolandTR808").gain(.25)
+
+$: arrange(
+  [2, guitar],
+  [2, stack(guitar, bass)],
+  [4, stack(guitar, bass, rim)])`,
       },
       {
         label: 'Reggae Skank',
         code: `// reggae guitar skank
-$: note("~ [b3,d4,f4] ~ [b3,d4,f4] ~ [a3,c4,e4] ~ [a3,c4,e4]")
+let guitar = note("~ [b3,d4,f4] ~ [b3,d4,f4] ~ [a3,c4,e4] ~ [a3,c4,e4]")
   .s("gm_muted_guitar").velocity(.5).room(.2)
-$: note("~ b2 ~ b2 ~ a2 ~ a2").s("gm_electric_bass_finger").velocity(.55)
-$: s("bd ~ ~ bd ~ sd ~ ~").bank("RolandTR808").gain(.5)
-$: s("~ ~ hh ~ ~ ~ hh ~").bank("RolandTR808").gain(.3)`,
+let bass = note("~ b2 ~ b2 ~ a2 ~ a2").s("gm_electric_bass_finger").velocity(.55)
+let drums = s("bd ~ ~ bd ~ sd ~ ~").bank("RolandTR808").gain(.5)
+let hats = s("~ ~ hh ~ ~ ~ hh ~").bank("RolandTR808").gain(.3)
+
+$: arrange(
+  [2, stack(guitar, bass)],
+  [2, stack(guitar, bass, drums)],
+  [4, stack(guitar, bass, drums, hats)])`,
       },
       {
         label: 'Country Chicken Pick',
         code: `// country chicken pickin
-$: note("e4 a4 a4 b4 a4 a4 e4 d4")
+let guitar = note("e4 a4 a4 b4 a4 a4 e4 d4")
   .s("gm_clean_guitar").velocity("<.6 .4 .5 .6>").room(.25)
-$: note("a2 e3 a2 e3 d3 a3 e3 b3").s("gm_steel_guitar").velocity(.35)
-$: note("a2 ~ e2 ~ d2 ~ e2 ~").s("gm_acoustic_bass").velocity(.45)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
+let guitar2 = note("a2 e3 a2 e3 d3 a3 e3 b3").s("gm_steel_guitar").velocity(.35)
+let bass = note("a2 ~ e2 ~ d2 ~ e2 ~").s("gm_acoustic_bass").velocity(.45)
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)
+
+$: arrange(
+  [2, stack(guitar, guitar2)],
+  [2, stack(guitar, guitar2, bass)],
+  [4, stack(guitar, guitar2, bass, drums)])`,
       },
       {
         label: 'Shoegaze Shimmer',
         code: `// shoegaze shimmer guitar
-$: note("<[e4,b4] [c4,g4] [a3,e4] [d4,a4]>")
+let guitar = note("<[e4,b4] [c4,g4] [a3,e4] [d4,a4]>")
   .s("gm_clean_guitar").velocity(.35)
   .room(.8).delay(.4).delayfeedback(.6).slow(4)
-$: note("<e3 c3 a2 d3>")
+let guitar2 = note("<e3 c3 a2 d3>")
   .s("gm_distortion_guitar").velocity(.3).room(.7).slow(4)
-$: s("bd ~ ~ ~ sd ~ ~ ~").bank("RolandTR909").gain(.3)`,
+let drums = s("bd ~ ~ ~ sd ~ ~ ~").bank("RolandTR909").gain(.3)
+
+$: arrange(
+  [2, guitar],
+  [2, stack(guitar, guitar2)],
+  [4, stack(guitar, guitar2, drums)])`,
       },
       {
         label: 'Jazz Comping Guitar',
         code: `// jazz guitar comping
-$: note("<[d3,g3,a3,c4] [g3,b3,d4,f4] [c3,e3,g3,b3] [f3,a3,c4,e4]>")
+let guitar = note("<[d3,g3,a3,c4] [g3,b3,d4,f4] [c3,e3,g3,b3] [f3,a3,c4,e4]>")
   .s("gm_clean_guitar").velocity(.4).room(.3).slow(2)
-$: note("d2 a2 g2 d3 c2 g2 f2 c3").s("gm_acoustic_bass").velocity(.45)
-$: s("~ hh ~ hh ~ hh ~ hh").bank("RolandTR808").gain(.2)`,
+let bass = note("d2 a2 g2 d3 c2 g2 f2 c3").s("gm_acoustic_bass").velocity(.45)
+let hats = s("~ hh ~ hh ~ hh ~ hh").bank("RolandTR808").gain(.2)
+
+$: arrange(
+  [2, guitar],
+  [2, stack(guitar, bass)],
+  [4, stack(guitar, bass, hats)])`,
       },
       {
         label: 'Funk Wah Guitar',
         code: `// funk wah guitar rhythm
-$: note("e3 ~ [e3,g3] ~ e3 [e3,g3] ~ e3")
+let guitar = note("e3 ~ [e3,g3] ~ e3 [e3,g3] ~ e3")
   .s("gm_muted_guitar").velocity(.55).lpf(sine.range(400,3000).fast(4))
-$: note("e2 ~ e2 g2 ~ e2 ~ g2").s("gm_slap_bass_1").velocity(.55)
-$: s("bd ~ sd ~ bd bd sd ~").bank("RolandTR808").gain(.5)
-$: s("oh ~ hh hh oh ~ hh hh").bank("RolandTR808").gain(.3)`,
+let bass = note("e2 ~ e2 g2 ~ e2 ~ g2").s("gm_slap_bass_1").velocity(.55)
+let drums = s("bd ~ sd ~ bd bd sd ~").bank("RolandTR808").gain(.5)
+let hats = s("oh ~ hh hh oh ~ hh hh").bank("RolandTR808").gain(.3)
+
+$: arrange(
+  [2, stack(guitar, bass)],
+  [2, stack(guitar, bass, drums)],
+  [4, stack(guitar, bass, drums, hats)])`,
       },
       {
         label: 'Classical Duet',
         code: `// classical guitar duet  
-$: note("e4 f4 g4 a4 b4 c5 b4 a4")
+let guitar = note("e4 f4 g4 a4 b4 c5 b4 a4")
   .s("gm_nylon_guitar").velocity(.45).room(.4)
-$: note("c3 e3 g3 c3 d3 f3 a3 d3")
-  .s("gm_nylon_guitar").velocity(.35).room(.4)`,
+let guitar2 = note("c3 e3 g3 c3 d3 f3 a3 d3")
+  .s("gm_nylon_guitar").velocity(.35).room(.4)
+
+$: arrange(
+  [2, guitar],
+  [4, stack(guitar, guitar2)])`,
       },
       {
         label: 'Grunge Riff',
         code: `// grunge guitar riff
-$: note("[e2,b2] ~ [g2,d3] ~ [a2,e3] ~ [e2,b2] [f2,c3]")
+let guitar = note("[e2,b2] ~ [g2,d3] ~ [a2,e3] ~ [e2,b2] [f2,c3]")
   .s("gm_distortion_guitar").velocity(.65).room(.3)
-$: note("e1 ~ g1 ~ a1 ~ e1 f1").s("gm_electric_bass_pick").velocity(.6)
-$: s("bd ~ sd ~ bd ~ sd bd").bank("RolandTR909").gain(.55)
-$: s("hh hh oh hh hh hh oh hh").bank("RolandTR909").gain(.35)`,
+let bass = note("e1 ~ g1 ~ a1 ~ e1 f1").s("gm_electric_bass_pick").velocity(.6)
+let drums = s("bd ~ sd ~ bd ~ sd bd").bank("RolandTR909").gain(.55)
+let hats = s("hh hh oh hh hh hh oh hh").bank("RolandTR909").gain(.35)
+
+$: arrange(
+  [2, stack(guitar, bass)],
+  [2, stack(guitar, bass, drums)],
+  [4, stack(guitar, bass, drums, hats)])`,
       },
       {
         label: 'Harmonics Sparkle',
         code: `// guitar harmonics sparkle
-$: note("e5 b4 g5 d5 ~ e5 b4 ~")
+let guitar = note("e5 b4 g5 d5 ~ e5 b4 ~")
   .s("gm_guitar_harmonics").velocity(.4).room(.6).delay(.3)
-$: note("e3 b3 g3 d4 b3 g3 e3 b2")
-  .s("gm_nylon_guitar").velocity(.3).room(.4)`,
+let guitar2 = note("e3 b3 g3 d4 b3 g3 e3 b2")
+  .s("gm_nylon_guitar").velocity(.3).room(.4)
+
+$: arrange(
+  [2, guitar],
+  [4, stack(guitar, guitar2)])`,
       },
       {
         label: 'Rockabilly Twang',
         code: `// rockabilly twang guitar
-$: note("e4 g4 a4 b4 ~ e4 g4 b4")
+let guitar = note("e4 g4 a4 b4 ~ e4 g4 b4")
   .s("gm_steel_guitar").velocity(.55).room(.25).delay(.1)
-$: note("e2 b2 e2 b2 a2 e3 a2 e3").s("gm_acoustic_bass").velocity(.5)
-$: s("bd ~ sd ~ bd ~ sd bd").bank("RolandTR808").gain(.5)`,
+let bass = note("e2 b2 e2 b2 a2 e3 a2 e3").s("gm_acoustic_bass").velocity(.5)
+let drums = s("bd ~ sd ~ bd ~ sd bd").bank("RolandTR808").gain(.5)
+
+$: arrange(
+  [2, guitar],
+  [2, stack(guitar, bass)],
+  [4, stack(guitar, bass, drums)])`,
       },
       {
         label: 'Slide Guitar Blues',
         code: `// slide guitar blues
-$: note("e3 ~ g3 a3 ~ b3 a3 g3")
+let guitar = note("e3 ~ g3 a3 ~ b3 a3 g3")
   .s("gm_steel_guitar").velocity(sine.range(.35,.6).slow(4)).room(.4)
-$: note("[e3,b3] ~ [a3,e4] ~ [b3,g4] ~ [e3,b3] ~")
+let guitar2 = note("[e3,b3] ~ [a3,e4] ~ [b3,g4] ~ [e3,b3] ~")
   .s("gm_clean_guitar").velocity(.3).slow(2)
-$: note("e2 ~ a2 ~ b2 ~ e2 ~").s("gm_electric_bass_finger").velocity(.45)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
+let bass = note("e2 ~ a2 ~ b2 ~ e2 ~").s("gm_electric_bass_finger").velocity(.45)
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)
+
+$: arrange(
+  [2, stack(guitar, guitar2)],
+  [2, stack(guitar, guitar2, bass)],
+  [4, stack(guitar, guitar2, bass, drums)])`,
       },
       {
         label: 'Ambient Guitar Pad',
         code: `// ambient guitar pad
-$: note("<c4 e4 g4 b4>")
+let guitar = note("<c4 e4 g4 b4>")
   .s("gm_clean_guitar").velocity(.3)
   .room(.85).delay(.5).delayfeedback(.65).slow(4)
-$: note("<[c3,g3] [a2,e3] [f2,c3] [g2,d3]>")
-  .s("gm_clean_guitar").velocity(.2).room(.7).slow(8)`,
+let guitar2 = note("<[c3,g3] [a2,e3] [f2,c3] [g2,d3]>")
+  .s("gm_clean_guitar").velocity(.2).room(.7).slow(8)
+
+$: arrange(
+  [2, guitar],
+  [4, stack(guitar, guitar2)])`,
       },
       {
         label: 'Acoustic Folk Strum',
         code: `// acoustic folk strumming
-$: note("<[g3,b3,d4] [c3,e3,g3] [d3,g3,a3] [g3,b3,d4]>")
+let guitar = note("<[g3,b3,d4] [c3,e3,g3] [d3,g3,a3] [g3,b3,d4]>")
   .s("gm_steel_guitar").velocity(.5).room(.35)
-$: note("g3 b3 d4 g4 d4 b3 g3 b3")
+let guitar2 = note("g3 b3 d4 g4 d4 b3 g3 b3")
   .s("gm_steel_guitar").velocity(.3)
-$: note("g2 g2 c2 c2 d2 d2 g2 g2").s("gm_acoustic_bass").velocity(.4)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.3)`,
+let bass = note("g2 g2 c2 c2 d2 d2 g2 g2").s("gm_acoustic_bass").velocity(.4)
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.3)
+
+$: arrange(
+  [2, stack(guitar, guitar2)],
+  [2, stack(guitar, guitar2, bass)],
+  [4, stack(guitar, guitar2, bass, drums)])`,
       },
     ],
   },
@@ -4252,331 +5768,521 @@ $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.3)`,
       {
         label: 'Basic Clap',
         code: `// simple clap pattern
-$: s("~ cp ~ ~").bank("RolandTR909").gain(.7)`,
+let clap = s("~ cp ~ ~").bank("RolandTR909").gain(.7)
+
+$: arrange([4, clap])`,
       },
       {
         label: 'Double Clap',
         code: `// doubled clap hit
-$: s("~ [cp cp] ~ ~").bank("RolandTR909").gain(.65)
-  .room(.15)`,
+let clap = s("~ [cp cp] ~ ~").bank("RolandTR909").gain(.65)
+  .room(.15)
+
+$: arrange([4, clap])`,
       },
       {
         label: 'Clap Stack',
         code: `// layered 808+909 claps
-$: s("~ cp ~ ~").bank("RolandTR909").gain(.6)
-$: s("~ cp ~ ~").bank("RolandTR808").gain(.4)`,
+let clap = s("~ cp ~ ~").bank("RolandTR909").gain(.6)
+let clap2 = s("~ cp ~ ~").bank("RolandTR808").gain(.4)
+
+$: arrange(
+  [2, clap],
+  [4, stack(clap, clap2)])`,
       },
       {
         label: 'Off-Beat Claps',
         code: `// off-beat clap groove
-$: s("~ cp ~ [~ cp]").bank("RolandTR808").gain(.65)
-$: s("bd ~ bd ~").bank("RolandTR808").gain(.8)`,
+let clap = s("~ cp ~ [~ cp]").bank("RolandTR808").gain(.65)
+let kick = s("bd ~ bd ~").bank("RolandTR808").gain(.8)
+
+$: arrange(
+  [2, clap],
+  [4, stack(clap, kick)])`,
       },
       {
         label: 'Triplet Claps',
         code: `// triplet clap pattern
-$: s("cp(3,8)").bank("RolandTR909").gain(.6)
-$: s("bd*4").gain(.8)`,
+let clap = s("cp(3,8)").bank("RolandTR909").gain(.6)
+let kick = s("bd*4").gain(.8)
+
+$: arrange(
+  [2, clap],
+  [4, stack(clap, kick)])`,
       },
       {
         label: 'Clap Roll',
         code: `// clap roll buildup
-$: s("[~ ~ ~ ~] [~ ~ cp ~] [~ cp cp ~] [cp cp cp cp]")
-  .bank("RolandTR909").gain(.6)`,
+let clap = s("[~ ~ ~ ~] [~ ~ cp ~] [~ cp cp ~] [cp cp cp cp]")
+  .bank("RolandTR909").gain(.6)
+
+$: arrange([4, clap])`,
       },
       {
         label: 'Clap + Snare',
         code: `// clap layered with snare
-$: s("~ [cp sd] ~ [cp sd]").bank("RolandTR808")
-  .gain(.65).room(.2)`,
+let clap = s("~ [cp sd] ~ [cp sd]").bank("RolandTR808")
+  .gain(.65).room(.2)
+
+$: arrange([4, clap])`,
       },
       {
         label: 'Delayed Clap',
         code: `// clap with echo
-$: s("~ cp ~ ~").bank("RolandTR909").gain(.6)
-  .delay(.4).delayfeedback(.5).room(.3)`,
+let clap = s("~ cp ~ ~").bank("RolandTR909").gain(.6)
+  .delay(.4).delayfeedback(.5).room(.3)
+
+$: arrange([4, clap])`,
       },
       {
         label: 'Reverb Clap',
         code: `// reverb-soaked clap
-$: s("~ cp ~ ~").bank("RolandTR909").gain(.55)
-  .room(.8).roomsize(6)`,
+let clap = s("~ cp ~ ~").bank("RolandTR909").gain(.55)
+  .room(.8).roomsize(6)
+
+$: arrange([4, clap])`,
       },
       {
         label: 'Syncopated Claps',
         code: `// syncopated clap groove
-$: s("~ cp ~ cp ~ ~ cp ~").bank("RolandTR808").gain(.6)
-$: s("bd*4").gain(.8)`,
+let clap = s("~ cp ~ cp ~ ~ cp ~").bank("RolandTR808").gain(.6)
+let kick = s("bd*4").gain(.8)
+
+$: arrange(
+  [2, clap],
+  [4, stack(clap, kick)])`,
       },
       {
         label: 'Clap Gate',
         code: `// gated clap stutter
-$: s("cp*8").bank("RolandTR909")
-  .gain("[0 .5 0 .6 0 .5 0 .7]")`,
+let clap = s("cp*8").bank("RolandTR909")
+  .gain("[0 .5 0 .6 0 .5 0 .7]")
+
+$: arrange([4, clap])`,
       },
       {
         label: 'Clap Shuffle',
         code: `// shuffled clap feel
-$: s("~ cp [~ cp] ~").bank("RolandTR909").gain(.6)
-$: s("bd [~ bd] bd ~").gain(.8)`,
+let clap = s("~ cp [~ cp] ~").bank("RolandTR909").gain(.6)
+let kick = s("bd [~ bd] bd ~").gain(.8)
+
+$: arrange(
+  [2, clap],
+  [4, stack(clap, kick)])`,
       },
       {
         label: 'Clap Flam',
         code: `// flam clap hit
-$: s("~ [cp:0 cp:1] ~ ~").bank("RolandTR808")
-  .gain("[.3 .6]").room(.2)`,
+let clap = s("~ [cp:0 cp:1] ~ ~").bank("RolandTR808")
+  .gain("[.3 .6]").room(.2)
+
+$: arrange([4, clap])`,
       },
       {
         label: 'Clap Euclidean',
         code: `// euclidean clap pattern
-$: s("cp(5,16)").bank("RolandTR909").gain(.55)
-$: s("bd(3,8)").gain(.8)`,
+let clap = s("cp(5,16)").bank("RolandTR909").gain(.55)
+let kick = s("bd(3,8)").gain(.8)
+
+$: arrange(
+  [2, clap],
+  [4, stack(clap, kick)])`,
       },
       {
         label: 'Trap Clap',
         code: `// trap style clap
-$: s("~ ~ ~ ~ ~ ~ ~ cp").bank("RolandTR808").gain(.7)
-$: s("bd ~ ~ bd ~ ~ bd ~").bank("RolandTR808").gain(.85)`,
+let clap = s("~ ~ ~ ~ ~ ~ ~ cp").bank("RolandTR808").gain(.7)
+let kick = s("bd ~ ~ bd ~ ~ bd ~").bank("RolandTR808").gain(.85)
+
+$: arrange(
+  [2, clap],
+  [4, stack(clap, kick)])`,
       },
       {
         label: 'Garage Clap',
         code: `// 2-step garage clap
-$: s("~ cp ~ ~").bank("RolandTR909").gain(.6)
-$: s("bd ~ [~ bd] ~").bank("RolandTR909").gain(.8)
-$: s("[hh hh hh ~]*2").gain(.4)`,
+let clap = s("~ cp ~ ~").bank("RolandTR909").gain(.6)
+let kick = s("bd ~ [~ bd] ~").bank("RolandTR909").gain(.8)
+let hats = s("[hh hh hh ~]*2").gain(.4)
+
+$: arrange(
+  [2, clap],
+  [2, stack(clap, kick)],
+  [4, stack(clap, kick, hats)])`,
       },
       {
         label: 'Clap Panned',
         code: `// stereo clap spread
-$: s("~ cp ~ cp").bank("RolandTR909")
-  .gain(.55).pan("<.2 .8>")`,
+let clap = s("~ cp ~ cp").bank("RolandTR909")
+  .gain(.55).pan("<.2 .8>")
+
+$: arrange([4, clap])`,
       },
       {
         label: 'Crushed Clap',
         code: `// bit-crushed clap
-$: s("~ cp ~ ~").bank("RolandTR808").gain(.6)
-  .crush(8)`,
+let clap = s("~ cp ~ ~").bank("RolandTR808").gain(.6)
+  .crush(8)
+
+$: arrange([4, clap])`,
       },
       {
         label: 'Clap Drive',
         code: `// driving clap pattern
-$: s("cp*4").bank("RolandTR909")
-  .gain("[.3 .6 .35 .65]")`,
+let clap = s("cp*4").bank("RolandTR909")
+  .gain("[.3 .6 .35 .65]")
+
+$: arrange([4, clap])`,
       },
       {
         label: 'Reggaeton Clap',
         code: `// reggaeton clap
-$: s("~ ~ cp ~ ~ ~ cp ~").bank("RolandTR808").gain(.6)
-$: s("bd ~ ~ bd ~ ~ bd ~").gain(.85)`,
+let clap = s("~ ~ cp ~ ~ ~ cp ~").bank("RolandTR808").gain(.6)
+let kick = s("bd ~ ~ bd ~ ~ bd ~").gain(.85)
+
+$: arrange(
+  [2, clap],
+  [4, stack(clap, kick)])`,
       },
       {
         label: 'Afro Clap',
         code: `// afrobeat clap
-$: s("cp(2,8)").bank("RolandTR808").gain(.55)
-$: s("bd(3,8)").bank("RolandTR808").gain(.8)
-$: s("rim(5,8)").bank("RolandTR808").gain(.35)`,
+let clap = s("cp(2,8)").bank("RolandTR808").gain(.55)
+let kick = s("bd(3,8)").bank("RolandTR808").gain(.8)
+let rim = s("rim(5,8)").bank("RolandTR808").gain(.35)
+
+$: arrange(
+  [2, clap],
+  [2, stack(clap, kick)],
+  [4, stack(clap, kick, rim)])`,
       },
       {
         label: 'DnB Clap',
         code: `// drum and bass clap
-$: s("[~ ~ ~ ~] [~ cp ~ ~]").bank("RolandTR909").gain(.65)
-$: s("[bd ~ bd ~] [~ ~ bd ~]").gain(.85)`,
+let clap = s("[~ ~ ~ ~] [~ cp ~ ~]").bank("RolandTR909").gain(.65)
+let kick = s("[bd ~ bd ~] [~ ~ bd ~]").gain(.85)
+
+$: arrange(
+  [2, clap],
+  [4, stack(clap, kick)])`,
       },
       {
         label: 'Minimal Clap',
         code: `// minimal clap tick
-$: s("~ cp ~ ~").gain(.5)
-$: s("bd*4").gain(.7)
-$: s("hh*16").gain("[.15 .25]*8")`,
+let clap = s("~ cp ~ ~").gain(.5)
+let kick = s("bd*4").gain(.7)
+let hats = s("hh*16").gain("[.15 .25]*8")
+
+$: arrange(
+  [2, clap],
+  [2, stack(clap, kick)],
+  [4, stack(clap, kick, hats)])`,
       },
       {
         label: 'Clap + Rim',
         code: `// clap and rim combo
-$: s("~ cp ~ ~").bank("RolandTR909").gain(.6)
-$: s("rim*8").bank("RolandTR909").gain("[.15 .3]*4")`,
+let clap = s("~ cp ~ ~").bank("RolandTR909").gain(.6)
+let rim = s("rim*8").bank("RolandTR909").gain("[.15 .3]*4")
+
+$: arrange(
+  [2, clap],
+  [4, stack(clap, rim)])`,
       },
       {
         label: 'Pitched Clap',
         code: `// pitched clap melody
-$: s("cp cp cp cp").bank("RolandTR808")
-  .speed("<1 1.25 .85 1.5>").gain(.55)`,
+let clap = s("cp cp cp cp").bank("RolandTR808")
+  .speed("<1 1.25 .85 1.5>").gain(.55)
+
+$: arrange([4, clap])`,
       },
       {
         label: 'Clap Delay Tail',
         code: `// long delay tail clap
-$: s("~ ~ ~ cp").bank("RolandTR909").gain(.5)
-  .delay(.6).delayfeedback(.7).room(.4)`,
+let clap = s("~ ~ ~ cp").bank("RolandTR909").gain(.5)
+  .delay(.6).delayfeedback(.7).room(.4)
+
+$: arrange([4, clap])`,
       },
       {
         label: 'Lo-Fi Clap',
         code: `// lo-fi dusty clap
-$: s("~ cp ~ ~").bank("RolandTR808").gain(.5)
-  .lpf(2000).room(.3)`,
+let clap = s("~ cp ~ ~").bank("RolandTR808").gain(.5)
+  .lpf(2000).room(.3)
+
+$: arrange([4, clap])`,
       },
       {
         label: 'Polyrhythm Clap',
         code: `// polyrhythm claps
-$: s("cp(3,8)").bank("RolandTR909").gain(.5)
-$: s("cp(5,8)").bank("RolandTR808").gain(.35)`,
+let clap = s("cp(3,8)").bank("RolandTR909").gain(.5)
+let clap2 = s("cp(5,8)").bank("RolandTR808").gain(.35)
+
+$: arrange(
+  [2, clap],
+  [4, stack(clap, clap2)])`,
       },
       {
         label: 'House Clap',
         code: `// four-on-floor clap
-$: s("bd*4").bank("RolandTR909").gain(.85)
-$: s("~ cp ~ ~").bank("RolandTR909").gain(.65)
-$: s("[~ hh]*4").bank("RolandTR909").gain(.45)`,
+let kick = s("bd*4").bank("RolandTR909").gain(.85)
+let clap = s("~ cp ~ ~").bank("RolandTR909").gain(.65)
+let hats = s("[~ hh]*4").bank("RolandTR909").gain(.45)
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, clap)],
+  [4, stack(kick, clap, hats)])`,
       },
       {
         label: 'Clap Fill',
         code: `// clap fill pattern
-$: s("~ cp ~ ~, ~ ~ [cp cp] ~, ~ ~ ~ [~ cp]")
-  .bank("RolandTR909").gain(.55)`,
+let clap = s("~ cp ~ ~, ~ ~ [cp cp] ~, ~ ~ ~ [~ cp]")
+  .bank("RolandTR909").gain(.55)
+
+$: arrange([4, clap])`,
       },
       {
         label: 'Trap Clap Rolls',
         code: `// trap style clap rolls
-$: s("~ ~ cp ~ ~ ~ [cp cp cp] ~")
+let clap = s("~ ~ cp ~ ~ ~ [cp cp cp] ~")
   .bank("RolandTR808").gain(.6)
-$: s("bd ~ ~ bd ~ ~ bd ~").bank("RolandTR808").gain(.55)
-$: s("hh hh hh hh hh oh hh hh").bank("RolandTR808").gain(.3)`,
+let kick = s("bd ~ ~ bd ~ ~ bd ~").bank("RolandTR808").gain(.55)
+let hats = s("hh hh hh hh hh oh hh hh").bank("RolandTR808").gain(.3)
+
+$: arrange(
+  [2, clap],
+  [2, stack(clap, kick)],
+  [4, stack(clap, kick, hats)])`,
       },
       {
         label: 'Gospel Clap',
         code: `// gospel hand clap groove
-$: s("~ cp ~ cp").bank("RolandTR909").gain(.65)
-$: s("bd ~ ~ ~ bd ~ ~ ~").bank("RolandTR909").gain(.5)
-$: note("[c4,e4,g4] ~ [f4,a4,c5] ~").s("gm_church_organ").velocity(.3).slow(2)`,
+let clap = s("~ cp ~ cp").bank("RolandTR909").gain(.65)
+let kick = s("bd ~ ~ ~ bd ~ ~ ~").bank("RolandTR909").gain(.5)
+let organ = note("[c4,e4,g4] ~ [f4,a4,c5] ~").s("gm_church_organ").velocity(.3).slow(2)
+
+$: arrange(
+  [2, clap],
+  [2, stack(clap, kick)],
+  [4, stack(clap, kick, organ)])`,
       },
       {
         label: 'Swing Clap',
         code: `// swing feel clap
-$: s("~ cp ~ [~ cp]").bank("RolandTR909").gain(.55)
-$: s("bd ~ bd ~").bank("RolandTR909").gain(.45)
-$: s("[hh ~] [hh hh] [hh ~] [hh hh]").bank("RolandTR909").gain(.3)`,
+let clap = s("~ cp ~ [~ cp]").bank("RolandTR909").gain(.55)
+let kick = s("bd ~ bd ~").bank("RolandTR909").gain(.45)
+let hats = s("[hh ~] [hh hh] [hh ~] [hh hh]").bank("RolandTR909").gain(.3)
+
+$: arrange(
+  [2, clap],
+  [2, stack(clap, kick)],
+  [4, stack(clap, kick, hats)])`,
       },
       {
         label: 'Stadium Clap',
         code: `// stadium crowd clap
-$: s("cp ~ cp ~").bank("RolandTR808").gain(.7).room(.6)
-$: s("~ ~ cp ~").bank("RolandTR909").gain(.4).room(.6).delay(.15)
-$: s("bd ~ ~ ~ bd ~ ~ ~").bank("RolandTR808").gain(.5)`,
+let clap = s("cp ~ cp ~").bank("RolandTR808").gain(.7).room(.6)
+let clap2 = s("~ ~ cp ~").bank("RolandTR909").gain(.4).room(.6).delay(.15)
+let kick = s("bd ~ ~ ~ bd ~ ~ ~").bank("RolandTR808").gain(.5)
+
+$: arrange(
+  [2, clap],
+  [2, stack(clap, clap2)],
+  [4, stack(clap, clap2, kick)])`,
       },
       {
         label: 'Polyrhythm Clap',
         code: `// polyrhythmic clap pattern
-$: s("cp ~ ~ cp ~ ~").bank("RolandTR909").gain(.55)
-$: s("~ cp ~ ~ cp ~").bank("RolandTR808").gain(.45)
-$: s("bd ~ ~ bd ~ ~ bd ~").bank("RolandTR808").gain(.4)`,
+let clap = s("cp ~ ~ cp ~ ~").bank("RolandTR909").gain(.55)
+let clap2 = s("~ cp ~ ~ cp ~").bank("RolandTR808").gain(.45)
+let kick = s("bd ~ ~ bd ~ ~ bd ~").bank("RolandTR808").gain(.4)
+
+$: arrange(
+  [2, clap],
+  [2, stack(clap, clap2)],
+  [4, stack(clap, clap2, kick)])`,
       },
       {
         label: 'Clap Delay Trail',
         code: `// clap with long delay trail
-$: s("~ cp ~ ~").bank("RolandTR909").gain(.5)
+let clap = s("~ cp ~ ~").bank("RolandTR909").gain(.5)
   .delay(.35).delayfeedback(.6).room(.4)
-$: s("bd ~ sd ~").bank("RolandTR909").gain(.5)`,
+let drums = s("bd ~ sd ~").bank("RolandTR909").gain(.5)
+
+$: arrange(
+  [2, clap],
+  [4, stack(clap, drums)])`,
       },
       {
         label: 'Double Time Clap',
         code: `// double time clap rhythm
-$: s("~ cp ~ cp ~ cp ~ cp").bank("RolandTR909").gain(.5)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.45)
-$: s("hh hh hh hh hh hh hh hh").bank("RolandTR808").gain(.25)`,
+let clap = s("~ cp ~ cp ~ cp ~ cp").bank("RolandTR909").gain(.5)
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.45)
+let hats = s("hh hh hh hh hh hh hh hh").bank("RolandTR808").gain(.25)
+
+$: arrange(
+  [2, clap],
+  [2, stack(clap, drums)],
+  [4, stack(clap, drums, hats)])`,
       },
       {
         label: 'Flam Clap',
         code: `// flam clap accents
-$: s("~ [cp ~ cp] ~ ~").bank("RolandTR909").gain("<.5 .6 .55 .65>")
+let clap = s("~ [cp ~ cp] ~ ~").bank("RolandTR909").gain("<.5 .6 .55 .65>")
   .room(.2)
-$: s("bd ~ ~ bd sd ~ ~ ~").bank("RolandTR808").gain(.5)`,
+let drums = s("bd ~ ~ bd sd ~ ~ ~").bank("RolandTR808").gain(.5)
+
+$: arrange(
+  [2, clap],
+  [4, stack(clap, drums)])`,
       },
       {
         label: 'Afro Clap Pattern',
         code: `// afrobeat clap pattern
-$: s("~ cp ~ ~ cp ~ cp ~").bank("RolandTR808").gain(.55)
-$: s("bd ~ bd ~ ~ bd ~ bd").bank("RolandTR808").gain(.5)
-$: s("hh oh hh hh oh hh hh oh").bank("RolandTR808").gain(.3)`,
+let clap = s("~ cp ~ ~ cp ~ cp ~").bank("RolandTR808").gain(.55)
+let kick = s("bd ~ bd ~ ~ bd ~ bd").bank("RolandTR808").gain(.5)
+let hats = s("hh oh hh hh oh hh hh oh").bank("RolandTR808").gain(.3)
+
+$: arrange(
+  [2, clap],
+  [2, stack(clap, kick)],
+  [4, stack(clap, kick, hats)])`,
       },
       {
         label: 'Clap + Snap Layer',
         code: `// layered clap with rim snap
-$: s("~ cp ~ ~").bank("RolandTR909").gain(.55)
-$: s("~ rim ~ ~").bank("RolandTR808").gain(.35).delay(.05)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.45)`,
+let clap = s("~ cp ~ ~").bank("RolandTR909").gain(.55)
+let rim = s("~ rim ~ ~").bank("RolandTR808").gain(.35).delay(.05)
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.45)
+
+$: arrange(
+  [2, clap],
+  [2, stack(clap, rim)],
+  [4, stack(clap, rim, drums)])`,
       },
       {
         label: 'House Clap Groove',
         code: `// classic house clap
-$: s("~ cp ~ ~").bank("RolandTR909").gain(.6).room(.15)
-$: s("bd bd bd bd").bank("RolandTR909").gain(.6)
-$: s("~ hh ~ hh ~ oh ~ hh").bank("RolandTR909").gain(.35)
-$: note("~ ~ c4 ~").s("gm_epiano1").velocity(.2)`,
+let clap = s("~ cp ~ ~").bank("RolandTR909").gain(.6).room(.15)
+let kick = s("bd bd bd bd").bank("RolandTR909").gain(.6)
+let hats = s("~ hh ~ hh ~ oh ~ hh").bank("RolandTR909").gain(.35)
+let piano = note("~ ~ c4 ~").s("gm_epiano1").velocity(.2)
+
+$: arrange(
+  [2, stack(clap, kick)],
+  [2, stack(clap, kick, hats)],
+  [4, stack(clap, kick, hats, piano)])`,
       },
       {
         label: 'Reggaeton Clap',
         code: `// reggaeton clap dembow
-$: s("~ ~ cp ~ ~ ~ cp ~").bank("RolandTR808").gain(.6)
-$: s("bd ~ ~ bd ~ bd ~ ~").bank("RolandTR808").gain(.55)
-$: s("hh hh hh hh hh hh hh hh").bank("RolandTR808").gain(.25)`,
+let clap = s("~ ~ cp ~ ~ ~ cp ~").bank("RolandTR808").gain(.6)
+let kick = s("bd ~ ~ bd ~ bd ~ ~").bank("RolandTR808").gain(.55)
+let hats = s("hh hh hh hh hh hh hh hh").bank("RolandTR808").gain(.25)
+
+$: arrange(
+  [2, clap],
+  [2, stack(clap, kick)],
+  [4, stack(clap, kick, hats)])`,
       },
       {
         label: 'Buildup Clap',
         code: `// buildup accelerating clap
-$: s("cp ~ ~ ~ cp ~ cp [cp cp cp cp]")
+let clap = s("cp ~ ~ ~ cp ~ cp [cp cp cp cp]")
   .bank("RolandTR909").gain(sine.range(.3,.7).slow(4))
-$: s("bd ~ ~ ~ bd ~ bd bd").bank("RolandTR909").gain(.5)`,
+let kick = s("bd ~ ~ ~ bd ~ bd bd").bank("RolandTR909").gain(.5)
+
+$: arrange(
+  [2, clap],
+  [4, stack(clap, kick)])`,
       },
       {
         label: 'Minimal Clap',
         code: `// minimal techno clap
-$: s("~ cp ~ ~").bank("RolandTR909").gain(.5)
-$: s("bd ~ ~ ~ bd ~ ~ ~").bank("RolandTR909").gain(.55)
-$: s("hh ~ hh ~ hh ~ hh ~").bank("RolandTR909").gain(.2)
-$: s("~ ~ ~ rim ~ ~ ~ ~").bank("RolandTR808").gain(.25)`,
+let clap = s("~ cp ~ ~").bank("RolandTR909").gain(.5)
+let kick = s("bd ~ ~ ~ bd ~ ~ ~").bank("RolandTR909").gain(.55)
+let hats = s("hh ~ hh ~ hh ~ hh ~").bank("RolandTR909").gain(.2)
+let rim = s("~ ~ ~ rim ~ ~ ~ ~").bank("RolandTR808").gain(.25)
+
+$: arrange(
+  [2, stack(clap, kick)],
+  [2, stack(clap, kick, hats)],
+  [4, stack(clap, kick, hats, rim)])`,
       },
       {
         label: 'Dancehall Clap',
         code: `// dancehall clap riddim
-$: s("~ cp cp ~ ~ cp ~ cp").bank("RolandTR808").gain(.55)
-$: s("bd ~ ~ bd ~ ~ bd ~").bank("RolandTR808").gain(.5)
-$: s("~ ~ rim ~ ~ ~ rim ~").bank("RolandTR808").gain(.3)`,
+let clap = s("~ cp cp ~ ~ cp ~ cp").bank("RolandTR808").gain(.55)
+let kick = s("bd ~ ~ bd ~ ~ bd ~").bank("RolandTR808").gain(.5)
+let rim = s("~ ~ rim ~ ~ ~ rim ~").bank("RolandTR808").gain(.3)
+
+$: arrange(
+  [2, clap],
+  [2, stack(clap, kick)],
+  [4, stack(clap, kick, rim)])`,
       },
       {
         label: 'Syncopated Clap',
         code: `// syncopated clap groove
-$: s("~ cp ~ [~ cp] ~ cp ~ ~").bank("RolandTR909").gain(.5)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.45)
-$: note("c3 ~ e3 ~ f3 ~ e3 ~").s("gm_synth_bass_1").velocity(.3)`,
+let clap = s("~ cp ~ [~ cp] ~ cp ~ ~").bank("RolandTR909").gain(.5)
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.45)
+let bass = note("c3 ~ e3 ~ f3 ~ e3 ~").s("gm_synth_bass_1").velocity(.3)
+
+$: arrange(
+  [2, clap],
+  [2, stack(clap, drums)],
+  [4, stack(clap, drums, bass)])`,
       },
       {
         label: 'Clap Gate',
         code: `// gated clap rhythm
-$: s("cp cp ~ cp cp ~ cp ~")
+let clap = s("cp cp ~ cp cp ~ cp ~")
   .bank("RolandTR909").gain("<.5 .3 .6 .4 .5 .3 .6 .4>")
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR909").gain(.5)`,
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR909").gain(.5)
+
+$: arrange(
+  [2, clap],
+  [4, stack(clap, drums)])`,
       },
       {
         label: 'Latin Clap',
         code: `// latin clave with clap
-$: s("cp ~ ~ cp ~ cp ~ ~").bank("RolandTR808").gain(.5)
-$: s("~ ~ rim ~ ~ ~ rim ~").bank("RolandTR808").gain(.35)
-$: s("bd ~ ~ bd ~ ~ bd ~").bank("RolandTR808").gain(.45)
-$: note("~ a2 ~ a2 ~ c3 ~ a2").s("gm_acoustic_bass").velocity(.4)`,
+let clap = s("cp ~ ~ cp ~ cp ~ ~").bank("RolandTR808").gain(.5)
+let rim = s("~ ~ rim ~ ~ ~ rim ~").bank("RolandTR808").gain(.35)
+let kick = s("bd ~ ~ bd ~ ~ bd ~").bank("RolandTR808").gain(.45)
+let bass = note("~ a2 ~ a2 ~ c3 ~ a2").s("gm_acoustic_bass").velocity(.4)
+
+$: arrange(
+  [2, stack(clap, rim)],
+  [2, stack(clap, rim, kick)],
+  [4, stack(clap, rim, kick, bass)])`,
       },
       {
         label: 'Philly Soul Clap',
         code: `// philly soul clap groove
-$: s("~ cp ~ cp").bank("RolandTR909").gain(.55).room(.2)
-$: s("bd ~ ~ ~ bd ~ ~ bd").bank("RolandTR808").gain(.45)
-$: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3)
-$: note("[c4,e4,g4] ~ [f4,a4,c5] ~").s("gm_strings1").velocity(.2).slow(2)`,
+let clap = s("~ cp ~ cp").bank("RolandTR909").gain(.55).room(.2)
+let kick = s("bd ~ ~ ~ bd ~ ~ bd").bank("RolandTR808").gain(.45)
+let hats = s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3)
+let strings = note("[c4,e4,g4] ~ [f4,a4,c5] ~").s("gm_strings1").velocity(.2).slow(2)
+
+$: arrange(
+  [2, stack(clap, kick)],
+  [2, stack(clap, kick, hats)],
+  [4, stack(clap, kick, hats, strings)])`,
       },
       {
         label: 'Stacked Clap Hit',
         code: `// stacked multi-layer clap
-$: s("~ cp ~ ~").bank("RolandTR808").gain(.5)
-$: s("~ cp ~ ~").bank("RolandTR909").gain(.45).delay(.02)
-$: s("~ sd ~ ~").bank("RolandTR808").gain(.3)
-$: s("bd ~ ~ bd sd ~ ~ ~").bank("RolandTR808").gain(.5)`,
+let clap = s("~ cp ~ ~").bank("RolandTR808").gain(.5)
+let clap2 = s("~ cp ~ ~").bank("RolandTR909").gain(.45).delay(.02)
+let snare = s("~ sd ~ ~").bank("RolandTR808").gain(.3)
+let drums = s("bd ~ ~ bd sd ~ ~ ~").bank("RolandTR808").gain(.5)
+
+$: arrange(
+  [2, stack(clap, clap2)],
+  [2, stack(clap, clap2, snare)],
+  [4, stack(clap, clap2, snare, drums)])`,
       },
     ],
   },
@@ -4587,379 +6293,535 @@ $: s("bd ~ ~ bd sd ~ ~ ~").bank("RolandTR808").gain(.5)`,
       {
         label: 'Cathedral Piano',
         code: `// cathedral reverb piano
-$: note("c4 ~ ~ e4 ~ ~ g4 ~")
+let piano = note("c4 ~ ~ e4 ~ ~ g4 ~")
   .s("piano").gain(.45)
-  .room(.95).roomsize(10)`,
+  .room(.95).roomsize(10)
+
+$: arrange([4, piano])`,
       },
       {
         label: 'Infinite Verb',
         code: `// infinite reverb wash
-$: note("c4").s("sine").gain(.3)
+let lead = note("c4").s("sine").gain(.3)
   .room(.99).roomsize(12)
-  .delay(.5).delayfeedback(.7)`,
+  .delay(.5).delayfeedback(.7)
+
+$: arrange([4, lead])`,
       },
       {
         label: 'Shimmer Pad',
         code: `// shimmering reverb pad
-$: note("<[c3,g3,c4] [a2,e3,a3]>")
+let pad = note("<[c3,g3,c4] [a2,e3,a3]>")
   .s("sine").gain(.3)
   .room(.9).roomsize(8)
-  .delay(.3).delayfeedback(.5).slow(4)`,
+  .delay(.3).delayfeedback(.5).slow(4)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Plate Snare',
         code: `// plate reverb on snare
-$: s("~ sd ~ sd").gain(.65)
+let snare = s("~ sd ~ sd").gain(.65)
   .room(.7).roomsize(4)
-$: s("bd*4").gain(.8)`,
+let kick = s("bd*4").gain(.8)
+
+$: arrange(
+  [2, snare],
+  [4, stack(snare, kick)])`,
       },
       {
         label: 'Hall Strings',
         code: `// concert hall strings
-$: note("<[c3,e3,g3,c4] [a2,c3,e3,a3]>")
+let strings = note("<[c3,e3,g3,c4] [a2,c3,e3,a3]>")
   .s("gm_strings1").velocity(.4)
-  .room(.85).roomsize(8).slow(4)`,
+  .room(.85).roomsize(8).slow(4)
+
+$: arrange([4, strings])`,
       },
       {
         label: 'Reverb Hats',
         code: `// reverb-soaked hi-hats
-$: s("hh*8").gain("[.3 .5]*4")
+let hats = s("hh*8").gain("[.3 .5]*4")
   .room(.6).roomsize(4)
-$: s("bd*4").gain(.8)`,
+let kick = s("bd*4").gain(.8)
+
+$: arrange(
+  [2, hats],
+  [4, stack(hats, kick)])`,
       },
       {
         label: 'Ambient Bell',
         code: `// reverb bell tones
-$: note("<c5 e5 g5 b5>")
+let bells = note("<c5 e5 g5 b5>")
   .s("gm_tubular_bells").velocity(.35)
-  .room(.9).roomsize(8).slow(2)`,
+  .room(.9).roomsize(8).slow(2)
+
+$: arrange([4, bells])`,
       },
       {
         label: 'Verb + Delay',
         code: `// reverb and delay combo
-$: note("c4 ~ e4 ~ g4 ~ c5 ~")
+let piano = note("c4 ~ e4 ~ g4 ~ c5 ~")
   .s("piano").gain(.4)
   .room(.7).roomsize(5)
-  .delay(.4).delayfeedback(.5)`,
+  .delay(.4).delayfeedback(.5)
+
+$: arrange([4, piano])`,
       },
       {
         label: 'Gated Verb',
         code: `// gated reverb snare
-$: s("~ sd ~ sd").gain(.7)
+let snare = s("~ sd ~ sd").gain(.7)
   .room(.8).roomsize(3)
-$: s("bd*4").gain(.85)`,
+let kick = s("bd*4").gain(.85)
+
+$: arrange(
+  [2, snare],
+  [4, stack(snare, kick)])`,
       },
       {
         label: 'Spring Verb',
         code: `// spring reverb guitar
-$: note("e3 g3 a3 b3 e4 b3 a3 g3")
+let guitar = note("e3 g3 a3 b3 e4 b3 a3 g3")
   .s("gm_clean_guitar").velocity(.45)
-  .room(.6).roomsize(3)`,
+  .room(.6).roomsize(3)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Reverse Verb',
         code: `// reverse reverb feel
-$: note("[c4,e4,g4]").s("supersaw")
+let pad = note("[c4,e4,g4]").s("supersaw")
   .gain(.3).attack(.5)
-  .room(.9).roomsize(8).slow(4)`,
+  .room(.9).roomsize(8).slow(4)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Vocal Cathedral',
         code: `// vocal in cathedral
-$: s("chin:0 ~ chin:1 ~").gain(.5)
-  .room(.95).roomsize(10).slow(2)`,
+let vox = s("chin:0 ~ chin:1 ~").gain(.5)
+  .room(.95).roomsize(10).slow(2)
+
+$: arrange([4, vox])`,
       },
       {
         label: 'Reverb Wash',
         code: `// pad reverb wash
-$: note("[c3,e3,g3]").s("sawtooth")
+let pad = note("[c3,e3,g3]").s("sawtooth")
   .gain(.25).lpf(1500)
-  .room(.9).roomsize(8)`,
+  .room(.9).roomsize(8)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Subtle Room',
         code: `// subtle room ambience
-$: note("c4 e4 g4 c5 g4 e4")
+let piano = note("c4 e4 g4 c5 g4 e4")
   .s("piano").gain(.5)
-  .room(.3).roomsize(2)`,
+  .room(.3).roomsize(2)
+
+$: arrange([4, piano])`,
       },
       {
         label: 'Huge Verb',
         code: `// massive reverb space
-$: note("c3").s("sine").gain(.35)
+let lead = note("c3").s("sine").gain(.35)
   .room(.95).roomsize(12)
-  .lpf(800)`,
+  .lpf(800)
+
+$: arrange([4, lead])`,
       },
       {
         label: 'Choir Hall',
         code: `// choir in concert hall
-$: note("<[c3,e3,g3] [a2,c3,e3]>")
+let choir = note("<[c3,e3,g3] [a2,c3,e3]>")
   .s("gm_choir_aahs").velocity(.4)
-  .room(.85).roomsize(7).slow(4)`,
+  .room(.85).roomsize(7).slow(4)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Wet Drums',
         code: `// fully wet drum reverb
-$: s("bd sd:2 [~ bd] sd").bank("RolandTR808")
-  .gain(.6).room(.8).roomsize(6)`,
+let drums = s("bd sd:2 [~ bd] sd").bank("RolandTR808")
+  .gain(.6).room(.8).roomsize(6)
+
+$: arrange([4, drums])`,
       },
       {
         label: 'Small Room',
         code: `// small room feel
-$: note("c4 e4 g4 c5")
+let bells = note("c4 e4 g4 c5")
   .s("gm_vibraphone").velocity(.45)
-  .room(.25).roomsize(1)`,
+  .room(.25).roomsize(1)
+
+$: arrange([4, bells])`,
       },
       {
         label: 'Verb Swell',
         code: `// reverb swell pad
-$: note("<[c3,g3,c4]>")
+let pad = note("<[c3,g3,c4]>")
   .s("sine")
   .gain(sine.range(.1,.4).slow(8))
-  .room(.9).roomsize(8)`,
+  .room(.9).roomsize(8)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Echo Chamber',
         code: `// echo chamber effect
-$: note("c4 ~ ~ ~ e4 ~ ~ ~")
+let piano = note("c4 ~ ~ ~ e4 ~ ~ ~")
   .s("piano").gain(.4)
   .room(.7).roomsize(5)
-  .delay(.3).delayfeedback(.6)`,
+  .delay(.3).delayfeedback(.6)
+
+$: arrange([4, piano])`,
       },
       {
         label: 'Verb Piano Chord',
         code: `// reverb piano chords
-$: note("<[c3,e3,g3,b3] [a2,c3,e3,g3]>")
+let keys = note("<[c3,e3,g3,b3] [a2,c3,e3,g3]>")
   .s("piano").gain(.4)
-  .room(.8).roomsize(6).slow(2)`,
+  .room(.8).roomsize(6).slow(2)
+
+$: arrange([4, keys])`,
       },
       {
         label: 'Ethereal Sine',
         code: `// ethereal sine reverb
-$: note("c5 e5 g5 b5")
+let lead = note("c5 e5 g5 b5")
   .s("sine").gain(.3)
   .room(.9).roomsize(8)
-  .delay(.4).delayfeedback(.5).slow(2)`,
+  .delay(.4).delayfeedback(.5).slow(2)
+
+$: arrange([4, lead])`,
       },
       {
         label: 'Frozen Verb',
         code: `// frozen reverb drone
-$: note("[c2,g2]").s("sawtooth")
+let bass = note("[c2,g2]").s("sawtooth")
   .gain(.2).lpf(500)
-  .room(.99).roomsize(12)`,
+  .room(.99).roomsize(12)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Harp Reverb',
         code: `// harp with reverb
-$: n("0 2 4 5 7 9 11 12")
+let harp = n("0 2 4 5 7 9 11 12")
   .scale("C4:major")
   .s("gm_harp").velocity(.4)
-  .room(.7).roomsize(5).slow(2)`,
+  .room(.7).roomsize(5).slow(2)
+
+$: arrange([4, harp])`,
       },
       {
         label: 'Rim Plate',
         code: `// rim with plate verb
-$: s("rim*4").gain(.4)
+let rim = s("rim*4").gain(.4)
   .room(.6).roomsize(3)
-$: s("bd ~ bd ~").gain(.7)`,
+let kick = s("bd ~ bd ~").gain(.7)
+
+$: arrange(
+  [2, rim],
+  [4, stack(rim, kick)])`,
       },
       {
         label: 'Spacious Keys',
         code: `// spacious electric piano
-$: note("<[e3,g3,b3] [a3,c4,e4]>")
+let keys = note("<[e3,g3,b3] [a3,c4,e4]>")
   .s("gm_epiano1").velocity(.35)
-  .room(.75).roomsize(5).slow(2)`,
+  .room(.75).roomsize(5).slow(2)
+
+$: arrange([4, keys])`,
       },
       {
         label: 'Verb Bass',
         code: `// reverb bass tone
-$: note("<c2 e2 f2 g2>")
+let sub = note("<c2 e2 f2 g2>")
   .s("sine").gain(.45)
   .room(.5).roomsize(3)
-  .lpf(300)`,
+  .lpf(300)
+
+$: arrange([4, sub])`,
       },
       {
         label: 'Guitar Hall',
         code: `// guitar in hall
-$: note("e3 g3 b3 e4")
+let guitar = note("e3 g3 b3 e4")
   .s("gm_nylon_guitar").velocity(.4)
-  .room(.8).roomsize(6).slow(2)`,
+  .room(.8).roomsize(6).slow(2)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Synth Cathedral',
         code: `// synth in cathedral
-$: note("[c3,e3,g3]").s("supersaw")
+let pad = note("[c3,e3,g3]").s("supersaw")
   .gain(.25).lpf(2000)
-  .room(.9).roomsize(8)`,
+  .room(.9).roomsize(8)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Reverb Everything',
         code: `// everything reverbed
-$: s("bd sd [~ bd] sd").bank("RolandTR808").gain(.6).room(.6)
-$: note("<[c3,e3,g3]>")
+let drums = s("bd sd [~ bd] sd").bank("RolandTR808").gain(.6).room(.6)
+let keys = note("<[c3,e3,g3]>")
   .s("piano").gain(.4).room(.8).roomsize(6)
-$: note("c2").s("sine").gain(.4).room(.5)`,
+let sub = note("c2").s("sine").gain(.4).room(.5)
+
+$: arrange(
+  [2, drums],
+  [2, stack(drums, keys)],
+  [4, stack(drums, keys, sub)])`,
       },
       {
         label: 'Spring Reverb Guitar',
         code: `// spring reverb guitar twang
-$: note("e4 g4 a4 b4 a4 g4 e4 d4")
+let guitar = note("e4 g4 a4 b4 a4 g4 e4 d4")
   .s("gm_clean_guitar").velocity(.45)
   .room(.65).roomsize(3).delay(.1)
-$: note("e2 ~ a2 ~ b2 ~ e2 ~").s("gm_acoustic_bass").velocity(.4).room(.3)`,
+let bass = note("e2 ~ a2 ~ b2 ~ e2 ~").s("gm_acoustic_bass").velocity(.4).room(.3)
+
+$: arrange(
+  [2, guitar],
+  [4, stack(guitar, bass)])`,
       },
       {
         label: 'Plate Verb Piano',
         code: `// plate reverb on piano
-$: note("c4 e4 g4 c5 g4 e4 c4 ~")
+let piano = note("c4 e4 g4 c5 g4 e4 c4 ~")
   .s("gm_grandpiano").velocity(.5)
   .room(.75).roomsize(5)
-$: note("<[c3,e3,g3] [a2,c3,e3]>").s("gm_grandpiano").velocity(.25).room(.6).slow(4)`,
+let keys = note("<[c3,e3,g3] [a2,c3,e3]>").s("gm_grandpiano").velocity(.25).room(.6).slow(4)
+
+$: arrange(
+  [2, piano],
+  [4, stack(piano, keys)])`,
       },
       {
         label: 'Verb Snare Wash',
         code: `// massive reverb snare wash
-$: s("~ sd ~ ~").bank("RolandTR909").gain(.55)
+let snare = s("~ sd ~ ~").bank("RolandTR909").gain(.55)
   .room(.9).roomsize(8)
-$: s("bd ~ ~ ~ bd ~ ~ ~").bank("RolandTR909").gain(.5).room(.3)
-$: s("hh hh hh hh").bank("RolandTR909").gain(.25).room(.2)`,
+let kick = s("bd ~ ~ ~ bd ~ ~ ~").bank("RolandTR909").gain(.5).room(.3)
+let hats = s("hh hh hh hh").bank("RolandTR909").gain(.25).room(.2)
+
+$: arrange(
+  [2, snare],
+  [2, stack(snare, kick)],
+  [4, stack(snare, kick, hats)])`,
       },
       {
         label: 'Hall Strings',
         code: `// concert hall strings
-$: note("<[c4,e4,g4] [d4,f4,a4] [e4,g4,b4] [c4,e4,g4]>")
+let strings = note("<[c4,e4,g4] [d4,f4,a4] [e4,g4,b4] [c4,e4,g4]>")
   .s("gm_strings1").velocity(.5)
   .room(.85).roomsize(9).slow(4)
-$: note("c3 d3 e3 c3").s("gm_cello").velocity(.3).room(.7).slow(4)`,
+let strings2 = note("c3 d3 e3 c3").s("gm_cello").velocity(.3).room(.7).slow(4)
+
+$: arrange(
+  [2, strings],
+  [4, stack(strings, strings2)])`,
       },
       {
         label: 'Ambient Verb Pad',
         code: `// ambient reverb pad
-$: note("<[c4,e4,g4] [b3,d4,f4]>")
+let pad = note("<[c4,e4,g4] [b3,d4,f4]>")
   .s("gm_warm_pad").velocity(.35)
   .room(.9).roomsize(10).slow(8)
-$: note("c5 ~ e5 ~ g5 ~ ~ ~")
-  .s("gm_celesta").velocity(.2).room(.8).delay(.3)`,
+let bells = note("c5 ~ e5 ~ g5 ~ ~ ~")
+  .s("gm_celesta").velocity(.2).room(.8).delay(.3)
+
+$: arrange(
+  [2, pad],
+  [4, stack(pad, bells)])`,
       },
       {
         label: 'Gated Verb Drums',
         code: `// gated reverb drums
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.6)
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.6)
   .room(.7).roomsize(4).decay(.1)
-$: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3).room(.2)
-$: note("c2 ~ c2 ~").s("sine").gain(.35).room(.3)`,
+let hats = s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3).room(.2)
+let sub = note("c2 ~ c2 ~").s("sine").gain(.35).room(.3)
+
+$: arrange(
+  [2, drums],
+  [2, stack(drums, hats)],
+  [4, stack(drums, hats, sub)])`,
       },
       {
         label: 'Shimmer Verb',
         code: `// shimmer reverb effect
-$: note("c5 e5 g5 b5 g5 e5 c5 ~")
+let bells = note("c5 e5 g5 b5 g5 e5 c5 ~")
   .s("gm_music_box").velocity(.35)
   .room(.85).roomsize(8).delay(.25).delayfeedback(.5)
-$: note("<[c4,g4] [a3,e4]>").s("gm_halo_pad").velocity(.2).room(.7).slow(8)`,
+let pad = note("<[c4,g4] [a3,e4]>").s("gm_halo_pad").velocity(.2).room(.7).slow(8)
+
+$: arrange(
+  [2, bells],
+  [4, stack(bells, pad)])`,
       },
       {
         label: 'Reverse Verb Feel',
         code: `// reverse reverb feel
-$: note("~ ~ ~ c4 ~ ~ ~ e4")
+let oohs = note("~ ~ ~ c4 ~ ~ ~ e4")
   .s("gm_voice_oohs").velocity(.4)
   .room(.8).roomsize(7).delay(.4).delayfeedback(.55)
-$: s("~ ~ ~ ~ bd ~ ~ ~").bank("RolandTR808").gain(.4).room(.5)`,
+let kick = s("~ ~ ~ ~ bd ~ ~ ~").bank("RolandTR808").gain(.4).room(.5)
+
+$: arrange(
+  [2, oohs],
+  [4, stack(oohs, kick)])`,
       },
       {
         label: 'Room Drum Kit',
         code: `// room mic drum kit
-$: s("bd ~ sd ~ bd bd sd ~").bank("RolandTR808").gain(.5).room(.45).roomsize(3)
-$: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3).room(.35)
-$: s("~ ~ ~ ~ ~ ~ ~ rim").bank("RolandTR808").gain(.25).room(.4)`,
+let drums = s("bd ~ sd ~ bd bd sd ~").bank("RolandTR808").gain(.5).room(.45).roomsize(3)
+let hats = s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3).room(.35)
+let rim = s("~ ~ ~ ~ ~ ~ ~ rim").bank("RolandTR808").gain(.25).room(.4)
+
+$: arrange(
+  [2, drums],
+  [2, stack(drums, hats)],
+  [4, stack(drums, hats, rim)])`,
       },
       {
         label: 'Verb Choir Swell',
         code: `// reverb choir swell
-$: note("[c4,e4,g4,c5]")
+let choir = note("[c4,e4,g4,c5]")
   .s("gm_choir_aahs").velocity(sine.range(.15,.55).slow(8))
   .room(.85).roomsize(9).slow(4)
-$: note("[c3,g3]").s("gm_church_organ").velocity(.2).room(.7).slow(4)`,
+let organ = note("[c3,g3]").s("gm_church_organ").velocity(.2).room(.7).slow(4)
+
+$: arrange(
+  [2, choir],
+  [4, stack(choir, organ)])`,
       },
       {
         label: 'Tight Room Bass',
         code: `// tight room on bass
-$: note("c2 ~ e2 ~ f2 ~ e2 ~")
+let bass = note("c2 ~ e2 ~ f2 ~ e2 ~")
   .s("gm_electric_bass_finger").velocity(.55)
   .room(.25).roomsize(2)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.45).room(.2)`,
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.45).room(.2)
+
+$: arrange(
+  [2, bass],
+  [4, stack(bass, drums)])`,
       },
       {
         label: 'Cavernous Hits',
         code: `// cavernous percussion hits
-$: s("bd ~ ~ ~ ~ ~ ~ ~").bank("RolandTR808").gain(.6)
+let kick = s("bd ~ ~ ~ ~ ~ ~ ~").bank("RolandTR808").gain(.6)
   .room(.95).roomsize(10)
-$: s("~ ~ ~ ~ sd ~ ~ ~").bank("RolandTR909").gain(.5)
+let snare = s("~ ~ ~ ~ sd ~ ~ ~").bank("RolandTR909").gain(.5)
   .room(.9).roomsize(9)
-$: note("~ ~ ~ ~ ~ ~ ~ c5").s("gm_tubular_bells").velocity(.3).room(.85)`,
+let bells = note("~ ~ ~ ~ ~ ~ ~ c5").s("gm_tubular_bells").velocity(.3).room(.85)
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, snare)],
+  [4, stack(kick, snare, bells)])`,
       },
       {
         label: 'Verb Flute Echo',
         code: `// reverbed flute echo
-$: note("g5 a5 b5 d6 b5 a5 g5 ~")
+let flute = note("g5 a5 b5 d6 b5 a5 g5 ~")
   .s("gm_flute").velocity(.4)
   .room(.75).delay(.2).delayfeedback(.4)
-$: note("<[g3,b3,d4] [c4,e4,g4]>").s("gm_warm_pad").velocity(.2).room(.6).slow(4)`,
+let pad = note("<[g3,b3,d4] [c4,e4,g4]>").s("gm_warm_pad").velocity(.2).room(.6).slow(4)
+
+$: arrange(
+  [2, flute],
+  [4, stack(flute, pad)])`,
       },
       {
         label: 'Wet Dry Mix',
         code: `// wet/dry reverb contrast
-$: note("c4 e4 g4 c5").s("gm_epiano1").velocity(.45).room(.8).roomsize(6)
-$: note("c4 e4 g4 c5").s("gm_epiano2").velocity(.35).room(.1)
-$: s("bd ~ sd ~").bank("RolandTR808").gain(.4).room(.15)`,
+let piano = note("c4 e4 g4 c5").s("gm_epiano1").velocity(.45).room(.8).roomsize(6)
+let piano2 = note("c4 e4 g4 c5").s("gm_epiano2").velocity(.35).room(.1)
+let drums = s("bd ~ sd ~").bank("RolandTR808").gain(.4).room(.15)
+
+$: arrange(
+  [2, piano],
+  [2, stack(piano, piano2)],
+  [4, stack(piano, piano2, drums)])`,
       },
       {
         label: 'Space Harp',
         code: `// space harp with deep reverb
-$: note("c4 e4 g4 c5 e5 c5 g4 e4")
+let harp = note("c4 e4 g4 c5 e5 c5 g4 e4")
   .s("gm_harp").velocity(.4)
   .room(.85).roomsize(8).delay(.15)
-$: note("<[c3,g3,c4]>").s("gm_harp").velocity(.2).room(.7).slow(8)`,
+let harp2 = note("<[c3,g3,c4]>").s("gm_harp").velocity(.2).room(.7).slow(8)
+
+$: arrange(
+  [2, harp],
+  [4, stack(harp, harp2)])`,
       },
       {
         label: 'Verb Trail Build',
         code: `// reverb trail buildup
-$: note("c4 ~ ~ ~ d4 ~ ~ ~ e4 ~ ~ ~ g4 ~ ~ ~")
+let bells = note("c4 ~ ~ ~ d4 ~ ~ ~ e4 ~ ~ ~ g4 ~ ~ ~")
   .s("gm_vibraphone").velocity(sine.range(.2,.5).slow(4))
   .room(sine.range(.3,.9).slow(4)).slow(2)
-$: s("~ ~ ~ ~ ~ ~ ~ bd").bank("RolandTR808").gain(.3).room(.5)`,
+let kick = s("~ ~ ~ ~ ~ ~ ~ bd").bank("RolandTR808").gain(.3).room(.5)
+
+$: arrange(
+  [2, bells],
+  [4, stack(bells, kick)])`,
       },
       {
         label: 'Dual Verb Space',
         code: `// dual reverb spaces
-$: note("e4 g4 b4 e5").s("gm_grandpiano").velocity(.4)
+let piano = note("e4 g4 b4 e5").s("gm_grandpiano").velocity(.4)
   .room(.85).roomsize(8)
-$: note("e3 g3 b3 e4").s("gm_epiano1").velocity(.35)
+let piano2 = note("e3 g3 b3 e4").s("gm_epiano1").velocity(.35)
   .room(.35).roomsize(2)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR909").gain(.4).room(.3)`,
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR909").gain(.4).room(.3)
+
+$: arrange(
+  [2, piano],
+  [2, stack(piano, piano2)],
+  [4, stack(piano, piano2, drums)])`,
       },
       {
         label: 'Frozen Verb Pad',
         code: `// frozen reverb pad texture
-$: note("<c4 e4 g4 b4>")
+let pad = note("<c4 e4 g4 b4>")
   .s("gm_bowed_glass").velocity(.3)
-  .room(.95).roomsize(10).delay(.4).delayfeedback(.6).slow(4)`,
+  .room(.95).roomsize(10).delay(.4).delayfeedback(.6).slow(4)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Verb Percussion',
         code: `// reverbed world percussion
-$: s("bd ~ rim ~ bd rim ~ ~").bank("RolandTR808").gain(.45).room(.55)
-$: note("c4 ~ e4 ~ g4 ~ c4 ~").s("gm_kalimba").velocity(.35).room(.65)
-$: note("~ c5 ~ e5 ~ g5 ~ ~").s("gm_xylophone").velocity(.25).room(.7)`,
+let kick = s("bd ~ rim ~ bd rim ~ ~").bank("RolandTR808").gain(.45).room(.55)
+let bells = note("c4 ~ e4 ~ g4 ~ c4 ~").s("gm_kalimba").velocity(.35).room(.65)
+let bells2 = note("~ c5 ~ e5 ~ g5 ~ ~").s("gm_xylophone").velocity(.25).room(.7)
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, bells)],
+  [4, stack(kick, bells, bells2)])`,
       },
       {
         label: 'Verb Feedback Loop',
         code: `// reverb feedback loop
-$: note("c5 ~ ~ ~ ~ ~ ~ ~")
+let pad = note("c5 ~ ~ ~ ~ ~ ~ ~")
   .s("gm_crystal").velocity(.35)
   .room(.9).roomsize(10).delay(.5).delayfeedback(.7)
-$: note("~ ~ ~ ~ g4 ~ ~ ~")
+let pad2 = note("~ ~ ~ ~ g4 ~ ~ ~")
   .s("gm_crystal").velocity(.25)
-  .room(.85).delay(.45).delayfeedback(.65)`,
+  .room(.85).delay(.45).delayfeedback(.65)
+
+$: arrange(
+  [2, pad],
+  [4, stack(pad, pad2)])`,
       },
     ],
   },
@@ -4970,398 +6832,558 @@ $: note("~ ~ ~ ~ g4 ~ ~ ~")
       {
         label: 'Sub Destroyer',
         code: `// sub bass destroyer
-$: note("c1*2").s("sine")
+let sub = note("c1*2").s("sine")
   .gain(.7).shape(.4)
-  .lpf(100)`,
+  .lpf(100)
+
+$: arrange([4, sub])`,
       },
       {
         label: 'Wobble Monster',
         code: `// massive wobble bass
-$: note("c1").s("sawtooth")
+let bass = note("c1").s("sawtooth")
   .gain(.55)
   .lpf(sine.range(100,3000).fast(4))
-  .lpq(12).shape(.3)`,
+  .lpq(12).shape(.3)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Reese Heavyweight',
         code: `// heavyweight reese
-$: note("<c1 c1 e1 f1>")
+let bass = note("<c1 c1 e1 f1>")
   .s("sawtooth").gain(.5)
   .detune(20).lpf(400)
-  .shape(.4)`,
+  .shape(.4)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Distorted Sub',
         code: `// distorted sub bass
-$: note("<c1 e1 f1 g1>")
+let sub = note("<c1 e1 f1 g1>")
   .s("sine").gain(.6)
-  .shape(.6).lpf(200)`,
+  .shape(.6).lpf(200)
+
+$: arrange([4, sub])`,
       },
       {
         label: '808 Long',
         code: `// long 808 bass
-$: note("c1 ~ ~ ~ e1 ~ ~ ~")
+let sub = note("c1 ~ ~ ~ e1 ~ ~ ~")
   .s("sine").gain(.65)
   .decay(1.5).lpf(180)
-  .shape(.3)`,
+  .shape(.3)
+
+$: arrange([4, sub])`,
       },
       {
         label: 'Growl Bass',
         code: `// growling bass
-$: note("c1*2").s("sawtooth")
+let bass = note("c1*2").s("sawtooth")
   .gain(.5)
   .lpf(sine.range(100,1500).fast(8))
-  .lpq(15).shape(.35)`,
+  .lpq(15).shape(.35)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Foghorn',
         code: `// foghorn sub
-$: note("c1").s("sawtooth")
+let bass = note("c1").s("sawtooth")
   .gain(.5).shape(.5)
-  .lpf(200).lpq(4)`,
+  .lpf(200).lpq(4)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Earthquake',
         code: `// earthquake rumble
-$: note("c0*2").s("sine")
+let sub = note("c0*2").s("sine")
   .gain(.6).shape(.4)
-  .lpf(80)`,
+  .lpf(80)
+
+$: arrange([4, sub])`,
       },
       {
         label: 'Dirty Square',
         code: `// dirty square bass
-$: note("c1 ~ c1 e1 ~ e1 f1 ~")
+let bass = note("c1 ~ c1 e1 ~ e1 f1 ~")
   .s("square").gain(.5)
-  .shape(.4).lpf(300)`,
+  .shape(.4).lpf(300)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'DnB Tear',
         code: `// tearing DnB bass
-$: note("[c1 ~] [~ g1] [e1 ~] [~ c1]")
+let bass = note("[c1 ~] [~ g1] [e1 ~] [~ c1]")
   .s("sawtooth").gain(.55)
-  .lpf(1000).shape(.3)`,
+  .lpf(1000).shape(.3)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Dubstep Wub',
         code: `// dubstep wub wub
-$: note("c1*2").s("sawtooth")
+let bass = note("c1*2").s("sawtooth")
   .gain(.5)
   .lpf(sine.range(100,2500).fast(6))
-  .lpq(10).shape(.35)`,
+  .lpq(10).shape(.35)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Brostep',
         code: `// brostep screech bass
-$: note("c1*4").s("sawtooth")
+let bass = note("c1*4").s("sawtooth")
   .gain(.5)
   .lpf(sine.range(200,4000).fast(8))
-  .lpq(15).shape(.3).crush(10)`,
+  .lpq(15).shape(.3).crush(10)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Wall of Bass',
         code: `// wall of sub bass
-$: note("[c1,g1]").s("sawtooth")
+let bass = note("[c1,g1]").s("sawtooth")
   .gain(.45).shape(.5)
-  .lpf(300)`,
+  .lpf(300)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Filtered Rumble',
         code: `// filtered bass rumble
-$: note("c1*4").s("sine")
+let sub = note("c1*4").s("sine")
   .gain("[.4 .6 .5 .7]")
-  .shape(.4).lpf(sine.range(60,200).slow(4))`,
+  .shape(.4).lpf(sine.range(60,200).slow(4))
+
+$: arrange([4, sub])`,
       },
       {
         label: 'Neuro Bass',
         code: `// neuro bass
-$: note("c1 c1 [c1 e1] c1")
+let bass = note("c1 c1 [c1 e1] c1")
   .s("sawtooth").gain(.5)
   .lpf(sine.range(200,2000).fast(4))
-  .shape(.3).crush(12)`,
+  .shape(.3).crush(12)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Phat 5ths',
         code: `// phat fifth bass
-$: note("<[c1,g1] [e1,b1] [f1,c2] [g1,d2]>")
+let bass = note("<[c1,g1] [e1,b1] [f1,c2] [g1,d2]>")
   .s("sawtooth").gain(.45)
-  .shape(.35).lpf(500)`,
+  .shape(.35).lpf(500)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Aggressive Saw',
         code: `// aggressive saw bass
-$: note("c1 ~ c1 c1 ~ c1 e1 ~")
+let bass = note("c1 ~ c1 c1 ~ c1 e1 ~")
   .s("sawtooth").gain(.5)
   .shape(.45).lpf(600)
-  .decay(.1)`,
+  .decay(.1)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Chest Thump',
         code: `// chest-thumping sub
-$: note("c1*4").s("sine")
+let sub = note("c1*4").s("sine")
   .gain(.65).shape(.5)
-  .lpf(80).decay(.4)`,
+  .lpf(80).decay(.4)
+
+$: arrange([4, sub])`,
       },
       {
         label: 'Trap Sub',
         code: `// deep trap 808 sub
-$: note("c1 ~ ~ ~ ~ ~ e1 ~")
+let sub = note("c1 ~ ~ ~ ~ ~ e1 ~")
   .s("sine").gain(.6)
   .decay(1.2).shape(.3)
-  .lpf(150)`,
+  .lpf(150)
+
+$: arrange([4, sub])`,
       },
       {
         label: 'Riddim Bass',
         code: `// riddim dubstep bass
-$: note("c1*4").s("sawtooth")
+let bass = note("c1*4").s("sawtooth")
   .gain(.5)
   .lpf(sine.range(100,1800).fast(2))
-  .lpq(12).shape(.4)`,
+  .lpq(12).shape(.4)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Detuned Terror',
         code: `// detuned terror bass
-$: note("c1").s("sawtooth")
+let bass = note("c1").s("sawtooth")
   .gain(.45).detune(25)
-  .shape(.45).lpf(400)`,
+  .shape(.45).lpf(400)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Layered Low',
         code: `// layered low-end
-$: note("<c1 e1 f1 g1>").s("sine")
+let sub = note("<c1 e1 f1 g1>").s("sine")
   .gain(.55).shape(.35).lpf(120)
-$: note("<c2 e2 f2 g2>").s("sawtooth")
-  .gain(.3).lpf(600).shape(.2)`,
+let bass = note("<c2 e2 f2 g2>").s("sawtooth")
+  .gain(.3).lpf(600).shape(.2)
+
+$: arrange(
+  [2, sub],
+  [4, stack(sub, bass)])`,
       },
       {
         label: 'Punchy Low',
         code: `// punchy sub hit
-$: note("c1 ~ ~ c1 ~ ~ c1 c1")
+let sub = note("c1 ~ ~ c1 ~ ~ c1 c1")
   .s("sine").gain(.6)
   .decay(.15).shape(.5)
-  .lpf(100)`,
+  .lpf(100)
+
+$: arrange([4, sub])`,
       },
       {
         label: 'Acid Scream',
         code: `// acid scream bass
-$: note("c2 [~ c2] e2 [c2 g1]")
+let bass = note("c2 [~ c2] e2 [c2 g1]")
   .s("sawtooth").gain(.5)
   .lpf(sine.range(200,5000).fast(2))
-  .lpq(18).shape(.3)`,
+  .lpq(18).shape(.3)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'FM Heavy',
         code: `// FM modulated heavy bass
-$: note("<c1 e1 f1 g1>")
+let sub = note("<c1 e1 f1 g1>")
   .s("sine").gain(.5)
   .fmi(3).fmh(1)
-  .shape(.3).lpf(300)`,
+  .shape(.3).lpf(300)
+
+$: arrange([4, sub])`,
       },
       {
         label: 'Sine Pressure',
         code: `// sine bass pressure
-$: note("c1").s("sine")
+let sub = note("c1").s("sine")
   .gain(sine.range(.3,.7).slow(4))
-  .shape(.4).lpf(100)`,
+  .shape(.4).lpf(100)
+
+$: arrange([4, sub])`,
       },
       {
         label: 'Flutter Bass',
         code: `// fluttering bass
-$: note("c1*8").s("sawtooth")
+let bass = note("c1*8").s("sawtooth")
   .gain("[.3 .5]*4")
   .lpf(sine.range(200,1000).fast(4))
-  .shape(.3)`,
+  .shape(.3)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Thunder Sub',
         code: `// thunderous sub drop
-$: note("g1 ~ ~ ~ c1 ~ ~ ~")
+let sub = note("g1 ~ ~ ~ c1 ~ ~ ~")
   .s("sine").gain(.65)
   .decay(1).shape(.45)
-  .lpf(120)`,
+  .lpf(120)
+
+$: arrange([4, sub])`,
       },
       {
         label: 'Stacked Saws',
         code: `// triple stacked saws
-$: note("c1").s("sawtooth")
+let bass = note("c1").s("sawtooth")
   .gain(.35).detune(10).lpf(500)
-$: note("c1").s("sawtooth")
+let bass2 = note("c1").s("sawtooth")
   .gain(.35).detune(-10).lpf(500)
-$: note("c1").s("sine").gain(.4).lpf(100)`,
+let sub = note("c1").s("sine").gain(.4).lpf(100)
+
+$: arrange(
+  [2, bass],
+  [2, stack(bass, bass2)],
+  [4, stack(bass, bass2, sub)])`,
       },
       {
         label: 'Bass Drop',
         code: `// bass drop effect
-$: note("c3 c2 c1 c1")
+let lead = note("c3 c2 c1 c1")
   .s("sine").gain(.6)
   .shape(.4).lpf(200)
-  .decay(.5)`,
+  .decay(.5)
+
+$: arrange([4, lead])`,
       },
       {
         label: 'Seismic Sub',
         code: `// seismic sub bass rumble
-$: note("c1 ~ c1 ~ e1 ~ c1 ~").s("sine")
+let sub = note("c1 ~ c1 ~ e1 ~ c1 ~").s("sine")
   .gain(.7).lpf(80).shape(.3)
-$: note("c1 ~ c1 ~ e1 ~ c1 ~").s("triangle")
+let bass = note("c1 ~ c1 ~ e1 ~ c1 ~").s("triangle")
   .gain(.3).lpf(120)
-$: s("bd ~ ~ ~ bd ~ ~ ~").bank("RolandTR808").gain(.6)`,
+let kick = s("bd ~ ~ ~ bd ~ ~ ~").bank("RolandTR808").gain(.6)
+
+$: arrange(
+  [2, sub],
+  [2, stack(sub, bass)],
+  [4, stack(sub, bass, kick)])`,
       },
       {
         label: 'Distorted Reese',
         code: `// distorted reese bass
-$: note("c1 ~ ~ c1 ~ e1 ~ ~").s("sawtooth")
+let bass = note("c1 ~ ~ c1 ~ e1 ~ ~").s("sawtooth")
   .gain(.5).lpf(sine.range(100,800).slow(4)).shape(.5)
-$: note("c1 ~ ~ c1 ~ e1 ~ ~").s("sawtooth")
+let bass2 = note("c1 ~ ~ c1 ~ e1 ~ ~").s("sawtooth")
   .gain(.45).detune(15).lpf(sine.range(120,700).slow(4)).shape(.4)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR909").gain(.55)`,
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR909").gain(.55)
+
+$: arrange(
+  [2, bass],
+  [2, stack(bass, bass2)],
+  [4, stack(bass, bass2, drums)])`,
       },
       {
         label: 'Massive 808 Slide',
         code: `// massive 808 bass slide
-$: note("c1 ~ ~ ~ e1 ~ c1 ~").s("sine")
+let sub = note("c1 ~ ~ ~ e1 ~ c1 ~").s("sine")
   .gain(.65).shape(.35).lpf(150).decay(.8)
-$: s("bd ~ ~ bd ~ ~ bd ~").bank("RolandTR808").gain(.6)
-$: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3)`,
+let kick = s("bd ~ ~ bd ~ ~ bd ~").bank("RolandTR808").gain(.6)
+let hats = s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3)
+
+$: arrange(
+  [2, sub],
+  [2, stack(sub, kick)],
+  [4, stack(sub, kick, hats)])`,
       },
       {
         label: 'Filthy Wobble',
         code: `// filthy wobble bass
-$: note("c1 ~ c1 ~ c1 ~ c1 ~").s("sawtooth")
+let bass = note("c1 ~ c1 ~ c1 ~ c1 ~").s("sawtooth")
   .lpf(sine.range(80,2000).fast(2)).gain(.55).shape(.4)
-$: note("c1").s("sine").gain(.3).lpf(60)
-$: s("bd ~ sd ~ bd bd sd ~").bank("RolandTR909").gain(.55)`,
+let sub = note("c1").s("sine").gain(.3).lpf(60)
+let drums = s("bd ~ sd ~ bd bd sd ~").bank("RolandTR909").gain(.55)
+
+$: arrange(
+  [2, bass],
+  [2, stack(bass, sub)],
+  [4, stack(bass, sub, drums)])`,
       },
       {
         label: 'Acid Screech',
         code: `// acid screech bass
-$: note("c2 c2 e2 c2 f2 c2 e2 c2")
+let bass = note("c2 c2 e2 c2 f2 c2 e2 c2")
   .s("sawtooth").lpf(sine.range(200,4000).fast(4))
   .gain(.45).shape(.3).resonance(15)
-$: s("bd bd bd bd").bank("RolandTR909").gain(.55)
-$: s("~ hh ~ hh ~ oh ~ hh").bank("RolandTR909").gain(.3)`,
+let kick = s("bd bd bd bd").bank("RolandTR909").gain(.55)
+let hats = s("~ hh ~ hh ~ oh ~ hh").bank("RolandTR909").gain(.3)
+
+$: arrange(
+  [2, bass],
+  [2, stack(bass, kick)],
+  [4, stack(bass, kick, hats)])`,
       },
       {
         label: 'Growl Bass',
         code: `// growl bass texture
-$: note("c1 ~ e1 ~ f1 ~ e1 ~").s("sawtooth")
+let bass = note("c1 ~ e1 ~ f1 ~ e1 ~").s("sawtooth")
   .lpf(sine.range(150,1200).fast(3)).gain(.5).shape(.45)
-$: note("c1 ~ e1 ~ f1 ~ e1 ~").s("square")
+let bass2 = note("c1 ~ e1 ~ f1 ~ e1 ~").s("square")
   .lpf(400).gain(.25)
-$: s("bd ~ sd ~ bd ~ sd bd").bank("RolandTR808").gain(.5)`,
+let drums = s("bd ~ sd ~ bd ~ sd bd").bank("RolandTR808").gain(.5)
+
+$: arrange(
+  [2, bass],
+  [2, stack(bass, bass2)],
+  [4, stack(bass, bass2, drums)])`,
       },
       {
         label: 'Earthquake Sub',
         code: `// earthquake sub bass
-$: note("c1*2").s("sine").gain(.7).lpf(60).shape(.25)
-$: note("c1*2").s("triangle").gain(.35).lpf(90)
-$: s("bd ~ ~ ~ bd ~ ~ ~").bank("RolandTR808").gain(.6)
-$: s("~ ~ ~ ~ ~ ~ ~ sd").bank("RolandTR808").gain(.4)`,
+let sub = note("c1*2").s("sine").gain(.7).lpf(60).shape(.25)
+let bass = note("c1*2").s("triangle").gain(.35).lpf(90)
+let kick = s("bd ~ ~ ~ bd ~ ~ ~").bank("RolandTR808").gain(.6)
+let snare = s("~ ~ ~ ~ ~ ~ ~ sd").bank("RolandTR808").gain(.4)
+
+$: arrange(
+  [2, stack(sub, bass)],
+  [2, stack(sub, bass, kick)],
+  [4, stack(sub, bass, kick, snare)])`,
       },
       {
         label: 'Dubstep Tear',
         code: `// dubstep tear-out bass
-$: note("c1 ~ c1 e1 ~ c1 f1 ~").s("sawtooth")
+let bass = note("c1 ~ c1 e1 ~ c1 f1 ~").s("sawtooth")
   .lpf(sine.range(100,3000).fast(8)).gain(.5).shape(.5)
-$: s("bd ~ ~ ~ sd ~ ~ ~").bank("RolandTR909").gain(.6)
-$: s("~ hh ~ hh ~ hh ~ oh").bank("RolandTR909").gain(.3)`,
+let drums = s("bd ~ ~ ~ sd ~ ~ ~").bank("RolandTR909").gain(.6)
+let hats = s("~ hh ~ hh ~ hh ~ oh").bank("RolandTR909").gain(.3)
+
+$: arrange(
+  [2, bass],
+  [2, stack(bass, drums)],
+  [4, stack(bass, drums, hats)])`,
       },
       {
         label: 'Analog Warmth',
         code: `// warm analog bass
-$: note("c2 ~ g1 ~ c2 ~ e2 ~").s("sawtooth")
+let bass = note("c2 ~ g1 ~ c2 ~ e2 ~").s("sawtooth")
   .lpf(600).gain(.45).shape(.2).room(.15)
-$: note("c2 ~ g1 ~ c2 ~ e2 ~").s("sine")
+let sub = note("c2 ~ g1 ~ c2 ~ e2 ~").s("sine")
   .gain(.3).lpf(200)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.45)`,
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.45)
+
+$: arrange(
+  [2, bass],
+  [2, stack(bass, sub)],
+  [4, stack(bass, sub, drums)])`,
       },
       {
         label: 'Neurofunk Bass',
         code: `// neurofunk bass patch
-$: note("c1 ~ c1 c1 ~ ~ c1 ~").s("sawtooth")
+let bass = note("c1 ~ c1 c1 ~ ~ c1 ~").s("sawtooth")
   .lpf(sine.range(200,2500).fast(6)).gain(.5).shape(.45)
-$: note("c1 ~ c1 c1 ~ ~ c1 ~").s("square")
+let bass2 = note("c1 ~ c1 c1 ~ ~ c1 ~").s("square")
   .lpf(sine.range(300,1800).fast(6)).gain(.3).shape(.3)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR909").gain(.55)`,
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR909").gain(.55)
+
+$: arrange(
+  [2, bass],
+  [2, stack(bass, bass2)],
+  [4, stack(bass, bass2, drums)])`,
       },
       {
         label: 'Trap Low End',
         code: `// trap heavy low end
-$: note("c1 ~ ~ ~ ~ ~ c1 ~").s("sine")
+let sub = note("c1 ~ ~ ~ ~ ~ c1 ~").s("sine")
   .gain(.65).shape(.3).lpf(100).decay(.6)
-$: s("bd ~ ~ bd ~ ~ bd ~").bank("RolandTR808").gain(.55)
-$: s("hh hh hh hh oh hh hh hh").bank("RolandTR808").gain(.3)
-$: s("~ ~ ~ ~ sd ~ ~ ~").bank("RolandTR808").gain(.5)`,
+let kick = s("bd ~ ~ bd ~ ~ bd ~").bank("RolandTR808").gain(.55)
+let hats = s("hh hh hh hh oh hh hh hh").bank("RolandTR808").gain(.3)
+let snare = s("~ ~ ~ ~ sd ~ ~ ~").bank("RolandTR808").gain(.5)
+
+$: arrange(
+  [2, stack(sub, kick)],
+  [2, stack(sub, kick, hats)],
+  [4, stack(sub, kick, hats, snare)])`,
       },
       {
         label: 'FM Bass Buzz',
         code: `// fm bass buzz
-$: note("c1 ~ e1 ~ c1 ~ f1 ~").s("sine")
+let sub = note("c1 ~ e1 ~ c1 ~ f1 ~").s("sine")
   .gain(.5).shape(.5).lpf(300)
-$: note("c2 ~ e2 ~ c2 ~ f2 ~").s("square")
+let bass = note("c2 ~ e2 ~ c2 ~ f2 ~").s("square")
   .gain(.25).lpf(500)
-$: s("bd ~ sd ~ bd bd sd ~").bank("RolandTR808").gain(.5)`,
+let drums = s("bd ~ sd ~ bd bd sd ~").bank("RolandTR808").gain(.5)
+
+$: arrange(
+  [2, sub],
+  [2, stack(sub, bass)],
+  [4, stack(sub, bass, drums)])`,
       },
       {
         label: 'Garage Bass Thump',
         code: `// garage heavy bass thump
-$: note("c2 ~ ~ c2 ~ ~ e2 ~").s("sine")
+let sub = note("c2 ~ ~ c2 ~ ~ e2 ~").s("sine")
   .gain(.6).shape(.3).lpf(150)
-$: s("bd ~ ~ bd sd ~ ~ ~").bank("RolandTR808").gain(.5)
-$: s("~ hh ~ hh ~ oh ~ hh").bank("RolandTR808").gain(.3)
-$: s("~ ~ ~ ~ ~ ~ ~ cp").bank("RolandTR808").gain(.35)`,
+let drums = s("bd ~ ~ bd sd ~ ~ ~").bank("RolandTR808").gain(.5)
+let hats = s("~ hh ~ hh ~ oh ~ hh").bank("RolandTR808").gain(.3)
+let clap = s("~ ~ ~ ~ ~ ~ ~ cp").bank("RolandTR808").gain(.35)
+
+$: arrange(
+  [2, stack(sub, drums)],
+  [2, stack(sub, drums, hats)],
+  [4, stack(sub, drums, hats, clap)])`,
       },
       {
         label: 'Distortion Chain',
         code: `// distortion chain bass
-$: note("c1 ~ c1 ~ ~ ~ c1 ~").s("sawtooth")
+let bass = note("c1 ~ c1 ~ ~ ~ c1 ~").s("sawtooth")
   .gain(.45).shape(.6).lpf(400)
-$: note("c1 ~ c1 ~ ~ ~ c1 ~").s("triangle")
+let bass2 = note("c1 ~ c1 ~ ~ ~ c1 ~").s("triangle")
   .gain(.35).shape(.4).lpf(250)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR909").gain(.5)`,
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR909").gain(.5)
+
+$: arrange(
+  [2, bass],
+  [2, stack(bass, bass2)],
+  [4, stack(bass, bass2, drums)])`,
       },
       {
         label: 'Phaser Bass',
         code: `// phaser bass sweep
-$: note("c1 e1 c1 f1 c1 e1 c1 g1")
+let bass = note("c1 e1 c1 f1 c1 e1 c1 g1")
   .s("sawtooth").lpf(sine.range(200,1500).slow(2))
   .gain(.45).shape(.3)
-$: note("c1 e1 c1 f1 c1 e1 c1 g1")
+let sub = note("c1 e1 c1 f1 c1 e1 c1 g1")
   .s("sine").gain(.3).lpf(100)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.45)`,
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.45)
+
+$: arrange(
+  [2, bass],
+  [2, stack(bass, sub)],
+  [4, stack(bass, sub, drums)])`,
       },
       {
         label: 'Square Pulse Bass',
         code: `// square pulse bass
-$: note("c1 ~ c1 ~ e1 ~ c1 ~").s("square")
+let bass = note("c1 ~ c1 ~ e1 ~ c1 ~").s("square")
   .gain(.5).lpf(300).shape(.35)
-$: s("bd bd ~ ~ sd ~ bd ~").bank("RolandTR909").gain(.5)
-$: s("hh hh hh hh hh oh hh hh").bank("RolandTR909").gain(.25)`,
+let drums = s("bd bd ~ ~ sd ~ bd ~").bank("RolandTR909").gain(.5)
+let hats = s("hh hh hh hh hh oh hh hh").bank("RolandTR909").gain(.25)
+
+$: arrange(
+  [2, bass],
+  [2, stack(bass, drums)],
+  [4, stack(bass, drums, hats)])`,
       },
       {
         label: 'Stacked Octave Bass',
         code: `// stacked octave bass
-$: note("c1 ~ e1 ~ f1 ~ e1 ~").s("sine").gain(.55).lpf(80)
-$: note("c2 ~ e2 ~ f2 ~ e2 ~").s("sawtooth").gain(.3).lpf(500).shape(.3)
-$: note("c3 ~ e3 ~ f3 ~ e3 ~").s("square").gain(.15).lpf(1000)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.5)`,
+let sub = note("c1 ~ e1 ~ f1 ~ e1 ~").s("sine").gain(.55).lpf(80)
+let bass = note("c2 ~ e2 ~ f2 ~ e2 ~").s("sawtooth").gain(.3).lpf(500).shape(.3)
+let synth = note("c3 ~ e3 ~ f3 ~ e3 ~").s("square").gain(.15).lpf(1000)
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.5)
+
+$: arrange(
+  [2, stack(sub, bass)],
+  [2, stack(sub, bass, synth)],
+  [4, stack(sub, bass, synth, drums)])`,
       },
       {
         label: 'Detuned Fatness',
         code: `// detuned fat bass
-$: note("c1 ~ c1 ~ e1 ~ c1 ~").s("sawtooth")
+let bass = note("c1 ~ c1 ~ e1 ~ c1 ~").s("sawtooth")
   .gain(.4).detune(20).lpf(400).shape(.3)
-$: note("c1 ~ c1 ~ e1 ~ c1 ~").s("sawtooth")
+let bass2 = note("c1 ~ c1 ~ e1 ~ c1 ~").s("sawtooth")
   .gain(.4).detune(-20).lpf(400).shape(.3)
-$: note("c1 ~ c1 ~ e1 ~ c1 ~").s("sine").gain(.3).lpf(80)
-$: s("bd ~ sd ~ bd bd sd ~").bank("RolandTR808").gain(.5)`,
+let sub = note("c1 ~ c1 ~ e1 ~ c1 ~").s("sine").gain(.3).lpf(80)
+let drums = s("bd ~ sd ~ bd bd sd ~").bank("RolandTR808").gain(.5)
+
+$: arrange(
+  [2, stack(bass, bass2)],
+  [2, stack(bass, bass2, sub)],
+  [4, stack(bass, bass2, sub, drums)])`,
       },
       {
         label: 'Thunderous Kick Bass',
         code: `// thunderous kick-bass combo
-$: note("c1 ~ ~ ~ c1 ~ ~ ~").s("sine")
+let sub = note("c1 ~ ~ ~ c1 ~ ~ ~").s("sine")
   .gain(.7).shape(.4).lpf(70).decay(.4)
-$: s("bd ~ ~ ~ bd ~ ~ ~").bank("RolandTR808").gain(.65)
-$: s("~ ~ sd ~ ~ ~ sd ~").bank("RolandTR808").gain(.5)
-$: s("hh hh hh hh oh hh hh hh").bank("RolandTR808").gain(.25)`,
+let kick = s("bd ~ ~ ~ bd ~ ~ ~").bank("RolandTR808").gain(.65)
+let snare = s("~ ~ sd ~ ~ ~ sd ~").bank("RolandTR808").gain(.5)
+let hats = s("hh hh hh hh oh hh hh hh").bank("RolandTR808").gain(.25)
+
+$: arrange(
+  [2, stack(sub, kick)],
+  [2, stack(sub, kick, snare)],
+  [4, stack(sub, kick, snare, hats)])`,
       },
     ],
   },
@@ -5372,373 +7394,561 @@ $: s("hh hh hh hh oh hh hh hh").bank("RolandTR808").gain(.25)`,
       {
         label: 'Loop Layer 1',
         code: `// basic loop layer
-$: s("bd sd [~ bd] sd")
-  .bank("RolandTR808").gain(.75)`,
+let drums = s("bd sd [~ bd] sd")
+  .bank("RolandTR808").gain(.75)
+
+$: arrange([4, drums])`,
       },
       {
         label: 'Loop Layer 2',
         code: `// add hi-hats to loop
-$: s("[~ hh]*4").bank("RolandTR808")
-  .gain("[.3 .5 .35 .6]")`,
+let hats = s("[~ hh]*4").bank("RolandTR808")
+  .gain("[.3 .5 .35 .6]")
+
+$: arrange([4, hats])`,
       },
       {
         label: 'Loop Bass',
         code: `// bass loop layer
-$: note("<c2 c2 f2 g2>")
+let sub = note("<c2 c2 f2 g2>")
   .s("sine").gain(.5)
-  .lpf(200).shape(.15)`,
+  .lpf(200).shape(.15)
+
+$: arrange([4, sub])`,
       },
       {
         label: 'Loop Chord',
         code: `// chord loop layer
-$: note("<[c3,e3,g3] [a2,c3,e3]>")
+let pad = note("<[c3,e3,g3] [a2,c3,e3]>")
   .s("supersaw").gain(.3)
-  .lpf(1500).room(.3).slow(2)`,
+  .lpf(1500).room(.3).slow(2)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'Loop Melody',
         code: `// melody loop layer
-$: note("c4 e4 g4 b4 c5 b4 g4 e4")
-  .s("piano").gain(.5)`,
+let piano = note("c4 e4 g4 b4 c5 b4 g4 e4")
+  .s("piano").gain(.5)
+
+$: arrange([4, piano])`,
       },
       {
         label: 'Stacking Beats',
         code: `// stack beats together
-$: s("bd*4").gain(.8)
-$: s("~ cp ~ ~").gain(.6)
-$: s("[~ hh]*4").gain(.4)`,
+let kick = s("bd*4").gain(.8)
+let clap = s("~ cp ~ ~").gain(.6)
+let hats = s("[~ hh]*4").gain(.4)
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, clap)],
+  [4, stack(kick, clap, hats)])`,
       },
       {
         label: 'Slow Build',
         code: `// slow build loop
-$: s("bd ~ ~ ~").gain(.7)
-$: s("~ ~ ~ rim").gain(.25)`,
+let kick = s("bd ~ ~ ~").gain(.7)
+let rim = s("~ ~ ~ rim").gain(.25)
+
+$: arrange(
+  [2, kick],
+  [4, stack(kick, rim)])`,
       },
       {
         label: 'Add Perc',
         code: `// add percussion layer
-$: s("rim(5,8)").gain(.3)
-$: s("oh(2,8)").gain(.25).room(.3)`,
+let rim = s("rim(5,8)").gain(.3)
+let openHat = s("oh(2,8)").gain(.25).room(.3)
+
+$: arrange(
+  [2, rim],
+  [4, stack(rim, openHat)])`,
       },
       {
         label: 'Pad Layer',
         code: `// pad background layer
-$: note("<[c3,g3,c4]>")
+let pad = note("<[c3,g3,c4]>")
   .s("sine").gain(.25)
-  .room(.6).roomsize(4).slow(4)`,
+  .room(.6).roomsize(4).slow(4)
+
+$: arrange([4, pad])`,
       },
       {
         label: 'FX Layer',
         code: `// FX texture layer
-$: s("hh*16").gain("[.05 .1]*8")
+let hats = s("hh*16").gain("[.05 .1]*8")
   .lpf(sine.range(500,3000).slow(8))
-  .room(.4)`,
+  .room(.4)
+
+$: arrange([4, hats])`,
       },
       {
         label: '2-Bar Loop',
         code: `// 2-bar repeating loop
-$: s("bd sd [~ bd] sd bd [~ sd] bd sd")
-  .bank("RolandTR808").gain(.75)`,
+let drums = s("bd sd [~ bd] sd bd [~ sd] bd sd")
+  .bank("RolandTR808").gain(.75)
+
+$: arrange([4, drums])`,
       },
       {
         label: '4-Bar Melody',
         code: `// 4-bar melody loop
-$: note("<c4 e4 g4 b4 c5 b4 g4 f4 e4 c4 b3 c4 e4 g4 b4 c5>")
-  .s("piano").gain(.5).slow(2)`,
+let piano = note("<c4 e4 g4 b4 c5 b4 g4 f4 e4 c4 b3 c4 e4 g4 b4 c5>")
+  .s("piano").gain(.5).slow(2)
+
+$: arrange([4, piano])`,
       },
       {
         label: 'Polyrhythm Loop',
         code: `// polyrhythm loop layers
-$: s("bd(3,8)").gain(.75)
-$: s("cp(5,8)").gain(.5)
-$: s("hh(7,8)").gain(.35)`,
+let kick = s("bd(3,8)").gain(.75)
+let clap = s("cp(5,8)").gain(.5)
+let hats = s("hh(7,8)").gain(.35)
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, clap)],
+  [4, stack(kick, clap, hats)])`,
       },
       {
         label: 'Ambient Loop',
         code: `// ambient loop texture
-$: note("<[c3,g3]>").s("sine")
+let pad = note("<[c3,g3]>").s("sine")
   .gain(.2).room(.8).roomsize(6)
-$: s("hh*16").gain("[.03 .06]*8")
-  .lpf(2000).room(.4)`,
+let hats = s("hh*16").gain("[.03 .06]*8")
+  .lpf(2000).room(.4)
+
+$: arrange(
+  [2, pad],
+  [4, stack(pad, hats)])`,
       },
       {
         label: 'Vocal Loop',
         code: `// vocal chop loop
-$: s("chin:0 ~ chin:1 ~")
+let vox = s("chin:0 ~ chin:1 ~")
   .gain(.5).room(.3)
-  .speed("<1 1.2 .8 1>")`,
+  .speed("<1 1.2 .8 1>")
+
+$: arrange([4, vox])`,
       },
       {
         label: 'Bass + Drums Loop',
         code: `// bass and drums loop
-$: s("bd*4").bank("RolandTR909").gain(.85)
-$: s("~ cp ~ ~").bank("RolandTR909").gain(.6)
-$: note("c2 c2 c2 c2")
-  .s("sine").gain(.5).lpf(200)`,
+let kick = s("bd*4").bank("RolandTR909").gain(.85)
+let clap = s("~ cp ~ ~").bank("RolandTR909").gain(.6)
+let sub = note("c2 c2 c2 c2")
+  .s("sine").gain(.5).lpf(200)
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, clap)],
+  [4, stack(kick, clap, sub)])`,
       },
       {
         label: 'Guitar Loop',
         code: `// guitar riff loop
-$: note("c3 e3 g3 c4 g3 e3")
+let guitar = note("c3 e3 g3 c4 g3 e3")
   .s("gm_clean_guitar").velocity(.5)
-  .room(.3)`,
+  .room(.3)
+
+$: arrange([4, guitar])`,
       },
       {
         label: 'Rhodes Loop',
         code: `// rhodes chord loop
-$: note("<[e3,g3,b3] [a3,c4,e4]>")
+let keys = note("<[e3,g3,b3] [a3,c4,e4]>")
   .s("gm_epiano1").velocity(.35)
-  .room(.4).slow(2)`,
+  .room(.4).slow(2)
+
+$: arrange([4, keys])`,
       },
       {
         label: 'Minimal Loop',
         code: `// minimal techno loop
-$: s("bd*4").gain(.8)
-$: s("~ rim ~ ~").gain(.3)
-$: s("hh*16").gain("[.15 .3]*8")`,
+let kick = s("bd*4").gain(.8)
+let rim = s("~ rim ~ ~").gain(.3)
+let hats = s("hh*16").gain("[.15 .3]*8")
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, rim)],
+  [4, stack(kick, rim, hats)])`,
       },
       {
         label: 'Breakbeat Loop',
         code: `// breakbeat loop
-$: s("[bd ~ bd ~] [~ bd ~ bd]").gain(.8)
-$: s("[~ sd ~ ~] [~ ~ sd ~]").gain(.65)`,
+let kick = s("[bd ~ bd ~] [~ bd ~ bd]").gain(.8)
+let snare = s("[~ sd ~ ~] [~ ~ sd ~]").gain(.65)
+
+$: arrange(
+  [2, kick],
+  [4, stack(kick, snare)])`,
       },
       {
         label: 'Dub Loop',
         code: `// dub reggae loop
-$: s("bd ~ ~ bd ~ ~ bd ~").gain(.7)
-$: s("~ ~ cp ~ ~ ~ ~ ~").gain(.5)
-  .delay(.4).delayfeedback(.5)`,
+let kick = s("bd ~ ~ bd ~ ~ bd ~").gain(.7)
+let clap = s("~ ~ cp ~ ~ ~ ~ ~").gain(.5)
+  .delay(.4).delayfeedback(.5)
+
+$: arrange(
+  [2, kick],
+  [4, stack(kick, clap)])`,
       },
       {
         label: 'Triplet Loop',
         code: `// triplet feel loop
-$: s("bd(3,12)").gain(.75)
-$: s("sd(4,12,1)").gain(.55)
-$: s("hh*12").gain("[.2 .3 .25]*4")`,
+let kick = s("bd(3,12)").gain(.75)
+let snare = s("sd(4,12,1)").gain(.55)
+let hats = s("hh*12").gain("[.2 .3 .25]*4")
+
+$: arrange(
+  [2, kick],
+  [2, stack(kick, snare)],
+  [4, stack(kick, snare, hats)])`,
       },
       {
         label: 'Evolving Loop',
         code: `// slowly evolving loop
-$: note("<c3 c3 e3 g3>")
+let synth = note("<c3 c3 e3 g3>")
   .s("sawtooth").gain(.35)
   .lpf(sine.range(400,2000).slow(16))
-  .room(.3)`,
+  .room(.3)
+
+$: arrange([4, synth])`,
       },
       {
         label: 'Stack All',
         code: `// full stack loop
-$: s("bd*4").gain(.8)
-$: s("~ cp ~ ~").gain(.6)
-$: s("[~ hh]*4").gain(.4)
-$: note("<c2 f2 g2 b1>").s("sine").gain(.5).lpf(200)
-$: note("<[c3,e3,g3]>").s("supersaw").gain(.25).lpf(1500)`,
+let kick = s("bd*4").gain(.8)
+let clap = s("~ cp ~ ~").gain(.6)
+let hats = s("[~ hh]*4").gain(.4)
+let sub = note("<c2 f2 g2 b1>").s("sine").gain(.5).lpf(200)
+let pad = note("<[c3,e3,g3]>").s("supersaw").gain(.25).lpf(1500)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats, sub)],
+  [4, stack(kick, clap, hats, sub, pad)])`,
       },
       {
         label: 'Chop Loop',
         code: `// chopped loop effect
-$: note("c3 e3 g3 b3")
+let piano = note("c3 e3 g3 b3")
   .s("piano").gain(.5)
-  .chop(4)`,
+  .chop(4)
+
+$: arrange([4, piano])`,
       },
       {
         label: 'Reverse Loop',
         code: `// reverse layer
-$: s("chin:0 chin:1")
+let vox = s("chin:0 chin:1")
   .speed(-1).gain(.4)
-  .room(.5).delay(.3).slow(2)`,
+  .room(.5).delay(.3).slow(2)
+
+$: arrange([4, vox])`,
       },
       {
         label: 'Drone Loop',
         code: `// drone base loop
-$: note("[c2,g2]").s("sawtooth")
+let bass = note("[c2,g2]").s("sawtooth")
   .gain(.2).lpf(400)
-  .room(.7).roomsize(5)`,
+  .room(.7).roomsize(5)
+
+$: arrange([4, bass])`,
       },
       {
         label: 'Glitch Loop',
         code: `// glitch pattern loop
-$: s("bd").chop(16)
+let kick = s("bd").chop(16)
   .speed(perlin.range(.5,2))
-  .gain(.5)`,
+  .gain(.5)
+
+$: arrange([4, kick])`,
       },
       {
         label: 'Layer + Filter',
         code: `// loop with filter sweep
-$: s("bd sd [~ bd] sd")
+let drums = s("bd sd [~ bd] sd")
   .bank("RolandTR808").gain(.7)
-$: note("c3*4").s("sawtooth")
-  .gain(.3).lpf(sine.range(300,2000).slow(8))`,
+let synth = note("c3*4").s("sawtooth")
+  .gain(.3).lpf(sine.range(300,2000).slow(8))
+
+$: arrange(
+  [2, drums],
+  [4, stack(drums, synth)])`,
       },
       {
         label: 'Complete Stack',
         code: `// complete loop stack
-$: s("bd sd:2 [~ bd] sd").bank("RolandTR808").gain(.75)
-$: s("[~ hh]*4").bank("RolandTR808").gain(.3)
-$: note("<c2 a1 b1 g1>").s("sine").gain(.5).lpf(200).slow(2)
-$: note("<[c3,e3,g3,b3] [a2,c3,e3,g3]>").s("piano").gain(.45).room(.4).slow(2)`,
+let drums = s("bd sd:2 [~ bd] sd").bank("RolandTR808").gain(.75)
+let hats = s("[~ hh]*4").bank("RolandTR808").gain(.3)
+let sub = note("<c2 a1 b1 g1>").s("sine").gain(.5).lpf(200).slow(2)
+let keys = note("<[c3,e3,g3,b3] [a2,c3,e3,g3]>").s("piano").gain(.45).room(.4).slow(2)
+
+$: arrange(
+  [2, stack(drums, hats)],
+  [2, stack(drums, hats, sub)],
+  [4, stack(drums, hats, sub, keys)])`,
       },
       {
         label: 'Minimal Loop Build',
         code: `// minimal loop building blocks
-$: s("bd ~ ~ ~ bd ~ ~ ~").bank("RolandTR808").gain(.55)
-$: s("~ ~ sd ~ ~ ~ sd ~").bank("RolandTR808").gain(.45)
-$: s("hh hh hh hh hh hh hh hh").bank("RolandTR808").gain(.25)
-$: note("c2 ~ c2 ~ e2 ~ c2 ~").s("sine").gain(.4).lpf(100)`,
+let kick = s("bd ~ ~ ~ bd ~ ~ ~").bank("RolandTR808").gain(.55)
+let snare = s("~ ~ sd ~ ~ ~ sd ~").bank("RolandTR808").gain(.45)
+let hats = s("hh hh hh hh hh hh hh hh").bank("RolandTR808").gain(.25)
+let sub = note("c2 ~ c2 ~ e2 ~ c2 ~").s("sine").gain(.4).lpf(100)
+
+$: arrange(
+  [2, stack(kick, snare)],
+  [2, stack(kick, snare, hats)],
+  [4, stack(kick, snare, hats, sub)])`,
       },
       {
         label: 'Groove Layer Stack',
         code: `// layered groove stack
-$: s("bd ~ sd ~ bd bd sd ~").bank("RolandTR808").gain(.55)
-$: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3)
-$: note("c2 ~ e2 ~ f2 ~ e2 ~").s("gm_electric_bass_finger").velocity(.5)
-$: note("<[c3,e3,g3] [b2,d3,f3]>").s("gm_epiano1").velocity(.3).slow(2)`,
+let drums = s("bd ~ sd ~ bd bd sd ~").bank("RolandTR808").gain(.55)
+let hats = s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3)
+let bass = note("c2 ~ e2 ~ f2 ~ e2 ~").s("gm_electric_bass_finger").velocity(.5)
+let keys = note("<[c3,e3,g3] [b2,d3,f3]>").s("gm_epiano1").velocity(.3).slow(2)
+
+$: arrange(
+  [2, stack(drums, hats)],
+  [2, stack(drums, hats, bass)],
+  [4, stack(drums, hats, bass, keys)])`,
       },
       {
         label: 'Ambient Loop',
         code: `// ambient loop layers
-$: note("<[c4,e4,g4] [b3,d4,f4] [a3,c4,e4] [g3,b3,d3]>")
+let pad = note("<[c4,e4,g4] [b3,d4,f4] [a3,c4,e4] [g3,b3,d3]>")
   .s("gm_warm_pad").velocity(.3).room(.7).slow(4)
-$: note("c5 ~ e5 ~ g5 ~ ~ ~").s("gm_celesta").velocity(.2).delay(.3)
-$: s("~ ~ ~ ~ bd ~ ~ ~").bank("RolandTR808").gain(.3).room(.4)`,
+let bells = note("c5 ~ e5 ~ g5 ~ ~ ~").s("gm_celesta").velocity(.2).delay(.3)
+let kick = s("~ ~ ~ ~ bd ~ ~ ~").bank("RolandTR808").gain(.3).room(.4)
+
+$: arrange(
+  [2, pad],
+  [2, stack(pad, bells)],
+  [4, stack(pad, bells, kick)])`,
       },
       {
         label: 'Funk Loop Kit',
         code: `// funk loop kit
-$: s("bd ~ sd ~ bd bd sd ~").bank("RolandTR808").gain(.5)
-$: s("hh oh hh hh oh hh hh oh").bank("RolandTR808").gain(.3)
-$: note("c2 ~ c2 e2 f2 ~ c2 ~").s("gm_slap_bass_1").velocity(.55)
-$: note("~ [e4,g4] ~ ~ ~ [f4,a4] ~ ~").s("gm_clean_guitar").velocity(.35)`,
+let drums = s("bd ~ sd ~ bd bd sd ~").bank("RolandTR808").gain(.5)
+let hats = s("hh oh hh hh oh hh hh oh").bank("RolandTR808").gain(.3)
+let bass = note("c2 ~ c2 e2 f2 ~ c2 ~").s("gm_slap_bass_1").velocity(.55)
+let guitar = note("~ [e4,g4] ~ ~ ~ [f4,a4] ~ ~").s("gm_clean_guitar").velocity(.35)
+
+$: arrange(
+  [2, stack(drums, hats)],
+  [2, stack(drums, hats, bass)],
+  [4, stack(drums, hats, bass, guitar)])`,
       },
       {
         label: 'Techno Loop Stack',
         code: `// techno loop stack
-$: s("bd bd bd bd").bank("RolandTR909").gain(.6)
-$: s("~ cp ~ ~").bank("RolandTR909").gain(.5)
-$: s("~ hh ~ hh ~ oh ~ hh").bank("RolandTR909").gain(.3)
-$: note("c1 ~ c1 ~ ~ ~ c1 ~").s("sawtooth").lpf(300).gain(.45).shape(.3)`,
+let kick = s("bd bd bd bd").bank("RolandTR909").gain(.6)
+let clap = s("~ cp ~ ~").bank("RolandTR909").gain(.5)
+let hats = s("~ hh ~ hh ~ oh ~ hh").bank("RolandTR909").gain(.3)
+let bass = note("c1 ~ c1 ~ ~ ~ c1 ~").s("sawtooth").lpf(300).gain(.45).shape(.3)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats)],
+  [4, stack(kick, clap, hats, bass)])`,
       },
       {
         label: 'Lo-Fi Loop Tape',
         code: `// lo-fi tape loop
-$: note("c4 e4 g4 b4 g4 e4 c4 ~")
+let piano = note("c4 e4 g4 b4 g4 e4 c4 ~")
   .s("gm_epiano2").velocity(.35).lpf(2000).room(.4)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.4)
-$: s("hh hh hh hh").bank("RolandTR808").gain(.2)
-$: note("c2 ~ g2 ~ c2 ~ e2 ~").s("gm_acoustic_bass").velocity(.35)`,
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.4)
+let hats = s("hh hh hh hh").bank("RolandTR808").gain(.2)
+let bass = note("c2 ~ g2 ~ c2 ~ e2 ~").s("gm_acoustic_bass").velocity(.35)
+
+$: arrange(
+  [2, stack(piano, drums)],
+  [2, stack(piano, drums, hats)],
+  [4, stack(piano, drums, hats, bass)])`,
       },
       {
         label: 'DnB Loop Build',
         code: `// drum and bass loop build
-$: s("bd ~ sd ~ ~ bd sd ~, ~ ~ ~ bd ~ ~ sd ~")
+let drums = s("bd ~ sd ~ ~ bd sd ~, ~ ~ ~ bd ~ ~ sd ~")
   .bank("RolandTR909").gain(.55)
-$: s("hh hh hh hh oh hh hh hh").bank("RolandTR909").gain(.3)
-$: note("c2 ~ ~ c2 e2 ~ c2 ~").s("gm_synth_bass_1").velocity(.55)`,
+let hats = s("hh hh hh hh oh hh hh hh").bank("RolandTR909").gain(.3)
+let bass = note("c2 ~ ~ c2 e2 ~ c2 ~").s("gm_synth_bass_1").velocity(.55)
+
+$: arrange(
+  [2, drums],
+  [2, stack(drums, hats)],
+  [4, stack(drums, hats, bass)])`,
       },
       {
         label: 'Jazz Loop Cycle',
         code: `// jazz loop cycle
-$: s("bd ~ ~ bd ~ sd ~ ~").bank("RolandTR808").gain(.4)
-$: s("~ hh ~ hh ~ hh ~ hh").bank("RolandTR808").gain(.25)
-$: note("d2 a2 g2 d3 c2 g2 f2 c3").s("gm_acoustic_bass").velocity(.45)
-$: note("<[d3,g3,a3,c4] [g3,b3,d4,f4] [c3,e3,g3,b3] [f3,a3,c4,e4]>")
-  .s("gm_epiano1").velocity(.3).slow(2)`,
+let drums = s("bd ~ ~ bd ~ sd ~ ~").bank("RolandTR808").gain(.4)
+let hats = s("~ hh ~ hh ~ hh ~ hh").bank("RolandTR808").gain(.25)
+let bass = note("d2 a2 g2 d3 c2 g2 f2 c3").s("gm_acoustic_bass").velocity(.45)
+let keys = note("<[d3,g3,a3,c4] [g3,b3,d4,f4] [c3,e3,g3,b3] [f3,a3,c4,e4]>")
+  .s("gm_epiano1").velocity(.3).slow(2)
+
+$: arrange(
+  [2, stack(drums, hats)],
+  [2, stack(drums, hats, bass)],
+  [4, stack(drums, hats, bass, keys)])`,
       },
       {
         label: 'Reggae Loop',
         code: `// reggae loop layers
-$: s("bd ~ ~ bd ~ sd ~ ~").bank("RolandTR808").gain(.5)
-$: s("~ ~ rim ~ ~ ~ rim ~").bank("RolandTR808").gain(.3)
-$: note("~ g2 ~ g2 ~ b2 ~ c3").s("gm_electric_bass_finger").velocity(.5)
-$: note("~ [b3,d4,f4] ~ [b3,d4,f4] ~ [a3,c4,e4] ~ [a3,c4,e4]")
-  .s("gm_muted_guitar").velocity(.35)`,
+let drums = s("bd ~ ~ bd ~ sd ~ ~").bank("RolandTR808").gain(.5)
+let rim = s("~ ~ rim ~ ~ ~ rim ~").bank("RolandTR808").gain(.3)
+let bass = note("~ g2 ~ g2 ~ b2 ~ c3").s("gm_electric_bass_finger").velocity(.5)
+let guitar = note("~ [b3,d4,f4] ~ [b3,d4,f4] ~ [a3,c4,e4] ~ [a3,c4,e4]")
+  .s("gm_muted_guitar").velocity(.35)
+
+$: arrange(
+  [2, stack(drums, rim)],
+  [2, stack(drums, rim, bass)],
+  [4, stack(drums, rim, bass, guitar)])`,
       },
       {
         label: 'House Loop Full',
         code: `// full house loop
-$: s("bd bd bd bd").bank("RolandTR909").gain(.55)
-$: s("~ cp ~ ~").bank("RolandTR909").gain(.45)
-$: s("~ hh ~ hh ~ oh ~ hh").bank("RolandTR909").gain(.3)
-$: note("c2 ~ c2 ~ e2 ~ c2 ~").s("gm_synth_bass_2").velocity(.5)
-$: note("<[c3,e3,g3]>").s("gm_epiano2").velocity(.25).slow(4)`,
+let kick = s("bd bd bd bd").bank("RolandTR909").gain(.55)
+let clap = s("~ cp ~ ~").bank("RolandTR909").gain(.45)
+let hats = s("~ hh ~ hh ~ oh ~ hh").bank("RolandTR909").gain(.3)
+let bass = note("c2 ~ c2 ~ e2 ~ c2 ~").s("gm_synth_bass_2").velocity(.5)
+let keys = note("<[c3,e3,g3]>").s("gm_epiano2").velocity(.25).slow(4)
+
+$: arrange(
+  [2, stack(kick, clap)],
+  [2, stack(kick, clap, hats, bass)],
+  [4, stack(kick, clap, hats, bass, keys)])`,
       },
       {
         label: 'Latin Loop Stack',
         code: `// latin loop stack
-$: s("bd ~ ~ bd ~ bd ~ sd").bank("RolandTR808").gain(.45)
-$: s("rim ~ rim ~ rim ~ rim ~").bank("RolandTR808").gain(.3)
-$: note("a2 ~ c3 ~ d3 ~ e3 ~").s("gm_acoustic_bass").velocity(.5)
-$: note("a4 b4 c5 d5 c5 a4 g4 a4").s("gm_trumpet").velocity(.35).room(.3)`,
+let drums = s("bd ~ ~ bd ~ bd ~ sd").bank("RolandTR808").gain(.45)
+let rim = s("rim ~ rim ~ rim ~ rim ~").bank("RolandTR808").gain(.3)
+let bass = note("a2 ~ c3 ~ d3 ~ e3 ~").s("gm_acoustic_bass").velocity(.5)
+let brass = note("a4 b4 c5 d5 c5 a4 g4 a4").s("gm_trumpet").velocity(.35).room(.3)
+
+$: arrange(
+  [2, stack(drums, rim)],
+  [2, stack(drums, rim, bass)],
+  [4, stack(drums, rim, bass, brass)])`,
       },
       {
         label: 'R&B Loop Smooth',
         code: `// smooth R&B loop
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.45)
-$: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.25)
-$: note("c2 ~ e2 ~ f2 ~ e2 ~").s("gm_electric_bass_finger").velocity(.45)
-$: note("<[c4,e4,g4,b4] [f3,a3,c4,e4]>")
-  .s("gm_epiano2").velocity(.3).room(.35).slow(2)`,
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.45)
+let hats = s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.25)
+let bass = note("c2 ~ e2 ~ f2 ~ e2 ~").s("gm_electric_bass_finger").velocity(.45)
+let keys = note("<[c4,e4,g4,b4] [f3,a3,c4,e4]>")
+  .s("gm_epiano2").velocity(.3).room(.35).slow(2)
+
+$: arrange(
+  [2, stack(drums, hats)],
+  [2, stack(drums, hats, bass)],
+  [4, stack(drums, hats, bass, keys)])`,
       },
       {
         label: 'Cinematic Loop',
         code: `// cinematic loop layers
-$: note("<[c3,g3,c4] [a2,e3,a3] [b2,f3,b3] [g2,d3,g3]>")
+let strings = note("<[c3,g3,c4] [a2,e3,a3] [b2,f3,b3] [g2,d3,g3]>")
   .s("gm_strings1").velocity(.4).room(.6).slow(4)
-$: s("~ ~ ~ ~ bd ~ ~ ~").bank("RolandTR808").gain(.4).room(.4)
-$: note("c5 ~ e5 ~ g5 ~ ~ ~").s("gm_flute").velocity(.25).room(.5)
-$: note("c2 ~ ~ ~ a1 ~ ~ ~").s("gm_contrabass").velocity(.35).slow(2)`,
+let kick = s("~ ~ ~ ~ bd ~ ~ ~").bank("RolandTR808").gain(.4).room(.4)
+let flute = note("c5 ~ e5 ~ g5 ~ ~ ~").s("gm_flute").velocity(.25).room(.5)
+let bass = note("c2 ~ ~ ~ a1 ~ ~ ~").s("gm_contrabass").velocity(.35).slow(2)
+
+$: arrange(
+  [2, stack(strings, kick)],
+  [2, stack(strings, kick, flute)],
+  [4, stack(strings, kick, flute, bass)])`,
       },
       {
         label: 'Trap Loop Kit',
         code: `// trap loop kit
-$: s("bd ~ ~ bd ~ ~ bd ~").bank("RolandTR808").gain(.55)
-$: s("~ ~ ~ ~ sd ~ ~ ~").bank("RolandTR808").gain(.5)
-$: s("hh hh hh hh oh hh [hh hh] hh").bank("RolandTR808").gain(.3)
-$: note("c1 ~ ~ ~ ~ ~ c1 ~").s("sine").gain(.55).shape(.3).lpf(80)`,
+let kick = s("bd ~ ~ bd ~ ~ bd ~").bank("RolandTR808").gain(.55)
+let snare = s("~ ~ ~ ~ sd ~ ~ ~").bank("RolandTR808").gain(.5)
+let hats = s("hh hh hh hh oh hh [hh hh] hh").bank("RolandTR808").gain(.3)
+let sub = note("c1 ~ ~ ~ ~ ~ c1 ~").s("sine").gain(.55).shape(.3).lpf(80)
+
+$: arrange(
+  [2, stack(kick, snare)],
+  [2, stack(kick, snare, hats)],
+  [4, stack(kick, snare, hats, sub)])`,
       },
       {
         label: 'Gospel Loop',
         code: `// gospel loop stack
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.45)
-$: s("~ cp ~ cp").bank("RolandTR909").gain(.4)
-$: note("[c3,e3,g3,c4] ~ [d3,f3,a3,d4] ~ [e3,g3,b3,e4] ~ [c3,e3,g3,c4] ~")
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.45)
+let clap = s("~ cp ~ cp").bank("RolandTR909").gain(.4)
+let organ = note("[c3,e3,g3,c4] ~ [d3,f3,a3,d4] ~ [e3,g3,b3,e4] ~ [c3,e3,g3,c4] ~")
   .s("gm_church_organ").velocity(.4).room(.5).slow(2)
-$: note("c2 d2 e2 c2 d2 e2 g2 c2").s("gm_acoustic_bass").velocity(.4)`,
+let bass = note("c2 d2 e2 c2 d2 e2 g2 c2").s("gm_acoustic_bass").velocity(.4)
+
+$: arrange(
+  [2, stack(drums, clap)],
+  [2, stack(drums, clap, organ)],
+  [4, stack(drums, clap, organ, bass)])`,
       },
       {
         label: 'Garage Loop',
         code: `// 2-step garage loop
-$: s("bd ~ ~ bd sd ~ ~ ~").bank("RolandTR808").gain(.5)
-$: s("~ hh ~ hh ~ oh ~ hh").bank("RolandTR808").gain(.3)
-$: note("c2 ~ ~ c2 ~ ~ e2 ~").s("gm_synth_bass_1").velocity(.5)
-$: note("<[c3,e3,g3]>").s("gm_voice_oohs").velocity(.2).room(.4).slow(4)`,
+let drums = s("bd ~ ~ bd sd ~ ~ ~").bank("RolandTR808").gain(.5)
+let hats = s("~ hh ~ hh ~ oh ~ hh").bank("RolandTR808").gain(.3)
+let bass = note("c2 ~ ~ c2 ~ ~ e2 ~").s("gm_synth_bass_1").velocity(.5)
+let oohs = note("<[c3,e3,g3]>").s("gm_voice_oohs").velocity(.2).room(.4).slow(4)
+
+$: arrange(
+  [2, stack(drums, hats)],
+  [2, stack(drums, hats, bass)],
+  [4, stack(drums, hats, bass, oohs)])`,
       },
       {
         label: 'Afro Loop Stack',
         code: `// afrobeat loop stack
-$: s("bd ~ bd ~ sd ~ bd sd").bank("RolandTR808").gain(.5)
-$: s("hh oh hh hh oh hh hh oh").bank("RolandTR808").gain(.3)
-$: note("d2 ~ d2 f2 g2 ~ d2 ~").s("gm_electric_bass_finger").velocity(.5)
-$: note("d4 f4 g4 a4 g4 f4 d4 ~").s("gm_trumpet").velocity(.3).room(.3)`,
+let drums = s("bd ~ bd ~ sd ~ bd sd").bank("RolandTR808").gain(.5)
+let hats = s("hh oh hh hh oh hh hh oh").bank("RolandTR808").gain(.3)
+let bass = note("d2 ~ d2 f2 g2 ~ d2 ~").s("gm_electric_bass_finger").velocity(.5)
+let brass = note("d4 f4 g4 a4 g4 f4 d4 ~").s("gm_trumpet").velocity(.3).room(.3)
+
+$: arrange(
+  [2, stack(drums, hats)],
+  [2, stack(drums, hats, bass)],
+  [4, stack(drums, hats, bass, brass)])`,
       },
       {
         label: 'Synthwave Loop',
         code: `// synthwave loop full
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR909").gain(.5)
-$: s("hh hh hh hh hh hh hh hh").bank("RolandTR909").gain(.25)
-$: note("c2 ~ c2 ~ g1 ~ c2 ~").s("gm_synth_bass_2").velocity(.5)
-$: note("<[c4,e4,g4] [a3,c4,e4] [f3,a3,c4] [g3,b3,d4]>")
-  .s("sawtooth").lpf(2000).gain(.2).room(.35).slow(2)`,
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR909").gain(.5)
+let hats = s("hh hh hh hh hh hh hh hh").bank("RolandTR909").gain(.25)
+let bass = note("c2 ~ c2 ~ g1 ~ c2 ~").s("gm_synth_bass_2").velocity(.5)
+let pad = note("<[c4,e4,g4] [a3,c4,e4] [f3,a3,c4] [g3,b3,d4]>")
+  .s("sawtooth").lpf(2000).gain(.2).room(.35).slow(2)
+
+$: arrange(
+  [2, stack(drums, hats)],
+  [2, stack(drums, hats, bass)],
+  [4, stack(drums, hats, bass, pad)])`,
       },
       {
         label: 'Progressive Loop',
         code: `// progressive build loop
-$: s("bd ~ sd ~ bd bd sd ~").bank("RolandTR909").gain(.5)
-$: s("hh hh oh hh hh hh oh hh").bank("RolandTR909").gain(.3)
-$: note("c2 ~ c2 ~ e2 ~ f2 ~").s("gm_synth_bass_1").velocity(.5)
-$: note("<[c4,e4,g4] [b3,d4,f4] [a3,c4,e4] [b3,d4,f4]>")
+let drums = s("bd ~ sd ~ bd bd sd ~").bank("RolandTR909").gain(.5)
+let hats = s("hh hh oh hh hh hh oh hh").bank("RolandTR909").gain(.3)
+let bass = note("c2 ~ c2 ~ e2 ~ f2 ~").s("gm_synth_bass_1").velocity(.5)
+let pad = note("<[c4,e4,g4] [b3,d4,f4] [a3,c4,e4] [b3,d4,f4]>")
   .s("gm_warm_pad").velocity(.3).room(.5).slow(4)
-$: note("c5 e5 g5 ~ ~ ~ ~ ~").s("gm_saw_lead").gain(.15).delay(.2)`,
+let lead = note("c5 e5 g5 ~ ~ ~ ~ ~").s("gm_saw_lead").gain(.15).delay(.2)
+
+$: arrange(
+  [2, stack(drums, hats)],
+  [2, stack(drums, hats, bass, pad)],
+  [4, stack(drums, hats, bass, pad, lead)])`,
       },
     ],
   },
@@ -5749,214 +7959,277 @@ $: note("c5 e5 g5 ~ ~ ~ ~ ~").s("gm_saw_lead").gain(.15).delay(.2)`,
       {
         label: 'Deep Choir',
         code: `// deep male choir
-$: note("<[c2,g2,c3] [a1,e2,a2]>")
+let choir = note("<[c2,g2,c3] [a1,e2,a2]>")
   .s("gm_choir_aahs").velocity(.4)
-  .lpf(800).room(.6).slow(4)`,
+  .lpf(800).room(.6).slow(4)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Low Hum',
         code: `// low humming bass tone
-$: note("<c2 d2 e2 d2>")
+let choir = note("<c2 d2 e2 d2>")
   .s("gm_choir_aahs").velocity(.3)
-  .lpf(500).room(.5).slow(2)`,
+  .lpf(500).room(.5).slow(2)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Baritone Melody',
         code: `// baritone singing line
-$: note("c3 d3 e3 f3 g3 f3 e3 d3")
+let choir = note("c3 d3 e3 f3 g3 f3 e3 d3")
   .s("gm_choir_aahs").velocity(.4)
-  .room(.4)`,
+  .room(.4)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Drone Bass Voice',
         code: `// droning bass vocal
-$: note("[c2,g2]")
+let choir = note("[c2,g2]")
   .s("gm_choir_aahs").velocity(.35)
   .room(.7).roomsize(5)
-  .lpf(600)`,
+  .lpf(600)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Chant Low',
         code: `// low chant pattern
-$: note("c2 ~ e2 ~ g2 ~ e2 ~")
+let choir = note("c2 ~ e2 ~ g2 ~ e2 ~")
   .s("gm_choir_aahs").velocity(.35)
-  .lpf(700).room(.5).slow(2)`,
+  .lpf(700).room(.5).slow(2)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Tenor Harmony',
         code: `// tenor vocal harmony
-$: note("<[c3,e3,g3] [a2,c3,e3] [f2,a2,c3] [g2,b2,d3]>")
+let choir = note("<[c3,e3,g3] [a2,c3,e3] [f2,a2,c3] [g2,b2,d3]>")
   .s("gm_choir_aahs").velocity(.4)
-  .room(.4).slow(2)`,
+  .room(.4).slow(2)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Male Reverb Wash',
         code: `// male vocal reverb wash
-$: note("<[c2,g2,c3]>")
+let choir = note("<[c2,g2,c3]>")
   .s("gm_choir_aahs").velocity(.35)
-  .room(.9).roomsize(8).slow(4)`,
+  .room(.9).roomsize(8).slow(4)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Deep Echo',
         code: `// deep male vocal echo
-$: note("c2 ~ ~ e2 ~ ~ g2 ~")
+let choir = note("c2 ~ ~ e2 ~ ~ g2 ~")
   .s("gm_choir_aahs").velocity(.35)
   .delay(.5).delayfeedback(.6)
-  .room(.5).slow(2)`,
+  .room(.5).slow(2)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Male Vowel',
         code: `// male vowel morph
-$: note("c3*4").s("sawtooth")
+let synth = note("c3*4").s("sawtooth")
   .gain(.3).vowel("<a e i o>")
-  .lpf(1200)`,
+  .lpf(1200)
+
+$: arrange([4, synth])`,
       },
       {
         label: 'Low Pad',
         code: `// low male pad
-$: note("<[c2,e2,g2] [a1,c2,e2]>")
+let choir = note("<[c2,e2,g2] [a1,c2,e2]>")
   .s("gm_choir_aahs").velocity(.3)
-  .room(.6).slow(4)`,
+  .room(.6).slow(4)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Bass Swell',
         code: `// bass vocal swell
-$: note("<[c2,g2]>")
+let choir = note("<[c2,g2]>")
   .s("gm_choir_aahs")
   .velocity(sine.range(.1,.4).slow(4))
-  .room(.6).slow(4)`,
+  .room(.6).slow(4)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Male Staccato',
         code: `// staccato male voice
-$: note("c3 ~ c3 ~ e3 ~ c3 ~")
+let choir = note("c3 ~ c3 ~ e3 ~ c3 ~")
   .s("gm_choir_aahs").velocity(.4)
-  .decay(.15).lpf(1000)`,
+  .decay(.15).lpf(1000)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Deep Harmony Stack',
         code: `// stacked deep harmony
-$: note("<[c2,g2,c3] [b1,f2,b2]>")
+let choir = note("<[c2,g2,c3] [b1,f2,b2]>")
   .s("gm_choir_aahs").velocity(.35)
-  .room(.5).slow(2)`,
+  .room(.5).slow(2)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Male Delayed',
         code: `// delayed male vocal
-$: note("c2 ~ ~ ~ e2 ~ ~ ~")
+let choir = note("c2 ~ ~ ~ e2 ~ ~ ~")
   .s("gm_choir_aahs").velocity(.35)
   .delay(.6).delayfeedback(.65)
-  .room(.4)`,
+  .room(.4)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Gregorian Chant',
         code: `// gregorian chant style
-$: note("c3 d3 c3 b2 c3 d3 e3 d3")
+let choir = note("c3 d3 c3 b2 c3 d3 e3 d3")
   .s("gm_choir_aahs").velocity(.35)
-  .room(.8).roomsize(6).slow(2)`,
+  .room(.8).roomsize(6).slow(2)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Male Octaves',
         code: `// male octave drone
-$: note("[c2,c3]")
+let choir = note("[c2,c3]")
   .s("gm_choir_aahs").velocity(.35)
-  .room(.6).roomsize(4)`,
+  .room(.6).roomsize(4)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Numbers Count',
         code: `// numbers vocal beat
-$: s("numbers:0 numbers:1 numbers:2 numbers:3")
-  .gain(.5).speed(1.1)`,
+let numbers = s("numbers:0 numbers:1 numbers:2 numbers:3")
+  .gain(.5).speed(1.1)
+
+$: arrange([4, numbers])`,
       },
       {
         label: 'East Chant Male',
         code: `// eastern male chant
-$: s("east:0 east:2 east:3 east:6")
-  .gain(.5).room(.4).slow(2)`,
+let east = s("east:0 east:2 east:3 east:6")
+  .gain(.5).room(.4).slow(2)
+
+$: arrange([4, east])`,
       },
       {
         label: 'Chin Chop',
         code: `// chin vocal chop
-$: s("chin:0 chin:2 chin:1 chin:3")
-  .gain(.5).room(.3)`,
+let vox = s("chin:0 chin:2 chin:1 chin:3")
+  .gain(.5).room(.3)
+
+$: arrange([4, vox])`,
       },
       {
         label: 'Low Filtered Voice',
         code: `// filtered low voice
-$: note("<c2 d2 e2 c2>")
+let choir = note("<c2 d2 e2 c2>")
   .s("gm_choir_aahs").velocity(.3)
   .lpf(sine.range(300,800).slow(4))
-  .room(.5).slow(2)`,
+  .room(.5).slow(2)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Male Whisper',
         code: `// whisper-like texture
-$: s("breath:0 ~ breath:1 ~")
+let breath = s("breath:0 ~ breath:1 ~")
   .gain(.3).lpf(1500)
-  .room(.6).roomsize(4).slow(2)`,
+  .room(.6).roomsize(4).slow(2)
+
+$: arrange([4, breath])`,
       },
       {
         label: 'Deep Sustain',
         code: `// deep sustained voice
-$: note("c2").s("gm_choir_aahs")
-  .velocity(.35).room(.7).roomsize(5)`,
+let choir = note("c2").s("gm_choir_aahs")
+  .velocity(.35).room(.7).roomsize(5)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Male Chopped',
         code: `// chopped male choir
-$: note("[c2,g2,c3]")
+let choir = note("[c2,g2,c3]")
   .s("gm_choir_aahs").velocity(.35)
-  .chop(8).room(.3)`,
+  .chop(8).room(.3)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Crushed Voice',
         code: `// crushed male vocal
-$: s("chin:0 chin:2").gain(.5)
-  .crush(8).room(.3).slow(2)`,
+let vox = s("chin:0 chin:2").gain(.5)
+  .crush(8).room(.3).slow(2)
+
+$: arrange([4, vox])`,
       },
       {
         label: 'Low Reverb Hits',
         code: `// reverb male hits
-$: note("c2 ~ ~ ~ g2 ~ ~ ~")
+let choir = note("c2 ~ ~ ~ g2 ~ ~ ~")
   .s("gm_choir_aahs").velocity(.4)
-  .room(.85).roomsize(7)`,
+  .room(.85).roomsize(7)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Male Pulse',
         code: `// pulsing male voice
-$: note("c2*4").s("gm_choir_aahs")
+let choir = note("c2*4").s("gm_choir_aahs")
   .velocity("[.15 .35 .25 .4]")
-  .room(.4)`,
+  .room(.4)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Baritone Pad',
         code: `// baritone pad wash
-$: note("<[c2,e2,g2,b2]>")
+let choir = note("<[c2,e2,g2,b2]>")
   .s("gm_choir_aahs").velocity(.3)
-  .room(.7).roomsize(5).slow(4)`,
+  .room(.7).roomsize(5).slow(4)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Male + Beat',
         code: `// male choir over beat
-$: s("bd sd:2 [~ bd] sd").bank("RolandTR808").gain(.75)
-$: s("[~ hh]*4").bank("RolandTR808").gain(.3)
-$: note("<[c2,g2,c3]>").s("gm_choir_aahs")
-  .velocity(.3).room(.4).slow(2)`,
+let drums = s("bd sd:2 [~ bd] sd").bank("RolandTR808").gain(.75)
+let hats = s("[~ hh]*4").bank("RolandTR808").gain(.3)
+let choir = note("<[c2,g2,c3]>").s("gm_choir_aahs")
+  .velocity(.3).room(.4).slow(2)
+
+$: arrange(
+  [2, drums],
+  [2, stack(drums, hats)],
+  [4, stack(drums, hats, choir)])`,
       },
       {
         label: 'Deep Swell',
         code: `// deep male swell
-$: note("<[c2,g2]>")
+let choir = note("<[c2,g2]>")
   .s("gm_choir_aahs")
   .velocity(sine.range(.1,.45).slow(8))
-  .room(.7).roomsize(5)`,
+  .room(.7).roomsize(5)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Male Harmony Full',
         code: `// full male harmony
-$: note("<[c2,e2,g2] [a1,c2,e2] [f1,a1,c2] [g1,b1,d2]>")
+let choir = note("<[c2,e2,g2] [a1,c2,e2] [f1,a1,c2] [g1,b1,d2]>")
   .s("gm_choir_aahs").velocity(.35)
-  .room(.5).slow(2)`,
+  .room(.5).slow(2)
+
+$: arrange([4, choir])`,
       },
       {
         label: 'Male R&B Smooth',
@@ -5966,12 +8239,17 @@ $: note("<[c2,e2,g2] [a1,c2,e2] [f1,a1,c2] [g1,b1,d2]>")
 // Shadows dance across the bedroom wall
 // Whispered love before the curtains fall
 // Hold me close through winter spring and all
-$: note("c3 d3 e3 g3 f3 e3 d3 c3").s("gm_choir_aahs")
+let choir = note("c3 d3 e3 g3 f3 e3 d3 c3").s("gm_choir_aahs")
   .velocity(sine.range(.3,.55).slow(8)).room(.5)
-$: note("[c3,e3,g3,b3] ~ [f2,a2,c3,e3] ~")
+let keys = note("[c3,e3,g3,b3] ~ [f2,a2,c3,e3] ~")
   .s("gm_epiano2").velocity(.25).slow(2)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.4)
-$: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.2)`,
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.4)
+let hats = s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.2)
+
+$: arrange(
+  [2, stack(choir, keys)],
+  [2, stack(choir, keys, drums)],
+  [4, stack(choir, keys, drums, hats)])`,
       },
       {
         label: 'Male Hip-Hop Deep',
@@ -5981,11 +8259,16 @@ $: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.2)`,
 // Streets remember every name I spoke
 // Rising from the ashes and the smoke
 // Legacy of fire never broke
-$: note("c2 c2 e2 f2 e2 c2 ~ c2").s("gm_choir_aahs")
+let choir = note("c2 c2 e2 f2 e2 c2 ~ c2").s("gm_choir_aahs")
   .velocity(.5).room(.3)
-$: note("c1 ~ c1 ~ e1 ~ f1 ~").s("gm_synth_bass_1").velocity(.6)
-$: s("bd ~ ~ bd sd ~ bd sd").bank("RolandTR808").gain(.55)
-$: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3)`,
+let bass = note("c1 ~ c1 ~ e1 ~ f1 ~").s("gm_synth_bass_1").velocity(.6)
+let drums = s("bd ~ ~ bd sd ~ bd sd").bank("RolandTR808").gain(.55)
+let hats = s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3)
+
+$: arrange(
+  [2, stack(choir, bass)],
+  [2, stack(choir, bass, drums)],
+  [4, stack(choir, bass, drums, hats)])`,
       },
       {
         label: 'Male Jazz Croon',
@@ -5995,10 +8278,15 @@ $: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3)`,
 // Velvet voice that floats above the crowd
 // Singing soft but meaning something loud
 // In this room the lonely ones are proud
-$: note("g2 a2 b2 d3 c3 b2 a2 g2").s("gm_choir_aahs")
+let choir = note("g2 a2 b2 d3 c3 b2 a2 g2").s("gm_choir_aahs")
   .velocity(.4).room(.5).delay(.15)
-$: note("g2 d3 c3 g2 f2 c3 b2 g2").s("gm_acoustic_bass").velocity(.45)
-$: s("~ hh ~ hh ~ hh ~ hh").bank("RolandTR808").gain(.2)`,
+let bass = note("g2 d3 c3 g2 f2 c3 b2 g2").s("gm_acoustic_bass").velocity(.45)
+let hats = s("~ hh ~ hh ~ hh ~ hh").bank("RolandTR808").gain(.2)
+
+$: arrange(
+  [2, choir],
+  [2, stack(choir, bass)],
+  [4, stack(choir, bass, hats)])`,
       },
       {
         label: 'Male Gospel Lead',
@@ -6008,12 +8296,17 @@ $: s("~ hh ~ hh ~ hh ~ hh").bank("RolandTR808").gain(.2)`,
 // Every trial only makes me strong
 // Singing praise the whole day long
 // Grace will carry us where we belong
-$: note("c3 e3 f3 g3 a3 g3 f3 e3").s("gm_choir_aahs")
+let choir = note("c3 e3 f3 g3 a3 g3 f3 e3").s("gm_choir_aahs")
   .velocity(.6).room(.6)
-$: note("[c3,e3,g3] ~ [f3,a3,c4] ~ [g3,b3,d4] ~ [c3,e3,g3] ~")
+let organ = note("[c3,e3,g3] ~ [f3,a3,c4] ~ [g3,b3,d4] ~ [c3,e3,g3] ~")
   .s("gm_church_organ").velocity(.35).slow(2)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.4)
-$: s("~ cp ~ cp").bank("RolandTR909").gain(.35)`,
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.4)
+let clap = s("~ cp ~ cp").bank("RolandTR909").gain(.35)
+
+$: arrange(
+  [2, stack(choir, organ)],
+  [2, stack(choir, organ, drums)],
+  [4, stack(choir, organ, drums, clap)])`,
       },
       {
         label: 'Male Blues Growl',
@@ -6023,10 +8316,15 @@ $: s("~ cp ~ cp").bank("RolandTR909").gain(.35)`,
 // Woman gone and took the car and dog
 // Sittin' here just sinkin' in the fog
 // Blues keep rollin' like a hollow log
-$: note("e2 g2 a2 b2 a2 g2 e2 ~").s("gm_choir_aahs")
+let choir = note("e2 g2 a2 b2 a2 g2 e2 ~").s("gm_choir_aahs")
   .velocity(sine.range(.35,.6).slow(6)).room(.4)
-$: note("e2 a2 b2 e2 g2 a2 b2 e2").s("gm_clean_guitar").velocity(.35)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
+let guitar = note("e2 a2 b2 e2 g2 a2 b2 e2").s("gm_clean_guitar").velocity(.35)
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)
+
+$: arrange(
+  [2, choir],
+  [2, stack(choir, guitar)],
+  [4, stack(choir, guitar, drums)])`,
       },
       {
         label: 'Male Reggae Chant',
@@ -6036,10 +8334,15 @@ $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
 // Babylon can never break the chain
 // Music wash away the hurt and pain
 // Rise again like sunshine after rain
-$: note("g2 b2 c3 d3 c3 b2 g2 ~").s("gm_choir_aahs")
+let choir = note("g2 b2 c3 d3 c3 b2 g2 ~").s("gm_choir_aahs")
   .velocity(.45).room(.5).delay(.2)
-$: note("~ g2 ~ g2 ~ b2 ~ c3").s("gm_electric_bass_finger").velocity(.5)
-$: s("bd ~ ~ bd ~ sd ~ ~").bank("RolandTR808").gain(.45)`,
+let bass = note("~ g2 ~ g2 ~ b2 ~ c3").s("gm_electric_bass_finger").velocity(.5)
+let drums = s("bd ~ ~ bd ~ sd ~ ~").bank("RolandTR808").gain(.45)
+
+$: arrange(
+  [2, choir],
+  [2, stack(choir, bass)],
+  [4, stack(choir, bass, drums)])`,
       },
       {
         label: 'Male Rock Anthem',
@@ -6049,12 +8352,17 @@ $: s("bd ~ ~ bd ~ sd ~ ~").bank("RolandTR808").gain(.45)`,
 // Stadium is roaring feel the sound
 // Feet are pounding shake the frozen ground
 // We are legends and we won't be bound
-$: note("e2 e2 g2 a2 b2 a2 g2 e2").s("gm_choir_aahs")
+let choir = note("e2 e2 g2 a2 b2 a2 g2 e2").s("gm_choir_aahs")
   .velocity(.6).room(.35)
-$: note("[e2,b2,e3] ~ [a2,e3,a3] ~ [d2,a2,d3] ~ [e2,b2,e3] ~")
+let guitar = note("[e2,b2,e3] ~ [a2,e3,a3] ~ [d2,a2,d3] ~ [e2,b2,e3] ~")
   .s("gm_overdriven_guitar").velocity(.45).slow(2)
-$: note("e1 ~ e1 ~ a1 ~ b1 ~").s("gm_electric_bass_pick").velocity(.5)
-$: s("bd ~ sd ~ bd bd sd ~").bank("RolandTR909").gain(.5)`,
+let bass = note("e1 ~ e1 ~ a1 ~ b1 ~").s("gm_electric_bass_pick").velocity(.5)
+let drums = s("bd ~ sd ~ bd bd sd ~").bank("RolandTR909").gain(.5)
+
+$: arrange(
+  [2, stack(choir, guitar)],
+  [2, stack(choir, guitar, bass)],
+  [4, stack(choir, guitar, bass, drums)])`,
       },
       {
         label: 'Male Folk Tender',
@@ -6064,10 +8372,15 @@ $: s("bd ~ sd ~ bd bd sd ~").bank("RolandTR909").gain(.5)`,
 // Mama sang a lullaby so sweet
 // Daddy tapped his worn out muddy feet
 // Simple life that nothing can defeat
-$: note("g2 a2 b2 d3 b2 a2 g2 g2").s("gm_choir_aahs")
+let choir = note("g2 a2 b2 d3 b2 a2 g2 g2").s("gm_choir_aahs")
   .velocity(.4).room(.45)
-$: note("g2 b2 d3 g3 d3 b2 g2 b2").s("gm_banjo").velocity(.35)
-$: note("g2 ~ d2 ~ g2 ~ d2 ~").s("gm_acoustic_bass").velocity(.4)`,
+let guitar = note("g2 b2 d3 g3 d3 b2 g2 b2").s("gm_banjo").velocity(.35)
+let bass = note("g2 ~ d2 ~ g2 ~ d2 ~").s("gm_acoustic_bass").velocity(.4)
+
+$: arrange(
+  [2, choir],
+  [2, stack(choir, guitar)],
+  [4, stack(choir, guitar, bass)])`,
       },
       {
         label: 'Male Soul Falsetto',
@@ -6077,11 +8390,16 @@ $: note("g2 ~ d2 ~ g2 ~ d2 ~").s("gm_acoustic_bass").velocity(.4)`,
 // Reaching for the notes that heal the soul
 // Falsetto makes the broken pieces whole
 // Love is all that fills this empty bowl
-$: note("c3 e3 g3 c4 g3 e3 c3 ~").s("gm_voice_oohs")
+let oohs = note("c3 e3 g3 c4 g3 e3 c3 ~").s("gm_voice_oohs")
   .velocity(sine.range(.25,.5).slow(8)).room(.5)
-$: note("[c3,e3,g3,b3] ~ [f2,a2,c3] ~")
+let keys = note("[c3,e3,g3,b3] ~ [f2,a2,c3] ~")
   .s("gm_epiano1").velocity(.25).slow(2)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)
+
+$: arrange(
+  [2, oohs],
+  [2, stack(oohs, keys)],
+  [4, stack(oohs, keys, drums)])`,
       },
       {
         label: 'Male Country Road',
@@ -6091,11 +8409,16 @@ $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
 // Dust cloud rising like a golden veil
 // Front porch stories over ginger ale
 // Sundown singin' down the cotton trail
-$: note("e2 g2 g2 a2 g2 g2 e2 d2").s("gm_choir_aahs")
+let choir = note("e2 g2 g2 a2 g2 g2 e2 d2").s("gm_choir_aahs")
   .velocity(.45).room(.4)
-$: note("e2 a2 b2 e2 a2 b2 e2 a2").s("gm_steel_guitar").velocity(.3)
-$: note("e2 ~ a1 ~ b1 ~ e2 ~").s("gm_acoustic_bass").velocity(.4)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.3)`,
+let guitar = note("e2 a2 b2 e2 a2 b2 e2 a2").s("gm_steel_guitar").velocity(.3)
+let bass = note("e2 ~ a1 ~ b1 ~ e2 ~").s("gm_acoustic_bass").velocity(.4)
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.3)
+
+$: arrange(
+  [2, stack(choir, guitar)],
+  [2, stack(choir, guitar, bass)],
+  [4, stack(choir, guitar, bass, drums)])`,
       },
       {
         label: 'Male Opera Bass',
@@ -6105,10 +8428,14 @@ $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.3)`,
 // The choir swells through arches high and wide
 // Echoes from the altar deep inside
 // Majesty that never can be denied
-$: note("c2 ~ d2 ~ e2 ~ c2 ~").s("gm_choir_aahs")
+let choir = note("c2 ~ d2 ~ e2 ~ c2 ~").s("gm_choir_aahs")
   .velocity(.5).room(.8).roomsize(8).slow(2)
-$: note("[c2,g2,c3] ~ [d2,a2,d3] ~ [e2,b2,e3] ~ [c2,g2,c3] ~")
-  .s("gm_choir_aahs").velocity(.3).room(.75).slow(2)`,
+let choir2 = note("[c2,g2,c3] ~ [d2,a2,d3] ~ [e2,b2,e3] ~ [c2,g2,c3] ~")
+  .s("gm_choir_aahs").velocity(.3).room(.75).slow(2)
+
+$: arrange(
+  [2, choir],
+  [4, stack(choir, choir2)])`,
       },
       {
         label: 'Male Dancehall',
@@ -6118,11 +8445,16 @@ $: note("[c2,g2,c3] ~ [d2,a2,d3] ~ [e2,b2,e3] ~ [c2,g2,c3] ~")
 // Crowd a rock from left side to the right
 // Sound system a shake with all its might
 // Dancehall general ready for the fight
-$: note("d2 f2 g2 a2 g2 f2 d2 ~").s("gm_choir_aahs")
+let choir = note("d2 f2 g2 a2 g2 f2 d2 ~").s("gm_choir_aahs")
   .velocity(.5).room(.3)
-$: note("~ d2 ~ d2 ~ f2 ~ g2").s("gm_synth_bass_2").velocity(.55)
-$: s("bd ~ ~ bd sd ~ bd ~").bank("RolandTR808").gain(.5)
-$: s("rim ~ rim ~ rim ~ rim ~").bank("RolandTR808").gain(.3)`,
+let bass = note("~ d2 ~ d2 ~ f2 ~ g2").s("gm_synth_bass_2").velocity(.55)
+let drums = s("bd ~ ~ bd sd ~ bd ~").bank("RolandTR808").gain(.5)
+let rim = s("rim ~ rim ~ rim ~ rim ~").bank("RolandTR808").gain(.3)
+
+$: arrange(
+  [2, stack(choir, bass)],
+  [2, stack(choir, bass, drums)],
+  [4, stack(choir, bass, drums, rim)])`,
       },
       {
         label: 'Male Afro Spirit',
@@ -6132,11 +8464,16 @@ $: s("rim ~ rim ~ rim ~ rim ~").bank("RolandTR808").gain(.3)`,
 // Voices rise above the desert sand
 // Unity connected hand to hand
 // Music is the language of the land
-$: note("d2 f2 g2 a2 g2 f2 d2 c2").s("gm_choir_aahs")
+let choir = note("d2 f2 g2 a2 g2 f2 d2 c2").s("gm_choir_aahs")
   .velocity(.5).room(.4).delay(.15)
-$: note("d1 ~ d1 ~ f1 ~ g1 ~").s("gm_synth_bass_1").velocity(.5)
-$: s("bd ~ bd ~ sd ~ bd sd").bank("RolandTR808").gain(.5)
-$: s("hh oh hh hh oh hh hh oh").bank("RolandTR808").gain(.3)`,
+let bass = note("d1 ~ d1 ~ f1 ~ g1 ~").s("gm_synth_bass_1").velocity(.5)
+let drums = s("bd ~ bd ~ sd ~ bd sd").bank("RolandTR808").gain(.5)
+let hats = s("hh oh hh hh oh hh hh oh").bank("RolandTR808").gain(.3)
+
+$: arrange(
+  [2, stack(choir, bass)],
+  [2, stack(choir, bass, drums)],
+  [4, stack(choir, bass, drums, hats)])`,
       },
       {
         label: 'Male Pop Bright',
@@ -6146,12 +8483,17 @@ $: s("hh oh hh hh oh hh hh oh").bank("RolandTR808").gain(.3)`,
 // Every heartbeat synced up to the bass
 // Neon running down my smiling face
 // This is our forever time and place
-$: note("c3 d3 e3 g3 e3 d3 c3 ~").s("gm_choir_aahs")
+let choir = note("c3 d3 e3 g3 e3 d3 c3 ~").s("gm_choir_aahs")
   .velocity(.5).room(.35)
-$: note("[c3,e3,g3] [a2,c3,e3] [f2,a2,c3] [g2,b2,d3]")
+let keys = note("[c3,e3,g3] [a2,c3,e3] [f2,a2,c3] [g2,b2,d3]")
   .s("gm_bright_piano").velocity(.3).slow(2)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR909").gain(.45)
-$: s("hh hh hh hh hh hh hh hh").bank("RolandTR909").gain(.2)`,
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR909").gain(.45)
+let hats = s("hh hh hh hh hh hh hh hh").bank("RolandTR909").gain(.2)
+
+$: arrange(
+  [2, stack(choir, keys)],
+  [2, stack(choir, keys, drums)],
+  [4, stack(choir, keys, drums, hats)])`,
       },
       {
         label: 'Male Latin Bolero',
@@ -6161,11 +8503,16 @@ $: s("hh hh hh hh hh hh hh hh").bank("RolandTR909").gain(.2)`,
 // Canto bajo la luna brillar
 // El corazon empieza a recordar
 // Musica que nunca va a parar
-$: note("a2 b2 c3 d3 c3 a2 g2 a2").s("gm_choir_aahs")
+let choir = note("a2 b2 c3 d3 c3 a2 g2 a2").s("gm_choir_aahs")
   .velocity(.45).room(.45).delay(.1)
-$: note("a1 ~ c2 ~ d2 ~ e2 ~").s("gm_acoustic_bass").velocity(.45)
-$: note("[a2,c3,e3] ~ [d3,f3,a3] ~ [e3,g3,b3] ~ [a2,c3,e3] ~")
-  .s("gm_nylon_guitar").velocity(.3).slow(2)`,
+let bass = note("a1 ~ c2 ~ d2 ~ e2 ~").s("gm_acoustic_bass").velocity(.45)
+let guitar = note("[a2,c3,e3] ~ [d3,f3,a3] ~ [e3,g3,b3] ~ [a2,c3,e3] ~")
+  .s("gm_nylon_guitar").velocity(.3).slow(2)
+
+$: arrange(
+  [2, choir],
+  [2, stack(choir, bass)],
+  [4, stack(choir, bass, guitar)])`,
       },
       {
         label: 'Male Trap Melodic',
@@ -6175,11 +8522,16 @@ $: note("[a2,c3,e3] ~ [d3,f3,a3] ~ [e3,g3,b3] ~ [a2,c3,e3] ~")
 // Money talk but silence golden still
 // Grinding hard on top of every hill
 // Made it out by nothing but my will
-$: note("c2 ~ e2 ~ f2 e2 c2 ~").s("gm_synth_voice")
+let synthVox = note("c2 ~ e2 ~ f2 e2 c2 ~").s("gm_synth_voice")
   .velocity(.5).room(.25).delay(.1)
-$: note("c1 ~ c1 ~ e1 ~ c1 ~").s("sine").gain(.5).lpf(80).shape(.3)
-$: s("bd ~ ~ bd sd ~ bd sd").bank("RolandTR808").gain(.55)
-$: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3)`,
+let sub = note("c1 ~ c1 ~ e1 ~ c1 ~").s("sine").gain(.5).lpf(80).shape(.3)
+let drums = s("bd ~ ~ bd sd ~ bd sd").bank("RolandTR808").gain(.55)
+let hats = s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3)
+
+$: arrange(
+  [2, stack(synthVox, sub)],
+  [2, stack(synthVox, sub, drums)],
+  [4, stack(synthVox, sub, drums, hats)])`,
       },
       {
         label: 'Male Indie Warm',
@@ -6189,10 +8541,15 @@ $: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3)`,
 // Afternoon with nothing left to prove
 // Awkward hearts that find a gentle groove
 // Every little gesture says I love you
-$: note("e2 g2 a2 b2 a2 g2 e2 d2").s("gm_choir_aahs")
+let choir = note("e2 g2 a2 b2 a2 g2 e2 d2").s("gm_choir_aahs")
   .velocity(.4).room(.4)
-$: note("e2 b2 e3 b2 a2 e3 a2 e2").s("gm_clean_guitar").velocity(.3)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
+let guitar = note("e2 b2 e3 b2 a2 e3 a2 e2").s("gm_clean_guitar").velocity(.3)
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)
+
+$: arrange(
+  [2, choir],
+  [2, stack(choir, guitar)],
+  [4, stack(choir, guitar, drums)])`,
       },
       {
         label: 'Male EDM Anthem',
@@ -6202,11 +8559,16 @@ $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
 // Hands up everybody lose control
 // Music is the fire in my soul
 // We are one and that's the only goal
-$: note("[c2,e2,g2] ~ [a1,c2,e2] ~ [f1,a1,c2] ~ [g1,b1,d2] ~")
+let choir = note("[c2,e2,g2] ~ [a1,c2,e2] ~ [f1,a1,c2] ~ [g1,b1,d2] ~")
   .s("gm_choir_aahs").velocity(.55).room(.4).slow(2)
-$: note("c1 ~ c1 ~ a0 ~ g0 ~").s("sawtooth").lpf(300).gain(.4).shape(.3)
-$: s("bd bd bd bd").bank("RolandTR909").gain(.55)
-$: s("~ cp ~ ~").bank("RolandTR909").gain(.45)`,
+let bass = note("c1 ~ c1 ~ a0 ~ g0 ~").s("sawtooth").lpf(300).gain(.4).shape(.3)
+let kick = s("bd bd bd bd").bank("RolandTR909").gain(.55)
+let clap = s("~ cp ~ ~").bank("RolandTR909").gain(.45)
+
+$: arrange(
+  [2, stack(choir, bass)],
+  [2, stack(choir, bass, kick)],
+  [4, stack(choir, bass, kick, clap)])`,
       },
       {
         label: 'Male Lofi Whisper',
@@ -6216,11 +8578,16 @@ $: s("~ cp ~ ~").bank("RolandTR909").gain(.45)`,
 // Vinyl crackle memories unfold
 // Every gentle note a tale retold
 // Warmth inside when everything is cold
-$: note("c3 e3 g3 b3 g3 e3 c3 ~").s("gm_choir_aahs")
+let choir = note("c3 e3 g3 b3 g3 e3 c3 ~").s("gm_choir_aahs")
   .velocity(sine.range(.2,.4).slow(8)).room(.45).lpf(1500)
-$: note("[c3,e3,g3,b3] ~ [f2,a2,c3,e3] ~")
+let keys = note("[c3,e3,g3,b3] ~ [f2,a2,c3,e3] ~")
   .s("gm_epiano2").velocity(.2).room(.35).lpf(2000).slow(2)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)
+
+$: arrange(
+  [2, choir],
+  [2, stack(choir, keys)],
+  [4, stack(choir, keys, drums)])`,
       },
     ],
   },
@@ -6231,222 +8598,287 @@ $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
       {
         label: 'High Oohs',
         code: `// high female oohs
-$: note("<[c4,e4,g4] [a3,c4,e4]>")
+let oohs = note("<[c4,e4,g4] [a3,c4,e4]>")
   .s("gm_voice_oohs").velocity(.4)
-  .room(.5).slow(4)`,
+  .room(.5).slow(4)
+
+$: arrange([4, oohs])`,
       },
       {
         label: 'Soprano Melody',
         code: `// soprano singing
-$: note("e4 g4 a4 b4 a4 g4 e4 d4")
+let oohs = note("e4 g4 a4 b4 a4 g4 e4 d4")
   .s("gm_voice_oohs").velocity(.45)
-  .room(.4)`,
+  .room(.4)
+
+$: arrange([4, oohs])`,
       },
       {
         label: 'High Hum',
         code: `// high female humming
-$: note("<c4 d4 e4 d4>")
+let oohs = note("<c4 d4 e4 d4>")
   .s("gm_voice_oohs").velocity(.35)
-  .lpf(3000).room(.5).slow(2)`,
+  .lpf(3000).room(.5).slow(2)
+
+$: arrange([4, oohs])`,
       },
       {
         label: 'Soprano Harmony',
         code: `// soprano harmony stack
-$: note("<[c4,e4,g4] [a3,c4,e4] [f3,a3,c4] [g3,b3,d4]>")
+let oohs = note("<[c4,e4,g4] [a3,c4,e4] [f3,a3,c4] [g3,b3,d4]>")
   .s("gm_voice_oohs").velocity(.4)
-  .room(.4).slow(2)`,
+  .room(.4).slow(2)
+
+$: arrange([4, oohs])`,
       },
       {
         label: 'Ethereal Voice',
         code: `// ethereal female voice
-$: note("<[c4,g4,c5]>")
+let oohs = note("<[c4,g4,c5]>")
   .s("gm_voice_oohs").velocity(.3)
-  .room(.85).roomsize(7).slow(4)`,
+  .room(.85).roomsize(7).slow(4)
+
+$: arrange([4, oohs])`,
       },
       {
         label: 'Synth Voice',
         code: `// synthetic female voice
-$: note("c4 e4 g4 b4 c5 b4 g4 e4")
+let synthVox = note("c4 e4 g4 b4 c5 b4 g4 e4")
   .s("gm_synth_voice").velocity(.45)
-  .room(.3)`,
+  .room(.3)
+
+$: arrange([4, synthVox])`,
       },
       {
         label: 'Delayed Oohs',
         code: `// delayed oohs
-$: note("c4 ~ e4 ~ g4 ~ c5 ~")
+let oohs = note("c4 ~ e4 ~ g4 ~ c5 ~")
   .s("gm_voice_oohs").velocity(.35)
   .delay(.5).delayfeedback(.55)
-  .room(.4)`,
+  .room(.4)
+
+$: arrange([4, oohs])`,
       },
       {
         label: 'Female Chop',
         code: `// female vocal chop
-$: s("chin:0 ~ chin:1 ~")
+let vox = s("chin:0 ~ chin:1 ~")
   .speed(1.5).gain(.5)
-  .room(.3)`,
+  .room(.3)
+
+$: arrange([4, vox])`,
       },
       {
         label: 'High Pad',
         code: `// high female pad
-$: note("<[c4,e4,g4,b4] [a3,c4,e4,g4]>")
+let oohs = note("<[c4,e4,g4,b4] [a3,c4,e4,g4]>")
   .s("gm_voice_oohs").velocity(.3)
-  .room(.6).slow(4)`,
+  .room(.6).slow(4)
+
+$: arrange([4, oohs])`,
       },
       {
         label: 'Soprano Swell',
         code: `// soprano vocal swell
-$: note("<[c4,g4]>")
+let oohs = note("<[c4,g4]>")
   .s("gm_voice_oohs")
   .velocity(sine.range(.1,.45).slow(4))
-  .room(.6).slow(4)`,
+  .room(.6).slow(4)
+
+$: arrange([4, oohs])`,
       },
       {
         label: 'Bright Melody',
         code: `// bright soprano melody
-$: note("g4 a4 b4 d5 c5 b4 g4 a4")
+let oohs = note("g4 a4 b4 d5 c5 b4 g4 a4")
   .s("gm_voice_oohs").velocity(.45)
-  .room(.3)`,
+  .room(.3)
+
+$: arrange([4, oohs])`,
       },
       {
         label: 'Whisper Float',
         code: `// whisper floating
-$: s("breath:0 ~ breath:2 ~")
+let breath = s("breath:0 ~ breath:2 ~")
   .gain(.3).room(.7).roomsize(5)
-  .lpf(4000).slow(2)`,
+  .lpf(4000).slow(2)
+
+$: arrange([4, breath])`,
       },
       {
         label: 'Female Reverb',
         code: `// female reverb cathedral
-$: note("<[c4,e4,g4]>")
+let oohs = note("<[c4,e4,g4]>")
   .s("gm_voice_oohs").velocity(.35)
-  .room(.9).roomsize(8).slow(4)`,
+  .room(.9).roomsize(8).slow(4)
+
+$: arrange([4, oohs])`,
       },
       {
         label: 'Descending Line',
         code: `// descending vocal line
-$: note("c5 b4 g4 f4 e4 d4 c4 e4")
+let oohs = note("c5 b4 g4 f4 e4 d4 c4 e4")
   .s("gm_voice_oohs").velocity(.4)
-  .room(.4)`,
+  .room(.4)
+
+$: arrange([4, oohs])`,
       },
       {
         label: 'Female Echo',
         code: `// echoing female voice
-$: note("c4 ~ ~ ~ e4 ~ ~ ~")
+let oohs = note("c4 ~ ~ ~ e4 ~ ~ ~")
   .s("gm_voice_oohs").velocity(.35)
   .delay(.6).delayfeedback(.6)
-  .room(.5)`,
+  .room(.5)
+
+$: arrange([4, oohs])`,
       },
       {
         label: 'Staccato Ooh',
         code: `// staccato oohs
-$: note("c4 ~ c4 ~ e4 ~ c4 ~")
+let oohs = note("c4 ~ c4 ~ e4 ~ c4 ~")
   .s("gm_voice_oohs").velocity(.4)
-  .decay(.12)`,
+  .decay(.12)
+
+$: arrange([4, oohs])`,
       },
       {
         label: 'Female Drone',
         code: `// droning female vocal
-$: note("[c4,g4]")
+let oohs = note("[c4,g4]")
   .s("gm_voice_oohs").velocity(.3)
-  .room(.7).roomsize(5)`,
+  .room(.7).roomsize(5)
+
+$: arrange([4, oohs])`,
       },
       {
         label: 'Shimmer Voice',
         code: `// shimmering female
-$: note("<[c4,e4,g4,b4]>")
+let oohs = note("<[c4,e4,g4,b4]>")
   .s("gm_voice_oohs").velocity(.3)
   .delay(.4).delayfeedback(.55)
-  .room(.6).slow(4)`,
+  .room(.6).slow(4)
+
+$: arrange([4, oohs])`,
       },
       {
         label: 'Female Chopped',
         code: `// chopped female choir
-$: note("[c4,e4,g4]")
+let oohs = note("[c4,e4,g4]")
   .s("gm_voice_oohs").velocity(.35)
-  .chop(8).room(.3)`,
+  .chop(8).room(.3)
+
+$: arrange([4, oohs])`,
       },
       {
         label: 'Angelic Pad',
         code: `// angelic pad wash
-$: note("<[c4,g4,c5] [a3,e4,a4]>")
+let oohs = note("<[c4,g4,c5] [a3,e4,a4]>")
   .s("gm_voice_oohs").velocity(.3)
-  .room(.8).roomsize(6).slow(4)`,
+  .room(.8).roomsize(6).slow(4)
+
+$: arrange([4, oohs])`,
       },
       {
         label: 'High Stutter',
         code: `// stuttered high voice
-$: s("chin:1").chop(16)
+let vox = s("chin:1").chop(16)
   .speed(1.5).gain(.5)
-  .room(.3)`,
+  .room(.3)
+
+$: arrange([4, vox])`,
       },
       {
         label: 'Vowel Morph',
         code: `// female vowel morph
-$: note("c4*4").s("sawtooth")
+let synth = note("c4*4").s("sawtooth")
   .gain(.3).vowel("<a e i o u>")
-  .lpf(4000)`,
+  .lpf(4000)
+
+$: arrange([4, synth])`,
       },
       {
         label: 'Crystal Voice',
         code: `// crystal clear vocal
-$: note("c5 e5 g5 c6")
+let oohs = note("c5 e5 g5 c6")
   .s("gm_voice_oohs").velocity(.35)
-  .room(.6).delay(.2).slow(2)`,
+  .room(.6).delay(.2).slow(2)
+
+$: arrange([4, oohs])`,
       },
       {
         label: 'Female Vibrato',
         code: `// vibrato vocal
-$: note("c4").s("gm_voice_oohs")
+let oohs = note("c4").s("gm_voice_oohs")
   .velocity(.4)
   .vibmod(.1).vibdepth(2)
-  .room(.5)`,
+  .room(.5)
+
+$: arrange([4, oohs])`,
       },
       {
         label: 'Lullaby',
         code: `// lullaby melody
-$: note("c4 d4 e4 g4 e4 d4 c4 d4")
+let oohs = note("c4 d4 e4 g4 e4 d4 c4 d4")
   .s("gm_voice_oohs").velocity(.35)
-  .room(.5).delay(.2).slow(2)`,
+  .room(.5).delay(.2).slow(2)
+
+$: arrange([4, oohs])`,
       },
       {
         label: 'Female Crushed',
         code: `// crushed female voice
-$: note("c4 e4 g4 c5")
+let oohs = note("c4 e4 g4 c5")
   .s("gm_voice_oohs").velocity(.4)
-  .crush(10).room(.3)`,
+  .crush(10).room(.3)
+
+$: arrange([4, oohs])`,
       },
       {
         label: 'Pitched Breath',
         code: `// pitched breathy vocal
-$: s("breath:0 breath:1 breath:2 breath:0")
+let breath = s("breath:0 breath:1 breath:2 breath:0")
   .speed("<1 1.5 .75 1.25>")
-  .gain(.35).room(.5).slow(2)`,
+  .gain(.35).room(.5).slow(2)
+
+$: arrange([4, breath])`,
       },
       {
         label: 'Glissando',
         code: `// vocal glissando
-$: note("c4 d4 e4 f4 g4 a4 b4 c5")
+let oohs = note("c4 d4 e4 f4 g4 a4 b4 c5")
   .s("gm_voice_oohs").velocity(.4)
-  .glide(.1).room(.4)`,
+  .glide(.1).room(.4)
+
+$: arrange([4, oohs])`,
       },
       {
         label: 'Female + Beat',
         code: `// female vocal over beat
-$: s("bd sd:2 [~ bd] sd").bank("RolandTR808").gain(.75)
-$: s("[~ hh]*4").bank("RolandTR808").gain(.3)
-$: note("<[c4,e4,g4] [a3,c4,e4]>")
+let drums = s("bd sd:2 [~ bd] sd").bank("RolandTR808").gain(.75)
+let hats = s("[~ hh]*4").bank("RolandTR808").gain(.3)
+let oohs = note("<[c4,e4,g4] [a3,c4,e4]>")
   .s("gm_voice_oohs").velocity(.35)
-  .room(.4).slow(2)`,
+  .room(.4).slow(2)
+
+$: arrange(
+  [2, drums],
+  [2, stack(drums, hats)],
+  [4, stack(drums, hats, oohs)])`,
       },
       {
         label: 'Full Female Harmony',
         code: `// full female harmony
-$: note("<[c4,e4,g4] [a3,c4,e4] [f3,a3,c4] [g3,b3,d4]>")
+let oohs = note("<[c4,e4,g4] [a3,c4,e4] [f3,a3,c4] [g3,b3,d4]>")
   .s("gm_voice_oohs").velocity(.35)
   .room(.5).slow(2)
-$: note("<[c5,e5,g5]>")
+let oohs2 = note("<[c5,e5,g5]>")
   .s("gm_voice_oohs").velocity(.2)
-  .room(.6).slow(4)`,
+  .room(.6).slow(4)
+
+$: arrange(
+  [2, oohs],
+  [4, stack(oohs, oohs2)])`,
       },
       {
         label: 'Female R&B Silk',
@@ -6456,12 +8888,17 @@ $: note("<[c5,e5,g5]>")
 // Touch me like the ocean meets the shore
 // Every breath is begging you for more
 // Open up the window close the door
-$: note("c5 d5 e5 g5 f5 e5 d5 c5").s("gm_voice_oohs")
+let oohs = note("c5 d5 e5 g5 f5 e5 d5 c5").s("gm_voice_oohs")
   .velocity(sine.range(.3,.55).slow(8)).room(.5).delay(.12)
-$: note("[c3,e3,g3,b3] ~ [f2,a2,c3,e3] ~")
+let keys = note("[c3,e3,g3,b3] ~ [f2,a2,c3,e3] ~")
   .s("gm_epiano2").velocity(.25).slow(2)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.4)
-$: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.2)`,
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.4)
+let hats = s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.2)
+
+$: arrange(
+  [2, stack(oohs, keys)],
+  [2, stack(oohs, keys, drums)],
+  [4, stack(oohs, keys, drums, hats)])`,
       },
       {
         label: 'Female Pop Soar',
@@ -6471,12 +8908,17 @@ $: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.2)`,
 // Singing loud until the echoes fade
 // Brave enough to stand inside the rain
 // I was born to fly and not afraid
-$: note("e5 d5 c5 b4 c5 d5 e5 ~").s("gm_voice_oohs")
+let oohs = note("e5 d5 c5 b4 c5 d5 e5 ~").s("gm_voice_oohs")
   .velocity(.55).room(.4).delay(.1)
-$: note("[c4,e4,g4] [a3,c4,e4] [f3,a3,c4] [g3,b3,d4]")
+let keys = note("[c4,e4,g4] [a3,c4,e4] [f3,a3,c4] [g3,b3,d4]")
   .s("gm_bright_piano").velocity(.3).slow(2)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR909").gain(.45)
-$: s("hh hh hh hh hh hh hh hh").bank("RolandTR909").gain(.2)`,
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR909").gain(.45)
+let hats = s("hh hh hh hh hh hh hh hh").bank("RolandTR909").gain(.2)
+
+$: arrange(
+  [2, stack(oohs, keys)],
+  [2, stack(oohs, keys, drums)],
+  [4, stack(oohs, keys, drums, hats)])`,
       },
       {
         label: 'Female Jazz Velvet',
@@ -6486,10 +8928,15 @@ $: s("hh hh hh hh hh hh hh hh").bank("RolandTR909").gain(.2)`,
 // Fingers trace the rim of crystal glass
 // Every moment hoping this will last
 // Melody as smooth as polished brass
-$: note("g4 a4 b4 d5 c5 b4 a4 g4").s("gm_voice_oohs")
+let oohs = note("g4 a4 b4 d5 c5 b4 a4 g4").s("gm_voice_oohs")
   .velocity(.45).room(.5).delay(.18)
-$: note("g2 d3 c3 g2 f2 c3 b2 g2").s("gm_acoustic_bass").velocity(.45)
-$: s("~ hh ~ hh ~ hh ~ hh").bank("RolandTR808").gain(.2)`,
+let bass = note("g2 d3 c3 g2 f2 c3 b2 g2").s("gm_acoustic_bass").velocity(.45)
+let hats = s("~ hh ~ hh ~ hh ~ hh").bank("RolandTR808").gain(.2)
+
+$: arrange(
+  [2, oohs],
+  [2, stack(oohs, bass)],
+  [4, stack(oohs, bass, hats)])`,
       },
       {
         label: 'Female Gospel Fire',
@@ -6499,12 +8946,17 @@ $: s("~ hh ~ hh ~ hh ~ hh").bank("RolandTR808").gain(.2)`,
 // Lift your hands and let the spirit move
 // Nothing in this world we got to prove
 // Heaven opens up from every groove
-$: note("c5 e5 f5 g5 a5 g5 f5 e5").s("gm_voice_oohs")
+let oohs = note("c5 e5 f5 g5 a5 g5 f5 e5").s("gm_voice_oohs")
   .velocity(.6).room(.6)
-$: note("[c4,e4,g4] ~ [f4,a4,c5] ~ [g4,b4,d5] ~ [c4,e4,g4] ~")
+let organ = note("[c4,e4,g4] ~ [f4,a4,c5] ~ [g4,b4,d5] ~ [c4,e4,g4] ~")
   .s("gm_church_organ").velocity(.35).slow(2)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.4)
-$: s("~ cp ~ cp").bank("RolandTR909").gain(.35)`,
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.4)
+let clap = s("~ cp ~ cp").bank("RolandTR909").gain(.35)
+
+$: arrange(
+  [2, stack(oohs, organ)],
+  [2, stack(oohs, organ, drums)],
+  [4, stack(oohs, organ, drums, clap)])`,
       },
       {
         label: 'Female Soul Deep',
@@ -6514,11 +8966,16 @@ $: s("~ cp ~ cp").bank("RolandTR909").gain(.35)`,
 // Sing until the tears become a song
 // Holding on when everything goes wrong
 // Baby I have loved you all along
-$: note("c4 e4 f4 g4 f4 e4 c4 ~").s("gm_voice_oohs")
+let oohs = note("c4 e4 f4 g4 f4 e4 c4 ~").s("gm_voice_oohs")
   .velocity(sine.range(.35,.6).slow(6)).room(.45)
-$: note("[c3,e3,g3] ~ [a2,c3,e3] ~ [b2,d3,f3] ~ [c3,e3,g3] ~")
+let keys = note("[c3,e3,g3] ~ [a2,c3,e3] ~ [b2,d3,f3] ~ [c3,e3,g3] ~")
   .s("gm_epiano1").velocity(.25).slow(2)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)
+
+$: arrange(
+  [2, oohs],
+  [2, stack(oohs, keys)],
+  [4, stack(oohs, keys, drums)])`,
       },
       {
         label: 'Female Indie Dream',
@@ -6528,10 +8985,15 @@ $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
 // Coffee rings on yesterday's gazette
 // Dancing to a song we can't forget
 // This is close to beautiful as it gets
-$: note("e4 g4 a4 b4 a4 g4 e4 d4").s("gm_voice_oohs")
+let oohs = note("e4 g4 a4 b4 a4 g4 e4 d4").s("gm_voice_oohs")
   .velocity(.45).room(.4).delay(.15)
-$: note("e3 b3 e4 b3 a3 e4 a3 e3").s("gm_clean_guitar").velocity(.3)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
+let guitar = note("e3 b3 e4 b3 a3 e4 a3 e3").s("gm_clean_guitar").velocity(.3)
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)
+
+$: arrange(
+  [2, oohs],
+  [2, stack(oohs, guitar)],
+  [4, stack(oohs, guitar, drums)])`,
       },
       {
         label: 'Female Country Heart',
@@ -6541,11 +9003,16 @@ $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
 // Sang along to every song we knew
 // Summer fading into autumn blue
 // Darlin I keep coming back to you
-$: note("e4 g4 g4 a4 g4 g4 e4 d4").s("gm_voice_oohs")
+let oohs = note("e4 g4 g4 a4 g4 g4 e4 d4").s("gm_voice_oohs")
   .velocity(.45).room(.4)
-$: note("e3 a3 b3 e3 a3 b3 e3 a3").s("gm_steel_guitar").velocity(.3)
-$: note("e2 ~ a1 ~ b1 ~ e2 ~").s("gm_acoustic_bass").velocity(.4)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.3)`,
+let guitar = note("e3 a3 b3 e3 a3 b3 e3 a3").s("gm_steel_guitar").velocity(.3)
+let bass = note("e2 ~ a1 ~ b1 ~ e2 ~").s("gm_acoustic_bass").velocity(.4)
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.3)
+
+$: arrange(
+  [2, stack(oohs, guitar)],
+  [2, stack(oohs, guitar, bass)],
+  [4, stack(oohs, guitar, bass, drums)])`,
       },
       {
         label: 'Female Reggae Queen',
@@ -6555,10 +9022,15 @@ $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.3)`,
 // Dancin' barefoot in the moonlit sand
 // Every riddim makes me understand
 // Love is all we need across the land
-$: note("g4 b4 c5 d5 c5 b4 g4 ~").s("gm_voice_oohs")
+let oohs = note("g4 b4 c5 d5 c5 b4 g4 ~").s("gm_voice_oohs")
   .velocity(.45).room(.5).delay(.2)
-$: note("~ g2 ~ g2 ~ b2 ~ c3").s("gm_electric_bass_finger").velocity(.5)
-$: s("bd ~ ~ bd ~ sd ~ ~").bank("RolandTR808").gain(.45)`,
+let bass = note("~ g2 ~ g2 ~ b2 ~ c3").s("gm_electric_bass_finger").velocity(.5)
+let drums = s("bd ~ ~ bd ~ sd ~ ~").bank("RolandTR808").gain(.45)
+
+$: arrange(
+  [2, oohs],
+  [2, stack(oohs, bass)],
+  [4, stack(oohs, bass, drums)])`,
       },
       {
         label: 'Female Blues Ache',
@@ -6568,10 +9040,15 @@ $: s("bd ~ ~ bd ~ sd ~ ~").bank("RolandTR808").gain(.45)`,
 // Sang my heart out on a corner stage
 // Ink is bleeding through the final page
 // Blues don't care about a woman's age
-$: note("e4 g4 a4 b4 a4 g4 e4 ~").s("gm_voice_oohs")
+let oohs = note("e4 g4 a4 b4 a4 g4 e4 ~").s("gm_voice_oohs")
   .velocity(sine.range(.35,.6).slow(6)).room(.45)
-$: note("e2 a2 b2 e2 g2 a2 b2 e2").s("gm_clean_guitar").velocity(.35)
-$: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
+let guitar = note("e2 a2 b2 e2 g2 a2 b2 e2").s("gm_clean_guitar").velocity(.35)
+let drums = s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)
+
+$: arrange(
+  [2, oohs],
+  [2, stack(oohs, guitar)],
+  [4, stack(oohs, guitar, drums)])`,
       },
       {
         label: 'Female Afro Glow',
@@ -6581,11 +9058,16 @@ $: s("bd ~ sd ~ bd ~ sd ~").bank("RolandTR808").gain(.35)`,
 // Drums are speaking truth from long ago
 // Every step a river every step a flow
 // Voices of the ancestors below
-$: note("d5 f5 g5 a5 g5 f5 d5 c5").s("gm_voice_oohs")
+let oohs = note("d5 f5 g5 a5 g5 f5 d5 c5").s("gm_voice_oohs")
   .velocity(.5).room(.4).delay(.15)
-$: note("d2 ~ d2 f2 g2 ~ d2 ~").s("gm_synth_bass_1").velocity(.55)
-$: s("bd ~ bd ~ sd ~ bd sd").bank("RolandTR808").gain(.5)
-$: s("hh oh hh hh oh hh hh oh").bank("RolandTR808").gain(.3)`,
+let bass = note("d2 ~ d2 f2 g2 ~ d2 ~").s("gm_synth_bass_1").velocity(.55)
+let drums = s("bd ~ bd ~ sd ~ bd sd").bank("RolandTR808").gain(.5)
+let hats = s("hh oh hh hh oh hh hh oh").bank("RolandTR808").gain(.3)
+
+$: arrange(
+  [2, stack(oohs, bass)],
+  [2, stack(oohs, bass, drums)],
+  [4, stack(oohs, bass, drums, hats)])`,
       },
       {
         label: 'Female Latin Flame',
@@ -6595,11 +9077,16 @@ $: s("hh oh hh hh oh hh hh oh").bank("RolandTR808").gain(.3)`,
 // Canto libre bajo cielo abierto
 // Cada nota vuelve lo que es cierto
 // El amor es siempre un puerto
-$: note("a4 b4 c5 d5 c5 a4 g4 a4").s("gm_voice_oohs")
+let oohs = note("a4 b4 c5 d5 c5 a4 g4 a4").s("gm_voice_oohs")
   .velocity(.5).room(.35).delay(.1)
-$: note("a2 ~ c3 ~ d3 ~ e3 ~").s("gm_acoustic_bass").velocity(.5)
-$: s("bd ~ ~ bd ~ bd ~ sd").bank("RolandTR808").gain(.45)
-$: s("rim ~ rim ~ rim ~ rim ~").bank("RolandTR808").gain(.3)`,
+let bass = note("a2 ~ c3 ~ d3 ~ e3 ~").s("gm_acoustic_bass").velocity(.5)
+let drums = s("bd ~ ~ bd ~ bd ~ sd").bank("RolandTR808").gain(.45)
+let rim = s("rim ~ rim ~ rim ~ rim ~").bank("RolandTR808").gain(.3)
+
+$: arrange(
+  [2, stack(oohs, bass)],
+  [2, stack(oohs, bass, drums)],
+  [4, stack(oohs, bass, drums, rim)])`,
       },
       {
         label: 'Female Dance Diva',
@@ -6609,11 +9096,16 @@ $: s("rim ~ rim ~ rim ~ rim ~").bank("RolandTR808").gain(.3)`,
 // Hands are waving high above the crowd
 // DJ spin it louder make it loud
 // Every beat a heartbeat I am proud
-$: note("[c4,e4,g4] ~ [a3,c4,e4] ~ [f3,a3,c4] ~ [g3,b3,d4] ~")
+let synthChoir = note("[c4,e4,g4] ~ [a3,c4,e4] ~ [f3,a3,c4] ~ [g3,b3,d4] ~")
   .s("gm_synth_choir").velocity(.5).room(.35).slow(2)
-$: note("c2 ~ c2 ~ a1 ~ g1 ~").s("sawtooth").lpf(400).gain(.4).shape(.25)
-$: s("bd bd bd bd").bank("RolandTR909").gain(.55)
-$: s("~ cp ~ ~").bank("RolandTR909").gain(.45)`,
+let bass = note("c2 ~ c2 ~ a1 ~ g1 ~").s("sawtooth").lpf(400).gain(.4).shape(.25)
+let kick = s("bd bd bd bd").bank("RolandTR909").gain(.55)
+let clap = s("~ cp ~ ~").bank("RolandTR909").gain(.45)
+
+$: arrange(
+  [2, stack(synthChoir, bass)],
+  [2, stack(synthChoir, bass, kick)],
+  [4, stack(synthChoir, bass, kick, clap)])`,
       },
       {
         label: 'Female Lullaby Soft',
@@ -6623,10 +9115,14 @@ $: s("~ cp ~ ~").bank("RolandTR909").gain(.45)`,
 // Close your eyes the night will hold you tight
 // Dream of everything that feels so right
 // I will sing you into morning light
-$: note("c5 b4 a4 g4 a4 g4 f4 e4").s("gm_voice_oohs")
+let oohs = note("c5 b4 a4 g4 a4 g4 f4 e4").s("gm_voice_oohs")
   .velocity(sine.range(.2,.4).slow(8)).room(.55).slow(2)
-$: note("<[c4,e4,g4] [a3,c4,e4] [f3,a3,c4] [g3,b3,d4]>")
-  .s("gm_music_box").velocity(.2).slow(4)`,
+let bells = note("<[c4,e4,g4] [a3,c4,e4] [f3,a3,c4] [g3,b3,d4]>")
+  .s("gm_music_box").velocity(.2).slow(4)
+
+$: arrange(
+  [2, oohs],
+  [4, stack(oohs, bells)])`,
       },
       {
         label: 'Female Funk Sassy',
@@ -6636,11 +9132,16 @@ $: note("<[c4,e4,g4] [a3,c4,e4] [f3,a3,c4] [g3,b3,d4]>")
 // Slap that bass and hit the one real hard
 // Strutting through the club like a queen of cards
 // Funky diva never dropping guard
-$: note("c4 ~ e4 f4 ~ e4 c4 ~").s("gm_voice_oohs")
+let oohs = note("c4 ~ e4 f4 ~ e4 c4 ~").s("gm_voice_oohs")
   .velocity(.55).room(.3)
-$: note("c2 ~ c2 e2 f2 ~ c2 ~").s("gm_slap_bass_1").velocity(.55)
-$: s("bd ~ sd ~ bd bd sd ~").bank("RolandTR808").gain(.5)
-$: note("~ [e5,g5] ~ ~ ~ [f5,a5] ~ ~").s("gm_brass1").velocity(.35)`,
+let bass = note("c2 ~ c2 e2 f2 ~ c2 ~").s("gm_slap_bass_1").velocity(.55)
+let drums = s("bd ~ sd ~ bd bd sd ~").bank("RolandTR808").gain(.5)
+let brass = note("~ [e5,g5] ~ ~ ~ [f5,a5] ~ ~").s("gm_brass1").velocity(.35)
+
+$: arrange(
+  [2, stack(oohs, bass)],
+  [2, stack(oohs, bass, drums)],
+  [4, stack(oohs, bass, drums, brass)])`,
       },
       {
         label: 'Female Opera Aria',
@@ -6650,10 +9151,14 @@ $: note("~ [e5,g5] ~ ~ ~ [f5,a5] ~ ~").s("gm_brass1").velocity(.35)`,
 // Every phrase a painting in the air
 // Beauty woven through a golden prayer
 // Let the music take away all care
-$: note("c5 ~ d5 ~ e5 ~ c5 ~").s("gm_voice_oohs")
+let oohs = note("c5 ~ d5 ~ e5 ~ c5 ~").s("gm_voice_oohs")
   .velocity(.5).room(.8).roomsize(7).slow(2)
-$: note("[c4,g4,c5] ~ [d4,a4,d5] ~ [e4,b4,e5] ~ [c4,g4,c5] ~")
-  .s("gm_strings1").velocity(.3).room(.7).slow(2)`,
+let strings = note("[c4,g4,c5] ~ [d4,a4,d5] ~ [e4,b4,e5] ~ [c4,g4,c5] ~")
+  .s("gm_strings1").velocity(.3).room(.7).slow(2)
+
+$: arrange(
+  [2, oohs],
+  [4, stack(oohs, strings)])`,
       },
       {
         label: 'Female Hip-Hop Hook',
@@ -6663,11 +9168,16 @@ $: note("[c4,g4,c5] ~ [d4,a4,d5] ~ [e4,b4,e5] ~ [c4,g4,c5] ~")
 // Every bar I spit is platinum laced
 // Haters running but they can't keep pace
 // Queen of every stage that I have graced
-$: note("c4 c4 e4 f4 e4 c4 ~ c4").s("gm_voice_oohs")
+let oohs = note("c4 c4 e4 f4 e4 c4 ~ c4").s("gm_voice_oohs")
   .velocity(.5).room(.25)
-$: note("c1 ~ c1 ~ e1 ~ f1 ~").s("gm_synth_bass_1").velocity(.55)
-$: s("bd ~ ~ bd sd ~ bd sd").bank("RolandTR808").gain(.5)
-$: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3)`,
+let bass = note("c1 ~ c1 ~ e1 ~ f1 ~").s("gm_synth_bass_1").velocity(.55)
+let drums = s("bd ~ ~ bd sd ~ bd sd").bank("RolandTR808").gain(.5)
+let hats = s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3)
+
+$: arrange(
+  [2, stack(oohs, bass)],
+  [2, stack(oohs, bass, drums)],
+  [4, stack(oohs, bass, drums, hats)])`,
       },
       {
         label: 'Female Ambient Glow',
@@ -6677,11 +9187,15 @@ $: s("hh hh oh hh hh hh oh hh").bank("RolandTR808").gain(.3)`,
 // Echo of a voice beyond the hill
 // Time is frozen and the world is still
 // Singing softly because silence fills
-$: note("<c5 d5 e5 f5 e5 d5 c5 b4>")
+let oohs = note("<c5 d5 e5 f5 e5 d5 c5 b4>")
   .s("gm_voice_oohs").velocity(sine.range(.15,.35).slow(16))
   .room(.8).delay(.35).slow(4)
-$: note("<[c3,e3,g3] [b2,d3,f3]>")
-  .s("gm_warm_pad").velocity(.2).room(.65).slow(8)`,
+let pad = note("<[c3,e3,g3] [b2,d3,f3]>")
+  .s("gm_warm_pad").velocity(.2).room(.65).slow(8)
+
+$: arrange(
+  [2, oohs],
+  [4, stack(oohs, pad)])`,
       },
       {
         label: 'Female Dancehall Fire',
@@ -6691,11 +9205,16 @@ $: note("<[c3,e3,g3] [b2,d3,f3]>")
 // Wine it up from bottom to the top
 // Sound a play and speakers gonna pop
 // Queens we are and queens on every block
-$: note("d4 f4 g4 a4 g4 f4 d4 ~").s("gm_voice_oohs")
+let oohs = note("d4 f4 g4 a4 g4 f4 d4 ~").s("gm_voice_oohs")
   .velocity(.5).room(.3).delay(.1)
-$: note("~ d2 ~ d2 ~ f2 ~ g2").s("gm_synth_bass_2").velocity(.55)
-$: s("bd ~ ~ bd sd ~ bd ~").bank("RolandTR808").gain(.5)
-$: s("rim ~ rim ~ rim ~ rim ~").bank("RolandTR808").gain(.3)`,
+let bass = note("~ d2 ~ d2 ~ f2 ~ g2").s("gm_synth_bass_2").velocity(.55)
+let drums = s("bd ~ ~ bd sd ~ bd ~").bank("RolandTR808").gain(.5)
+let rim = s("rim ~ rim ~ rim ~ rim ~").bank("RolandTR808").gain(.3)
+
+$: arrange(
+  [2, stack(oohs, bass)],
+  [2, stack(oohs, bass, drums)],
+  [4, stack(oohs, bass, drums, rim)])`,
       },
       {
         label: 'Female Electro Synth',
@@ -6705,12 +9224,17 @@ $: s("rim ~ rim ~ rim ~ rim ~").bank("RolandTR808").gain(.3)`,
 // Code is music music is the code
 // Glowing circuits light the endless road
 // Digital the future we have sowed
-$: note("<[c4,e4,g4] [a3,c4,e4]>").s("gm_synth_choir")
+let synthChoir = note("<[c4,e4,g4] [a3,c4,e4]>").s("gm_synth_choir")
   .velocity(.45).room(.4).slow(2)
-$: note("c5 e5 g5 ~ e5 c5 ~ g4").s("gm_synth_voice")
+let synthVox = note("c5 e5 g5 ~ e5 c5 ~ g4").s("gm_synth_voice")
   .velocity(.3).delay(.25)
-$: s("bd bd bd bd").bank("RolandTR909").gain(.5)
-$: s("~ hh ~ oh ~ hh ~ oh").bank("RolandTR909").gain(.3)`,
+let kick = s("bd bd bd bd").bank("RolandTR909").gain(.5)
+let hats = s("~ hh ~ oh ~ hh ~ oh").bank("RolandTR909").gain(.3)
+
+$: arrange(
+  [2, stack(synthChoir, synthVox)],
+  [2, stack(synthChoir, synthVox, kick)],
+  [4, stack(synthChoir, synthVox, kick, hats)])`,
       },
     ],
   },
@@ -6721,402 +9245,511 @@ $: s("~ hh ~ oh ~ hh ~ oh").bank("RolandTR909").gain(.3)`,
       {
         label: 'Egg Shaker — Gentle',
         code: `// egg shaker — gentle eighth notes
-$: s("[~ hh]*4").bank("RolandTR808")
+let shaker = s("[~ hh]*4").bank("RolandTR808")
   .gain("[.2 .35 .25 .4]").speed(1.4)
-  .lpf(3500).hpf(800)`,
+  .lpf(3500).hpf(800)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Egg Shaker — Quick',
         code: `// egg shaker — quick sixteenths
-$: s("hh*8").bank("RolandTR808")
+let shaker = s("hh*8").bank("RolandTR808")
   .gain("[.15 .3 .2 .35 .15 .3 .2 .35]")
-  .speed(1.5).lpf(3000).hpf(900)`,
+  .speed(1.5).lpf(3000).hpf(900)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Egg Shaker — Shuffle',
         code: `// egg shaker — shuffle feel
-$: s("[hh ~ hh] [~ hh ~] [hh ~ hh] [~ hh ~]")
+let shaker = s("[hh ~ hh] [~ hh ~] [hh ~ hh] [~ hh ~]")
   .bank("RolandTR808")
   .gain("[.2 .35 .25 .4 .3 .2]")
-  .speed(1.45).lpf(3200).hpf(850)`,
+  .speed(1.45).lpf(3200).hpf(850)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Cabasa — Steady',
         code: `// cabasa — steady groove
-$: s("hh*4").bank("RolandTR909")
+let shaker = s("hh*4").bank("RolandTR909")
   .gain("[.35 .55 .4 .6]").speed(1.8)
-  .lpf(5000).hpf(1200)`,
+  .lpf(5000).hpf(1200)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Cabasa — Syncopated',
         code: `// cabasa — syncopated rhythm
-$: s("[hh ~] hh [~ hh] [hh hh]").bank("RolandTR909")
+let shaker = s("[hh ~] hh [~ hh] [hh hh]").bank("RolandTR909")
   .gain("[.3 .5 .4 .55]").speed(1.75)
-  .lpf(4800).hpf(1100)`,
+  .lpf(4800).hpf(1100)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Cabasa — Fast Scrape',
         code: `// cabasa — fast scrape texture
-$: s("hh*16").bank("RolandTR909")
+let shaker = s("hh*16").bank("RolandTR909")
   .gain(sine.range(.15,.45).fast(4))
   .speed("[1.7 1.8 1.75 1.85]*4")
-  .lpf(5500).hpf(1300)`,
+  .lpf(5500).hpf(1300)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Maracas — Classic',
         code: `// maracas — classic Latin pattern
-$: s("hh hh [hh hh] hh").bank("RolandTR808")
+let shaker = s("hh hh [hh hh] hh").bank("RolandTR808")
   .gain("[.3 .5 .7 .5]")
-  .speed("[2 2.1 2 2.15]").lpf(6000).hpf(1500)`,
+  .speed("[2 2.1 2 2.15]").lpf(6000).hpf(1500)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Maracas — Double Time',
         code: `// maracas — double time shake
-$: s("hh*8").bank("RolandTR808")
+let shaker = s("hh*8").bank("RolandTR808")
   .gain("[.25 .45 .3 .5 .25 .45 .3 .5]")
   .speed("[2 2.1 2.05 2.15 2 2.1 2.05 2.15]")
-  .lpf(6500).hpf(1600)`,
+  .lpf(6500).hpf(1600)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Maracas — Cumbia',
         code: `// maracas — cumbia groove
-$: s("[hh hh] hh [hh hh] hh [hh ~] hh")
+let shaker = s("[hh hh] hh [hh hh] hh [hh ~] hh")
   .bank("RolandTR808")
   .gain("[.3 .55 .4 .6 .5 .3]")
   .speed("[2 2.1 1.95 2.15 2.05 2]")
-  .lpf(5800).hpf(1400)`,
+  .lpf(5800).hpf(1400)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Tambourine — On Beat',
         code: `// tambourine — on every beat
-$: s("oh*4").bank("RolandTR808")
+let openHat = s("oh*4").bank("RolandTR808")
   .gain("[.3 .5 .35 .55]").speed(1.6)
-  .lpf(7000).hpf(1000)`,
+  .lpf(7000).hpf(1000)
+
+$: arrange([4, openHat])`,
       },
       {
         label: 'Tambourine — Backbeat',
         code: `// tambourine — backbeat hits
-$: s("~ oh ~ oh").bank("RolandTR808")
+let openHat = s("~ oh ~ oh").bank("RolandTR808")
   .gain("[.4 .6]").speed(1.55)
-  .lpf(6500).hpf(950)`,
+  .lpf(6500).hpf(950)
+
+$: arrange([4, openHat])`,
       },
       {
         label: 'Tambourine — Gospel Roll',
         code: `// tambourine — gospel roll
-$: s("[oh oh] oh [oh oh] [oh oh oh]")
+let openHat = s("[oh oh] oh [oh oh] [oh oh oh]")
   .bank("RolandTR808")
   .gain("[.25 .4 .35 .5 .6 .45 .55 .35]")
   .speed("[1.55 1.6 1.5 1.65 1.55 1.6 1.5 1.6]")
-  .lpf(7000).hpf(1000)`,
+  .lpf(7000).hpf(1000)
+
+$: arrange([4, openHat])`,
       },
       {
         label: 'Tambourine — Sizzle',
         code: `// tambourine — sizzle and shimmer
-$: s("oh*8").bank("RolandTR909")
+let openHat = s("oh*8").bank("RolandTR909")
   .gain("[.15 .3 .2 .4 .2 .35 .2 .4]")
-  .speed(1.65).lpf(8000).hpf(1100).room(.2)`,
+  .speed(1.65).lpf(8000).hpf(1100).room(.2)
+
+$: arrange([4, openHat])`,
       },
       {
         label: 'Rain Stick — Slow',
         code: `// rain stick — slow falling beads
-$: s("hh(5,8)").bank("RolandTR808")
+let shaker = s("hh(5,8)").bank("RolandTR808")
   .gain(sine.range(.1,.35).slow(4))
   .speed(sine.range(1.2,2).slow(8))
-  .lpf(2500).hpf(600).room(.45).delay(.15)`,
+  .lpf(2500).hpf(600).room(.45).delay(.15)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Rain Stick — Dense',
         code: `// rain stick — dense bead cascade
-$: s("hh(7,16)").bank("RolandTR808")
+let shaker = s("hh(7,16)").bank("RolandTR808")
   .gain(sine.range(.08,.3).slow(6))
   .speed(sine.range(1.5,2.5).slow(4))
-  .lpf(3000).hpf(700).room(.5).delay(.2)`,
+  .lpf(3000).hpf(700).room(.5).delay(.2)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Seed Shaker — Soft',
         code: `// seed shaker — soft organic rattle
-$: s("[~ hh]*4").bank("RolandTR808")
+let shaker = s("[~ hh]*4").bank("RolandTR808")
   .gain("[.12 .22 .15 .25]").speed(1.3)
-  .lpf(2200).hpf(500).room(.3)`,
+  .lpf(2200).hpf(500).room(.3)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Seed Shaker — Groove',
         code: `// seed shaker — groove pocket
-$: s("[hh ~] [~ hh] [hh hh] [~ hh]")
+let shaker = s("[hh ~] [~ hh] [hh hh] [~ hh]")
   .bank("RolandTR808")
   .gain("[.15 .28 .2 .32]").speed(1.35)
-  .lpf(2400).hpf(550).room(.25)`,
+  .lpf(2400).hpf(550).room(.25)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Caxixi — Berimbau',
         code: `// caxixi — berimbau accompaniment
-$: s("[hh hh] [~ hh] [hh hh] [hh ~]")
+let shaker = s("[hh hh] [~ hh] [hh hh] [hh ~]")
   .bank("RolandTR808")
   .gain("[.3 .5 .4 .55 .45 .3]")
   .speed("[1.6 1.7 1.55 1.7 1.6 1.65]")
-  .lpf(4000).hpf(800)`,
+  .lpf(4000).hpf(800)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Caxixi — Fast',
         code: `// caxixi — fast capoeira pattern
-$: s("hh*8").bank("RolandTR808")
+let shaker = s("hh*8").bank("RolandTR808")
   .gain("[.25 .45 .3 .5 .25 .45 .35 .55]")
   .speed("[1.6 1.7 1.65 1.75 1.6 1.7 1.65 1.75]")
-  .lpf(4200).hpf(900)`,
+  .lpf(4200).hpf(900)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Shekere — West African',
         code: `// shekere — West African net rattle
-$: s("[oh hh] oh [hh oh] [oh hh oh]")
+let shaker = s("[oh hh] oh [hh oh] [oh hh oh]")
   .bank("RolandTR808")
   .gain("[.35 .55 .45 .6 .5 .4 .55]")
   .speed("[1.3 1.5 1.35 1.45 1.3 1.5 1.4]")
-  .lpf(5000).hpf(700)`,
+  .lpf(5000).hpf(700)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Shekere — Polyrhythm',
         code: `// shekere — polyrhythmic pattern
-$: s("oh(5,8)").bank("RolandTR808")
+let openHat = s("oh(5,8)").bank("RolandTR808")
   .gain("[.3 .5 .4 .55 .45]")
   .speed("[1.35 1.5 1.4 1.45 1.35]")
   .lpf(4800).hpf(750)
-$: s("hh(3,8)").bank("RolandTR808")
+let shaker = s("hh(3,8)").bank("RolandTR808")
   .gain("[.25 .4 .35]").speed(1.6)
-  .lpf(4000).hpf(800)`,
+  .lpf(4000).hpf(800)
+
+$: arrange(
+  [2, openHat],
+  [4, stack(openHat, shaker)])`,
       },
       {
         label: 'Güiro — Scrape Rhythm',
         code: `// güiro — scrape rhythm
-$: s("[hh hh hh hh] hh [hh hh hh hh] hh")
+let shaker = s("[hh hh hh hh] hh [hh hh hh hh] hh")
   .bank("RolandTR909")
   .gain("[.2 .25 .3 .25 .5 .2 .25 .3 .25 .5]")
   .speed("[1.9 2 2.1 2 1.5 1.9 2 2.1 2 1.5]")
-  .lpf(5500).hpf(1200)`,
+  .lpf(5500).hpf(1200)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Güiro — Cha-Cha',
         code: `// güiro — cha-cha pattern
-$: s("[hh hh hh] hh ~ [hh hh hh] hh ~")
+let shaker = s("[hh hh hh] hh ~ [hh hh hh] hh ~")
   .bank("RolandTR909")
   .gain("[.25 .3 .35 .5 .25 .3 .35 .5]")
   .speed("[1.95 2.05 2.1 1.6 1.95 2.05 2.1 1.6]")
-  .lpf(5200).hpf(1100)`,
+  .lpf(5200).hpf(1100)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Vibraslap — Buzz',
         code: `// vibraslap — buzzing rattle
-$: s("~ ~ ~ oh").bank("RolandTR808")
+let openHat = s("~ ~ ~ oh").bank("RolandTR808")
   .gain(.5).speed(.7)
-  .lpf(2000).hpf(300).room(.35).slow(2)`,
+  .lpf(2000).hpf(300).room(.35).slow(2)
+
+$: arrange([4, openHat])`,
       },
       {
         label: 'Hi-Hat Shaker — Trap',
         code: `// hi-hat shaker — trap rolls
-$: s("hh*16").bank("RolandTR808")
+let shaker = s("hh*16").bank("RolandTR808")
   .gain("[.2 .35 .25 .45 .2 .35 .25 .45 .3 .5 .35 .55 .3 .5 .35 .55]")
   .speed("[1.3 1.35 1.25 1.4]*4")
-  .lpf(4000).hpf(800)`,
+  .lpf(4000).hpf(800)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Hi-Hat Shaker — House',
         code: `// hi-hat shaker — house offbeat
-$: s("[~ hh]*4").bank("RolandTR909")
+let shaker = s("[~ hh]*4").bank("RolandTR909")
   .gain("[.35 .5 .4 .55]")
-  .speed(1.35).lpf(4500).hpf(700)`,
+  .speed(1.35).lpf(4500).hpf(700)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Hi-Hat Shaker — DnB',
         code: `// hi-hat shaker — drum & bass
-$: s("hh*8").bank("RolandTR909").fast(2)
+let shaker = s("hh*8").bank("RolandTR909").fast(2)
   .gain("[.2 .4 .25 .45 .2 .4 .3 .5]")
   .speed("[1.3 1.4 1.35 1.45 1.3 1.4 1.35 1.45]")
-  .lpf(5000).hpf(900)`,
+  .lpf(5000).hpf(900)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Noise Shaker — White',
         code: `// noise shaker — white noise burst
-$: s("hh*4").bank("RolandTR808")
+let shaker = s("hh*4").bank("RolandTR808")
   .gain("[.25 .45 .3 .5]").speed(2.5)
-  .lpf(4000).hpf(2000)`,
+  .lpf(4000).hpf(2000)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Noise Shaker — Pink',
         code: `// noise shaker — filtered pink feel
-$: s("hh*4").bank("RolandTR808")
+let shaker = s("hh*4").bank("RolandTR808")
   .gain("[.3 .5 .35 .55]").speed(2.2)
-  .lpf(2500).hpf(400).room(.2)`,
+  .lpf(2500).hpf(400).room(.2)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Noise Shaker — Filtered Sweep',
         code: `// noise shaker — filter sweep
-$: s("hh*8").bank("RolandTR808")
+let shaker = s("hh*8").bank("RolandTR808")
   .gain("[.2 .35 .25 .4 .2 .35 .25 .4]")
   .speed(2).lpf(sine.range(1500,6000).slow(4))
-  .hpf(sine.range(400,1500).slow(8))`,
+  .hpf(sine.range(400,1500).slow(8))
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Shaker — Layered Thick',
         code: `// layered thick shaker — two textures
-$: s("[~ hh]*4").bank("RolandTR808")
+let shaker = s("[~ hh]*4").bank("RolandTR808")
   .gain("[.2 .35 .25 .4]").speed(1.4)
   .lpf(3500).hpf(800)
-$: s("[~ hh]*4").bank("RolandTR909")
+let shaker2 = s("[~ hh]*4").bank("RolandTR909")
   .gain("[.15 .25 .18 .3]").speed(1.8)
-  .lpf(5000).hpf(1200)`,
+  .lpf(5000).hpf(1200)
+
+$: arrange(
+  [2, shaker],
+  [4, stack(shaker, shaker2)])`,
       },
       {
         label: 'Shaker — Layered Wide',
         code: `// layered wide shaker — stereo spread
-$: s("[~ hh]*4").bank("RolandTR808")
+let shaker = s("[~ hh]*4").bank("RolandTR808")
   .gain("[.2 .35 .25 .4]").speed(1.45)
   .lpf(3200).hpf(700).pan(0.3)
-$: s("[~ hh]*4").bank("RolandTR909")
+let shaker2 = s("[~ hh]*4").bank("RolandTR909")
   .gain("[.15 .28 .2 .33]").speed(1.7)
-  .lpf(5500).hpf(1100).pan(0.7)`,
+  .lpf(5500).hpf(1100).pan(0.7)
+
+$: arrange(
+  [2, shaker],
+  [4, stack(shaker, shaker2)])`,
       },
       {
         label: 'Shaker — World Fusion',
         code: `// world fusion — egg + tambourine + maracas
-$: s("[~ hh]*4").bank("RolandTR808")
+let shaker = s("[~ hh]*4").bank("RolandTR808")
   .gain("[.15 .28 .2 .32]").speed(1.4)
   .lpf(3000).hpf(800)
-$: s("~ oh ~ oh").bank("RolandTR808")
+let openHat = s("~ oh ~ oh").bank("RolandTR808")
   .gain("[.3 .45]").speed(1.55)
   .lpf(6500).hpf(950)
-$: s("hh hh [hh hh] hh").bank("RolandTR808")
+let shaker2 = s("hh hh [hh hh] hh").bank("RolandTR808")
   .gain("[.2 .35 .5 .35]").speed(2.1)
-  .lpf(6000).hpf(1500)`,
+  .lpf(6000).hpf(1500)
+
+$: arrange(
+  [2, shaker],
+  [2, stack(shaker, openHat)],
+  [4, stack(shaker, openHat, shaker2)])`,
       },
       {
         label: 'Shaker — Minimal',
         code: `// minimal micro shaker — barely there
-$: s("hh(3,8)").bank("RolandTR808")
+let shaker = s("hh(3,8)").bank("RolandTR808")
   .gain("[.08 .15 .12]").speed(1.5)
-  .lpf(2500).hpf(600).room(.4)`,
+  .lpf(2500).hpf(600).room(.4)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Shaker — Hypnotic',
         code: `// hypnotic shaker — evolving texture
-$: s("[~ hh]*4").bank("RolandTR808")
+let shaker = s("[~ hh]*4").bank("RolandTR808")
   .gain(sine.range(.1,.4).slow(8))
   .speed(sine.range(1.2,1.8).slow(4))
   .lpf(sine.range(2000,5000).slow(6))
-  .hpf(sine.range(400,1200).slow(12)).room(.3)`,
+  .hpf(sine.range(400,1200).slow(12)).room(.3)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Shaker — Polyrhythm',
         code: `// polyrhythmic shaker — 3 against 4
-$: s("hh(3,8)").bank("RolandTR808")
+let shaker = s("hh(3,8)").bank("RolandTR808")
   .gain("[.25 .4 .35]").speed(1.45)
   .lpf(3500).hpf(800)
-$: s("hh(4,8)").bank("RolandTR909")
+let shaker2 = s("hh(4,8)").bank("RolandTR909")
   .gain("[.2 .35 .25 .4]").speed(1.7)
-  .lpf(5000).hpf(1100)`,
+  .lpf(5000).hpf(1100)
+
+$: arrange(
+  [2, shaker],
+  [4, stack(shaker, shaker2)])`,
       },
       {
         label: 'Shaker — Euclidean 5/8',
         code: `// euclidean shaker — 5 hits in 8 slots
-$: s("hh(5,8)").bank("RolandTR808")
+let shaker = s("hh(5,8)").bank("RolandTR808")
   .gain("[.25 .4 .3 .45 .35]")
   .speed("[1.4 1.5 1.45 1.55 1.4]")
-  .lpf(4000).hpf(800)`,
+  .lpf(4000).hpf(800)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Shaker — Euclidean 7/16',
         code: `// euclidean shaker — 7 hits in 16 slots
-$: s("hh(7,16)").bank("RolandTR808")
+let shaker = s("hh(7,16)").bank("RolandTR808")
   .gain("[.2 .35 .25 .4 .3 .38 .28]")
   .speed("[1.5 1.6 1.55 1.65 1.5 1.6 1.55]")
-  .lpf(4200).hpf(900)`,
+  .lpf(4200).hpf(900)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Shaker — Swing',
         code: `// swing shaker — jazz feel
-$: s("[hh ~ hh] [~ hh ~] [hh ~ hh] [~ hh hh]")
+let shaker = s("[hh ~ hh] [~ hh ~] [hh ~ hh] [~ hh hh]")
   .bank("RolandTR808")
   .gain("[.2 .35 .25 .4 .3 .2]")
-  .speed(1.45).lpf(3200).hpf(700).room(.3)`,
+  .speed(1.45).lpf(3200).hpf(700).room(.3)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Shaker — Bossa Nova',
         code: `// bossa nova shaker
-$: s("hh [hh hh] hh hh [hh hh] hh hh")
+let shaker = s("hh [hh hh] hh hh [hh hh] hh hh")
   .bank("RolandTR808")
   .gain("[.2 .35 .3 .25 .35 .3 .2 .3]")
-  .speed(1.5).lpf(3500).hpf(750)`,
+  .speed(1.5).lpf(3500).hpf(750)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Shaker — Samba',
         code: `// samba ganzá shaker
-$: s("[hh hh] hh [hh hh] hh [hh hh] hh")
+let shaker = s("[hh hh] hh [hh hh] hh [hh hh] hh")
   .bank("RolandTR808")
   .gain("[.3 .5 .4 .55 .35 .5]")
   .speed("[1.6 1.7 1.6 1.7 1.6 1.7]")
-  .lpf(4500).hpf(900)`,
+  .lpf(4500).hpf(900)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Shaker — Reggae Skank',
         code: `// reggae offbeat skank shaker
-$: s("~ hh ~ hh ~ hh ~ hh")
+let shaker = s("~ hh ~ hh ~ hh ~ hh")
   .bank("RolandTR808")
   .gain("[.25 .4 .3 .45]").speed(1.35)
-  .lpf(3000).hpf(600).room(.3)`,
+  .lpf(3000).hpf(600).room(.3)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Shaker — Afrobeat',
         code: `// afrobeat shaker pattern
-$: s("[hh hh] hh [hh hh] hh [hh hh] hh [hh ~]")
+let shaker = s("[hh hh] hh [hh hh] hh [hh hh] hh [hh ~]")
   .bank("RolandTR808")
   .gain("[.3 .5 .4 .55 .35 .5 .45]")
   .speed("[1.5 1.6 1.5 1.6 1.5 1.6 1.5]")
-  .lpf(4000).hpf(800)`,
+  .lpf(4000).hpf(800)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Shaker — Dancehall',
         code: `// dancehall shaker riddim
-$: s("hh [hh hh] [~ hh] hh").bank("RolandTR808")
+let shaker = s("hh [hh hh] [~ hh] hh").bank("RolandTR808")
   .gain("[.3 .5 .45 .4]")
   .speed("[1.4 1.5 1.45 1.35]")
-  .lpf(4500).hpf(900)`,
+  .lpf(4500).hpf(900)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Shaker — Funk',
         code: `// funk shaker — tight pocket
-$: s("[hh ~] hh [~ hh] hh [hh hh] [~ hh]")
+let shaker = s("[hh ~] hh [~ hh] hh [hh hh] [~ hh]")
   .bank("RolandTR909")
   .gain("[.3 .5 .4 .55 .6 .4]")
-  .speed(1.5).lpf(4500).hpf(900)`,
+  .speed(1.5).lpf(4500).hpf(900)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Shaker — Disco',
         code: `// disco shaker shimmer
-$: s("[~ hh]*4, oh(1,8)").bank("RolandTR909")
+let shaker = s("[~ hh]*4, oh(1,8)").bank("RolandTR909")
   .gain("[.3 .5 .4 .6]").speed(1.5)
-  .lpf(5000).hpf(800)`,
+  .lpf(5000).hpf(800)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Shaker — Techno',
         code: `// techno industrial shaker
-$: s("hh*16").bank("RolandTR909")
+let shaker = s("hh*16").bank("RolandTR909")
   .gain(sine.range(.15,.5).fast(4))
   .speed("[1.4 1.5 1.45 1.55]*4")
-  .lpf(5000).hpf(1000)`,
+  .lpf(5000).hpf(1000)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Shaker — Lo-Fi Dusty',
         code: `// lo-fi dusty shaker — vinyl feel
-$: s("[~ hh]*4").bank("RolandTR808")
+let shaker = s("[~ hh]*4").bank("RolandTR808")
   .gain("[.12 .22 .15 .25]").speed(1.3)
-  .lpf(2000).hpf(400).room(.35)`,
+  .lpf(2000).hpf(400).room(.35)
+
+$: arrange([4, shaker])`,
       },
       {
         label: 'Shaker — Ambient Drift',
         code: `// ambient drifting shaker
-$: s("hh(5,16)").bank("RolandTR808")
+let shaker = s("hh(5,16)").bank("RolandTR808")
   .gain(sine.range(.05,.25).slow(8))
   .speed(sine.range(1.2,2).slow(12))
   .lpf(sine.range(1500,4000).slow(6))
-  .hpf(500).room(.55).delay(.25)`,
+  .hpf(500).room(.55).delay(.25)
+
+$: arrange([4, shaker])`,
       },
     ],
   },

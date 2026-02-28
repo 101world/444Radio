@@ -51,6 +51,17 @@ declare module '@strudel/mini' {
   export const note: any
 }
 
+declare module '@strudel/draw' {
+  export function cleanupDraw(full?: boolean): void
+  export class Drawer {
+    constructor(options: any, ...rest: any[])
+    start(): void
+    stop(): void
+    invalidate(): void
+  }
+  export const Drawer: any
+}
+
 declare module '@codemirror/lang-javascript' {
   export function javascript(config?: any): any
 }

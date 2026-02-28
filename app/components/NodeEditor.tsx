@@ -3294,7 +3294,9 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
     const parsed = parseCodeToNodes(newCode)
     setNodes(parsed)
     prevNodeCount.current = parsed.length
-    sendToParent(newCode)
+    // Use rebuildFullCodeFromNodes so arrangement mode outputs let + arrange() format
+    const rebuilt = rebuildFullCodeFromNodes(parsed, bpm, newCode)
+    sendToParent(rebuilt)
     setShowAddMenu(false)
     // Phase 3: Auto-open the visual editor for the new node
     const newNode = parsed[parsed.length - 1]
@@ -3318,7 +3320,7 @@ const NodeEditor = forwardRef<NodeEditorHandle, NodeEditorProps>(function NodeEd
         setDrumSequencerOpen(null)
       }
     }
-  }, [sendToParent])
+  }, [sendToParent, rebuildFullCodeFromNodes, bpm])
 
   // ── Knob change handler (updates local state, commits on release) ──
   const updateKnob = useCallback((nodeId: string, method: string, value: number) => {
