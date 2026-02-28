@@ -5281,17 +5281,7 @@ function CreatePageContent() {
                       ))}
                     </select>
                   </div>
-                ) : (
-                  <a href="/voice-training" className="w-full flex items-center gap-3 px-4 py-3 bg-white/[0.03] hover:bg-cyan-500/[0.08] border border-white/[0.06] hover:border-cyan-500/25 rounded-xl transition-all duration-200 group">
-                    <div className="w-9 h-9 rounded-lg bg-cyan-500/10 group-hover:bg-cyan-500/20 flex items-center justify-center transition-colors">
-                      <Sparkles size={16} className="text-cyan-400" />
-                    </div>
-                    <div className="text-left">
-                      <div className="text-sm text-white/80 group-hover:text-cyan-200 transition-colors">Train a Voice</div>
-                      <div className="text-[10px] text-white/25">Create a custom AI voice clone</div>
-                    </div>
-                  </a>
-                )}
+                ) : null}
 
                 {/* Record live */}
                 <button
@@ -5309,24 +5299,40 @@ function CreatePageContent() {
               </div>
             </div>
 
-            {/* Step 3 hint */}
+            {/* Step 3: Write lyrics */}
             <div className="px-6 pb-4 pt-1">
               <div className="text-[11px] font-medium text-white/50 uppercase tracking-wider mb-2 flex items-center gap-2">
                 <span className="w-5 h-5 rounded-full bg-cyan-500/15 flex items-center justify-center text-cyan-400 text-[10px] font-bold">3</span>
                 Write your new lyrics
               </div>
-              <div className="px-4 py-3 bg-white/[0.02] border border-white/[0.04] rounded-xl">
-                <p className="text-xs text-white/30">Type your new lyrics or prompt in the main text box, then hit create. The AI will generate the song with the same vibe and your new words.</p>
+              <textarea
+                value={input}
+                onChange={e => setInput(e.target.value.slice(0, 300))}
+                placeholder="Write your new lyrics or describe the vibe you want..."
+                rows={4}
+                className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.08] hover:border-cyan-500/30 focus:border-cyan-400/50 rounded-xl text-sm text-white placeholder-white/25 focus:outline-none resize-none transition-all"
+              />
+              <div className="flex items-center justify-between mt-1.5">
+                <span className={`text-[10px] ${input.length > 270 ? 'text-red-400' : 'text-white/20'}`}>{input.length}/300</span>
               </div>
             </div>
 
-            {/* Done button */}
+            {/* Create / Close button */}
             <div className="px-6 pb-6 pt-2">
               <button
-                onClick={() => setShowRemakeModal(false)}
-                className="w-full py-3 bg-gradient-to-r from-purple-500/20 to-cyan-500/20 hover:from-purple-500/30 hover:to-cyan-500/30 border border-purple-500/20 rounded-xl text-sm font-medium text-white transition-all duration-200"
+                onClick={() => {
+                  setShowRemakeModal(false)
+                  if (input.trim().length >= 3 && hasVoiceOrInstrumentalRef) {
+                    handleGenerate()
+                  }
+                }}
+                className={`w-full py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  input.trim().length >= 3 && hasVoiceOrInstrumentalRef
+                    ? 'bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white shadow-lg shadow-red-500/20'
+                    : 'bg-gradient-to-r from-purple-500/20 to-cyan-500/20 hover:from-purple-500/30 hover:to-cyan-500/30 border border-purple-500/20 text-white'
+                }`}
               >
-                {hasVoiceOrInstrumentalRef ? 'Done — Now write your lyrics' : 'Close'}
+                {input.trim().length >= 3 && hasVoiceOrInstrumentalRef ? 'Create Remake' : hasVoiceOrInstrumentalRef ? 'Write lyrics above to create' : 'Close'}
               </button>
               <p className="text-[10px] text-white/20 text-center mt-2">Uses advanced AI model • 3 credits per generation</p>
             </div>
