@@ -4,6 +4,7 @@ import { downloadAndUploadToR2 } from '@/lib/storage'
 import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { refundCredits } from '@/lib/refund-credits'
 import { notifyGenerationComplete, notifyGenerationFailed, notifyCreditDeduct } from '@/lib/notifications'
+import { buildMiniMaxV2Input, preValidateMiniMaxV2 } from '@/lib/minimax-v2-validation'
 
 // Allow up to 5 minutes for fal.ai MiniMax 2.0 generation
 export const maxDuration = 300
@@ -103,6 +104,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Prompt required (at least 10 characters)' }, { status: 400 })
     }
 
+    // Pre-validate MiniMax v2 inputs BEFORE credit deduction to avoid wasting money
+    const preValidationError = preValidateMiniMaxV2(prompt, lyrics)
+    if (preValidationError) {
+      console.error('❌ [MiniMax2] Pre-validation failed:', preValidationError)
+      return NextResponse.json({ error: preValidationError }, { status: 400 })
+    }
+
     // MiniMax V2 supports: mp3, pcm, flac (no wav — flac is lossless alternative)
     const chosenFormat = (audio_format === 'wav' || audio_format === 'flac') ? 'flac' : 'mp3'
 
@@ -158,30 +166,23 @@ export async function POST(req: NextRequest) {
     await logCreditTransaction({ userId, amount: -CREDIT_COST, balanceAfter: deductResult.new_credits, type: 'generation_music', description: `${sourceLabel}: ${title}`, metadata: { prompt, genre, model: 'minimax-music-02', source: sourceTag } })
 
     // ---------- Build MiniMax 2.0 input (fal.ai V2 schema) ----------
-    const minimax2Input: Record<string, unknown> = {
-      prompt: prompt.trim().substring(0, 300),
-      audio_setting: {
-        sample_rate: 44100,
-        bitrate: 256000,
-        format: chosenFormat,
-      },
+    // Use shared validator to ensure ALL required fields are present and valid
+    // This prevents 422 errors from fal.ai which still cost money
+    const validationResult = buildMiniMaxV2Input({
+      prompt,
+      lyrics,
+      audioFormat: chosenFormat,
+    })
+
+    if (!validationResult.valid) {
+      console.error('❌ [MiniMax2] Validation failed:', validationResult.error)
+      // Refund credits since we caught the error before calling fal.ai
+      await refundCredits({ userId, amount: CREDIT_COST, type: 'generation_music', reason: `Validation failed: ${validationResult.error}`, metadata: { prompt, genre, source: sourceTag } })
+      return NextResponse.json({ error: validationResult.error }, { status: 400 })
     }
 
-    // MiniMax V2 uses lyrics_prompt (10-3000 chars) — omit entirely for instrumental
-    // Supported structure tags: [Intro], [Verse], [Chorus], [Bridge], [Outro]
-    if (lyrics && typeof lyrics === 'string' && lyrics.trim().length > 0 &&
-        !lyrics.toLowerCase().includes('[instrumental]')) {
-      let sanitizedLyrics = lyrics.trim()
-      // Replace unsupported [hook] tags with [chorus]
-      sanitizedLyrics = sanitizedLyrics.replace(/\[hook\]/gi, '[chorus]')
-      // Remove any other unsupported tags (keep only intro/verse/chorus/bridge/outro)
-      sanitizedLyrics = sanitizedLyrics.replace(/\[(?!intro\]|verse\]|chorus\]|bridge\]|outro\])([^\]]+)\]/gi, '')
-      // Remove trailing empty tags (tag at end with no content after it)
-      sanitizedLyrics = sanitizedLyrics.replace(/\[(intro|verse|chorus|bridge|outro)\]\s*$/gi, '').trim()
-      minimax2Input.lyrics_prompt = sanitizedLyrics.substring(0, 3000)
-    }
-
-    console.log('🎵 [MiniMax2] Input:', JSON.stringify(minimax2Input, null, 2))
+    const minimax2Input = validationResult.input
+    console.log('🎵 [MiniMax2] Validated input:', JSON.stringify(minimax2Input, null, 2))
 
     // ---------- NDJSON stream ----------
     const encoder = new TextEncoder()

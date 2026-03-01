@@ -6,6 +6,7 @@ import { findBestMatchingLyrics } from '@/lib/lyrics-matcher'
 import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { refundCredits } from '@/lib/refund-credits'
 import { notifyGenerationComplete, notifyGenerationFailed, notifyCreditDeduct } from '@/lib/notifications'
+import { buildMiniMaxV2Input } from '@/lib/minimax-v2-validation'
 
 // Allow up to 5 minutes for music generation (Vercel Pro limit: 300s)
 export const maxDuration = 300
@@ -290,29 +291,24 @@ export async function POST(req: NextRequest) {
       console.log(`🎵 Hindi-family detected (${reason}) → routing to MiniMax 2.0 via fal.ai`)
 
       const chosenFormat = (audio_format === 'wav' || audio_format === 'flac') ? 'flac' : 'mp3'
-      const minimax2Input: Record<string, unknown> = {
-        prompt: prompt.trim().substring(0, 300),
-        audio_setting: {
-          sample_rate: 44100,
-          bitrate: 256000,
-          format: chosenFormat,
-        },
-      }
-      // MiniMax V2 uses lyrics_prompt (10-3000 chars)
-      // Supported structure tags: [Intro], [Verse], [Chorus], [Bridge], [Outro]
-      if (formattedLyrics && formattedLyrics.trim().length > 0 &&
-          !formattedLyrics.toLowerCase().includes('[instrumental]')) {
-        let sanitizedLyrics = formattedLyrics.trim()
-        // Replace unsupported [hook] tags with [chorus]
-        sanitizedLyrics = sanitizedLyrics.replace(/\[hook\]/gi, '[chorus]')
-        // Remove any other unsupported tags (keep only intro/verse/chorus/bridge/outro)
-        sanitizedLyrics = sanitizedLyrics.replace(/\[(?!intro\]|verse\]|chorus\]|bridge\]|outro\])([^\]]+)\]/gi, '')
-        // Remove trailing empty tags (tag at end with no content after it)
-        sanitizedLyrics = sanitizedLyrics.replace(/\[(intro|verse|chorus|bridge|outro)\]\s*$/gi, '').trim()
-        minimax2Input.lyrics_prompt = sanitizedLyrics.substring(0, 3000)
+
+      // Use shared validator to ensure ALL required fields are present and valid
+      // This prevents 422 errors from fal.ai which still cost money
+      const validationResult = buildMiniMaxV2Input({
+        prompt,
+        lyrics: formattedLyrics,
+        audioFormat: chosenFormat,
+      })
+
+      if (!validationResult.valid) {
+        console.error('❌ [MiniMax2] Validation failed:', validationResult.error)
+        // Refund credits since we caught the error before calling fal.ai
+        await refundCredits({ userId, amount: 2, type: 'generation_music', reason: `Validation failed: ${validationResult.error}`, metadata: { prompt, genre } })
+        return NextResponse.json({ error: validationResult.error }, { status: 400 })
       }
 
-      console.log('🎵 [MiniMax2] Input:', JSON.stringify(minimax2Input, null, 2))
+      const minimax2Input = validationResult.input
+      console.log('🎵 [MiniMax2] Validated input:', JSON.stringify(minimax2Input, null, 2))
 
       const encoder = new TextEncoder()
       const stream = new TransformStream()
