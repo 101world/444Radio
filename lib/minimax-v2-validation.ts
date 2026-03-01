@@ -116,24 +116,10 @@ function isInstrumental(text: string | null | undefined): boolean {
 /**
  * Generate a minimal lyrics_prompt for instrumental tracks.
  * MiniMax v2 REQUIRES lyrics_prompt (10-3000 chars) even for instrumentals.
- * We use structure tags with "(instrumental)" to signal no vocals.
+ * ONLY '[instrumental]' works — adding more text causes random lyrics to generate.
  */
-function generateInstrumentalLyrics(prompt: string): string {
-  // Build an instrumental lyrics_prompt that satisfies the 10-char minimum
-  // and guides the model to produce instrumental music
-  return [
-    '[Intro]',
-    '(instrumental)',
-    '',
-    '[Verse]',
-    '(instrumental melody)',
-    '',
-    '[Chorus]',
-    '(instrumental climax)',
-    '',
-    '[Outro]',
-    '(instrumental fade)',
-  ].join('\n')
+function generateInstrumentalLyrics(): string {
+  return '[instrumental]'
 }
 
 // ── Main Validation & Builder ───────────────────────────────────────────────
@@ -166,8 +152,8 @@ export function buildMiniMaxV2Input(options: MiniMaxV2BuildOptions): MiniMaxV2Va
   let lyricsPrompt: string
 
   if (isInstrumental(lyrics)) {
-    // No lyrics / instrumental mode — still need to provide lyrics_prompt
-    lyricsPrompt = generateInstrumentalLyrics(finalPrompt)
+    // No lyrics / instrumental mode — just '[instrumental]', nothing more
+    lyricsPrompt = generateInstrumentalLyrics()
     console.log('🎵 [MiniMax2 Validation] Instrumental mode — generated placeholder lyrics_prompt')
   } else {
     // User provided lyrics — sanitize them
