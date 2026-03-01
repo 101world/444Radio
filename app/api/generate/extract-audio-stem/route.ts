@@ -83,7 +83,7 @@ export async function POST(request: Request) {
       }, { status: 402 })
     }
 
-    // ✅ DEDUCT credit atomically BEFORE generation (blocks if wallet < $1)
+    // ✅ DEDUCT credit atomically BEFORE generation
     const { data: deductResultRaw } = await supabase
       .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: EXTRACT_COST })
       .single()

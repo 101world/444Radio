@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
 
     console.log(`💰 User has ${user.credits} credits. Audio Boost requires ${BOOST_COST} credit.`)
 
-    // ✅ DEDUCT credit atomically BEFORE generation (blocks if wallet < $1)
+    // ✅ DEDUCT credit atomically BEFORE generation
     const deductRes = await fetch(
       `${supabaseUrl}/rest/v1/rpc/deduct_credits`,
       {

@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
       }, { status: 402 })
     }
 
-    // ✅ DEDUCT 1 CREDIT atomically BEFORE generation (blocks if wallet < $1)
+    // ✅ DEDUCT 1 CREDIT atomically BEFORE generation
     const deductRes = await fetch(
       `${supabaseUrl}/rest/v1/rpc/deduct_credits`,
       {

@@ -14,7 +14,7 @@ export async function GET() {
     categories: ["music", "entertainment", "social"],
     icons: [
       {
-        src: "/studio/icon.png",
+        src: "/444studio/icon.png",
         sizes: "144x144",
         type: "image/png"
       }

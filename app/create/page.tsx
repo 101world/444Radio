@@ -1030,13 +1030,8 @@ function CreatePageContent() {
     console.log('[Credit Check]', { currentCredits, freeCreditsLeft, walletBalance, pendingCredits, availableCredits, creditsNeeded })
     
     if (availableCredits < creditsNeeded) {
-      // Determine the right error message based on user state
-      if (freeCreditsLeft <= 0 && walletBalance < 1) {
-        // Free credits exhausted + no $1 access
-        setOutOfCreditsError('Free credits exhausted. Deposit $1 to unlock pay-per-usage and buy more credits as you go!')
-      } else if (currentCredits <= 0 && walletBalance >= 1) {
-        // Has wallet access but no credits left
-        setOutOfCreditsError('You\'re out of credits! Buy more credits to keep creating.')
+      if (currentCredits <= 0) {
+        setOutOfCreditsError('You\'re out of credits! Visit the pricing page to buy more credits.')
       } else {
         setOutOfCreditsError(`You need ${creditsNeeded} credits but only have ${currentCredits} available (${pendingCredits} reserved for active generations).`)
       }

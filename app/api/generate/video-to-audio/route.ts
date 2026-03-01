@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
 
     console.log(`💰 User has ${totalCredits} credits (${user?.free_credits || 0} free). Generation requires ${creditsRequired} credits.`)
 
-    // ✅ DEDUCT credits atomically BEFORE generation (blocks if wallet < $1)
+    // ✅ DEDUCT credits atomically BEFORE generation
     const deductRes = await fetch(
       `${supabaseUrl}/rest/v1/rpc/deduct_credits`,
       {

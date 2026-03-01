@@ -325,7 +325,7 @@ function SettingsPageInner() {
                   </div>
                   <div>
                     <h2 className="text-2xl font-bold">Wallet &amp; Credits</h2>
-                    <p className="text-sm text-gray-400">$1 access fee &middot; pay-per-use</p>
+                    <p className="text-sm text-gray-400">Pay-per-use credits</p>
                   </div>
                 </div>
               </div>
@@ -342,11 +342,6 @@ function SettingsPageInner() {
                         <span className="text-green-400">${(walletBalance ?? 0).toFixed(2)}</span>
                       )}
                     </p>
-                    {(walletBalance ?? 0) < 1 && (
-                      <p className="text-xs text-amber-400 mt-1 flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3" /> Min $1.00 required
-                      </p>
-                    )}
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
@@ -378,14 +373,14 @@ function SettingsPageInner() {
               </div>
 
               {/* Convert wallet to credits */}
-              {(walletBalance ?? 0) > 1 && (
+              {(walletBalance ?? 0) > 0 && (
                 <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <ArrowRightLeft className="w-4 h-4 text-purple-400" />
                       <div>
-                        <p className="text-sm font-medium">Convertible: ${((walletBalance ?? 0) - 1).toFixed(2)}</p>
-                        <p className="text-xs text-gray-500">~{Math.floor(((walletBalance ?? 0) - 1) / 0.035)} credits ($1 stays as access fee)</p>
+                        <p className="text-sm font-medium">Convertible: ${(walletBalance ?? 0).toFixed(2)}</p>
+                        <p className="text-xs text-gray-500">~{Math.floor((walletBalance ?? 0) / 0.035)} credits</p>
                       </div>
                     </div>
                     <button
@@ -959,7 +954,7 @@ function SettingsPageInner() {
               <div className="space-y-3">
                   <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
                     <CheckCircle className="w-4 h-4 text-emerald-400" />
-                    <span className="text-xs text-emerald-300">Free for all users — deposit $1 to your wallet for access</span>
+                    <span className="text-xs text-emerald-300">Free for all users</span>
                   </div>
                   <a
                     href="/api/plugin/download-installer"

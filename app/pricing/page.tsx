@@ -22,13 +22,11 @@ import {
   Wand2,
   X,
   DollarSign,
-  AlertTriangle,
   Clock,
   ChevronDown,
   ChevronUp,
   ArrowUpRight,
   ArrowDownRight,
-  Lock,
 } from 'lucide-react'
 
 // ── Transaction type labels ──
@@ -132,17 +130,8 @@ export default function PricingPage() {
   const [showFirstTimeModal, setShowFirstTimeModal] = useState(false)
   const [pendingDepositAmount, setPendingDepositAmount] = useState<number | null>(null)
 
-  // $1 is locked as access fee. Calculate how much of a new deposit is convertible.
-  const hasAccessFee = (walletBalance ?? 0) >= 1
   const calcRealCredits = (depositUsd: number) => {
-    if (hasAccessFee) {
-      // Already have $1 locked — full deposit converts
-      return Math.floor(depositUsd / CREDIT_RATE)
-    }
-    // First-time: $1 goes to access fee from this deposit
-    const lockNeeded = Math.max(0, 1 - (walletBalance ?? 0))
-    const convertible = Math.max(0, depositUsd - lockNeeded)
-    return Math.floor(convertible / CREDIT_RATE)
+    return Math.floor(depositUsd / CREDIT_RATE)
   }
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [txnTotal, setTxnTotal] = useState(0)
@@ -173,13 +162,12 @@ export default function PricingPage() {
   }, [showHistory])
 
   // ── Convert wallet to credits handler ──
-  const LOCKED_WALLET = 1.00  // $1 permanently locked
   const handleConvertSubmit = async () => {
     if (isConverting || isPurchasing) return
     
-    const convertible = Math.max(0, (walletBalance ?? 0) - LOCKED_WALLET)
+    const convertible = walletBalance ?? 0
     if (convertible <= 0) {
-      setPurchaseMessage({ type: 'error', text: '$1.00 is locked as an access fee. Add more funds to convert.' })
+      setPurchaseMessage({ type: 'error', text: 'No wallet balance to convert.' })
       return
     }
 
@@ -197,7 +185,7 @@ export default function PricingPage() {
         const maxDisplay = currency === 'INR' 
           ? `₹${(convertible * INR_RATE).toFixed(2)}`
           : `$${convertible.toFixed(2)}`
-        setPurchaseMessage({ type: 'error', text: `Max convertible: ${maxDisplay}. $1 is locked.` })
+        setPurchaseMessage({ type: 'error', text: `Max convertible: ${maxDisplay}` })
         return
       }
     }
@@ -327,8 +315,6 @@ export default function PricingPage() {
     )
   }
 
-  const hasAccess = (walletBalance ?? 0) >= 1
-
   return (
     <main className="min-h-screen bg-black text-white relative overflow-hidden md:pl-14 md:pr-28">
       <div className="absolute inset-0 bg-gradient-to-br from-gray-950/30 via-black to-black pointer-events-none" />
@@ -352,23 +338,6 @@ export default function PricingPage() {
             No subscriptions. Only pay for what you create. 1 credit = ${CREDIT_RATE}.
           </p>
 
-          {/* $1 Access Fee — PROMINENT */}
-          <div className="mt-5 bg-amber-500/10 border-2 border-amber-500/40 rounded-xl p-4 max-w-2xl mx-auto">
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center">
-                <Lock className="w-5 h-5 text-amber-400" />
-              </div>
-              <div className="text-left">
-                <p className="text-sm font-bold text-amber-300">⚡ $1 Platform Access Fee (One-Time)</p>
-                <p className="text-xs text-gray-300 mt-1 leading-relaxed">
-                  Your first <span className="font-bold text-white">$1 is automatically locked</span> from your first deposit as a one-time platform fee.
-                  This is <span className="font-semibold text-amber-300">not a charge</span> — it stays in your wallet permanently.
-                  All balance above $1 converts to credits at $0.035/credit.
-                </p>
-              </div>
-            </div>
-          </div>
-
           {/* Current balance strip */}
           <div className="flex items-center justify-center gap-2 sm:gap-4 mt-5 flex-wrap">
             <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-white/5 border border-white/10 rounded-full">
@@ -383,8 +352,8 @@ export default function PricingPage() {
               <span className="text-xs sm:text-sm text-gray-300">Credits:</span>
               <span className="text-xs sm:text-sm font-bold text-white">{currentCredits ?? 0}</span>
             </div>
-            {/* Convert wallet to credits button (only if wallet > $1 locked minimum) */}
-            {(walletBalance ?? 0) > 1 && (
+            {/* Convert wallet to credits button */}
+            {(walletBalance ?? 0) > 0 && (
               <button
                 onClick={() => setShowConvertModal(true)}
                 disabled={isPurchasing}
@@ -393,18 +362,6 @@ export default function PricingPage() {
                 <ArrowDownRight className="w-4 h-4" />
                 Convert to Credits
               </button>
-            )}
-            {(walletBalance ?? 0) > 0 && (walletBalance ?? 0) <= 1 && (
-              <div className="inline-flex items-center gap-2 px-3 py-2 bg-white/5 border border-white/10 rounded-full">
-                <Lock className="w-3.5 h-3.5 text-gray-500" />
-                <span className="text-xs text-gray-500">$1 locked as access fee</span>
-              </div>
-            )}
-            {!hasAccess && (
-              <div className="inline-flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded-full">
-                <AlertTriangle className="w-4 h-4 text-amber-400" />
-                <span className="text-xs text-amber-300">Add at least $1 to start generating</span>
-              </div>
             )}
           </div>
         </div>
@@ -486,11 +443,6 @@ export default function PricingPage() {
                     <p className="text-2xl font-bold text-white">
                       {calcRealCredits(customAmount).toLocaleString()} credits
                     </p>
-                    {calcRealCredits(customAmount) < Math.floor(customAmount / CREDIT_RATE) && (
-                      <p className="text-[10px] text-amber-400 mt-1 flex items-center gap-1">
-                        <Lock className="w-3 h-3" /> $1 locked · {Math.floor(customAmount / CREDIT_RATE)} after
-                      </p>
-                    )}
                   </div>
                 </div>
               </div>
@@ -531,7 +483,7 @@ export default function PricingPage() {
                   </div>
                   <div className="flex flex-col justify-between">
                     <div>
-                      <p className="text-sm text-gray-400">Credits worth ${customAmount} USD</p>
+                <p className="text-sm text-gray-400">Credits worth ${customAmount} USD</p>
                       <p className="text-3xl font-bold text-white mt-1">{calcRealCredits(customAmount).toLocaleString()} credits</p>
                     </div>
                     <button
@@ -546,13 +498,6 @@ export default function PricingPage() {
               )
             })()}
 
-            {/* $1 lock reminder — always visible */}
-            <div className="flex items-center gap-2 p-2.5 bg-amber-500/8 border border-amber-500/20 rounded-lg">
-              <Lock className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
-              <p className="text-[11px] text-amber-300/90">
-                <span className="font-semibold">$1 is locked automatically</span> from your first deposit as a one-time platform access fee. This is not a hidden charge.
-              </p>
-            </div>
           </div>
         </div>
 
@@ -583,14 +528,6 @@ export default function PricingPage() {
                   </p>
                   <p className="text-xs text-gray-300 font-semibold">
                     {realCredits.toLocaleString()} cr
-                  </p>
-                </div>
-
-                {/* $1 lock notice on each card */}
-                <div className="flex items-center gap-1 p-1.5 bg-amber-500/8 border border-amber-500/15 rounded-md mb-3">
-                  <Lock className="w-2.5 h-2.5 text-amber-400 flex-shrink-0" />
-                  <p className="text-[9px] text-amber-300/80 leading-tight">
-                    {isReduced ? '$1 locked as platform fee' : '$1 already locked'}
                   </p>
                 </div>
 
@@ -636,8 +573,8 @@ export default function PricingPage() {
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/20 border border-white/40 flex items-center justify-center text-xs font-bold text-white">2</div>
               <div>
-                <p className="text-sm font-medium text-white">$1 locked once</p>
-                <p className="text-xs text-gray-500">$1 is locked from your first deposit as a platform fee. Only happens once.</p>
+                <p className="text-sm font-medium text-white">Convert to credits</p>
+                <p className="text-xs text-gray-500">Full deposit converts to credits at $0.035/credit. No hidden fees.</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -774,8 +711,8 @@ export default function PricingPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-8">
           <div className="bg-white/5 border border-white/10 rounded-xl p-4 sm:p-5 text-center">
             <DollarSign className="w-5 sm:w-6 h-5 sm:h-6 text-green-400 mx-auto mb-2" />
-            <p className="text-xs sm:text-sm font-semibold">$1 Access Fee</p>
-            <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Locked once from first deposit. Not a charge — stays in your wallet.</p>
+            <p className="text-xs sm:text-sm font-semibold">No Hidden Fees</p>
+            <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Full deposit converts to credits. What you pay is what you get.</p>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-xl p-4 sm:p-5 text-center">
             <Shield className="w-5 sm:w-6 h-5 sm:h-6 text-white mx-auto mb-2" />
@@ -818,14 +755,14 @@ export default function PricingPage() {
 
             {/* Info banner */}
             {(() => {
-              const convertible = Math.max(0, (walletBalance ?? 0) - 1)
+              const convertible = walletBalance ?? 0
               const convertibleDisplay = currency === 'INR'
                 ? `₹${(convertible * INR_RATE).toFixed(2)}`
                 : `$${convertible.toFixed(2)}`
               const maxCredits = Math.floor(convertible / CREDIT_RATE)
               return (
                 <>
-                  <div className="mb-4 p-4 bg-white/5 border border-white/20 rounded-xl">
+                  <div className="mb-6 p-4 bg-white/5 border border-white/20 rounded-xl">
                     <p className="text-xs text-gray-300 leading-relaxed">
                       <strong>Current Wallet:</strong> {currency === 'INR' 
                         ? `₹${((walletBalance ?? 0) * INR_RATE).toFixed(2)}`
@@ -838,19 +775,13 @@ export default function PricingPage() {
                         : `$${CREDIT_RATE.toFixed(3)}`} per credit
                     </p>
                   </div>
-                  <div className="mb-6 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center gap-2">
-                    <Lock className="w-4 h-4 text-amber-400 flex-shrink-0" />
-                    <p className="text-xs text-amber-300">
-                      $1.00 is permanently locked in your wallet as an access fee and cannot be converted.
-                    </p>
-                  </div>
                 </>
               )
             })()}
 
             {/* Amount input */}
             {(() => {
-              const convertible = Math.max(0, (walletBalance ?? 0) - 1)
+              const convertible = walletBalance ?? 0
               return (
                 <div className="mb-6">
                   <label className="block text-sm font-semibold mb-3">
@@ -869,7 +800,7 @@ export default function PricingPage() {
                     className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-500 focus:border-white/40 focus:ring-2 focus:ring-white/20 outline-none transition-all"
                   />
                   <p className="text-xs text-gray-500 mt-2">
-                    Leave empty to convert all available balance (above $1)
+                    Leave empty to convert all available balance
                   </p>
                 </div>
               )
@@ -915,9 +846,7 @@ export default function PricingPage() {
 
       {/* ── Pre-Purchase Confirmation Modal ── */}
       {showFirstTimeModal && pendingDepositAmount !== null && (() => {
-        const isFirstTime = (walletBalance ?? 0) < 1
-        const convertibleAfterDeposit = isFirstTime ? Math.max(0, pendingDepositAmount - 1) : pendingDepositAmount
-        const creditsAfterDeposit = Math.floor(convertibleAfterDeposit / CREDIT_RATE)
+        const creditsAfterDeposit = Math.floor(pendingDepositAmount / CREDIT_RATE)
         return (
           <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4" onClick={() => { setShowFirstTimeModal(false); setPendingDepositAmount(null) }}>
             <div className="bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 border border-cyan-500/40 rounded-2xl max-w-md w-full shadow-2xl shadow-cyan-500/10 overflow-hidden max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
@@ -932,29 +861,12 @@ export default function PricingPage() {
                 {/* Warm brand message */}
                 <div className="bg-cyan-500/10 border border-cyan-500/25 rounded-xl p-4">
                   <p className="text-sm text-gray-300 leading-relaxed">
-                    We love you and we want you with us forever. A dollar won&apos;t hurt your soul — it only helps us build something meaningful together.
+                    We love you and we want you with us forever. Every dollar helps us build something meaningful together.
                   </p>
                   <p className="text-sm text-cyan-400 font-semibold mt-2">
                     Lock in and tune in. 444 is your new and OG producer. 🎶
                   </p>
                 </div>
-
-                {/* First-time $1 access fee notice */}
-                {isFirstTime && (
-                  <div className="bg-amber-500/10 border border-amber-500/25 rounded-xl p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <DollarSign className="w-4 h-4 text-amber-400" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-amber-300">$1 One-Time Access Fee</p>
-                        <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-                          From your first deposit, <span className="text-white font-semibold">$1 will be locked permanently</span> as a one-time platform access fee. This never happens again on future deposits.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
 
                 {/* Breakdown */}
                 <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-2">
@@ -963,22 +875,16 @@ export default function PricingPage() {
                     <span className="text-gray-400">Deposit amount</span>
                     <span className="text-white font-semibold">${pendingDepositAmount.toFixed(2)}</span>
                   </div>
-                  {isFirstTime && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-amber-400">Access fee (one-time)</span>
-                      <span className="text-amber-400 font-semibold">−$1.00</span>
-                    </div>
-                  )}
                   <div className="border-t border-white/10 pt-2 flex items-center justify-between text-sm">
                     <span className="text-gray-300">Convertible to credits</span>
-                    <span className="text-cyan-400 font-bold">${convertibleAfterDeposit.toFixed(2)} → {creditsAfterDeposit} credits</span>
+                    <span className="text-cyan-400 font-bold">${pendingDepositAmount.toFixed(2)} → {creditsAfterDeposit} credits</span>
                   </div>
                 </div>
 
                 {/* Reassurance */}
                 <div className="flex items-start gap-2 text-xs text-gray-500">
                   <Shield className="w-4 h-4 flex-shrink-0 text-cyan-400/50 mt-0.5" />
-                  <span>{isFirstTime ? 'After this one-time fee, all future deposits convert fully to credits. No hidden charges.' : 'Instant deposit to your wallet. Convert to credits whenever you\u2019re ready.'}</span>
+                  <span>Instant deposit to your wallet. Convert to credits whenever you're ready. No hidden fees.</span>
                 </div>
               </div>
 

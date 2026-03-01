@@ -110,19 +110,9 @@ export function sanitizeCreditError(errorMessage: string | null | undefined): st
 
   const lower = errorMessage.toLowerCase()
 
-  // Wallet gate — user needs $1 deposit (free credits exhausted)
-  if (lower.includes('wallet balance') || lower.includes('$1 access') || lower.includes('add funds')) {
-    return 'Free credits used up! Deposit $1 to unlock pay-per-usage and keep creating.'
-  }
-
-  // Free credits exhausted messages from DB
-  if (lower.includes('free credits exhausted') || lower.includes('deposit $1')) {
-    return 'Free credits used up! Deposit $1 to unlock pay-per-usage and keep creating.'
-  }
-
-  // Generic insufficient credits
-  if (lower.includes('insufficient credits')) {
-    return 'Insufficient credits. Please add more credits to continue.'
+  // Insufficient credits (any kind)
+  if (lower.includes('insufficient')) {
+    return 'Insufficient credits. Buy more credits to continue creating.'
   }
 
   return 'Insufficient credits'
