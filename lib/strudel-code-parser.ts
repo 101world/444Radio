@@ -39,6 +39,8 @@ export interface ParsedChannel {
   lineEnd: number       // exclusive line end
   blockStart: number    // char offset of block start in full code
   blockEnd: number      // char offset of block end in full code
+  bank?: string         // drum bank name if .bank("X") is present
+  isSimpleSource: boolean // true if s() has a single word (swappable)
 }
 
 // ─── Constants ───
@@ -278,6 +280,18 @@ export function parseStrudelCode(code: string): ParsedChannel[] {
     if (/\.(?:_)?scope\(\)/.test(rawCode)) effects.push('scope')
     if (/\.(?:_)?pianoroll\(\)/.test(rawCode)) effects.push('pianoroll')
 
+    // Extract bank
+    let bank: string | undefined
+    const bankMatch = rawCode.match(/\.bank\(\s*"([^"]*)"/) 
+    if (bankMatch) bank = bankMatch[1]
+
+    // Check if source is simple (single word, swappable via dropdown)
+    let isSimpleSource = false
+    const sFullMatch = rawCode.match(/\.?s\(\s*"([^"]*)"/) 
+    if (sFullMatch) {
+      isSimpleSource = /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(sFullMatch[1].trim())
+    }
+
     // Build channel
     const displayName = start.name || `ch${b + 1}`
     const baseSource = source.replace(/[:!*\d]/g, '').toLowerCase()
@@ -297,6 +311,8 @@ export function parseStrudelCode(code: string): ParsedChannel[] {
       lineEnd: endLineIdx,
       blockStart: blockCharStart,
       blockEnd: blockCharEnd,
+      bank,
+      isSimpleSource,
     })
   }
 
@@ -444,6 +460,69 @@ export function applyMixerOverrides(
 /** Get a param definition by key */
 export function getParamDef(key: string): ParamDef | undefined {
   return PARAM_DEFS.find(p => p.key === key)
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  swapSoundInChannel — Replace s("old") with s("new")
+//  Only works for simple single-word sources (isSimpleSource)
+// ═══════════════════════════════════════════════════════════════
+
+export function swapSoundInChannel(
+  code: string,
+  channelIdx: number,
+  newSound: string,
+): string {
+  const channels = parseStrudelCode(code)
+  const ch = channels[channelIdx]
+  if (!ch || !ch.isSimpleSource) return code
+
+  const sMatch = ch.rawCode.match(/\.?s\(\s*"([^"]*)"/) 
+  if (!sMatch || sMatch.index === undefined) return code
+
+  const quotePos = sMatch[0].indexOf('"')
+  const nameStartInRaw = sMatch.index + quotePos + 1
+  const nameEndInRaw = nameStartInRaw + sMatch[1].length
+
+  const nameStart = ch.blockStart + nameStartInRaw
+  const nameEnd = ch.blockStart + nameEndInRaw
+
+  return code.substring(0, nameStart) + newSound + code.substring(nameEnd)
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  swapBankInChannel — Replace .bank("old") with .bank("new")
+//  If no bank exists, appends .bank("new") after s("...")
+// ═══════════════════════════════════════════════════════════════
+
+export function swapBankInChannel(
+  code: string,
+  channelIdx: number,
+  newBank: string,
+): string {
+  const channels = parseStrudelCode(code)
+  const ch = channels[channelIdx]
+  if (!ch) return code
+
+  const bankMatch = ch.rawCode.match(/\.bank\(\s*"([^"]*)"/) 
+  if (bankMatch && bankMatch.index !== undefined) {
+    // Replace existing bank name
+    const quotePos = bankMatch[0].indexOf('"')
+    const nameStartInRaw = bankMatch.index + quotePos + 1
+    const nameEndInRaw = nameStartInRaw + bankMatch[1].length
+
+    const nameStart = ch.blockStart + nameStartInRaw
+    const nameEnd = ch.blockStart + nameEndInRaw
+
+    return code.substring(0, nameStart) + newBank + code.substring(nameEnd)
+  } else {
+    // No existing bank — insert .bank("X") after s("...")
+    const sMatch = ch.rawCode.match(/\.?s\(\s*"[^"]*"\s*\)/)
+    if (sMatch && sMatch.index !== undefined) {
+      const insertPos = ch.blockStart + sMatch.index + sMatch[0].length
+      return code.substring(0, insertPos) + `.bank("${newBank}")` + code.substring(insertPos)
+    }
+    return code
+  }
 }
 
 // Backward compat aliases

@@ -15,9 +15,92 @@ import { ChevronDown, ChevronRight, Plus, Volume2, Layers, VolumeX, Headphones, 
 import StudioKnob from './StudioKnob'
 import {
   parseStrudelCode, updateParamInCode, insertEffectInChannel,
+  swapSoundInChannel, swapBankInChannel,
   getParamDef,
   DRAGGABLE_EFFECTS, type ParsedChannel,
 } from '@/lib/strudel-code-parser'
+
+// ─── Sound / Bank pick-lists for dropdown ───
+
+const SOUND_OPTIONS: { group: string; sounds: [string, string][] }[] = [
+  { group: 'Synth', sounds: [
+    ['sawtooth', 'Sawtooth'], ['supersaw', 'Supersaw'], ['sine', 'Sine'],
+    ['square', 'Square'], ['triangle', 'Triangle'],
+  ]},
+  { group: 'Drums', sounds: [
+    ['bd', 'Kick'], ['sd', 'Snare'], ['cp', 'Clap'], ['hh', 'Hi-hat'],
+    ['oh', 'Open HH'], ['rim', 'Rim'], ['tom', 'Tom'], ['ride', 'Ride'],
+    ['crash', 'Crash'], ['perc', 'Perc'],
+  ]},
+  { group: 'Keys', sounds: [
+    ['gm_piano', 'Piano'], ['gm_epiano1', 'E.Piano (Rhodes)'],
+    ['gm_epiano2', 'E.Piano (DX7)'], ['gm_music_box', 'Music Box'],
+    ['gm_vibraphone', 'Vibes'], ['gm_marimba', 'Marimba'],
+    ['gm_celesta', 'Celesta'], ['gm_clavinet', 'Clavinet'],
+  ]},
+  { group: 'Organ', sounds: [
+    ['gm_organ1', 'Drawbar Organ'], ['gm_organ2', 'Perc. Organ'],
+    ['gm_organ3', 'Rock Organ'], ['gm_church_organ', 'Church'],
+    ['gm_accordion', 'Accordion'], ['gm_harmonica', 'Harmonica'],
+  ]},
+  { group: 'Guitar & Bass', sounds: [
+    ['gm_acoustic_guitar_nylon', 'Nylon Gtr'], ['gm_acoustic_guitar_steel', 'Steel Gtr'],
+    ['gm_electric_guitar_jazz', 'Jazz Gtr'], ['gm_electric_guitar_clean', 'Clean Gtr'],
+    ['gm_overdriven_guitar', 'Overdrive'], ['gm_distortion_guitar', 'Distortion'],
+    ['gm_acoustic_bass', 'Acoustic Bass'], ['gm_electric_bass_finger', 'Finger Bass'],
+    ['gm_slap_bass1', 'Slap Bass'], ['gm_synth_bass1', 'Synth Bass 1'],
+    ['gm_synth_bass2', 'Synth Bass 2'],
+  ]},
+  { group: 'Strings', sounds: [
+    ['gm_violin', 'Violin'], ['gm_viola', 'Viola'], ['gm_cello', 'Cello'],
+    ['gm_contrabass', 'Contrabass'], ['gm_string_ensemble1', 'String Ens.'],
+    ['gm_synth_strings1', 'Synth Strings'], ['gm_orchestral_harp', 'Harp'],
+    ['gm_pizzicato_strings', 'Pizzicato'],
+  ]},
+  { group: 'Brass & Sax', sounds: [
+    ['gm_trumpet', 'Trumpet'], ['gm_trombone', 'Trombone'],
+    ['gm_french_horn', 'French Horn'], ['gm_brass_section', 'Brass Section'],
+    ['gm_alto_sax', 'Alto Sax'], ['gm_tenor_sax', 'Tenor Sax'],
+    ['gm_soprano_sax', 'Soprano Sax'],
+  ]},
+  { group: 'Flute & Pipe', sounds: [
+    ['gm_flute', 'Flute'], ['gm_piccolo', 'Piccolo'],
+    ['gm_pan_flute', 'Pan Flute'], ['gm_recorder', 'Recorder'],
+  ]},
+  { group: 'Voice', sounds: [
+    ['gm_choir_aahs', 'Choir Aahs'], ['gm_voice_oohs', 'Voice Oohs'],
+    ['gm_synth_voice', 'Synth Voice'],
+  ]},
+  { group: 'Synth Leads', sounds: [
+    ['gm_lead1_square', 'Lead Square'], ['gm_lead2_sawtooth', 'Lead Saw'],
+    ['gm_lead5_charang', 'Charang'], ['gm_lead7_fifths', 'Fifths'],
+  ]},
+  { group: 'Synth Pads', sounds: [
+    ['gm_pad1_new_age', 'New Age'], ['gm_pad2_warm', 'Warm'],
+    ['gm_pad3_polysynth', 'Polysynth'], ['gm_pad4_choir', 'Choir Pad'],
+    ['gm_pad7_halo', 'Halo'], ['gm_pad8_sweep', 'Sweep'],
+  ]},
+  { group: 'SFX & Ethnic', sounds: [
+    ['gm_fx3_crystal', 'Crystal'], ['gm_fx4_atmosphere', 'Atmosphere'],
+    ['gm_fx7_echoes', 'Echoes'], ['gm_fx8_scifi', 'Sci-Fi'],
+    ['gm_kalimba', 'Kalimba'], ['gm_steel_drums', 'Steel Drums'],
+    ['gm_sitar', 'Sitar'], ['gm_koto', 'Koto'],
+  ]},
+  { group: 'Samples', sounds: [
+    ['casio', 'Casio'], ['jazz', 'Jazz Kit'], ['metal', 'Metal'],
+    ['mouth', 'Mouth'], ['gabba', 'Gabba'], ['space', 'Space'],
+    ['noise', 'Noise'],
+  ]},
+]
+
+const BANK_OPTIONS: [string, string][] = [
+  ['RolandTR808', 'TR-808'],
+  ['RolandTR909', 'TR-909'],
+  ['RolandCR78', 'CR-78'],
+  ['AkaiLinn', 'LinnDrum'],
+  ['RhythmAce', 'Rhythm Ace'],
+  ['ViscoSpaceDrum', 'Space Drum'],
+]
 
 // ─── Effect category grouping for nested rack display ───
 
@@ -63,6 +146,8 @@ function ChannelStrip({
   onParamChange,
   onMute,
   onSolo,
+  onSoundChange,
+  onBankChange,
   onDragOver,
   onDragLeave,
   onDrop,
@@ -77,6 +162,8 @@ function ChannelStrip({
   onParamChange: (channelIdx: number, paramKey: string, value: number) => void
   onMute: (idx: number) => void
   onSolo: (idx: number, exclusive: boolean) => void
+  onSoundChange: (idx: number, sound: string) => void
+  onBankChange: (idx: number, bank: string) => void
   onDragOver: (e: React.DragEvent) => void
   onDragLeave: () => void
   onDrop: (e: React.DragEvent) => void
@@ -130,97 +217,144 @@ function ChannelStrip({
       onDrop={handleDropLocal}
     >
       {/* ── Channel Header ── */}
-      <div className="flex items-center gap-1 px-2 py-1.5">
-        {/* Solo button */}
-        <button
-          onClick={(e) => { e.stopPropagation(); onSolo(channelIdx, !e.ctrlKey && !e.shiftKey) }}
-          className={`w-4 h-4 rounded text-[7px] font-black flex items-center justify-center transition-all cursor-pointer ${
-            isSoloed
-              ? 'bg-amber-400/20 text-amber-400 border border-amber-400/40'
-              : 'bg-white/[0.02] text-white/15 border border-white/[0.06] hover:text-white/30'
-          }`}
-          title={`Solo${'\n'}Ctrl+click for multi-solo`}
-        >
-          S
-        </button>
+      <div className="px-2 py-1.5">
+        {/* Top row: S M expand-area gain */}
+        <div className="flex items-center gap-1">
+          {/* Solo button */}
+          <button
+            onClick={(e) => { e.stopPropagation(); onSolo(channelIdx, !e.ctrlKey && !e.shiftKey) }}
+            className={`w-4 h-4 rounded text-[7px] font-black flex items-center justify-center transition-all cursor-pointer ${
+              isSoloed
+                ? 'bg-amber-400/20 text-amber-400 border border-amber-400/40'
+                : 'bg-white/[0.02] text-white/15 border border-white/[0.06] hover:text-white/30'
+            }`}
+            title={`Solo${'\n'}Ctrl+click for multi-solo`}
+          >
+            S
+          </button>
 
-        {/* Mute button */}
-        <button
-          onClick={(e) => { e.stopPropagation(); onMute(channelIdx) }}
-          className={`w-4 h-4 rounded text-[7px] font-black flex items-center justify-center transition-all cursor-pointer ${
-            isMuted
-              ? 'bg-red-400/20 text-red-400 border border-red-400/40'
-              : 'bg-white/[0.02] text-white/15 border border-white/[0.06] hover:text-white/30'
-          }`}
-          title="Mute"
-        >
-          M
-        </button>
+          {/* Mute button */}
+          <button
+            onClick={(e) => { e.stopPropagation(); onMute(channelIdx) }}
+            className={`w-4 h-4 rounded text-[7px] font-black flex items-center justify-center transition-all cursor-pointer ${
+              isMuted
+                ? 'bg-red-400/20 text-red-400 border border-red-400/40'
+                : 'bg-white/[0.02] text-white/15 border border-white/[0.06] hover:text-white/30'
+            }`}
+            title="Mute"
+          >
+            M
+          </button>
 
-        {/* Expand toggle + channel info */}
-        <button
-          onClick={onToggle}
-          className="flex-1 flex items-center gap-1.5 min-w-0 hover:bg-white/[0.02] rounded px-1 py-0.5 transition-colors cursor-pointer"
-        >
-          {/* Source icon */}
-          <span className="text-sm shrink-0">{channel.icon}</span>
+          {/* Expand toggle + channel info */}
+          <button
+            onClick={onToggle}
+            className="flex-1 flex items-center gap-1.5 min-w-0 hover:bg-white/[0.02] rounded px-1 py-0.5 transition-colors cursor-pointer"
+          >
+            {/* Source icon */}
+            <span className="text-sm shrink-0">{channel.icon}</span>
 
-          {/* Name + source */}
-          <div className="flex-1 text-left min-w-0">
-            <div className="flex items-center gap-1">
-              <span
-                className="text-[10px] font-bold tracking-wide uppercase"
-                style={{ color: channel.color }}
-              >
-                {channel.name}
-              </span>
-              {channel.sourceType === 'stack' && (
-                <Layers size={8} className="text-white/20" />
-              )}
-            </div>
-            <div className="text-[7px] text-white/20 font-mono truncate">
-              {channel.source}
-            </div>
-          </div>
-
-          {/* FX count badge */}
-          {channel.effects.length > 0 && (
+            {/* Name */}
             <span
-              className="text-[7px] font-bold px-1 py-0.5 rounded-full shrink-0"
-              style={{
-                backgroundColor: `${channel.color}15`,
-                color: `${channel.color}90`,
-              }}
+              className="text-[10px] font-bold tracking-wide uppercase truncate"
+              style={{ color: channel.color }}
             >
-              {channel.effects.length}fx
+              {channel.name}
             </span>
-          )}
+            {channel.sourceType === 'stack' && (
+              <Layers size={8} className="text-white/20" />
+            )}
 
-          {/* Expand arrow */}
-          {isExpanded ? (
-            <ChevronDown size={10} className="text-white/20 shrink-0" />
-          ) : (
-            <ChevronRight size={10} className="text-white/20 shrink-0" />
-          )}
-        </button>
+            {/* FX count badge */}
+            {channel.effects.length > 0 && (
+              <span
+                className="text-[7px] font-bold px-1 py-0.5 rounded-full shrink-0"
+                style={{
+                  backgroundColor: `${channel.color}15`,
+                  color: `${channel.color}90`,
+                }}
+              >
+                {channel.effects.length}fx
+              </span>
+            )}
 
-        {/* Quick gain knob (always visible) */}
-        <div
-          className="shrink-0"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <StudioKnob
-            label=""
-            value={gainParam?.value ?? 0.8}
-            min={0}
-            max={2}
-            step={0.01}
-            size={28}
-            color={channel.color}
-            isComplex={gainParam?.isComplex}
-            onChange={(v) => onParamChange(channelIdx, 'gain', v)}
-          />
+            {/* Expand arrow */}
+            {isExpanded ? (
+              <ChevronDown size={10} className="text-white/20 shrink-0" />
+            ) : (
+              <ChevronRight size={10} className="text-white/20 shrink-0" />
+            )}
+          </button>
+
+          {/* Quick gain knob (always visible) */}
+          <div
+            className="shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <StudioKnob
+              label=""
+              value={gainParam?.value ?? 0.8}
+              min={0}
+              max={2}
+              step={0.01}
+              size={28}
+              color={channel.color}
+              isComplex={gainParam?.isComplex}
+              onChange={(v) => onParamChange(channelIdx, 'gain', v)}
+            />
+          </div>
         </div>
+
+        {/* Row 2: Sound / Bank dropdowns */}
+        {(channel.isSimpleSource || channel.bank || channel.sourceType === 'sample') && (
+          <div className="flex items-center gap-1.5 mt-0.5 ml-10">
+            {/* Sound dropdown */}
+            {channel.isSimpleSource ? (
+              <select
+                value={channel.source}
+                onChange={(e) => onSoundChange(channelIdx, e.target.value)}
+                className="text-[8px] font-mono bg-white/[0.03] text-white/50 border border-white/[0.06] rounded px-1 py-0.5 outline-none cursor-pointer hover:border-white/[0.15] hover:text-cyan-400/70 transition-colors max-w-[90px] truncate"
+                title="Change sound / instrument"
+              >
+                <option value={channel.source}>{channel.source}</option>
+                {SOUND_OPTIONS.map(g => (
+                  <optgroup key={g.group} label={g.group}>
+                    {g.sounds
+                      .filter(([val]) => val !== channel.source)
+                      .map(([val, label]) => (
+                        <option key={val} value={val}>{label}</option>
+                      ))}
+                  </optgroup>
+                ))}
+              </select>
+            ) : (
+              <span className="text-[7px] text-white/20 font-mono truncate max-w-[80px]">
+                {channel.source}
+              </span>
+            )}
+
+            {/* Bank dropdown */}
+            {(channel.bank || channel.sourceType === 'sample') && (
+              <select
+                value={channel.bank || ''}
+                onChange={(e) => onBankChange(channelIdx, e.target.value)}
+                className="text-[8px] font-mono bg-amber-400/[0.04] text-amber-400/50 border border-amber-400/[0.1] rounded px-1 py-0.5 outline-none cursor-pointer hover:border-amber-400/30 hover:text-amber-400/80 transition-colors max-w-[72px] truncate"
+                title="Change drum bank"
+              >
+                {channel.bank ? (
+                  <option value={channel.bank}>{channel.bank}</option>
+                ) : (
+                  <option value="">No Bank</option>
+                )}
+                {BANK_OPTIONS
+                  .filter(([val]) => val !== channel.bank)
+                  .map(([val, label]) => (
+                    <option key={val} value={val}>{label}</option>
+                  ))}
+              </select>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Drop indicator ── */}
@@ -389,6 +523,26 @@ export default function StudioMixerRack({ code, onCodeChange, onMixerStateChange
     [onCodeChange],
   )
 
+  // ── Sound / Bank swap handlers ──
+  const handleSoundChange = useCallback(
+    (channelIdx: number, newSound: string) => {
+      const currentCode = codeRef.current
+      const newCode = swapSoundInChannel(currentCode, channelIdx, newSound)
+      if (newCode !== currentCode) onCodeChange(newCode)
+    },
+    [onCodeChange],
+  )
+
+  const handleBankChange = useCallback(
+    (channelIdx: number, newBank: string) => {
+      if (!newBank) return // user picked "No Bank", ignore
+      const currentCode = codeRef.current
+      const newCode = swapBankInChannel(currentCode, channelIdx, newBank)
+      if (newCode !== currentCode) onCodeChange(newCode)
+    },
+    [onCodeChange],
+  )
+
   // ── Drag & drop handlers ──
   const handleDragOver = useCallback((idx: number) => {
     setDragOverChannel(idx)
@@ -482,6 +636,8 @@ export default function StudioMixerRack({ code, onCodeChange, onMixerStateChange
               onParamChange={handleParamChange}
               onMute={handleMute}
               onSolo={handleSolo}
+              onSoundChange={handleSoundChange}
+              onBankChange={handleBankChange}
               onDragOver={() => handleDragOver(idx)}
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(idx, e)}
