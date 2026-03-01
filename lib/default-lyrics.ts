@@ -1,6 +1,6 @@
-// Default Lyrics Dataset - 20 diverse templates
+﻿// Default Lyrics Dataset - 20 diverse templates
 // These are used when user doesn't provide custom lyrics
-// Format includes: [Intro], [Verse], [Hook], [Outro]
+// Format includes: [Intro], [Verse], [Chorus], [Outro]
 
 export const defaultLyricsDataset = [
   // 1. Uplifting Pop
@@ -14,7 +14,7 @@ Everything's alive and feeling right
 No worries on my mind, I'm flying free
 This is where I'm meant to be
 
-[Hook]
+[Chorus]
 We're dancing till the morning light
 Everything just feels so right
 Living in this moment now
@@ -26,7 +26,7 @@ Finding joy in everything we love
 Heart is beating to the rhythm strong
 This is where we all belong
 
-[Hook]
+[Chorus]
 We're dancing till the morning light
 Everything just feels so right
 Living in this moment now
@@ -47,7 +47,7 @@ Wondering about the choices that I make
 Photographs of better days
 Echo through this empty space
 
-[Hook]
+[Chorus]
 I'm lost in yesterday
 Can't find my way
 These feelings won't fade away
@@ -59,7 +59,7 @@ Matches tears I can't explain
 Holding onto what remains
 Of a love that bears your name
 
-[Hook]
+[Chorus]
 I'm lost in yesterday
 Can't find my way
 These feelings won't fade away
@@ -80,7 +80,7 @@ Never gave up, kept filling up my cup
 Grinding every day, putting in that work
 All the haters talk but I let my actions speak first
 
-[Hook]
+[Chorus]
 We on top now, can't stop now
 Living loud, making moves, show me how
 Breaking through, breaking rules, breaking ground
@@ -92,7 +92,7 @@ Now they all watch, want to live like me
 But they don't see the struggle and the fight
 All the sleepless hours through the night
 
-[Hook]
+[Chorus]
 We on top now, can't stop now
 Living loud, making moves, show me how
 Breaking through, breaking rules, breaking ground
@@ -113,7 +113,7 @@ Stories waiting to unfold
 Coffee cooling in my hand
 Life is simple, life is grand
 
-[Hook]
+[Chorus]
 Slow down, take it easy now
 Feel the rhythm, don't know how
 Time just fades away somehow
@@ -125,7 +125,7 @@ Counting hours, counting days
 Nothing heavy on my mind
 Peace and quiet, hard to find
 
-[Hook]
+[Chorus]
 Slow down, take it easy now
 Feel the rhythm, don't know how
 Time just fades away somehow
@@ -146,7 +146,7 @@ Breaking free, losing control
 No more chains to hold me down
 I'm the king, I wear the crown
 
-[Hook]
+[Chorus]
 We're unstoppable tonight
 Burning bright like dynamite
 Raise your hands up to the sky
@@ -158,7 +158,7 @@ Giving everything my best
 Screaming out for all to hear
 This is our moment, our year
 
-[Hook]
+[Chorus]
 We're unstoppable tonight
 Burning bright like dynamite
 Raise your hands up to the sky
@@ -179,7 +179,7 @@ Dancing wild and feeling free
 Electric pulse inside my veins
 Breaking through these mental chains
 
-[Hook]
+[Chorus]
 Hands up in the air right now
 Feel the beat, I'll show you how
 Bodies moving all around
@@ -191,7 +191,7 @@ Can't get enough, I need more
 Rhythm taking over me
 This is where I want to be
 
-[Hook]
+[Chorus]
 Hands up in the air right now
 Feel the beat, I'll show you how
 Bodies moving all around
@@ -212,7 +212,7 @@ Simple life and summer rains
 Stories told by firelight
 Underneath the stars at night
 
-[Hook]
+[Chorus]
 Take me home where I belong
 Sing that old familiar song
 Where the river meets the shore
@@ -224,7 +224,7 @@ Rusty truck and maple trees
 Nothing fancy, nothing more
 Just the life that I adore
 
-[Hook]
+[Chorus]
 Take me home where I belong
 Sing that old familiar song
 Where the river meets the shore
@@ -245,7 +245,7 @@ Everything is black and white
 Trust nobody, that's the code
 Walking down this lonely road
 
-[Hook]
+[Chorus]
 In the darkness, I'm alive
 Do whatever to survive
 Cold world, cold heart, cold soul
@@ -257,7 +257,7 @@ Everyone just wants the fame
 But I'm different, I'm the same
 Playing with a different aim
 
-[Hook]
+[Chorus]
 In the darkness, I'm alive
 Do whatever to survive
 Cold world, cold heart, cold soul
@@ -278,7 +278,7 @@ Every moment is a thrill
 Your touch sends shivers down my spine
 I'm so glad that you are mine
 
-[Hook]
+[Chorus]
 You're my everything, my dream come true
 Every single day, I fall for you
 In your arms is where I want to be
@@ -290,7 +290,7 @@ Holding you throughout the night
 Every kiss feels like the first
 For your love, I have a thirst
 
-[Hook]
+[Chorus]
 You're my everything, my dream come true
 Every single day, I fall for you
 In your arms is where I want to be
@@ -311,7 +311,7 @@ Keep on grinding, keep on winning
 Failures are just lessons learned
 Success is something that's earned
 
-[Hook]
+[Chorus]
 Push harder, reach higher, never tire
 Set your dreams on fire
 Believe in yourself, you got the power
@@ -323,7 +323,7 @@ Now I'm shining like a star
 Proved them wrong with every step
 Zero doubt, zero regret
 
-[Hook]
+[Chorus]
 Push harder, reach higher, never tire
 Set your dreams on fire
 Believe in yourself, you got the power
@@ -344,7 +344,7 @@ Sipping wine, taking it slow
 Velvet voices, sultry night
 Everything just feels so right
 
-[Hook]
+[Chorus]
 Let the music take control
 Jazz is healing for the soul
 Swaying gently to the sound
@@ -356,7 +356,7 @@ Bass line grooving through the night
 Every note a sweet caress
 In this moment, I'm blessed
 
-[Hook]
+[Chorus]
 Let the music take control
 Jazz is healing for the soul
 Swaying gently to the sound
@@ -377,7 +377,7 @@ Simple life is all I trust
 Cowboy boots and faded jeans
 Living simple country dreams
 
-[Hook]
+[Chorus]
 Take me down that country road
 Where the wildflowers grow
 Where the sky meets the ground
@@ -389,7 +389,7 @@ That's the only life for me
 Sunset over fields of gold
 Stories that will never get old
 
-[Hook]
+[Chorus]
 Take me down that country road
 Where the wildflowers grow
 Where the sky meets the ground
@@ -410,7 +410,7 @@ Feelings hitting oh so hard
 Eighty-four on the dash
 Making memories that last
 
-[Hook]
+[Chorus]
 Digital paradise tonight
 Everything's in neon light
 Living in a different time
@@ -422,7 +422,7 @@ Life's a retro fantasy
 Synthesizers fill the air
 Take me back, I want to stay there
 
-[Hook]
+[Chorus]
 Digital paradise tonight
 Everything's in neon light
 Living in a different time
@@ -443,7 +443,7 @@ There's one place that I can go
 Raise my voice up to the sky
 Let my spirit learn to fly
 
-[Hook]
+[Chorus]
 Hallelujah, praise the sound
 Love and joy that I have found
 Lift me up on angels' wings
@@ -455,7 +455,7 @@ Sunshine comes after the rain
 Faith will guide me through the night
 Leading me into the light
 
-[Hook]
+[Chorus]
 Hallelujah, praise the sound
 Love and joy that I have found
 Lift me up on angels' wings
@@ -476,7 +476,7 @@ Breaking all the rules, so rude
 No apologies for who I am
 Don't care about your master plan
 
-[Hook]
+[Chorus]
 We don't fit your mold
 Our story won't be told
 Living loud and living free
@@ -488,7 +488,7 @@ Living out our wildest dreams
 Middle finger to the sky
 We were born to question why
 
-[Hook]
+[Chorus]
 We don't fit your mold
 Our story won't be told
 Living loud and living free
@@ -509,7 +509,7 @@ All my worries fade away
 Positive vibrations flow
 Feel the rhythm, take it slow
 
-[Hook]
+[Chorus]
 Don't worry about a thing
 Every little thing gonna be alright
 Just dance and sing
@@ -521,7 +521,7 @@ These are the moments that I crave
 Unity and harmony
 Living life so wild and free
 
-[Hook]
+[Chorus]
 Don't worry about a thing
 Every little thing gonna be alright
 Just dance and sing
@@ -542,7 +542,7 @@ Knocked on every single door
 Life keeps throwing me around
 But I'm still standing on this ground
 
-[Hook]
+[Chorus]
 Got the blues but I'm alive
 Doing what I can to survive
 Every scar tells a story true
@@ -554,7 +554,7 @@ Nothing's ever what it seems
 But I keep on keeping on
 Singing this old blues song
 
-[Hook]
+[Chorus]
 Got the blues but I'm alive
 Doing what I can to survive
 Every scar tells a story true
@@ -575,7 +575,7 @@ Breaking out of every cage
 Colorful and full of life
 Cutting through like a knife
 
-[Hook]
+[Chorus]
 We're so hot, can't stop, to the top
 Never drop, make it pop, non-stop
 Shining bright like a star
@@ -587,7 +587,7 @@ Faster than you can blink
 Energy that never ends
 We're more than just friends
 
-[Hook]
+[Chorus]
 We're so hot, can't stop, to the top
 Never drop, make it pop, non-stop
 Shining bright like a star
@@ -608,7 +608,7 @@ Feel the fire, feel the beat
 Passion burning in the night
 Everything just feels so right
 
-[Hook]
+[Chorus]
 Baila, baila all night long
 Feel the rhythm, feel so strong
 Let the music set you free
@@ -620,7 +620,7 @@ Dancing with the whole crowd
 Sweat and passion fill the air
 Take my hand, I'll take you there
 
-[Hook]
+[Chorus]
 Baila, baila all night long
 Feel the rhythm, feel so strong
 Let the music set you free
@@ -641,7 +641,7 @@ Through the storm and through the snow
 Warriors march with heads held high
 Reaching for the endless sky
 
-[Hook]
+[Chorus]
 We will rise, we will soar
 Stronger than we were before
 Legends written in the stars
@@ -653,7 +653,7 @@ Epic tales in every sound
 Destiny is calling clear
 Victory is drawing near
 
-[Hook]
+[Chorus]
 We will rise, we will soar
 Stronger than we were before
 Legends written in the stars

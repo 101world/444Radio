@@ -91,28 +91,31 @@ Chill Urdu lofi song with soft emotional male vocals, warm vinyl texture, mellow
     let lyrics = ''
 
     if (!instrumental) {
-      const lyricsSystemMsg = `You are a gifted Hindi/Urdu songwriter who writes poetic, emotional, and catchy song lyrics.
+      const lyricsSystemMsg = `You are a gifted Hindi/Urdu songwriter who writes deeply poetic, emotional, and catchy song lyrics that move the soul.
 
 CRITICAL RULES:
 1. Write lyrics in ROMANIZED ENGLISH LETTERS (transliteration) — do NOT use Devanagari, Urdu script, or any non-Latin characters.
    Example: "raat ki khamoshi mein, teri yaad chalti hai" (NOT "रात की खामोशी में").
-2. Structure with tags: [Verse 1], [Pre-Chorus], [Chorus], [Verse 2], [Bridge], [Final Chorus] or [Outro].
+2. Structure with ONLY these tags: [Intro], [Verse], [Chorus], [Bridge], [Outro]. NO other tags like [Pre-Chorus], [Hook], [Final Chorus], [Verse 1], [Verse 2], [Drop], etc.
 3. Keep total lyrics under 550 characters.
-4. Make them melodic and singable — short lines, rhyming couplets, emotional hooks.
-5. Match the mood/vibe described by the user — if romantic, write romantic; if party, write upbeat; if sad, write melancholic.
-6. Mix Hindi and Urdu words naturally — "dil", "ishq", "roshan", "shaam", "khwab", "sitaara", "raaste", "zindagi", etc.
-7. The [Chorus] should be the catchiest, most memorable part — something you'd hum.
+4. Make them melodic and singable — short lines, rhyming couplets, emotional hooks that stick.
+5. Match the mood/vibe described by the user — romantic, party, sad, empowering, devotional, etc.
+6. Use rich Hindi/Urdu poetic vocabulary naturally — "dil", "ishq", "roshan", "shaam", "khwab", "sitaara", "raaste", "zindagi", "mohabbat", "junoon", "aasmaan", "chaand", "dariya", etc.
+7. The [Chorus] must be the catchiest, most memorable part — something you'd hum for days. This IS the hook.
 8. Each verse 4-6 lines, chorus 4-8 lines, bridge 2-4 lines.
-9. NO English lyrics unless the user specifically asks for Hinglish.
+9. Write REAL emotional words a singer would sing — NO "(instrumental)", NO "(music plays)", NO filler.
+10. Every line must paint a vivid picture or express deep feeling — use metaphors, nature imagery, sensory details.
+11. NO English lyrics unless the user specifically asks for Hinglish.
 
 EXAMPLE OUTPUT:
-[Verse 1]
+[Intro]
+raat ke sannate mein ek awaaz hai
+
+[Verse]
 raat ki khamoshi mein
 teri yaad chalti hai
 bheegi si in hawaon mein
 teri baat jalti hai
-
-[Pre-Chorus]
 dil ke sheher mein ab bhi
 tera hi noor hai
 main tanha sahi lekin
@@ -123,13 +126,12 @@ tu hi meri kahani hai
 tu hi mera armaan
 tere bina lagta nahi
 yeh dil ka samaan
-
 tu hi meri roshni hai
 andheron ke darmiyan
 tere bina jeena bhi
 lagta hai anjaan
 
-[Verse 2]
+[Verse]
 khwabon ke kinare par
 tera naam likha hai
 har dhadkan ke andar
@@ -141,17 +143,15 @@ toh raat theher jaati
 yeh waqt ki gardish bhi
 shayad ruk si jaati
 
-[Final Chorus]
+[Outro]
 tu hi meri kahani hai
-tu hi mera armaan
-tere bina lagta nahi
-yeh dil ka samaan`
+tu hi mera armaan`
 
       const lyricsUserMsg = `Write Hindi/Urdu lyrics for this song idea: "${prompt.trim()}"
 
 The production style is: ${enhancedPrompt}
 
-Remember: Romanized English letters ONLY. Structured with section tags. Under 550 characters.`
+Remember: Romanized English letters ONLY. Use ONLY these structure tags: [Intro], [Verse], [Chorus], [Bridge], [Outro]. Under 550 characters. Write REAL emotional lyrics — no instrumental placeholders.`
 
       console.log('🇮🇳 [ATOM-HINDI] Generating lyrics...')
       const lyricsOutput = await replicate.run(
@@ -174,6 +174,23 @@ Remember: Romanized English letters ONLY. Structured with section tags. Under 55
 
       // Clean up
       lyrics = lyrics.trim()
+
+      // Post-process: fix unsupported structure tags to MiniMax v2 compatible ones
+      lyrics = lyrics.replace(/\[hook\]/gi, '[Chorus]')
+      lyrics = lyrics.replace(/\[pre[- ]?chorus\]/gi, '')
+      lyrics = lyrics.replace(/\[verse\s*\d+\]/gi, '[Verse]')
+      lyrics = lyrics.replace(/\[chorus\s*\d+\]/gi, '[Chorus]')
+      lyrics = lyrics.replace(/\[final\s*chorus\]/gi, '[Chorus]')
+      lyrics = lyrics.replace(/\[refrain\]/gi, '[Chorus]')
+      lyrics = lyrics.replace(/\[interlude\]/gi, '[Bridge]')
+      lyrics = lyrics.replace(/\[drop\]/gi, '[Chorus]')
+      // Remove any other unsupported tags
+      lyrics = lyrics.replace(/\[(?!Intro\]|Verse\]|Chorus\]|Bridge\]|Outro\])([^\]]*)\]/gi, '')
+      lyrics = lyrics.replace(/\n{3,}/g, '\n\n').trim()
+
+      // Remove any "(instrumental)" or meta annotations
+      lyrics = lyrics.replace(/\(instrumental[^)]*\)/gi, '').replace(/\(music[^)]*\)/gi, '').replace(/\(no vocals[^)]*\)/gi, '').trim()
+      lyrics = lyrics.replace(/\n{3,}/g, '\n\n').trim()
 
       // SAFETY: Strip any non-Latin script characters the LLM may have produced
       // Keep only Latin letters, digits, punctuation, whitespace, and structural tags
