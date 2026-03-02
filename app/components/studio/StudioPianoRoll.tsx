@@ -512,6 +512,8 @@ interface StudioPianoRollProps {
   onArpRateChange?: (rate: number) => void
   /** Called when transpose changes */
   onTransposeChange?: (semitones: number) => void
+  /** Preview a note via superdough (real instrument sound) */
+  onNotePreview?: (midi: number) => void
   /** Close the piano roll */
   onClose: () => void
 }
@@ -543,6 +545,7 @@ export default function StudioPianoRoll({
   onArpChange,
   onArpRateChange,
   onTransposeChange,
+  onNotePreview,
   onClose,
 }: StudioPianoRollProps) {
   const isNoteMode = patternType === 'note'
@@ -727,12 +730,16 @@ export default function StudioPianoRoll({
         if (!found) next.delete(key)
       } else {
         next.set(key, { length: 1 })
-        playPreview(midi, soundSource)
+        if (onNotePreview) {
+          onNotePreview(midi)
+        } else {
+          playPreview(midi, soundSource)
+        }
       }
       return next
     })
     setHasUserEdited(true)
-  }, [soundSource, scaleMidiSet, isNoteMode])
+  }, [soundSource, scaleMidiSet, isNoteMode, onNotePreview])
 
   // ── Resize note (drag right edge) ──
   const handleResizeStart = useCallback((key: string, e: React.MouseEvent) => {

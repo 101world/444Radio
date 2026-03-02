@@ -524,10 +524,11 @@ function compressPattern(tokens: string[], instrument: string): string {
 // ─── Parse stack channel into sub-patterns ───
 
 interface DrumRow {
-  instrument: string
-  pattern: string        // Original mini-notation pattern
-  bank?: string          // e.g. "RolandTR808"
-  isGenerative: boolean  // Has perlin, irand, etc.
+  instrument: string       // Base instrument name for grid keys (e.g., "bd")
+  fullInstrument: string   // Full instrument with variant for code gen (e.g., "bd:3")
+  pattern: string          // Original mini-notation pattern
+  bank?: string            // e.g. "RolandTR808"
+  isGenerative: boolean    // Has perlin, irand, etc.
 }
 
 /** Extract the drum instrument name from a pattern string.
@@ -539,6 +540,20 @@ function extractInstrumentName(fullPattern: string): string {
   for (const w of words) {
     if (w === 'silence') continue
     return w
+  }
+  return 'perc'
+}
+
+/** Extract the full instrument name with variant from a pattern string.
+ *  e.g. "bd:3*4" → "bd:3", "hh:2!8" → "hh:2", "bd*4" → "bd", "[~ sd:1]*4" → "sd:1" */
+function extractFullInstrumentName(fullPattern: string): string {
+  // Match word optionally followed by :N variant
+  const matches = fullPattern.match(/\b([a-zA-Z_][a-zA-Z0-9_]*(?::\d+)?)\b/g)
+  if (!matches) return 'perc'
+  for (const m of matches) {
+    const base = m.replace(/:\d+$/, '')
+    if (base === 'silence') continue
+    return m
   }
   return 'perc'
 }
@@ -567,10 +582,12 @@ function parseChannelDrumRows(rawCode: string): DrumRow[] {
       if (sMatch) {
         const fullPattern = sMatch[1]
         const instrument = extractInstrumentName(fullPattern)
+        const fullInstrument = extractFullInstrumentName(fullPattern)
         const bankMatch = part.match(/\.bank\(\s*"([^"]*)"/)
         const isGen = /perlin|irand|rand|sine|saw/.test(part.replace(/\.bank\([^)]*\)/g, ''))
         rows.push({
           instrument,
+          fullInstrument,
           pattern: fullPattern,
           bank: bankMatch?.[1],
           isGenerative: isGen,
@@ -583,10 +600,12 @@ function parseChannelDrumRows(rawCode: string): DrumRow[] {
     if (sMatch) {
       const fullPattern = sMatch[1]
       const instrument = extractInstrumentName(fullPattern)
+      const fullInstrument = extractFullInstrumentName(fullPattern)
       const bankMatch = rawCode.match(/\.bank\(\s*"([^"]*)"/)
       const isGen = /perlin|irand|rand|sine|saw/.test(rawCode.replace(/\.bank\([^)]*\)/g, '').replace(/s\("[^"]*"\)/g, ''))
       rows.push({
         instrument,
+        fullInstrument,
         pattern: fullPattern,
         bank: bankMatch?.[1],
         isGenerative: isGen,
@@ -685,6 +704,7 @@ export default function StudioDrumSequencer({
   rowGainsRef.current = rowGains
   const rowBanksRef = useRef<Map<string, string>>(new Map())
   rowBanksRef.current = rowBanks
+  const fullInstrumentMapRef = useRef<Map<string, string>>(new Map()) // instrument → fullInstrument (e.g. "bd" → "bd:3")
   // ── Parse channel on mount / prop change ──
   useEffect(() => {
     const drumRows = parseChannelDrumRows(channelRawCode)
@@ -700,6 +720,13 @@ export default function StudioDrumSequencer({
       rowIds.push(row.instrument)
       if (parsedBars > 1) setBars(parsedBars as 1 | 2 | 4)
     }
+
+    // Build fullInstrument map (preserves sample variants like "bd:3")
+    const newFullMap = new Map<string, string>()
+    for (const row of drumRows) {
+      newFullMap.set(row.instrument, row.fullInstrument)
+    }
+    fullInstrumentMapRef.current = newFullMap
 
     // If only one instrument, also show complementary drums
     if (rowIds.length === 1) {
@@ -745,6 +772,7 @@ export default function StudioDrumSequencer({
         stepsPerBar,
         rowGainsRef.current,
         rowBanksRef.current,
+        fullInstrumentMapRef.current,
       )
       onPatternChange(newCode)
     }, 150)
@@ -754,10 +782,12 @@ export default function StudioDrumSequencer({
   // ── Preview a drum sound (real sample or fallback) ──
   const previewDrum = useCallback((instrumentId: string) => {
     const rowBank = rowBanks.get(instrumentId)
+    // Use full instrument name for accurate preview (e.g., "bd:3" instead of "bd")
+    const fullId = fullInstrumentMapRef.current.get(instrumentId) || instrumentId
     if (onPreviewDrum) {
-      onPreviewDrum(instrumentId, rowBank || bank)
+      onPreviewDrum(fullId, rowBank || bank)
     } else {
-      playDrumPreview(instrumentId)
+      playDrumPreview(fullId)
     }
     // Flash the pad
     setPadFlash(instrumentId)
@@ -927,6 +957,10 @@ export default function StudioDrumSequencer({
       if (bnk) { next.delete(oldId); next.set(newId, bnk) }
       return next
     })
+    // Update fullInstrument map — new instrument has no variant by default
+    const fMap = fullInstrumentMapRef.current
+    fMap.delete(oldId)
+    fMap.set(newId, newId)
     setHasUserEdited(true)
     setSoundPickerRow(null)
   }, [])
@@ -1424,6 +1458,7 @@ function buildCodeFromGrid(
   stepsPerBar: number = 16,
   rowGains?: Map<string, number>,
   rowBanks?: Map<string, string>,
+  fullInstrumentMap?: Map<string, string>,
 ): string {
   // Filter out empty rows
   const rowsWithHits = activeRows.filter(id => {
@@ -1456,7 +1491,9 @@ function buildCodeFromGrid(
     // Single instrument → simple s("pattern") format
     const instrument = rowsWithHits[0]
     const hits = grid.get(instrument)!
-    const pattern = hitsToPattern(hits, bars, instrument, stepsPerBar)
+    // Use full instrument name with variant (e.g., "bd:3") for accurate code gen
+    const codeInstrument = fullInstrumentMap?.get(instrument) || instrument
+    const pattern = hitsToPattern(hits, bars, codeInstrument, stepsPerBar)
 
     const prefixMatch = originalRawCode.match(/^\s*(\$\w*:)\s*/)
     const prefix = prefixMatch ? prefixMatch[1] : '$:'
@@ -1467,7 +1504,9 @@ function buildCodeFromGrid(
   const stackLines: string[] = []
   for (const instrument of rowsWithHits) {
     const hits = grid.get(instrument)!
-    const pattern = hitsToPattern(hits, bars, instrument, stepsPerBar)
+    // Use full instrument name with variant (e.g., "bd:3") for accurate code gen
+    const codeInstrument = fullInstrumentMap?.get(instrument) || instrument
+    const pattern = hitsToPattern(hits, bars, codeInstrument, stepsPerBar)
 
     const rowGain = rowGains?.get(instrument)
     const gainStr = rowGain != null && Math.abs(rowGain - 0.8) > 0.01 ? `.gain(${rowGain})` : ''

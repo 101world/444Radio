@@ -635,6 +635,46 @@ export default function StudioEditor() {
                   const newCode = setTranspose(latest, pianoRollChannel, clamped)
                   if (newCode !== latest) handleLiveCodeChange(newCode)
                 }}
+                onNotePreview={async (midi: number) => {
+                  const engine = engineRef.current
+                  if (!engine) return
+                  try {
+                    const actx = engine.webaudio.getAudioContext()
+                    await actx.resume()
+                    let sd = engine.superdough || engine.webaudio.superdough
+                    if (!sd) {
+                      const sdMod = await import('superdough')
+                      sd = sdMod.superdough
+                    }
+                    if (!sd) return
+                    const now = actx.currentTime + 0.05
+                    const channels = parseStrudelCode(codeRef.current)
+                    const ch = channels[pianoRollChannel]
+                    if (!ch) return
+                    const source = ch.source
+                    // Known synth oscillators (need a note, not a sample index)
+                    const SYNTHS = new Set([
+                      'sawtooth','supersaw','sine','square','triangle','pulse','sbd',
+                      'white','pink','brown','crackle','noise','noise2',
+                      'zzfx','z_sine','z_sawtooth','z_triangle','z_square','z_tan','z_noise',
+                    ])
+                    // Convert MIDI to note name (e.g., 60 → "c4")
+                    const NOTES = ['c','cs','d','ds','e','f','fs','g','gs','a','as','b']
+                    const noteName = NOTES[midi % 12] + (Math.floor(midi / 12) - 1)
+                    const params: Record<string, unknown> = { s: source, gain: 0.5, release: 0.3 }
+                    if (SYNTHS.has(source)) {
+                      params.note = noteName
+                    } else {
+                      // Sample-based instruments (gm_piano, etc.): use note for pitched playback
+                      params.note = noteName
+                      params.n = 0
+                      if (ch.bank) params.bank = ch.bank
+                    }
+                    await sd(params, now, 0.4)
+                  } catch (err) {
+                    console.error('[444 STUDIO] note preview error:', err)
+                  }
+                }}
                 onClose={() => setPianoRollChannel(null)}
               />
             )
@@ -670,7 +710,11 @@ export default function StudioEditor() {
                     }
                     if (!sd) { playDrumPreviewFallback(instrument); return }
                     const now = actx.currentTime + 0.05
-                    const params: Record<string, unknown> = { s: instrument, n: 0, gain: 0.6 }
+                    // Parse variant from instrument name (e.g., "bd:3" → s: "bd", n: 3)
+                    const variantMatch = instrument.match(/^([^:]+):(\d+)$/)
+                    const sName = variantMatch ? variantMatch[1] : instrument
+                    const sampleN = variantMatch ? parseInt(variantMatch[2]) : 0
+                    const params: Record<string, unknown> = { s: sName, n: sampleN, gain: 0.6 }
                     if (bank) params.bank = bank
                     await sd(params, now, 0.5)
                   } catch {
