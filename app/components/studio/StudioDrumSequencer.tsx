@@ -15,6 +15,38 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 
+// ─── Drum machine bank presets (most common first) ───
+
+const DRUM_BANK_OPTIONS: [string, string][] = [
+  ['', '— No Bank —'],
+  ['RolandTR808', 'TR-808'],
+  ['RolandTR909', 'TR-909'],
+  ['RolandTR707', 'TR-707'],
+  ['RolandTR606', 'TR-606'],
+  ['RolandTR505', 'TR-505'],
+  ['RolandTR626', 'TR-626'],
+  ['RolandTR727', 'TR-727 Latin'],
+  ['RolandCompurhythm78', 'CR-78'],
+  ['LinnDrum', 'LinnDrum'],
+  ['LinnLM1', 'LM-1'],
+  ['AkaiLinn', 'Akai/Linn'],
+  ['AkaiMPC60', 'MPC60'],
+  ['MPC1000', 'MPC1000'],
+  ['BossDR110', 'DR-110'],
+  ['BossDR220', 'DR-220'],
+  ['BossDR55', 'DR-55'],
+  ['OberheimDMX', 'DMX'],
+  ['EmuSP12', 'SP-12'],
+  ['EmuDrumulator', 'Drumulator'],
+  ['KorgDDM110', 'DDM-110'],
+  ['KorgKPR77', 'KPR-77'],
+  ['KorgMinipops', 'Minipops'],
+  ['YamahaRX5', 'RX5'],
+  ['YamahaRX21', 'RX21'],
+  ['AlesisSR16', 'SR-16'],
+  ['SimmonsSDS5', 'SDS-5'],
+]
+
 // ─── Drum instrument definitions ───
 
 interface DrumInstrument {
@@ -238,12 +270,36 @@ function parseDrumPattern(pattern: string, stepsPerBar: number = 16): { hits: Se
   return { hits, bars: 1 }
 }
 
+/** Simplify alternating expressions <a!N b> → first value.
+ *  "bd*<4!7 [4 8]>" → "bd*4", "[.3 .5]*<2 4>" → "[.3 .5]*2" */
+function simplifyAlternations(pat: string): string {
+  return pat.replace(/<([^>]+)>/g, (_match, inner: string) => {
+    // Split on top-level spaces, take first entry
+    const entries: string[] = []
+    let depth = 0, cur = ''
+    for (const ch of inner) {
+      if (ch === '[') { depth++; cur += ch }
+      else if (ch === ']') { depth--; cur += ch }
+      else if (ch === ' ' && depth === 0) { if (cur.trim()) entries.push(cur.trim()); cur = '' }
+      else cur += ch
+    }
+    if (cur.trim()) entries.push(cur.trim())
+    // Take first entry, strip !N suffix (e.g. "4!7" → "4")
+    const first = (entries[0] || '').replace(/!\d+$/, '')
+    return first
+  })
+}
+
 /** Parse a mini-notation rhythm string into step positions (0-15) */
 function parseRhythmToSteps(pattern: string, totalSteps: number): number[] {
+  // Pre-process: simplify alternating patterns <a b c> to first value
+  // This handles e.g. "bd*<4!7 [4 8]>" → "bd*4"
+  const simplified = simplifyAlternations(pattern)
   const steps: number[] = []
 
-  // Handle *N multiplier: "hh*8" means 8 evenly spaced hits in 16 steps
-  const mulMatch = pattern.match(/^\w+\*(\d+)$/)
+  // Handle *N multiplier: "hh*8", "bd:2*4" means N evenly spaced hits
+  // [\w:]+ allows instrument names with variant syntax like bd:2
+  const mulMatch = simplified.match(/^[\w:]+\*(\d+)$/)
   if (mulMatch) {
     const count = parseInt(mulMatch[1])
     const spacing = totalSteps / count
@@ -253,8 +309,8 @@ function parseRhythmToSteps(pattern: string, totalSteps: number): number[] {
     return steps
   }
 
-  // Handle !N repeat: "bd!4" means same sample repeated 4 times
-  const repMatch = pattern.match(/^\w+!(\d+)$/)
+  // Handle !N repeat: "bd!4", "bd:2!4" means same sample repeated N times
+  const repMatch = simplified.match(/^[\w:]+!(\d+)$/)
   if (repMatch) {
     const count = parseInt(repMatch[1])
     const spacing = totalSteps / count
@@ -264,17 +320,51 @@ function parseRhythmToSteps(pattern: string, totalSteps: number): number[] {
     return steps
   }
 
+  // Handle [group]*N: "[~ hh]*4", "[~ [sd,rim]]*2" — bracket group with multiplier
+  // Use depth-aware matching to support nested brackets
+  const bracketMul = extractBracketMultiplier(simplified)
+  if (bracketMul) {
+    const { inner, multiplier } = bracketMul
+    // Parse the inner content into sub-tokens (flat rhythm)
+    const innerTokens = flattenBracketContent(inner)
+    const stepsPerRepeat = totalSteps / multiplier
+    const subStepSize = stepsPerRepeat / innerTokens.length
+    for (let rep = 0; rep < multiplier; rep++) {
+      const repOffset = rep * stepsPerRepeat
+      innerTokens.forEach((tok, j) => {
+        if (tok !== '~' && tok !== '-' && tok !== 'silence') {
+          steps.push(Math.round(repOffset + j * subStepSize))
+        }
+      })
+    }
+    return steps.filter(s => s < totalSteps)
+  }
+
   // Parse space-separated tokens: "bd [~ bd] ~ bd"
-  const tokens = tokenize(pattern)
+  const tokens = tokenize(simplified)
   const stepPer = totalSteps / tokens.length
   tokens.forEach((tok, i) => {
     if (tok === '~' || tok === '-' || tok === 'silence') return
     const step = Math.round(i * stepPer)
-    if (tok.startsWith('[') && tok.endsWith(']')) {
-      // Sub-group: [~ bd] = subdivide
-      const inner = tok.slice(1, -1).trim().split(/\s+/)
-      const subStep = stepPer / inner.length
-      inner.forEach((sub, j) => {
+    // Check for bracket group with optional *N suffix
+    const subMul = extractBracketMultiplier(tok)
+    if (subMul) {
+      const innerTokens = flattenBracketContent(subMul.inner)
+      const mul = subMul.multiplier
+      const subStepTotal = stepPer / mul
+      const subStep = subStepTotal / innerTokens.length
+      for (let m = 0; m < mul; m++) {
+        innerTokens.forEach((sub, j) => {
+          if (sub !== '~' && sub !== '-') {
+            steps.push(Math.round(step + m * subStepTotal + j * subStep))
+          }
+        })
+      }
+    } else if (tok.startsWith('[') && tok.endsWith(']')) {
+      // Simple bracket group without multiplier: [~ bd]
+      const innerTokens = flattenBracketContent(tok.slice(1, -1).trim())
+      const subStep = stepPer / innerTokens.length
+      innerTokens.forEach((sub, j) => {
         if (sub !== '~' && sub !== '-') {
           steps.push(Math.round(step + j * subStep))
         }
@@ -285,6 +375,59 @@ function parseRhythmToSteps(pattern: string, totalSteps: number): number[] {
   })
 
   return steps.filter(s => s < totalSteps)
+}
+
+/** Extract bracket group and its *N multiplier: "[~ hh]*4" → { inner: "~ hh", multiplier: 4 }
+ *  Supports nested brackets: "[~ [sd,rim]]*2" → { inner: "~ [sd,rim]", multiplier: 2 } */
+function extractBracketMultiplier(pattern: string): { inner: string; multiplier: number } | null {
+  const trimmed = pattern.trim()
+  if (!trimmed.startsWith('[')) return null
+  // Find the matching closing bracket (depth-aware)
+  let depth = 0
+  let closeIdx = -1
+  for (let i = 0; i < trimmed.length; i++) {
+    if (trimmed[i] === '[') depth++
+    else if (trimmed[i] === ']') { depth--; if (depth === 0) { closeIdx = i; break } }
+  }
+  if (closeIdx === -1) return null
+  // After the bracket, expect *N
+  const after = trimmed.slice(closeIdx + 1)
+  const mulMatch = after.match(/^\*(\d+)$/)
+  if (!mulMatch) return null
+  return {
+    inner: trimmed.slice(1, closeIdx).trim(),
+    multiplier: parseInt(mulMatch[1]),
+  }
+}
+
+/** Flatten bracket content into flat rhythm tokens.
+ *  "~ hh" → ["~", "hh"]
+ *  "~ [sd,rim]" → ["~", "sd"] (comma = alternatives, take first)
+ *  Nested brackets are flattened to first instrument */
+function flattenBracketContent(content: string): string[] {
+  const tokens: string[] = []
+  let depth = 0, current = ''
+  for (const ch of content) {
+    if (ch === '[' || ch === '<') { depth++; current += ch }
+    else if (ch === ']' || ch === '>') { depth--; current += ch }
+    else if (ch === ' ' && depth === 0) {
+      if (current.trim()) tokens.push(current.trim())
+      current = ''
+    } else current += ch
+  }
+  if (current.trim()) tokens.push(current.trim())
+
+  // Process each token: extract instrument or mark as rest
+  return tokens.map(t => {
+    if (t === '~' || t === '-' || t === 'silence') return '~'
+    // If it's a bracket group like [sd,rim], extract first instrument
+    if (t.startsWith('[')) {
+      const inner = t.replace(/[\[\]<>]/g, '')
+      const first = inner.split(/[,\s]+/)[0]
+      return first || '~'
+    }
+    return t
+  })
 }
 
 /** Tokenize mini-notation respecting brackets */
@@ -495,11 +638,13 @@ interface StudioDrumSequencerProps {
   onPatternChange: (newRawCode: string) => void
   /** Close the sequencer */
   onClose: () => void
+  /** Preview a drum sound via superdough (real sample playback) */
+  onPreviewDrum?: (instrument: string, bank?: string) => void
 }
 
 const CELL_W_BASE = 32
-const CELL_H_BASE = 28
-const LABEL_W = 68
+const CELL_H_BASE = 32
+const LABEL_W = 140
 const BAR_OPTIONS = [1, 2, 4] as const
 const GRID_OPTIONS = [16, 32] as const
 
@@ -510,6 +655,7 @@ export default function StudioDrumSequencer({
   bank,
   onPatternChange,
   onClose,
+  onPreviewDrum,
 }: StudioDrumSequencerProps) {
   const [bars, setBars] = useState(1)
   // Grid state: Map<instrumentId, Set<step>>
@@ -518,6 +664,9 @@ export default function StudioDrumSequencer({
   const [hasUserEdited, setHasUserEdited] = useState(false)
   const [showPresets, setShowPresets] = useState(false)
   const [rowGains, setRowGains] = useState<Map<string, number>>(new Map())
+  const [rowBanks, setRowBanks] = useState<Map<string, string>>(new Map()) // per-row bank override
+  const [soundPickerRow, setSoundPickerRow] = useState<string | null>(null) // which row has picker open
+  const [padFlash, setPadFlash] = useState<string | null>(null) // pad animation
   const scrollRef = useRef<HTMLDivElement>(null)
   const [zoom, setZoom] = useState(1)
   const [stepsPerBar, setStepsPerBar] = useState<16 | 32>(16)
@@ -534,6 +683,8 @@ export default function StudioDrumSequencer({
   const drumRowsRef = useRef<DrumRow[]>([])
   const rowGainsRef = useRef<Map<string, number>>(new Map())
   rowGainsRef.current = rowGains
+  const rowBanksRef = useRef<Map<string, string>>(new Map())
+  rowBanksRef.current = rowBanks
   // ── Parse channel on mount / prop change ──
   useEffect(() => {
     const drumRows = parseChannelDrumRows(channelRawCode)
@@ -562,10 +713,21 @@ export default function StudioDrumSequencer({
       }
     }
 
+    // Initialize per-row banks from parsed drum rows
+    const newBanks = new Map<string, string>()
+    for (const row of drumRows) {
+      if (row.bank) newBanks.set(row.instrument, row.bank)
+    }
+    // If no per-row banks but channel has a bank prop, apply it to all rows
+    if (newBanks.size === 0 && bank) {
+      for (const id of rowIds) newBanks.set(id, bank)
+    }
+    setRowBanks(newBanks)
+
     setGrid(newGrid)
     setActiveRows(rowIds)
     setHasUserEdited(false)
-  }, [channelRawCode])
+  }, [channelRawCode, stepsPerBar, bank])
 
   // ── Emit pattern change (debounced) ──
   const emitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -582,14 +744,29 @@ export default function StudioDrumSequencer({
         isStackRef.current,
         stepsPerBar,
         rowGainsRef.current,
+        rowBanksRef.current,
       )
       onPatternChange(newCode)
     }, 150)
     return () => { if (emitTimer.current) clearTimeout(emitTimer.current) }
-  }, [grid, rowGains, hasUserEdited, bars, channelRawCode, onPatternChange, stepsPerBar])
+  }, [grid, rowGains, rowBanks, hasUserEdited, bars, channelRawCode, onPatternChange, stepsPerBar])
+
+  // ── Preview a drum sound (real sample or fallback) ──
+  const previewDrum = useCallback((instrumentId: string) => {
+    const rowBank = rowBanks.get(instrumentId)
+    if (onPreviewDrum) {
+      onPreviewDrum(instrumentId, rowBank || bank)
+    } else {
+      playDrumPreview(instrumentId)
+    }
+    // Flash the pad
+    setPadFlash(instrumentId)
+    setTimeout(() => setPadFlash(null), 150)
+  }, [onPreviewDrum, rowBanks, bank])
 
   // ── Toggle hit ──
   const toggleHit = useCallback((instrument: string, step: number, forceMode?: 'add' | 'remove') => {
+    setSoundPickerRow(null) // close any open picker
     setGrid(prev => {
       const next = new Map(prev)
       const hits = new Set(prev.get(instrument) || new Set<number>())
@@ -598,13 +775,13 @@ export default function StudioDrumSequencer({
         hits.delete(step)
       } else {
         hits.add(step)
-        playDrumPreview(instrument)
+        previewDrum(instrument)
       }
       next.set(instrument, hits)
       return next
     })
     setHasUserEdited(true)
-  }, [])
+  }, [previewDrum])
 
   // ── Mouse handlers ──
   const handleCellDown = useCallback((instrument: string, step: number, e: React.MouseEvent) => {
@@ -715,6 +892,45 @@ export default function StudioDrumSequencer({
     setHasUserEdited(true)
   }, [])
 
+  // ── Per-row bank change ──
+  const setRowBank = useCallback((instrumentId: string, newBank: string) => {
+    setRowBanks(prev => {
+      const next = new Map(prev)
+      if (newBank) next.set(instrumentId, newBank)
+      else next.delete(instrumentId)
+      return next
+    })
+    setHasUserEdited(true)
+    setSoundPickerRow(null)
+    // Preview the new sound immediately
+    if (onPreviewDrum) onPreviewDrum(instrumentId, newBank || undefined)
+  }, [onPreviewDrum])
+
+  // ── Change instrument for a row ──
+  const changeRowInstrument = useCallback((oldId: string, newId: string) => {
+    if (oldId === newId) return
+    setActiveRows(prev => prev.map(r => r === oldId ? newId : r))
+    setGrid(prev => {
+      const next = new Map<string, Set<number>>()
+      prev.forEach((hits, key) => next.set(key === oldId ? newId : key, hits))
+      return next
+    })
+    setRowGains(prev => {
+      const next = new Map(prev)
+      const gain = prev.get(oldId)
+      if (gain != null) { next.delete(oldId); next.set(newId, gain) }
+      return next
+    })
+    setRowBanks(prev => {
+      const next = new Map(prev)
+      const bnk = prev.get(oldId)
+      if (bnk) { next.delete(oldId); next.set(newId, bnk) }
+      return next
+    })
+    setHasUserEdited(true)
+    setSoundPickerRow(null)
+  }, [])
+
   // ── Instruments not yet in grid (for "add row" menu) ──
   const availableInstruments = useMemo(
     () => DRUM_KIT.filter(d => !activeRows.includes(d.id)),
@@ -739,7 +955,7 @@ export default function StudioDrumSequencer({
     <div
       className="absolute bottom-0 left-0 right-0 z-[100] flex flex-col select-none"
       style={{
-        height: Math.min(activeRows.length * cellH + 100, 360),
+        height: Math.min(activeRows.length * cellH + 100, 420),
         background: '#23262b',
         borderTop: '1px solid rgba(255,255,255,0.04)',
         boxShadow: '0 -8px 16px #14161a',
@@ -963,12 +1179,16 @@ export default function StudioDrumSequencer({
           {activeRows.map(instrumentId => {
             const drum = getDrum(instrumentId)
             const hits = grid.get(instrumentId) || new Set<number>()
+            const rowBank = rowBanks.get(instrumentId)
+            const bankLabel = rowBank
+              ? (DRUM_BANK_OPTIONS.find(([k]) => k === rowBank)?.[1] || rowBank)
+              : null
 
             return (
               <div key={instrumentId} className="flex" style={{ height: cellH }}>
-                {/* Row label (sticky left) */}
+                {/* Row label (sticky left) — Drum Pad + Sound + Bank */}
                 <div
-                  className="sticky left-0 z-10 shrink-0 flex flex-col justify-center px-1.5"
+                  className="sticky left-0 z-10 shrink-0 flex items-center gap-1 px-1"
                   style={{
                     width: LABEL_W, height: cellH,
                     background: '#1c1e22',
@@ -976,48 +1196,145 @@ export default function StudioDrumSequencer({
                     borderRight: '1px solid rgba(255,255,255,0.06)',
                   }}
                 >
-                  <div className="flex items-center gap-1">
-                    <span className="text-[9px]">{drum.icon}</span>
-                    <span className="text-[7px] font-bold uppercase tracking-wider flex-1 min-w-0 truncate" style={{ color: drum.color }}>
+                  {/* ── DRUM PAD — click to audition ── */}
+                  <button
+                    onClick={() => previewDrum(instrumentId)}
+                    className="shrink-0 flex items-center justify-center cursor-pointer transition-all duration-75 active:scale-90"
+                    style={{
+                      width: 22, height: 22, borderRadius: 6,
+                      background: padFlash === instrumentId
+                        ? `linear-gradient(135deg, ${drum.color}, ${drum.color}cc)`
+                        : '#2a2e34',
+                      border: `1px solid ${drum.color}40`,
+                      boxShadow: padFlash === instrumentId
+                        ? `0 0 10px ${drum.color}60, inset 0 1px 0 rgba(255,255,255,0.2)`
+                        : '2px 2px 4px #14161a, -2px -2px 4px #2c3036',
+                      color: padFlash === instrumentId ? '#fff' : drum.color,
+                    }}
+                    title={`Play ${drum.label}${rowBank ? ` (${bankLabel})` : ''}`}
+                  >
+                    <span className="text-[9px] leading-none">{drum.icon}</span>
+                  </button>
+
+                  {/* ── Sound name + bank (click to open picker) ── */}
+                  <button
+                    onClick={() => setSoundPickerRow(soundPickerRow === instrumentId ? null : instrumentId)}
+                    className="flex-1 min-w-0 flex flex-col items-start cursor-pointer group"
+                    style={{ background: 'none', border: 'none', padding: 0 }}
+                    title="Change sound / bank"
+                  >
+                    <span className="text-[7px] font-bold uppercase tracking-wider truncate w-full text-left group-hover:brightness-125 transition-all"
+                      style={{ color: drum.color }}>
                       {drum.label}
                     </span>
-                    {/* Preview button */}
-                    <button
-                      onClick={() => playDrumPreview(instrumentId)}
-                      className="text-[7px] cursor-pointer transition-colors duration-[180ms] shrink-0"
-                      style={{ color: '#5a616b', background: 'none', border: 'none' }}
-                      title="Preview"
-                    >
-                      ▶
-                    </button>
-                    {/* Remove row */}
-                    <button
-                      onClick={() => removeRow(instrumentId)}
-                      className="text-[7px] cursor-pointer transition-opacity opacity-30 hover:opacity-100 shrink-0"
-                      style={{ color: '#b86f6f', background: 'none', border: 'none' }}
-                      title="Remove row"
-                    >
-                      ×
-                    </button>
-                  </div>
-                  {/* Mini gain slider */}
-                  <div className="flex items-center gap-0.5 mt-0.5">
-                    <span className="text-[6px] font-bold" style={{ color: '#5a616b' }}>VOL</span>
-                    <input
-                      type="range"
-                      min={0}
-                      max={1.5}
-                      step={0.05}
-                      value={rowGains.get(instrumentId) ?? 0.8}
-                      onChange={(e) => setRowGain(instrumentId, parseFloat(e.target.value))}
-                      className="flex-1 h-[4px] appearance-none rounded-full cursor-pointer"
+                    <span className="text-[6px] font-mono truncate w-full text-left"
+                      style={{ color: '#5a616b', marginTop: -1 }}>
+                      {bankLabel || 'default'}
+                    </span>
+                  </button>
+
+                  {/* ── VOL knob (tiny) ── */}
+                  <input
+                    type="range"
+                    min={0}
+                    max={1.5}
+                    step={0.05}
+                    value={rowGains.get(instrumentId) ?? 0.8}
+                    onChange={(e) => setRowGain(instrumentId, parseFloat(e.target.value))}
+                    className="h-[3px] appearance-none rounded-full cursor-pointer shrink-0"
+                    style={{
+                      width: 24,
+                      background: `linear-gradient(to right, ${drum.color}80, ${drum.color}20)`,
+                      accentColor: drum.color,
+                    }}
+                    title={`Vol: ${((rowGains.get(instrumentId) ?? 0.8) * 100).toFixed(0)}%`}
+                  />
+
+                  {/* ── Remove row ── */}
+                  <button
+                    onClick={() => removeRow(instrumentId)}
+                    className="text-[7px] cursor-pointer transition-opacity opacity-20 hover:opacity-80 shrink-0"
+                    style={{ color: '#b86f6f', background: 'none', border: 'none', lineHeight: 1 }}
+                    title="Remove row"
+                  >
+                    ×
+                  </button>
+
+                  {/* ── Sound/Bank Picker Popover ── */}
+                  {soundPickerRow === instrumentId && (
+                    <div
+                      className="absolute left-1 z-50 w-56 rounded-xl overflow-hidden"
                       style={{
-                        background: `linear-gradient(to right, ${drum.color}80, ${drum.color}30)`,
-                        accentColor: drum.color,
+                        top: cellH + 2,
+                        background: '#2a2e34',
+                        border: '1px solid rgba(255,255,255,0.06)',
+                        boxShadow: '8px 8px 20px #0e1013, -4px -4px 12px #2c3036',
+                        maxHeight: 280,
                       }}
-                      title={`Gain: ${(rowGains.get(instrumentId) ?? 0.8).toFixed(2)}`}
-                    />
-                  </div>
+                      onClick={e => e.stopPropagation()}
+                    >
+                      {/* Sound type selector */}
+                      <div className="px-2 py-1.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <div className="text-[7px] font-bold uppercase tracking-wider mb-1" style={{ color: '#5a616b' }}>
+                          SOUND
+                        </div>
+                        <div className="flex flex-wrap gap-0.5">
+                          {DRUM_KIT.map(d => (
+                            <button
+                              key={d.id}
+                              onClick={() => changeRowInstrument(instrumentId, d.id)}
+                              className="px-1.5 py-0.5 rounded-lg text-[7px] font-bold cursor-pointer transition-all"
+                              style={{
+                                background: d.id === instrumentId ? '#1c1e22' : 'transparent',
+                                color: d.id === instrumentId ? d.color : '#5a616b',
+                                border: 'none',
+                                boxShadow: d.id === instrumentId
+                                  ? `inset 2px 2px 4px #14161a, inset -2px -2px 4px #2c3036`
+                                  : 'none',
+                              }}
+                            >
+                              {d.icon} {d.id.toUpperCase()}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Bank selector */}
+                      <div className="px-2 py-1.5 overflow-y-auto" style={{ maxHeight: 180, scrollbarWidth: 'thin', scrollbarColor: '#5a616b33 transparent' }}>
+                        <div className="text-[7px] font-bold uppercase tracking-wider mb-1" style={{ color: '#5a616b' }}>
+                          DRUM MACHINE
+                        </div>
+                        <div className="flex flex-col gap-px">
+                          {DRUM_BANK_OPTIONS.map(([bankId, bankName]) => (
+                            <button
+                              key={bankId || '__none__'}
+                              onClick={() => setRowBank(instrumentId, bankId)}
+                              className="flex items-center gap-1.5 w-full px-1.5 py-1 text-left cursor-pointer rounded-lg transition-all"
+                              style={{
+                                background: (rowBank || '') === bankId ? '#1c1e22' : 'transparent',
+                                color: (rowBank || '') === bankId ? drum.color : '#8a919b',
+                                border: 'none',
+                                boxShadow: (rowBank || '') === bankId
+                                  ? `inset 2px 2px 4px #14161a, inset -2px -2px 4px #2c3036`
+                                  : 'none',
+                              }}
+                            >
+                              <span className="text-[8px] font-bold">{bankName}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Close */}
+                      <button
+                        onClick={() => setSoundPickerRow(null)}
+                        className="w-full px-2 py-1 text-[7px] font-bold uppercase tracking-wider cursor-pointer"
+                        style={{ color: '#5a616b', background: '#23262b', border: 'none', borderTop: '1px solid rgba(255,255,255,0.04)' }}
+                      >
+                        CLOSE
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Step cells */}
@@ -1106,6 +1423,7 @@ function buildCodeFromGrid(
   isStack: boolean,
   stepsPerBar: number = 16,
   rowGains?: Map<string, number>,
+  rowBanks?: Map<string, string>,
 ): string {
   // Filter out empty rows
   const rowsWithHits = activeRows.filter(id => {
@@ -1118,9 +1436,21 @@ function buildCodeFromGrid(
   // Extract the effects chain from the original code (everything after the main s()/stack())
   const effectsChain = extractEffectsChain(originalRawCode, isStack)
 
-  // Get bank from original
-  const bankMatch = originalRawCode.match(/\.bank\(\s*"([^"]*)"/)
-  const bankStr = bankMatch ? `.bank("${bankMatch[1]}")` : ''
+  // Resolve bank for a given instrument: rowBanks override > original row bank > channel-level bank
+  const bankFromOriginal = originalRawCode.match(/\.bank\(\s*"([^"]*)"/)
+  const channelBankStr = bankFromOriginal ? bankFromOriginal[1] : ''
+
+  const getBankStr = (instrument: string): string => {
+    // Per-row bank override (from UI picker)
+    const uiBank = rowBanks?.get(instrument)
+    if (uiBank) return `.bank("${uiBank}")`
+    // Original per-row bank (from parsed code)
+    const origRow = originalDrumRows.find(r => r.instrument === instrument)
+    if (origRow?.bank) return `.bank("${origRow.bank}")`
+    // Channel-level bank
+    if (channelBankStr) return `.bank("${channelBankStr}")`
+    return ''
+  }
 
   if (rowsWithHits.length === 1 && !isStack) {
     // Single instrument → simple s("pattern") format
@@ -1128,10 +1458,9 @@ function buildCodeFromGrid(
     const hits = grid.get(instrument)!
     const pattern = hitsToPattern(hits, bars, instrument, stepsPerBar)
 
-    // Reconstruct: find the $name: prefix
     const prefixMatch = originalRawCode.match(/^\s*(\$\w*:)\s*/)
     const prefix = prefixMatch ? prefixMatch[1] : '$:'
-    return `${prefix} s("${pattern}")${bankStr}${effectsChain}`
+    return `${prefix} s("${pattern}")${getBankStr(instrument)}${effectsChain}`
   }
 
   // Multiple instruments → stack() format
@@ -1140,12 +1469,9 @@ function buildCodeFromGrid(
     const hits = grid.get(instrument)!
     const pattern = hitsToPattern(hits, bars, instrument, stepsPerBar)
 
-    // Find bank for this specific instrument from original
-    const origRow = originalDrumRows.find(r => r.instrument === instrument)
-    const rowBank = origRow?.bank ? `.bank("${origRow.bank}")` : bankStr
     const rowGain = rowGains?.get(instrument)
     const gainStr = rowGain != null && Math.abs(rowGain - 0.8) > 0.01 ? `.gain(${rowGain})` : ''
-    stackLines.push(`  s("${pattern}")${rowBank}${gainStr}`)
+    stackLines.push(`  s("${pattern}")${getBankStr(instrument)}${gainStr}`)
   }
 
   const prefixMatch = originalRawCode.match(/^\s*(\$\w*:)\s*/)

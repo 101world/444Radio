@@ -282,8 +282,22 @@ export function parseStrudelCode(code: string): ParsedChannel[] {
     if (!source) {
       const sMatch = rawCode.match(/\.?s\(\s*"([^"]+)"/)
       if (sMatch) {
-        source = sMatch[1].replace(/[*!<>\[\]:]+.*/, '').trim()
-        if (SYNTH_NAMES.includes(source)) sourceType = 'synth'
+        const sContent = sMatch[1].trim()
+        // Try simple extraction first: strip modifiers like *4, !4, :2, and mini-notation
+        const simpleName = sContent.replace(/[*!<>\[\]:]+.*/, '').trim()
+        if (simpleName && /^[a-zA-Z_]\w*$/.test(simpleName)) {
+          source = simpleName
+        } else {
+          // Complex pattern like "[~ hh]*4" or "bd [~ bd]" — extract first alpha word
+          const wordMatch = sContent.match(/\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g)
+          if (wordMatch) {
+            // Take the first instrument word that isn't a rest token
+            for (const w of wordMatch) {
+              if (w !== 'silence') { source = w; break }
+            }
+          }
+        }
+        if (source && SYNTH_NAMES.includes(source)) sourceType = 'synth'
       }
     }
     if (!source) {
@@ -818,11 +832,11 @@ export function renameChannel(code: string, channelIdx: number, newName: string)
 
 /** Parse BPM from setCps(BPM/60/4) — returns BPM or null */
 export function parseBPM(code: string): number | null {
-  // Match: setCps(140/60/4) or setCps( 92 / 60 / 4 )
-  const m = code.match(/setCps\(\s*(\d+(?:\.\d+)?)\s*\/\s*60\s*\/\s*4\s*\)/)
+  // Match: setCps(140/60/4) or setcps( 92 / 60 / 4 ) — case-insensitive
+  const m = code.match(/set[Cc]ps\(\s*(\d+(?:\.\d+)?)\s*\/\s*60\s*\/\s*4\s*\)/)
   if (m) return parseFloat(m[1])
   // Match: setCps(0.583) etc — direct CPS value
-  const m2 = code.match(/setCps\(\s*(\d+(?:\.\d+)?)\s*\)/)
+  const m2 = code.match(/set[Cc]ps\(\s*(\d+(?:\.\d+)?)\s*\)/)
   if (m2) {
     const cps = parseFloat(m2[1])
     if (cps < 10) return Math.round(cps * 60 * 4) // Convert CPS to BPM
@@ -833,15 +847,15 @@ export function parseBPM(code: string): number | null {
 
 /** Update BPM in setCps(...) call — replaces the numeric arg */
 export function updateBPM(code: string, newBPM: number): string {
-  // Replace setCps(OLD/60/4) with setCps(NEW/60/4)
-  const m = code.match(/setCps\(\s*(\d+(?:\.\d+)?)\s*\/\s*60\s*\/\s*4\s*\)/)
+  // Replace setCps(OLD/60/4) with setCps(NEW/60/4) — case-insensitive match
+  const m = code.match(/set[Cc]ps\(\s*(\d+(?:\.\d+)?)\s*\/\s*60\s*\/\s*4\s*\)/)
   if (m && m.index !== undefined) {
     const before = code.substring(0, m.index)
     const after = code.substring(m.index + m[0].length)
     return before + `setCps(${newBPM}/60/4)` + after
   }
   // Replace setCps(CPS) with setCps(NEW/60/4) for direct CPS values
-  const m2 = code.match(/setCps\(\s*\d+(?:\.\d+)?\s*\)/)
+  const m2 = code.match(/set[Cc]ps\(\s*\d+(?:\.\d+)?\s*\)/)
   if (m2 && m2.index !== undefined) {
     const before = code.substring(0, m2.index)
     const after = code.substring(m2.index + m2[0].length)
@@ -1595,18 +1609,29 @@ export function setArpRate(
 //  Leaves complex .add("12,24") or .add(x => ...) untouched.
 // ═══════════════════════════════════════════════════════════════
 
-/** Get the simple numeric transpose (.add(N)) from a channel's raw code. Returns 0 if none. */
+/** Get the simple numeric transpose (.trans(N) or legacy .add(N)) from a channel's raw code. Returns 0 if none. */
 export function getTranspose(rawCode: string): number {
-  // Match all .add( calls and find one with a simple numeric arg
-  const addRegex = /\.add\(/g
+  // Prefer .trans(N) — chromatic semitone transposition (used by templates, methods panel, node editor)
+  const transRegex = /\.trans\(/g
   let match: RegExpExecArray | null
+  while ((match = transRegex.exec(rawCode)) !== null) {
+    if (isInComment(rawCode, match.index)) continue
+    const openP = match.index + match[0].length - 1
+    const closeP = findClosingParen(rawCode, openP)
+    if (closeP === -1) continue
+    const arg = rawCode.substring(openP + 1, closeP).trim()
+    if (/^-?\d+$/.test(arg)) {
+      return parseInt(arg)
+    }
+  }
+  // Fallback: legacy .add(N) with simple integer arg
+  const addRegex = /\.add\(/g
   while ((match = addRegex.exec(rawCode)) !== null) {
     if (isInComment(rawCode, match.index)) continue
     const openP = match.index + match[0].length - 1
     const closeP = findClosingParen(rawCode, openP)
     if (closeP === -1) continue
     const arg = rawCode.substring(openP + 1, closeP).trim()
-    // Only match simple integer: -12, 7, 0, etc.
     if (/^-?\d+$/.test(arg)) {
       return parseInt(arg)
     }
@@ -1614,7 +1639,9 @@ export function getTranspose(rawCode: string): number {
   return 0
 }
 
-/** Set the transpose on a channel. Updates existing simple .add(N) or inserts one. */
+/** Set the transpose on a channel using .trans(N) for chromatic semitone transposition.
+ *  Updates existing .trans(N) or legacy .add(N), or inserts a new .trans(N).
+ *  Cleans up blank lines when removing. */
 export function setTranspose(
   code: string,
   channelIdx: number,
@@ -1624,9 +1651,51 @@ export function setTranspose(
   const ch = channels[channelIdx]
   if (!ch) return code
 
-  // Find existing simple .add(N) in the channel's raw code
-  const addRegex = /\.add\(/g
+  // Helper: remove a .method(N) call and clean up the resulting blank line
+  const removeCall = (callStart: number, callEnd: number): string => {
+    let result = code.substring(0, callStart) + code.substring(callEnd)
+    // Clean up blank lines left behind: find the line that contained the call
+    const lines = result.split('\n')
+    const cleaned: string[] = []
+    // Find which line the removal was on by character position
+    let pos = 0
+    for (let i = 0; i < lines.length; i++) {
+      const lineEnd = pos + lines[i].length
+      // If this line is within the channel block and is now blank, skip it
+      if (pos >= ch.blockStart && lineEnd <= ch.blockEnd && lines[i].trim() === '') {
+        // Only skip if this is an interior blank line (not a boundary)
+        if (i > ch.lineStart && i < ch.lineEnd - 1) {
+          pos = lineEnd + 1
+          continue
+        }
+      }
+      cleaned.push(lines[i])
+      pos = lineEnd + 1
+    }
+    return cleaned.join('\n')
+  }
+
+  // 1. Look for existing .trans(N) — preferred method
+  const transRegex = /\.trans\(/g
   let match: RegExpExecArray | null
+  while ((match = transRegex.exec(ch.rawCode)) !== null) {
+    if (isInComment(ch.rawCode, match.index)) continue
+    const openP = match.index + match[0].length - 1
+    const closeP = findClosingParen(ch.rawCode, openP)
+    if (closeP === -1) continue
+    const arg = ch.rawCode.substring(openP + 1, closeP).trim()
+    if (/^-?\d+$/.test(arg)) {
+      const absArgStart = ch.blockStart + openP + 1
+      const absArgEnd = ch.blockStart + closeP
+      if (semitones === 0) {
+        return removeCall(ch.blockStart + match.index, ch.blockStart + closeP + 1)
+      }
+      return code.substring(0, absArgStart) + semitones.toString() + code.substring(absArgEnd)
+    }
+  }
+
+  // 2. Look for legacy .add(N) — upgrade to .trans(N)
+  const addRegex = /\.add\(/g
   while ((match = addRegex.exec(ch.rawCode)) !== null) {
     if (isInComment(ch.rawCode, match.index)) continue
     const openP = match.index + match[0].length - 1
@@ -1634,22 +1703,19 @@ export function setTranspose(
     if (closeP === -1) continue
     const arg = ch.rawCode.substring(openP + 1, closeP).trim()
     if (/^-?\d+$/.test(arg)) {
-      // Found simple numeric .add(N) — replace the argument
-      const absArgStart = ch.blockStart + openP + 1
-      const absArgEnd = ch.blockStart + closeP
       if (semitones === 0) {
-        // Remove the entire .add(N) call
-        const absCallStart = ch.blockStart + match.index
-        const absCallEnd = ch.blockStart + closeP + 1
-        return code.substring(0, absCallStart) + code.substring(absCallEnd)
+        return removeCall(ch.blockStart + match.index, ch.blockStart + closeP + 1)
       }
-      return code.substring(0, absArgStart) + semitones.toString() + code.substring(absArgEnd)
+      // Upgrade .add(N) → .trans(N)
+      const absCallStart = ch.blockStart + match.index
+      const absCallEnd = ch.blockStart + closeP + 1
+      return code.substring(0, absCallStart) + `.trans(${semitones})` + code.substring(absCallEnd)
     }
   }
 
-  // No simple .add(N) found — insert one (if non-zero)
+  // 3. No existing transpose — insert .trans(N) if non-zero
   if (semitones === 0) return code
-  return insertEffectInChannel(code, channelIdx, `.add(${semitones})`)
+  return insertEffectInChannel(code, channelIdx, `.trans(${semitones})`)
 }
 
 export { PARAM_DEFS as PARAM_PATTERNS }

@@ -22,6 +22,24 @@ import StudioMethodsPanel from './studio/StudioMethodsPanel'
 import StudioCodeEditor, { type StudioCodeEditorHandle } from './studio/StudioCodeEditor'
 import StudioMixerRack from './studio/StudioMixerRack'
 
+// Simple WebAudio fallback for drum preview when engine isn't available
+let _prevCtx: AudioContext | null = null
+function playDrumPreviewFallback(instrument: string) {
+  if (!_prevCtx) _prevCtx = new AudioContext()
+  if (_prevCtx.state === 'suspended') _prevCtx.resume()
+  const now = _prevCtx.currentTime
+  const osc = _prevCtx.createOscillator()
+  const gain = _prevCtx.createGain()
+  if (instrument === 'bd') {
+    osc.type = 'sine'; osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(40, now + 0.1)
+    gain.gain.setValueAtTime(0.3, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15)
+  } else {
+    osc.type = 'triangle'; osc.frequency.value = 800
+    gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05)
+  }
+  osc.connect(gain).connect(_prevCtx.destination); osc.start(); osc.stop(now + 0.2)
+}
+
 export default function StudioEditor() {
   // ── State ──
   const [code, setCode] = useState(GENRE_TEMPLATES[0].code)
@@ -359,10 +377,21 @@ export default function StudioEditor() {
     const engine = engineRef.current
     if (!engine) return
     try {
+      // Get audio context and ensure it's running (user gesture required)
       const actx = engine.webaudio.getAudioContext()
       await actx.resume()
-      const sd = engine.webaudio.superdough
-      if (!sd) return
+
+      // Resolve superdough function: engine direct ref → webaudio re-export → direct import
+      let sd = engine.superdough || engine.webaudio.superdough
+      if (!sd) {
+        const sdMod = await import('superdough')
+        sd = sdMod.superdough
+      }
+      if (!sd) {
+        console.warn('[444 STUDIO] superdough function not available')
+        return
+      }
+
       const now = actx.currentTime + 0.05
 
       // Parse the sound code to extract superdough params
@@ -391,9 +420,11 @@ export default function StudioEditor() {
         const bank = bankMatch[1]
         // Play a kick from this bank so user hears the machine character
         await sd({ s: 'bd', bank, n: 0, gain: 0.6 }, now, 0.5)
+      } else {
+        console.warn('[444 STUDIO] preview: unrecognized sound code format:', soundCode)
       }
     } catch (err) {
-      console.log('[444 STUDIO] preview error:', err)
+      console.error('[444 STUDIO] preview error:', err)
     }
   }, [])
 
@@ -626,6 +657,26 @@ export default function StudioEditor() {
                   if (newCode !== latest) handleLiveCodeChange(newCode)
                 }}
                 onClose={() => setDrumSequencerChannel(null)}
+                onPreviewDrum={async (instrument: string, bank?: string) => {
+                  const engine = engineRef.current
+                  if (!engine) { playDrumPreviewFallback(instrument); return }
+                  try {
+                    const actx = engine.webaudio.getAudioContext()
+                    await actx.resume()
+                    let sd = engine.superdough || engine.webaudio.superdough
+                    if (!sd) {
+                      const sdMod = await import('superdough')
+                      sd = sdMod.superdough
+                    }
+                    if (!sd) { playDrumPreviewFallback(instrument); return }
+                    const now = actx.currentTime + 0.05
+                    const params: Record<string, unknown> = { s: instrument, n: 0, gain: 0.6 }
+                    if (bank) params.bank = bank
+                    await sd(params, now, 0.5)
+                  } catch {
+                    playDrumPreviewFallback(instrument)
+                  }
+                }}
               />
             )
           })()}

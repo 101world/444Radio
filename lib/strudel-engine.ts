@@ -12,6 +12,8 @@ export interface StrudelEngine {
   core: any
   scheduler: any
   soundMap: any
+  /** Direct reference to the superdough one-shot trigger function */
+  superdough: ((value: Record<string, any>, t: number, hapDuration: number, cps?: number, cycle?: number) => Promise<any>) | null
   /** Last eval error captured from the REPL (null if last eval succeeded) */
   lastEvalError: { error: Error | null }
 }
@@ -206,6 +208,10 @@ export async function initStrudelEngine(
 
   onProgress({ message: 'ready', phase: 'ready' })
 
+  // Grab direct reference to superdough function for one-shot preview
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sdFunc = (webaudio as Record<string, any>)['superdough'] ?? null
+
   return {
     engine: {
       evaluate,
@@ -213,6 +219,7 @@ export async function initStrudelEngine(
       core,
       scheduler,
       soundMap: webaudio.soundMap,
+      superdough: sdFunc,
       lastEvalError,
     },
     DrawerClass,
