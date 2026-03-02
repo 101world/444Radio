@@ -272,10 +272,11 @@ function parsePattern(
     const entries = splitTopLevel(inner)
     entries.forEach((entry, barIdx) => {
       const barOffset = barIdx * stepsPerBar
-      // Unwrap outer brackets: [d3,f3,a3,c4] or [0 ~ ~ ~] → inner
-      const clean = entry.startsWith('[') && entry.endsWith(']')
-        ? entry.slice(1, -1).trim()
-        : entry
+      // Unwrap structural grouping brackets [0 ~ ~ ~] → inner,
+      // but keep chord brackets [d3,f3,a3,c4] intact (they contain commas, not spaces)
+      const isChord = entry.startsWith('[') && entry.endsWith(']') && entry.includes(',')
+      const isGrouping = entry.startsWith('[') && entry.endsWith(']') && !isChord
+      const clean = isGrouping ? entry.slice(1, -1).trim() : entry
       const tokens = tokenizePattern(clean)
       mapTokensToSteps(tokens, barOffset, scale, notes, mode, stepsPerBar)
     })
@@ -625,11 +626,19 @@ export default function StudioPianoRoll({
   )
 
   // ── Parse initial pattern (only on mount / pattern prop change) ──
+  // Track whether user is actively drawing to avoid re-parse during live edits
+  const hasUserEditedRef = useRef(false)
+  hasUserEditedRef.current = hasUserEdited
+  const lastEmittedPattern = useRef('')
+
   useEffect(() => {
+    // If user is actively editing, skip re-parse — the user's noteMap is the source of truth.
+    // Only re-parse if the incoming pattern differs from what we last emitted (external change).
+    if (hasUserEditedRef.current && currentPattern === lastEmittedPattern.current) return
+
     console.log('[PianoRoll] parsing:', { currentPattern, parseMode, patternType, isGenerative, isNoteMode })
     const { notes: parsed, bars: parsedBars, speedMod } = parsePattern(currentPattern, scale, parseMode, stepsPerBar)
     speedModRef.current = speedMod
-    // parsePattern now returns Map<string, NoteData> with lengths from @ notation
     console.log('[PianoRoll] result:', { notesCount: parsed.size, bars: parsedBars, speedMod })
     setNoteMap(parsed)
     setBars(Math.max(1, parsedBars) as 1 | 2 | 4)
@@ -660,7 +669,9 @@ export default function StudioPianoRoll({
     emitTimer.current = setTimeout(() => {
       // Pass noteMap directly to gridToPattern so it can encode note lengths with @
       const pat = gridToPattern(noteMapRef.current, bars, scale, parseMode, stepsPerBar)
-      onPatternChange(speedModRef.current ? pat + speedModRef.current : pat)
+      const fullPat = speedModRef.current ? pat + speedModRef.current : pat
+      lastEmittedPattern.current = fullPat
+      onPatternChange(fullPat)
     }, 120)
     return () => { if (emitTimer.current) clearTimeout(emitTimer.current) }
   }, [noteMap, hasUserEdited, bars, scale, onPatternChange, stepsPerBar])
