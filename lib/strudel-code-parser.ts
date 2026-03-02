@@ -371,8 +371,8 @@ export function parseStrudelCode(code: string): ParsedChannel[] {
     let isSimpleSource = false
     const sFullMatch = rawCode.match(/\.?s\(\s*"([^"]*)"/) 
     if (sFullMatch) {
-      // Accept single words (bd, hh) and variant syntax (bd:2, hh:3)
-      isSimpleSource = /^[a-zA-Z_][a-zA-Z0-9_]*(:\d+)?$/.test(sFullMatch[1].trim())
+      // Accept single words (bd, hh), variant syntax (bd:2), and mini-notation modifiers (bd!4, hh*8, bd:2!4)
+      isSimpleSource = /^[a-zA-Z_][a-zA-Z0-9_]*(:\d+)?([!*]\d+)?$/.test(sFullMatch[1].trim())
     }
 
     // Build channel
@@ -570,7 +570,15 @@ export function swapSoundInChannel(
   const sMatch = ch.rawCode.match(/\.?s\(\s*"([^"]*)"/) 
   if (!sMatch || sMatch.index === undefined) return code
 
-  // Replace the content inside s("...") with the new sound name
+  const content = sMatch[1] // e.g. "bd!4" or "hh*8" or "bd:2"
+  // Extract just the base instrument name (before any :N !N *N modifiers)
+  const baseMatch = content.match(/^([a-zA-Z_][a-zA-Z0-9_]*)/)
+  if (!baseMatch) return code
+
+  const baseName = baseMatch[1]
+  const modifiers = content.slice(baseName.length) // e.g. "!4", ":2!4", "*8"
+
+  // Replace the content inside s("...") with new sound + preserved modifiers
   const quotePos = sMatch[0].indexOf('"')
   const nameStartInRaw = sMatch.index + quotePos + 1
   const nameEndInRaw = nameStartInRaw + sMatch[1].length
@@ -578,7 +586,7 @@ export function swapSoundInChannel(
   const nameStart = ch.blockStart + nameStartInRaw
   const nameEnd = ch.blockStart + nameEndInRaw
 
-  return code.substring(0, nameStart) + newSound + code.substring(nameEnd)
+  return code.substring(0, nameStart) + newSound + modifiers + code.substring(nameEnd)
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -615,6 +623,53 @@ export function swapBankInChannel(
     }
     return code
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  addSoundToChannel — Convert a simple s() channel into a stack
+//  e.g. s("bd!4").gain(.8) → stack(s("bd!4"), s("hh*8")).gain(.8)
+//  If already a stack, appends a new s() entry inside the stack()
+// ═══════════════════════════════════════════════════════════════
+
+export function addSoundToChannel(
+  code: string,
+  channelIdx: number,
+  newSound: string,
+): string {
+  const channels = parseStrudelCode(code)
+  const ch = channels[channelIdx]
+  if (!ch) return code
+
+  if (ch.sourceType === 'stack') {
+    // Already a stack — find closing paren of stack(...) and insert before it
+    const stackOpenMatch = ch.rawCode.match(/stack\s*\(/)
+    if (!stackOpenMatch || stackOpenMatch.index === undefined) return code
+
+    const openIdx = stackOpenMatch.index + stackOpenMatch[0].length - 1
+    const closeIdx = findClosingParen(ch.rawCode, openIdx)
+    if (closeIdx === -1) return code
+
+    // Insert new sound before the closing paren
+    const insertPos = ch.blockStart + closeIdx
+    const newEntry = `,\n  s("${newSound}")`
+    return code.substring(0, insertPos) + newEntry + code.substring(insertPos)
+  }
+
+  // Simple source — wrap s("...") call (including .bank() if any) in stack()
+  // Find the s("...") call, optionally followed by .bank("...")
+  const sCallRegex = /\.?s\(\s*"[^"]*"\s*\)(?:\s*\.bank\(\s*"[^"]*"\s*\))?/
+  const sCallMatch = ch.rawCode.match(sCallRegex)
+  if (!sCallMatch || sCallMatch.index === undefined) return code
+
+  const sCallStart = ch.blockStart + sCallMatch.index
+  const sCallEnd = sCallStart + sCallMatch[0].length
+  const existingCall = sCallMatch[0].startsWith('.') ? sCallMatch[0].slice(1) : sCallMatch[0]
+
+  const replacement = `stack(\n  ${existingCall},\n  s("${newSound}")\n)`
+  // If the original had a leading dot (from chaining), add it back
+  const prefix = sCallMatch[0].startsWith('.') ? '.' : ''
+
+  return code.substring(0, sCallStart) + prefix + replacement + code.substring(sCallEnd)
 }
 
 // ═══════════════════════════════════════════════════════════════

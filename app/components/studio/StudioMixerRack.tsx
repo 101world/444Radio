@@ -16,7 +16,7 @@ import StudioKnob from './StudioKnob'
 import ChannelLCD from './ChannelLCD'
 import {
   parseStrudelCode, updateParamInCode, insertEffectInChannel,
-  swapSoundInChannel, swapBankInChannel, renameChannel, duplicateChannel,
+  swapSoundInChannel, swapBankInChannel, addSoundToChannel, renameChannel, duplicateChannel,
   addChannel, removeChannel,
   getParamDef, findNextFreeOrbit, setChannelOrbit,
   enableSidechain, disableSidechain, removeEffectFromChannel,
@@ -291,6 +291,7 @@ function ChannelStrip({
   onArpChange,
   onArpRateChange,
   onTranspose,
+  onAddSound,
   stackRows,
 }: {
   channel: ParsedChannel
@@ -336,6 +337,7 @@ function ChannelStrip({
   onArpChange?: (channelIdx: number, mode: string) => void
   onArpRateChange?: (channelIdx: number, rate: number) => void
   onTranspose?: (channelIdx: number, semitones: number) => void
+  onAddSound?: (channelIdx: number, sound: string) => void
   stackRows: StackRow[]
 }) {
   const gainParam = channel.params.find(p => p.key === 'gain')
@@ -765,6 +767,27 @@ function ChannelStrip({
           {/* Sound / Bank selectors */}
           {(channel.isSimpleSource || channel.bank || channel.sourceType === 'sample' || channel.sourceType === 'synth') && (
             <div className="flex flex-col gap-1 px-2 py-1.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+              <div className="flex items-center justify-between">
+                <span className="text-[6px] font-black uppercase tracking-[.15em]" style={{ color: '#5a616b' }}>SOUND</span>
+                {channel.sourceType !== 'stack' && channel.sourceType !== 'note' && channel.isSimpleSource && onAddSound && (
+                  <select
+                    value=""
+                    onChange={(e) => { if (e.target.value) onAddSound(channelIdx, e.target.value) }}
+                    className="text-[6px] font-mono rounded px-1 py-0 outline-none cursor-pointer"
+                    style={{ color: '#7fa998', background: '#1c1e22', border: '1px solid rgba(127,169,152,0.2)', borderRadius: '6px', maxWidth: '60px' }}
+                    title="Add another sound (creates stack)"
+                  >
+                    <option value="">+ ADD</option>
+                    {SOUND_OPTIONS.map(g => (
+                      <optgroup key={g.group} label={g.group}>
+                        {g.sounds.map(([val, label]) => (
+                          <option key={val} value={val}>{label}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                )}
+              </div>
               {channel.isSimpleSource ? (
                 <select
                   value={channel.source}
@@ -1161,6 +1184,15 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
       if (newCode !== currentCode) liveUpdate(newCode)
     },
     [liveUpdate],
+  )
+
+  const handleAddSound = useCallback(
+    (channelIdx: number, newSound: string) => {
+      const currentCode = codeRef.current
+      const newCode = addSoundToChannel(currentCode, channelIdx, newSound)
+      if (newCode !== currentCode) onCodeChange(newCode)
+    },
+    [onCodeChange],
   )
 
   // ── Rename handler ──
@@ -1728,6 +1760,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                   onArpChange={handleArpChange}
                   onArpRateChange={handleArpRateChange}
                   onTranspose={handleTranspose}
+                  onAddSound={handleAddSound}
                 />
               ))}
 

@@ -294,7 +294,6 @@ export default function StudioEditor() {
         }
       } catch {}
       const evalCode = applyMixerOverrides(fixSoundfontNames(src) + (metronomeRef.current ? generateMetronomeCode(0) : ''), mixerStateRef.current.muted, mixerStateRef.current.soloed)
-      console.log('[444 DEBUG] code to evaluate:\n', evalCode)
       await engine.evaluate(evalCode)
       if (engine.scheduler?.clock) {
         setTimeout(() => {
