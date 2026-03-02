@@ -1,5 +1,7 @@
 'use client'
 
+import StudioKnob from './StudioKnob'
+
 interface SliderDef {
   min: number
   max: number
@@ -17,27 +19,23 @@ export default function StudioSliderPanel({ sliderDefs, sliderValues, onChange }
   if (entries.length === 0) return null
 
   return (
-    <div className="p-2 border-b border-white/[0.06]">
-      <div className="text-[8px] font-bold uppercase tracking-[.2em] text-cyan-400/40 mb-2 px-1">
-        LIVE SLIDERS
+    <div className="p-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+      <div className="text-[8px] font-bold uppercase tracking-[.2em] mb-2 px-1" style={{ color: '#7fa998' }}>
+        LIVE KNOBS
       </div>
-      <div className="space-y-1.5">
+      <div className="flex flex-wrap gap-1 justify-center">
         {entries.map(([id, def]) => (
-          <div key={id} className="flex items-center gap-2 px-1">
-            <span className="text-[8px] text-white/30 font-mono truncate w-12">{id}</span>
-            <input
-              type="range"
-              min={def.min}
-              max={def.max}
-              step={(def.max - def.min) / 200}
-              value={sliderValues.current[id] ?? def.value}
-              onChange={(e) => onChange(id, parseFloat(e.target.value))}
-              className="flex-1 h-1 accent-cyan-400 cursor-pointer"
-            />
-            <span className="text-[9px] text-cyan-400/60 font-mono w-8 text-right">
-              {(sliderValues.current[id] ?? def.value).toFixed(2)}
-            </span>
-          </div>
+          <StudioKnob
+            key={id}
+            label={id}
+            value={sliderValues.current[id] ?? def.value}
+            min={def.min}
+            max={def.max}
+            step={(def.max - def.min) / 200}
+            size={32}
+            color="#7fa998"
+            onChange={(v) => onChange(id, v)}
+          />
         ))}
       </div>
     </div>

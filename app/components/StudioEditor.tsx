@@ -9,8 +9,11 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import type { StrudelEngine } from '@/lib/strudel-engine'
 import { fixSoundfontNames } from '@/lib/strudel-engine'
-import { applyMixerOverrides } from '@/lib/strudel-code-parser'
-
+import { applyMixerOverrides, parseStrudelCode, parseChannelPattern, replaceChannelPattern, replaceChannelBlock, parseScale as parseMixerScale } from '@/lib/strudel-code-parser'
+import { generateMetronomeCode } from '@/lib/strudel-code-parser'
+import { setOrbitAnalyser, clearOrbitAnalysers } from '@/lib/studio-analysers'
+import StudioPianoRoll from './studio/StudioPianoRoll'
+import StudioDrumSequencer from './studio/StudioDrumSequencer'
 // Sub-components
 import StudioTopBar from './studio/StudioTopBar'
 import StudioGenreSelector, { GENRE_TEMPLATES } from './studio/StudioGenreSelector'
@@ -30,6 +33,10 @@ export default function StudioEditor() {
   const [activeGenre, setActiveGenre] = useState('acid')
   const [sliderDefs, setSliderDefs] = useState<Record<string, { min: number; max: number; value: number }>>({})
   const [leftPanelOpen, setLeftPanelOpen] = useState(true)
+  const [codeVisible, setCodeVisible] = useState(false)
+  const [metronomeEnabled, setMetronomeEnabled] = useState(false)
+  const [pianoRollChannel, setPianoRollChannel] = useState<number | null>(null)
+  const [drumSequencerChannel, setDrumSequencerChannel] = useState<number | null>(null)
 
   // Undo/Redo
   const undoStack = useRef<string[]>([])
@@ -51,8 +58,11 @@ export default function StudioEditor() {
   const sliderDefsRef = useRef<Record<string, { min: number; max: number; value: number }>>({})
   const drawStateRef = useRef({ counter: 0 })
   const mixerStateRef = useRef<{ muted: Set<number>; soloed: Set<number> }>({ muted: new Set(), soloed: new Set() })
+  const metronomeRef = useRef(false)
+  const [analyserNode, setAnalyserNode] = useState<AnalyserNode | null>(null)
 
   useEffect(() => { isPlayingRef.current = isPlaying }, [isPlaying])
+  useEffect(() => { metronomeRef.current = metronomeEnabled }, [metronomeEnabled])
 
   // ── Undo/Redo helpers ──
   const setCodeWithUndo = useCallback((newCode: string | ((prev: string) => string)) => {
@@ -171,6 +181,7 @@ export default function StudioEditor() {
         await engine.evaluate('silence')
         try { const { cleanupDraw } = await import('@strudel/draw'); cleanupDraw(true) } catch {}
         if (drawerRef.current) try { drawerRef.current.stop() } catch {}
+        clearOrbitAnalysers()
         setIsPlaying(false)
         setStatus('ready')
         setError(null)
@@ -184,30 +195,61 @@ export default function StudioEditor() {
         await engine.webaudio.getAudioContext().resume()
         drawStateRef.current.counter = 0
         lastEvaluatedRef.current = ''
-        await engine.evaluate(applyMixerOverrides(fixSoundfontNames(src), mixerStateRef.current.muted, mixerStateRef.current.soloed))
-        setSliderDefs({ ...sliderDefsRef.current })
 
-        // Grab master gain from superdough's internal audio controller (like InputEditor)
+        // Pre-initialize orbits BEFORE evaluate so duck() has valid targets
         try {
           const controller = (engine.webaudio as any).getSuperdoughAudioController?.()
-          if (controller?.output?.destinationGain) {
-            masterGainRef.current = controller.output.destinationGain
-            // Apply saved volume
-            const savedVol = localStorage.getItem('444-studio-volume')
-            const vol = savedVol !== null ? parseFloat(savedVol) : 0.75
-            if (!isNaN(vol)) masterGainRef.current!.gain.value = vol
-            console.log('[444 STUDIO] master volume connected')
-          }
-          // Pre-initialize orbits 0-11 so duck() always has valid targets
           if (controller?.getOrbit) {
             for (let i = 0; i < 12; i++) {
               controller.getOrbit(i)
             }
             console.log('[444 STUDIO] pre-initialized 12 orbits for duck()')
           }
+          if (controller?.output?.destinationGain) {
+            masterGainRef.current = controller.output.destinationGain
+            const savedVol = localStorage.getItem('444-studio-volume')
+            const vol = savedVol !== null ? parseFloat(savedVol) : 0.75
+            if (!isNaN(vol)) masterGainRef.current!.gain.value = vol
+            console.log('[444 STUDIO] master volume connected')
+
+            // Connect analyser node for master visualizer
+            try {
+              const actx = engine.webaudio.getAudioContext()
+              const analyser = actx.createAnalyser()
+              analyser.fftSize = 256
+              analyser.smoothingTimeConstant = 0.8
+              masterGainRef.current!.connect(analyser)
+              setAnalyserNode(analyser)
+              console.log('[444 STUDIO] master analyser connected')
+            } catch (ae) {
+              console.log('[444 STUDIO] analyser connect failed:', ae)
+            }
+
+            // Connect per-orbit analysers for channel LCD visualization
+            try {
+              const actx = engine.webaudio.getAudioContext()
+              clearOrbitAnalysers()
+              for (let i = 0; i < 12; i++) {
+                const orbit = controller.getOrbit(i)
+                if (orbit?.output) {
+                  const orbAnalyser = actx.createAnalyser()
+                  orbAnalyser.fftSize = 256
+                  orbAnalyser.smoothingTimeConstant = 0.75
+                  orbit.output.connect(orbAnalyser)
+                  setOrbitAnalyser(i, orbAnalyser)
+                }
+              }
+              console.log('[444 STUDIO] per-orbit analysers connected')
+            } catch (oe) {
+              console.log('[444 STUDIO] orbit analyser setup failed:', oe)
+            }
+          }
         } catch (err) {
-          console.log('[444 STUDIO] master gain not available:', err)
+          console.log('[444 STUDIO] controller not available yet:', err)
         }
+
+        await engine.evaluate(applyMixerOverrides(fixSoundfontNames(src) + (metronomeRef.current ? generateMetronomeCode(0) : ''), mixerStateRef.current.muted, mixerStateRef.current.soloed))
+        setSliderDefs({ ...sliderDefsRef.current })
 
         if (drawerRef.current && engine.scheduler) {
           try {
@@ -238,13 +280,20 @@ export default function StudioEditor() {
       if (src === lastEvaluatedRef.current) return
       lastEvaluatedRef.current = src
       if (editorDivRef.current) {
-        editorDivRef.current.style.outline = '2px solid rgba(34,211,238,0.4)'
+        editorDivRef.current.style.outline = '2px solid rgba(127,169,152,0.4)'
         setTimeout(() => { if (editorDivRef.current) editorDivRef.current.style.outline = 'none' }, 200)
       }
       sliderDefsRef.current = {}
       await engine.webaudio.getAudioContext().resume()
       drawStateRef.current.counter = 0
-      await engine.evaluate(applyMixerOverrides(fixSoundfontNames(src), mixerStateRef.current.muted, mixerStateRef.current.soloed))
+      // Ensure orbits exist for duck() on live updates
+      try {
+        const controller = (engine.webaudio as any).getSuperdoughAudioController?.()
+        if (controller?.getOrbit) {
+          for (let i = 0; i < 12; i++) controller.getOrbit(i)
+        }
+      } catch {}
+      await engine.evaluate(applyMixerOverrides(fixSoundfontNames(src) + (metronomeRef.current ? generateMetronomeCode(0) : ''), mixerStateRef.current.muted, mixerStateRef.current.soloed))
       if (engine.scheduler?.clock) {
         setTimeout(() => {
           try { engine.scheduler.clock.pause(); engine.scheduler.clock.start() } catch {}
@@ -332,9 +381,45 @@ export default function StudioEditor() {
     if (isPlayingRef.current && engineRef.current?.evaluate) {
       const src = codeRef.current.trim()
       if (!src) return
-      const finalCode = applyMixerOverrides(fixSoundfontNames(src), state.muted, state.soloed)
+      const finalCode = applyMixerOverrides(fixSoundfontNames(src) + (metronomeRef.current ? generateMetronomeCode(0) : ''), state.muted, state.soloed)
       engineRef.current.evaluate(finalCode).catch(err => {
         console.error('[444 STUDIO] mixer state update error:', err)
+      })
+    }
+  }, [])
+
+  // ── Live code change (updates text + re-evaluates immediately) ──
+  // Used by BPM slider, scale selector, etc. so changes are heard instantly
+  const handleLiveCodeChange = useCallback((newCode: string) => {
+    setCodeWithUndo(newCode)
+    if (isPlayingRef.current && engineRef.current?.evaluate) {
+      const src = newCode.trim()
+      if (!src) return
+      const { muted, soloed } = mixerStateRef.current
+      const finalCode = applyMixerOverrides(
+        fixSoundfontNames(src) + (metronomeRef.current ? generateMetronomeCode(0) : ''),
+        muted, soloed
+      )
+      engineRef.current.evaluate(finalCode).catch(err => {
+        console.error('[444 STUDIO] live code change error:', err)
+      })
+    }
+  }, [setCodeWithUndo])
+
+  // ── Metronome toggle (re-evaluate during playback) ──
+  const handleMetronomeToggle = useCallback((enabled: boolean) => {
+    setMetronomeEnabled(enabled)
+    // Re-evaluate immediately so metronome starts/stops without pressing play again
+    if (isPlayingRef.current && engineRef.current?.evaluate) {
+      const src = codeRef.current.trim()
+      if (!src) return
+      const { muted, soloed } = mixerStateRef.current
+      const finalCode = applyMixerOverrides(
+        fixSoundfontNames(src) + (enabled ? generateMetronomeCode(0) : ''),
+        muted, soloed
+      )
+      engineRef.current.evaluate(finalCode).catch(err => {
+        console.error('[444 STUDIO] metronome toggle error:', err)
       })
     }
   }, [])
@@ -344,7 +429,7 @@ export default function StudioEditor() {
   // ═══════════════════════════════════════════════════════════════
 
   return (
-    <div className="h-screen w-screen bg-[#0a0a0e] flex flex-col overflow-hidden select-none">
+    <div className="h-screen w-screen flex flex-col overflow-hidden select-none" style={{ background: '#1c1e22' }}>
       {/* ── TOP BAR ── */}
       <StudioTopBar
         status={status}
@@ -352,19 +437,34 @@ export default function StudioEditor() {
         error={error}
         isPlaying={isPlaying}
         masterVolume={masterVolume}
+        codeVisible={codeVisible}
+        analyserNode={analyserNode}
         onPlay={handlePlay}
         onUpdate={handleUpdate}
         onVolumeChange={updateMasterVolume}
+        onToggleCode={() => setCodeVisible(v => !v)}
+      />
+
+      {/* Hidden canvas for visualizations — now positioned inside mixer */}
+      <canvas
+        ref={canvasRef}
+        width={1920}
+        height={1080}
+        className="hidden"
+        style={{ zIndex: -1 }}
       />
 
       {/* ── MAIN BODY ── */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* ── LEFT PANEL (collapsible) ── */}
-        <div className={`shrink-0 border-r border-white/[0.06] bg-[#0c0c10] flex flex-col overflow-hidden transition-all duration-200 ${leftPanelOpen ? 'w-52' : 'w-0'}`}>
+      <div className="flex-1 flex overflow-hidden relative" style={{ zIndex: 1 }}>
+
+        {/* ── LEFT PANEL (collapsible genre/sounds/methods) ── */}
+        <div className={`shrink-0 flex flex-col overflow-hidden transition-all duration-300 ease-out ${leftPanelOpen ? 'w-60' : 'w-0'}`}>
           {leftPanelOpen && (
-            <div className="flex-1 overflow-y-auto w-52">
-              <StudioGenreSelector activeGenre={activeGenre} onSelect={loadTemplate} />
-              <StudioSliderPanel sliderDefs={sliderDefs} sliderValues={sliderValuesRef} onChange={handleSliderChange} />
+            <div className="flex-1 flex flex-col overflow-hidden w-60" style={{ background: '#23262b', borderRight: '1px solid rgba(255,255,255,0.05)' }}>
+              <div className="shrink-0">
+                <StudioGenreSelector activeGenre={activeGenre} onSelect={loadTemplate} />
+                <StudioSliderPanel sliderDefs={sliderDefs} sliderValues={sliderValuesRef} onChange={handleSliderChange} />
+              </div>
               <StudioMethodsPanel onInsert={insertAtCursor} />
             </div>
           )}
@@ -373,37 +473,148 @@ export default function StudioEditor() {
         {/* ── LEFT PANEL TOGGLE ── */}
         <button
           onClick={() => setLeftPanelOpen(p => !p)}
-          className="shrink-0 w-4 flex items-center justify-center border-r border-white/[0.04] bg-[#0a0a0e] hover:bg-white/[0.03] text-white/15 hover:text-white/30 transition-colors cursor-pointer"
+          className="shrink-0 w-3 flex items-center justify-center hover:bg-white/[0.04] text-white/10 hover:text-white/30 transition-all duration-[180ms] ease-in-out cursor-pointer"
           title={leftPanelOpen ? 'Collapse panel' : 'Expand panel'}
         >
-          <span className="text-[8px] font-mono">{leftPanelOpen ? '◂' : '▸'}</span>
+          <span className="text-[7px] font-mono">{leftPanelOpen ? '◂' : '▸'}</span>
         </button>
 
-        {/* ── CENTER: Code Editor + Visuals Canvas ── */}
-        <StudioCodeEditor
-          ref={codeEditorRef}
-          code={code}
-          onChange={(c) => setCodeWithUndo(c)}
-          onKeyDown={handleKeyDown}
-          canvasRef={canvasRef}
-          editorRef={editorDivRef}
-        />
-
-        {/* ── RIGHT PANEL: Hardware Mixer Rack ── */}
-        <div className="w-56 shrink-0 border-l border-white/[0.06]">
+        {/* ── CENTER: MIXER RACK (Main View) ── */}
+        <div className="flex-1 flex flex-col min-w-0 relative">
           <StudioMixerRack
             code={code}
             onCodeChange={(c: string) => setCodeWithUndo(c)}
+            onLiveCodeChange={handleLiveCodeChange}
             onMixerStateChange={handleMixerStateChange}
+            metronomeEnabled={metronomeEnabled}
+            onMetronomeToggle={handleMetronomeToggle}
+            isPlaying={isPlaying}
+            onOpenPianoRoll={(idx) => { setDrumSequencerChannel(null); setPianoRollChannel(prev => prev === idx ? null : idx) }}
+            onOpenDrumSequencer={(idx) => { setPianoRollChannel(null); setDrumSequencerChannel(prev => prev === idx ? null : idx) }}
           />
+
+          {/* Piano Roll — docks at bottom */}
+          {pianoRollChannel !== null && (() => {
+            const channels = parseStrudelCode(code)
+            const ch = channels[pianoRollChannel]
+            if (!ch) return null
+            const patternInfo = parseChannelPattern(ch)
+            const scaleInfo = parseMixerScale(code)
+            const scaleStr = scaleInfo
+              ? `${scaleInfo.root}4:${scaleInfo.scale}`
+              : 'C4:minor'
+            const currentPattern = patternInfo && !patternInfo.isGenerative
+              ? patternInfo.pattern
+              : ''
+            // Use 'note' mode for note() channels, 'n' for n().scale() channels,
+            // and default to 'note' for channels with no n()/note() so they can be edited
+            const patternType = patternInfo?.type === 'n' ? 'n'
+              : patternInfo?.type === 'note' ? 'note'
+              : 'note'
+            const isGenerative = patternInfo?.isGenerative ?? (patternInfo === null ? true : false)
+            return (
+              <StudioPianoRoll
+                currentPattern={currentPattern}
+                scale={scaleStr}
+                color={ch.color}
+                channelName={ch.name}
+                soundSource={ch.source}
+                isGenerative={isGenerative}
+                patternType={patternType as 'n' | 'note' | 's'}
+                onPatternChange={(newPattern: string) => {
+                  const latest = codeRef.current
+                  const newCode = replaceChannelPattern(latest, pianoRollChannel, newPattern, patternType as 'n' | 'note')
+                  if (newCode !== latest) handleLiveCodeChange(newCode)
+                }}
+                onClose={() => setPianoRollChannel(null)}
+              />
+            )
+          })()}
+
+          {/* Drum Sequencer — docks at bottom */}
+          {drumSequencerChannel !== null && (() => {
+            const channels = parseStrudelCode(code)
+            const ch = channels[drumSequencerChannel]
+            if (!ch) return null
+            return (
+              <StudioDrumSequencer
+                channelRawCode={ch.rawCode}
+                color={ch.color}
+                channelName={ch.name}
+                bank={ch.bank}
+                onPatternChange={(newRawCode: string) => {
+                  const latest = codeRef.current
+                  const newCode = replaceChannelBlock(latest, drumSequencerChannel, newRawCode)
+                  if (newCode !== latest) handleLiveCodeChange(newCode)
+                }}
+                onClose={() => setDrumSequencerChannel(null)}
+              />
+            )
+          })()}
         </div>
       </div>
 
+      {/* ── CODE EDITOR DRAWER (slides from right) ── */}
+      <div
+        className={`absolute top-10 right-0 bottom-0 z-30 transition-all duration-300 ease-out ${
+          codeVisible ? 'w-[520px] opacity-100' : 'w-0 opacity-0 pointer-events-none'
+        }`}
+        style={{
+          background: '#23262b',
+          borderLeft: '1px solid rgba(255,255,255,0.05)',
+          boxShadow: codeVisible ? '-8px 0 16px #14161a' : 'none',
+        }}
+      >
+        {codeVisible && (
+          <div className="h-full flex flex-col">
+          <div className="shrink-0 flex items-center justify-between px-4 py-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: '#2a2e34' }}>
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#7fa998' }} />
+                <span className="text-[10px] font-black uppercase tracking-[.2em]" style={{ color: '#9aa7b3' }}>Music Code</span>
+              </div>
+              <button
+                onClick={() => setCodeVisible(false)}
+                className="text-[9px] text-white/20 hover:text-white/50 transition-colors cursor-pointer px-2 py-1 rounded hover:bg-white/[0.04]"
+              >
+                ESC
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden flex flex-col" ref={editorDivRef}>
+              <StudioCodeEditor
+                ref={codeEditorRef}
+                code={code}
+                onChange={(c) => setCodeWithUndo(c)}
+                onKeyDown={handleKeyDown}
+                canvasRef={canvasRef}
+                editorRef={editorDivRef}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
       <style jsx global>{`
-        textarea::-webkit-scrollbar { width: 6px; }
+        textarea::-webkit-scrollbar { width: 5px; }
         textarea::-webkit-scrollbar-track { background: transparent; }
-        textarea::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 3px; }
-        textarea::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.12); }
+        textarea::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 10px; }
+        textarea::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.1); }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.1); }
+        select { background-color: #2a2e34 !important; }
+        select option { background: #23262b; color: #c8cdd2; }
+        input[type='range'] {
+          -webkit-appearance: none; height: 3px; border-radius: 10px;
+          background: rgba(255,255,255,0.06);
+        }
+        input[type='range']::-webkit-slider-thumb {
+          -webkit-appearance: none; width: 12px; height: 12px;
+          border-radius: 50%; cursor: pointer;
+          background: #7fa998;
+          border: 2px solid #23262b;
+          box-shadow: 2px 2px 4px #14161a, -1px -1px 3px #2c3036;
+        }
       `}</style>
     </div>
   )

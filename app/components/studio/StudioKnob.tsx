@@ -3,8 +3,9 @@
 import { useCallback, useRef, useState } from 'react'
 
 // ═══════════════════════════════════════════════════════════════
-//  STUDIO KNOB — SVG rotary control (hardware rack aesthetic)
-//  Drag up/down to change value. Click label to type exact value.
+//  STUDIO KNOB — SVG rotary control (hardware LED-dot style)
+//  Inspired by dark hardware volume knobs with LED ring indicators.
+//  Drag up/down to change value. Double-click to reset.
 // ═══════════════════════════════════════════════════════════════
 
 interface StudioKnobProps {
@@ -17,6 +18,7 @@ interface StudioKnobProps {
   color?: string        // hex or tailwind-ready color
   unit?: string
   onChange: (value: number) => void
+  onRemove?: () => void // Double-click removes the effect from code
   formatValue?: (v: number) => string
   isComplex?: boolean   // Show modulation indicator (~ symbol)
 }
@@ -31,6 +33,7 @@ export default function StudioKnob({
   color = '#22d3ee',
   unit = '',
   onChange,
+  onRemove,
   formatValue,
   isComplex = false,
 }: StudioKnobProps) {
@@ -115,9 +118,14 @@ export default function StudioKnob({
   )
 
   const handleDoubleClick = useCallback(() => {
-    // Reset to midpoint on double-click
-    onChange(clampStep((min + max) / 2))
-  }, [min, max, onChange, clampStep])
+    if (onRemove) {
+      // Remove this effect from the channel code
+      onRemove()
+    } else {
+      // Reset to midpoint on double-click
+      onChange(clampStep((min + max) / 2))
+    }
+  }, [min, max, onChange, onRemove, clampStep])
 
   const displayVal = formatValue
     ? formatValue(value)
@@ -127,14 +135,19 @@ export default function StudioKnob({
         ? Math.round(value).toString()
         : value.toFixed(step >= 1 ? 0 : step >= 0.1 ? 1 : 2)
 
+  // LED dot indicators — 21 dots around the 270° arc
+  const NUM_DOTS = 21
+  const dotR = r - 1.5  // radius for dot ring (outer edge)
+  const knobBodyR = r - 6 // radius of the dark knob body
+
   return (
     <div
       className="flex flex-col items-center gap-0.5 select-none"
-      style={{ width: size + 8 }}
+      style={{ width: size + 4 }}
     >
       {/* Label */}
-      <span className="text-[7px] font-bold uppercase tracking-[.15em] text-white/25 truncate w-full text-center leading-none">
-        {label}{isComplex && <span className="text-amber-400/50 ml-0.5" title="Modulated — turning overrides expression">~</span>}
+      <span className="text-[6px] font-bold uppercase tracking-[.12em] truncate w-full text-center leading-none" style={{ color: '#5a616b' }}>
+        {label}{isComplex && <span style={{ color: '#b8a47f', opacity: 0.5 }} className="ml-0.5" title="Modulated">~</span>}
       </span>
 
       {/* SVG Knob */}
@@ -142,68 +155,71 @@ export default function StudioKnob({
         width={size}
         height={size}
         viewBox={`0 0 ${size} ${size}`}
-        className={`cursor-ns-resize ${isDragging ? 'scale-110' : 'hover:scale-105'} transition-transform`}
+        className={`cursor-ns-resize ${isDragging ? 'scale-110' : 'hover:scale-105'} transition-transform duration-[180ms] ease-in-out`}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onWheel={handleWheel}
         onDoubleClick={handleDoubleClick}
       >
-        {/* Background ring track */}
+        {/* Background track arc — muted */}
         <path
           d={arcPath(startAngle, endAngle)}
           fill="none"
           stroke="rgba(255,255,255,0.06)"
-          strokeWidth={2.5}
+          strokeWidth={1.5}
           strokeLinecap="round"
         />
 
-        {/* Value arc */}
-        {normalized > 0.005 && (
+        {/* Value arc — muted accent */}
+        {normalized > 0.01 && (
           <path
             d={arcPath(startAngle, angle)}
             fill="none"
             stroke={color}
-            strokeWidth={2.5}
+            strokeWidth={1.5}
             strokeLinecap="round"
-            style={{
-              filter: isDragging ? `drop-shadow(0 0 4px ${color})` : 'none',
-            }}
+            opacity={isDragging ? 0.7 : 0.4}
           />
         )}
 
-        {/* Knob body */}
+        {/* Knob body — inset shadow circle */}
         <circle
-          cx={cx}
-          cy={cy}
-          r={arcR - 4}
-          fill="#1a1a22"
-          stroke="rgba(255,255,255,0.08)"
+          cx={cx} cy={cy}
+          r={knobBodyR}
+          fill="#23262b"
+          stroke="rgba(255,255,255,0.04)"
+          strokeWidth={0.5}
+        />
+        {/* Inner shadow simulation */}
+        <circle
+          cx={cx} cy={cy}
+          r={knobBodyR - 0.5}
+          fill="none"
+          stroke="#1c1e22"
           strokeWidth={1}
+          opacity={0.5}
         />
 
-        {/* Pointer line */}
+        {/* Pointer line — soft indicator */}
         <line
-          x1={cx}
-          y1={cy}
-          x2={px}
-          y2={py}
+          x1={cx + (knobBodyR * 0.25) * Math.cos(pRad)}
+          y1={cy - (knobBodyR * 0.25) * Math.sin(pRad)}
+          x2={cx + (knobBodyR - 1.5) * Math.cos(pRad)}
+          y2={cy - (knobBodyR - 1.5) * Math.sin(pRad)}
           stroke={color}
           strokeWidth={1.5}
           strokeLinecap="round"
-          opacity={0.9}
+          opacity={isDragging ? 0.9 : 0.6}
         />
-
-        {/* Center dot */}
-        <circle cx={cx} cy={cy} r={1.5} fill={color} opacity={0.4} />
       </svg>
 
       {/* Value display */}
       <span
-        className="text-[8px] font-mono leading-none transition-colors"
-        style={{ color: isDragging ? color : 'rgba(255,255,255,0.35)' }}
+        className="text-[7px] font-mono leading-none transition-colors duration-[180ms] tabular-nums"
+        style={{ color: isDragging ? color : '#5a616b' }}
       >
-        {displayVal}{unit && <span className="text-[6px] opacity-50 ml-0.5">{unit}</span>}
+        {displayVal}{unit && <span className="text-[5px] opacity-40 ml-0.5">{unit}</span>}
       </span>
     </div>
   )

@@ -678,6 +678,10 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
     }
 
     // ── For melody/bass/other: 16th-note resolution ──
+    // IMPORTANT: Always output exactly `totalSteps` tokens per bar so that
+    // Strudel's cycle‑even subdivision matches the grid.  The old "covered"
+    // skip mechanism removed held‑note positions, producing fewer tokens and
+    // shifting all subsequent notes earlier in the cycle.
     const stepMap = new Map<number, { midi: number; dur: number }[]>()
     for (const n of notes) {
       const arr = stepMap.get(n.step) || []
@@ -685,23 +689,35 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
       stepMap.set(n.step, arr)
     }
 
-    const covered = new Set<number>()
-    for (const n of notes) {
-      for (let s = n.step + 1; s < n.step + n.duration && s < totalSteps; s++) {
-        if (!stepMap.has(s)) covered.add(s)
+    const STEPS_PER_BAR = 16
+    const totalBars = Math.max(1, Math.round(totalSteps / STEPS_PER_BAR))
+
+    // Build one array of tokens per bar
+    const barPatterns: string[] = []
+    for (let bar = 0; bar < totalBars; bar++) {
+      const barStart = bar * STEPS_PER_BAR
+      const barEnd = barStart + STEPS_PER_BAR
+      const tokens: string[] = []
+      for (let step = barStart; step < barEnd && step < totalSteps; step++) {
+        const mns = stepMap.get(step)
+        if (!mns || mns.length === 0) {
+          tokens.push('~')
+        } else if (mns.length === 1) {
+          tokens.push(midiToOutput(mns[0].midi))
+        } else {
+          tokens.push(`[${mns.map(m => midiToOutput(m.midi)).join(',')}]`)
+        }
       }
+      barPatterns.push(tokens.join(' '))
     }
 
-    const parts: string[] = []
-    for (let step = 0; step < totalSteps; step++) {
-      if (covered.has(step)) continue
-      const mns = stepMap.get(step)
-      if (!mns || mns.length === 0) parts.push('~')
-      else if (mns.length === 1) parts.push(midiToOutput(mns[0].midi))
-      else parts.push(`[${mns.map(m => midiToOutput(m.midi)).join(',')}]`)
+    if (totalBars === 1) {
+      // Single bar → flat pattern, 16 tokens = 16th-note resolution per cycle
+      onPatternChange(barPatterns[0])
+    } else {
+      // Multi-bar → <[bar1] [bar2] ...> so each bar = one Strudel cycle
+      onPatternChange(`<${barPatterns.map(b => `[${b}]`).join(' ')}>`)
     }
-
-    onPatternChange(parts.join(' '))
   }, [notes, nodeType, onPatternChange, totalSteps, midiToOutput])
 
   // ── Phase 2: Auto-apply on every note change (debounced 150ms) ──

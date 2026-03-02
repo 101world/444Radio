@@ -290,22 +290,16 @@ interface StudioEffectsChainProps {
   onInsertSnippet: (snippet: string) => void
 }
 
-// ─── Color helpers ───
-const colorMap: Record<string, { bg: string; border: string; text: string; glow: string }> = {
-  cyan: { bg: 'bg-cyan-500/10', border: 'border-cyan-500/25', text: 'text-cyan-400', glow: 'shadow-cyan-500/10' },
-  blue: { bg: 'bg-blue-500/10', border: 'border-blue-500/25', text: 'text-blue-400', glow: 'shadow-blue-500/10' },
-  lime: { bg: 'bg-lime-500/10', border: 'border-lime-500/25', text: 'text-lime-400', glow: 'shadow-lime-500/10' },
-  orange: { bg: 'bg-orange-500/10', border: 'border-orange-500/25', text: 'text-orange-400', glow: 'shadow-orange-500/10' },
-  red: { bg: 'bg-red-500/10', border: 'border-red-500/25', text: 'text-red-400', glow: 'shadow-red-500/10' },
-  pink: { bg: 'bg-pink-500/10', border: 'border-pink-500/25', text: 'text-pink-400', glow: 'shadow-pink-500/10' },
-  purple: { bg: 'bg-purple-500/10', border: 'border-purple-500/25', text: 'text-purple-400', glow: 'shadow-purple-500/10' },
-  indigo: { bg: 'bg-indigo-500/10', border: 'border-indigo-500/25', text: 'text-indigo-400', glow: 'shadow-indigo-500/10' },
-  teal: { bg: 'bg-teal-500/10', border: 'border-teal-500/25', text: 'text-teal-400', glow: 'shadow-teal-500/10' },
-  amber: { bg: 'bg-amber-500/10', border: 'border-amber-500/25', text: 'text-amber-400', glow: 'shadow-amber-500/10' },
-  yellow: { bg: 'bg-yellow-500/10', border: 'border-yellow-500/25', text: 'text-yellow-400', glow: 'shadow-yellow-500/10' },
-  emerald: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/25', text: 'text-emerald-400', glow: 'shadow-emerald-500/10' },
-  sky: { bg: 'bg-sky-500/10', border: 'border-sky-500/25', text: 'text-sky-400', glow: 'shadow-sky-500/10' },
-  violet: { bg: 'bg-violet-500/10', border: 'border-violet-500/25', text: 'text-violet-400', glow: 'shadow-violet-500/10' },
+// ─── Clay palette accent mapping ───
+const CLAY_ACCENT: Record<string, string> = {
+  cyan: '#7fa998', blue: '#6f8fb3', lime: '#7fa998', orange: '#b8a47f',
+  red: '#b86f6f', pink: '#b86f6f', purple: '#6f8fb3', indigo: '#6f8fb3',
+  teal: '#7fa998', amber: '#b8a47f', yellow: '#b8a47f', emerald: '#7fa998',
+  sky: '#6f8fb3', violet: '#6f8fb3',
+}
+
+function getAccent(colorName: string): string {
+  return CLAY_ACCENT[colorName] || '#7fa998'
 }
 
 // ─── Component ───
@@ -391,58 +385,70 @@ export default function StudioEffectsChain({ onChainChange, onInsertSnippet }: S
   )
 
   return (
-    <div className="border-t border-white/[0.06]">
+    <div style={{ borderTop: '1px solid #2a2e34' }}>
       {/* Header */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-3 py-2 hover:bg-white/[0.02] transition-colors cursor-pointer"
+        className="w-full flex items-center justify-between px-3 py-2 transition-colors duration-[180ms] ease-in-out cursor-pointer"
       >
         <div className="flex items-center gap-2">
-          <Zap size={11} className="text-orange-400/60" />
-          <span className="text-[9px] font-bold uppercase tracking-[.15em] text-white/30">
+          <Zap size={11} style={{ color: '#b8a47f', opacity: 0.6 }} />
+          <span className="text-[9px] font-bold uppercase tracking-[.15em]" style={{ color: '#5a616b' }}>
             FX CHAIN
           </span>
           {enabledCount > 0 && (
-            <span className="text-[8px] font-mono px-1.5 py-0.5 rounded-full bg-orange-500/10 text-orange-400/60 border border-orange-500/20">
+            <span
+              className="text-[8px] font-mono px-1.5 py-0.5 rounded-full"
+              style={{ color: '#7fa998', backgroundColor: '#23262b', border: '1px solid #2a2e34',
+                boxShadow: 'inset 1px 1px 3px #14161a, inset -1px -1px 3px #2c3036' }}
+            >
               {enabledCount} active
             </span>
           )}
         </div>
-        {isOpen ? <ChevronDown size={10} className="text-white/20" /> : <ChevronRight size={10} className="text-white/20" />}
+        {isOpen ? <ChevronDown size={10} style={{ color: '#5a616b' }} /> : <ChevronRight size={10} style={{ color: '#5a616b' }} />}
       </button>
 
       {isOpen && (
         <div className="px-2 pb-3">
           {/* ── Signal Flow Diagram ── */}
-          <div className="flex items-center gap-1 px-2 py-2 mb-2 rounded-lg bg-black/30 border border-white/[0.04] overflow-x-auto">
+          <div
+            className="flex items-center gap-1 px-2 py-2 mb-2 overflow-x-auto"
+            style={{ backgroundColor: '#1c1e22', borderRadius: 10, border: '1px solid #2a2e34',
+              boxShadow: 'inset 2px 2px 5px #14161a, inset -2px -2px 5px #2c3036' }}
+          >
             {/* Input */}
-            <div className="shrink-0 text-[7px] font-bold text-white/20 uppercase tracking-wider px-1.5 py-1 rounded bg-white/[0.03] border border-white/[0.06]">
+            <div
+              className="shrink-0 text-[7px] font-bold uppercase tracking-wider px-1.5 py-1"
+              style={{ color: '#5a616b', backgroundColor: '#23262b', borderRadius: 6, border: '1px solid #2a2e34' }}
+            >
               IN
             </div>
 
             {activeEffects.length > 0 ? (
-              activeEffects.map((fx, i) => {
-                const c = colorMap[fx.color] || colorMap.cyan
-                return (
-                  <div key={fx.id} className="flex items-center gap-1 shrink-0">
-                    <ArrowRight size={8} className="text-white/10" />
-                    <div
-                      className={`text-[7px] font-bold uppercase tracking-wider px-1.5 py-1 rounded ${c.bg} ${c.border} ${c.text} border`}
-                    >
-                      {fx.signalLabel}
-                    </div>
+              activeEffects.map((fx) => (
+                <div key={fx.id} className="flex items-center gap-1 shrink-0">
+                  <ArrowRight size={8} style={{ color: '#5a616b', opacity: 0.4 }} />
+                  <div
+                    className="text-[7px] font-bold uppercase tracking-wider px-1.5 py-1"
+                    style={{ color: getAccent(fx.color), backgroundColor: '#23262b', borderRadius: 6, border: '1px solid #2a2e34' }}
+                  >
+                    {fx.signalLabel}
                   </div>
-                )
-              })
+                </div>
+              ))
             ) : (
               <div className="flex items-center gap-1">
-                <ArrowRight size={8} className="text-white/10" />
-                <span className="text-[7px] text-white/10 italic">no effects</span>
+                <ArrowRight size={8} style={{ color: '#5a616b', opacity: 0.3 }} />
+                <span className="text-[7px] italic" style={{ color: '#5a616b', opacity: 0.4 }}>no effects</span>
               </div>
             )}
 
-            <ArrowRight size={8} className="text-white/10 shrink-0" />
-            <div className="shrink-0 text-[7px] font-bold text-emerald-400/40 uppercase tracking-wider px-1.5 py-1 rounded bg-emerald-500/5 border border-emerald-500/10">
+            <ArrowRight size={8} className="shrink-0" style={{ color: '#5a616b', opacity: 0.4 }} />
+            <div
+              className="shrink-0 text-[7px] font-bold uppercase tracking-wider px-1.5 py-1"
+              style={{ color: '#7fa998', opacity: 0.6, backgroundColor: '#23262b', borderRadius: 6, border: '1px solid #2a2e34' }}
+            >
               OUT
             </div>
           </div>
@@ -451,38 +457,50 @@ export default function StudioEffectsChain({ onChainChange, onInsertSnippet }: S
           {CATEGORIES.map((cat) => {
             const catEffects = EFFECTS.filter((fx) => fx.category === cat.id)
             if (catEffects.length === 0) return null
-            const catColor = colorMap[cat.color] || colorMap.cyan
 
             return (
               <div key={cat.id} className="mb-2">
-                <div className={`text-[7px] font-bold uppercase tracking-[.2em] ${catColor.text} opacity-40 px-1 mb-1`}>
+                <div
+                  className="text-[7px] font-bold uppercase tracking-[.2em] px-1 mb-1"
+                  style={{ color: getAccent(cat.color), opacity: 0.4 }}
+                >
                   {cat.label}
                 </div>
                 <div className="space-y-1">
                   {catEffects.map((fx) => {
                     const st = effects[fx.id]
-                    const c = colorMap[fx.color] || colorMap.cyan
+                    const ac = getAccent(fx.color)
                     const isExpanded = expandedEffect === fx.id
 
                     return (
                       <div
                         key={fx.id}
-                        className={`rounded-lg border transition-all ${
-                          st.enabled
-                            ? `${c.bg} ${c.border} shadow-lg ${c.glow}`
-                            : 'bg-white/[0.01] border-white/[0.04] opacity-60 hover:opacity-80'
-                        }`}
+                        className="transition-all duration-[180ms] ease-in-out"
+                        style={{
+                          borderRadius: 10,
+                          border: '1px solid #2a2e34',
+                          backgroundColor: st.enabled ? '#2a2e34' : '#23262b',
+                          boxShadow: st.enabled
+                            ? '3px 3px 6px #14161a, -3px -3px 6px #2c3036'
+                            : 'inset 2px 2px 4px #14161a, inset -2px -2px 4px #2c3036',
+                          opacity: st.enabled ? 1 : 0.6,
+                        }}
                       >
                         {/* Pedal header */}
                         <div className="flex items-center gap-2 px-2 py-1.5">
                           {/* Power toggle */}
                           <button
                             onClick={() => toggleEffect(fx.id)}
-                            className={`w-5 h-5 rounded flex items-center justify-center transition-all cursor-pointer ${
-                              st.enabled
-                                ? `${c.bg} ${c.text} border ${c.border}`
-                                : 'bg-white/[0.03] text-white/15 border border-white/[0.06] hover:text-white/30'
-                            }`}
+                            className="w-5 h-5 flex items-center justify-center transition-all duration-[180ms] ease-in-out cursor-pointer"
+                            style={{
+                              borderRadius: 6,
+                              backgroundColor: '#23262b',
+                              color: st.enabled ? ac : '#5a616b',
+                              border: '1px solid #2a2e34',
+                              boxShadow: st.enabled
+                                ? 'inset 1px 1px 3px #14161a, inset -1px -1px 3px #2c3036'
+                                : '1px 1px 3px #14161a, -1px -1px 3px #2c3036',
+                            }}
                             title={st.enabled ? 'Disable' : 'Enable'}
                           >
                             <Power size={9} />
@@ -494,7 +512,10 @@ export default function StudioEffectsChain({ onChainChange, onInsertSnippet }: S
                             className="flex-1 flex items-center gap-1.5 text-left cursor-pointer"
                           >
                             <span className="text-[10px]">{fx.icon}</span>
-                            <span className={`text-[9px] font-bold tracking-wide ${st.enabled ? c.text : 'text-white/30'}`}>
+                            <span
+                              className="text-[9px] font-bold tracking-wide"
+                              style={{ color: st.enabled ? ac : '#5a616b' }}
+                            >
                               {fx.label}
                             </span>
                           </button>
@@ -502,9 +523,8 @@ export default function StudioEffectsChain({ onChainChange, onInsertSnippet }: S
                           {/* Insert button */}
                           <button
                             onClick={() => onInsertSnippet(getEffectCode(fx.id))}
-                            className={`text-[7px] font-bold px-1.5 py-0.5 rounded transition-all cursor-pointer ${
-                              c.text
-                            } opacity-40 hover:opacity-100 border ${c.border} ${c.bg}`}
+                            className="text-[7px] font-bold px-1.5 py-0.5 transition-all duration-[180ms] ease-in-out cursor-pointer"
+                            style={{ color: ac, opacity: 0.4, borderRadius: 6, border: '1px solid #2a2e34', backgroundColor: '#23262b' }}
                             title="Insert this effect's code at cursor"
                           >
                             + INSERT
@@ -514,7 +534,8 @@ export default function StudioEffectsChain({ onChainChange, onInsertSnippet }: S
                           {fx.params.length > 0 && (
                             <button
                               onClick={() => setExpandedEffect(isExpanded ? null : fx.id)}
-                              className="text-white/15 hover:text-white/30 cursor-pointer"
+                              style={{ color: '#5a616b' }}
+                              className="cursor-pointer"
                             >
                               {isExpanded ? <ChevronDown size={9} /> : <ChevronRight size={9} />}
                             </button>
@@ -524,17 +545,15 @@ export default function StudioEffectsChain({ onChainChange, onInsertSnippet }: S
                         {/* Expanded: description + knobs */}
                         {isExpanded && (
                           <div className="px-2 pb-2 space-y-2">
-                            {/* Description */}
-                            <p className="text-[8px] text-white/25 leading-relaxed px-1">
+                            <p className="text-[8px] leading-relaxed px-1" style={{ color: '#5a616b' }}>
                               {fx.description}
                             </p>
 
-                            {/* Knobs (sliders) */}
                             {fx.params.length > 0 && (
                               <div className="space-y-1.5">
                                 {fx.params.map((param) => (
                                   <div key={param.id} className="flex items-center gap-2 px-1">
-                                    <span className="text-[8px] text-white/25 font-mono w-16 truncate">
+                                    <span className="text-[8px] font-mono w-16 truncate" style={{ color: '#5a616b' }}>
                                       {param.label}
                                     </span>
                                     <input
@@ -544,11 +563,13 @@ export default function StudioEffectsChain({ onChainChange, onInsertSnippet }: S
                                       step={param.step}
                                       value={st.params[param.id] ?? param.default}
                                       onChange={(e) => changeParam(fx.id, param.id, parseFloat(e.target.value))}
-                                      className={`flex-1 h-1 cursor-pointer ${
-                                        st.enabled ? 'accent-cyan-400' : 'accent-gray-500'
-                                      }`}
+                                      className="flex-1 h-1 cursor-pointer"
+                                      style={{ accentColor: st.enabled ? '#7fa998' : '#5a616b' }}
                                     />
-                                    <span className={`text-[8px] font-mono w-12 text-right ${st.enabled ? c.text + ' opacity-60' : 'text-white/15'}`}>
+                                    <span
+                                      className="text-[8px] font-mono w-12 text-right"
+                                      style={{ color: st.enabled ? ac : '#5a616b', opacity: st.enabled ? 0.6 : 0.4 }}
+                                    >
                                       {(st.params[param.id] ?? param.default).toFixed(
                                         param.step < 1 ? (param.step < 0.1 ? 2 : 1) : 0,
                                       )}
@@ -559,9 +580,8 @@ export default function StudioEffectsChain({ onChainChange, onInsertSnippet }: S
                               </div>
                             )}
 
-                            {/* Generated code preview */}
                             <div className="px-1">
-                              <code className={`text-[8px] font-mono ${c.text} opacity-40 block`}>
+                              <code className="text-[8px] font-mono block" style={{ color: ac, opacity: 0.4 }}>
                                 {fx.toCode(st.params, true)}
                               </code>
                             </div>
@@ -578,11 +598,15 @@ export default function StudioEffectsChain({ onChainChange, onInsertSnippet }: S
           {/* ── Full Chain Code Preview ── */}
           {enabledCount > 0 && (
             <div className="mt-3 px-1">
-              <div className="text-[7px] font-bold uppercase tracking-[.2em] text-white/15 mb-1">
+              <div className="text-[7px] font-bold uppercase tracking-[.2em] mb-1" style={{ color: '#5a616b' }}>
                 GENERATED FX CODE
               </div>
-              <div className="bg-black/30 rounded-lg border border-white/[0.04] p-2">
-                <code className="text-[9px] font-mono text-cyan-400/50 whitespace-pre-wrap block">
+              <div
+                className="p-2"
+                style={{ backgroundColor: '#1c1e22', borderRadius: 10, border: '1px solid #2a2e34',
+                  boxShadow: 'inset 2px 2px 5px #14161a, inset -2px -2px 5px #2c3036' }}
+              >
+                <code className="text-[9px] font-mono whitespace-pre-wrap block" style={{ color: '#7fa998', opacity: 0.5 }}>
                   {activeEffects.map((fx) => fx.toCode(effects[fx.id].params, true)).join('\n')}
                 </code>
               </div>
@@ -591,7 +615,9 @@ export default function StudioEffectsChain({ onChainChange, onInsertSnippet }: S
                   const code = activeEffects.map((fx) => '\n  ' + fx.toCode(effects[fx.id].params, true)).join('')
                   onInsertSnippet(code)
                 }}
-                className="mt-1.5 w-full text-[8px] font-bold py-1.5 rounded-lg bg-orange-500/10 text-orange-400/60 border border-orange-500/20 hover:bg-orange-500/15 hover:text-orange-400 transition-all cursor-pointer"
+                className="mt-1.5 w-full text-[8px] font-bold py-1.5 transition-all duration-[180ms] ease-in-out cursor-pointer"
+                style={{ color: '#7fa998', backgroundColor: '#23262b', borderRadius: 10, border: '1px solid #2a2e34',
+                  boxShadow: '2px 2px 5px #14161a, -2px -2px 5px #2c3036' }}
               >
                 INSERT FULL CHAIN AT CURSOR
               </button>
