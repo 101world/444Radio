@@ -300,6 +300,14 @@ export function parseStrudelCode(code: string): ParsedChannel[] {
         if (source && SYNTH_NAMES.includes(source)) sourceType = 'synth'
       }
     }
+    // If channel uses note() or n(), it's a melodic channel — override to 'note'
+    // even if .s() was detected first with a GM instrument name (e.g. gm_epiano1)
+    if (/note\(\s*["'`]/.test(rawCode) || /\bn\s*\(/.test(rawCode)) {
+      if (sourceType === 'sample') sourceType = 'note'
+      if (!source || source === 'unknown') {
+        source = /note\(\s*["'`]/.test(rawCode) ? 'note' : 'sequence'
+      }
+    }
     if (!source) {
       if (/note\(\s*"/.test(rawCode)) { source = 'note'; sourceType = 'note' }
     }
