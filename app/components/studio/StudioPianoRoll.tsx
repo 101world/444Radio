@@ -1584,7 +1584,7 @@ export default function StudioPianoRoll({
                       className={`shrink-0 ${canClick ? 'cursor-crosshair' : 'cursor-not-allowed'}`}
                       style={{
                         width: cellW, height: cellH,
-                        background: (!isNoteMode && !inScale)
+                        background: !inScale
                             ? 'rgba(0,0,0,0.25)'
                             : isRoot
                               ? `${color}08`
