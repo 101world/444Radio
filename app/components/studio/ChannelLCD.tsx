@@ -10,14 +10,17 @@ interface ChannelLCDProps {
   isMuted: boolean
 }
 
-/** Extract orbit number from channel params, default to 0 */
+/** Extract orbit number from channel params.
+ *  Default is 1, matching superdough's internal default (orbit: 1).
+ *  Templates should assign explicit .orbit(0) to kick/first channels
+ *  so they get an isolated orbit with a proper analyser connection. */
 function getChannelOrbit(channel: ParsedChannel): number {
   const orbitParam = channel.params.find(p => p.key === 'orbit')
   if (orbitParam && !orbitParam.isComplex) {
     const n = parseFloat(String(orbitParam.value))
     if (!isNaN(n)) return n
   }
-  return 0
+  return 1 // superdough defaults to orbit 1 when no .orbit() is specified
 }
 
 export default function ChannelLCD({ channel, isPlaying, isMuted }: ChannelLCDProps) {

@@ -37,7 +37,7 @@ export const GENRE_TEMPLATES: GenreTemplate[] = [
 $: s("bd!4").gain(.85)
   .shape(.2).lpf(250)
   .duck(2).duckattack(.2).duckdepth(.8)
-  .scope()
+  .orbit(0).scope()
 
 $bass: n("0 3 -4 2 5 -2 1 -5 3 0 -3 4 2 -1 5 -4").scale("c:minor")
   .s("sawtooth").gain(.5).lpf(200).lpenv(slider(2.28, 0, 8))
@@ -82,7 +82,7 @@ $: s("bd:2!4")
   .duck(1).duckdepth(.8).duckattack(.16)
   .gain(.8).orbit(3).scope()
 
-$: s("bd*4").gain(.9).scope()
+$: s("bd*4").gain(.9).orbit(0).scope()
 
 $: s("~ cp ~ ~").gain(.6)
   .room(.3).delay(.15).orbit(4).scope()
@@ -103,7 +103,7 @@ $: s("hh*8").gain("[.2 .35]*4")
 $kick: s("bd*4").bank("RolandTR909")
   .gain(.85).lpf(300).shape(.1)
   .duck(1).duckdepth(.7).duckattack(.2)
-  .scope()
+  .orbit(0).scope()
 
 $clap: s("~ cp ~ ~").bank("RolandTR909")
   .gain(.55).room(.35).delay(.08)
@@ -150,7 +150,7 @@ $: stack(
     .gain("[.25 .1]*4")
     .room(0.1)
     .lpf(saw.slow(8).range(8000,200))
-).duck(1).duckdepth(.6).scope()
+).duck(1).duckdepth(.6).orbit(0).scope()
 
 $bass: note("<c2 [~ c2] f1 g1>")
   .s("sine").gain(.5)
@@ -178,7 +178,7 @@ $pad: note("<[c3,e3,g3,b3] [a2,c3,e3,g3] [f3,a3,c4,e4] [d3,f3,a3,c4]>")
   .s("sawtooth").gain(slider(.04, 0, .1))
   .lpf(perlin.range(300, 900).slow(8))
   .room(.9).delay(.3).delayfeedback(.55)
-  .slow(4)
+  .slow(4).orbit(0)
   .scope().pianoroll()
 
 $shimmer: n("<4 3 2 1 2 3>*4").scale("C5:major")
@@ -218,7 +218,7 @@ $drums: stack(
   s("hh*8")
     .gain("[.2 .4 .25 .5 .2 .45 .25 .55]")
     .speed("[1 1.2]*4").hpf(1000)
-).duck(1).duckdepth(.75).duckattack(.1).scope()
+).duck(1).duckdepth(.75).duckattack(.1).orbit(0).scope()
 
 $bass: note("<c1 [~ c1] eb1 [f1 ~]>*2")
   .s("sawtooth").gain(.4)
@@ -246,7 +246,7 @@ $: n("<0 4 7 [4 0]>*2").scale("C4:minor")
 $kick: s("bd*4").gain(.9)
   .shape(.2).lpf(250)
   .duck(2).duckdepth(.8)
-  .scope()
+  .orbit(0).scope()
 
 $perc: s("[~ rim] [~ cp:3] [rim ~] [~ ~]")
   .gain(.35).room(.4)
@@ -289,7 +289,7 @@ $: s("hh*16").bank("RolandTR808")
   .lpf(1400).hpf(700)
   .room(.6).pan(sine.range(.1,.9).slow(20))
   .delay(.18).delayfeedback(.42)
-  .scope()
+  .orbit(0).scope()
 
 $kick: s("[bd ~ ~ ~] ~ [~ bd] ~").bank("RolandTR808")
   .gain(.25).lpf(350).room(.3).shape(.15)
@@ -331,7 +331,7 @@ $pad: note("<[d3,a3,f4] [g3,d4,b4] [c3,g3,e4] [a2,e3,c4]>")
 // RAVE REVIVAL
 
 $kick: s("bd*4").gain(.9).shape(.3)
-  .lpf(200).scope()
+  .lpf(200).orbit(0).scope()
 
 $: s("~ cp ~ cp").gain(.5)
   .room(.3).delay(.08).orbit(1).scope()
@@ -449,7 +449,7 @@ $:arrange(
 
 // YOUR SONG STARTS HERE
 
-$: s("bd*4").gain(.8).scope()
+$: s("bd*4").gain(.8).orbit(0).scope()
 
 `,
   },
