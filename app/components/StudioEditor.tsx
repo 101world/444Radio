@@ -293,7 +293,9 @@ export default function StudioEditor() {
           for (let i = 0; i < 12; i++) controller.getOrbit(i)
         }
       } catch {}
-      await engine.evaluate(applyMixerOverrides(fixSoundfontNames(src) + (metronomeRef.current ? generateMetronomeCode(0) : ''), mixerStateRef.current.muted, mixerStateRef.current.soloed))
+      const evalCode = applyMixerOverrides(fixSoundfontNames(src) + (metronomeRef.current ? generateMetronomeCode(0) : ''), mixerStateRef.current.muted, mixerStateRef.current.soloed)
+      console.log('[444 DEBUG] code to evaluate:\n', evalCode)
+      await engine.evaluate(evalCode)
       if (engine.scheduler?.clock) {
         setTimeout(() => {
           try { engine.scheduler.clock.pause(); engine.scheduler.clock.start() } catch {}

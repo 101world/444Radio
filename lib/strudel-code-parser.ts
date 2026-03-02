@@ -1137,10 +1137,12 @@ export interface StackRow {
   rawRow: string        // raw text of this sub-pattern
 }
 
-/** Split a string by top-level commas (respecting parens, brackets, and quotes) */
+/** Split a string by top-level commas (respecting parens, brackets, and quotes).
+ *  IMPORTANT: `start` aligns with the trimmed `text`, not the raw segment,
+ *  so that regex match offsets on `text` can be directly added to `start`. */
 function splitByTopLevelComma(str: string): { text: string; start: number; end: number }[] {
   const parts: { text: string; start: number; end: number }[] = []
-  let depth = 0, start = 0
+  let depth = 0, segStart = 0
   for (let i = 0; i < str.length; i++) {
     const ch = str[i]
     if (ch === '(' || ch === '[' || ch === '<') depth++
@@ -1150,13 +1152,22 @@ function splitByTopLevelComma(str: string): { text: string; start: number; end: 
       while (i < str.length && str[i] !== q) { if (str[i] === '\\') i++; i++ }
     }
     else if (ch === ',' && depth === 0) {
-      const t = str.substring(start, i).trim()
-      if (t) parts.push({ text: t, start, end: i })
-      start = i + 1
+      const rawSeg = str.substring(segStart, i)
+      const t = rawSeg.trim()
+      if (t) {
+        // Align start with first non-whitespace char so regex offsets on `text` are correct
+        const leading = rawSeg.length - rawSeg.trimStart().length
+        parts.push({ text: t, start: segStart + leading, end: i })
+      }
+      segStart = i + 1
     }
   }
-  const last = str.substring(start).trim()
-  if (last) parts.push({ text: last, start, end: str.length })
+  const rawLast = str.substring(segStart)
+  const last = rawLast.trim()
+  if (last) {
+    const leading = rawLast.length - rawLast.trimStart().length
+    parts.push({ text: last, start: segStart + leading, end: str.length })
+  }
   return parts
 }
 
