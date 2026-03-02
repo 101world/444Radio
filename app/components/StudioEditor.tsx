@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import type { StrudelEngine } from '@/lib/strudel-engine'
 import { fixSoundfontNames } from '@/lib/strudel-engine'
-import { applyMixerOverrides, parseStrudelCode, parseChannelPattern, replaceChannelPattern, replaceChannelBlock, parseScale as parseMixerScale, updateParamInCode, insertEffectInChannel, removeEffectFromChannel, getArpInfo, setArpMode, setArpRate, getTranspose, setTranspose, getParamDef, PARAM_DEFS } from '@/lib/strudel-code-parser'
+import { applyMixerOverrides, parseStrudelCode, parseChannelPattern, replaceChannelPattern, replaceChannelBlock, parseScale as parseMixerScale, updateScale, insertScale, updateParamInCode, insertEffectInChannel, removeEffectFromChannel, getArpInfo, setArpMode, setArpRate, getTranspose, setTranspose, getParamDef, PARAM_DEFS } from '@/lib/strudel-code-parser'
 import { generateMetronomeCode } from '@/lib/strudel-code-parser'
 import { setOrbitAnalyser, clearOrbitAnalysers } from '@/lib/studio-analysers'
 import StudioPianoRoll from './studio/StudioPianoRoll'
@@ -205,9 +205,18 @@ export default function StudioEditor() {
         setError(null)
       } else {
         setError(null)
-        const src = codeRef.current.trim()
+        let src = codeRef.current.trim()
         if (!src || src.split('\n').every(l => l.trim().startsWith('//'))) {
           throw new Error('Enter a pattern to play')
+        }
+
+        // ── Mandatory scale: auto-inject if missing ──
+        const existingScale = parseMixerScale(src)
+        if (!existingScale) {
+          src = insertScale(src, 'C4', 'minor')
+          codeRef.current = src
+          setCode(src)
+          console.log('[444 STUDIO] auto-injected scale: C4:minor')
         }
         sliderDefsRef.current = {}
         await engine.webaudio.getAudioContext().resume()

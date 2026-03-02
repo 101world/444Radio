@@ -708,8 +708,8 @@ export default function StudioPianoRoll({
 
   // ── Toggle note ──
   const toggleNote = useCallback((midi: number, step: number, forceMode?: 'add' | 'remove') => {
-    // In degree mode, block out-of-scale notes (they can't be scale degrees)
-    if (!isNoteMode && !scaleMidiSet.has(midi)) return
+    // Block out-of-scale notes in ALL modes (scale is mandatory)
+    if (!scaleMidiSet.has(midi)) return
     const key = `${midi}:${step}`
     setNoteMap(prev => {
       const next = new Map(prev)
@@ -1527,7 +1527,7 @@ export default function StudioPianoRoll({
             const black = isBlackKey(midi)
             const inScale = scaleMidiSet.has(midi)
             const isRoot = midi % 12 === NOTE_NAMES.indexOf(parseScaleStr(scale).root)
-            const canClick = isNoteMode || inScale
+            const canClick = inScale
 
             // Collect note-bar starts for this MIDI row
             const rowNotes: { step: number; length: number; key: string }[] = []

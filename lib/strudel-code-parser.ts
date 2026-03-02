@@ -865,6 +865,109 @@ export function updateBPM(code: string, newBPM: number): string {
   return `setCps(${newBPM}/60/4)\n\n` + code
 }
 
+// ─── Scale intervals & note remapping ───
+
+const CHROMATIC_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+const STRUDEL_NOTE_MAP_PARSER: Record<string, number> = {
+  'c': 0, 'cs': 1, 'db': 1, 'd': 2, 'ds': 3, 'eb': 3,
+  'e': 4, 'fb': 4, 'f': 5, 'es': 5, 'fs': 6, 'gb': 6,
+  'g': 7, 'gs': 8, 'ab': 8, 'a': 9, 'as': 10, 'bb': 10,
+  'b': 11, 'cb': 11, 'bs': 0,
+}
+const STRUDEL_NOTE_NAMES_PARSER = ['c', 'cs', 'd', 'ds', 'e', 'f', 'fs', 'g', 'gs', 'a', 'as', 'b']
+
+export const SCALE_INTERVALS: Record<string, number[]> = {
+  major:              [0, 2, 4, 5, 7, 9, 11],
+  minor:              [0, 2, 3, 5, 7, 8, 10],
+  dorian:             [0, 2, 3, 5, 7, 9, 10],
+  phrygian:           [0, 1, 3, 5, 7, 8, 10],
+  lydian:             [0, 2, 4, 6, 7, 9, 11],
+  mixolydian:         [0, 2, 4, 5, 7, 9, 10],
+  locrian:            [0, 1, 3, 5, 6, 8, 10],
+  'minor pentatonic': [0, 3, 5, 7, 10],
+  'pentatonic':       [0, 2, 4, 7, 9],
+  blues:              [0, 3, 5, 6, 7, 10],
+  'harmonic minor':   [0, 2, 3, 5, 7, 8, 11],
+  'melodic minor':    [0, 2, 3, 5, 7, 9, 11],
+  'harmonic major':   [0, 2, 4, 5, 7, 8, 11],
+  'whole tone':       [0, 2, 4, 6, 8, 10],
+  diminished:         [0, 2, 3, 5, 6, 8, 9, 11],
+  chromatic:          [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+  'phrygian dominant':[0, 1, 4, 5, 7, 8, 10],
+  'double harmonic major': [0, 1, 4, 5, 7, 8, 11],
+  'hungarian minor':  [0, 2, 3, 6, 7, 8, 11],
+  japanese:           [0, 1, 5, 7, 8],
+  bebop:              [0, 2, 4, 5, 7, 9, 10, 11],
+}
+
+/** Parse a Strudel note name like "d3", "fs4", "eb2" → MIDI number */
+function strudelNoteToMidiParser(name: string): number | null {
+  const m = name.trim().toLowerCase().match(/^([a-g])([#sb]?)(\d+)$/)
+  if (!m) return null
+  let accidental = m[2]
+  if (accidental === '#') accidental = 's'
+  const key = m[1] + (accidental === 's' || accidental === 'b' ? accidental : '')
+  const semitone = STRUDEL_NOTE_MAP_PARSER[key]
+  if (semitone === undefined) return null
+  return (parseInt(m[3]) + 1) * 12 + semitone
+}
+
+/** Convert MIDI number → Strudel note name (e.g. 60 → "c4") */
+function midiToStrudelNoteParser(midi: number): string {
+  const name = STRUDEL_NOTE_NAMES_PARSER[midi % 12]
+  const oct = Math.floor(midi / 12) - 1
+  return `${name}${oct}`
+}
+
+/** Build the set of all MIDI notes in a scale across full range */
+function buildScaleMidiSet(root: string, mode: string): Set<number> {
+  const intervals = SCALE_INTERVALS[mode] || SCALE_INTERVALS.minor
+  const rootIdx = CHROMATIC_NAMES.indexOf(root.charAt(0).toUpperCase() + root.slice(1))
+  const adjustedRoot = rootIdx >= 0 ? rootIdx : 0
+  const set = new Set<number>()
+  for (let oct = 0; oct <= 9; oct++) {
+    for (const iv of intervals) {
+      const midi = (oct + 1) * 12 + adjustedRoot + iv
+      if (midi >= 0 && midi <= 127) set.add(midi)
+    }
+  }
+  return set
+}
+
+/** Snap a MIDI note to the closest note in the given scale */
+function snapMidiToScale(midi: number, scaleSet: Set<number>): number {
+  if (scaleSet.has(midi)) return midi
+  // Search outward from midi ±1, ±2, ... until we find one in the scale
+  for (let d = 1; d <= 12; d++) {
+    if (scaleSet.has(midi + d)) return midi + d
+    if (scaleSet.has(midi - d)) return midi - d
+  }
+  return midi // fallback
+}
+
+/**
+ * Remap all note() patterns in code to fit a new scale.
+ * Finds every note name (like c3, fs4, eb2) inside note("...") calls
+ * and snaps each to the closest note in the target scale.
+ * Preserves rests (~), octaves, and pattern structure.
+ */
+export function remapNoteNamesToScale(code: string, newRoot: string, newScale: string): string {
+  const scaleSet = buildScaleMidiSet(newRoot, newScale)
+
+  // Match note("...") patterns — including multi-line and brackets
+  return code.replace(/\bnote\(\s*"([^"]+)"\s*\)/g, (fullMatch, inner: string) => {
+    // Remap each note name token inside the pattern string
+    const remapped = inner.replace(/\b([a-g])([sb#]?)(\d+)\b/gi, (_m, letter: string, acc: string, octStr: string) => {
+      const original = `${letter}${acc}${octStr}`
+      const midi = strudelNoteToMidiParser(original)
+      if (midi === null) return original // not a valid note, leave it
+      const snapped = snapMidiToScale(midi, scaleSet)
+      return midiToStrudelNoteParser(snapped)
+    })
+    return `note("${remapped}")`
+  })
+}
+
 /** All Strudel scales */
 export const STRUDEL_SCALES: { group: string; scales: [string, string][] }[] = [
   { group: 'Major/Minor', scales: [
@@ -907,10 +1010,10 @@ export function parseScale(code: string): { root: string; scale: string; full: s
   return { root: 'C', scale: full, full }
 }
 
-/** Update all .scale("...") calls in code to new root:scale */
+/** Update all .scale("...") calls in code to new root:scale AND remap note() names */
 export function updateScale(code: string, newRoot: string, newScale: string): string {
-  // Replace all .scale("anything") preserving octave numbers where present
-  return code.replace(/\.scale\(\s*"([^"]+)"\s*\)/g, (_match, oldFull: string) => {
+  // 1. Replace all .scale("anything") preserving octave numbers where present
+  let result = code.replace(/\.scale\(\s*"([^"]+)"\s*\)/g, (_match, oldFull: string) => {
     const parts = oldFull.split(':')
     if (parts.length >= 2) {
       // Preserve octave: "C4:minor" → "D4:dorian"
@@ -920,6 +1023,9 @@ export function updateScale(code: string, newRoot: string, newScale: string): st
     }
     return `.scale("${newRoot}:${newScale}")`
   })
+  // 2. Remap all note() patterns to fit the new scale
+  result = remapNoteNamesToScale(result, newRoot, newScale)
+  return result
 }
 
 /** Insert .scale("root:scale") on the first note/synth channel that uses n()/note() */

@@ -32,6 +32,11 @@ import {
 
 // ─── Sound / Bank pick-lists for dropdown ───
 
+// Groups that are melodic instruments (for n()/note() channels)
+const INSTRUMENT_GROUPS = new Set(['Synth', 'Keys', 'Organ', 'Guitar & Bass', 'Strings', 'Brass & Sax', 'Flute & Pipe', 'Voice', 'Synth Leads', 'Synth Pads', 'SFX & Ethnic'])
+// Groups that are drum/sample sounds (for s() channels)
+const SOUND_GROUPS = new Set(['Drums', 'Samples', 'SFX & Ethnic'])
+
 const SOUND_OPTIONS: { group: string; sounds: [string, string][] }[] = [
   { group: 'Synth', sounds: [
     ['sawtooth', 'Sawtooth'], ['supersaw', 'Supersaw'], ['sine', 'Sine'],
@@ -545,8 +550,8 @@ function ChannelStrip({
         />
       </div>
 
-      {/* ── Transpose: [-12] knob [+12] ── */}
-      {(channel.sourceType === 'synth' || channel.sourceType === 'note' || channel.sourceType === 'sample') && (() => {
+      {/* ── Transpose: [-12] knob [+12] — only for instrument channels ── */}
+      {(channel.sourceType === 'synth' || channel.sourceType === 'note') && (() => {
         const currentTranspose = getTranspose(channel.rawCode)
         return (
           <div className="flex items-center justify-center gap-0.5 py-0.5 px-1" onClick={(e) => e.stopPropagation()}>
@@ -677,8 +682,8 @@ function ChannelStrip({
 
       {/* ── Action icons row ── */}
       <div className="flex items-center justify-center gap-1 px-1 pb-1.5">
-        {/* Piano Roll — available for ALL channel types */}
-        {onOpenPianoRoll && (
+        {/* Piano Roll — only for instrument channels (synth/note) */}
+        {onOpenPianoRoll && (channel.sourceType === 'synth' || channel.sourceType === 'note') && (
           <button
             onClick={(e) => { e.stopPropagation(); onOpenPianoRoll() }}
             className="p-1 rounded-lg transition-colors cursor-pointer"
@@ -688,7 +693,8 @@ function ChannelStrip({
             <Piano size={9} />
           </button>
         )}
-        {(channel.isKickLike || channel.sourceType === 'stack') && onOpenDrumSequencer && (
+        {/* Drum Sequencer — only for sound/sample channels (sample/stack) */}
+        {onOpenDrumSequencer && (channel.sourceType === 'sample' || channel.sourceType === 'stack') && (
           <button
             onClick={(e) => { e.stopPropagation(); onOpenDrumSequencer() }}
             className="p-1 rounded-lg transition-colors cursor-pointer"
@@ -749,7 +755,7 @@ function ChannelStrip({
                     title="Add another sound to stack"
                   >
                     <option value="">+ ADD</option>
-                    {SOUND_OPTIONS.map(g => (
+                    {SOUND_OPTIONS.filter(g => SOUND_GROUPS.has(g.group)).map(g => (
                       <optgroup key={g.group} label={g.group}>
                         {g.sounds.map(([val, label]) => (
                           <option key={val} value={val}>{label}</option>
@@ -770,7 +776,7 @@ function ChannelStrip({
                       title={`Sound for row ${ri + 1}`}
                     >
                       <option value={row.instrument}>{row.instrument}</option>
-                      {SOUND_OPTIONS.map(g => (
+                      {SOUND_OPTIONS.filter(g => SOUND_GROUPS.has(g.group)).map(g => (
                         <optgroup key={g.group} label={g.group}>
                           {g.sounds.filter(([val]) => val !== row.instrument).map(([val, label]) => (
                             <option key={val} value={val}>{label}</option>
@@ -843,8 +849,11 @@ function ChannelStrip({
           {channel.sourceType !== 'stack' && (channel.isSimpleSource || channel.bank || channel.sourceType === 'sample' || channel.sourceType === 'synth') && (
             <div className="flex flex-col gap-1 px-2 py-1.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
               <div className="flex items-center justify-between">
-                <span className="text-[6px] font-black uppercase tracking-[.15em]" style={{ color: '#5a616b' }}>SOUND</span>
-                {channel.sourceType !== 'note' && channel.isSimpleSource && onAddSound && (
+                <span className="text-[6px] font-black uppercase tracking-[.15em]" style={{ color: '#5a616b' }}>
+                  {(channel.sourceType === 'synth' || channel.sourceType === 'note') ? 'INSTRUMENT' : 'SOUND'}
+                </span>
+                {/* + ADD only for sound/sample channels (creates a stack) */}
+                {channel.sourceType === 'sample' && channel.isSimpleSource && onAddSound && (
                   <select
                     value=""
                     onChange={(e) => { if (e.target.value) onAddSound(channelIdx, e.target.value) }}
@@ -853,7 +862,7 @@ function ChannelStrip({
                     title="Add another sound (creates stack)"
                   >
                     <option value="">+ ADD</option>
-                    {SOUND_OPTIONS.map(g => (
+                    {SOUND_OPTIONS.filter(g => SOUND_GROUPS.has(g.group)).map(g => (
                       <optgroup key={g.group} label={g.group}>
                         {g.sounds.map(([val, label]) => (
                           <option key={val} value={val}>{label}</option>
@@ -873,7 +882,11 @@ function ChannelStrip({
                     title="Sound"
                   >
                     <option value={channel.source}>{channel.source}</option>
-                    {SOUND_OPTIONS.map(g => (
+                    {SOUND_OPTIONS
+                      .filter(g => (channel.sourceType === 'synth' || channel.sourceType === 'note')
+                        ? INSTRUMENT_GROUPS.has(g.group)
+                        : SOUND_GROUPS.has(g.group))
+                      .map(g => (
                       <optgroup key={g.group} label={g.group}>
                         {g.sounds.filter(([val]) => val !== channel.source).map(([val, label]) => (
                           <option key={val} value={val}>{label}</option>
@@ -897,7 +910,8 @@ function ChannelStrip({
               ) : (
                 <span className="text-[6px] text-white/20 font-mono truncate">{channel.source}</span>
               )}
-              {(channel.sourceType !== 'synth' || channel.bank) && (
+              {/* Bank selector — only for sound/sample channels (drum machines) */}
+              {channel.sourceType !== 'synth' && channel.sourceType !== 'note' && (
                 <div className="flex items-center gap-1">
                   <select
                     value={channel.bank || ''}
