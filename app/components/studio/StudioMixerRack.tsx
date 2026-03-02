@@ -23,6 +23,7 @@ import {
   parseBPM, updateBPM, parseScale, updateScale, insertScale,
   parseChannelPattern,
   parseStackRows, swapSoundInStackRow, setGainInStackRow,
+  setBankInStackRow, removeSoundFromStack,
   getArpInfo, setArpMode, setArpRate, ARP_MODES,
   getTranspose, setTranspose,
   STRUDEL_SCALES, SCALE_ROOTS,
@@ -287,6 +288,8 @@ function ChannelStrip({
   onDelete,
   onStackRowSoundChange,
   onStackRowGainChange,
+  onStackRowBankChange,
+  onRemoveStackRow,
   onRemoveEffect,
   onArpChange,
   onArpRateChange,
@@ -333,6 +336,8 @@ function ChannelStrip({
   onDelete?: (channelIdx: number) => void
   onStackRowSoundChange?: (channelIdx: number, rowIdx: number, newSound: string) => void
   onStackRowGainChange?: (channelIdx: number, rowIdx: number, newGain: number) => void
+  onStackRowBankChange?: (channelIdx: number, rowIdx: number, newBank: string) => void
+  onRemoveStackRow?: (channelIdx: number, rowIdx: number) => void
   onRemoveEffect?: (channelIdx: number, effectKey: string) => void
   onArpChange?: (channelIdx: number, mode: string) => void
   onArpRateChange?: (channelIdx: number, rate: number) => void
@@ -731,45 +736,87 @@ function ChannelStrip({
           {/* Stack per-row controls */}
           {channel.sourceType === 'stack' && stackRows.length > 0 && (
             <div className="px-2 py-1.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-              <div className="text-[6px] font-black uppercase tracking-[.15em] mb-1" style={{ color: '#5a616b' }}>STACK SOUNDS</div>
-              {stackRows.map((row, ri) => (
-                <div key={ri} className="flex items-center gap-1.5 py-0.5">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[6px] font-black uppercase tracking-[.15em]" style={{ color: '#5a616b' }}>STACK SOUNDS</span>
+                {onAddSound && (
                   <select
-                    value={row.instrument}
-                    onChange={(e) => onStackRowSoundChange?.(channelIdx, ri, e.target.value)}
-                    className="text-[7px] font-mono rounded px-1 py-0.5 outline-none cursor-pointer flex-1 min-w-0"
-                    style={{ color: '#c8cdd2', background: '#23262b', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px' }}
-                    title={`Sound for row ${ri + 1}`}
+                    value=""
+                    onChange={(e) => { if (e.target.value) onAddSound(channelIdx, e.target.value) }}
+                    className="text-[6px] font-mono rounded px-1 py-0 outline-none cursor-pointer"
+                    style={{ color: '#7fa998', background: '#1c1e22', border: '1px solid rgba(127,169,152,0.2)', borderRadius: '6px', maxWidth: '60px' }}
+                    title="Add another sound to stack"
                   >
-                    <option value={row.instrument}>{row.instrument}</option>
+                    <option value="">+ ADD</option>
                     {SOUND_OPTIONS.map(g => (
                       <optgroup key={g.group} label={g.group}>
-                        {g.sounds.filter(([val]) => val !== row.instrument).map(([val, label]) => (
+                        {g.sounds.map(([val, label]) => (
                           <option key={val} value={val}>{label}</option>
                         ))}
                       </optgroup>
                     ))}
                   </select>
-                  <StudioKnob
-                    label="G"
-                    value={row.gain}
-                    min={0}
-                    max={1.5}
-                    step={0.01}
-                    size={20}
-                    color={channel.color}
-                    onChange={(v) => onStackRowGainChange?.(channelIdx, ri, v)}
-                  />
+                )}
+              </div>
+              {stackRows.map((row, ri) => (
+                <div key={ri} className="flex flex-col gap-0.5 py-0.5 mb-1" style={{ borderBottom: ri < stackRows.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none' }}>
+                  <div className="flex items-center gap-1">
+                    <select
+                      value={row.instrument}
+                      onChange={(e) => onStackRowSoundChange?.(channelIdx, ri, e.target.value)}
+                      className="text-[7px] font-mono rounded px-1 py-0.5 outline-none cursor-pointer flex-1 min-w-0"
+                      style={{ color: '#c8cdd2', background: '#23262b', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px' }}
+                      title={`Sound for row ${ri + 1}`}
+                    >
+                      <option value={row.instrument}>{row.instrument}</option>
+                      {SOUND_OPTIONS.map(g => (
+                        <optgroup key={g.group} label={g.group}>
+                          {g.sounds.filter(([val]) => val !== row.instrument).map(([val, label]) => (
+                            <option key={val} value={val}>{label}</option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                    <StudioKnob
+                      label="G"
+                      value={row.gain}
+                      min={0}
+                      max={1.5}
+                      step={0.01}
+                      size={20}
+                      color={channel.color}
+                      onChange={(v) => onStackRowGainChange?.(channelIdx, ri, v)}
+                    />
+                    {stackRows.length > 1 && onRemoveStackRow && (
+                      <button
+                        onClick={() => onRemoveStackRow(channelIdx, ri)}
+                        className="cursor-pointer transition-all duration-100 hover:text-red-400 active:scale-90"
+                        style={{ color: '#5a616b', fontSize: '8px', lineHeight: 1, padding: '2px', background: 'none', border: 'none' }}
+                        title="Remove sound from stack"
+                      >×</button>
+                    )}
+                  </div>
+                  <select
+                    value={row.bank || ''}
+                    onChange={(e) => onStackRowBankChange?.(channelIdx, ri, e.target.value)}
+                    className="text-[6px] font-mono rounded px-1 py-0 outline-none cursor-pointer w-full"
+                    style={{ color: '#b8a47f', background: '#1e2025', border: '1px solid rgba(184,164,127,0.1)', borderRadius: '6px' }}
+                    title={`Bank for ${row.instrument}`}
+                  >
+                    <option value="">{row.bank || 'No Bank'}</option>
+                    {BANK_OPTIONS.filter(([val]) => val !== row.bank).map(([val, label]) => (
+                      <option key={val} value={val}>{label}</option>
+                    ))}
+                  </select>
                 </div>
               ))}
             </div>
           )}
-          {/* Sound / Bank selectors */}
-          {(channel.isSimpleSource || channel.bank || channel.sourceType === 'sample' || channel.sourceType === 'synth') && (
+          {/* Sound / Bank selectors — hidden for stacks (managed per-row above) */}
+          {channel.sourceType !== 'stack' && (channel.isSimpleSource || channel.bank || channel.sourceType === 'sample' || channel.sourceType === 'synth') && (
             <div className="flex flex-col gap-1 px-2 py-1.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
               <div className="flex items-center justify-between">
                 <span className="text-[6px] font-black uppercase tracking-[.15em]" style={{ color: '#5a616b' }}>SOUND</span>
-                {channel.sourceType !== 'stack' && channel.sourceType !== 'note' && channel.isSimpleSource && onAddSound && (
+                {channel.sourceType !== 'note' && channel.isSimpleSource && onAddSound && (
                   <select
                     value=""
                     onChange={(e) => { if (e.target.value) onAddSound(channelIdx, e.target.value) }}
@@ -1252,6 +1299,24 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
       if (newCode !== currentCode) liveUpdate(newCode)
     },
     [liveUpdate],
+  )
+
+  const handleStackRowBankChange = useCallback(
+    (channelIdx: number, rowIdx: number, newBank: string) => {
+      const currentCode = codeRef.current
+      const newCode = setBankInStackRow(currentCode, channelIdx, rowIdx, newBank)
+      if (newCode !== currentCode) liveUpdate(newCode)
+    },
+    [liveUpdate],
+  )
+
+  const handleRemoveStackRow = useCallback(
+    (channelIdx: number, rowIdx: number) => {
+      const currentCode = codeRef.current
+      const newCode = removeSoundFromStack(currentCode, channelIdx, rowIdx)
+      if (newCode !== currentCode) onCodeChange(newCode)
+    },
+    [onCodeChange],
   )
 
   // ── Add channel handler ──
@@ -1756,6 +1821,8 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                   stackRows={stackRowsMap.get(idx) || []}
                   onStackRowSoundChange={handleStackRowSoundChange}
                   onStackRowGainChange={handleStackRowGainChange}
+                  onStackRowBankChange={handleStackRowBankChange}
+                  onRemoveStackRow={handleRemoveStackRow}
                   onRemoveEffect={handleRemoveEffect}
                   onArpChange={handleArpChange}
                   onArpRateChange={handleArpRateChange}

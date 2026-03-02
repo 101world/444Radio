@@ -1360,6 +1360,109 @@ export function setGainInStackRow(
   }
 }
 
+/** Set or update the .bank() on a specific row within a stack channel.
+ *  If bank is empty string, removes existing .bank() from the row.
+ *  If the row doesn't have .bank(), inserts it after s("..."). */
+export function setBankInStackRow(
+  code: string,
+  channelIdx: number,
+  rowIdx: number,
+  newBank: string,
+): string {
+  const rows = parseStackRows(code, channelIdx)
+  if (rowIdx < 0 || rowIdx >= rows.length) return code
+  const row = rows[rowIdx]
+
+  const bankMatch = row.rawRow.match(/\.bank\(\s*"([^"]*)"\s*\)/)
+
+  if (bankMatch && bankMatch.index !== undefined) {
+    if (!newBank) {
+      // Remove existing .bank() entirely
+      const absStart = row.rowStart + bankMatch.index
+      const absEnd = absStart + bankMatch[0].length
+      return code.substring(0, absStart) + code.substring(absEnd)
+    }
+    // Replace existing bank name
+    const quoteStart = bankMatch.index + bankMatch[0].indexOf('"') + 1
+    const absStart = row.rowStart + quoteStart
+    const absEnd = absStart + bankMatch[1].length
+    return code.substring(0, absStart) + newBank + code.substring(absEnd)
+  }
+
+  if (!newBank) return code // nothing to remove
+
+  // No existing bank — insert .bank("X") after s("...")
+  const sMatch = row.rawRow.match(/s\(\s*"[^"]*"\s*\)/)
+  if (!sMatch || sMatch.index === undefined) return code
+
+  const insertPos = row.rowStart + sMatch.index + sMatch[0].length
+  return code.substring(0, insertPos) + `.bank("${newBank}")` + code.substring(insertPos)
+}
+
+/** Remove a sound row from a stack channel.
+ *  If only 2 rows remain, un-wraps the stack back to a simple s() channel. */
+export function removeSoundFromStack(
+  code: string,
+  channelIdx: number,
+  rowIdx: number,
+): string {
+  const channels = parseStrudelCode(code)
+  const ch = channels[channelIdx]
+  if (!ch || ch.sourceType !== 'stack') return code
+
+  const rows = parseStackRows(code, channelIdx)
+  if (rowIdx < 0 || rowIdx >= rows.length) return code
+  if (rows.length <= 1) return code // don't remove the last sound
+
+  if (rows.length === 2) {
+    // Un-wrap: stack(s("bd"), s("hh")).gain(.8) → s("bd").gain(.8)
+    // Keep the row that's NOT being removed
+    const keepIdx = rowIdx === 0 ? 1 : 0
+    const keepRow = rows[keepIdx]
+
+    const raw = ch.rawCode
+    const stackMatch = raw.match(/stack\s*\(/)
+    if (!stackMatch || stackMatch.index === undefined) return code
+
+    const openIdx = raw.indexOf('(', stackMatch.index)
+    const closeIdx = findClosingParen(raw, openIdx)
+    if (closeIdx === -1) return code
+
+    // The stack call including closing paren: stack(...)
+    const stackCallStart = ch.blockStart + stackMatch.index
+    const stackCallEnd = ch.blockStart + closeIdx + 1
+
+    // What comes after the stack() call (e.g. .gain(.8).shape(.2))
+    const afterStack = code.substring(stackCallEnd)
+
+    return code.substring(0, stackCallStart) + keepRow.rawRow.trim() + afterStack
+  }
+
+  // More than 2 rows: remove the specified row and its comma
+  // Find the comma that belongs to this row (before or after)
+  const raw = ch.rawCode
+  const stackMatch = raw.match(/stack\s*\(/)
+  if (!stackMatch || stackMatch.index === undefined) return code
+
+  const openIdx = raw.indexOf('(', stackMatch.index)
+  const bodyOffset = ch.blockStart + openIdx + 1
+  const closeIdx = findClosingParen(raw, openIdx)
+  if (closeIdx === -1) return code
+
+  const stackBody = raw.substring(openIdx + 1, closeIdx)
+  const parts = splitByTopLevelComma(stackBody)
+
+  if (rowIdx >= parts.length) return code
+
+  // Rebuild stack body without the removed row
+  const newParts = parts.filter((_, i) => i !== rowIdx)
+  const newBody = newParts.map(p => p.text).join(',\n  ')
+  const bodyStart = bodyOffset
+  const bodyEnd = ch.blockStart + closeIdx
+
+  return code.substring(0, bodyStart) + '\n  ' + newBody + '\n' + code.substring(bodyEnd)
+}
+
 // Backward compat aliases
 // ═══════════════════════════════════════════════════════════════
 //  Arpeggiator — mode detection & switching
