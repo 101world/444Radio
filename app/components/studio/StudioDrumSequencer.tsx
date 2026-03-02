@@ -517,6 +517,7 @@ export default function StudioDrumSequencer({
   const [activeRows, setActiveRows] = useState<string[]>([])
   const [hasUserEdited, setHasUserEdited] = useState(false)
   const [showPresets, setShowPresets] = useState(false)
+  const [rowGains, setRowGains] = useState<Map<string, number>>(new Map())
   const scrollRef = useRef<HTMLDivElement>(null)
   const [zoom, setZoom] = useState(1)
   const [stepsPerBar, setStepsPerBar] = useState<16 | 32>(16)
@@ -531,7 +532,8 @@ export default function StudioDrumSequencer({
   activeRowsRef.current = activeRows
   const isStackRef = useRef(false)
   const drumRowsRef = useRef<DrumRow[]>([])
-
+  const rowGainsRef = useRef<Map<string, number>>(new Map())
+  rowGainsRef.current = rowGains
   // ── Parse channel on mount / prop change ──
   useEffect(() => {
     const drumRows = parseChannelDrumRows(channelRawCode)
@@ -579,11 +581,12 @@ export default function StudioDrumSequencer({
         drumRowsRef.current,
         isStackRef.current,
         stepsPerBar,
+        rowGainsRef.current,
       )
       onPatternChange(newCode)
     }, 150)
     return () => { if (emitTimer.current) clearTimeout(emitTimer.current) }
-  }, [grid, hasUserEdited, bars, channelRawCode, onPatternChange, stepsPerBar])
+  }, [grid, rowGains, hasUserEdited, bars, channelRawCode, onPatternChange, stepsPerBar])
 
   // ── Toggle hit ──
   const toggleHit = useCallback((instrument: string, step: number, forceMode?: 'add' | 'remove') => {
@@ -691,6 +694,26 @@ export default function StudioDrumSequencer({
     setHasUserEdited(true)
     setShowPresets(false)
   }, [activeRows])
+
+  // ── Per-row gain ──
+  // Initialize row gains from parsed drum rows
+  useEffect(() => {
+    const gains = new Map<string, number>()
+    for (const row of drumRowsRef.current) {
+      const gainMatch = channelRawCode.match(new RegExp(`s\\("${row.pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"\\)[^,]*?\\.gain\\(([\\d.]+)\\)`))
+      gains.set(row.instrument, gainMatch ? parseFloat(gainMatch[1]) : 0.8)
+    }
+    setRowGains(gains)
+  }, [channelRawCode])
+
+  const setRowGain = useCallback((instrumentId: string, gain: number) => {
+    setRowGains(prev => {
+      const next = new Map(prev)
+      next.set(instrumentId, Math.round(gain * 100) / 100)
+      return next
+    })
+    setHasUserEdited(true)
+  }, [])
 
   // ── Instruments not yet in grid (for "add row" menu) ──
   const availableInstruments = useMemo(
@@ -945,7 +968,7 @@ export default function StudioDrumSequencer({
               <div key={instrumentId} className="flex" style={{ height: cellH }}>
                 {/* Row label (sticky left) */}
                 <div
-                  className="sticky left-0 z-10 shrink-0 flex items-center gap-1 px-1"
+                  className="sticky left-0 z-10 shrink-0 flex flex-col justify-center px-1"
                   style={{
                     width: LABEL_W, height: cellH,
                     background: '#1c1e22',
@@ -953,19 +976,48 @@ export default function StudioDrumSequencer({
                     borderRight: '1px solid rgba(255,255,255,0.04)',
                   }}
                 >
-                  <span className="text-[9px]">{drum.icon}</span>
-                  <span className="text-[7px] font-bold uppercase tracking-wide" style={{ color: drum.color }}>
-                    {drum.label}
-                  </span>
-                  {/* Preview button */}
-                  <button
-                    onClick={() => playDrumPreview(instrumentId)}
-                    className="ml-auto text-[7px] cursor-pointer transition-colors duration-[180ms]"
-                    style={{ color: '#5a616b' }}
-                    title="Preview"
-                  >
-                    ▶
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[8px]">{drum.icon}</span>
+                    <span className="text-[6px] font-bold uppercase tracking-wide flex-1 min-w-0 truncate" style={{ color: drum.color }}>
+                      {drum.label}
+                    </span>
+                    {/* Preview button */}
+                    <button
+                      onClick={() => playDrumPreview(instrumentId)}
+                      className="text-[6px] cursor-pointer transition-colors duration-[180ms] shrink-0"
+                      style={{ color: '#5a616b', background: 'none', border: 'none' }}
+                      title="Preview"
+                    >
+                      ▶
+                    </button>
+                    {/* Remove row */}
+                    <button
+                      onClick={() => removeRow(instrumentId)}
+                      className="text-[6px] cursor-pointer transition-opacity opacity-30 hover:opacity-100 shrink-0"
+                      style={{ color: '#b86f6f', background: 'none', border: 'none' }}
+                      title="Remove row"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  {/* Mini gain slider */}
+                  <div className="flex items-center gap-0.5 mt-0.5">
+                    <span className="text-[5px] font-bold" style={{ color: '#5a616b' }}>VOL</span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={1.5}
+                      step={0.05}
+                      value={rowGains.get(instrumentId) ?? 0.8}
+                      onChange={(e) => setRowGain(instrumentId, parseFloat(e.target.value))}
+                      className="flex-1 h-[4px] appearance-none rounded-full cursor-pointer"
+                      style={{
+                        background: `linear-gradient(to right, ${drum.color}80, ${drum.color}30)`,
+                        accentColor: drum.color,
+                      }}
+                      title={`Gain: ${(rowGains.get(instrumentId) ?? 0.8).toFixed(2)}`}
+                    />
+                  </div>
                 </div>
 
                 {/* Step cells */}
@@ -1041,6 +1093,7 @@ function buildCodeFromGrid(
   originalDrumRows: DrumRow[],
   isStack: boolean,
   stepsPerBar: number = 16,
+  rowGains?: Map<string, number>,
 ): string {
   // Filter out empty rows
   const rowsWithHits = activeRows.filter(id => {
@@ -1078,7 +1131,9 @@ function buildCodeFromGrid(
     // Find bank for this specific instrument from original
     const origRow = originalDrumRows.find(r => r.instrument === instrument)
     const rowBank = origRow?.bank ? `.bank("${origRow.bank}")` : bankStr
-    stackLines.push(`  s("${pattern}")${rowBank}`)
+    const rowGain = rowGains?.get(instrument)
+    const gainStr = rowGain != null && Math.abs(rowGain - 0.8) > 0.01 ? `.gain(${rowGain})` : ''
+    stackLines.push(`  s("${pattern}")${rowBank}${gainStr}`)
   }
 
   const prefixMatch = originalRawCode.match(/^\s*(\$\w*:)\s*/)

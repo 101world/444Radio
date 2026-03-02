@@ -65,8 +65,8 @@ export default function ChannelLCD({ channel, isPlaying, isMuted }: ChannelLCDPr
       }
 
       if (maxAmp > 1) {
-        // ── Draw real waveform ──
-        ctx.strokeStyle = '#7fa998'
+        // ── Draw real waveform with channel color ──
+        ctx.strokeStyle = color
         ctx.lineWidth = 1.5
         ctx.beginPath()
         for (let x = 0; x < w; x++) {
@@ -78,9 +78,16 @@ export default function ChannelLCD({ channel, isPlaying, isMuted }: ChannelLCDPr
         }
         ctx.stroke()
 
-        // Peak indicators at edges
+        // Subtle fill under waveform
+        ctx.lineTo(w, h / 2)
+        ctx.lineTo(0, h / 2)
+        ctx.closePath()
+        ctx.fillStyle = `${color}12`
+        ctx.fill()
+
+        // Peak indicators at edges with channel color
         const peak = Math.min(maxAmp / 32, 1)
-        ctx.fillStyle = `rgba(127,169,152,${peak * 0.3})`
+        ctx.fillStyle = `${color}${Math.round(peak * 76).toString(16).padStart(2, '0')}`
         ctx.fillRect(0, 0, 2, h)
         ctx.fillRect(w - 2, 0, 2, h)
       } else {
@@ -117,12 +124,16 @@ export default function ChannelLCD({ channel, isPlaying, isMuted }: ChannelLCDPr
 
   return (
     <div
-      className="mx-1 mb-1 rounded-lg overflow-hidden relative"
+      className="mx-1 mb-1 rounded-lg overflow-hidden relative transition-all duration-300"
       style={{
-        height: 24,
+        height: 28,
         background: '#1c1e22',
-        border: '1px solid rgba(255,255,255,0.03)',
-        boxShadow: 'inset 3px 3px 6px #14161a, inset -3px -3px 6px #2c3036',
+        border: isPlaying && !isMuted
+          ? `1px solid ${channel.color}20`
+          : '1px solid rgba(255,255,255,0.03)',
+        boxShadow: isPlaying && !isMuted
+          ? `inset 3px 3px 6px #14161a, inset -3px -3px 6px #2c3036, 0 0 6px ${channel.color}10`
+          : 'inset 3px 3px 6px #14161a, inset -3px -3px 6px #2c3036',
       }}
     >
       {/* Subtle texture overlay */}

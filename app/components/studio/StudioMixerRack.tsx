@@ -20,7 +20,7 @@ import {
   addChannel, removeChannel,
   getParamDef, findNextFreeOrbit, setChannelOrbit,
   enableSidechain, disableSidechain, removeEffectFromChannel,
-  parseBPM, updateBPM, parseScale, updateScale,
+  parseBPM, updateBPM, parseScale, updateScale, insertScale,
   parseChannelPattern,
   parseStackRows, swapSoundInStackRow, setGainInStackRow,
   getArpInfo, setArpMode, setArpRate, ARP_MODES,
@@ -380,6 +380,9 @@ function ChannelStrip({
     onDrop(e)
   }, [onDrop])
 
+  // Determine if this node is actively producing sound
+  const isActiveNode = isPlaying && !isMuted
+
   return (
     <div
       className={`rounded-xl overflow-hidden transition-all duration-[180ms] ease-in-out ${isMuted ? 'opacity-30' : ''}`}
@@ -388,12 +391,16 @@ function ChannelStrip({
         background: '#23262b',
         border: isDragOver
           ? '1px solid rgba(127,169,152,0.25)'
-          : '1px solid rgba(255,255,255,0.04)',
+          : isActiveNode
+            ? `1px solid ${channel.color}40`
+            : '1px solid rgba(255,255,255,0.04)',
         boxShadow: isDragOver
           ? '6px 6px 12px #14161a, -6px -6px 12px #2c3036, inset 0 0 0 1px rgba(127,169,152,0.1)'
-          : isExpanded
-            ? '8px 8px 16px #14161a, -8px -8px 16px #2c3036'
-            : '4px 4px 8px #14161a, -4px -4px 8px #2c3036',
+          : isActiveNode
+            ? `4px 4px 8px #14161a, -4px -4px 8px #2c3036, 0 0 12px ${channel.color}20, 0 0 4px ${channel.color}15`
+            : isExpanded
+              ? '8px 8px 16px #14161a, -8px -8px 16px #2c3036'
+              : '4px 4px 8px #14161a, -4px -4px 8px #2c3036',
       }}
       onDragOver={(e) => e.preventDefault()}
       onDragEnter={handleDragEnter}
@@ -401,7 +408,14 @@ function ChannelStrip({
       onDrop={handleDropLocal}
     >
       {/* ── Color bar / LED strip at top ── */}
-      <div className="h-[2px] rounded-t-2xl" style={{ background: channel.color, opacity: isMuted ? 0.15 : 0.4 }} />
+      <div
+        className="h-[2px] rounded-t-2xl transition-all duration-300"
+        style={{
+          background: channel.color,
+          opacity: isMuted ? 0.15 : isActiveNode ? 0.8 : 0.4,
+          boxShadow: isActiveNode ? `0 0 6px ${channel.color}60` : 'none',
+        }}
+      />
 
       {/* ── Compact header: S M · Name ── */}
       <div className="flex items-center gap-1 px-1.5 pt-1.5 pb-0.5">
@@ -572,6 +586,53 @@ function ChannelStrip({
         isPlaying={isPlaying}
         isMuted={isMuted}
       />
+
+      {/* ── Active effect tags — removable pills ── */}
+      {channel.effects.length > 0 && (
+        <div className="flex flex-wrap gap-[2px] px-1.5 py-0.5" onClick={(e) => e.stopPropagation()}>
+          {channel.effects
+            .filter(fx => !['scope', 'pianoroll', 'orbit', 'gain'].includes(fx))
+            .map(fx => {
+              const isArp = fx === 'arp' || fx === 'arpeggiate'
+              const tagColor = isArp ? '#b8a47f' : channel.color
+              return (
+                <span
+                  key={fx}
+                  className="inline-flex items-center gap-[2px] rounded-full transition-all duration-100 group/tag"
+                  style={{
+                    padding: '0px 4px 0px 5px',
+                    fontSize: '5px',
+                    fontWeight: 800,
+                    letterSpacing: '.06em',
+                    textTransform: 'uppercase',
+                    color: tagColor,
+                    background: `${tagColor}12`,
+                    border: `1px solid ${tagColor}25`,
+                  }}
+                >
+                  {fx}
+                  {onRemoveEffect && (
+                    <button
+                      onClick={() => onRemoveEffect(channelIdx, fx)}
+                      className="cursor-pointer opacity-0 group-hover/tag:opacity-100 transition-opacity duration-100 hover:text-red-400"
+                      style={{
+                        fontSize: '6px',
+                        lineHeight: 1,
+                        padding: '0 1px',
+                        background: 'none',
+                        border: 'none',
+                        color: 'inherit',
+                      }}
+                      title={`Remove .${fx}()`}
+                    >
+                      ×
+                    </button>
+                  )}
+                </span>
+              )
+            })}
+        </div>
+      )}
 
       {/* ── Effect knobs — tight grid ── */}
       {effectKnobs.length > 0 && (
@@ -1470,7 +1531,22 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
               </select>
             </>
           ) : (
-            <span className="text-[7px]" style={{ color: '#5a616b' }}>—</span>
+            <button
+              onClick={() => {
+                const newCode = insertScale(codeRef.current, 'C', 'minor')
+                if (newCode !== codeRef.current) (onLiveCodeChange ?? onCodeChange)(newCode)
+              }}
+              className="text-[7px] font-bold cursor-pointer transition-all duration-[180ms] px-1.5 py-0.5 rounded-lg"
+              style={{
+                color: '#b8a47f',
+                background: '#1c1e22',
+                border: 'none',
+                boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036',
+              }}
+              title="Add scale to first channel (C minor default)"
+            >
+              + Scale
+            </button>
           )}
         </div>
 

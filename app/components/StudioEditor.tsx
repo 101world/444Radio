@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import type { StrudelEngine } from '@/lib/strudel-engine'
 import { fixSoundfontNames } from '@/lib/strudel-engine'
-import { applyMixerOverrides, parseStrudelCode, parseChannelPattern, replaceChannelPattern, replaceChannelBlock, parseScale as parseMixerScale } from '@/lib/strudel-code-parser'
+import { applyMixerOverrides, parseStrudelCode, parseChannelPattern, replaceChannelPattern, replaceChannelBlock, parseScale as parseMixerScale, updateParamInCode, insertEffectInChannel, removeEffectFromChannel, getArpInfo, setArpMode, setArpRate, getTranspose, setTranspose, getParamDef, PARAM_DEFS } from '@/lib/strudel-code-parser'
 import { generateMetronomeCode } from '@/lib/strudel-code-parser'
 import { setOrbitAnalyser, clearOrbitAnalysers } from '@/lib/studio-analysers'
 import StudioPianoRoll from './studio/StudioPianoRoll'
@@ -521,9 +521,42 @@ export default function StudioEditor() {
                 soundSource={ch.source}
                 isGenerative={isGenerative}
                 patternType={patternType as 'n' | 'note' | 's'}
+                channelData={ch}
+                channelIdx={pianoRollChannel}
                 onPatternChange={(newPattern: string) => {
                   const latest = codeRef.current
                   const newCode = replaceChannelPattern(latest, pianoRollChannel, newPattern, patternType as 'n' | 'note')
+                  if (newCode !== latest) handleLiveCodeChange(newCode)
+                }}
+                onEffectChange={(paramKey: string, value: number) => {
+                  const latest = codeRef.current
+                  const newCode = updateParamInCode(latest, pianoRollChannel, paramKey, value)
+                  if (newCode !== latest) handleLiveCodeChange(newCode)
+                }}
+                onEffectAdd={(effectCode: string) => {
+                  const latest = codeRef.current
+                  const newCode = insertEffectInChannel(latest, pianoRollChannel, effectCode)
+                  if (newCode !== latest) handleLiveCodeChange(newCode)
+                }}
+                onEffectRemove={(effectKey: string) => {
+                  const latest = codeRef.current
+                  const newCode = removeEffectFromChannel(latest, pianoRollChannel, effectKey)
+                  if (newCode !== latest) handleLiveCodeChange(newCode)
+                }}
+                onArpChange={(mode: string) => {
+                  const latest = codeRef.current
+                  const newCode = setArpMode(latest, pianoRollChannel, mode)
+                  if (newCode !== latest) handleLiveCodeChange(newCode)
+                }}
+                onArpRateChange={(rate: number) => {
+                  const latest = codeRef.current
+                  const newCode = setArpRate(latest, pianoRollChannel, rate)
+                  if (newCode !== latest) handleLiveCodeChange(newCode)
+                }}
+                onTransposeChange={(semitones: number) => {
+                  const latest = codeRef.current
+                  const clamped = Math.max(-24, Math.min(24, semitones))
+                  const newCode = setTranspose(latest, pianoRollChannel, clamped)
                   if (newCode !== latest) handleLiveCodeChange(newCode)
                 }}
                 onClose={() => setPianoRollChannel(null)}

@@ -13,6 +13,9 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
+import type { ParsedChannel } from '@/lib/strudel-code-parser'
+import { getParamDef, getArpInfo, getTranspose, ARP_MODES, DRAGGABLE_EFFECTS } from '@/lib/strudel-code-parser'
+import StudioKnob from './StudioKnob'
 
 // ─── Music theory ───
 
@@ -463,8 +466,24 @@ interface StudioPianoRollProps {
   isGenerative: boolean
   /** Pattern type: 'n' = scale degrees, 'note' = absolute note names, 's' = sample */
   patternType?: 'n' | 'note' | 's'
+  /** Full channel data for effects panel */
+  channelData?: ParsedChannel
+  /** Channel index in parsed code */
+  channelIdx?: number
   /** Called when user edits notes — receives new mini-notation */
   onPatternChange: (pattern: string) => void
+  /** Called when an effect param is changed from the effects panel */
+  onEffectChange?: (paramKey: string, value: number) => void
+  /** Called to add an effect to the channel */
+  onEffectAdd?: (effectCode: string) => void
+  /** Called to remove an effect from the channel */
+  onEffectRemove?: (effectKey: string) => void
+  /** Called when arp mode changes */
+  onArpChange?: (mode: string) => void
+  /** Called when arp rate changes */
+  onArpRateChange?: (rate: number) => void
+  /** Called when transpose changes */
+  onTransposeChange?: (semitones: number) => void
   /** Close the piano roll */
   onClose: () => void
 }
@@ -487,7 +506,15 @@ export default function StudioPianoRoll({
   soundSource,
   isGenerative,
   patternType = 'n',
+  channelData,
+  channelIdx,
   onPatternChange,
+  onEffectChange,
+  onEffectAdd,
+  onEffectRemove,
+  onArpChange,
+  onArpRateChange,
+  onTransposeChange,
   onClose,
 }: StudioPianoRollProps) {
   const isNoteMode = patternType === 'note'
@@ -518,6 +545,44 @@ export default function StudioPianoRoll({
   const [boxSelect, setBoxSelect] = useState<{ startX: number; startY: number; curX: number; curY: number } | null>(null)
   const isBoxSelecting = useRef(false)
   const boxStartCell = useRef<{ midi: number; step: number } | null>(null)
+
+  // ── Effects panel state ──
+  const [showEffectsPanel, setShowEffectsPanel] = useState(true)
+
+  // ── Derived: Arp/Transpose info from channel data ──
+  const arpInfo = useMemo(() => {
+    if (!channelData) return { mode: 'off', rate: 1 }
+    return getArpInfo(channelData.rawCode)
+  }, [channelData])
+
+  const transposeValue = useMemo(() => {
+    if (!channelData) return 0
+    return getTranspose(channelData.rawCode)
+  }, [channelData])
+
+  // Effect params (everything except gain, orbit, duck)
+  const effectParams = useMemo(() => {
+    if (!channelData) return []
+    const skipKeys = new Set(['gain', 'orbit', 'duck'])
+    return channelData.params.filter(p => !skipKeys.has(p.key))
+  }, [channelData])
+
+  // FX category groups
+  const FX_GROUPS = useMemo(() => [
+    { label: 'FILTER', icon: '🔽', keys: ['lpf', 'lp', 'hpf', 'hp', 'lpq', 'lpenv', 'lps', 'lpd'] },
+    { label: 'DRIVE',  icon: '🔥', keys: ['shape', 'distort', 'crush'] },
+    { label: 'SPACE',  icon: '🌌', keys: ['room', 'delay', 'delayfeedback', 'delaytime'] },
+    { label: 'MOD',    icon: '🎵', keys: ['detune', 'speed', 'pan', 'velocity', 'postgain'] },
+    { label: 'ENV',    icon: '⏳', keys: ['attack', 'decay', 'rel', 'release', 'legato', 'clip'] },
+  ], [])
+
+  const activeFxGroups = useMemo(() => {
+    if (!channelData) return []
+    return FX_GROUPS.map(group => ({
+      ...group,
+      params: channelData.params.filter(p => group.keys.includes(p.key)),
+    })).filter(g => g.params.length > 0)
+  }, [channelData, FX_GROUPS])
 
   /** Helper: create a simple Set<string> of all occupied cells for quick "is covered" checks */
   const coveredCells = useMemo(() => {
@@ -899,10 +964,15 @@ export default function StudioPianoRoll({
       <div className="flex items-center justify-between px-3 py-1.5 shrink-0"
         style={{ background: '#2a2e34', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
         <div className="flex items-center gap-2">
-          {/* Channel name */}
+          {/* Channel name + source */}
           <span className="text-[9px] font-black uppercase tracking-wider" style={{ color }}>
             🎹 {channelName}
           </span>
+          {channelData && (
+            <span className="text-[6px] font-mono px-1 py-0.5 rounded" style={{ color: '#5a616b', background: '#1c1e22' }}>
+              {channelData.source}
+            </span>
+          )}
           {isNoteMode ? (
             <span className="text-[7px] font-bold font-mono px-1 py-0.5" style={{ color: '#b8a47f', background: '#1c1e22', borderRadius: '8px', boxShadow: 'inset 1px 1px 3px #14161a, inset -1px -1px 3px #2c3036' }}>
               NOTE ♯♭
@@ -915,6 +985,39 @@ export default function StudioPianoRoll({
           )}
 
           <div className="w-px h-3.5 bg-white/[0.08]" />
+
+          {/* Arp indicator */}
+          {arpInfo.mode !== 'off' && (
+            <>
+              <span className="text-[7px] font-bold px-1.5 py-0.5 rounded-lg flex items-center gap-1"
+                style={{ color: '#b8a47f', background: '#1c1e22', boxShadow: 'inset 1px 1px 3px #14161a, inset -1px -1px 3px #2c3036' }}>
+                🎹 ARP {arpInfo.mode.toUpperCase()} ×{arpInfo.rate}
+              </span>
+              <div className="w-px h-3.5 bg-white/[0.08]" />
+            </>
+          )}
+
+          {/* Transpose indicator */}
+          {transposeValue !== 0 && (
+            <>
+              <span className="text-[7px] font-bold px-1.5 py-0.5 rounded-lg"
+                style={{ color: '#6f8fb3', background: '#1c1e22', boxShadow: 'inset 1px 1px 3px #14161a, inset -1px -1px 3px #2c3036' }}>
+                ⬆ TRANS {transposeValue > 0 ? `+${transposeValue}` : transposeValue}
+              </span>
+              <div className="w-px h-3.5 bg-white/[0.08]" />
+            </>
+          )}
+
+          {/* Active effects count */}
+          {effectParams.length > 0 && (
+            <>
+              <span className="text-[7px] font-bold px-1.5 py-0.5 rounded-lg"
+                style={{ color: `${color}90`, background: '#1c1e22', boxShadow: 'inset 1px 1px 3px #14161a, inset -1px -1px 3px #2c3036' }}>
+                {effectParams.length} FX
+              </span>
+              <div className="w-px h-3.5 bg-white/[0.08]" />
+            </>
+          )}
 
           {/* Bars selector */}
           <span className="text-[7px] uppercase tracking-wider font-bold" style={{ color: '#5a616b' }}>Bars</span>
@@ -1061,6 +1164,20 @@ export default function StudioPianoRoll({
             style={{ background: '#1c1e22', color: '#5a616b', boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036' }}>
             Clear
           </button>
+          {channelData && (
+            <button onClick={() => setShowEffectsPanel(p => !p)}
+              className="px-1.5 py-0.5 text-[7px] cursor-pointer transition-all duration-[180ms] font-bold rounded-lg"
+              style={{
+                background: showEffectsPanel ? '#2a2e34' : '#1c1e22',
+                color: showEffectsPanel ? color : '#5a616b',
+                boxShadow: showEffectsPanel
+                  ? 'inset 2px 2px 4px #14161a, inset -2px -2px 4px #2c3036'
+                  : '2px 2px 4px #14161a, -2px -2px 4px #2c3036',
+              }}
+              title="Toggle Effects Panel">
+              ✦ FX
+            </button>
+          )}
           <button onClick={onClose}
             className="px-1.5 py-0.5 text-[7px] cursor-pointer transition-all duration-[180ms] font-bold rounded-lg"
             style={{ background: '#1c1e22', color: '#5a616b', boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036' }}
@@ -1069,6 +1186,221 @@ export default function StudioPianoRoll({
           </button>
         </div>
       </div>
+
+      {/* ═══ MAIN CONTENT: Effects Panel + Grid ═══ */}
+      <div className="flex-1 flex overflow-hidden">
+
+        {/* ── EFFECTS SIDE PANEL ── */}
+        {showEffectsPanel && channelData && (
+          <div
+            className="shrink-0 overflow-y-auto"
+            style={{
+              width: 180,
+              background: '#1c1e22',
+              borderRight: '1px solid rgba(255,255,255,0.04)',
+              scrollbarWidth: 'thin',
+              scrollbarColor: `${color}25 transparent`,
+            }}
+          >
+            {/* ── Node header ── */}
+            <div className="px-2 py-1.5 sticky top-0 z-10" style={{ background: '#1c1e22', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+              <div className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
+                <span className="text-[8px] font-black uppercase tracking-wider" style={{ color: `${color}cc` }}>{channelName}</span>
+              </div>
+              <div className="text-[6px] font-mono mt-0.5" style={{ color: '#5a616b' }}>
+                {channelData.source} · {channelData.sourceType}
+              </div>
+            </div>
+
+            {/* ── Gain ── */}
+            {(() => {
+              const gainParam = channelData.params.find(p => p.key === 'gain')
+              if (!gainParam) return null
+              return (
+                <div className="flex justify-center py-1.5 px-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                  <StudioKnob
+                    label="GAIN"
+                    value={gainParam.value}
+                    min={0}
+                    max={2}
+                    step={0.01}
+                    size={28}
+                    color={color}
+                    isComplex={gainParam.isComplex}
+                    onChange={(v) => onEffectChange?.('gain', v)}
+                  />
+                </div>
+              )
+            })()}
+
+            {/* ── Transpose ── */}
+            <div className="px-2 py-1.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+              <div className="flex items-center gap-1 mb-1">
+                <span className="text-[6px] font-bold uppercase tracking-wider" style={{ color: '#6f8fb3' }}>⬆ Transpose</span>
+                <span className="text-[7px] font-mono font-bold ml-auto" style={{ color: transposeValue !== 0 ? '#6f8fb3' : '#5a616b' }}>
+                  {transposeValue > 0 ? `+${transposeValue}` : transposeValue}
+                </span>
+              </div>
+              <div className="flex items-center justify-center gap-1">
+                <button
+                  onClick={() => onTransposeChange?.(transposeValue - 1)}
+                  className="cursor-pointer transition-all duration-100 active:scale-90"
+                  style={{
+                    width: 18, height: 16, borderRadius: 5,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '7px', fontWeight: 900, color: '#6f8fb3',
+                    background: '#23262b', border: 'none',
+                    boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036',
+                  }}
+                >−</button>
+                <StudioKnob
+                  label=""
+                  value={transposeValue}
+                  min={-24}
+                  max={24}
+                  step={1}
+                  size={24}
+                  color="#6f8fb3"
+                  formatValue={(v) => (v > 0 ? `+${v}` : `${v}`)}
+                  onChange={(v) => onTransposeChange?.(v)}
+                />
+                <button
+                  onClick={() => onTransposeChange?.(transposeValue + 1)}
+                  className="cursor-pointer transition-all duration-100 active:scale-90"
+                  style={{
+                    width: 18, height: 16, borderRadius: 5,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '7px', fontWeight: 900, color: '#6f8fb3',
+                    background: '#23262b', border: 'none',
+                    boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036',
+                  }}
+                >+</button>
+              </div>
+            </div>
+
+            {/* ── ARP ── */}
+            <div className="px-2 py-1.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+              <div className="flex items-center gap-1 mb-1">
+                <span className="text-[6px] font-bold uppercase tracking-wider" style={{ color: arpInfo.mode !== 'off' ? '#b8a47f' : '#5a616b' }}>🎹 Arp</span>
+                {arpInfo.mode !== 'off' && (
+                  <span className="text-[5px] font-bold ml-auto" style={{ color: '#b8a47f' }}>{arpInfo.mode.toUpperCase()} ×{arpInfo.rate}</span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-0.5 justify-center">
+                {(typeof ARP_MODES !== 'undefined' ? ARP_MODES : [
+                  { id: 'off', label: 'Off', icon: '○' },
+                  { id: 'up', label: 'Up', icon: '↑' },
+                  { id: 'down', label: 'Down', icon: '↓' },
+                  { id: 'updown', label: 'Up/Down', icon: '↕' },
+                  { id: 'random', label: 'Random', icon: '?' },
+                ]).map((mode: { id: string; label: string; icon: string }) => (
+                  <button
+                    key={mode.id}
+                    onClick={() => onArpChange?.(mode.id)}
+                    className="cursor-pointer transition-all duration-100 active:scale-90"
+                    style={{
+                      width: 22, height: 16, borderRadius: 6,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '8px', fontWeight: 900,
+                      color: arpInfo.mode === mode.id ? '#b8a47f' : '#5a616b',
+                      background: arpInfo.mode === mode.id ? '#2a2e34' : '#23262b',
+                      border: 'none',
+                      boxShadow: arpInfo.mode === mode.id
+                        ? 'inset 2px 2px 4px #14161a, inset -2px -2px 4px #2c3036'
+                        : '2px 2px 4px #14161a, -2px -2px 4px #2c3036',
+                    }}
+                    title={`Arp: ${mode.label}`}
+                  >
+                    {mode.icon}
+                  </button>
+                ))}
+              </div>
+              {arpInfo.mode !== 'off' && (
+                <div className="flex justify-center mt-1">
+                  <StudioKnob
+                    label="RATE"
+                    value={arpInfo.rate}
+                    min={1}
+                    max={8}
+                    step={1}
+                    size={24}
+                    color="#b8a47f"
+                    formatValue={(v) => `×${v}`}
+                    onChange={(v) => onArpRateChange?.(v)}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* ── Effect groups ── */}
+            {activeFxGroups.map((group) => (
+              <div key={group.label} className="px-2 py-1.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                <div className="flex items-center gap-1 mb-1">
+                  <span className="text-[7px]">{group.icon}</span>
+                  <span className="text-[6px] font-bold uppercase tracking-wider" style={{ color: '#5a616b' }}>{group.label}</span>
+                </div>
+                <div className="flex flex-wrap gap-0.5 justify-center">
+                  {group.params.map((param) => {
+                    const def = getParamDef(param.key)
+                    if (!def) return null
+                    return (
+                      <StudioKnob
+                        key={param.key}
+                        label={def.label}
+                        value={param.value}
+                        min={def.min}
+                        max={def.max}
+                        step={def.step}
+                        size={24}
+                        color={color}
+                        unit={def.unit}
+                        isComplex={param.isComplex}
+                        onChange={(v) => onEffectChange?.(param.key, v)}
+                        onRemove={onEffectRemove ? () => onEffectRemove(param.key) : undefined}
+                      />
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+
+            {/* ── Quick-add effects ── */}
+            {onEffectAdd && (
+              <div className="px-2 py-1.5">
+                <div className="flex items-center gap-1 mb-1">
+                  <span className="text-[6px] font-bold uppercase tracking-wider" style={{ color: '#5a616b' }}>+ ADD FX</span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {[
+                    { label: 'LPF', code: '.lpf(2000)' },
+                    { label: 'HPF', code: '.hpf(200)' },
+                    { label: 'Reverb', code: '.room(0.5)' },
+                    { label: 'Delay', code: '.delay(0.25)' },
+                    { label: 'Dist', code: '.distort(0.3)' },
+                    { label: 'Shape', code: '.shape(0.3)' },
+                    { label: 'Crush', code: '.crush(8)' },
+                    { label: 'Detune', code: '.detune(0.1)' },
+                  ].filter(fx => !channelData.effects.includes(fx.label.toLowerCase().replace(/[^a-z]/g, ''))).map(fx => (
+                    <button
+                      key={fx.label}
+                      onClick={() => onEffectAdd(fx.code)}
+                      className="px-1.5 py-0.5 text-[6px] font-bold cursor-pointer transition-all duration-100 active:scale-95 rounded-lg"
+                      style={{
+                        background: '#23262b',
+                        color: '#7fa998',
+                        boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036',
+                        border: 'none',
+                      }}
+                    >
+                      + {fx.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
       {/* ═══ GRID ═══ */}
       <div ref={scrollRef} className="flex-1 overflow-auto relative"
@@ -1160,6 +1492,18 @@ export default function StudioPianoRoll({
                 rowNotes.push({ step: parseInt(sStr), length: data.length, key })
               }
             })
+
+            // Collect transpose ghost notes — notes written at (midi - transposeValue) that sound here
+            const ghostNotes: { step: number; length: number }[] = []
+            if (transposeValue !== 0) {
+              const sourceMidi = midi - transposeValue
+              noteMap.forEach((data, key) => {
+                const [mStr, sStr] = key.split(':')
+                if (parseInt(mStr) === sourceMidi) {
+                  ghostNotes.push({ step: parseInt(sStr), length: data.length })
+                }
+              })
+            }
 
             return (
               <div key={midi} className="flex relative" style={{ height: cellH }}>
@@ -1266,6 +1610,20 @@ export default function StudioPianoRoll({
                       toggleNote(midi, step, 'remove')
                     }}
                   >
+                    {/* Arp stripe overlay */}
+                    {arpInfo && arpInfo.mode !== 'off' && (
+                      <div
+                        className="absolute inset-0 pointer-events-none overflow-hidden rounded-[3px]"
+                        style={{
+                          background: `repeating-linear-gradient(
+                            ${arpInfo.mode === 'up' ? '45deg' : arpInfo.mode === 'down' ? '-45deg' : '90deg'},
+                            transparent, transparent 2px,
+                            ${color}20 2px, ${color}20 4px
+                          )`,
+                          opacity: 0.7,
+                        }}
+                      />
+                    )}
                     {/* Resize handle on right edge */}
                     <div
                       className="absolute right-0 top-0 bottom-0 cursor-ew-resize opacity-0 group-hover:opacity-100 transition-opacity"
@@ -1279,11 +1637,29 @@ export default function StudioPianoRoll({
                   </div>
                   )
                 })}
+
+                {/* Transpose ghost notes — show where transposed notes will sound */}
+                {ghostNotes.map(({ step, length }, gi) => (
+                  <div
+                    key={`ghost-${gi}`}
+                    className="absolute z-[4] pointer-events-none"
+                    style={{
+                      left: PIANO_W + step * cellW + 1,
+                      top: 1,
+                      width: length * cellW - 2,
+                      height: cellH - 2,
+                      border: `1px dashed ${color}60`,
+                      borderRadius: 3,
+                      background: `${color}08`,
+                    }}
+                  />
+                ))}
               </div>
             )
           })}
         </div>
       </div>
+      </div>{/* ═══ END MAIN CONTENT ═══ */}
     </div>
   )
 }

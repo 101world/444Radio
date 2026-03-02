@@ -853,6 +853,28 @@ export function updateScale(code: string, newRoot: string, newScale: string): st
   })
 }
 
+/** Insert .scale("root:scale") on the first note/synth channel that uses n()/note() */
+export function insertScale(code: string, root: string, scale: string): string {
+  // Find first channel that has n( or note( — those benefit most from .scale()
+  const notePatterns = [/\.n\(/, /\.note\(/]
+  for (const pat of notePatterns) {
+    const match = pat.exec(code)
+    if (match) {
+      // Find the end of the line containing this pattern
+      const lineEnd = code.indexOf('\n', match.index)
+      if (lineEnd === -1) return code + `.scale("${root}:${scale}")`
+      return code.slice(0, lineEnd) + `.scale("${root}:${scale}")` + code.slice(lineEnd)
+    }
+  }
+  // Fallback: add to the first channel line ($name:)
+  const channelMatch = /(\$\w*:\s*[^\n]+)/.exec(code)
+  if (channelMatch) {
+    const insertAt = channelMatch.index + channelMatch[0].length
+    return code.slice(0, insertAt) + `.scale("${root}:${scale}")` + code.slice(insertAt)
+  }
+  return code
+}
+
 /** Generate a metronome channel code string for a given BPM */
 export function generateMetronomeCode(bpm: number): string {
   // Simple click on each beat — high-pitched sound, low volume
