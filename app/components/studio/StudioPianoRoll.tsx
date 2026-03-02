@@ -151,16 +151,39 @@ function playPreview(midi: number, source: string) {
 
 // ─── Pattern parsing ───
 
-/** Parse a single token into notes on the grid (handles chords, rests, numbers/names) */
-function parseToken(tok: string, step: number, scale: string, notes: Map<string, NoteData>, mode: 'degree' | 'note' = 'degree') {
+/** Parse a single token into notes on the grid (handles chords, rests, sub-groups, numbers/names) */
+function parseToken(tok: string, step: number, scale: string, notes: Map<string, NoteData>, mode: 'degree' | 'note' = 'degree', defaultLength: number = 1) {
   // Rest: ~, ~~, -, etc.
   if (/^[~\-]+$/.test(tok)) return
 
-  // Strip @length sustain
+  // Strip @length sustain — if no @ present, use the calculated span (defaultLength)
   const parseSustain = (s: string): { clean: string; length: number } => {
     const m = s.match(/^(.+?)@(\d+)$/)
     if (m) return { clean: m[1], length: parseInt(m[2]) }
-    return { clean: s, length: 1 }
+    return { clean: s, length: defaultLength }
+  }
+
+  // Sub-group: [~ c2] or [a3 ~ b3 ~] — brackets with spaces, NOT commas (those are chords)
+  // Recursively subdivide this token's span among sub-tokens
+  if (tok.startsWith('[') && tok.endsWith(']') && !tok.includes(',')) {
+    const inner = tok.slice(1, -1).trim()
+    const subTokens = tokenizePattern(inner)
+    if (subTokens.length > 0) {
+      const subWeights = subTokens.map(tokenWeight)
+      const subTotal = subWeights.reduce((a, b) => a + b, 0)
+      let subCum = 0
+      subTokens.forEach((subTok, si) => {
+        const subStep = subTotal > 0
+          ? step + Math.round(subCum * defaultLength / subTotal)
+          : step + si
+        const subSpan = subTotal > 0
+          ? Math.max(1, Math.round(subWeights[si] * defaultLength / subTotal))
+          : 1
+        parseToken(subTok, subStep, scale, notes, mode, subSpan)
+        subCum += subWeights[si]
+      })
+    }
+    return
   }
 
   // Chord: [d3,f3,a3,c4] or [2,5] or [1,3,5]
@@ -247,7 +270,11 @@ function mapTokensToSteps(
     const step = totalWeight > 0
       ? barOffset + Math.round(cumWeight * stepsPerBar / totalWeight)
       : barOffset + i
-    parseToken(tok, step, scale, notes, mode)
+    // Calculate how many grid steps this token actually spans
+    const span = totalWeight > 0
+      ? Math.max(1, Math.round(weights[i] * stepsPerBar / totalWeight))
+      : 1
+    parseToken(tok, step, scale, notes, mode, span)
     cumWeight += weights[i]
   })
 }

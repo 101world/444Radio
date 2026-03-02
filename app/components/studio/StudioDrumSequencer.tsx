@@ -497,9 +497,9 @@ interface StudioDrumSequencerProps {
   onClose: () => void
 }
 
-const CELL_W_BASE = 28
-const CELL_H_BASE = 22
-const LABEL_W = 60
+const CELL_W_BASE = 32
+const CELL_H_BASE = 28
+const LABEL_W = 68
 const BAR_OPTIONS = [1, 2, 4] as const
 const GRID_OPTIONS = [16, 32] as const
 
@@ -968,23 +968,23 @@ export default function StudioDrumSequencer({
               <div key={instrumentId} className="flex" style={{ height: cellH }}>
                 {/* Row label (sticky left) */}
                 <div
-                  className="sticky left-0 z-10 shrink-0 flex flex-col justify-center px-1"
+                  className="sticky left-0 z-10 shrink-0 flex flex-col justify-center px-1.5"
                   style={{
                     width: LABEL_W, height: cellH,
                     background: '#1c1e22',
                     borderBottom: '1px solid rgba(255,255,255,0.04)',
-                    borderRight: '1px solid rgba(255,255,255,0.04)',
+                    borderRight: '1px solid rgba(255,255,255,0.06)',
                   }}
                 >
                   <div className="flex items-center gap-1">
-                    <span className="text-[8px]">{drum.icon}</span>
-                    <span className="text-[6px] font-bold uppercase tracking-wide flex-1 min-w-0 truncate" style={{ color: drum.color }}>
+                    <span className="text-[9px]">{drum.icon}</span>
+                    <span className="text-[7px] font-bold uppercase tracking-wider flex-1 min-w-0 truncate" style={{ color: drum.color }}>
                       {drum.label}
                     </span>
                     {/* Preview button */}
                     <button
                       onClick={() => playDrumPreview(instrumentId)}
-                      className="text-[6px] cursor-pointer transition-colors duration-[180ms] shrink-0"
+                      className="text-[7px] cursor-pointer transition-colors duration-[180ms] shrink-0"
                       style={{ color: '#5a616b', background: 'none', border: 'none' }}
                       title="Preview"
                     >
@@ -993,7 +993,7 @@ export default function StudioDrumSequencer({
                     {/* Remove row */}
                     <button
                       onClick={() => removeRow(instrumentId)}
-                      className="text-[6px] cursor-pointer transition-opacity opacity-30 hover:opacity-100 shrink-0"
+                      className="text-[7px] cursor-pointer transition-opacity opacity-30 hover:opacity-100 shrink-0"
                       style={{ color: '#b86f6f', background: 'none', border: 'none' }}
                       title="Remove row"
                     >
@@ -1002,7 +1002,7 @@ export default function StudioDrumSequencer({
                   </div>
                   {/* Mini gain slider */}
                   <div className="flex items-center gap-0.5 mt-0.5">
-                    <span className="text-[5px] font-bold" style={{ color: '#5a616b' }}>VOL</span>
+                    <span className="text-[6px] font-bold" style={{ color: '#5a616b' }}>VOL</span>
                     <input
                       type="range"
                       min={0}
@@ -1030,28 +1030,40 @@ export default function StudioDrumSequencer({
                   return (
                     <div
                       key={step}
-                      className="shrink-0 cursor-crosshair transition-all duration-75"
+                      className="shrink-0 cursor-crosshair relative"
                       style={{
                         width: cellW, height: cellH,
-                        background: hasHit
-                          ? drum.color
-                          : isBeat
-                            ? 'rgba(255,255,255,0.025)'
-                            : 'rgba(255,255,255,0.012)',
                         borderBottom: '1px solid rgba(255,255,255,0.04)',
                         borderLeft: isBar
                           ? '1px solid rgba(255,255,255,0.15)'
                           : isBeat
                             ? '1px solid rgba(255,255,255,0.06)'
                             : '1px solid rgba(255,255,255,0.02)',
-                        borderRadius: hasHit ? 3 : 1,
-                        margin: hasHit ? '1px' : '0',
-                        boxShadow: hasHit ? `inset 0 1px 0 rgba(255,255,255,0.15)` : 'none',
-                        opacity: hasHit ? 1 : 0.8,
+                        background: isBeat && !hasHit
+                          ? 'rgba(255,255,255,0.02)'
+                          : 'transparent',
                       }}
                       onMouseDown={(e) => handleCellDown(instrumentId, step, e)}
                       onMouseEnter={() => handleCellEnter(instrumentId, step)}
-                    />
+                    >
+                      {/* Pad element */}
+                      <div
+                        className="absolute transition-all duration-75"
+                        style={{
+                          inset: hasHit ? 2 : 3,
+                          borderRadius: hasHit ? 4 : 3,
+                          background: hasHit
+                            ? `linear-gradient(135deg, ${drum.color}, ${drum.color}bb)`
+                            : 'rgba(255,255,255,0.03)',
+                          boxShadow: hasHit
+                            ? `0 0 8px ${drum.color}50, inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.3)`
+                            : 'inset 1px 1px 2px #14161a, inset -1px -1px 2px #2c3036',
+                          border: hasHit
+                            ? `1px solid ${drum.color}40`
+                            : '1px solid rgba(255,255,255,0.02)',
+                        }}
+                      />
+                    </div>
                   )
                 })}
               </div>

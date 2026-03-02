@@ -25,6 +25,11 @@ export default function ChannelLCD({ channel, isPlaying, isMuted }: ChannelLCDPr
   const rafRef = useRef<number>(0)
   const orbit = getChannelOrbit(channel)
 
+  // Peak hold — retains max amplitude across frames so percussive hits stay visible
+  const peakHoldRef = useRef(0)
+  // Rolling waveform buffer — blends old/new so brief transients don't vanish
+  const waveBufferRef = useRef<Float32Array | null>(null)
+
   const draw = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -39,6 +44,8 @@ export default function ChannelLCD({ channel, isPlaying, isMuted }: ChannelLCDPr
 
     // ── Not playing or muted: show idle state ──
     if (!isPlaying || isMuted) {
+      peakHoldRef.current = 0
+      waveBufferRef.current = null
       ctx.strokeStyle = '#5a616b20'
       ctx.lineWidth = 1
       ctx.beginPath()
@@ -52,44 +59,71 @@ export default function ChannelLCD({ channel, isPlaying, isMuted }: ChannelLCDPr
     const analyser = getOrbitAnalyser(orbit)
 
     if (analyser) {
-      // Allocate data array each frame (avoids TS ArrayBuffer generic issues)
       const bufLen = analyser.frequencyBinCount
       const data = new Uint8Array(bufLen)
       analyser.getByteTimeDomainData(data)
 
-      // Check if there's any signal (not just silence — 128 = zero crossing for byte data)
+      // Compute current frame peak amplitude (128 = silence for byte data)
       let maxAmp = 0
       for (let i = 0; i < data.length; i++) {
         const abs = Math.abs(data[i] - 128)
         if (abs > maxAmp) maxAmp = abs
       }
 
-      if (maxAmp > 1) {
-        // ── Draw real waveform with channel color ──
+      // Peak hold with decay — keeps percussive transients visible for ~200ms
+      peakHoldRef.current = Math.max(maxAmp, peakHoldRef.current * 0.9)
+      const displayPeak = peakHoldRef.current
+
+      // Normalize waveform samples to canvas width
+      const normalized = new Float32Array(w)
+      for (let x = 0; x < w; x++) {
+        const idx = Math.floor((x / w) * data.length)
+        normalized[x] = (data[idx] - 128) / 128 // -1..1
+      }
+
+      // Blend with previous frame — keeps waveform visible between transient gaps
+      if (waveBufferRef.current && waveBufferRef.current.length === w) {
+        const blend = maxAmp > 3 ? 0 : 0.5 // Fresh signal = full override; silence = fade
+        for (let x = 0; x < w; x++) {
+          normalized[x] = normalized[x] * (1 - blend) + waveBufferRef.current[x] * blend
+        }
+      }
+      waveBufferRef.current = new Float32Array(normalized)
+
+      if (displayPeak > 1) {
+        // ── Draw waveform with channel color ──
         ctx.strokeStyle = color
         ctx.lineWidth = 1.5
         ctx.beginPath()
         for (let x = 0; x < w; x++) {
-          const idx = Math.floor((x / w) * data.length)
-          const sample = (data[idx] - 128) / 128  // normalize to -1..1
-          const y = (1 - sample) * h / 2
+          const y = (1 - normalized[x]) * h / 2
           if (x === 0) ctx.moveTo(x, y)
           else ctx.lineTo(x, y)
         }
         ctx.stroke()
 
-        // Subtle fill under waveform
+        // Fill under waveform
         ctx.lineTo(w, h / 2)
         ctx.lineTo(0, h / 2)
         ctx.closePath()
         ctx.fillStyle = `${color}12`
         ctx.fill()
 
-        // Peak indicators at edges with channel color
-        const peak = Math.min(maxAmp / 32, 1)
-        ctx.fillStyle = `${color}${Math.round(peak * 76).toString(16).padStart(2, '0')}`
+        // Peak bar indicators at edges — uses displayPeak (which holds)
+        const peak = Math.min(displayPeak / 32, 1)
+        const peakHex = Math.round(peak * 100).toString(16).padStart(2, '0')
+        ctx.fillStyle = `${color}${peakHex}`
         ctx.fillRect(0, 0, 2, h)
         ctx.fillRect(w - 2, 0, 2, h)
+
+        // Percussive flash — when peak is held but current signal gone, show a decaying glow
+        if (displayPeak > 8 && maxAmp < 3) {
+          const glowStr = Math.min(displayPeak / 80, 0.35)
+          const glowHex = Math.round(glowStr * 255).toString(16).padStart(2, '0')
+          ctx.fillStyle = `${color}${glowHex}`
+          const barH = Math.min((displayPeak / 128) * h, h)
+          ctx.fillRect(0, (h - barH) / 2, w, barH)
+        }
       } else {
         // Silent — dim flatline
         ctx.strokeStyle = '#5a616b20'

@@ -233,8 +233,8 @@ export default function StudioEditor() {
                 const orbit = controller.getOrbit(i)
                 if (orbit?.output) {
                   const orbAnalyser = actx.createAnalyser()
-                  orbAnalyser.fftSize = 256
-                  orbAnalyser.smoothingTimeConstant = 0.75
+                  orbAnalyser.fftSize = 1024
+                  orbAnalyser.smoothingTimeConstant = 0.3
                   orbit.output.connect(orbAnalyser)
                   setOrbitAnalyser(i, orbAnalyser)
                 }
