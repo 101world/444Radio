@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useCallback } from 'react'
-import { ChevronDown, ChevronRight, Copy, Check, Search } from 'lucide-react'
+import { useState, useCallback, useRef } from 'react'
+import { ChevronDown, ChevronRight, Copy, Check, Search, Volume2 } from 'lucide-react'
 import StudioKnob from './StudioKnob'
 
 // ─── Sound/instrument/sample data for quick swap ───
@@ -789,13 +789,16 @@ export const ORGANIZED_METHODS: MethodSection[] = [
 
 interface StudioMethodsPanelProps {
   onInsert: (snippet: string) => void
+  onPreview?: (soundCode: string) => void
 }
 
-export default function StudioMethodsPanel({ onInsert }: StudioMethodsPanelProps) {
+export default function StudioMethodsPanel({ onInsert, onPreview }: StudioMethodsPanelProps) {
   const [activeTab, setActiveTab] = useState<'sounds' | 'methods'>('sounds')
   const [expandedCat, setExpandedCat] = useState<string | null>(null)
   const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [previewingCode, setPreviewingCode] = useState<string | null>(null)
+  const previewTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [knobValues, setKnobValues] = useState<Record<string, number>>(() => {
     const defaults: Record<string, number> = {}
     ORGANIZED_METHODS.forEach(section => {
@@ -811,6 +814,14 @@ export default function StudioMethodsPanel({ onInsert }: StudioMethodsPanelProps
     setCopiedSnippet(snippet)
     setTimeout(() => setCopiedSnippet(null), 1500)
   }, [])
+
+  const handlePreview = useCallback((code: string) => {
+    if (!onPreview) return
+    setPreviewingCode(code)
+    if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current)
+    previewTimeoutRef.current = setTimeout(() => setPreviewingCode(null), 600)
+    onPreview(code)
+  }, [onPreview])
 
   const generateCode = useCallback((m: KnobMethodDef, val: number) => {
     return m.codeTemplate.replace('{v}', val.toString())
@@ -975,6 +986,23 @@ export default function StudioMethodsPanel({ onInsert }: StudioMethodsPanelProps
                           <code className="text-[9px] font-mono truncate block" style={{ color: '#7fa998', opacity: 0.7 }}>{m.code}</code>
                           <span className="text-[7px] truncate block" style={{ color: '#5a616b' }}>{m.desc}</span>
                         </div>
+                        {/* Preview button */}
+                        {onPreview && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handlePreview(m.code) }}
+                            className="shrink-0 transition-all cursor-pointer rounded-md p-0.5"
+                            style={{
+                              color: previewingCode === m.code ? '#7fa998' : '#5a616b',
+                              opacity: previewingCode === m.code ? 1 : 0.4,
+                              background: previewingCode === m.code ? 'rgba(127,169,152,0.15)' : 'transparent',
+                            }}
+                            title="Preview sound"
+                            onMouseEnter={(e) => { if (previewingCode !== m.code) e.currentTarget.style.opacity = '0.8' }}
+                            onMouseLeave={(e) => { if (previewingCode !== m.code) e.currentTarget.style.opacity = '0.4' }}
+                          >
+                            <Volume2 size={10} />
+                          </button>
+                        )}
                         <span className="opacity-0 group-hover:opacity-40 text-[8px] shrink-0 mr-0.5" style={{ color: '#5a616b' }}>⠣</span>
                         <button
                           onClick={(e) => { e.stopPropagation(); copySnippet(m.code) }}

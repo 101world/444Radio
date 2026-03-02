@@ -295,6 +295,7 @@ function ChannelStrip({
   onArpRateChange,
   onTranspose,
   onAddSound,
+  onPreview,
   stackRows,
 }: {
   channel: ParsedChannel
@@ -343,6 +344,7 @@ function ChannelStrip({
   onArpRateChange?: (channelIdx: number, rate: number) => void
   onTranspose?: (channelIdx: number, semitones: number) => void
   onAddSound?: (channelIdx: number, sound: string) => void
+  onPreview?: (soundCode: string) => void
   stackRows: StackRow[]
 }) {
   const gainParam = channel.params.find(p => p.key === 'gain')
@@ -776,6 +778,18 @@ function ChannelStrip({
                         </optgroup>
                       ))}
                     </select>
+                    {onPreview && (
+                      <button
+                        onClick={() => onPreview(`s("${row.instrument}")`)}
+                        className="shrink-0 rounded-md p-0.5 transition-all cursor-pointer hover:opacity-100"
+                        style={{ color: '#7fa998', opacity: 0.4, background: 'transparent' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(127,169,152,0.12)'; e.currentTarget.style.opacity = '0.9' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.opacity = '0.4' }}
+                        title={`Preview ${row.instrument}`}
+                      >
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                      </button>
+                    )}
                     <StudioKnob
                       label="G"
                       value={row.gain}
@@ -795,18 +809,32 @@ function ChannelStrip({
                       >×</button>
                     )}
                   </div>
-                  <select
-                    value={row.bank || ''}
-                    onChange={(e) => onStackRowBankChange?.(channelIdx, ri, e.target.value)}
-                    className="text-[6px] font-mono rounded px-1 py-0 outline-none cursor-pointer w-full"
-                    style={{ color: '#b8a47f', background: '#1e2025', border: '1px solid rgba(184,164,127,0.1)', borderRadius: '6px' }}
-                    title={`Bank for ${row.instrument}`}
-                  >
-                    <option value="">{row.bank || 'No Bank'}</option>
-                    {BANK_OPTIONS.filter(([val]) => val !== row.bank).map(([val, label]) => (
-                      <option key={val} value={val}>{label}</option>
-                    ))}
-                  </select>
+                  <div className="flex items-center gap-1">
+                    <select
+                      value={row.bank || ''}
+                      onChange={(e) => onStackRowBankChange?.(channelIdx, ri, e.target.value)}
+                      className="text-[6px] font-mono rounded px-1 py-0 outline-none cursor-pointer flex-1 min-w-0"
+                      style={{ color: '#b8a47f', background: '#1e2025', border: '1px solid rgba(184,164,127,0.1)', borderRadius: '6px' }}
+                      title={`Bank for ${row.instrument}`}
+                    >
+                      <option value="">{row.bank || 'No Bank'}</option>
+                      {BANK_OPTIONS.filter(([val]) => val !== row.bank).map(([val, label]) => (
+                        <option key={val} value={val}>{label}</option>
+                      ))}
+                    </select>
+                    {onPreview && row.bank && (
+                      <button
+                        onClick={() => onPreview(`.bank("${row.bank}")`)}
+                        className="shrink-0 rounded-md p-0.5 transition-all cursor-pointer hover:opacity-100"
+                        style={{ color: '#b8a47f', opacity: 0.4, background: 'transparent' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(184,164,127,0.12)'; e.currentTarget.style.opacity = '0.9' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.opacity = '0.4' }}
+                        title={`Preview ${row.bank}`}
+                      >
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -836,38 +864,66 @@ function ChannelStrip({
                 )}
               </div>
               {channel.isSimpleSource ? (
-                <select
-                  value={channel.source}
-                  onChange={(e) => onSoundChange(channelIdx, e.target.value)}
-                  className="text-[7px] font-mono rounded px-1 py-0.5 outline-none cursor-pointer w-full"
-                  style={{ color: '#c8cdd2', background: '#23262b', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px' }}
-                  title="Sound"
-                >
-                  <option value={channel.source}>{channel.source}</option>
-                  {SOUND_OPTIONS.map(g => (
-                    <optgroup key={g.group} label={g.group}>
-                      {g.sounds.filter(([val]) => val !== channel.source).map(([val, label]) => (
-                        <option key={val} value={val}>{label}</option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
+                <div className="flex items-center gap-1">
+                  <select
+                    value={channel.source}
+                    onChange={(e) => onSoundChange(channelIdx, e.target.value)}
+                    className="text-[7px] font-mono rounded px-1 py-0.5 outline-none cursor-pointer flex-1 min-w-0"
+                    style={{ color: '#c8cdd2', background: '#23262b', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px' }}
+                    title="Sound"
+                  >
+                    <option value={channel.source}>{channel.source}</option>
+                    {SOUND_OPTIONS.map(g => (
+                      <optgroup key={g.group} label={g.group}>
+                        {g.sounds.filter(([val]) => val !== channel.source).map(([val, label]) => (
+                          <option key={val} value={val}>{label}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                  {onPreview && (
+                    <button
+                      onClick={() => onPreview(`s("${channel.source}")`)}
+                      className="shrink-0 rounded-md p-0.5 transition-all cursor-pointer hover:opacity-100"
+                      style={{ color: '#7fa998', opacity: 0.5, background: 'transparent' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(127,169,152,0.12)' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                      title={`Preview ${channel.source}`}
+                    >
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                    </button>
+                  )}
+                </div>
               ) : (
                 <span className="text-[6px] text-white/20 font-mono truncate">{channel.source}</span>
               )}
               {(channel.sourceType !== 'synth' || channel.bank) && (
-                <select
-                  value={channel.bank || ''}
-                  onChange={(e) => onBankChange(channelIdx, e.target.value)}
-                  className="text-[7px] font-mono rounded px-1 py-0.5 outline-none cursor-pointer w-full"
-                  style={{ color: '#b8a47f', background: '#23262b', border: '1px solid rgba(184,164,127,0.12)', borderRadius: '8px' }}
-                  title="Bank"
-                >
-                  <option value="">{channel.bank || 'No Bank'}</option>
-                  {BANK_OPTIONS.filter(([val]) => val !== channel.bank).map(([val, label]) => (
-                    <option key={val} value={val}>{label}</option>
-                  ))}
-                </select>
+                <div className="flex items-center gap-1">
+                  <select
+                    value={channel.bank || ''}
+                    onChange={(e) => onBankChange(channelIdx, e.target.value)}
+                    className="text-[7px] font-mono rounded px-1 py-0.5 outline-none cursor-pointer flex-1 min-w-0"
+                    style={{ color: '#b8a47f', background: '#23262b', border: '1px solid rgba(184,164,127,0.12)', borderRadius: '8px' }}
+                    title="Bank"
+                  >
+                    <option value="">{channel.bank || 'No Bank'}</option>
+                    {BANK_OPTIONS.filter(([val]) => val !== channel.bank).map(([val, label]) => (
+                      <option key={val} value={val}>{label}</option>
+                    ))}
+                  </select>
+                  {onPreview && channel.bank && (
+                    <button
+                      onClick={() => onPreview(`.bank("${channel.bank}")`)}
+                      className="shrink-0 rounded-md p-0.5 transition-all cursor-pointer hover:opacity-100"
+                      style={{ color: '#b8a47f', opacity: 0.5, background: 'transparent' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(184,164,127,0.12)' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                      title={`Preview ${channel.bank}`}
+                    >
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -1045,9 +1101,10 @@ interface StudioMixerRackProps {
   onOpenPianoRoll?: (channelIdx: number) => void
   onOpenDrumSequencer?: (channelIdx: number) => void
   isPlaying?: boolean
+  onPreview?: (soundCode: string) => void
 }
 
-export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, onMixerStateChange, metronomeEnabled = false, onMetronomeToggle, onOpenPianoRoll, onOpenDrumSequencer, isPlaying: isPlayingProp = false }: StudioMixerRackProps) {
+export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, onMixerStateChange, metronomeEnabled = false, onMetronomeToggle, onOpenPianoRoll, onOpenDrumSequencer, isPlaying: isPlayingProp = false, onPreview }: StudioMixerRackProps) {
   const channels = useMemo(() => parseStrudelCode(code), [code])
   const [expandedChannels, setExpandedChannels] = useState<Set<string>>(new Set())
   const [mutedChannels, setMutedChannels] = useState<Set<number>>(new Set())
@@ -1828,6 +1885,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                   onArpRateChange={handleArpRateChange}
                   onTranspose={handleTranspose}
                   onAddSound={handleAddSound}
+                  onPreview={onPreview}
                 />
               ))}
 

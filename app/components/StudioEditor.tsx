@@ -354,6 +354,49 @@ export default function StudioEditor() {
     return () => document.removeEventListener('keydown', handler)
   }, [handlePlay])
 
+  // ── Sound preview (one-shot via superdough, no pattern interruption) ──
+  const handlePreviewSound = useCallback(async (soundCode: string) => {
+    const engine = engineRef.current
+    if (!engine) return
+    try {
+      const actx = engine.webaudio.getAudioContext()
+      await actx.resume()
+      const sd = engine.webaudio.superdough
+      if (!sd) return
+      const now = actx.currentTime + 0.05
+
+      // Parse the sound code to extract superdough params
+      // Instruments/Sounds: s("bd"), s("sawtooth"), etc.
+      const soundMatch = soundCode.match(/^s\(["']([^"']+)["']\)$/)
+      // Banks: .bank("RolandTR808")
+      const bankMatch = soundCode.match(/^\.bank\(["']([^"']+)["']\)$/)
+
+      // Known synth oscillators (no samples, need a note)
+      const SYNTHS = new Set([
+        'sawtooth','supersaw','sine','square','triangle','pulse','sbd',
+        'white','pink','brown','crackle','noise','noise2',
+        'zzfx','z_sine','z_sawtooth','z_triangle','z_square','z_tan','z_noise',
+      ])
+
+      if (soundMatch) {
+        const name = soundMatch[1]
+        if (SYNTHS.has(name)) {
+          // Synth: play a note
+          await sd({ s: name, note: 'c3', gain: 0.5, release: 0.3 }, now, 0.4)
+        } else {
+          // Sample: play the first sample
+          await sd({ s: name, n: 0, gain: 0.6 }, now, 0.5)
+        }
+      } else if (bankMatch) {
+        const bank = bankMatch[1]
+        // Play a kick from this bank so user hears the machine character
+        await sd({ s: 'bd', bank, n: 0, gain: 0.6 }, now, 0.5)
+      }
+    } catch (err) {
+      console.log('[444 STUDIO] preview error:', err)
+    }
+  }, [])
+
   // ── Insert snippet at cursor ──
   const insertAtCursor = useCallback((snippet: string) => {
     if (codeEditorRef.current) {
@@ -466,7 +509,7 @@ export default function StudioEditor() {
                 <StudioGenreSelector activeGenre={activeGenre} onSelect={loadTemplate} />
                 <StudioSliderPanel sliderDefs={sliderDefs} sliderValues={sliderValuesRef} onChange={handleSliderChange} />
               </div>
-              <StudioMethodsPanel onInsert={insertAtCursor} />
+              <StudioMethodsPanel onInsert={insertAtCursor} onPreview={handlePreviewSound} />
             </div>
           )}
         </div>
@@ -490,6 +533,7 @@ export default function StudioEditor() {
             metronomeEnabled={metronomeEnabled}
             onMetronomeToggle={handleMetronomeToggle}
             isPlaying={isPlaying}
+            onPreview={handlePreviewSound}
             onOpenPianoRoll={(idx) => { setDrumSequencerChannel(null); setPianoRollChannel(prev => prev === idx ? null : idx) }}
             onOpenDrumSequencer={(idx) => { setPianoRollChannel(null); setDrumSequencerChannel(prev => prev === idx ? null : idx) }}
           />
