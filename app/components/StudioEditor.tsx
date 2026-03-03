@@ -1,10 +1,10 @@
 'use client'
 
-// ═══════════════════════════════════════════════════════════════
-//  444 STUDIO — Pro Strudel Live Coding Studio (Orchestrator)
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//  444 STUDIO â€” Pro Strudel Live Coding Studio (Orchestrator)
 //  Composes: TopBar, GenreSelector, SliderPanel, MethodsPanel,
-//            EffectsChain, CodeEditor — all as standalone components.
-// ═══════════════════════════════════════════════════════════════
+//            EffectsChain, CodeEditor â€” all as standalone components.
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import type { StrudelEngine } from '@/lib/strudel-engine'
@@ -22,6 +22,7 @@ import StudioMethodsPanel from './studio/StudioMethodsPanel'
 import StudioCodeEditor, { type StudioCodeEditorHandle } from './studio/StudioCodeEditor'
 import StudioMixerRack from './studio/StudioMixerRack'
 import StudioSampleUploader from './studio/StudioSampleUploader'
+import StudioBrowserPanel from './studio/StudioBrowserPanel'
 
 // Simple WebAudio fallback for drum preview when engine isn't available
 let _prevCtx: AudioContext | null = null
@@ -42,7 +43,7 @@ function playDrumPreviewFallback(instrument: string) {
 }
 
 export default function StudioEditor() {
-  // ── State ──
+  // â”€â”€ State â”€â”€
   const [code, setCode] = useState(GENRE_TEMPLATES[0].code)
   const [isPlaying, setIsPlaying] = useState(false)
   const [status, setStatus] = useState<'loading' | 'ready' | 'playing' | 'error'>('loading')
@@ -52,6 +53,7 @@ export default function StudioEditor() {
   const [activeGenre, setActiveGenre] = useState('acid')
   const [sliderDefs, setSliderDefs] = useState<Record<string, { min: number; max: number; value: number }>>({})
   const [leftPanelOpen, setLeftPanelOpen] = useState(true)
+  const [leftPanelTab, setLeftPanelTab] = useState<'browser' | 'tools'>('browser')
   const [codeVisible, setCodeVisible] = useState(false)
   const [metronomeEnabled, setMetronomeEnabled] = useState(false)
   const [pianoRollChannel, setPianoRollChannel] = useState<number | null>(null)
@@ -64,7 +66,7 @@ export default function StudioEditor() {
   const redoStack = useRef<string[]>([])
   const isUndoRedo = useRef(false)
 
-  // ── Refs ──
+  // â”€â”€ Refs â”€â”€
   const codeRef = useRef(code)
   codeRef.current = code
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -85,7 +87,7 @@ export default function StudioEditor() {
   useEffect(() => { isPlayingRef.current = isPlaying }, [isPlaying])
   useEffect(() => { metronomeRef.current = metronomeEnabled }, [metronomeEnabled])
 
-  // ── Undo/Redo helpers ──
+  // â”€â”€ Undo/Redo helpers â”€â”€
   const setCodeWithUndo = useCallback((newCode: string | ((prev: string) => string)) => {
     setCode(prev => {
       const next = typeof newCode === 'function' ? newCode(prev) : newCode
@@ -116,14 +118,14 @@ export default function StudioEditor() {
     isUndoRedo.current = false
   }, [])
 
-  // ── Master volume ──
+  // â”€â”€ Master volume â”€â”€
   const updateMasterVolume = useCallback((v: number) => {
     setMasterVolume(v)
     if (masterGainRef.current) masterGainRef.current.gain.value = v
     if (typeof window !== 'undefined') localStorage.setItem('444-studio-volume', String(v))
   }, [])
 
-  // ── Initialize Strudel engine ──
+  // â”€â”€ Initialize Strudel engine â”€â”€
   useEffect(() => {
     let cancelled = false
 
@@ -141,7 +143,7 @@ export default function StudioEditor() {
         engineRef.current = engine
 
         // Volume control: use superdough's built-in destinationGain (same as InputEditor)
-        // Do NOT monkey-patch ctx.destination — it breaks superdough's AudioController
+        // Do NOT monkey-patch ctx.destination â€” it breaks superdough's AudioController
         // which expects destination.maxChannelCount (only on AudioDestinationNode)
         const savedVol = typeof window !== 'undefined' ? localStorage.getItem('444-studio-volume') : null
         const vol = savedVol ? parseFloat(savedVol) : 0.75
@@ -209,7 +211,7 @@ export default function StudioEditor() {
     return () => { cancelled = true }
   }, [])
 
-  // ── Play/Stop ──
+  // â”€â”€ Play/Stop â”€â”€
   const handlePlay = useCallback(async () => {
     const engine = engineRef.current
     if (!engine?.evaluate) { setError('Engine not ready'); return }
@@ -230,7 +232,7 @@ export default function StudioEditor() {
           throw new Error('Enter a pattern to play')
         }
 
-        // ── Mandatory scale: auto-inject if missing ──
+        // â”€â”€ Mandatory scale: auto-inject if missing â”€â”€
         const existingScale = parseMixerScale(src)
         if (!existingScale) {
           src = insertScale(src, 'C4', 'minor')
@@ -316,7 +318,7 @@ export default function StudioEditor() {
     }
   }, [isPlaying])
 
-  // ── Live Update ──
+  // â”€â”€ Live Update â”€â”€
   const handleUpdate = useCallback(async () => {
     const engine = engineRef.current
     if (!engine?.evaluate || !isPlayingRef.current) return
@@ -326,7 +328,7 @@ export default function StudioEditor() {
       if (!src) return
       if (src === lastEvaluatedRef.current) return
 
-      // ── Mandatory scale: auto-inject if missing (same as handlePlay) ──
+      // â”€â”€ Mandatory scale: auto-inject if missing (same as handlePlay) â”€â”€
       const existingScale = parseMixerScale(src)
       if (!existingScale) {
         src = insertScale(src, 'C4', 'minor')
@@ -371,7 +373,7 @@ export default function StudioEditor() {
     }
   }, [])
 
-  // ── Auto-update debounce ──
+  // â”€â”€ Auto-update debounce â”€â”€
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     if (!isPlaying) return
@@ -380,7 +382,7 @@ export default function StudioEditor() {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [code, isPlaying, handleUpdate])
 
-  // ── Keyboard shortcuts ──
+  // â”€â”€ Keyboard shortcuts â”€â”€
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if ((e.ctrlKey || e.metaKey) && e.key === ' ') { e.preventDefault(); handlePlay(); return }
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); handleUpdate(); return }
@@ -399,7 +401,7 @@ export default function StudioEditor() {
     }
   }, [code, handlePlay, handleUpdate, handleUndo, handleRedo, setCodeWithUndo])
 
-  // ── Global spacebar ──
+  // â”€â”€ Global spacebar â”€â”€
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const active = document.activeElement
@@ -411,7 +413,7 @@ export default function StudioEditor() {
     return () => document.removeEventListener('keydown', handler)
   }, [handlePlay])
 
-  // ── Sound preview (one-shot via superdough, no pattern interruption) ──
+  // â”€â”€ Sound preview (one-shot via superdough, no pattern interruption) â”€â”€
   const handlePreviewSound = useCallback(async (soundCode: string) => {
     const engine = engineRef.current
     if (!engine) return
@@ -420,7 +422,7 @@ export default function StudioEditor() {
       const actx = engine.webaudio.getAudioContext()
       await actx.resume()
 
-      // Resolve superdough function: engine direct ref → webaudio re-export → direct import
+      // Resolve superdough function: engine direct ref â†’ webaudio re-export â†’ direct import
       let sd = engine.superdough || engine.webaudio.superdough
       if (!sd) {
         const sdMod = await import('superdough')
@@ -467,14 +469,14 @@ export default function StudioEditor() {
     }
   }, [])
 
-  // ── Insert snippet at cursor ──
+  // â”€â”€ Insert snippet at cursor â”€â”€
   const insertAtCursor = useCallback((snippet: string) => {
     if (codeEditorRef.current) {
       codeEditorRef.current.insertAtCursor(snippet)
     }
   }, [])
 
-  // ── Load genre template ──
+  // â”€â”€ Load genre template â”€â”€
   const loadTemplate = useCallback((id: string) => {
     const tmpl = GENRE_TEMPLATES.find(t => t.id === id)
     if (!tmpl) return
@@ -482,13 +484,13 @@ export default function StudioEditor() {
     setCodeWithUndo(tmpl.code)
   }, [setCodeWithUndo])
 
-  // ── Slider change handler ──
+  // â”€â”€ Slider change handler â”€â”€
   const handleSliderChange = useCallback((id: string, val: number) => {
     sliderValuesRef.current[id] = val
     setSliderDefs(prev => ({ ...prev, [id]: { ...prev[id], value: val } }))
   }, [])
 
-  // ── Mixer solo/mute ──
+  // â”€â”€ Mixer solo/mute â”€â”€
   const handleMixerStateChange = useCallback((state: { muted: Set<number>; soloed: Set<number> }) => {
     mixerStateRef.current = state
     // Re-evaluate immediately if playing so user hears the change
@@ -502,7 +504,7 @@ export default function StudioEditor() {
     }
   }, [])
 
-  // ── Live code change (updates text + re-evaluates immediately) ──
+  // â”€â”€ Live code change (updates text + re-evaluates immediately) â”€â”€
   // Used by BPM slider, scale selector, etc. so changes are heard instantly
   const handleLiveCodeChange = useCallback((newCode: string) => {
     setCodeWithUndo(newCode)
@@ -520,7 +522,7 @@ export default function StudioEditor() {
     }
   }, [setCodeWithUndo])
 
-  // ── Metronome toggle (re-evaluate during playback) ──
+  // â”€â”€ Metronome toggle (re-evaluate during playback) â”€â”€
   const handleMetronomeToggle = useCallback((enabled: boolean) => {
     setMetronomeEnabled(enabled)
     // Re-evaluate immediately so metronome starts/stops without pressing play again
@@ -538,7 +540,7 @@ export default function StudioEditor() {
     }
   }, [])
 
-  // ── Register custom sound in Strudel engine ──
+  // â”€â”€ Register custom sound in Strudel engine â”€â”€
   const registerCustomSound = useCallback(async (name: string, url: string) => {
     const engine = engineRef.current
     if (!engine?.webaudio) {
@@ -553,8 +555,19 @@ export default function StudioEditor() {
     }
   }, [])
 
-  // ── Add a vocal/sample channel with auto-calculated loopAt ──
-  const handleAddVocalChannel = useCallback((name: string, loopAt: number, sampleBpm?: number) => {
+  // â”€â”€ Add a vocal/sample channel with auto-calculated loopAt â”€â”€
+  // — Add channel from browser panel —
+  const handleBrowserAddChannel = useCallback((soundId: string, type: 'synth' | 'sample' | 'vocal', loopAt?: number) => {
+    const currentCode = codeRef.current
+    const projectBpm = parseBPM(currentCode) ?? 120
+    const chanType = type === 'vocal' ? 'vocal' : type === 'synth' ? 'synth' : 'sample'
+    const newCode = addChannel(currentCode, soundId, chanType, loopAt, undefined, projectBpm)
+    if (newCode !== currentCode) {
+      handleLiveCodeChange(newCode)
+    }
+  }, [handleLiveCodeChange])
+
+    const handleAddVocalChannel = useCallback((name: string, loopAt: number, sampleBpm?: number) => {
     const currentCode = codeRef.current
     const projectBpm = parseBPM(currentCode) ?? 120
     const newCode = addChannel(currentCode, name, 'vocal', loopAt, sampleBpm, projectBpm)
@@ -563,13 +576,13 @@ export default function StudioEditor() {
     }
   }, [handleLiveCodeChange])
 
-  // ═══════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   //  RENDER
-  // ═══════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   return (
-    <div className="h-screen w-screen flex flex-col overflow-hidden select-none" style={{ background: '#1c1e22' }}>
-      {/* ── TOP BAR ── */}
+    <div className="h-screen w-screen flex flex-col overflow-hidden select-none" style={{ background: '#0a0b0d' }}>
+      {/* â”€â”€ TOP BAR â”€â”€ */}
       <StudioTopBar
         status={status}
         loadingMsg={loadingMsg}
@@ -584,7 +597,7 @@ export default function StudioEditor() {
         onToggleCode={() => setCodeVisible(v => !v)}
       />
 
-      {/* Hidden canvas for visualizations — now positioned inside mixer */}
+      {/* Hidden canvas for visualizations â€” now positioned inside mixer */}
       <canvas
         ref={canvasRef}
         width={1920}
@@ -593,32 +606,59 @@ export default function StudioEditor() {
         style={{ zIndex: -1 }}
       />
 
-      {/* ── MAIN BODY ── */}
+      {/* â”€â”€ MAIN BODY â”€â”€ */}
       <div className="flex-1 flex overflow-hidden relative" style={{ zIndex: 1 }}>
 
-        {/* ── LEFT PANEL (collapsible genre/sounds/methods) ── */}
+        {/* â”€â”€ LEFT PANEL (collapsible genre/sounds/methods) â”€â”€ */}
         <div className={`shrink-0 flex flex-col overflow-hidden transition-all duration-300 ease-out ${leftPanelOpen ? 'w-60' : 'w-0'}`}>
           {leftPanelOpen && (
-            <div className="flex-1 flex flex-col overflow-hidden w-60" style={{ background: '#23262b', borderRight: '1px solid rgba(255,255,255,0.05)' }}>
-              <div className="shrink-0">
-                <StudioGenreSelector activeGenre={activeGenre} onSelect={loadTemplate} />
-                <StudioSliderPanel sliderDefs={sliderDefs} sliderValues={sliderValuesRef} onChange={handleSliderChange} />
+            <div className="flex-1 flex flex-col overflow-hidden w-60" style={{ background: '#111318', borderRight: '1px solid rgba(255,255,255,0.05)' }}>
+              {/* Tab switcher */}
+              <div className="flex shrink-0 border-b border-white/5">
+                <button
+                  onClick={() => setLeftPanelTab('browser')}
+                  className={`flex-1 py-1.5 text-[8px] font-bold uppercase tracking-widest transition-colors ${leftPanelTab === 'browser' ? 'text-white/90 bg-white/[0.06]' : 'text-white/30 hover:text-white/50'}`}
+                >
+                  BROWSE
+                </button>
+                <button
+                  onClick={() => setLeftPanelTab('tools')}
+                  className={`flex-1 py-1.5 text-[8px] font-bold uppercase tracking-widest transition-colors ${leftPanelTab === 'tools' ? 'text-white/90 bg-white/[0.06]' : 'text-white/30 hover:text-white/50'}`}
+                >
+                  TOOLS
+                </button>
               </div>
-              <StudioMethodsPanel onInsert={insertAtCursor} onPreview={handlePreviewSound} />
+
+              {leftPanelTab === 'browser' ? (
+                <StudioBrowserPanel
+                  onAddChannel={handleBrowserAddChannel}
+                  onPreview={handlePreviewSound}
+                  userSamples={userSamples}
+                  projectBpm={parseBPM(code) ?? 120}
+                />
+              ) : (
+                <>
+                  <div className="shrink-0">
+                    <StudioGenreSelector activeGenre={activeGenre} onSelect={loadTemplate} />
+                    <StudioSliderPanel sliderDefs={sliderDefs} sliderValues={sliderValuesRef} onChange={handleSliderChange} />
+                  </div>
+                  <StudioMethodsPanel onInsert={insertAtCursor} onPreview={handlePreviewSound} />
+                </>
+              )}
             </div>
           )}
         </div>
 
-        {/* ── LEFT PANEL TOGGLE ── */}
+        {/* â”€â”€ LEFT PANEL TOGGLE â”€â”€ */}
         <button
           onClick={() => setLeftPanelOpen(p => !p)}
           className="shrink-0 w-3 flex items-center justify-center hover:bg-white/[0.04] text-white/10 hover:text-white/30 transition-all duration-[180ms] ease-in-out cursor-pointer"
           title={leftPanelOpen ? 'Collapse panel' : 'Expand panel'}
         >
-          <span className="text-[7px] font-mono">{leftPanelOpen ? '◂' : '▸'}</span>
+          <span className="text-[7px] font-mono">{leftPanelOpen ? 'â—‚' : 'â–¸'}</span>
         </button>
 
-        {/* ── CENTER: MIXER RACK (Main View) ── */}
+        {/* â”€â”€ CENTER: MIXER RACK (Main View) â”€â”€ */}
         <div className="flex-1 flex flex-col min-w-0 relative">
           <StudioMixerRack
             code={code}
@@ -636,7 +676,7 @@ export default function StudioEditor() {
             userSamples={userSamples}
           />
 
-          {/* Piano Roll — docks at bottom */}
+          {/* Piano Roll â€” docks at bottom */}
           {pianoRollChannel !== null && (() => {
             const channels = parseStrudelCode(code)
             const ch = channels[pianoRollChannel]
@@ -654,7 +694,7 @@ export default function StudioEditor() {
               : (patternInfo && !patternInfo.isGenerative ? patternInfo.pattern : '')
             // Use 'note' mode for note() channels, 'n' for n().scale() channels.
             // Sample channels without n()/note(): use 'note' mode so piano roll
-            // generates note("c3 e3 ...").s("sample") — the Strudel way to pitch samples.
+            // generates note("c3 e3 ...").s("sample") â€” the Strudel way to pitch samples.
             const patternType = patternInfo?.type === 'n' ? 'n'
               : patternInfo?.type === 'note' ? 'note'
               : 'note'
@@ -730,7 +770,7 @@ export default function StudioEditor() {
                       'white','pink','brown','crackle','noise','noise2',
                       'zzfx','z_sine','z_sawtooth','z_triangle','z_square','z_tan','z_noise',
                     ])
-                    // Convert MIDI to note name (e.g., 60 → "c4")
+                    // Convert MIDI to note name (e.g., 60 â†’ "c4")
                     const NOTES = ['c','cs','d','ds','e','f','fs','g','gs','a','as','b']
                     const noteName = NOTES[midi % 12] + (Math.floor(midi / 12) - 1)
                     const params: Record<string, unknown> = { s: source, gain: 0.5, release: 0.3 }
@@ -758,7 +798,7 @@ export default function StudioEditor() {
             )
           })()}
 
-          {/* Drum Sequencer — docks at bottom */}
+          {/* Drum Sequencer â€” docks at bottom */}
           {drumSequencerChannel !== null && (() => {
             const channels = parseStrudelCode(code)
             const ch = channels[drumSequencerChannel]
@@ -788,7 +828,7 @@ export default function StudioEditor() {
                     }
                     if (!sd) { playDrumPreviewFallback(instrument); return }
                     const now = actx.currentTime + 0.05
-                    // Parse variant from instrument name (e.g., "bd:3" → s: "bd", n: 3)
+                    // Parse variant from instrument name (e.g., "bd:3" â†’ s: "bd", n: 3)
                     const variantMatch = instrument.match(/^([^:]+):(\d+)$/)
                     const sName = variantMatch ? variantMatch[1] : instrument
                     const sampleN = variantMatch ? parseInt(variantMatch[2]) : 0
@@ -805,7 +845,7 @@ export default function StudioEditor() {
         </div>
       </div>
 
-      {/* ── SAMPLE UPLOADER MODAL ── */}
+      {/* â”€â”€ SAMPLE UPLOADER MODAL â”€â”€ */}
       <StudioSampleUploader
         isOpen={sampleUploaderOpen}
         onClose={() => setSampleUploaderOpen(false)}
@@ -815,20 +855,20 @@ export default function StudioEditor() {
         onSamplesChanged={setUserSamples}
       />
 
-      {/* ── CODE EDITOR DRAWER (slides from right) ── */}
+      {/* â”€â”€ CODE EDITOR DRAWER (slides from right) â”€â”€ */}
       <div
         className={`absolute top-10 right-0 bottom-0 z-30 transition-all duration-300 ease-out ${
           codeVisible ? 'w-[520px] opacity-100' : 'w-0 opacity-0 pointer-events-none'
         }`}
         style={{
-          background: '#23262b',
+          background: '#111318',
           borderLeft: '1px solid rgba(255,255,255,0.05)',
-          boxShadow: codeVisible ? '-8px 0 16px #14161a' : 'none',
+          boxShadow: codeVisible ? '-8px 0 16px #050607' : 'none',
         }}
       >
         {codeVisible && (
           <div className="h-full flex flex-col">
-          <div className="shrink-0 flex items-center justify-between px-4 py-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: '#2a2e34' }}>
+          <div className="shrink-0 flex items-center justify-between px-4 py-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: '#16181d' }}>
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#7fa998' }} />
                 <span className="text-[10px] font-black uppercase tracking-[.2em]" style={{ color: '#9aa7b3' }}>Music Code</span>
@@ -863,8 +903,8 @@ export default function StudioEditor() {
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.1); }
-        select { background-color: #2a2e34 !important; }
-        select option { background: #23262b; color: #c8cdd2; }
+        select { background-color: #16181d !important; }
+        select option { background: #111318; color: #e8ecf0; }
         input[type='range'] {
           -webkit-appearance: none; height: 3px; border-radius: 10px;
           background: rgba(255,255,255,0.06);
@@ -873,8 +913,8 @@ export default function StudioEditor() {
           -webkit-appearance: none; width: 12px; height: 12px;
           border-radius: 50%; cursor: pointer;
           background: #7fa998;
-          border: 2px solid #23262b;
-          box-shadow: 2px 2px 4px #14161a, -1px -1px 3px #2c3036;
+          border: 2px solid #111318;
+          box-shadow: 2px 2px 4px #050607, -1px -1px 3px #1a1d22;
         }
       `}</style>
     </div>

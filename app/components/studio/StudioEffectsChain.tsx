@@ -1,15 +1,15 @@
 'use client'
 
-// ═══════════════════════════════════════════════════════════════
-//  STUDIO EFFECTS CHAIN — Visual FX Rack
-//  Signal flow: Sound → Filter → Distortion → Space → Sidechain → Output
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//  STUDIO EFFECTS CHAIN â€” Visual FX Rack
+//  Signal flow: Sound â†’ Filter â†’ Distortion â†’ Space â†’ Sidechain â†’ Output
 //  Each effect is a "pedal" with knobs. Toggle on/off to insert code.
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 import { useState, useCallback, useMemo } from 'react'
 import { Power, ChevronDown, ChevronRight, ArrowRight, Zap } from 'lucide-react'
 
-// ─── Effect Definitions ───
+// â”€â”€â”€ Effect Definitions â”€â”€â”€
 
 export interface EffectParam {
   id: string
@@ -36,11 +36,11 @@ export interface EffectDef {
 }
 
 const EFFECTS: EffectDef[] = [
-  // ── FILTER ──
+  // â”€â”€ FILTER â”€â”€
   {
     id: 'lpf',
     label: 'Low-Pass Filter',
-    icon: '🔽',
+    icon: 'ðŸ”½',
     color: 'cyan',
     category: 'filter',
     description: 'Cuts frequencies above the cutoff. Lower = darker. Classic subtractive synth sound.',
@@ -61,7 +61,7 @@ const EFFECTS: EffectDef[] = [
   {
     id: 'hpf',
     label: 'High-Pass Filter',
-    icon: '🔼',
+    icon: 'ðŸ”¼',
     color: 'blue',
     category: 'filter',
     description: 'Cuts frequencies below the cutoff. Higher = thinner. Cleans up muddy lows.',
@@ -74,7 +74,7 @@ const EFFECTS: EffectDef[] = [
   {
     id: 'acidenv',
     label: 'Acid Envelope',
-    icon: '⚗️',
+    icon: 'âš—ï¸',
     color: 'lime',
     category: 'filter',
     description: 'The TB-303 acid squelch. Sweeps the filter with each note. The higher the amount, the more squelchy.',
@@ -85,11 +85,11 @@ const EFFECTS: EffectDef[] = [
     toCode: (p, on) => on ? `.acidenv(${p.amount.toFixed(2)})` : '',
   },
 
-  // ── DISTORTION ──
+  // â”€â”€ DISTORTION â”€â”€
   {
     id: 'shape',
     label: 'Waveshaper',
-    icon: '📐',
+    icon: 'ðŸ“',
     color: 'orange',
     category: 'distortion',
     description: 'Soft clipping distortion. Adds warmth and harmonics. Goes from subtle saturation to full fuzz.',
@@ -102,7 +102,7 @@ const EFFECTS: EffectDef[] = [
   {
     id: 'distort',
     label: 'Distortion',
-    icon: '🔥',
+    icon: 'ðŸ”¥',
     color: 'red',
     category: 'distortion',
     description: 'Hard distortion. Crunchy and aggressive. Great for bass and leads.',
@@ -115,7 +115,7 @@ const EFFECTS: EffectDef[] = [
   {
     id: 'crush',
     label: 'Bit Crush',
-    icon: '👾',
+    icon: 'ðŸ‘¾',
     color: 'pink',
     category: 'distortion',
     description: 'Reduces bit depth for lo-fi digital grit. Lower = more crunchy. 16 = normal. 4 = NES.',
@@ -126,11 +126,11 @@ const EFFECTS: EffectDef[] = [
     toCode: (p, on) => on ? `.crush(${p.bits})` : '',
   },
 
-  // ── SPACE ──
+  // â”€â”€ SPACE â”€â”€
   {
     id: 'reverb',
     label: 'Reverb',
-    icon: '🏛️',
+    icon: 'ðŸ›ï¸',
     color: 'purple',
     category: 'space',
     description: 'Simulates room reflections. Small values = tight room. Large = cathedral. Creates depth and width.',
@@ -143,7 +143,7 @@ const EFFECTS: EffectDef[] = [
   {
     id: 'delay',
     label: 'Delay',
-    icon: '📡',
+    icon: 'ðŸ“¡',
     color: 'indigo',
     category: 'space',
     description: 'Echo effect. Mix controls wet/dry. Feedback controls how many repeats. Creates rhythmic echoes.',
@@ -164,7 +164,7 @@ const EFFECTS: EffectDef[] = [
   {
     id: 'pan',
     label: 'Auto-Pan',
-    icon: '↔️',
+    icon: 'â†”ï¸',
     color: 'teal',
     category: 'space',
     description: 'Moves sound left-to-right automatically using a sine wave LFO. Creates movement and stereo width.',
@@ -178,11 +178,11 @@ const EFFECTS: EffectDef[] = [
       : '',
   },
 
-  // ── MODULATION ──
+  // â”€â”€ MODULATION â”€â”€
   {
     id: 'vibrato',
     label: 'Vibrato',
-    icon: '〰️',
+    icon: 'ã€°ï¸',
     color: 'amber',
     category: 'modulation',
     description: 'Pitch wobble for expressiveness. Rate = speed, depth = how far the pitch bends.',
@@ -196,7 +196,7 @@ const EFFECTS: EffectDef[] = [
   {
     id: 'detune',
     label: 'Detune',
-    icon: '🎸',
+    icon: 'ðŸŽ¸',
     color: 'yellow',
     category: 'modulation',
     description: 'Slightly pitch-shifts copies of the sound. Creates a thick, chorus-like detuned effect.',
@@ -207,11 +207,11 @@ const EFFECTS: EffectDef[] = [
     toCode: (p, on) => on ? `.detune(${p.amount.toFixed(1)})` : '',
   },
 
-  // ── SIDECHAIN ──
+  // â”€â”€ SIDECHAIN â”€â”€
   {
     id: 'duck',
     label: 'Sidechain Duck',
-    icon: '🦆',
+    icon: 'ðŸ¦†',
     color: 'emerald',
     category: 'sidechain',
     description: 'Ducks (reduces volume) this sound when the kick plays. Creates that pumping EDM effect. Orbit = which kick triggers it.',
@@ -227,11 +227,11 @@ const EFFECTS: EffectDef[] = [
     },
   },
 
-  // ── PATTERN ──
+  // â”€â”€ PATTERN â”€â”€
   {
     id: 'juxrev',
     label: 'Jux Rev',
-    icon: '🔄',
+    icon: 'ðŸ”„',
     color: 'sky',
     category: 'pattern',
     description: 'Plays the pattern reversed in the opposite ear. Creates instant stereo interest.',
@@ -240,11 +240,11 @@ const EFFECTS: EffectDef[] = [
     toCode: (_p, on) => on ? '.jux(rev)' : '',
   },
 
-  // ── VISUAL ──
+  // â”€â”€ VISUAL â”€â”€
   {
     id: 'scope',
     label: 'Oscilloscope',
-    icon: '📈',
+    icon: 'ðŸ“ˆ',
     color: 'cyan',
     category: 'visual',
     description: 'Shows the waveform of this sound in real-time. Great for seeing if your sound is too loud or clipping.',
@@ -255,7 +255,7 @@ const EFFECTS: EffectDef[] = [
   {
     id: 'pianoroll',
     label: 'Piano Roll',
-    icon: '🎹',
+    icon: 'ðŸŽ¹',
     color: 'violet',
     category: 'visual',
     description: 'Shows notes on a piano roll as they play. Perfect for melodic patterns to see pitch over time.',
@@ -276,7 +276,7 @@ const CATEGORIES = [
   { id: 'visual', label: 'VISUAL', color: 'violet' },
 ] as const
 
-// ─── Types ───
+// â”€â”€â”€ Types â”€â”€â”€
 
 interface EffectState {
   enabled: boolean
@@ -290,7 +290,7 @@ interface StudioEffectsChainProps {
   onInsertSnippet: (snippet: string) => void
 }
 
-// ─── Clay palette accent mapping ───
+// â”€â”€â”€ Clay palette accent mapping â”€â”€â”€
 const CLAY_ACCENT: Record<string, string> = {
   cyan: '#7fa998', blue: '#6f8fb3', lime: '#7fa998', orange: '#b8a47f',
   red: '#b86f6f', pink: '#b86f6f', purple: '#6f8fb3', indigo: '#6f8fb3',
@@ -302,7 +302,7 @@ function getAccent(colorName: string): string {
   return CLAY_ACCENT[colorName] || '#7fa998'
 }
 
-// ─── Component ───
+// â”€â”€â”€ Component â”€â”€â”€
 
 export default function StudioEffectsChain({ onChainChange, onInsertSnippet }: StudioEffectsChainProps) {
   const [isOpen, setIsOpen] = useState(true)
@@ -385,7 +385,7 @@ export default function StudioEffectsChain({ onChainChange, onInsertSnippet }: S
   )
 
   return (
-    <div style={{ borderTop: '1px solid #2a2e34' }}>
+    <div style={{ borderTop: '1px solid #16181d' }}>
       {/* Header */}
       <button
         onClick={() => setIsOpen(!isOpen)}
@@ -399,8 +399,8 @@ export default function StudioEffectsChain({ onChainChange, onInsertSnippet }: S
           {enabledCount > 0 && (
             <span
               className="text-[8px] font-mono px-1.5 py-0.5 rounded-full"
-              style={{ color: '#7fa998', backgroundColor: '#23262b', border: '1px solid #2a2e34',
-                boxShadow: 'inset 1px 1px 3px #14161a, inset -1px -1px 3px #2c3036' }}
+              style={{ color: '#7fa998', backgroundColor: '#111318', border: '1px solid #16181d',
+                boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22' }}
             >
               {enabledCount} active
             </span>
@@ -411,16 +411,16 @@ export default function StudioEffectsChain({ onChainChange, onInsertSnippet }: S
 
       {isOpen && (
         <div className="px-2 pb-3">
-          {/* ── Signal Flow Diagram ── */}
+          {/* â”€â”€ Signal Flow Diagram â”€â”€ */}
           <div
             className="flex items-center gap-1 px-2 py-2 mb-2 overflow-x-auto"
-            style={{ backgroundColor: '#1c1e22', borderRadius: 10, border: '1px solid #2a2e34',
-              boxShadow: 'inset 2px 2px 5px #14161a, inset -2px -2px 5px #2c3036' }}
+            style={{ backgroundColor: '#0a0b0d', borderRadius: 10, border: '1px solid #16181d',
+              boxShadow: 'inset 2px 2px 5px #050607, inset -2px -2px 5px #1a1d22' }}
           >
             {/* Input */}
             <div
               className="shrink-0 text-[7px] font-bold uppercase tracking-wider px-1.5 py-1"
-              style={{ color: '#5a616b', backgroundColor: '#23262b', borderRadius: 6, border: '1px solid #2a2e34' }}
+              style={{ color: '#5a616b', backgroundColor: '#111318', borderRadius: 6, border: '1px solid #16181d' }}
             >
               IN
             </div>
@@ -431,7 +431,7 @@ export default function StudioEffectsChain({ onChainChange, onInsertSnippet }: S
                   <ArrowRight size={8} style={{ color: '#5a616b', opacity: 0.4 }} />
                   <div
                     className="text-[7px] font-bold uppercase tracking-wider px-1.5 py-1"
-                    style={{ color: getAccent(fx.color), backgroundColor: '#23262b', borderRadius: 6, border: '1px solid #2a2e34' }}
+                    style={{ color: getAccent(fx.color), backgroundColor: '#111318', borderRadius: 6, border: '1px solid #16181d' }}
                   >
                     {fx.signalLabel}
                   </div>
@@ -447,13 +447,13 @@ export default function StudioEffectsChain({ onChainChange, onInsertSnippet }: S
             <ArrowRight size={8} className="shrink-0" style={{ color: '#5a616b', opacity: 0.4 }} />
             <div
               className="shrink-0 text-[7px] font-bold uppercase tracking-wider px-1.5 py-1"
-              style={{ color: '#7fa998', opacity: 0.6, backgroundColor: '#23262b', borderRadius: 6, border: '1px solid #2a2e34' }}
+              style={{ color: '#7fa998', opacity: 0.6, backgroundColor: '#111318', borderRadius: 6, border: '1px solid #16181d' }}
             >
               OUT
             </div>
           </div>
 
-          {/* ── Effect Pedals by Category ── */}
+          {/* â”€â”€ Effect Pedals by Category â”€â”€ */}
           {CATEGORIES.map((cat) => {
             const catEffects = EFFECTS.filter((fx) => fx.category === cat.id)
             if (catEffects.length === 0) return null
@@ -478,11 +478,11 @@ export default function StudioEffectsChain({ onChainChange, onInsertSnippet }: S
                         className="transition-all duration-[180ms] ease-in-out"
                         style={{
                           borderRadius: 10,
-                          border: '1px solid #2a2e34',
-                          backgroundColor: st.enabled ? '#2a2e34' : '#23262b',
+                          border: '1px solid #16181d',
+                          backgroundColor: st.enabled ? '#16181d' : '#111318',
                           boxShadow: st.enabled
-                            ? '3px 3px 6px #14161a, -3px -3px 6px #2c3036'
-                            : 'inset 2px 2px 4px #14161a, inset -2px -2px 4px #2c3036',
+                            ? '3px 3px 6px #050607, -3px -3px 6px #1a1d22'
+                            : 'inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22',
                           opacity: st.enabled ? 1 : 0.6,
                         }}
                       >
@@ -494,12 +494,12 @@ export default function StudioEffectsChain({ onChainChange, onInsertSnippet }: S
                             className="w-5 h-5 flex items-center justify-center transition-all duration-[180ms] ease-in-out cursor-pointer"
                             style={{
                               borderRadius: 6,
-                              backgroundColor: '#23262b',
+                              backgroundColor: '#111318',
                               color: st.enabled ? ac : '#5a616b',
-                              border: '1px solid #2a2e34',
+                              border: '1px solid #16181d',
                               boxShadow: st.enabled
-                                ? 'inset 1px 1px 3px #14161a, inset -1px -1px 3px #2c3036'
-                                : '1px 1px 3px #14161a, -1px -1px 3px #2c3036',
+                                ? 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22'
+                                : '1px 1px 3px #050607, -1px -1px 3px #1a1d22',
                             }}
                             title={st.enabled ? 'Disable' : 'Enable'}
                           >
@@ -524,7 +524,7 @@ export default function StudioEffectsChain({ onChainChange, onInsertSnippet }: S
                           <button
                             onClick={() => onInsertSnippet(getEffectCode(fx.id))}
                             className="text-[7px] font-bold px-1.5 py-0.5 transition-all duration-[180ms] ease-in-out cursor-pointer"
-                            style={{ color: ac, opacity: 0.4, borderRadius: 6, border: '1px solid #2a2e34', backgroundColor: '#23262b' }}
+                            style={{ color: ac, opacity: 0.4, borderRadius: 6, border: '1px solid #16181d', backgroundColor: '#111318' }}
                             title="Insert this effect's code at cursor"
                           >
                             + INSERT
@@ -595,7 +595,7 @@ export default function StudioEffectsChain({ onChainChange, onInsertSnippet }: S
             )
           })}
 
-          {/* ── Full Chain Code Preview ── */}
+          {/* â”€â”€ Full Chain Code Preview â”€â”€ */}
           {enabledCount > 0 && (
             <div className="mt-3 px-1">
               <div className="text-[7px] font-bold uppercase tracking-[.2em] mb-1" style={{ color: '#5a616b' }}>
@@ -603,8 +603,8 @@ export default function StudioEffectsChain({ onChainChange, onInsertSnippet }: S
               </div>
               <div
                 className="p-2"
-                style={{ backgroundColor: '#1c1e22', borderRadius: 10, border: '1px solid #2a2e34',
-                  boxShadow: 'inset 2px 2px 5px #14161a, inset -2px -2px 5px #2c3036' }}
+                style={{ backgroundColor: '#0a0b0d', borderRadius: 10, border: '1px solid #16181d',
+                  boxShadow: 'inset 2px 2px 5px #050607, inset -2px -2px 5px #1a1d22' }}
               >
                 <code className="text-[9px] font-mono whitespace-pre-wrap block" style={{ color: '#7fa998', opacity: 0.5 }}>
                   {activeEffects.map((fx) => fx.toCode(effects[fx.id].params, true)).join('\n')}
@@ -616,8 +616,8 @@ export default function StudioEffectsChain({ onChainChange, onInsertSnippet }: S
                   onInsertSnippet(code)
                 }}
                 className="mt-1.5 w-full text-[8px] font-bold py-1.5 transition-all duration-[180ms] ease-in-out cursor-pointer"
-                style={{ color: '#7fa998', backgroundColor: '#23262b', borderRadius: 10, border: '1px solid #2a2e34',
-                  boxShadow: '2px 2px 5px #14161a, -2px -2px 5px #2c3036' }}
+                style={{ color: '#7fa998', backgroundColor: '#111318', borderRadius: 10, border: '1px solid #16181d',
+                  boxShadow: '2px 2px 5px #050607, -2px -2px 5px #1a1d22' }}
               >
                 INSERT FULL CHAIN AT CURSOR
               </button>

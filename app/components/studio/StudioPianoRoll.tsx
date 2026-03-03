@@ -1,23 +1,23 @@
 'use client'
 
-// ═══════════════════════════════════════════════════════════════
-//  STUDIO PIANO ROLL — Strudel-native note editor
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//  STUDIO PIANO ROLL â€” Strudel-native note editor
 //
 //  Designed for the Studio workflow:
-//  • Scale-degree mode: outputs numbers for n().scale("root:mode")
-//  • 16 steps = 1 Strudel cycle (bar). Supports 1/2/4 bars.
-//  • Only writes to code on user interaction (never on mount)
-//  • Click to place/remove notes, hear preview
-//  • Auto-detects scale from code, highlights in-scale rows
-//  • Outputs clean mini-notation that maps 1:1 to Strudel timing
-// ═══════════════════════════════════════════════════════════════
+//  â€¢ Scale-degree mode: outputs numbers for n().scale("root:mode")
+//  â€¢ 16 steps = 1 Strudel cycle (bar). Supports 1/2/4 bars.
+//  â€¢ Only writes to code on user interaction (never on mount)
+//  â€¢ Click to place/remove notes, hear preview
+//  â€¢ Auto-detects scale from code, highlights in-scale rows
+//  â€¢ Outputs clean mini-notation that maps 1:1 to Strudel timing
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import type { ParsedChannel } from '@/lib/strudel-code-parser'
 import { getParamDef, getArpInfo, getTranspose, ARP_MODES, DRAGGABLE_EFFECTS } from '@/lib/strudel-code-parser'
 import StudioKnob from './StudioKnob'
 
-// ─── Music theory ───
+// â”€â”€â”€ Music theory â”€â”€â”€
 
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
@@ -57,7 +57,7 @@ function getScaleMidiSet(scale: string, lo: number, hi: number): Set<number> {
   return set
 }
 
-/** Convert scale degree → MIDI (matches Strudel n().scale() behaviour) */
+/** Convert scale degree â†’ MIDI (matches Strudel n().scale() behaviour) */
 function degreeToMidi(deg: number, scale: string): number {
   const { root, octave, mode } = parseScaleStr(scale)
   const intervals = SCALE_INTERVALS[mode] || SCALE_INTERVALS.minor
@@ -71,7 +71,7 @@ function degreeToMidi(deg: number, scale: string): number {
   return baseMidi + octShift * 12 + (intervals[inScale] ?? 0)
 }
 
-/** Convert MIDI → closest scale degree */
+/** Convert MIDI â†’ closest scale degree */
 function midiToDegree(midi: number, scale: string): number | null {
   const { root, octave, mode } = parseScaleStr(scale)
   const intervals = SCALE_INTERVALS[mode] || SCALE_INTERVALS.minor
@@ -93,7 +93,7 @@ function isBlackKey(midi: number): boolean {
   return [1, 3, 6, 8, 10].includes(midi % 12)
 }
 
-// ─── Note name conversions (for note() mode) ───
+// â”€â”€â”€ Note name conversions (for note() mode) â”€â”€â”€
 
 const STRUDEL_NOTE_MAP: Record<string, number> = {
   'c': 0, 'cs': 1, 'db': 1, 'd': 2, 'ds': 3, 'eb': 3,
@@ -104,7 +104,7 @@ const STRUDEL_NOTE_MAP: Record<string, number> = {
 
 const STRUDEL_NOTE_NAMES_OUT = ['c', 'cs', 'd', 'ds', 'e', 'f', 'fs', 'g', 'gs', 'a', 'as', 'b']
 
-/** Parse Strudel note name (e.g. "d3", "fs4", "eb2") → MIDI number */
+/** Parse Strudel note name (e.g. "d3", "fs4", "eb2") â†’ MIDI number */
 function strudelNoteToMidi(name: string): number | null {
   const m = name.trim().toLowerCase().match(/^([a-g])([#sb]?)(\d+)$/)
   if (!m) return null
@@ -116,12 +116,12 @@ function strudelNoteToMidi(name: string): number | null {
   return (parseInt(m[3]) + 1) * 12 + semitone
 }
 
-/** MIDI number → Strudel lowercase note name (e.g. 50 → "d3") */
+/** MIDI number â†’ Strudel lowercase note name (e.g. 50 â†’ "d3") */
 function midiToStrudelNote(midi: number): string {
   return STRUDEL_NOTE_NAMES_OUT[midi % 12] + (Math.floor(midi / 12) - 1)
 }
 
-// ─── Piano Roll Presets — mathematically generated patterns ───
+// â”€â”€â”€ Piano Roll Presets â€” mathematically generated patterns â”€â”€â”€
 
 type PresetCategory = 'chords' | 'melodies' | 'arpeggios' | 'bass' | 'rhythmic'
 
@@ -139,9 +139,9 @@ function shiftPattern(base: { step: number; deg: number; len: number }[], shiftD
 }
 
 const PIANO_PRESETS: PresetDef[] = [
-  // ── CHORDS ──
+  // â”€â”€ CHORDS â”€â”€
   {
-    name: 'I–V–vi–IV',
+    name: 'Iâ€“Vâ€“viâ€“IV',
     category: 'chords',
     generate: (spb) => {
       const q = spb / 4 // quarter note in steps
@@ -158,7 +158,7 @@ const PIANO_PRESETS: PresetDef[] = [
     },
   },
   {
-    name: 'i–iv–v–i',
+    name: 'iâ€“ivâ€“vâ€“i',
     category: 'chords',
     generate: (spb) => {
       const q = spb / 4
@@ -171,7 +171,7 @@ const PIANO_PRESETS: PresetDef[] = [
     },
   },
   {
-    name: 'I–vi–IV–V',
+    name: 'Iâ€“viâ€“IVâ€“V',
     category: 'chords',
     generate: (spb) => {
       const q = spb / 4
@@ -211,7 +211,7 @@ const PIANO_PRESETS: PresetDef[] = [
     },
   },
 
-  // ── MELODIES ──
+  // â”€â”€ MELODIES â”€â”€
   {
     name: 'Rising Scale',
     category: 'melodies',
@@ -282,7 +282,7 @@ const PIANO_PRESETS: PresetDef[] = [
     },
   },
 
-  // ── ARPEGGIOS ──
+  // â”€â”€ ARPEGGIOS â”€â”€
   {
     name: 'Arp Up',
     category: 'arpeggios',
@@ -323,7 +323,7 @@ const PIANO_PRESETS: PresetDef[] = [
     },
   },
 
-  // ── BASS ──
+  // â”€â”€ BASS â”€â”€
   {
     name: 'Root Octave',
     category: 'bass',
@@ -377,7 +377,7 @@ const PIANO_PRESETS: PresetDef[] = [
     },
   },
 
-  // ── RHYTHMIC ──
+  // â”€â”€ RHYTHMIC â”€â”€
   {
     name: 'Stab',
     category: 'rhythmic',
@@ -421,14 +421,14 @@ const PIANO_PRESETS: PresetDef[] = [
 ]
 
 const PRESET_CATEGORIES: { key: PresetCategory; label: string; icon: string }[] = [
-  { key: 'chords', label: 'Chords', icon: '🎹' },
-  { key: 'melodies', label: 'Melodies', icon: '🎵' },
-  { key: 'arpeggios', label: 'Arpeggios', icon: '🔄' },
-  { key: 'bass', label: 'Bass', icon: '🎸' },
-  { key: 'rhythmic', label: 'Rhythmic', icon: '⚡' },
+  { key: 'chords', label: 'Chords', icon: 'ðŸŽ¹' },
+  { key: 'melodies', label: 'Melodies', icon: 'ðŸŽµ' },
+  { key: 'arpeggios', label: 'Arpeggios', icon: 'ðŸ”„' },
+  { key: 'bass', label: 'Bass', icon: 'ðŸŽ¸' },
+  { key: 'rhythmic', label: 'Rhythmic', icon: 'âš¡' },
 ]
 
-/** Apply a preset to the piano roll, converting scale degrees → MIDI values */
+/** Apply a preset to the piano roll, converting scale degrees â†’ MIDI values */
 function applyPreset(
   preset: PresetDef,
   scale: string,
@@ -454,7 +454,7 @@ function applyPreset(
   return noteMap
 }
 
-// ─── Audio preview ───
+// â”€â”€â”€ Audio preview â”€â”€â”€
 
 let previewCtx: AudioContext | null = null
 
@@ -469,7 +469,7 @@ function playPreview(midi: number, source: string) {
     : source === 'square' ? 'square'
     : source === 'sine' ? 'sine'
     : source === 'triangle' ? 'triangle'
-    : source.startsWith('gm_') ? 'triangle' // GM instruments → softer triangle
+    : source.startsWith('gm_') ? 'triangle' // GM instruments â†’ softer triangle
     : 'triangle'
   osc.type = type
   osc.frequency.value = 440 * Math.pow(2, (midi - 69) / 12)
@@ -482,21 +482,21 @@ function playPreview(midi: number, source: string) {
   osc.stop(now + 0.3)
 }
 
-// ─── Pattern parsing ───
+// â”€â”€â”€ Pattern parsing â”€â”€â”€
 
 /** Parse a single token into notes on the grid (handles chords, rests, sub-groups, numbers/names) */
 function parseToken(tok: string, step: number, scale: string, notes: Map<string, NoteData>, mode: 'degree' | 'note' = 'degree', defaultLength: number = 1) {
   // Rest: ~, ~~, -, etc.
   if (/^[~\-]+$/.test(tok)) return
 
-  // Strip @length sustain — if no @ present, use the calculated span (defaultLength)
+  // Strip @length sustain â€” if no @ present, use the calculated span (defaultLength)
   const parseSustain = (s: string): { clean: string; length: number } => {
     const m = s.match(/^(.+?)@(\d+)$/)
     if (m) return { clean: m[1], length: parseInt(m[2]) }
     return { clean: s, length: defaultLength }
   }
 
-  // Sub-group: [~ c2] or [a3 ~ b3 ~] — brackets with spaces, NOT commas (those are chords)
+  // Sub-group: [~ c2] or [a3 ~ b3 ~] â€” brackets with spaces, NOT commas (those are chords)
   // Recursively subdivide this token's span among sub-tokens
   if (tok.startsWith('[') && tok.endsWith(']') && !tok.includes(',')) {
     const inner = tok.slice(1, -1).trim()
@@ -581,7 +581,7 @@ function stripSpeedMod(p: string): { clean: string; speedMod: string } {
   return { clean: p, speedMod: '' }
 }
 
-/** Get the @-weight of a token ("c3@4" → 4, "~" → 1) */
+/** Get the @-weight of a token ("c3@4" â†’ 4, "~" â†’ 1) */
 function tokenWeight(tok: string): number {
   const m = tok.trim().match(/@(\d+)(?:\])?$/)
   return m ? parseInt(m[1]) : 1
@@ -632,7 +632,7 @@ function parsePattern(
     const entries = splitTopLevel(inner)
     entries.forEach((entry, barIdx) => {
       const barOffset = barIdx * stepsPerBar
-      // Unwrap structural grouping brackets [0 ~ ~ ~] → inner,
+      // Unwrap structural grouping brackets [0 ~ ~ ~] â†’ inner,
       // but keep chord brackets [d3,f3,a3,c4] intact (they contain commas, not spaces)
       const isChord = entry.startsWith('[') && entry.endsWith(']') && entry.includes(',')
       const isGrouping = entry.startsWith('[') && entry.endsWith(']') && !isChord
@@ -663,7 +663,7 @@ function splitTopLevel(str: string): string[] {
   return entries
 }
 
-// ─── Generate pattern from grid ───
+// â”€â”€â”€ Generate pattern from grid â”€â”€â”€
 
 /**
  * Compute which steps are "safe" to skip (pure held continuations with
@@ -674,7 +674,7 @@ function buildHeldInfo(
   noteMap: Map<string, NoteData>,
   totalSteps: number,
 ): {
-  /** Steps that are ONLY held continuations (no new note starts) — safe to skip */
+  /** Steps that are ONLY held continuations (no new note starts) â€” safe to skip */
   safeHeldSteps: Set<number>
   /** For a note starting at `step`, return the max @-length we can emit */
   effectiveLength: (startStep: number, fullLength: number) => number
@@ -720,7 +720,7 @@ function gridToPattern(
   const { safeHeldSteps, effectiveLength } = buildHeldInfo(noteMap, totalSteps)
 
   if (mode === 'note') {
-    // ── Note-name mode: output MIDI as Strudel note names ──
+    // â”€â”€ Note-name mode: output MIDI as Strudel note names â”€â”€
     const stepMap = new Map<number, { midi: number; length: number }[]>()
     noteMap.forEach((data, key) => {
       const [midiStr, stepStr] = key.split(':')
@@ -764,7 +764,7 @@ function gridToPattern(
     return `<${barPatterns.map(b => `[${b}]`).join(' ')}>`
   }
 
-  // ── Degree mode: output scale degree numbers ──
+  // â”€â”€ Degree mode: output scale degree numbers â”€â”€
   const stepMap = new Map<number, { deg: number; length: number }[]>()
   noteMap.forEach((data, key) => {
     const [midiStr, stepStr] = key.split(':')
@@ -808,9 +808,9 @@ function gridToPattern(
   return `<${barPatterns.map(b => `[${b}]`).join(' ')}>`
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //  COMPONENT
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 interface StudioPianoRollProps {
   /** The channel's current pattern (mini-notation string) */
@@ -831,7 +831,7 @@ interface StudioPianoRollProps {
   channelData?: ParsedChannel
   /** Channel index in parsed code */
   channelIdx?: number
-  /** Called when user edits notes — receives new mini-notation */
+  /** Called when user edits notes â€” receives new mini-notation */
   onPatternChange: (pattern: string) => void
   /** Called when an effect param is changed from the effects panel */
   onEffectChange?: (paramKey: string, value: number) => void
@@ -884,7 +884,7 @@ export default function StudioPianoRoll({
   const isNoteMode = patternType === 'note'
   const parseMode = isNoteMode ? 'note' as const : 'degree' as const
   const [bars, setBars] = useState(1)
-  // Map of "midi:step" → NoteData (length in steps)
+  // Map of "midi:step" â†’ NoteData (length in steps)
   const [noteMap, setNoteMap] = useState<Map<string, NoteData>>(new Map())
   const [hasUserEdited, setHasUserEdited] = useState(false)
   const speedModRef = useRef('')
@@ -902,7 +902,7 @@ export default function StudioPianoRoll({
   const noteMapRef = useRef(noteMap)
   noteMapRef.current = noteMap
 
-  // ── Selection state (multi-select, copy/paste, duplicate) ──
+  // â”€â”€ Selection state (multi-select, copy/paste, duplicate) â”€â”€
   const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set())
   const clipboardRef = useRef<{ midi: number; step: number; length: number }[]>([])
   // Box selection (Shift+drag)
@@ -910,10 +910,10 @@ export default function StudioPianoRoll({
   const isBoxSelecting = useRef(false)
   const boxStartCell = useRef<{ midi: number; step: number } | null>(null)
 
-  // ── Effects panel state ──
+  // â”€â”€ Effects panel state â”€â”€
   const [showEffectsPanel, setShowEffectsPanel] = useState(true)
 
-  // ── Preset menu state ──
+  // â”€â”€ Preset menu state â”€â”€
   const [showPresetMenu, setShowPresetMenu] = useState(false)
   const [presetCategory, setPresetCategory] = useState<PresetCategory>('chords')
   const presetMenuRef = useRef<HTMLDivElement>(null)
@@ -930,7 +930,7 @@ export default function StudioPianoRoll({
     return () => document.removeEventListener('mousedown', handler)
   }, [showPresetMenu])
 
-  // ── Derived: Arp/Transpose info from channel data ──
+  // â”€â”€ Derived: Arp/Transpose info from channel data â”€â”€
   const arpInfo = useMemo(() => {
     if (!channelData) return { mode: 'off', rate: 1 }
     return getArpInfo(channelData.rawCode)
@@ -950,11 +950,11 @@ export default function StudioPianoRoll({
 
   // FX category groups
   const FX_GROUPS = useMemo(() => [
-    { label: 'FILTER', icon: '🔽', keys: ['lpf', 'lp', 'hpf', 'hp', 'lpq', 'lpenv', 'lps', 'lpd'] },
-    { label: 'DRIVE',  icon: '🔥', keys: ['shape', 'distort', 'crush'] },
-    { label: 'SPACE',  icon: '🌌', keys: ['room', 'delay', 'delayfeedback', 'delaytime'] },
-    { label: 'MOD',    icon: '🎵', keys: ['detune', 'speed', 'pan', 'velocity', 'postgain'] },
-    { label: 'ENV',    icon: '⏳', keys: ['attack', 'decay', 'rel', 'release', 'legato', 'clip'] },
+    { label: 'FILTER', icon: 'ðŸ”½', keys: ['lpf', 'lp', 'hpf', 'hp', 'lpq', 'lpenv', 'lps', 'lpd'] },
+    { label: 'DRIVE',  icon: 'ðŸ”¥', keys: ['shape', 'distort', 'crush'] },
+    { label: 'SPACE',  icon: 'ðŸŒŒ', keys: ['room', 'delay', 'delayfeedback', 'delaytime'] },
+    { label: 'MOD',    icon: 'ðŸŽµ', keys: ['detune', 'speed', 'pan', 'velocity', 'postgain'] },
+    { label: 'ENV',    icon: 'â³', keys: ['attack', 'decay', 'rel', 'release', 'legato', 'clip'] },
   ], [])
 
   const activeFxGroups = useMemo(() => {
@@ -979,11 +979,11 @@ export default function StudioPianoRoll({
     return set
   }, [noteMap])
 
-  // ── Octave range ──
+  // â”€â”€ Octave range â”€â”€
   const { rows } = useMemo(() => {
     let lo: number, hi: number
     if (isNoteMode) {
-      // Note mode: wide chromatic range C1–C6; expand if notes go lower/higher
+      // Note mode: wide chromatic range C1â€“C6; expand if notes go lower/higher
       lo = 24; hi = 84
       const { notes: existing } = parsePattern(currentPattern, scale, 'note')
       existing.forEach((_data, key) => {
@@ -1005,14 +1005,14 @@ export default function StudioPianoRoll({
     [scale, rows],
   )
 
-  // ── Parse initial pattern (only on mount / pattern prop change) ──
+  // â”€â”€ Parse initial pattern (only on mount / pattern prop change) â”€â”€
   // Track whether user is actively drawing to avoid re-parse during live edits
   const hasUserEditedRef = useRef(false)
   hasUserEditedRef.current = hasUserEdited
   const lastEmittedPattern = useRef('')
 
   useEffect(() => {
-    // If user is actively editing, skip re-parse — the user's noteMap is the source of truth.
+    // If user is actively editing, skip re-parse â€” the user's noteMap is the source of truth.
     // Only re-parse if the incoming pattern differs from what we last emitted (external change).
     if (hasUserEditedRef.current && currentPattern === lastEmittedPattern.current) return
 
@@ -1041,7 +1041,7 @@ export default function StudioPianoRoll({
     }
   }, [currentPattern, scale]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Emit pattern when user edits (debounced) ──
+  // â”€â”€ Emit pattern when user edits (debounced) â”€â”€
   const emitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     if (!hasUserEdited) return
@@ -1056,7 +1056,7 @@ export default function StudioPianoRoll({
     return () => { if (emitTimer.current) clearTimeout(emitTimer.current) }
   }, [noteMap, hasUserEdited, bars, scale, onPatternChange, stepsPerBar])
 
-  // ── Toggle note ──
+  // â”€â”€ Toggle note â”€â”€
   const toggleNote = useCallback((midi: number, step: number, forceMode?: 'add' | 'remove') => {
     // Block out-of-scale notes in ALL modes (scale is mandatory)
     if (!scaleMidiSet.has(midi)) return
@@ -1091,7 +1091,7 @@ export default function StudioPianoRoll({
     setHasUserEdited(true)
   }, [soundSource, scaleMidiSet, isNoteMode, onNotePreview])
 
-  // ── Resize note (drag right edge) ──
+  // â”€â”€ Resize note (drag right edge) â”€â”€
   const handleResizeStart = useCallback((key: string, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -1124,7 +1124,7 @@ export default function StudioPianoRoll({
     window.addEventListener('mouseup', onUp)
   }, [cellW, stepsPerBar])
 
-  // ── Mouse handlers for click+drag painting ──
+  // â”€â”€ Mouse handlers for click+drag painting â”€â”€
   const handleCellDown = useCallback((midi: number, step: number, e: React.MouseEvent) => {
     if (isResizing.current) return
     if (e.shiftKey) return // Let grid-level box selection handle shift+drag
@@ -1157,7 +1157,7 @@ export default function StudioPianoRoll({
     const up = () => {
       isDrawing.current = false
       lastCell.current = null
-      // End box selection — compute selected notes
+      // End box selection â€” compute selected notes
       if (isBoxSelecting.current && boxStartCell.current) {
         isBoxSelecting.current = false
       }
@@ -1166,7 +1166,7 @@ export default function StudioPianoRoll({
     return () => window.removeEventListener('mouseup', up)
   }, [])
 
-  // ── Box selection handlers ──
+  // â”€â”€ Box selection handlers â”€â”€
   const handleGridMouseDown = useCallback((e: React.MouseEvent) => {
     if (!e.shiftKey) return
     e.preventDefault()
@@ -1216,7 +1216,7 @@ export default function StudioPianoRoll({
     }
   }, [])
 
-  // ── Keyboard: Escape, Ctrl+C/V/D/A, Delete ──
+  // â”€â”€ Keyboard: Escape, Ctrl+C/V/D/A, Delete â”€â”€
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -1334,7 +1334,7 @@ export default function StudioPianoRoll({
     return () => window.removeEventListener('keydown', handler)
   }, [onClose, selectedNotes, bars, stepsPerBar])
 
-  // ── Clear all ──
+  // â”€â”€ Clear all â”€â”€
   const clearAll = useCallback(() => {
     setNoteMap(new Map())
     setSelectedNotes(new Set())
@@ -1349,32 +1349,32 @@ export default function StudioPianoRoll({
       className="absolute bottom-0 left-0 right-0 z-[100] flex flex-col select-none"
       style={{
         height: 340,
-        background: '#23262b',
+        background: '#111318',
         borderTop: '1px solid rgba(255,255,255,0.04)',
-        boxShadow: '0 -8px 16px #14161a',
+        boxShadow: '0 -8px 16px #050607',
       }}
       onClick={e => e.stopPropagation()}
     >
-      {/* ═══ TOOLBAR ═══ */}
+      {/* â•â•â• TOOLBAR â•â•â• */}
       <div className="flex items-center justify-between px-3 py-1.5 shrink-0"
-        style={{ background: '#2a2e34', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+        style={{ background: '#16181d', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
         <div className="flex items-center gap-2">
           {/* Channel name + source */}
           <span className="text-[9px] font-black uppercase tracking-wider" style={{ color }}>
-            🎹 {channelName}
+            ðŸŽ¹ {channelName}
           </span>
           {channelData && (
-            <span className="text-[6px] font-mono px-1 py-0.5 rounded" style={{ color: '#5a616b', background: '#1c1e22' }}>
+            <span className="text-[6px] font-mono px-1 py-0.5 rounded" style={{ color: '#5a616b', background: '#0a0b0d' }}>
               {channelData.source}
             </span>
           )}
           {isNoteMode ? (
-            <span className="text-[7px] font-bold font-mono px-1 py-0.5" style={{ color: '#b8a47f', background: '#1c1e22', borderRadius: '8px', boxShadow: 'inset 1px 1px 3px #14161a, inset -1px -1px 3px #2c3036' }}>
-              NOTE ♯♭
+            <span className="text-[7px] font-bold font-mono px-1 py-0.5" style={{ color: '#b8a47f', background: '#0a0b0d', borderRadius: '8px', boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22' }}>
+              NOTE â™¯â™­
             </span>
           ) : (
             <>
-              <span className="text-[7px] font-mono" style={{ color: '#5a616b' }}>🎵 {scale.replace(/\d+:/, ':')}</span>
+              <span className="text-[7px] font-mono" style={{ color: '#5a616b' }}>ðŸŽµ {scale.replace(/\d+:/, ':')}</span>
               <span className="text-[7px] font-mono" style={{ color: '#5a616b' }}>({scaleMidiSet.size} notes)</span>
             </>
           )}
@@ -1385,8 +1385,8 @@ export default function StudioPianoRoll({
           {arpInfo.mode !== 'off' && (
             <>
               <span className="text-[7px] font-bold px-1.5 py-0.5 rounded-lg flex items-center gap-1"
-                style={{ color: '#b8a47f', background: '#1c1e22', boxShadow: 'inset 1px 1px 3px #14161a, inset -1px -1px 3px #2c3036' }}>
-                🎹 ARP {arpInfo.mode.toUpperCase()} ×{arpInfo.rate}
+                style={{ color: '#b8a47f', background: '#0a0b0d', boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22' }}>
+                ðŸŽ¹ ARP {arpInfo.mode.toUpperCase()} Ã—{arpInfo.rate}
               </span>
               <div className="w-px h-3.5 bg-white/[0.08]" />
             </>
@@ -1396,8 +1396,8 @@ export default function StudioPianoRoll({
           {transposeValue !== 0 && (
             <>
               <span className="text-[7px] font-bold px-1.5 py-0.5 rounded-lg"
-                style={{ color: '#6f8fb3', background: '#1c1e22', boxShadow: 'inset 1px 1px 3px #14161a, inset -1px -1px 3px #2c3036' }}>
-                ⬆ TRANS {transposeValue > 0 ? `+${transposeValue}` : transposeValue}
+                style={{ color: '#6f8fb3', background: '#0a0b0d', boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22' }}>
+                â¬† TRANS {transposeValue > 0 ? `+${transposeValue}` : transposeValue}
               </span>
               <div className="w-px h-3.5 bg-white/[0.08]" />
             </>
@@ -1407,7 +1407,7 @@ export default function StudioPianoRoll({
           {effectParams.length > 0 && (
             <>
               <span className="text-[7px] font-bold px-1.5 py-0.5 rounded-lg"
-                style={{ color: `${color}90`, background: '#1c1e22', boxShadow: 'inset 1px 1px 3px #14161a, inset -1px -1px 3px #2c3036' }}>
+                style={{ color: `${color}90`, background: '#0a0b0d', boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22' }}>
                 {effectParams.length} FX
               </span>
               <div className="w-px h-3.5 bg-white/[0.08]" />
@@ -1422,13 +1422,13 @@ export default function StudioPianoRoll({
               onClick={() => { setBars(b); setHasUserEdited(true) }}
               className="px-1.5 py-0.5 text-[8px] font-bold cursor-pointer transition-all"
               style={{
-                background: bars === b ? '#2a2e34' : '#1c1e22',
+                background: bars === b ? '#16181d' : '#0a0b0d',
                 color: bars === b ? color : '#5a616b',
                 border: 'none',
                 borderRadius: '8px',
                 boxShadow: bars === b
-                  ? 'inset 2px 2px 4px #14161a, inset -2px -2px 4px #2c3036'
-                  : '2px 2px 4px #14161a, -2px -2px 4px #2c3036',
+                  ? 'inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22'
+                  : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
               }}
             >
               {b}
@@ -1460,13 +1460,13 @@ export default function StudioPianoRoll({
               }}
               className="px-1.5 py-0.5 text-[8px] font-bold cursor-pointer transition-all"
               style={{
-                background: stepsPerBar === g ? '#2a2e34' : '#1c1e22',
+                background: stepsPerBar === g ? '#16181d' : '#0a0b0d',
                 color: stepsPerBar === g ? color : '#5a616b',
                 border: 'none',
                 borderRadius: '8px',
                 boxShadow: stepsPerBar === g
-                  ? 'inset 2px 2px 4px #14161a, inset -2px -2px 4px #2c3036'
-                  : '2px 2px 4px #14161a, -2px -2px 4px #2c3036',
+                  ? 'inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22'
+                  : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
               }}
             >
               1/{g}
@@ -1480,13 +1480,13 @@ export default function StudioPianoRoll({
           <button
             onClick={() => setZoom(z => Math.max(0.4, +(z - 0.2).toFixed(1)))}
             className="px-1 py-0.5 text-[9px] font-bold cursor-pointer transition-all"
-            style={{ background: '#1c1e22', color: '#c8cdd2', border: 'none', borderRadius: '8px', boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036', lineHeight: 1 }}
-          >−</button>
-          <span className="text-[7px] font-mono font-bold" style={{ color: '#c8cdd2' }}>{Math.round(zoom * 100)}%</span>
+            style={{ background: '#0a0b0d', color: '#e8ecf0', border: 'none', borderRadius: '8px', boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22', lineHeight: 1 }}
+          >âˆ’</button>
+          <span className="text-[7px] font-mono font-bold" style={{ color: '#e8ecf0' }}>{Math.round(zoom * 100)}%</span>
           <button
             onClick={() => setZoom(z => Math.min(3, +(z + 0.2).toFixed(1)))}
             className="px-1 py-0.5 text-[9px] font-bold cursor-pointer transition-all"
-            style={{ background: '#1c1e22', color: '#c8cdd2', border: 'none', borderRadius: '8px', boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036', lineHeight: 1 }}
+            style={{ background: '#0a0b0d', color: '#e8ecf0', border: 'none', borderRadius: '8px', boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22', lineHeight: 1 }}
           >+</button>
 
           <div className="w-px h-3.5 bg-white/[0.08]" />
@@ -1497,23 +1497,23 @@ export default function StudioPianoRoll({
               onClick={() => setShowPresetMenu(v => !v)}
               className="px-2 py-0.5 text-[7px] font-bold cursor-pointer transition-all uppercase tracking-wider flex items-center gap-1"
               style={{
-                background: showPresetMenu ? '#2a2e34' : '#1c1e22',
+                background: showPresetMenu ? '#16181d' : '#0a0b0d',
                 color: showPresetMenu ? color : '#5a616b',
                 border: 'none',
                 borderRadius: '8px',
                 boxShadow: showPresetMenu
-                  ? 'inset 2px 2px 4px #14161a, inset -2px -2px 4px #2c3036'
-                  : '2px 2px 4px #14161a, -2px -2px 4px #2c3036',
+                  ? 'inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22'
+                  : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
               }}
             >
-              ✦ Presets
+              âœ¦ Presets
             </button>
 
             {showPresetMenu && (
               <div
                 className="absolute bottom-full left-0 mb-1 rounded-xl overflow-hidden z-[200]"
                 style={{
-                  background: '#1c1e22',
+                  background: '#0a0b0d',
                   border: '1px solid rgba(255,255,255,0.06)',
                   boxShadow: '0 -8px 24px rgba(0,0,0,0.5)',
                   minWidth: '220px',
@@ -1527,10 +1527,10 @@ export default function StudioPianoRoll({
                       onClick={() => setPresetCategory(cat.key)}
                       className="px-1.5 py-0.5 text-[6px] font-bold cursor-pointer transition-all whitespace-nowrap rounded-md"
                       style={{
-                        background: presetCategory === cat.key ? '#2a2e34' : 'transparent',
+                        background: presetCategory === cat.key ? '#16181d' : 'transparent',
                         color: presetCategory === cat.key ? color : '#5a616b',
                         border: 'none',
-                        boxShadow: presetCategory === cat.key ? 'inset 1px 1px 3px #14161a, inset -1px -1px 3px #2c3036' : 'none',
+                        boxShadow: presetCategory === cat.key ? 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22' : 'none',
                       }}
                     >
                       {cat.icon} {cat.label}
@@ -1552,11 +1552,11 @@ export default function StudioPianoRoll({
                       }}
                       className="px-2 py-1 text-[8px] font-bold cursor-pointer transition-all text-left rounded-lg hover:brightness-125"
                       style={{
-                        background: '#23262b',
-                        color: '#c8cdd2',
+                        background: '#111318',
+                        color: '#e8ecf0',
                         border: 'none',
                         borderRadius: '8px',
-                        boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036',
+                        boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
                       }}
                     >
                       {preset.name}
@@ -1567,7 +1567,7 @@ export default function StudioPianoRoll({
                 {/* Info */}
                 <div className="px-2 py-1" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
                   <span className="text-[6px] font-mono" style={{ color: '#5a616b' }}>
-                    Presets adapt to your scale · Replaces current notes
+                    Presets adapt to your scale Â· Replaces current notes
                   </span>
                 </div>
               </div>
@@ -1578,7 +1578,7 @@ export default function StudioPianoRoll({
             <>
               <div className="w-px h-3.5 bg-white/[0.08]" />
               <span className="text-[7px] font-mono font-bold" style={{ color: '#b8a47f' }}>
-                ⚡ generative — click grid to compose
+                âš¡ generative â€” click grid to compose
               </span>
             </>
           )}
@@ -1587,8 +1587,8 @@ export default function StudioPianoRoll({
         <div className="flex items-center gap-1.5">
           {hasUserEdited && (
             <span className="text-[7px] font-black px-1.5 py-0.5 rounded-lg"
-              style={{ color: '#7fa998', background: '#1c1e22', boxShadow: 'inset 1px 1px 3px #14161a, inset -1px -1px 3px #2c3036' }}>
-              ● LIVE
+              style={{ color: '#7fa998', background: '#0a0b0d', boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22' }}>
+              â— LIVE
             </span>
           )}
           <span className="text-[7px] font-mono font-bold" style={{ color: '#5a616b' }}>
@@ -1596,7 +1596,7 @@ export default function StudioPianoRoll({
           </span>
           {selectedNotes.size > 0 && (
             <>
-              <span className="text-[7px] font-mono font-bold px-1.5 py-0.5 rounded-lg" style={{ color, background: '#1c1e22', boxShadow: 'inset 1px 1px 3px #14161a, inset -1px -1px 3px #2c3036' }}>
+              <span className="text-[7px] font-mono font-bold px-1.5 py-0.5 rounded-lg" style={{ color, background: '#0a0b0d', boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22' }}>
                 {selectedNotes.size} sel
               </span>
               <button onClick={() => {
@@ -1605,7 +1605,7 @@ export default function StudioPianoRoll({
                 clipboardRef.current = notes
               }}
                 className="px-1.5 py-0.5 text-[7px] cursor-pointer transition-all duration-[180ms] font-bold rounded-lg"
-                style={{ background: '#1c1e22', color: '#6f8fb3', boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036' }}
+                style={{ background: '#0a0b0d', color: '#6f8fb3', boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22' }}
                 title="Copy (Ctrl+C)">Copy</button>
               <button onClick={() => {
                 const notes: { midi: number; step: number; length: number }[] = []; let maxEnd = 0; let minStep = Infinity
@@ -1615,7 +1615,7 @@ export default function StudioPianoRoll({
                 setHasUserEdited(true)
               }}
                 className="px-1.5 py-0.5 text-[7px] cursor-pointer transition-all duration-[180ms] font-bold rounded-lg"
-                style={{ background: '#1c1e22', color: '#b8a47f', boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036' }}
+                style={{ background: '#0a0b0d', color: '#b8a47f', boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22' }}
                 title="Duplicate (Ctrl+D)">Dup</button>
               <button onClick={() => {
                 setNoteMap(prev => { const next = new Map(prev); selectedNotes.forEach(key => next.delete(key)); return next })
@@ -1623,7 +1623,7 @@ export default function StudioPianoRoll({
                 setHasUserEdited(true)
               }}
                 className="px-1.5 py-0.5 text-[7px] cursor-pointer transition-all duration-[180ms] font-bold rounded-lg"
-                style={{ background: '#1c1e22', color: '#b86f6f', boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036' }}
+                style={{ background: '#0a0b0d', color: '#b86f6f', boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22' }}
                 title="Delete (Del)">Del</button>
             </>
           )}
@@ -1636,64 +1636,64 @@ export default function StudioPianoRoll({
               setHasUserEdited(true)
             }}
               className="px-1.5 py-0.5 text-[7px] cursor-pointer transition-all duration-[180ms] font-bold rounded-lg"
-              style={{ background: '#1c1e22', color: '#7fa998', boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036' }}
+              style={{ background: '#0a0b0d', color: '#7fa998', boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22' }}
               title="Paste (Ctrl+V)">Paste</button>
           )}
           <button onClick={clearAll}
             className="px-1.5 py-0.5 text-[7px] cursor-pointer transition-all duration-[180ms] font-bold rounded-lg"
-            style={{ background: '#1c1e22', color: '#5a616b', boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036' }}>
+            style={{ background: '#0a0b0d', color: '#5a616b', boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22' }}>
             Clear
           </button>
           {channelData && (
             <button onClick={() => setShowEffectsPanel(p => !p)}
               className="px-1.5 py-0.5 text-[7px] cursor-pointer transition-all duration-[180ms] font-bold rounded-lg"
               style={{
-                background: showEffectsPanel ? '#2a2e34' : '#1c1e22',
+                background: showEffectsPanel ? '#16181d' : '#0a0b0d',
                 color: showEffectsPanel ? color : '#5a616b',
                 boxShadow: showEffectsPanel
-                  ? 'inset 2px 2px 4px #14161a, inset -2px -2px 4px #2c3036'
-                  : '2px 2px 4px #14161a, -2px -2px 4px #2c3036',
+                  ? 'inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22'
+                  : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
               }}
               title="Toggle Effects Panel">
-              ✦ FX
+              âœ¦ FX
             </button>
           )}
           <button onClick={onClose}
             className="px-1.5 py-0.5 text-[7px] cursor-pointer transition-all duration-[180ms] font-bold rounded-lg"
-            style={{ background: '#1c1e22', color: '#5a616b', boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036' }}
+            style={{ background: '#0a0b0d', color: '#5a616b', boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22' }}
             title="Esc">
-            ✕
+            âœ•
           </button>
         </div>
       </div>
 
-      {/* ═══ MAIN CONTENT: Effects Panel + Grid ═══ */}
+      {/* â•â•â• MAIN CONTENT: Effects Panel + Grid â•â•â• */}
       <div className="flex-1 flex overflow-hidden">
 
-        {/* ── EFFECTS SIDE PANEL ── */}
+        {/* â”€â”€ EFFECTS SIDE PANEL â”€â”€ */}
         {showEffectsPanel && channelData && (
           <div
             className="shrink-0 overflow-y-auto"
             style={{
               width: 180,
-              background: '#1c1e22',
+              background: '#0a0b0d',
               borderRight: '1px solid rgba(255,255,255,0.04)',
               scrollbarWidth: 'thin',
               scrollbarColor: `${color}25 transparent`,
             }}
           >
-            {/* ── Node header ── */}
-            <div className="px-2 py-1.5 sticky top-0 z-10" style={{ background: '#1c1e22', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+            {/* â”€â”€ Node header â”€â”€ */}
+            <div className="px-2 py-1.5 sticky top-0 z-10" style={{ background: '#0a0b0d', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
               <div className="flex items-center gap-1.5">
                 <div className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
                 <span className="text-[8px] font-black uppercase tracking-wider" style={{ color: `${color}cc` }}>{channelName}</span>
               </div>
               <div className="text-[6px] font-mono mt-0.5" style={{ color: '#5a616b' }}>
-                {channelData.source} · {channelData.sourceType}
+                {channelData.source} Â· {channelData.sourceType}
               </div>
             </div>
 
-            {/* ── Gain ── */}
+            {/* â”€â”€ Gain â”€â”€ */}
             {(() => {
               const gainParam = channelData.params.find(p => p.key === 'gain')
               if (!gainParam) return null
@@ -1714,10 +1714,10 @@ export default function StudioPianoRoll({
               )
             })()}
 
-            {/* ── Transpose ── */}
+            {/* â”€â”€ Transpose â”€â”€ */}
             <div className="px-2 py-1.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
               <div className="flex items-center gap-1 mb-1">
-                <span className="text-[6px] font-bold uppercase tracking-wider" style={{ color: '#6f8fb3' }}>⬆ Transpose</span>
+                <span className="text-[6px] font-bold uppercase tracking-wider" style={{ color: '#6f8fb3' }}>â¬† Transpose</span>
                 <span className="text-[7px] font-mono font-bold ml-auto" style={{ color: transposeValue !== 0 ? '#6f8fb3' : '#5a616b' }}>
                   {transposeValue > 0 ? `+${transposeValue}` : transposeValue}
                 </span>
@@ -1730,10 +1730,10 @@ export default function StudioPianoRoll({
                     width: 18, height: 16, borderRadius: 5,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: '7px', fontWeight: 900, color: '#6f8fb3',
-                    background: '#23262b', border: 'none',
-                    boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036',
+                    background: '#111318', border: 'none',
+                    boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
                   }}
-                >−</button>
+                >âˆ’</button>
                 <StudioKnob
                   label=""
                   value={transposeValue}
@@ -1752,27 +1752,27 @@ export default function StudioPianoRoll({
                     width: 18, height: 16, borderRadius: 5,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: '7px', fontWeight: 900, color: '#6f8fb3',
-                    background: '#23262b', border: 'none',
-                    boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036',
+                    background: '#111318', border: 'none',
+                    boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
                   }}
                 >+</button>
               </div>
             </div>
 
-            {/* ── ARP ── */}
+            {/* â”€â”€ ARP â”€â”€ */}
             <div className="px-2 py-1.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
               <div className="flex items-center gap-1 mb-1">
-                <span className="text-[6px] font-bold uppercase tracking-wider" style={{ color: arpInfo.mode !== 'off' ? '#b8a47f' : '#5a616b' }}>🎹 Arp</span>
+                <span className="text-[6px] font-bold uppercase tracking-wider" style={{ color: arpInfo.mode !== 'off' ? '#b8a47f' : '#5a616b' }}>ðŸŽ¹ Arp</span>
                 {arpInfo.mode !== 'off' && (
-                  <span className="text-[5px] font-bold ml-auto" style={{ color: '#b8a47f' }}>{arpInfo.mode.toUpperCase()} ×{arpInfo.rate}</span>
+                  <span className="text-[5px] font-bold ml-auto" style={{ color: '#b8a47f' }}>{arpInfo.mode.toUpperCase()} Ã—{arpInfo.rate}</span>
                 )}
               </div>
               <div className="flex flex-wrap gap-0.5 justify-center">
                 {(typeof ARP_MODES !== 'undefined' ? ARP_MODES : [
-                  { id: 'off', label: 'Off', icon: '○' },
-                  { id: 'up', label: 'Up', icon: '↑' },
-                  { id: 'down', label: 'Down', icon: '↓' },
-                  { id: 'updown', label: 'Up/Down', icon: '↕' },
+                  { id: 'off', label: 'Off', icon: 'â—‹' },
+                  { id: 'up', label: 'Up', icon: 'â†‘' },
+                  { id: 'down', label: 'Down', icon: 'â†“' },
+                  { id: 'updown', label: 'Up/Down', icon: 'â†•' },
                   { id: 'random', label: 'Random', icon: '?' },
                 ]).map((mode: { id: string; label: string; icon: string }) => (
                   <button
@@ -1784,11 +1784,11 @@ export default function StudioPianoRoll({
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: '8px', fontWeight: 900,
                       color: arpInfo.mode === mode.id ? '#b8a47f' : '#5a616b',
-                      background: arpInfo.mode === mode.id ? '#2a2e34' : '#23262b',
+                      background: arpInfo.mode === mode.id ? '#16181d' : '#111318',
                       border: 'none',
                       boxShadow: arpInfo.mode === mode.id
-                        ? 'inset 2px 2px 4px #14161a, inset -2px -2px 4px #2c3036'
-                        : '2px 2px 4px #14161a, -2px -2px 4px #2c3036',
+                        ? 'inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22'
+                        : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
                     }}
                     title={`Arp: ${mode.label}`}
                   >
@@ -1806,14 +1806,14 @@ export default function StudioPianoRoll({
                     step={1}
                     size={24}
                     color="#b8a47f"
-                    formatValue={(v) => `×${v}`}
+                    formatValue={(v) => `Ã—${v}`}
                     onChange={(v) => onArpRateChange?.(v)}
                   />
                 </div>
               )}
             </div>
 
-            {/* ── Effect groups ── */}
+            {/* â”€â”€ Effect groups â”€â”€ */}
             {activeFxGroups.map((group) => (
               <div key={group.label} className="px-2 py-1.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                 <div className="flex items-center gap-1 mb-1">
@@ -1845,7 +1845,7 @@ export default function StudioPianoRoll({
               </div>
             ))}
 
-            {/* ── Quick-add effects ── */}
+            {/* â”€â”€ Quick-add effects â”€â”€ */}
             {onEffectAdd && (
               <div className="px-2 py-1.5">
                 <div className="flex items-center gap-1 mb-1">
@@ -1867,9 +1867,9 @@ export default function StudioPianoRoll({
                       onClick={() => onEffectAdd(fx.code)}
                       className="px-1.5 py-0.5 text-[6px] font-bold cursor-pointer transition-all duration-100 active:scale-95 rounded-lg"
                       style={{
-                        background: '#23262b',
+                        background: '#111318',
                         color: '#7fa998',
-                        boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036',
+                        boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
                         border: 'none',
                       }}
                     >
@@ -1882,7 +1882,7 @@ export default function StudioPianoRoll({
           </div>
         )}
 
-      {/* ═══ GRID ═══ */}
+      {/* â•â•â• GRID â•â•â• */}
       <div ref={scrollRef} className="flex-1 overflow-auto relative"
         style={{ scrollbarWidth: 'thin', scrollbarColor: `${color}25 transparent` }}
         onMouseDown={handleGridMouseDown}
@@ -1913,7 +1913,7 @@ export default function StudioPianoRoll({
         {isGenerative && !hasUserEdited && (
           <div className="absolute inset-0 z-30 flex flex-col items-center justify-center pointer-events-none"
             style={{ background: 'rgba(28,30,34,0.85)' }}>
-            <div className="text-sm font-bold mb-1" style={{ color: '#b8a47f' }}>⚡ Generative Pattern</div>
+            <div className="text-sm font-bold mb-1" style={{ color: '#b8a47f' }}>âš¡ Generative Pattern</div>
             <div className="text-xs text-center max-w-[280px]" style={{ color: '#5a616b' }}>
               This channel uses a random/algorithmic pattern (<span className="font-mono" style={{ color: '#b8a47f', opacity: 0.7 }}>irand, perlin</span> etc.)
             </div>
@@ -1923,10 +1923,10 @@ export default function StudioPianoRoll({
 
         <div style={{ width: PIANO_W + gridW, position: 'relative' }}>
 
-          {/* ── Beat ruler (sticky top) ── */}
-          <div className="flex sticky top-0 z-20" style={{ height: 16, background: '#2a2e34' }}>
+          {/* â”€â”€ Beat ruler (sticky top) â”€â”€ */}
+          <div className="flex sticky top-0 z-20" style={{ height: 16, background: '#16181d' }}>
             <div className="sticky left-0 z-30 shrink-0"
-              style={{ width: PIANO_W, height: 16, background: '#2a2e34', borderBottom: '1px solid rgba(255,255,255,0.04)', borderRight: '1px solid rgba(255,255,255,0.04)' }} />
+              style={{ width: PIANO_W, height: 16, background: '#16181d', borderBottom: '1px solid rgba(255,255,255,0.04)', borderRight: '1px solid rgba(255,255,255,0.04)' }} />
             <div className="flex">
               {Array.from({ length: totalSteps }, (_, i) => {
                 const beatInterval = stepsPerBar / 4
@@ -1956,7 +1956,7 @@ export default function StudioPianoRoll({
             </div>
           </div>
 
-          {/* ── Piano keys + Grid rows ── */}
+          {/* â”€â”€ Piano keys + Grid rows â”€â”€ */}
           {rows.map(midi => {
             const name = midiNoteName(midi)
             const black = isBlackKey(midi)
@@ -1973,7 +1973,7 @@ export default function StudioPianoRoll({
               }
             })
 
-            // Collect transpose ghost notes — notes written at (midi - transposeValue) that sound here
+            // Collect transpose ghost notes â€” notes written at (midi - transposeValue) that sound here
             const ghostNotes: { step: number; length: number }[] = []
             if (transposeValue !== 0) {
               const sourceMidi = midi - transposeValue
@@ -1992,17 +1992,17 @@ export default function StudioPianoRoll({
                   className="sticky left-0 z-10 shrink-0 flex items-center justify-end pr-1.5"
                   style={{
                     width: PIANO_W, height: cellH,
-                      background: black ? '#1c1e22' : '#23262b',
+                      background: black ? '#0a0b0d' : '#111318',
                       borderBottom: '1px solid rgba(255,255,255,0.03)',
                       borderRight: '1px solid rgba(255,255,255,0.04)',
                   }}
                 >
                   <span className="text-[7px] font-mono" style={{
-                    color: isRoot ? `${color}` : inScale ? '#c8cdd2' : '#5a616b',
+                    color: isRoot ? `${color}` : inScale ? '#e8ecf0' : '#5a616b',
                     fontWeight: isRoot ? 700 : inScale ? 500 : 300,
                     opacity: isRoot ? 1 : inScale ? 0.5 : 0.25,
                   }}>
-                    {isRoot ? `● ${name}` : name}
+                    {isRoot ? `â— ${name}` : name}
                   </span>
                 </div>
 
@@ -2118,7 +2118,7 @@ export default function StudioPianoRoll({
                   )
                 })}
 
-                {/* Transpose ghost notes — show where transposed notes will sound */}
+                {/* Transpose ghost notes â€” show where transposed notes will sound */}
                 {ghostNotes.map(({ step, length }, gi) => (
                   <div
                     key={`ghost-${gi}`}
@@ -2139,7 +2139,7 @@ export default function StudioPianoRoll({
           })}
         </div>
       </div>
-      </div>{/* ═══ END MAIN CONTENT ═══ */}
+      </div>{/* â•â•â• END MAIN CONTENT â•â•â• */}
     </div>
   )
 }

@@ -55,11 +55,11 @@ const StudioCodeEditor = forwardRef<StudioCodeEditorHandle, StudioCodeEditorProp
         {/* Code Editor */}
         <div ref={editorRef} className="flex-1 relative overflow-hidden" style={{ zIndex: 1 }}>
           <div className="absolute inset-0 flex overflow-auto">
-            {/* Line numbers — clay gutter */}
+            {/* Line numbers â€” clay gutter */}
             <div
               className="shrink-0 pt-3 pb-16 px-2 text-right select-none"
               style={{
-                background: '#23262b',
+                background: '#111318',
                 borderRight: '1px solid rgba(255,255,255,0.04)',
               }}
             >
@@ -83,26 +83,26 @@ const StudioCodeEditor = forwardRef<StudioCodeEditorHandle, StudioCodeEditorProp
                 fontFamily: '"JetBrains Mono", "Fira Code", "SF Mono", "Cascadia Code", monospace',
                 overflowWrap: 'normal',
                 wordBreak: 'keep-all',
-                color: '#c8cdd2',
+                color: '#e8ecf0',
                 caretColor: '#7fa998',
               }}
             />
           </div>
         </div>
 
-        {/* Bottom status bar — clay */}
+        {/* Bottom status bar â€” clay */}
         <div
           className="h-6 shrink-0 flex items-center justify-between px-3"
           style={{
-            background: '#23262b',
+            background: '#111318',
             borderTop: '1px solid rgba(255,255,255,0.04)',
           }}
         >
           <span className="text-[8px] font-mono" style={{ color: '#5a616b' }}>
-            {lineCount} lines · {code.length} chars
+            {lineCount} lines Â· {code.length} chars
           </span>
           <span className="text-[8px] font-mono" style={{ color: '#5a616b' }}>
-            Strudel Live · .scope() .pianoroll()
+            Strudel Live Â· .scope() .pianoroll()
           </span>
         </div>
       </div>

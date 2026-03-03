@@ -24,7 +24,7 @@ export default function StudioMasterVisualizer({ isPlaying, analyserNode }: Stud
     ctx.clearRect(0, 0, w, h)
 
     if (!isPlaying || !analyserNode) {
-      // Idle state — flat line
+      // Idle state â€” flat line
       ctx.strokeStyle = 'rgba(127,169,152,0.15)'
       ctx.lineWidth = 1
       ctx.beginPath()
@@ -83,9 +83,9 @@ export default function StudioMasterVisualizer({ isPlaying, analyserNode }: Stud
       className="shrink-0 relative overflow-hidden"
       style={{
         height: 32,
-        background: '#1c1e22',
+        background: '#0a0b0d',
         borderBottom: '1px solid rgba(255,255,255,0.04)',
-        boxShadow: 'inset 3px 3px 6px #14161a, inset -3px -3px 6px #2c3036',
+        boxShadow: 'inset 3px 3px 6px #050607, inset -3px -3px 6px #1a1d22',
       }}
     >
       {/* Subtle texture overlay */}

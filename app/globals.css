@@ -88,6 +88,17 @@ a {
   --studio-left-column-width: 14rem; /* 224px default */
   --background: #ffffff;
   --foreground: #171717;
+  --studio-bg-deep: #0a0b0d;
+  --studio-bg-surface: #111318;
+  --studio-bg-elevated: #16181d;
+  --studio-shadow-dark: #050607;
+  --studio-shadow-light: #1a1d22;
+  --studio-text-primary: #e8ecf0;
+  --studio-text-muted: #5a616b;
+  --studio-accent-green: #7fa998;
+  --studio-accent-gold: #b8a47f;
+  --studio-accent-blue: #6f8fb3;
+  --studio-accent-red: #b86f6f;
 }
 
 @layer base {

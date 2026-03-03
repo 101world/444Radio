@@ -2,11 +2,11 @@
 
 import { useCallback, useRef, useState } from 'react'
 
-// ═══════════════════════════════════════════════════════════════
-//  STUDIO KNOB — SVG rotary control (hardware LED-dot style)
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//  STUDIO KNOB â€” SVG rotary control (hardware LED-dot style)
 //  Inspired by dark hardware volume knobs with LED ring indicators.
 //  Drag up/down to change value. Double-click to reset.
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 interface StudioKnobProps {
   label: string
@@ -40,7 +40,7 @@ export default function StudioKnob({
   const dragRef = useRef<{ startY: number; startVal: number } | null>(null)
   const [isDragging, setIsDragging] = useState(false)
 
-  // Map value to angle: 225° (min) to -45° (max) = 270° sweep
+  // Map value to angle: 225Â° (min) to -45Â° (max) = 270Â° sweep
   const range = max - min
   const normalized = range > 0 ? (value - min) / range : 0
   const startAngle = 225  // bottom-left
@@ -135,7 +135,7 @@ export default function StudioKnob({
         ? Math.round(value).toString()
         : value.toFixed(step >= 1 ? 0 : step >= 0.1 ? 1 : 2)
 
-  // LED dot indicators — 21 dots around the 270° arc
+  // LED dot indicators â€” 21 dots around the 270Â° arc
   const NUM_DOTS = 21
   const dotR = r - 1.5  // radius for dot ring (outer edge)
   const knobBodyR = r - 6 // radius of the dark knob body
@@ -162,7 +162,7 @@ export default function StudioKnob({
         onWheel={handleWheel}
         onDoubleClick={handleDoubleClick}
       >
-        {/* Background track arc — muted */}
+        {/* Background track arc â€” muted */}
         <path
           d={arcPath(startAngle, endAngle)}
           fill="none"
@@ -171,7 +171,7 @@ export default function StudioKnob({
           strokeLinecap="round"
         />
 
-        {/* Value arc — muted accent */}
+        {/* Value arc â€” muted accent */}
         {normalized > 0.01 && (
           <path
             d={arcPath(startAngle, angle)}
@@ -183,11 +183,11 @@ export default function StudioKnob({
           />
         )}
 
-        {/* Knob body — inset shadow circle */}
+        {/* Knob body â€” inset shadow circle */}
         <circle
           cx={cx} cy={cy}
           r={knobBodyR}
-          fill="#23262b"
+          fill="#111318"
           stroke="rgba(255,255,255,0.04)"
           strokeWidth={0.5}
         />
@@ -196,12 +196,12 @@ export default function StudioKnob({
           cx={cx} cy={cy}
           r={knobBodyR - 0.5}
           fill="none"
-          stroke="#1c1e22"
+          stroke="#0a0b0d"
           strokeWidth={1}
           opacity={0.5}
         />
 
-        {/* Pointer line — soft indicator */}
+        {/* Pointer line â€” soft indicator */}
         <line
           x1={cx + (knobBodyR * 0.25) * Math.cos(pRad)}
           y1={cy - (knobBodyR * 0.25) * Math.sin(pRad)}

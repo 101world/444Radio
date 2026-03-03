@@ -361,7 +361,7 @@ $bass: note("f1*4")
   {
     id: 'birdsofafeather',
     label: 'BIRDS OF A FEATHER',
-    icon: '🐦',
+    icon: 'ðŸ¦',
     bpm: 105,
     desc: 'Billie-style kalimba + guitar with arranged sections',
     code: `setcps(105/60/4)
@@ -474,12 +474,12 @@ export default function StudioGenreSelector({ activeGenre, onSelect }: StudioGen
               onClick={() => onSelect(t.id)}
               className="flex items-center gap-1.5 text-left transition-all duration-[180ms] cursor-pointer px-1.5 py-1 group rounded-xl"
               style={{
-                background: isActive ? '#2a2e34' : 'transparent',
+                background: isActive ? '#16181d' : 'transparent',
                 border: 'none',
                 color: isActive ? '#7fa998' : '#5a616b',
-                boxShadow: isActive ? 'inset 2px 2px 4px #14161a, inset -2px -2px 4px #2c3036' : 'none',
+                boxShadow: isActive ? 'inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22' : 'none',
               }}
-              title={`${t.label} — ${t.desc}`}
+              title={`${t.label} â€” ${t.desc}`}
             >
               <span className="text-[11px] leading-none">{t.icon}</span>
               <span className="text-[7px] font-black uppercase tracking-[.08em] truncate">{t.label}</span>

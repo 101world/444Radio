@@ -2,8 +2,8 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 
-// ═══════════════════════════════════════════════════════════════
-//  STUDIO SAMPLE UPLOADER — Upload vocals/samples for Studio DAW
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//  STUDIO SAMPLE UPLOADER â€” Upload vocals/samples for Studio DAW
 //
 //  Key features:
 //    - Presigned URL upload for large files (up to 50MB)
@@ -12,7 +12,7 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 //    - Live preview with play/pause
 //    - Lists existing user samples with Strudel code hints
 //    - Registers uploaded samples in Strudel engine at runtime
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 interface StudioSample {
   id: string
@@ -28,7 +28,7 @@ interface StudioSample {
 interface StudioSampleUploaderProps {
   isOpen: boolean
   onClose: () => void
-  /** BPM from current project — used to auto-calculate loopAt */
+  /** BPM from current project â€” used to auto-calculate loopAt */
   bpm: number
   /** Called to register sound in Strudel engine: webaudio.samples({ name: [url] }) */
   onRegisterSound: (name: string, url: string) => Promise<void>
@@ -283,7 +283,7 @@ export default function StudioSampleUploader({
       const isLargeFile = selectedFile.size > 4 * 1024 * 1024
 
       if (isLargeFile) {
-        // ── PRESIGNED URL MODE for large files ──
+        // â”€â”€ PRESIGNED URL MODE for large files â”€â”€
         setUploadProgress('Getting upload URL...')
         const initRes = await fetch('/api/studio/samples', {
           method: 'POST',
@@ -318,9 +318,9 @@ export default function StudioSampleUploader({
         await onRegisterSound(cleanName, initData.sample.url)
 
         setSamples(prev => [initData.sample, ...prev])
-        setSuccess(`✓ "${cleanName}" uploaded! Use s("${cleanName}") in your code`)
+        setSuccess(`âœ“ "${cleanName}" uploaded! Use s("${cleanName}") in your code`)
       } else {
-        // ── FORMDATA MODE for small files ──
+        // â”€â”€ FORMDATA MODE for small files â”€â”€
         setUploadProgress('Uploading...')
         const formData = new FormData()
         formData.append('file', selectedFile)
@@ -338,7 +338,7 @@ export default function StudioSampleUploader({
         await onRegisterSound(cleanName, data.sample.url)
 
         setSamples(prev => [data.sample, ...prev])
-        setSuccess(`✓ "${cleanName}" uploaded! Use s("${cleanName}") in your code`)
+        setSuccess(`âœ“ "${cleanName}" uploaded! Use s("${cleanName}") in your code`)
       }
 
       // Reset form
@@ -352,7 +352,7 @@ export default function StudioSampleUploader({
       if (fileInputRef.current) fileInputRef.current.value = ''
     } catch (err) {
       console.error('[StudioSampleUploader] upload error:', err)
-      setError('Upload failed — check connection')
+      setError('Upload failed â€” check connection')
     } finally {
       setUploading(false)
       setUploadProgress(null)
@@ -427,18 +427,18 @@ export default function StudioSampleUploader({
       <div
         className="relative w-full max-w-lg max-h-[85vh] flex flex-col rounded-2xl overflow-hidden"
         style={{
-          background: '#1c1e22',
+          background: '#0a0b0d',
           border: '1px solid rgba(255,255,255,0.06)',
           boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
         }}
         onClick={e => e.stopPropagation()}
       >
-        {/* ── Header ── */}
+        {/* â”€â”€ Header â”€â”€ */}
         <div className="flex items-center justify-between px-5 py-3"
-          style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: '#23262b' }}>
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: '#111318' }}>
           <div className="flex items-center gap-2">
-            <span className="text-lg">🎤</span>
-            <span className="text-sm font-black uppercase tracking-wider" style={{ color: '#c8cdd2' }}>
+            <span className="text-lg">ðŸŽ¤</span>
+            <span className="text-sm font-black uppercase tracking-wider" style={{ color: '#e8ecf0' }}>
               Samples / Vocals
             </span>
             <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold"
@@ -447,22 +447,22 @@ export default function StudioSampleUploader({
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[8px] font-mono px-2 py-0.5 rounded-full" style={{ background: '#2a2e34', color: '#7fa998' }}>
+            <span className="text-[8px] font-mono px-2 py-0.5 rounded-full" style={{ background: '#16181d', color: '#7fa998' }}>
               {bpm} BPM
             </span>
             <button onClick={onClose}
               className="w-7 h-7 flex items-center justify-center rounded-lg text-sm cursor-pointer"
               style={{
-                background: '#2a2e34',
+                background: '#16181d',
                 color: '#5a616b',
-                boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036',
+                boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
               }}>
-              ✕
+              âœ•
             </button>
           </div>
         </div>
 
-        {/* ── Upload area ── */}
+        {/* â”€â”€ Upload area â”€â”€ */}
         <div className="px-5 py-4 space-y-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
           {/* Drop zone */}
           <div
@@ -487,15 +487,15 @@ export default function StudioSampleUploader({
             {selectedFile ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-center gap-2">
-                  <span className="text-lg">📎</span>
-                  <span className="text-xs font-medium" style={{ color: '#c8cdd2' }}>{selectedFile.name}</span>
+                  <span className="text-lg">ðŸ“Ž</span>
+                  <span className="text-xs font-medium" style={{ color: '#e8ecf0' }}>{selectedFile.name}</span>
                   <span className="text-[10px]" style={{ color: '#5a616b' }}>{formatFileSize(selectedFile.size)}</span>
                 </div>
 
                 {/* Duration + auto loopAt info */}
                 {audioDuration !== null && (
                   <div className="flex items-center justify-center gap-3 text-[10px]">
-                    <span style={{ color: '#7fa998' }}>⏱ {formatDuration(audioDuration)}</span>
+                    <span style={{ color: '#7fa998' }}>â± {formatDuration(audioDuration)}</span>
                     {autoLoopAt && (
                       <span style={{ color: '#b8a47f' }}>
                         loopAt({autoLoopAt}) @ {bpm}bpm
@@ -517,9 +517,9 @@ export default function StudioSampleUploader({
                         const v = parseInt(e.target.value)
                         setSampleBpm(isNaN(v) ? null : Math.max(30, Math.min(300, v)))
                       }}
-                      placeholder={detectedBpm ? String(detectedBpm) : '—'}
+                      placeholder={detectedBpm ? String(detectedBpm) : 'â€”'}
                       className="w-14 px-1.5 py-0.5 rounded text-center font-mono outline-none"
-                      style={{ background: '#0a0a0c', color: '#c8cdd2', border: '1px solid rgba(255,255,255,0.1)' }}
+                      style={{ background: '#0a0a0c', color: '#e8ecf0', border: '1px solid rgba(255,255,255,0.1)' }}
                     />
                     {detectedBpm && (
                       <span className="px-1.5 py-0.5 rounded" style={{ background: '#7fa99815', color: '#7fa998' }}>
@@ -536,7 +536,7 @@ export default function StudioSampleUploader({
                     )}
                     {sampleBpm && sampleBpm === bpm && (
                       <span className="px-1.5 py-0.5 rounded" style={{ background: '#22c55e20', color: '#22c55e' }}>
-                        ✓ matched
+                        âœ“ matched
                       </span>
                     )}
                   </div>
@@ -548,7 +548,7 @@ export default function StudioSampleUploader({
                       onClick={e => { e.stopPropagation(); togglePreview() }}
                       className="px-3 py-1 rounded-lg text-[10px] font-bold cursor-pointer transition-all hover:scale-105"
                       style={{ background: `${accentColor}15`, color: accentColor, border: `1px solid ${accentColor}30` }}>
-                      {isPlaying ? '⏹ Stop' : '▶ Preview'}
+                      {isPlaying ? 'â¹ Stop' : 'â–¶ Preview'}
                     </button>
                   )}
                   <button
@@ -565,7 +565,7 @@ export default function StudioSampleUploader({
                   Drop audio file here or click to browse
                 </p>
                 <p className="text-[10px]" style={{ color: '#5a616b' }}>
-                  WAV, MP3, OGG, FLAC — up to 50MB · Vocals, loops, one-shots
+                  WAV, MP3, OGG, FLAC â€” up to 50MB Â· Vocals, loops, one-shots
                 </p>
               </div>
             )}
@@ -582,7 +582,7 @@ export default function StudioSampleUploader({
                 placeholder="my_vocal"
                 maxLength={32}
                 className="w-full pl-8 pr-8 py-2 rounded-lg text-xs font-mono outline-none"
-                style={{ background: '#131316', color: '#c8cdd2', border: '1px solid rgba(255,255,255,0.08)' }}
+                style={{ background: '#131316', color: '#e8ecf0', border: '1px solid rgba(255,255,255,0.08)' }}
               />
               <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono" style={{ color: '#5a616b' }}>&quot;)</span>
             </div>
@@ -593,22 +593,22 @@ export default function StudioSampleUploader({
               style={{
                 background: '#7fa998',
                 color: '#0a0a0c',
-                boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036',
+                boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
               }}>
-              {uploading ? '⏳' : '↑ Upload'}
+              {uploading ? 'â³' : 'â†‘ Upload'}
             </button>
           </div>
 
           {/* Progress / status */}
           {uploadProgress && (
-            <div className="flex items-center gap-2 px-2 py-1 rounded-lg" style={{ background: '#23262b' }}>
+            <div className="flex items-center gap-2 px-2 py-1 rounded-lg" style={{ background: '#111318' }}>
               <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: accentColor }} />
               <span className="text-[10px] font-mono" style={{ color: accentColor }}>{uploadProgress}</span>
             </div>
           )}
           {error && (
             <p className="text-[11px] px-2 py-1 rounded-lg" style={{ background: '#ef444412', color: '#ef4444' }}>
-              ⚠ {error}
+              âš  {error}
             </p>
           )}
           {success && (
@@ -618,13 +618,13 @@ export default function StudioSampleUploader({
           )}
         </div>
 
-        {/* ── Existing samples list ── */}
+        {/* â”€â”€ Existing samples list â”€â”€ */}
         <div className="flex-1 overflow-y-auto min-h-0 px-5 py-3 space-y-1">
           {loading ? (
-            <p className="text-[11px] text-center py-8" style={{ color: '#5a616b' }}>Loading samples…</p>
+            <p className="text-[11px] text-center py-8" style={{ color: '#5a616b' }}>Loading samplesâ€¦</p>
           ) : samples.length === 0 ? (
             <div className="text-center py-8 space-y-2">
-              <p className="text-2xl">🎤</p>
+              <p className="text-2xl">ðŸŽ¤</p>
               <p className="text-xs" style={{ color: '#5a616b' }}>
                 No samples yet. Upload your first vocal or sound!
               </p>
@@ -646,18 +646,18 @@ export default function StudioSampleUploader({
                   <div key={s.id}
                     className="flex items-center gap-2 px-3 py-2 rounded-xl group transition-all"
                     style={{
-                      background: '#23262b',
+                      background: '#111318',
                       border: '1px solid rgba(255,255,255,0.04)',
-                      boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036',
+                      boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
                     }}>
-                    <span className="text-xs">🔊</span>
+                    <span className="text-xs">ðŸ”Š</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-mono font-bold truncate" style={{ color: '#c8cdd2' }}>
+                      <p className="text-xs font-mono font-bold truncate" style={{ color: '#e8ecf0' }}>
                         {s.name}
                       </p>
                       <div className="flex items-center gap-2 text-[9px]" style={{ color: '#5a616b' }}>
                         <span>{formatFileSize(s.file_size)}</span>
-                        {dur && <span>⏱ {formatDuration(dur)}</span>}
+                        {dur && <span>â± {formatDuration(dur)}</span>}
                         {s.original_bpm && <span style={{ color: '#6f8fb3' }}>{s.original_bpm} BPM</span>}
                         {sampleLoopAt && <span style={{ color: '#b8a47f' }}>loopAt({sampleLoopAt})</span>}
                         {pitchSt !== null && Math.abs(pitchSt) > 0.1 && (
@@ -668,7 +668,7 @@ export default function StudioSampleUploader({
                           </span>
                         )}
                         {pitchSt !== null && Math.abs(pitchSt) <= 0.1 && (
-                          <span style={{ color: '#22c55e' }}>✓</span>
+                          <span style={{ color: '#22c55e' }}>âœ“</span>
                         )}
                       </div>
                     </div>
@@ -699,7 +699,7 @@ export default function StudioSampleUploader({
                       className="w-6 h-6 flex items-center justify-center rounded text-[10px] opacity-0 group-hover:opacity-100 transition-all hover:scale-110 cursor-pointer shrink-0"
                       style={{ background: '#ef444412', color: '#ef4444', border: '1px solid #ef444420' }}
                       title="Delete sample">
-                      {deletingId === s.id ? '⏳' : '✕'}
+                      {deletingId === s.id ? 'â³' : 'âœ•'}
                     </button>
                   </div>
                 )
@@ -708,13 +708,13 @@ export default function StudioSampleUploader({
           )}
         </div>
 
-        {/* ── Footer ── */}
+        {/* â”€â”€ Footer â”€â”€ */}
         <div className="px-5 py-2 text-center"
-          style={{ borderTop: '1px solid rgba(255,255,255,0.04)', background: '#23262b' }}>
+          style={{ borderTop: '1px solid rgba(255,255,255,0.04)', background: '#111318' }}>
           <p className="text-[9px]" style={{ color: '#5a616b' }}>
             Use <span className="font-mono" style={{ color: accentColor }}>s(&quot;name&quot;).loopAt(N)</span> for
-            tempo-synced playback · <span className="font-mono" style={{ color: '#b8a47f' }}>.begin(0).end(0.5)</span> to
-            slice · <span className="font-mono" style={{ color: '#6f8fb3' }}>.speed(1.5)</span> to pitch
+            tempo-synced playback Â· <span className="font-mono" style={{ color: '#b8a47f' }}>.begin(0).end(0.5)</span> to
+            slice Â· <span className="font-mono" style={{ color: '#6f8fb3' }}>.speed(1.5)</span> to pitch
           </p>
         </div>
       </div>

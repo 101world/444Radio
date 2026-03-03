@@ -3,7 +3,7 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
 import { Play, Square, Volume2, VolumeX, Zap, Code2 } from 'lucide-react'
 
-// ─── Visualization modes ───
+// â”€â”€â”€ Visualization modes â”€â”€â”€
 const VIZ_MODES = [
   { id: 'waveform', label: 'WAVE' },
   { id: 'bars', label: 'BARS' },
@@ -57,7 +57,7 @@ export default function StudioTopBar({
 
   const vizLabel = VIZ_MODES.find(m => m.id === vizMode)?.label ?? 'WAVE'
 
-  // ── Drawing loop ──
+  // â”€â”€ Drawing loop â”€â”€
   const draw = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -69,7 +69,7 @@ export default function StudioTopBar({
     ctx.clearRect(0, 0, w, h)
 
     if (!isPlaying || !analyserNode) {
-      // Idle — dim flat line
+      // Idle â€” dim flat line
       ctx.strokeStyle = 'rgba(127,169,152,0.12)'
       ctx.lineWidth = 1
       ctx.beginPath()
@@ -251,16 +251,16 @@ export default function StudioTopBar({
     <div
       className="h-10 shrink-0 flex items-center justify-between px-3 relative z-20"
       style={{
-        background: '#23262b',
+        background: '#111318',
         borderBottom: '1px solid rgba(255,255,255,0.05)',
-        boxShadow: '4px 4px 8px #14161a, -2px -2px 6px #2c3036',
+        boxShadow: '4px 4px 8px #050607, -2px -2px 6px #1a1d22',
       }}
     >
-      {/* ── Visualizer canvas (behind everything) ── */}
+      {/* â”€â”€ Visualizer canvas (behind everything) â”€â”€ */}
       <div
         className="absolute inset-0 cursor-pointer z-0 overflow-hidden"
         onClick={cycleVizMode}
-        title={`Visualizer: ${vizLabel} — click to change`}
+        title={`Visualizer: ${vizLabel} â€” click to change`}
       >
         <div
           className="absolute inset-0 pointer-events-none"
@@ -276,7 +276,7 @@ export default function StudioTopBar({
         />
       </div>
 
-      {/* ── Viz mode label ── */}
+      {/* â”€â”€ Viz mode label â”€â”€ */}
       <div className="absolute right-14 bottom-0.5 z-10 pointer-events-none">
         <span className="text-[5px] font-mono font-bold tracking-wider" style={{ color: '#5a616b' }}>
           {vizLabel}
@@ -295,7 +295,7 @@ export default function StudioTopBar({
                 : 'inset 0 1px 2px rgba(0,0,0,0.5)',
             }}
           />
-          <span className="text-[12px] font-black tracking-[.25em]" style={{ color: '#c8cdd2' }}>444</span>
+          <span className="text-[12px] font-black tracking-[.25em]" style={{ color: '#e8ecf0' }}>444</span>
           <span className="text-[8px] font-bold tracking-[.15em] uppercase" style={{ color: '#5a616b' }}>STUDIO</span>
         </div>
 
@@ -309,12 +309,12 @@ export default function StudioTopBar({
                 : status === 'error'
                   ? '#b86f6f'
                   : '#5a616b',
-            background: '#1c1e22',
+            background: '#0a0b0d',
             border: '1px solid rgba(255,255,255,0.05)',
-            boxShadow: 'inset 2px 2px 4px #14161a, inset -2px -2px 4px #2c3036',
+            boxShadow: 'inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22',
           }}
         >
-          {status === 'loading' ? loadingMsg : status === 'playing' ? '● LIVE' : status.toUpperCase()}
+          {status === 'loading' ? loadingMsg : status === 'playing' ? 'â— LIVE' : status.toUpperCase()}
         </span>
         {error && (
           <span className="text-[7px] font-mono truncate max-w-[200px]" style={{ color: '#b86f6f' }}>{error}</span>
@@ -331,11 +331,11 @@ export default function StudioTopBar({
             display: 'flex', alignItems: 'center', gap: '6px',
             padding: '6px 22px',
             fontSize: '11px', fontWeight: 900, letterSpacing: '.15em',
-            color: isPlaying ? '#c8cdd2' : '#1c1e22',
-            background: isPlaying ? '#2a2e34' : '#7fa998',
+            color: isPlaying ? '#e8ecf0' : '#0a0b0d',
+            background: isPlaying ? '#16181d' : '#7fa998',
             border: 'none',
             borderRadius: '24px',
-            boxShadow: '4px 4px 8px #14161a, -4px -4px 8px #2c3036',
+            boxShadow: '4px 4px 8px #050607, -4px -4px 8px #1a1d22',
           }}
         >
           {isPlaying ? <Square size={11} className="fill-current" /> : <Play size={11} className="fill-current" />}
@@ -350,11 +350,11 @@ export default function StudioTopBar({
               display: 'flex', alignItems: 'center', gap: '5px',
               padding: '5px 14px',
               fontSize: '10px', fontWeight: 900, letterSpacing: '.15em',
-              color: '#c8cdd2',
-              background: '#2a2e34',
+              color: '#e8ecf0',
+              background: '#16181d',
               border: 'none',
               borderRadius: '20px',
-              boxShadow: '3px 3px 6px #14161a, -3px -3px 6px #2c3036',
+              boxShadow: '3px 3px 6px #050607, -3px -3px 6px #1a1d22',
             }}
             title="Re-evaluate code (Ctrl+Enter)"
           >
@@ -369,9 +369,9 @@ export default function StudioTopBar({
         <div
           className="flex items-center gap-1.5 px-2.5 py-1"
           style={{
-            background: '#1c1e22',
+            background: '#0a0b0d',
             borderRadius: '14px',
-            boxShadow: 'inset 3px 3px 6px #14161a, inset -3px -3px 6px #2c3036',
+            boxShadow: 'inset 3px 3px 6px #050607, inset -3px -3px 6px #1a1d22',
           }}
         >
           {masterVolume === 0 ? (
@@ -403,11 +403,11 @@ export default function StudioTopBar({
               fontSize: '8px', fontWeight: 900, letterSpacing: '.12em', textTransform: 'uppercase' as const,
               borderRadius: '14px',
               color: codeVisible ? '#7fa998' : '#5a616b',
-              background: codeVisible ? '#2a2e34' : '#23262b',
+              background: codeVisible ? '#16181d' : '#111318',
               border: 'none',
               boxShadow: codeVisible
-                ? 'inset 3px 3px 6px #14161a, inset -3px -3px 6px #2c3036'
-                : '3px 3px 6px #14161a, -3px -3px 6px #2c3036',
+                ? 'inset 3px 3px 6px #050607, inset -3px -3px 6px #1a1d22'
+                : '3px 3px 6px #050607, -3px -3px 6px #1a1d22',
             }}
           >
             <Code2 size={10} />

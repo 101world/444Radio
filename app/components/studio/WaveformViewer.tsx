@@ -6,9 +6,9 @@ interface WaveformViewerProps {
   url: string
   isOpen: boolean
   onClose: () => void
-  /** Current begin value (0–1), from the channel code */
+  /** Current begin value (0â€“1), from the channel code */
   beginValue?: number
-  /** Current end value (0–1), from the channel code */
+  /** Current end value (0â€“1), from the channel code */
   endValue?: number
   /** Current .speed() value from the channel code */
   speedValue?: number
@@ -16,7 +16,7 @@ interface WaveformViewerProps {
   sampleBpm?: number
   /** Current project BPM */
   projectBpm?: number
-  /** Called when user applies — writes begin/end/speed into channel code */
+  /** Called when user applies â€” writes begin/end/speed into channel code */
   onApply?: (params: { begin: number; end: number; speed: number }) => void
   /** Channel color accent */
   color?: string
@@ -24,7 +24,7 @@ interface WaveformViewerProps {
   sampleName?: string
 }
 
-/** Semitones from speed ratio: 12 × log₂(speed) */
+/** Semitones from speed ratio: 12 Ã— logâ‚‚(speed) */
 function speedToSemitones(speed: number): number {
   return 12 * Math.log2(speed)
 }
@@ -82,7 +82,7 @@ export default function WaveformViewer({
     }
   }, [isOpen, beginValue, endValue, speedValue])
 
-  // ── Load audio + compute waveform ──
+  // â”€â”€ Load audio + compute waveform â”€â”€
   useEffect(() => {
     if (!isOpen || !url) return
     setLoading(true)
@@ -123,7 +123,7 @@ export default function WaveformViewer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, url])
 
-  // ── Draw waveform + trim overlay ──
+  // â”€â”€ Draw waveform + trim overlay â”€â”€
   const drawWaveform = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -190,7 +190,7 @@ export default function WaveformViewer({
   // Redraw on trim change
   useEffect(() => { drawWaveform() }, [drawWaveform])
 
-  // ── Drag handles ──
+  // â”€â”€ Drag handles â”€â”€
   const getX = (e: MouseEvent | React.MouseEvent) => {
     const canvas = canvasRef.current
     if (!canvas) return 0
@@ -222,7 +222,7 @@ export default function WaveformViewer({
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
   }, [dragging, begin, end])
 
-  // ── Preview trimmed audio at current speed ──
+  // â”€â”€ Preview trimmed audio at current speed â”€â”€
   const togglePreview = useCallback(() => {
     if (isPreviewPlaying && sourceRef.current) {
       sourceRef.current.stop()
@@ -273,17 +273,17 @@ export default function WaveformViewer({
         ref={containerRef}
         className="w-full max-w-3xl mx-4 rounded-2xl overflow-hidden select-none"
         style={{
-          background: '#14161a',
+          background: '#050607',
           border: '1px solid rgba(255,255,255,0.06)',
           boxShadow: '0 24px 80px rgba(0,0,0,0.7)',
         }}
       >
-        {/* Header — minimal */}
+        {/* Header â€” minimal */}
         <div className="flex items-center justify-between px-5 py-3"
           style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-black uppercase tracking-[.15em]" style={{ color }}>
-              ✂ TRIM / PITCH
+              âœ‚ TRIM / PITCH
             </span>
             {sampleName && (
               <span className="text-[9px] font-mono" style={{ color: 'rgba(255,255,255,0.3)' }}>
@@ -300,7 +300,7 @@ export default function WaveformViewer({
         <div className="px-4 py-3">
           {loading && (
             <div className="flex items-center justify-center h-[140px]" style={{ color: 'rgba(255,255,255,0.2)' }}>
-              <span className="text-xs animate-pulse">Loading waveform…</span>
+              <span className="text-xs animate-pulse">Loading waveformâ€¦</span>
             </div>
           )}
           {error && (
@@ -338,7 +338,7 @@ export default function WaveformViewer({
               onChange={e => setSpeed(parseFloat(e.target.value))}
               className="flex-1 h-1 rounded-full appearance-none cursor-pointer"
               style={{
-                background: `linear-gradient(to right, #6f8fb3 ${((speed - 0.25) / 3.75) * 100}%, #2a2e34 ${((speed - 0.25) / 3.75) * 100}%)`,
+                background: `linear-gradient(to right, #6f8fb3 ${((speed - 0.25) / 3.75) * 100}%, #16181d ${((speed - 0.25) / 3.75) * 100}%)`,
                 accentColor: '#6f8fb3',
               }}
             />
@@ -380,7 +380,7 @@ export default function WaveformViewer({
                 color: '#7fa998',
                 border: '1px solid #7fa99830',
               }}
-              title={`Set speed to ${compensationSpeed.toFixed(4)} to cancel BPM pitch shift (${sampleBpm}→${projectBpm} BPM)`}
+              title={`Set speed to ${compensationSpeed.toFixed(4)} to cancel BPM pitch shift (${sampleBpm}â†’${projectBpm} BPM)`}
             >
               Match BPM
             </button>
@@ -394,12 +394,12 @@ export default function WaveformViewer({
                 onClick={() => setSpeed(s)}
                 className="px-1.5 py-0.5 rounded text-[8px] font-mono cursor-pointer transition-all"
                 style={{
-                  background: Math.abs(speed - s) < 0.01 ? `${color}20` : '#1c1e22',
+                  background: Math.abs(speed - s) < 0.01 ? `${color}20` : '#0a0b0d',
                   color: Math.abs(speed - s) < 0.01 ? color : 'rgba(255,255,255,0.2)',
                   border: `1px solid ${Math.abs(speed - s) < 0.01 ? `${color}40` : 'rgba(255,255,255,0.04)'}`,
                 }}
               >
-                {s}×
+                {s}Ã—
               </button>
             ))}
           </div>
@@ -422,7 +422,7 @@ export default function WaveformViewer({
               fontWeight: 700,
             }}>
               net: {netPitchSt > 0.05 ? '+' : ''}{Math.abs(netPitchSt) < 0.05 ? '0' : netPitchSt.toFixed(1)}st
-              {Math.abs(netPitchSt) < 0.2 && ' ✓'}
+              {Math.abs(netPitchSt) < 0.2 && ' âœ“'}
             </span>
           </div>
         )}
@@ -459,7 +459,7 @@ export default function WaveformViewer({
               onClick={() => { setBegin(0); setEnd(1); setSpeed(1) }}
               className="px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider cursor-pointer transition-all"
               style={{
-                background: '#1c1e22',
+                background: '#0a0b0d',
                 color: 'rgba(255,255,255,0.3)',
                 border: '1px solid rgba(255,255,255,0.06)',
               }}
@@ -471,12 +471,12 @@ export default function WaveformViewer({
               onClick={togglePreview}
               className="px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider cursor-pointer transition-all"
               style={{
-                background: isPreviewPlaying ? `${color}20` : '#1c1e22',
+                background: isPreviewPlaying ? `${color}20` : '#0a0b0d',
                 color: isPreviewPlaying ? color : 'rgba(255,255,255,0.4)',
                 border: `1px solid ${isPreviewPlaying ? `${color}40` : 'rgba(255,255,255,0.06)'}`,
               }}
             >
-              {isPreviewPlaying ? '■ Stop' : '▶ Preview'}
+              {isPreviewPlaying ? 'â–  Stop' : 'â–¶ Preview'}
             </button>
             {/* Apply */}
             <button

@@ -29,9 +29,9 @@ export default function ChannelLCD({ channel, isPlaying, isMuted, onDoubleClick 
   const rafRef = useRef<number>(0)
   const orbit = getChannelOrbit(channel)
 
-  // Peak hold — retains max amplitude across frames so percussive hits stay visible
+  // Peak hold â€” retains max amplitude across frames so percussive hits stay visible
   const peakHoldRef = useRef(0)
-  // Rolling waveform buffer — blends old/new so brief transients don't vanish
+  // Rolling waveform buffer â€” blends old/new so brief transients don't vanish
   const waveBufferRef = useRef<Float32Array | null>(null)
 
   const draw = useCallback(() => {
@@ -46,7 +46,7 @@ export default function ChannelLCD({ channel, isPlaying, isMuted, onDoubleClick 
 
     const color = channel.color
 
-    // ── Not playing or muted: show idle state ──
+    // â”€â”€ Not playing or muted: show idle state â”€â”€
     if (!isPlaying || isMuted) {
       peakHoldRef.current = 0
       waveBufferRef.current = null
@@ -59,7 +59,7 @@ export default function ChannelLCD({ channel, isPlaying, isMuted, onDoubleClick 
       return
     }
 
-    // ── Playing: get real orbit analyser data ──
+    // â”€â”€ Playing: get real orbit analyser data â”€â”€
     const analyser = getOrbitAnalyser(orbit)
 
     if (analyser) {
@@ -74,7 +74,7 @@ export default function ChannelLCD({ channel, isPlaying, isMuted, onDoubleClick 
         if (abs > maxAmp) maxAmp = abs
       }
 
-      // Peak hold with decay — keeps percussive transients visible for ~200ms
+      // Peak hold with decay â€” keeps percussive transients visible for ~200ms
       peakHoldRef.current = Math.max(maxAmp, peakHoldRef.current * 0.9)
       const displayPeak = peakHoldRef.current
 
@@ -85,7 +85,7 @@ export default function ChannelLCD({ channel, isPlaying, isMuted, onDoubleClick 
         normalized[x] = (data[idx] - 128) / 128 // -1..1
       }
 
-      // Blend with previous frame — keeps waveform visible between transient gaps
+      // Blend with previous frame â€” keeps waveform visible between transient gaps
       if (waveBufferRef.current && waveBufferRef.current.length === w) {
         const blend = maxAmp > 3 ? 0 : 0.5 // Fresh signal = full override; silence = fade
         for (let x = 0; x < w; x++) {
@@ -95,7 +95,7 @@ export default function ChannelLCD({ channel, isPlaying, isMuted, onDoubleClick 
       waveBufferRef.current = new Float32Array(normalized)
 
       if (displayPeak > 1) {
-        // ── Draw waveform with channel color ──
+        // â”€â”€ Draw waveform with channel color â”€â”€
         ctx.strokeStyle = color
         ctx.lineWidth = 1.5
         ctx.beginPath()
@@ -113,14 +113,14 @@ export default function ChannelLCD({ channel, isPlaying, isMuted, onDoubleClick 
         ctx.fillStyle = `${color}12`
         ctx.fill()
 
-        // Peak bar indicators at edges — uses displayPeak (which holds)
+        // Peak bar indicators at edges â€” uses displayPeak (which holds)
         const peak = Math.min(displayPeak / 32, 1)
         const peakHex = Math.round(peak * 100).toString(16).padStart(2, '0')
         ctx.fillStyle = `${color}${peakHex}`
         ctx.fillRect(0, 0, 2, h)
         ctx.fillRect(w - 2, 0, 2, h)
 
-        // Percussive flash — when peak is held but current signal gone, show a decaying glow
+        // Percussive flash â€” when peak is held but current signal gone, show a decaying glow
         if (displayPeak > 8 && maxAmp < 3) {
           const glowStr = Math.min(displayPeak / 80, 0.35)
           const glowHex = Math.round(glowStr * 255).toString(16).padStart(2, '0')
@@ -129,7 +129,7 @@ export default function ChannelLCD({ channel, isPlaying, isMuted, onDoubleClick 
           ctx.fillRect(0, (h - barH) / 2, w, barH)
         }
       } else {
-        // Silent — dim flatline
+        // Silent â€” dim flatline
         ctx.strokeStyle = '#5a616b20'
         ctx.lineWidth = 1
         ctx.beginPath()
@@ -138,7 +138,7 @@ export default function ChannelLCD({ channel, isPlaying, isMuted, onDoubleClick 
         ctx.stroke()
       }
     } else {
-      // No analyser — show dim dots placeholder
+      // No analyser â€” show dim dots placeholder
       ctx.fillStyle = '#5a616b30'
       const dotCount = 8
       const dotW = w / dotCount
@@ -165,13 +165,13 @@ export default function ChannelLCD({ channel, isPlaying, isMuted, onDoubleClick 
       className="mx-1 mb-1 rounded-lg overflow-hidden relative transition-all duration-300"
       style={{
         height: 28,
-        background: '#1c1e22',
+        background: '#0a0b0d',
         border: isPlaying && !isMuted
           ? `1px solid ${channel.color}20`
           : '1px solid rgba(255,255,255,0.03)',
         boxShadow: isPlaying && !isMuted
-          ? `inset 3px 3px 6px #14161a, inset -3px -3px 6px #2c3036, 0 0 6px ${channel.color}10`
-          : 'inset 3px 3px 6px #14161a, inset -3px -3px 6px #2c3036',
+          ? `inset 3px 3px 6px #050607, inset -3px -3px 6px #1a1d22, 0 0 6px ${channel.color}10`
+          : 'inset 3px 3px 6px #050607, inset -3px -3px 6px #1a1d22',
       }}
     >
       {/* Subtle texture overlay */}
