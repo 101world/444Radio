@@ -302,9 +302,19 @@ export default function StudioEditor() {
     if (!engine?.evaluate || !isPlayingRef.current) return
     try {
       setError(null)
-      const src = codeRef.current.trim()
+      let src = codeRef.current.trim()
       if (!src) return
       if (src === lastEvaluatedRef.current) return
+
+      // ── Mandatory scale: auto-inject if missing (same as handlePlay) ──
+      const existingScale = parseMixerScale(src)
+      if (!existingScale) {
+        src = insertScale(src, 'C4', 'minor')
+        codeRef.current = src
+        setCode(src)
+        console.log('[444 STUDIO] live-update: auto-injected scale: C4:minor')
+      }
+
       lastEvaluatedRef.current = src
       if (editorDivRef.current) {
         editorDivRef.current.style.outline = '2px solid rgba(127,169,152,0.4)'
