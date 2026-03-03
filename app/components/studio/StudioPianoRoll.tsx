@@ -121,6 +121,339 @@ function midiToStrudelNote(midi: number): string {
   return STRUDEL_NOTE_NAMES_OUT[midi % 12] + (Math.floor(midi / 12) - 1)
 }
 
+// ─── Piano Roll Presets — mathematically generated patterns ───
+
+type PresetCategory = 'chords' | 'melodies' | 'arpeggios' | 'bass' | 'rhythmic'
+
+interface PresetDef {
+  name: string
+  category: PresetCategory
+  /** Scale degrees for each step. null = rest. Arrays = chord (multiple degrees at same step).
+   *  Each entry: { deg, len } where len is note length in steps */
+  generate: (stepsPerBar: number) => { step: number; deg: number; len: number }[]
+}
+
+/** Create a multi-bar variant by repeating/shifting a base pattern */
+function shiftPattern(base: { step: number; deg: number; len: number }[], shiftDeg: number, barOffset: number, stepsPerBar: number) {
+  return base.map(n => ({ step: n.step + barOffset * stepsPerBar, deg: n.deg + shiftDeg, len: n.len }))
+}
+
+const PIANO_PRESETS: PresetDef[] = [
+  // ── CHORDS ──
+  {
+    name: 'I–V–vi–IV',
+    category: 'chords',
+    generate: (spb) => {
+      const q = spb / 4 // quarter note in steps
+      return [
+        // I chord (0, 2, 4)
+        { step: 0, deg: 0, len: q }, { step: 0, deg: 2, len: q }, { step: 0, deg: 4, len: q },
+        // V chord (4, 6, 8)
+        { step: q, deg: 4, len: q }, { step: q, deg: 6, len: q }, { step: q, deg: 8, len: q },
+        // vi chord (5, 7, 9)
+        { step: q * 2, deg: 5, len: q }, { step: q * 2, deg: 7, len: q }, { step: q * 2, deg: 9, len: q },
+        // IV chord (3, 5, 7)
+        { step: q * 3, deg: 3, len: q }, { step: q * 3, deg: 5, len: q }, { step: q * 3, deg: 7, len: q },
+      ]
+    },
+  },
+  {
+    name: 'i–iv–v–i',
+    category: 'chords',
+    generate: (spb) => {
+      const q = spb / 4
+      return [
+        { step: 0, deg: 0, len: q }, { step: 0, deg: 2, len: q }, { step: 0, deg: 4, len: q },
+        { step: q, deg: 3, len: q }, { step: q, deg: 5, len: q }, { step: q, deg: 7, len: q },
+        { step: q * 2, deg: 4, len: q }, { step: q * 2, deg: 6, len: q }, { step: q * 2, deg: 8, len: q },
+        { step: q * 3, deg: 0, len: q }, { step: q * 3, deg: 2, len: q }, { step: q * 3, deg: 4, len: q },
+      ]
+    },
+  },
+  {
+    name: 'I–vi–IV–V',
+    category: 'chords',
+    generate: (spb) => {
+      const q = spb / 4
+      return [
+        { step: 0, deg: 0, len: q }, { step: 0, deg: 2, len: q }, { step: 0, deg: 4, len: q },
+        { step: q, deg: 5, len: q }, { step: q, deg: 7, len: q }, { step: q, deg: 9, len: q },
+        { step: q * 2, deg: 3, len: q }, { step: q * 2, deg: 5, len: q }, { step: q * 2, deg: 7, len: q },
+        { step: q * 3, deg: 4, len: q }, { step: q * 3, deg: 6, len: q }, { step: q * 3, deg: 8, len: q },
+      ]
+    },
+  },
+  {
+    name: 'Sustained Pads',
+    category: 'chords',
+    generate: (spb) => {
+      // Long held triad across full bar
+      return [
+        { step: 0, deg: 0, len: spb }, { step: 0, deg: 2, len: spb }, { step: 0, deg: 4, len: spb },
+      ]
+    },
+  },
+  {
+    name: '7th Chords',
+    category: 'chords',
+    generate: (spb) => {
+      const q = spb / 4
+      return [
+        // Imaj7
+        { step: 0, deg: 0, len: q }, { step: 0, deg: 2, len: q }, { step: 0, deg: 4, len: q }, { step: 0, deg: 6, len: q },
+        // IVmaj7
+        { step: q, deg: 3, len: q }, { step: q, deg: 5, len: q }, { step: q, deg: 7, len: q }, { step: q, deg: 9, len: q },
+        // viim7
+        { step: q * 2, deg: 6, len: q }, { step: q * 2, deg: 8, len: q }, { step: q * 2, deg: 10, len: q }, { step: q * 2, deg: 12, len: q },
+        // V7
+        { step: q * 3, deg: 4, len: q }, { step: q * 3, deg: 6, len: q }, { step: q * 3, deg: 8, len: q }, { step: q * 3, deg: 10, len: q },
+      ]
+    },
+  },
+
+  // ── MELODIES ──
+  {
+    name: 'Rising Scale',
+    category: 'melodies',
+    generate: (spb) => {
+      const n = Math.min(spb, 8) // up to 8 notes
+      const len = Math.max(1, Math.floor(spb / n))
+      return Array.from({ length: n }, (_, i) => ({ step: i * len, deg: i, len }))
+    },
+  },
+  {
+    name: 'Falling Scale',
+    category: 'melodies',
+    generate: (spb) => {
+      const n = Math.min(spb, 8)
+      const len = Math.max(1, Math.floor(spb / n))
+      return Array.from({ length: n }, (_, i) => ({ step: i * len, deg: 7 - i, len }))
+    },
+  },
+  {
+    name: 'Zigzag',
+    category: 'melodies',
+    generate: (spb) => {
+      const degs = [0, 4, 2, 6, 1, 5, 3, 7]
+      const n = Math.min(spb, 8)
+      const len = Math.max(1, Math.floor(spb / n))
+      return degs.slice(0, n).map((d, i) => ({ step: i * len, deg: d, len }))
+    },
+  },
+  {
+    name: 'Pentatonic Riff',
+    category: 'melodies',
+    generate: (spb) => {
+      // Pentatonic: degrees 0,1,2,3,4 in a catchy pattern
+      const pattern = [0, 2, 4, 2, 3, 1, 0, 4]
+      const n = Math.min(pattern.length, spb)
+      const len = Math.max(1, Math.floor(spb / n))
+      return pattern.slice(0, n).map((d, i) => ({ step: i * len, deg: d, len }))
+    },
+  },
+  {
+    name: 'Call & Response',
+    category: 'melodies',
+    generate: (spb) => {
+      const h = spb / 2
+      const q = spb / 4
+      const e = spb / 8
+      return [
+        // Call: quick ascending phrase in first half
+        { step: 0, deg: 0, len: e }, { step: e, deg: 2, len: e },
+        { step: e * 2, deg: 4, len: e }, { step: e * 3, deg: 5, len: e },
+        // Response: sustained descent in second half
+        { step: Math.round(h), deg: 7, len: q }, { step: Math.round(h + q), deg: 4, len: q },
+      ]
+    },
+  },
+  {
+    name: 'Syncopated',
+    category: 'melodies',
+    generate: (spb) => {
+      const e = spb / 8
+      // Off-beat hits with varied lengths
+      return [
+        { step: Math.round(e), deg: 0, len: Math.round(e * 1.5) },
+        { step: Math.round(e * 3), deg: 3, len: Math.round(e) },
+        { step: Math.round(e * 4.5), deg: 2, len: Math.round(e * 1.5) },
+        { step: Math.round(e * 6.5), deg: 5, len: Math.round(e * 1.5) },
+      ]
+    },
+  },
+
+  // ── ARPEGGIOS ──
+  {
+    name: 'Arp Up',
+    category: 'arpeggios',
+    generate: (spb) => {
+      const degs = [0, 2, 4, 7, 0 + 7, 4, 2, 0]
+      const n = Math.min(degs.length, spb)
+      const len = Math.max(1, Math.floor(spb / n))
+      return degs.slice(0, n).map((d, i) => ({ step: i * len, deg: d, len }))
+    },
+  },
+  {
+    name: 'Arp Down',
+    category: 'arpeggios',
+    generate: (spb) => {
+      const degs = [7, 4, 2, 0, -1, 2, 4, 7]
+      const n = Math.min(degs.length, spb)
+      const len = Math.max(1, Math.floor(spb / n))
+      return degs.slice(0, n).map((d, i) => ({ step: i * len, deg: d, len }))
+    },
+  },
+  {
+    name: 'Arp Bounce',
+    category: 'arpeggios',
+    generate: (spb) => {
+      const degs = [0, 4, 2, 6, 4, 2, 0, 4]
+      const n = Math.min(degs.length, spb)
+      const len = Math.max(1, Math.floor(spb / n))
+      return degs.slice(0, n).map((d, i) => ({ step: i * len, deg: d, len }))
+    },
+  },
+  {
+    name: '16th Arp',
+    category: 'arpeggios',
+    generate: (spb) => {
+      // Fast sixteenth-note arpeggio
+      const degs = [0, 2, 4, 7, 9, 7, 4, 2, 0, 2, 4, 7, 9, 11, 9, 7]
+      return degs.slice(0, spb).map((d, i) => ({ step: i, deg: d, len: 1 }))
+    },
+  },
+
+  // ── BASS ──
+  {
+    name: 'Root Octave',
+    category: 'bass',
+    generate: (spb) => {
+      const q = spb / 4
+      return [
+        { step: 0, deg: 0 - 7, len: q },
+        { step: q, deg: 0, len: q },
+        { step: q * 2, deg: 0 - 7, len: q },
+        { step: q * 3, deg: 0, len: q },
+      ]
+    },
+  },
+  {
+    name: 'Walking Bass',
+    category: 'bass',
+    generate: (spb) => {
+      const q = spb / 4
+      return [
+        { step: 0, deg: 0 - 7, len: q },
+        { step: q, deg: 2 - 7, len: q },
+        { step: q * 2, deg: 4 - 7, len: q },
+        { step: q * 3, deg: 3 - 7, len: q },
+      ]
+    },
+  },
+  {
+    name: 'Sub Pulse',
+    category: 'bass',
+    generate: (spb) => {
+      // Deep sub bass: root held for half bar, then fifth
+      const h = spb / 2
+      return [
+        { step: 0, deg: -7, len: h },
+        { step: h, deg: -3, len: h },
+      ]
+    },
+  },
+  {
+    name: 'Synth Bass',
+    category: 'bass',
+    generate: (spb) => {
+      const e = spb / 8
+      return [
+        { step: 0, deg: -7, len: Math.round(e * 1.5) },
+        { step: Math.round(e * 2), deg: -7, len: Math.round(e) },
+        { step: Math.round(e * 3), deg: -5, len: Math.round(e * 1.5) },
+        { step: Math.round(e * 5), deg: -4, len: Math.round(e) },
+        { step: Math.round(e * 6), deg: -7, len: Math.round(e * 2) },
+      ]
+    },
+  },
+
+  // ── RHYTHMIC ──
+  {
+    name: 'Stab',
+    category: 'rhythmic',
+    generate: (spb) => {
+      const e = spb / 8
+      // Rhythmic stabs on off-beats
+      return [
+        { step: 0, deg: 0, len: 1 }, { step: 0, deg: 2, len: 1 }, { step: 0, deg: 4, len: 1 },
+        { step: Math.round(e * 3), deg: 0, len: 1 }, { step: Math.round(e * 3), deg: 2, len: 1 }, { step: Math.round(e * 3), deg: 4, len: 1 },
+        { step: Math.round(e * 6), deg: 0, len: 1 }, { step: Math.round(e * 6), deg: 2, len: 1 }, { step: Math.round(e * 6), deg: 4, len: 1 },
+      ]
+    },
+  },
+  {
+    name: 'Trance Gate',
+    category: 'rhythmic',
+    generate: (spb) => {
+      // Every other step: on/off gate pattern
+      const notes: { step: number; deg: number; len: number }[] = []
+      for (let i = 0; i < spb; i += 2) {
+        notes.push({ step: i, deg: 0, len: 1 })
+        notes.push({ step: i, deg: 4, len: 1 })
+      }
+      return notes
+    },
+  },
+  {
+    name: 'Offbeat Chords',
+    category: 'rhythmic',
+    generate: (spb) => {
+      const e = spb / 8
+      // Reggae/dub offbeat stab pattern
+      return [
+        { step: Math.round(e), deg: 0, len: 1 }, { step: Math.round(e), deg: 2, len: 1 }, { step: Math.round(e), deg: 4, len: 1 },
+        { step: Math.round(e * 3), deg: 0, len: 1 }, { step: Math.round(e * 3), deg: 2, len: 1 }, { step: Math.round(e * 3), deg: 4, len: 1 },
+        { step: Math.round(e * 5), deg: 0, len: 1 }, { step: Math.round(e * 5), deg: 2, len: 1 }, { step: Math.round(e * 5), deg: 4, len: 1 },
+        { step: Math.round(e * 7), deg: 0, len: 1 }, { step: Math.round(e * 7), deg: 2, len: 1 }, { step: Math.round(e * 7), deg: 4, len: 1 },
+      ]
+    },
+  },
+]
+
+const PRESET_CATEGORIES: { key: PresetCategory; label: string; icon: string }[] = [
+  { key: 'chords', label: 'Chords', icon: '🎹' },
+  { key: 'melodies', label: 'Melodies', icon: '🎵' },
+  { key: 'arpeggios', label: 'Arpeggios', icon: '🔄' },
+  { key: 'bass', label: 'Bass', icon: '🎸' },
+  { key: 'rhythmic', label: 'Rhythmic', icon: '⚡' },
+]
+
+/** Apply a preset to the piano roll, converting scale degrees → MIDI values */
+function applyPreset(
+  preset: PresetDef,
+  scale: string,
+  bars: number,
+  stepsPerBar: number,
+): Map<string, NoteData> {
+  const baseNotes = preset.generate(stepsPerBar)
+  const noteMap = new Map<string, NoteData>()
+  const totalSteps = bars * stepsPerBar
+
+  for (let bar = 0; bar < bars; bar++) {
+    const offset = bar * stepsPerBar
+    for (const n of baseNotes) {
+      const step = n.step + offset
+      if (step >= totalSteps) continue
+      const midi = degreeToMidi(n.deg, scale)
+      const clampedLen = Math.min(n.len, totalSteps - step)
+      if (clampedLen > 0) {
+        noteMap.set(`${midi}:${step}`, { length: clampedLen })
+      }
+    }
+  }
+  return noteMap
+}
+
 // ─── Audio preview ───
 
 let previewCtx: AudioContext | null = null
@@ -579,6 +912,23 @@ export default function StudioPianoRoll({
 
   // ── Effects panel state ──
   const [showEffectsPanel, setShowEffectsPanel] = useState(true)
+
+  // ── Preset menu state ──
+  const [showPresetMenu, setShowPresetMenu] = useState(false)
+  const [presetCategory, setPresetCategory] = useState<PresetCategory>('chords')
+  const presetMenuRef = useRef<HTMLDivElement>(null)
+
+  // Close preset menu on outside click
+  useEffect(() => {
+    if (!showPresetMenu) return
+    const handler = (e: MouseEvent) => {
+      if (presetMenuRef.current && !presetMenuRef.current.contains(e.target as Node)) {
+        setShowPresetMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showPresetMenu])
 
   // ── Derived: Arp/Transpose info from channel data ──
   const arpInfo = useMemo(() => {
@@ -1138,6 +1488,91 @@ export default function StudioPianoRoll({
             className="px-1 py-0.5 text-[9px] font-bold cursor-pointer transition-all"
             style={{ background: '#1c1e22', color: '#c8cdd2', border: 'none', borderRadius: '8px', boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036', lineHeight: 1 }}
           >+</button>
+
+          <div className="w-px h-3.5 bg-white/[0.08]" />
+
+          {/* Preset dropdown */}
+          <div className="relative" ref={presetMenuRef}>
+            <button
+              onClick={() => setShowPresetMenu(v => !v)}
+              className="px-2 py-0.5 text-[7px] font-bold cursor-pointer transition-all uppercase tracking-wider flex items-center gap-1"
+              style={{
+                background: showPresetMenu ? '#2a2e34' : '#1c1e22',
+                color: showPresetMenu ? color : '#5a616b',
+                border: 'none',
+                borderRadius: '8px',
+                boxShadow: showPresetMenu
+                  ? 'inset 2px 2px 4px #14161a, inset -2px -2px 4px #2c3036'
+                  : '2px 2px 4px #14161a, -2px -2px 4px #2c3036',
+              }}
+            >
+              ✦ Presets
+            </button>
+
+            {showPresetMenu && (
+              <div
+                className="absolute bottom-full left-0 mb-1 rounded-xl overflow-hidden z-[200]"
+                style={{
+                  background: '#1c1e22',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  boxShadow: '0 -8px 24px rgba(0,0,0,0.5)',
+                  minWidth: '220px',
+                }}
+              >
+                {/* Category tabs */}
+                <div className="flex gap-0.5 px-1.5 pt-1.5 pb-1 overflow-x-auto" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  {PRESET_CATEGORIES.map(cat => (
+                    <button
+                      key={cat.key}
+                      onClick={() => setPresetCategory(cat.key)}
+                      className="px-1.5 py-0.5 text-[6px] font-bold cursor-pointer transition-all whitespace-nowrap rounded-md"
+                      style={{
+                        background: presetCategory === cat.key ? '#2a2e34' : 'transparent',
+                        color: presetCategory === cat.key ? color : '#5a616b',
+                        border: 'none',
+                        boxShadow: presetCategory === cat.key ? 'inset 1px 1px 3px #14161a, inset -1px -1px 3px #2c3036' : 'none',
+                      }}
+                    >
+                      {cat.icon} {cat.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Preset list */}
+                <div className="px-1.5 py-1 flex flex-col gap-0.5 max-h-[200px] overflow-y-auto">
+                  {PIANO_PRESETS.filter(p => p.category === presetCategory).map(preset => (
+                    <button
+                      key={preset.name}
+                      onClick={() => {
+                        const newNoteMap = applyPreset(preset, scale, bars, stepsPerBar)
+                        setNoteMap(newNoteMap)
+                        setSelectedNotes(new Set())
+                        setHasUserEdited(true)
+                        setShowPresetMenu(false)
+                      }}
+                      className="px-2 py-1 text-[8px] font-bold cursor-pointer transition-all text-left rounded-lg hover:brightness-125"
+                      style={{
+                        background: '#23262b',
+                        color: '#c8cdd2',
+                        border: 'none',
+                        borderRadius: '8px',
+                        boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036',
+                      }}
+                    >
+                      {preset.name}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Info */}
+                <div className="px-2 py-1" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                  <span className="text-[6px] font-mono" style={{ color: '#5a616b' }}>
+                    Presets adapt to your scale · Replaces current notes
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
 
           {isGenerative && !hasUserEdited && (
             <>

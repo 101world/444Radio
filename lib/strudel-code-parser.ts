@@ -1202,6 +1202,56 @@ export function replaceChannelBlock(
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  Reset Channel — strip effects & patterns, keep name + source
+// ═══════════════════════════════════════════════════════════════
+
+/** Reset a channel to a bare skeleton: keeps $name, source instrument,
+ *  orbit, scope, and scale. Removes all effects, patterns, and params. */
+export function resetChannel(code: string, channelIdx: number): string {
+  const channels = parseStrudelCode(code)
+  if (channelIdx < 0 || channelIdx >= channels.length) return code
+
+  const ch = channels[channelIdx]
+  const raw = ch.rawCode
+
+  // Extract orbit number (keep it)
+  const orbitMatch = raw.match(/\.orbit\(\s*(\d+)\s*\)/)
+  const orbit = orbitMatch ? orbitMatch[1] : '0'
+
+  // Extract scale if present (keep it)
+  const scaleMatch = raw.match(/\.scale\(\s*"([^"]*)"\s*\)/)
+  const scaleStr = scaleMatch ? scaleMatch[1] : null
+
+  // Detect source instrument from .s("...")
+  const sMatch = raw.match(/\.?s\(\s*"([^"]*)"\s*\)/)
+  const instrument = sMatch ? sMatch[1] : null
+
+  // Detect if it was a note/melodic channel
+  const isNoteChannel = ch.sourceType === 'synth' || ch.sourceType === 'note'
+
+  // Build clean skeleton
+  let skeleton: string
+  if (isNoteChannel && instrument) {
+    skeleton = `$${ch.name}: note("~")\n  .s("${instrument}")\n  .gain(0.5)\n  .orbit(${orbit})._scope()`
+  } else if (isNoteChannel) {
+    skeleton = `$${ch.name}: note("~")\n  .gain(0.5)\n  .orbit(${orbit})._scope()`
+  } else if (ch.sourceType === 'stack') {
+    // Reset stack to a simple sample channel
+    skeleton = `$${ch.name}: s("~")\n  .gain(0.8)\n  .orbit(${orbit})._scope()`
+  } else {
+    const src = instrument || 'bd'
+    skeleton = `$${ch.name}: s("${src}")\n  .gain(0.8)\n  .orbit(${orbit})._scope()`
+  }
+
+  // Re-attach scale if it existed
+  if (scaleStr) {
+    skeleton += `\n  .scale("${scaleStr}")`
+  }
+
+  return replaceChannelBlock(code, channelIdx, skeleton)
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  Channel Duplication — clone a channel block with a new name
 // ═══════════════════════════════════════════════════════════════
 

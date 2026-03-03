@@ -11,13 +11,13 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react'
-import { ChevronDown, ChevronRight, Plus, Volume2, VolumeX, Headphones, GripVertical, Link, Unlink, X, Music, Clock, Piano, Grid3X3, Copy, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus, Volume2, VolumeX, Headphones, GripVertical, Link, Unlink, X, Music, Clock, Piano, Grid3X3, Copy, Trash2, RotateCcw } from 'lucide-react'
 import StudioKnob from './StudioKnob'
 import ChannelLCD from './ChannelLCD'
 import {
   parseStrudelCode, updateParamInCode, insertEffectInChannel,
   swapSoundInChannel, swapBankInChannel, addSoundToChannel, renameChannel, duplicateChannel,
-  addChannel, removeChannel,
+  addChannel, removeChannel, resetChannel,
   getParamDef, findNextFreeOrbit, setChannelOrbit,
   enableSidechain, disableSidechain, removeEffectFromChannel,
   parseBPM, updateBPM, parseScale, updateScale, insertScale,
@@ -291,6 +291,7 @@ function ChannelStrip({
   onRename,
   onDuplicate,
   onDelete,
+  onReset,
   onStackRowSoundChange,
   onStackRowGainChange,
   onStackRowBankChange,
@@ -340,6 +341,7 @@ function ChannelStrip({
   onRename: (channelIdx: number, newName: string) => void
   onDuplicate?: (channelIdx: number) => void
   onDelete?: (channelIdx: number) => void
+  onReset?: (channelIdx: number) => void
   onStackRowSoundChange?: (channelIdx: number, rowIdx: number, newSound: string) => void
   onStackRowGainChange?: (channelIdx: number, rowIdx: number, newGain: number) => void
   onStackRowBankChange?: (channelIdx: number, rowIdx: number, newBank: string) => void
@@ -712,6 +714,16 @@ function ChannelStrip({
             title="Duplicate Channel"
           >
             <Copy size={9} />
+          </button>
+        )}
+        {onReset && (
+          <button
+            onClick={(e) => { e.stopPropagation(); if (confirm('Reset channel? This removes all effects and patterns.')) onReset(channelIdx) }}
+            className="p-1 rounded-lg transition-colors cursor-pointer hover:opacity-80"
+            style={{ color: '#b8a47f', opacity: 0.4 }}
+            title="Reset Channel"
+          >
+            <RotateCcw size={9} />
           </button>
         )}
         {onDelete && (
@@ -1343,6 +1355,16 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     [onCodeChange],
   )
 
+  // ── Reset handler ──
+  const handleReset = useCallback(
+    (channelIdx: number) => {
+      const currentCode = codeRef.current
+      const newCode = resetChannel(currentCode, channelIdx)
+      if (newCode !== currentCode) onCodeChange(newCode)
+    },
+    [onCodeChange],
+  )
+
   // ── Stack row handlers (per-sub-sound in stack channels) ──
   const stackRowsMap = useMemo(() => {
     const map = new Map<number, StackRow[]>()
@@ -1889,6 +1911,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                   onRename={handleRename}
                   onDuplicate={handleDuplicate}
                   onDelete={handleDelete}
+                  onReset={handleReset}
                   stackRows={stackRowsMap.get(idx) || []}
                   onStackRowSoundChange={handleStackRowSoundChange}
                   onStackRowGainChange={handleStackRowGainChange}
