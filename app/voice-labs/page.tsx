@@ -19,44 +19,370 @@ const HolographicBackgroundClient = lazy(() => import('../components/Holographic
 
 const VOICE_CATEGORIES = [
   {
-    label: 'Authority',
+    label: 'English',
     voices: [
-      { id: 'Deep_Voice_Man', name: 'Deep Voice Man', desc: 'Rich, deep male' },
-      { id: 'Imposing_Manner', name: 'Imposing Manner', desc: 'Commanding, powerful' },
-      { id: 'Elegant_Man', name: 'Elegant Man', desc: 'Refined, sophisticated male' },
+      { id: 'English_Trustworth_Man', name: 'Trustworthy Man', desc: 'Reliable, confident male' },
+      { id: 'English_Aussie_Bloke', name: 'Aussie Bloke', desc: 'Australian, casual male' },
+      { id: 'English_CalmWoman', name: 'Calm Woman', desc: 'Gentle, soothing female' },
+      { id: 'English_UpsetGirl', name: 'Upset Girl', desc: 'Emotional, distressed female' },
+      { id: 'English_Gentle-voiced_man', name: 'Gentle-Voiced Man', desc: 'Soft-spoken male' },
+      { id: 'English_Whispering_girl', name: 'Whispering Girl', desc: 'Quiet, intimate female' },
+      { id: 'English_Diligent_Man', name: 'Diligent Man', desc: 'Focused, hardworking male' },
+      { id: 'English_Graceful_Lady', name: 'Graceful Lady', desc: 'Elegant, refined female' },
+      { id: 'English_ReservedYoungMan', name: 'Reserved Young Man', desc: 'Quiet, thoughtful male' },
+      { id: 'English_PlayfulGirl', name: 'Playful Girl', desc: 'Fun, lighthearted female' },
+      { id: 'English_ManWithDeepVoice', name: 'Man With Deep Voice', desc: 'Rich, resonant male' },
+      { id: 'English_MaturePartner', name: 'Mature Partner', desc: 'Experienced, warm' },
+      { id: 'English_FriendlyPerson', name: 'Friendly Person', desc: 'Warm, approachable' },
+      { id: 'English_MatureBoss', name: 'Mature Boss', desc: 'Authoritative, commanding' },
+      { id: 'English_Debator', name: 'Debator', desc: 'Articulate, persuasive' },
+      { id: 'English_LovelyGirl', name: 'Lovely Girl', desc: 'Sweet, charming female' },
+      { id: 'English_Steadymentor', name: 'Steady Mentor', desc: 'Calm, guiding male' },
+      { id: 'English_Deep-VoicedGentleman', name: 'Deep-Voiced Gentleman', desc: 'Distinguished, deep male' },
+      { id: 'English_Wiselady', name: 'Wise Lady', desc: 'Knowledgeable, calm female' },
+      { id: 'English_CaptivatingStoryteller', name: 'Captivating Storyteller', desc: 'Engaging narrator' },
+      { id: 'English_DecentYoungMan', name: 'Decent Young Man', desc: 'Polite, youthful male' },
+      { id: 'English_SentimentalLady', name: 'Sentimental Lady', desc: 'Emotional, warm female' },
+      { id: 'English_ImposingManner', name: 'Imposing Manner', desc: 'Commanding, powerful' },
+      { id: 'English_SadTeen', name: 'Sad Teen', desc: 'Melancholic, youthful' },
+      { id: 'English_PassionateWarrior', name: 'Passionate Warrior', desc: 'Bold, intense' },
+      { id: 'English_WiseScholar', name: 'Wise Scholar', desc: 'Intellectual, thoughtful' },
+      { id: 'English_Soft-spokenGirl', name: 'Soft-Spoken Girl', desc: 'Quiet, gentle female' },
+      { id: 'English_SereneWoman', name: 'Serene Woman', desc: 'Peaceful, composed female' },
+      { id: 'English_ConfidentWoman', name: 'Confident Woman', desc: 'Assertive, strong female' },
+      { id: 'English_PatientMan', name: 'Patient Man', desc: 'Clear, steady male' },
+      { id: 'English_Comedian', name: 'Comedian', desc: 'Humorous, entertaining' },
+      { id: 'English_BossyLeader', name: 'Bossy Leader', desc: 'Assertive, commanding' },
+      { id: 'English_Strong-WilledBoy', name: 'Strong-Willed Boy', desc: 'Determined, youthful male' },
+      { id: 'English_StressedLady', name: 'Stressed Lady', desc: 'Tense, anxious female' },
+      { id: 'English_AssertiveQueen', name: 'Assertive Queen', desc: 'Regal, commanding female' },
+      { id: 'English_AnimeCharacter', name: 'Anime Character', desc: 'Expressive, animated' },
+      { id: 'English_Jovialman', name: 'Jovial Man', desc: 'Cheerful, upbeat male' },
+      { id: 'English_WhimsicalGirl', name: 'Whimsical Girl', desc: 'Playful, dreamy female' },
+      { id: 'English_Kind-heartedGirl', name: 'Kind-Hearted Girl', desc: 'Warm, compassionate female' },
     ]
   },
   {
-    label: 'Friendly',
+    label: 'Chinese (Mandarin)',
     voices: [
-      { id: 'Casual_Guy', name: 'Casual Guy', desc: 'Relaxed, everyday male' },
-      { id: 'Friendly_Person', name: 'Friendly Person', desc: 'Warm, approachable' },
-      { id: 'Decent_Boy', name: 'Decent Boy', desc: 'Polite, youthful male' },
-      { id: 'Lively_Girl', name: 'Lively Girl', desc: 'Energetic, bright female' },
+      { id: 'Chinese (Mandarin)_Reliable_Executive', name: 'Reliable Executive', desc: 'Professional, confident male' },
+      { id: 'Chinese (Mandarin)_News_Anchor', name: 'News Anchor', desc: 'Clear, broadcast style' },
+      { id: 'Chinese (Mandarin)_Unrestrained_Young_Man', name: 'Unrestrained Young Man', desc: 'Free-spirited, youthful male' },
+      { id: 'Chinese (Mandarin)_Mature_Woman', name: 'Mature Woman', desc: 'Experienced, elegant female' },
+      { id: 'Arrogant_Miss', name: 'Arrogant Miss', desc: 'Haughty, proud female' },
+      { id: 'Robot_Armor', name: 'Robot Armor', desc: 'Robotic, mechanical' },
+      { id: 'Chinese (Mandarin)_Kind-hearted_Antie', name: 'Kind-Hearted Auntie', desc: 'Warm, maternal female' },
+      { id: 'Chinese (Mandarin)_Refreshing_Young_Man', name: 'Refreshing Young Man', desc: 'Bright, youthful male' },
+      { id: 'Chinese (Mandarin)_HK_Flight_Attendant', name: 'HK Flight Attendant', desc: 'Professional, polite' },
+      { id: 'Chinese (Mandarin)_Humorous_Elder', name: 'Humorous Elder', desc: 'Witty, experienced' },
+      { id: 'Chinese (Mandarin)_Gentleman', name: 'Gentleman', desc: 'Refined, courteous male' },
+      { id: 'Chinese (Mandarin)_Warm_Bestie', name: 'Warm Bestie', desc: 'Friendly, intimate' },
+      { id: 'Chinese (Mandarin)_Stubborn_Friend', name: 'Stubborn Friend', desc: 'Persistent, loyal' },
+      { id: 'Chinese (Mandarin)_Sweet_Lady', name: 'Sweet Lady', desc: 'Gentle, sweet female' },
+      { id: 'Chinese (Mandarin)_Southern_Young_Man', name: 'Southern Young Man', desc: 'Regional, youthful male' },
+      { id: 'Chinese (Mandarin)_Wise_Women', name: 'Wise Women', desc: 'Knowledgeable female' },
+      { id: 'Chinese (Mandarin)_Gentle_Youth', name: 'Gentle Youth', desc: 'Soft, youthful' },
+      { id: 'Chinese (Mandarin)_Warm_Girl', name: 'Warm Girl', desc: 'Friendly, gentle female' },
+      { id: 'Chinese (Mandarin)_Male_Announcer', name: 'Male Announcer', desc: 'Clear, broadcast male' },
+      { id: 'Chinese (Mandarin)_Kind-hearted_Elder', name: 'Kind-Hearted Elder', desc: 'Compassionate, wise' },
+      { id: 'Chinese (Mandarin)_Cute_Spirit', name: 'Cute Spirit', desc: 'Adorable, lively' },
+      { id: 'Chinese (Mandarin)_Radio_Host', name: 'Radio Host', desc: 'Engaging, smooth' },
+      { id: 'Chinese (Mandarin)_Lyrical_Voice', name: 'Lyrical Voice', desc: 'Melodic, expressive' },
+      { id: 'Chinese (Mandarin)_Straightforward_Boy', name: 'Straightforward Boy', desc: 'Direct, honest male' },
+      { id: 'Chinese (Mandarin)_Sincere_Adult', name: 'Sincere Adult', desc: 'Genuine, trustworthy' },
+      { id: 'Chinese (Mandarin)_Gentle_Senior', name: 'Gentle Senior', desc: 'Calm, wise elder' },
+      { id: 'Chinese (Mandarin)_Crisp_Girl', name: 'Crisp Girl', desc: 'Clear, concise female' },
+      { id: 'Chinese (Mandarin)_Pure-hearted_Boy', name: 'Pure-Hearted Boy', desc: 'Innocent, sincere male' },
+      { id: 'Chinese (Mandarin)_Soft_Girl', name: 'Soft Girl', desc: 'Gentle, delicate female' },
+      { id: 'Chinese (Mandarin)_IntellectualGirl', name: 'Intellectual Girl', desc: 'Smart, articulate female' },
+      { id: 'Chinese (Mandarin)_Warm_HeartedGirl', name: 'Warm-Hearted Girl', desc: 'Kind, caring female' },
+      { id: 'Chinese (Mandarin)_Laid_BackGirl', name: 'Laid-Back Girl', desc: 'Relaxed, casual female' },
+      { id: 'Chinese (Mandarin)_ExplorativeGirl', name: 'Explorative Girl', desc: 'Curious, adventurous female' },
+      { id: 'Chinese (Mandarin)_Warm-HeartedAunt', name: 'Warm-Hearted Aunt', desc: 'Nurturing, kind' },
+      { id: 'Chinese (Mandarin)_BashfulGirl', name: 'Bashful Girl', desc: 'Shy, timid female' },
     ]
   },
   {
-    label: 'Energetic',
+    label: 'Japanese',
     voices: [
-      { id: 'Exuberant_Girl', name: 'Exuberant Girl', desc: 'Lively, enthusiastic female' },
-      { id: 'Inspirational_girl', name: 'Inspirational Girl', desc: 'Uplifting, youthful' },
+      { id: 'Japanese_IntellectualSenior', name: 'Intellectual Senior', desc: 'Scholarly, wise' },
+      { id: 'Japanese_DecisivePrincess', name: 'Decisive Princess', desc: 'Determined, elegant female' },
+      { id: 'Japanese_LoyalKnight', name: 'Loyal Knight', desc: 'Steadfast, noble male' },
+      { id: 'Japanese_DominantMan', name: 'Dominant Man', desc: 'Authoritative, strong male' },
+      { id: 'Japanese_SeriousCommander', name: 'Serious Commander', desc: 'Disciplined, commanding' },
+      { id: 'Japanese_ColdQueen', name: 'Cold Queen', desc: 'Regal, distant female' },
+      { id: 'Japanese_DependableWoman', name: 'Dependable Woman', desc: 'Reliable, calm female' },
+      { id: 'Japanese_GentleButler', name: 'Gentle Butler', desc: 'Polite, refined male' },
+      { id: 'Japanese_KindLady', name: 'Kind Lady', desc: 'Warm, gentle female' },
+      { id: 'Japanese_CalmLady', name: 'Calm Lady', desc: 'Serene, composed female' },
+      { id: 'Japanese_OptimisticYouth', name: 'Optimistic Youth', desc: 'Bright, cheerful young' },
+      { id: 'Japanese_GenerousIzakayaOwner', name: 'Generous Izakaya Owner', desc: 'Jovial, welcoming' },
+      { id: 'Japanese_SportyStudent', name: 'Sporty Student', desc: 'Energetic, athletic' },
+      { id: 'Japanese_InnocentBoy', name: 'Innocent Boy', desc: 'Pure, youthful male' },
+      { id: 'Japanese_GracefulMaiden', name: 'Graceful Maiden', desc: 'Elegant, gentle female' },
     ]
   },
   {
-    label: 'Character',
+    label: 'Cantonese',
     voices: [
-      { id: 'Young_Knight', name: 'Young Knight', desc: 'Bold, heroic male' },
-      { id: 'Abbess', name: 'Abbess', desc: 'Dignified, wise character' },
-      { id: 'Wise_Woman', name: 'Wise Woman', desc: 'Calm, authoritative female' },
+      { id: 'Cantonese_ProfessionalHost（F)', name: 'Professional Host (F)', desc: 'Polished, female host' },
+      { id: 'Cantonese_GentleLady', name: 'Gentle Lady', desc: 'Soft, kind female' },
+      { id: 'Cantonese_ProfessionalHost（M)', name: 'Professional Host (M)', desc: 'Polished, male host' },
+      { id: 'Cantonese_PlayfulMan', name: 'Playful Man', desc: 'Fun, lighthearted male' },
+      { id: 'Cantonese_CuteGirl', name: 'Cute Girl', desc: 'Adorable, sweet female' },
+      { id: 'Cantonese_KindWoman', name: 'Kind Woman', desc: 'Warm, compassionate female' },
     ]
   },
   {
-    label: 'Gentle & Calm',
+    label: 'Korean',
     voices: [
-      { id: 'Calm_Woman', name: 'Calm Woman', desc: 'Gentle, soothing female' },
-      { id: 'Patient_Man', name: 'Patient Man', desc: 'Clear, steady male' },
-      { id: 'Lovely_Girl', name: 'Lovely Girl', desc: 'Sweet, charming female' },
-      { id: 'Determined_Man', name: 'Determined Man', desc: 'Strong, focused male' },
+      { id: 'Korean_SweetGirl', name: 'Sweet Girl', desc: 'Gentle, lovely female' },
+      { id: 'Korean_CheerfulBoyfriend', name: 'Cheerful Boyfriend', desc: 'Upbeat, warm male' },
+      { id: 'Korean_EnchantingSister', name: 'Enchanting Sister', desc: 'Charming, captivating female' },
+      { id: 'Korean_ShyGirl', name: 'Shy Girl', desc: 'Timid, soft-spoken female' },
+      { id: 'Korean_ReliableSister', name: 'Reliable Sister', desc: 'Dependable, warm female' },
+      { id: 'Korean_StrictBoss', name: 'Strict Boss', desc: 'Demanding, authoritative' },
+      { id: 'Korean_SassyGirl', name: 'Sassy Girl', desc: 'Bold, spirited female' },
+      { id: 'Korean_ChildhoodFriendGirl', name: 'Childhood Friend Girl', desc: 'Familiar, nostalgic female' },
+      { id: 'Korean_PlayboyCharmer', name: 'Playboy Charmer', desc: 'Smooth, flirtatious male' },
+      { id: 'Korean_ElegantPrincess', name: 'Elegant Princess', desc: 'Regal, refined female' },
+      { id: 'Korean_BraveFemaleWarrior', name: 'Brave Female Warrior', desc: 'Strong, fierce female' },
+      { id: 'Korean_BraveYouth', name: 'Brave Youth', desc: 'Courageous, young' },
+      { id: 'Korean_CalmLady', name: 'Calm Lady', desc: 'Serene, composed female' },
+      { id: 'Korean_EnthusiasticTeen', name: 'Enthusiastic Teen', desc: 'Energetic, youthful' },
+      { id: 'Korean_SoothingLady', name: 'Soothing Lady', desc: 'Relaxing, gentle female' },
+      { id: 'Korean_IntellectualSenior', name: 'Intellectual Senior', desc: 'Scholarly, wise' },
+      { id: 'Korean_LonelyWarrior', name: 'Lonely Warrior', desc: 'Brooding, solitary' },
+      { id: 'Korean_MatureLady', name: 'Mature Lady', desc: 'Experienced, elegant female' },
+      { id: 'Korean_InnocentBoy', name: 'Innocent Boy', desc: 'Pure, youthful male' },
+      { id: 'Korean_CharmingSister', name: 'Charming Sister', desc: 'Alluring, warm female' },
+      { id: 'Korean_AthleticStudent', name: 'Athletic Student', desc: 'Sporty, energetic' },
+      { id: 'Korean_BraveAdventurer', name: 'Brave Adventurer', desc: 'Bold, daring' },
+      { id: 'Korean_CalmGentleman', name: 'Calm Gentleman', desc: 'Composed, refined male' },
+      { id: 'Korean_WiseElf', name: 'Wise Elf', desc: 'Mystical, knowledgeable' },
+      { id: 'Korean_CheerfulCoolJunior', name: 'Cheerful Cool Junior', desc: 'Upbeat, stylish young' },
+      { id: 'Korean_DecisiveQueen', name: 'Decisive Queen', desc: 'Determined, commanding female' },
+      { id: 'Korean_ColdYoungMan', name: 'Cold Young Man', desc: 'Aloof, reserved male' },
+      { id: 'Korean_MysteriousGirl', name: 'Mysterious Girl', desc: 'Enigmatic, intriguing female' },
+      { id: 'Korean_QuirkyGirl', name: 'Quirky Girl', desc: 'Eccentric, fun female' },
+      { id: 'Korean_ConsiderateSenior', name: 'Considerate Senior', desc: 'Thoughtful, caring elder' },
+      { id: 'Korean_CheerfulLittleSister', name: 'Cheerful Little Sister', desc: 'Bubbly, playful female' },
+      { id: 'Korean_DominantMan', name: 'Dominant Man', desc: 'Assertive, strong male' },
+      { id: 'Korean_AirheadedGirl', name: 'Airheaded Girl', desc: 'Carefree, ditzy female' },
+      { id: 'Korean_ReliableYouth', name: 'Reliable Youth', desc: 'Dependable, young' },
+      { id: 'Korean_FriendlyBigSister', name: 'Friendly Big Sister', desc: 'Warm, supportive female' },
+      { id: 'Korean_GentleBoss', name: 'Gentle Boss', desc: 'Kind yet authoritative' },
+      { id: 'Korean_ColdGirl', name: 'Cold Girl', desc: 'Distant, reserved female' },
+      { id: 'Korean_HaughtyLady', name: 'Haughty Lady', desc: 'Proud, superior female' },
+      { id: 'Korean_CharmingElderSister', name: 'Charming Elder Sister', desc: 'Captivating, warm female' },
+      { id: 'Korean_IntellectualMan', name: 'Intellectual Man', desc: 'Scholarly, thoughtful male' },
+      { id: 'Korean_CaringWoman', name: 'Caring Woman', desc: 'Nurturing, warm female' },
+      { id: 'Korean_WiseTeacher', name: 'Wise Teacher', desc: 'Knowledgeable, guiding' },
+      { id: 'Korean_ConfidentBoss', name: 'Confident Boss', desc: 'Self-assured, commanding' },
+      { id: 'Korean_AthleticGirl', name: 'Athletic Girl', desc: 'Sporty, energetic female' },
+      { id: 'Korean_PossessiveMan', name: 'Possessive Man', desc: 'Intense, controlling male' },
+      { id: 'Korean_GentleWoman', name: 'Gentle Woman', desc: 'Soft, kind female' },
+      { id: 'Korean_CockyGuy', name: 'Cocky Guy', desc: 'Confident, brash male' },
+      { id: 'Korean_ThoughtfulWoman', name: 'Thoughtful Woman', desc: 'Considerate, reflective female' },
+      { id: 'Korean_OptimisticYouth', name: 'Optimistic Youth', desc: 'Bright, hopeful young' },
+    ]
+  },
+  {
+    label: 'Spanish',
+    voices: [
+      { id: 'Spanish_SereneWoman', name: 'Serene Woman', desc: 'Peaceful, composed female' },
+      { id: 'Spanish_MaturePartner', name: 'Mature Partner', desc: 'Experienced, warm' },
+      { id: 'Spanish_CaptivatingStoryteller', name: 'Captivating Storyteller', desc: 'Engaging narrator' },
+      { id: 'Spanish_Narrator', name: 'Narrator', desc: 'Clear, professional' },
+      { id: 'Spanish_WiseScholar', name: 'Wise Scholar', desc: 'Intellectual, thoughtful' },
+      { id: 'Spanish_Kind-heartedGirl', name: 'Kind-Hearted Girl', desc: 'Warm, compassionate female' },
+      { id: 'Spanish_DeterminedManager', name: 'Determined Manager', desc: 'Focused, driven' },
+      { id: 'Spanish_BossyLeader', name: 'Bossy Leader', desc: 'Assertive, commanding' },
+      { id: 'Spanish_ReservedYoungMan', name: 'Reserved Young Man', desc: 'Quiet, thoughtful male' },
+      { id: 'Spanish_ConfidentWoman', name: 'Confident Woman', desc: 'Assertive, strong female' },
+      { id: 'Spanish_ThoughtfulMan', name: 'Thoughtful Man', desc: 'Considerate, reflective male' },
+      { id: 'Spanish_Strong-WilledBoy', name: 'Strong-Willed Boy', desc: 'Determined, youthful male' },
+      { id: 'Spanish_SophisticatedLady', name: 'Sophisticated Lady', desc: 'Elegant, refined female' },
+      { id: 'Spanish_RationalMan', name: 'Rational Man', desc: 'Logical, clear male' },
+      { id: 'Spanish_AnimeCharacter', name: 'Anime Character', desc: 'Expressive, animated' },
+      { id: 'Spanish_Deep-tonedMan', name: 'Deep-Toned Man', desc: 'Rich, resonant male' },
+      { id: 'Spanish_Fussyhostess', name: 'Fussy Hostess', desc: 'Particular, precise female' },
+      { id: 'Spanish_SincereTeen', name: 'Sincere Teen', desc: 'Genuine, youthful' },
+      { id: 'Spanish_FrankLady', name: 'Frank Lady', desc: 'Direct, honest female' },
+      { id: 'Spanish_Comedian', name: 'Comedian', desc: 'Humorous, entertaining' },
+      { id: 'Spanish_Debator', name: 'Debator', desc: 'Articulate, persuasive' },
+      { id: 'Spanish_ToughBoss', name: 'Tough Boss', desc: 'Stern, demanding' },
+      { id: 'Spanish_Wiselady', name: 'Wise Lady', desc: 'Knowledgeable, calm female' },
+      { id: 'Spanish_Steadymentor', name: 'Steady Mentor', desc: 'Calm, guiding male' },
+      { id: 'Spanish_Jovialman', name: 'Jovial Man', desc: 'Cheerful, upbeat male' },
+      { id: 'Spanish_SantaClaus', name: 'Santa Claus', desc: 'Jolly, festive' },
+      { id: 'Spanish_Rudolph', name: 'Rudolph', desc: 'Playful character' },
+      { id: 'Spanish_Intonategirl', name: 'Intonate Girl', desc: 'Melodic, expressive female' },
+      { id: 'Spanish_Arnold', name: 'Arnold', desc: 'Strong, muscular character' },
+      { id: 'Spanish_Ghost', name: 'Ghost', desc: 'Eerie, spectral' },
+      { id: 'Spanish_HumorousElder', name: 'Humorous Elder', desc: 'Witty, experienced' },
+      { id: 'Spanish_EnergeticBoy', name: 'Energetic Boy', desc: 'Lively, spirited male' },
+      { id: 'Spanish_WhimsicalGirl', name: 'Whimsical Girl', desc: 'Playful, dreamy female' },
+      { id: 'Spanish_StrictBoss', name: 'Strict Boss', desc: 'Demanding, authoritative' },
+      { id: 'Spanish_ReliableMan', name: 'Reliable Man', desc: 'Dependable, steady male' },
+      { id: 'Spanish_SereneElder', name: 'Serene Elder', desc: 'Peaceful, wise' },
+      { id: 'Spanish_AngryMan', name: 'Angry Man', desc: 'Frustrated, intense male' },
+      { id: 'Spanish_AssertiveQueen', name: 'Assertive Queen', desc: 'Regal, commanding female' },
+      { id: 'Spanish_CaringGirlfriend', name: 'Caring Girlfriend', desc: 'Affectionate, warm female' },
+      { id: 'Spanish_PowerfulSoldier', name: 'Powerful Soldier', desc: 'Strong, military' },
+      { id: 'Spanish_PassionateWarrior', name: 'Passionate Warrior', desc: 'Bold, intense' },
+      { id: 'Spanish_ChattyGirl', name: 'Chatty Girl', desc: 'Talkative, lively female' },
+      { id: 'Spanish_RomanticHusband', name: 'Romantic Husband', desc: 'Loving, tender male' },
+      { id: 'Spanish_CompellingGirl', name: 'Compelling Girl', desc: 'Persuasive, captivating female' },
+      { id: 'Spanish_PowerfulVeteran', name: 'Powerful Veteran', desc: 'Strong, experienced' },
+      { id: 'Spanish_SensibleManager', name: 'Sensible Manager', desc: 'Practical, level-headed' },
+      { id: 'Spanish_ThoughtfulLady', name: 'Thoughtful Lady', desc: 'Considerate, reflective female' },
+    ]
+  },
+  {
+    label: 'Portuguese',
+    voices: [
+      { id: 'Portuguese_SentimentalLady', name: 'Sentimental Lady', desc: 'Emotional, warm female' },
+      { id: 'Portuguese_BossyLeader', name: 'Bossy Leader', desc: 'Assertive, commanding' },
+      { id: 'Portuguese_Wiselady', name: 'Wise Lady', desc: 'Knowledgeable, calm female' },
+      { id: 'Portuguese_Strong-WilledBoy', name: 'Strong-Willed Boy', desc: 'Determined, youthful male' },
+      { id: 'Portuguese_Deep-VoicedGentleman', name: 'Deep-Voiced Gentleman', desc: 'Distinguished, deep male' },
+      { id: 'Portuguese_UpsetGirl', name: 'Upset Girl', desc: 'Emotional, distressed female' },
+      { id: 'Portuguese_PassionateWarrior', name: 'Passionate Warrior', desc: 'Bold, intense' },
+      { id: 'Portuguese_AnimeCharacter', name: 'Anime Character', desc: 'Expressive, animated' },
+      { id: 'Portuguese_ConfidentWoman', name: 'Confident Woman', desc: 'Assertive, strong female' },
+      { id: 'Portuguese_AngryMan', name: 'Angry Man', desc: 'Frustrated, intense male' },
+      { id: 'Portuguese_CaptivatingStoryteller', name: 'Captivating Storyteller', desc: 'Engaging narrator' },
+      { id: 'Portuguese_Godfather', name: 'Godfather', desc: 'Commanding, deep male' },
+      { id: 'Portuguese_ReservedYoungMan', name: 'Reserved Young Man', desc: 'Quiet, thoughtful male' },
+      { id: 'Portuguese_SmartYoungGirl', name: 'Smart Young Girl', desc: 'Bright, articulate female' },
+      { id: 'Portuguese_Kind-heartedGirl', name: 'Kind-Hearted Girl', desc: 'Warm, compassionate female' },
+      { id: 'Portuguese_Pompouslady', name: 'Pompous Lady', desc: 'Grandiose, dramatic female' },
+      { id: 'Portuguese_Grinch', name: 'Grinch', desc: 'Grumpy, mischievous' },
+      { id: 'Portuguese_Debator', name: 'Debator', desc: 'Articulate, persuasive' },
+      { id: 'Portuguese_SweetGirl', name: 'Sweet Girl', desc: 'Gentle, lovely female' },
+      { id: 'Portuguese_AttractiveGirl', name: 'Attractive Girl', desc: 'Alluring, charming female' },
+      { id: 'Portuguese_ThoughtfulMan', name: 'Thoughtful Man', desc: 'Considerate, reflective male' },
+      { id: 'Portuguese_PlayfulGirl', name: 'Playful Girl', desc: 'Fun, lighthearted female' },
+      { id: 'Portuguese_GorgeousLady', name: 'Gorgeous Lady', desc: 'Beautiful, elegant female' },
+      { id: 'Portuguese_LovelyLady', name: 'Lovely Lady', desc: 'Sweet, charming female' },
+      { id: 'Portuguese_SereneWoman', name: 'Serene Woman', desc: 'Peaceful, composed female' },
+      { id: 'Portuguese_SadTeen', name: 'Sad Teen', desc: 'Melancholic, youthful' },
+      { id: 'Portuguese_MaturePartner', name: 'Mature Partner', desc: 'Experienced, warm' },
+      { id: 'Portuguese_Comedian', name: 'Comedian', desc: 'Humorous, entertaining' },
+      { id: 'Portuguese_NaughtySchoolgirl', name: 'Naughty Schoolgirl', desc: 'Mischievous, playful female' },
+      { id: 'Portuguese_Narrator', name: 'Narrator', desc: 'Clear, professional' },
+      { id: 'Portuguese_ToughBoss', name: 'Tough Boss', desc: 'Stern, demanding' },
+      { id: 'Portuguese_Fussyhostess', name: 'Fussy Hostess', desc: 'Particular, precise female' },
+      { id: 'Portuguese_Dramatist', name: 'Dramatist', desc: 'Theatrical, expressive' },
+      { id: 'Portuguese_Steadymentor', name: 'Steady Mentor', desc: 'Calm, guiding male' },
+      { id: 'Portuguese_Jovialman', name: 'Jovial Man', desc: 'Cheerful, upbeat male' },
+      { id: 'Portuguese_CharmingQueen', name: 'Charming Queen', desc: 'Elegant, regal female' },
+      { id: 'Portuguese_SantaClaus', name: 'Santa Claus', desc: 'Jolly, festive' },
+      { id: 'Portuguese_Rudolph', name: 'Rudolph', desc: 'Playful character' },
+      { id: 'Portuguese_Arnold', name: 'Arnold', desc: 'Strong, muscular character' },
+      { id: 'Portuguese_CharmingSanta', name: 'Charming Santa', desc: 'Warm, festive' },
+      { id: 'Portuguese_CharmingLady', name: 'Charming Lady', desc: 'Captivating, elegant female' },
+      { id: 'Portuguese_Ghost', name: 'Ghost', desc: 'Eerie, spectral' },
+      { id: 'Portuguese_HumorousElder', name: 'Humorous Elder', desc: 'Witty, experienced' },
+      { id: 'Portuguese_CalmLeader', name: 'Calm Leader', desc: 'Composed, authoritative' },
+      { id: 'Portuguese_GentleTeacher', name: 'Gentle Teacher', desc: 'Kind, patient educator' },
+      { id: 'Portuguese_EnergeticBoy', name: 'Energetic Boy', desc: 'Lively, spirited male' },
+      { id: 'Portuguese_ReliableMan', name: 'Reliable Man', desc: 'Dependable, steady male' },
+      { id: 'Portuguese_SereneElder', name: 'Serene Elder', desc: 'Peaceful, wise' },
+      { id: 'Portuguese_GrimReaper', name: 'Grim Reaper', desc: 'Dark, ominous' },
+      { id: 'Portuguese_AssertiveQueen', name: 'Assertive Queen', desc: 'Regal, commanding female' },
+      { id: 'Portuguese_WhimsicalGirl', name: 'Whimsical Girl', desc: 'Playful, dreamy female' },
+      { id: 'Portuguese_StressedLady', name: 'Stressed Lady', desc: 'Tense, anxious female' },
+      { id: 'Portuguese_FriendlyNeighbor', name: 'Friendly Neighbor', desc: 'Warm, approachable' },
+      { id: 'Portuguese_CaringGirlfriend', name: 'Caring Girlfriend', desc: 'Affectionate, warm female' },
+      { id: 'Portuguese_PowerfulSoldier', name: 'Powerful Soldier', desc: 'Strong, military' },
+      { id: 'Portuguese_FascinatingBoy', name: 'Fascinating Boy', desc: 'Intriguing, charming male' },
+      { id: 'Portuguese_RomanticHusband', name: 'Romantic Husband', desc: 'Loving, tender male' },
+      { id: 'Portuguese_StrictBoss', name: 'Strict Boss', desc: 'Demanding, authoritative' },
+      { id: 'Portuguese_InspiringLady', name: 'Inspiring Lady', desc: 'Motivational, uplifting female' },
+      { id: 'Portuguese_PlayfulSpirit', name: 'Playful Spirit', desc: 'Fun, lively' },
+      { id: 'Portuguese_ElegantGirl', name: 'Elegant Girl', desc: 'Refined, graceful female' },
+      { id: 'Portuguese_CompellingGirl', name: 'Compelling Girl', desc: 'Persuasive, captivating female' },
+      { id: 'Portuguese_PowerfulVeteran', name: 'Powerful Veteran', desc: 'Strong, experienced' },
+      { id: 'Portuguese_SensibleManager', name: 'Sensible Manager', desc: 'Practical, level-headed' },
+      { id: 'Portuguese_ThoughtfulLady', name: 'Thoughtful Lady', desc: 'Considerate, reflective female' },
+      { id: 'Portuguese_TheatricalActor', name: 'Theatrical Actor', desc: 'Dramatic, expressive' },
+      { id: 'Portuguese_FragileBoy', name: 'Fragile Boy', desc: 'Delicate, sensitive male' },
+      { id: 'Portuguese_ChattyGirl', name: 'Chatty Girl', desc: 'Talkative, lively female' },
+      { id: 'Portuguese_Conscientiousinstructor', name: 'Conscientious Instructor', desc: 'Careful, thorough educator' },
+      { id: 'Portuguese_RationalMan', name: 'Rational Man', desc: 'Logical, clear male' },
+      { id: 'Portuguese_WiseScholar', name: 'Wise Scholar', desc: 'Intellectual, thoughtful' },
+      { id: 'Portuguese_FrankLady', name: 'Frank Lady', desc: 'Direct, honest female' },
+      { id: 'Portuguese_DeterminedManager', name: 'Determined Manager', desc: 'Focused, driven' },
+    ]
+  },
+  {
+    label: 'French',
+    voices: [
+      { id: 'French_Male_Speech_New', name: 'Male Speech', desc: 'Clear, articulate male' },
+      { id: 'French_Female_News Anchor', name: 'Female News Anchor', desc: 'Professional, broadcast female' },
+      { id: 'French_CasualMan', name: 'Casual Man', desc: 'Relaxed, everyday male' },
+      { id: 'French_MovieLeadFemale', name: 'Movie Lead Female', desc: 'Dramatic, cinematic female' },
+      { id: 'French_FemaleAnchor', name: 'Female Anchor', desc: 'Polished, broadcast female' },
+      { id: 'French_MaleNarrator', name: 'Male Narrator', desc: 'Clear, storytelling male' },
+    ]
+  },
+  {
+    label: 'Indonesian',
+    voices: [
+      { id: 'Indonesian_SweetGirl', name: 'Sweet Girl', desc: 'Gentle, lovely female' },
+      { id: 'Indonesian_ReservedYoungMan', name: 'Reserved Young Man', desc: 'Quiet, thoughtful male' },
+      { id: 'Indonesian_CharmingGirl', name: 'Charming Girl', desc: 'Captivating, warm female' },
+      { id: 'Indonesian_CalmWoman', name: 'Calm Woman', desc: 'Gentle, soothing female' },
+      { id: 'Indonesian_ConfidentWoman', name: 'Confident Woman', desc: 'Assertive, strong female' },
+      { id: 'Indonesian_CaringMan', name: 'Caring Man', desc: 'Nurturing, kind male' },
+      { id: 'Indonesian_BossyLeader', name: 'Bossy Leader', desc: 'Assertive, commanding' },
+      { id: 'Indonesian_DeterminedBoy', name: 'Determined Boy', desc: 'Focused, youthful male' },
+      { id: 'Indonesian_GentleGirl', name: 'Gentle Girl', desc: 'Soft, kind female' },
+    ]
+  },
+  {
+    label: 'German',
+    voices: [
+      { id: 'German_FriendlyMan', name: 'Friendly Man', desc: 'Warm, approachable male' },
+      { id: 'German_SweetLady', name: 'Sweet Lady', desc: 'Gentle, kind female' },
+      { id: 'German_PlayfulMan', name: 'Playful Man', desc: 'Fun, lighthearted male' },
+    ]
+  },
+  {
+    label: 'Russian',
+    voices: [
+      { id: 'Russian_HandsomeChildhoodFriend', name: 'Handsome Childhood Friend', desc: 'Warm, nostalgic male' },
+      { id: 'Russian_BrightHeroine', name: 'Bright Heroine', desc: 'Bold, inspiring female' },
+      { id: 'Russian_AmbitiousWoman', name: 'Ambitious Woman', desc: 'Driven, determined female' },
+      { id: 'Russian_ReliableMan', name: 'Reliable Man', desc: 'Dependable, steady male' },
+      { id: 'Russian_CrazyQueen', name: 'Crazy Queen', desc: 'Wild, unpredictable female' },
+      { id: 'Russian_PessimisticGirl', name: 'Pessimistic Girl', desc: 'Gloomy, downcast female' },
+      { id: 'Russian_AttractiveGuy', name: 'Attractive Guy', desc: 'Charming, appealing male' },
+      { id: 'Russian_Bad-temperedBoy', name: 'Bad-Tempered Boy', desc: 'Irritable, youthful male' },
+    ]
+  },
+  {
+    label: 'Italian',
+    voices: [
+      { id: 'Italian_BraveHeroine', name: 'Brave Heroine', desc: 'Courageous, bold female' },
+      { id: 'Italian_Narrator', name: 'Narrator', desc: 'Clear, professional' },
+      { id: 'Italian_WanderingSorcerer', name: 'Wandering Sorcerer', desc: 'Mystical, enigmatic' },
+      { id: 'Italian_DiligentLeader', name: 'Diligent Leader', desc: 'Hardworking, commanding' },
+    ]
+  },
+  {
+    label: 'Other Languages',
+    voices: [
+      { id: 'Dutch_kindhearted_girl', name: 'Dutch Kind-Hearted Girl', desc: 'Warm, compassionate female' },
+      { id: 'Dutch_bossy_leader', name: 'Dutch Bossy Leader', desc: 'Assertive, commanding' },
+      { id: 'Vietnamese_kindhearted_girl', name: 'Vietnamese Kind-Hearted Girl', desc: 'Warm, compassionate female' },
+      { id: 'Arabic_CalmWoman', name: 'Arabic Calm Woman', desc: 'Gentle, soothing female' },
+      { id: 'Arabic_FriendlyGuy', name: 'Arabic Friendly Guy', desc: 'Warm, approachable male' },
+      { id: 'Turkish_CalmWoman', name: 'Turkish Calm Woman', desc: 'Gentle, soothing female' },
+      { id: 'Turkish_Trustworthyman', name: 'Turkish Trustworthy Man', desc: 'Reliable, confident male' },
+      { id: 'Ukrainian_CalmWoman', name: 'Ukrainian Calm Woman', desc: 'Gentle, soothing female' },
     ]
   },
 ]
@@ -135,8 +461,9 @@ export default function VoiceLabsPage() {
   const [leftOpen, setLeftOpen] = useState(true)
 
   // ── Voice Selection ──
-  const [voiceId, setVoiceId] = useState('Wise_Woman')
+  const [voiceId, setVoiceId] = useState('English_CalmWoman')
   const [voiceSubTab, setVoiceSubTab] = useState<'system' | 'custom'>('system')
+  const [voiceSearch, setVoiceSearch] = useState('')
   const [trainedVoices, setTrainedVoices] = useState<TrainedVoice[]>([])
   const [loadingVoices, setLoadingVoices] = useState(false)
 
@@ -744,25 +1071,41 @@ export default function VoiceLabsPage() {
                 </div>
 
                 {voiceSubTab === 'system' ? (
-                  VOICE_CATEGORIES.map(cat => (
-                    <div key={cat.label} className="mb-2">
-                      <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider px-2 pb-1 pt-1.5">{cat.label}</p>
-                      {cat.voices.map(v => (
-                        <button key={v.id} onClick={() => setVoiceId(v.id)}
-                          className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left transition-all ${
-                            voiceId === v.id ? 'bg-cyan-500/10 border border-cyan-500/40' : 'hover:bg-white/[0.03] border border-transparent'
-                          }`}>
-                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${voiceId === v.id ? 'bg-cyan-500/20' : 'bg-white/[0.04]'}`}>
-                            <User size={16} className={voiceId === v.id ? 'text-cyan-400' : 'text-gray-500'} />
-                          </div>
-                          <div className="min-w-0">
-                            <div className={`text-sm font-medium truncate ${voiceId === v.id ? 'text-cyan-300' : 'text-white/70'}`}>{v.name}</div>
-                            <div className="text-xs text-gray-500 truncate">{v.desc}</div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  ))
+                  <>
+                    <input
+                      type="text"
+                      value={voiceSearch}
+                      onChange={e => setVoiceSearch(e.target.value)}
+                      placeholder="Search voices..."
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 mb-2"
+                    />
+                    {VOICE_CATEGORIES.map(cat => {
+                      const q = voiceSearch.toLowerCase()
+                      const filtered = q
+                        ? cat.voices.filter(v => v.name.toLowerCase().includes(q) || v.desc.toLowerCase().includes(q) || v.id.toLowerCase().includes(q) || cat.label.toLowerCase().includes(q))
+                        : cat.voices
+                      if (filtered.length === 0) return null
+                      return (
+                        <div key={cat.label} className="mb-2">
+                          <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider px-2 pb-1 pt-1.5">{cat.label} <span className="text-gray-600">({filtered.length})</span></p>
+                          {filtered.map(v => (
+                            <button key={v.id} onClick={() => setVoiceId(v.id)}
+                              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left transition-all ${
+                                voiceId === v.id ? 'bg-cyan-500/10 border border-cyan-500/40' : 'hover:bg-white/[0.03] border border-transparent'
+                              }`}>
+                              <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${voiceId === v.id ? 'bg-cyan-500/20' : 'bg-white/[0.04]'}`}>
+                                <User size={16} className={voiceId === v.id ? 'text-cyan-400' : 'text-gray-500'} />
+                              </div>
+                              <div className="min-w-0">
+                                <div className={`text-sm font-medium truncate ${voiceId === v.id ? 'text-cyan-300' : 'text-white/70'}`}>{v.name}</div>
+                                <div className="text-xs text-gray-500 truncate">{v.desc}</div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )
+                    })}
+                  </>
                 ) : loadingVoices ? (
                   <div className="flex items-center justify-center py-8 text-gray-500 text-sm gap-2"><Loader2 size={14} className="animate-spin" /> Loading...</div>
                 ) : trainedVoices.length === 0 ? (
@@ -1197,7 +1540,7 @@ export default function VoiceLabsPage() {
               {/* Voice Options */}
               <section>
                 <h3 className="text-sm font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-2 mb-3">
-                  <User size={14} /> 16 Built-in Voices
+                  <User size={14} /> {SYSTEM_VOICES.length} Built-in Voices
                 </h3>
                 <p className="text-xs text-gray-400 mb-3 leading-relaxed">Choose voices spanning different genders, ages, and speaking styles. Custom cloned voices are also supported.</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

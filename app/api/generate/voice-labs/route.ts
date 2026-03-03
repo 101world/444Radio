@@ -67,7 +67,7 @@ async function logVoiceLabsActivity(
  *
  * Body: {
  *   text: string (required, max 10000 chars)
- *   voice_id?: string (default: "Wise_Woman")
+ *   voice_id?: string (default: "English_CalmWoman")
  *   speed?: number (0.5-2.0, default: 1)
  *   volume?: number (0-10, default: 1)
  *   pitch?: number (-12 to 12, default: 0)
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
     }
 
     // â”€â”€ Parse all parameters with defaults & validation â”€â”€
-    const voice_id = (body.voice_id || 'Wise_Woman').trim()
+    const voice_id = (body.voice_id || 'English_CalmWoman').trim()
     const speed = Math.max(0.5, Math.min(2, Number(body.speed) || 1))
     const volume = Math.max(0, Math.min(10, Number(body.volume) || 1))
     const pitch = Math.max(-12, Math.min(12, Math.round(Number(body.pitch) || 0)))
