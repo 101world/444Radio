@@ -21,6 +21,7 @@ interface StudioSample {
   original_filename: string
   file_size: number
   duration_ms?: number | null
+  original_bpm?: number | null
   created_at: string
 }
 
@@ -32,7 +33,7 @@ interface StudioSampleUploaderProps {
   /** Called to register sound in Strudel engine: webaudio.samples({ name: [url] }) */
   onRegisterSound: (name: string, url: string) => Promise<void>
   /** Called to add a vocal channel to the code with auto-calculated loopAt */
-  onAddVocalChannel: (name: string, loopAt: number) => void
+  onAddVocalChannel: (name: string, loopAt: number, sampleBpm?: number) => void
   /** Called when samples list changes (upload/delete) so parent can sync */
   onSamplesChanged?: (samples: StudioSample[]) => void
   accentColor?: string
@@ -44,6 +45,68 @@ interface StudioSampleUploaderProps {
 function calculateLoopAt(durationSeconds: number, bpm: number): number {
   const raw = (durationSeconds * bpm) / 240
   return Math.max(1, Math.round(raw))
+}
+
+/** Calculate pitch shift in semitones caused by tempo-syncing a sample.
+ *  When loopAt changes playback speed, pitch shifts proportionally.
+ *  Returns positive for pitch-up, negative for pitch-down. */
+function calculatePitchShift(sampleBpm: number, projectBpm: number): number {
+  return 12 * Math.log2(projectBpm / sampleBpm)
+}
+
+/** Simple BPM detection via onset energy autocorrelation.
+ *  Works best for rhythmic material > 3 seconds.
+ *  Returns null for short samples or if detection fails. */
+function detectBPM(audioBuffer: AudioBuffer): number | null {
+  if (audioBuffer.duration < 3) return null
+
+  const data = audioBuffer.getChannelData(0)
+  const sampleRate = audioBuffer.sampleRate
+
+  // Compute energy envelope in 20ms windows
+  const windowSize = Math.floor(sampleRate * 0.02)
+  const hopSize = Math.floor(windowSize / 2)
+  const numWindows = Math.floor((data.length - windowSize) / hopSize)
+  if (numWindows < 20) return null
+
+  const energy = new Float32Array(numWindows)
+  for (let i = 0; i < numWindows; i++) {
+    let sum = 0
+    const offset = i * hopSize
+    for (let j = 0; j < windowSize; j++) {
+      sum += data[offset + j] ** 2
+    }
+    energy[i] = Math.sqrt(sum / windowSize)
+  }
+
+  // Onset strength (positive energy differences)
+  const onset = new Float32Array(numWindows - 1)
+  for (let i = 1; i < numWindows; i++) {
+    onset[i - 1] = Math.max(0, energy[i] - energy[i - 1])
+  }
+
+  // Autocorrelation to find dominant periodicity in BPM range 60-200
+  const windowsPerSecond = sampleRate / hopSize
+  const minLag = Math.floor(windowsPerSecond * 60 / 200) // fastest = 200 BPM
+  const maxLag = Math.ceil(windowsPerSecond * 60 / 60)    // slowest = 60 BPM
+
+  let bestLag = minLag
+  let bestCorr = -Infinity
+
+  for (let lag = minLag; lag <= Math.min(maxLag, onset.length - 1); lag++) {
+    let corr = 0
+    const len = Math.min(onset.length - lag, onset.length)
+    for (let i = 0; i < len; i++) {
+      corr += onset[i] * onset[i + lag]
+    }
+    if (corr > bestCorr) {
+      bestCorr = corr
+      bestLag = lag
+    }
+  }
+
+  const detected = Math.round(windowsPerSecond * 60 / bestLag)
+  return detected >= 60 && detected <= 200 ? detected : null
 }
 
 function formatDuration(seconds: number): string {
@@ -76,9 +139,12 @@ export default function StudioSampleUploader({
   const [dragOver, setDragOver] = useState(false)
   const [audioDuration, setAudioDuration] = useState<number | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [sampleBpm, setSampleBpm] = useState<number | null>(null)
+  const [detectedBpm, setDetectedBpm] = useState<number | null>(null)
   const dragCounterRef = useRef(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const lastAudioBufferRef = useRef<AudioBuffer | null>(null)
 
   // Computed loopAt from duration + BPM
   const autoLoopAt = useMemo(() => {
@@ -133,6 +199,13 @@ export default function StudioSampleUploader({
       const audioBuffer = await actx.decodeAudioData(arrayBuffer)
       const duration = audioBuffer.duration
       setAudioDuration(duration)
+
+      // Auto-detect BPM for samples > 3 seconds
+      lastAudioBufferRef.current = audioBuffer
+      const detected = detectBPM(audioBuffer)
+      setDetectedBpm(detected)
+      if (detected) setSampleBpm(detected)
+
       return duration
     } catch (err) {
       console.warn('[StudioSampleUploader] duration detection failed, using HTML5 fallback:', err)
@@ -165,6 +238,9 @@ export default function StudioSampleUploader({
     setSelectedFile(file)
     setError(null)
     setAudioDuration(null)
+    setSampleBpm(null)
+    setDetectedBpm(null)
+    lastAudioBufferRef.current = null
 
     // Auto-generate name from filename
     const baseName = file.name.replace(/\.[^.]+$/, '')
@@ -218,6 +294,7 @@ export default function StudioSampleUploader({
             fileType: selectedFile.type,
             fileSize: selectedFile.size,
             durationMs: audioDuration ? Math.round(audioDuration * 1000) : null,
+            originalBpm: sampleBpm || null,
           }),
         })
         const initData = await initRes.json()
@@ -248,6 +325,7 @@ export default function StudioSampleUploader({
         const formData = new FormData()
         formData.append('file', selectedFile)
         formData.append('name', cleanName)
+        if (sampleBpm) formData.append('originalBpm', String(sampleBpm))
 
         const res = await fetch('/api/studio/samples', {
           method: 'POST',
@@ -267,6 +345,9 @@ export default function StudioSampleUploader({
       setSelectedFile(null)
       setSoundName('')
       setAudioDuration(null)
+      setSampleBpm(null)
+      setDetectedBpm(null)
+      lastAudioBufferRef.current = null
       if (previewUrl) { URL.revokeObjectURL(previewUrl); setPreviewUrl(null) }
       if (fileInputRef.current) fileInputRef.current.value = ''
     } catch (err) {
@@ -322,11 +403,19 @@ export default function StudioSampleUploader({
     }
   }, [previewUrl])
 
+  // Pitch shift for current upload preview
+  const uploadPitchShift = useMemo(() => {
+    if (!sampleBpm || !bpm || sampleBpm === bpm) return null
+    return calculatePitchShift(sampleBpm, bpm)
+  }, [sampleBpm, bpm])
+
   // Use sample as vocal channel
   const handleUseAsVocal = useCallback((sample: StudioSample) => {
     const duration = sample.duration_ms ? sample.duration_ms / 1000 : null
-    const loopAt = duration ? calculateLoopAt(duration, bpm) : 8
-    onAddVocalChannel(sample.name, loopAt)
+    // Use sample's original BPM for accurate bar-count calculation, fallback to project BPM
+    const calcBpm = sample.original_bpm || bpm
+    const loopAt = duration ? calculateLoopAt(duration, calcBpm) : 8
+    onAddVocalChannel(sample.name, loopAt, sample.original_bpm || undefined)
     onClose()
   }, [bpm, onAddVocalChannel, onClose])
 
@@ -415,6 +504,44 @@ export default function StudioSampleUploader({
                   </div>
                 )}
 
+                {/* BPM input + pitch shift indicator */}
+                {audioDuration !== null && audioDuration >= 3 && (
+                  <div className="flex items-center justify-center gap-2 text-[10px]" onClick={e => e.stopPropagation()}>
+                    <span style={{ color: '#5a616b' }}>BPM:</span>
+                    <input
+                      type="number"
+                      min={30}
+                      max={300}
+                      value={sampleBpm ?? ''}
+                      onChange={e => {
+                        const v = parseInt(e.target.value)
+                        setSampleBpm(isNaN(v) ? null : Math.max(30, Math.min(300, v)))
+                      }}
+                      placeholder={detectedBpm ? String(detectedBpm) : '—'}
+                      className="w-14 px-1.5 py-0.5 rounded text-center font-mono outline-none"
+                      style={{ background: '#0a0a0c', color: '#c8cdd2', border: '1px solid rgba(255,255,255,0.1)' }}
+                    />
+                    {detectedBpm && (
+                      <span className="px-1.5 py-0.5 rounded" style={{ background: '#7fa99815', color: '#7fa998' }}>
+                        auto: {detectedBpm}
+                      </span>
+                    )}
+                    {uploadPitchShift !== null && (
+                      <span className="px-1.5 py-0.5 rounded font-bold" style={{
+                        background: Math.abs(uploadPitchShift) > 3 ? '#ef444420' : '#f59e0b20',
+                        color: Math.abs(uploadPitchShift) > 3 ? '#ef4444' : '#f59e0b',
+                      }}>
+                        {uploadPitchShift > 0 ? '+' : ''}{uploadPitchShift.toFixed(1)} st
+                      </span>
+                    )}
+                    {sampleBpm && sampleBpm === bpm && (
+                      <span className="px-1.5 py-0.5 rounded" style={{ background: '#22c55e20', color: '#22c55e' }}>
+                        ✓ matched
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 <div className="flex items-center justify-center gap-2">
                   {previewUrl && (
                     <button
@@ -425,7 +552,7 @@ export default function StudioSampleUploader({
                     </button>
                   )}
                   <button
-                    onClick={e => { e.stopPropagation(); setSelectedFile(null); setSoundName(''); setAudioDuration(null); if (previewUrl) { URL.revokeObjectURL(previewUrl); setPreviewUrl(null) } }}
+                    onClick={e => { e.stopPropagation(); setSelectedFile(null); setSoundName(''); setAudioDuration(null); setSampleBpm(null); setDetectedBpm(null); lastAudioBufferRef.current = null; if (previewUrl) { URL.revokeObjectURL(previewUrl); setPreviewUrl(null) } }}
                     className="px-2 py-1 rounded-lg text-[10px] font-bold cursor-pointer"
                     style={{ color: '#5a616b' }}>
                     Clear
@@ -512,7 +639,9 @@ export default function StudioSampleUploader({
               </p>
               {samples.map(s => {
                 const dur = s.duration_ms ? s.duration_ms / 1000 : null
-                const sampleLoopAt = dur ? calculateLoopAt(dur, bpm) : null
+                const calcBpm = s.original_bpm || bpm
+                const sampleLoopAt = dur ? calculateLoopAt(dur, calcBpm) : null
+                const pitchSt = s.original_bpm ? calculatePitchShift(s.original_bpm, bpm) : null
                 return (
                   <div key={s.id}
                     className="flex items-center gap-2 px-3 py-2 rounded-xl group transition-all"
@@ -529,7 +658,18 @@ export default function StudioSampleUploader({
                       <div className="flex items-center gap-2 text-[9px]" style={{ color: '#5a616b' }}>
                         <span>{formatFileSize(s.file_size)}</span>
                         {dur && <span>⏱ {formatDuration(dur)}</span>}
+                        {s.original_bpm && <span style={{ color: '#6f8fb3' }}>{s.original_bpm} BPM</span>}
                         {sampleLoopAt && <span style={{ color: '#b8a47f' }}>loopAt({sampleLoopAt})</span>}
+                        {pitchSt !== null && Math.abs(pitchSt) > 0.1 && (
+                          <span className="font-bold" style={{
+                            color: Math.abs(pitchSt) > 3 ? '#ef4444' : '#f59e0b',
+                          }}>
+                            {pitchSt > 0 ? '+' : ''}{pitchSt.toFixed(1)}st
+                          </span>
+                        )}
+                        {pitchSt !== null && Math.abs(pitchSt) <= 0.1 && (
+                          <span style={{ color: '#22c55e' }}>✓</span>
+                        )}
                       </div>
                     </div>
 

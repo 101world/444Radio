@@ -33,7 +33,7 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from('nde_samples')
-      .select('id, name, url, original_filename, duration_ms, file_size, content_type, created_at')
+      .select('id, name, url, original_filename, duration_ms, file_size, content_type, original_bpm, created_at')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
 
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
       try { body = await req.json() }
       catch { return corsResponse(NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })) }
 
-      const { name: rawName, fileName, fileType, fileSize, durationMs } = body
+      const { name: rawName, fileName, fileType, fileSize, durationMs, originalBpm } = body
       const name = (rawName || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_')
 
       if (!name || name.length < 2 || name.length > 32) {
@@ -139,8 +139,9 @@ export async function POST(req: NextRequest) {
           file_size: fileSize || 0,
           content_type: fileType,
           duration_ms: durationMs || null,
+          original_bpm: originalBpm || null,
         })
-        .select('id, name, url, original_filename, file_size, duration_ms, created_at')
+        .select('id, name, url, original_filename, file_size, duration_ms, original_bpm, created_at')
         .single()
 
       if (insertErr) {
@@ -163,6 +164,8 @@ export async function POST(req: NextRequest) {
       const formData = await req.formData()
       const file = formData.get('file') as File | null
       const rawName = (formData.get('name') as string || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_')
+      const originalBpmStr = formData.get('originalBpm') as string | null
+      const originalBpm = originalBpmStr ? parseInt(originalBpmStr) || null : null
 
       if (!file) return corsResponse(NextResponse.json({ error: 'No file' }, { status: 400 }))
       if (!rawName || rawName.length < 2 || rawName.length > 32) {
@@ -218,8 +221,9 @@ export async function POST(req: NextRequest) {
           original_filename: file.name,
           file_size: file.size,
           content_type: file.type,
+          original_bpm: originalBpm,
         })
-        .select('id, name, url, original_filename, file_size, created_at')
+        .select('id, name, url, original_filename, file_size, original_bpm, created_at')
         .single()
 
       if (insertErr) {

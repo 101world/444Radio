@@ -14,6 +14,7 @@ import { useMemo, useCallback, useState, useEffect, useRef } from 'react'
 import { ChevronDown, ChevronRight, Plus, Volume2, VolumeX, Headphones, GripVertical, Link, Unlink, X, Music, Clock, Piano, Grid3X3, Copy, Trash2, RotateCcw, Mic } from 'lucide-react'
 import StudioKnob from './StudioKnob'
 import ChannelLCD from './ChannelLCD'
+import WaveformViewer from './WaveformViewer'
 import {
   parseStrudelCode, updateParamInCode, insertEffectInChannel,
   swapSoundInChannel, swapBankInChannel, addSoundToChannel, renameChannel, duplicateChannel,
@@ -294,6 +295,7 @@ function ChannelStrip({
   onDisconnectSidechain,
   onOpenPianoRoll,
   onOpenDrumSequencer,
+  onOpenWaveform,
   onRename,
   onDuplicate,
   onDelete,
@@ -344,6 +346,7 @@ function ChannelStrip({
   onDisconnectSidechain: () => void
   onOpenPianoRoll?: () => void
   onOpenDrumSequencer?: () => void
+  onOpenWaveform?: () => void
   onRename: (channelIdx: number, newName: string) => void
   onDuplicate?: (channelIdx: number) => void
   onDelete?: (channelIdx: number) => void
@@ -608,6 +611,7 @@ function ChannelStrip({
         channel={channel}
         isPlaying={isPlaying}
         isMuted={isMuted}
+        onDoubleClick={channel.sourceType === 'sample' && channel.effects.includes('loopAt') ? onOpenWaveform : undefined}
       />
 
       {/* ── Active effect tags — removable pills ── */}
@@ -1129,6 +1133,7 @@ interface UserSample {
   name: string
   url: string
   duration_ms?: number | null
+  original_bpm?: number | null
 }
 
 interface StudioMixerRackProps {
@@ -1141,7 +1146,7 @@ interface StudioMixerRackProps {
   onOpenPianoRoll?: (channelIdx: number) => void
   onOpenDrumSequencer?: (channelIdx: number) => void
   onOpenSampleUploader?: () => void
-  onAddVocalChannel?: (name: string, loopAt: number) => void
+  onAddVocalChannel?: (name: string, loopAt: number, sampleBpm?: number) => void
   userSamples?: UserSample[]
   isPlaying?: boolean
   onPreview?: (soundCode: string) => void
@@ -1155,6 +1160,9 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   const [dragOverChannel, setDragOverChannel] = useState<number | null>(null)
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [fxDropdownOpen, setFxDropdownOpen] = useState(false)
+  const [waveformModalOpen, setWaveformModalOpen] = useState(false)
+  const [selectedWaveformUrl, setSelectedWaveformUrl] = useState<string>('')
+  const [selectedWaveformChannel, setSelectedWaveformChannel] = useState<number>(-1)
   const fxDropdownRef = useRef<HTMLDivElement>(null)
 
   // Close FX dropdown on outside click
@@ -1950,6 +1958,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                   onDisconnectSidechain={() => handleDisconnectSidechain(idx)}
                   onOpenPianoRoll={onOpenPianoRoll ? () => onOpenPianoRoll(idx) : undefined}
                   onOpenDrumSequencer={onOpenDrumSequencer ? () => onOpenDrumSequencer(idx) : undefined}
+                  onOpenWaveform={() => { const sample = userSamples.find(s => s.name === ch.source); if (sample) { setSelectedWaveformUrl(sample.url); setSelectedWaveformChannel(idx); setWaveformModalOpen(true); } }}
                   onRename={handleRename}
                   onDuplicate={handleDuplicate}
                   onDelete={handleDelete}
@@ -2055,13 +2064,14 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                 <div className="flex flex-wrap gap-1 px-3 py-1.5">
                   {userSamples.map((s) => {
                     const dur = s.duration_ms ? s.duration_ms / 1000 : null
-                    const loopAt = dur ? Math.max(1, Math.round(dur * (parseBPM(code) ?? 120) / 240)) : 8
+                    const calcBpm = s.original_bpm || (parseBPM(code) ?? 120)
+                    const loopAt = dur ? Math.max(1, Math.round(dur * calcBpm / 240)) : 8
                     return (
                       <button
                         key={s.id}
                         onClick={() => {
                           if (onAddVocalChannel) {
-                            onAddVocalChannel(s.name, loopAt)
+                            onAddVocalChannel(s.name, loopAt, s.original_bpm || undefined)
                             setShowAddMenu(false)
                           } else {
                             handleAddChannel(s.name, 'vocal', loopAt)
@@ -2162,6 +2172,55 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
           </div>
         </div>
       )}
+      <WaveformViewer
+        url={selectedWaveformUrl}
+        isOpen={waveformModalOpen}
+        onClose={() => setWaveformModalOpen(false)}
+        beginValue={selectedWaveformChannel >= 0 ? (channels[selectedWaveformChannel]?.params.find(p => p.key === 'begin')?.value ?? 0) : 0}
+        endValue={selectedWaveformChannel >= 0 ? (channels[selectedWaveformChannel]?.params.find(p => p.key === 'end')?.value ?? 1) : 1}
+        speedValue={selectedWaveformChannel >= 0 ? (channels[selectedWaveformChannel]?.params.find(p => p.key === 'speed')?.value ?? 1) : 1}
+        sampleBpm={selectedWaveformChannel >= 0 ? (userSamples.find(s => s.name === channels[selectedWaveformChannel]?.source)?.original_bpm ?? undefined) : undefined}
+        projectBpm={currentBPM ?? 120}
+        color={selectedWaveformChannel >= 0 ? channels[selectedWaveformChannel]?.color : undefined}
+        sampleName={selectedWaveformChannel >= 0 ? channels[selectedWaveformChannel]?.source : undefined}
+        onApply={({ begin: b, end: e, speed: spd }) => {
+          if (selectedWaveformChannel < 0) return
+          let c = codeRef.current
+          const ch = channels[selectedWaveformChannel]
+          if (!ch) return
+
+          // ── Set begin ──
+          if (ch.effects.includes('begin')) {
+            c = updateParamInCode(c, selectedWaveformChannel, 'begin', b)
+          } else if (b > 0) {
+            c = insertEffectInChannel(c, selectedWaveformChannel, `.begin(${b})`)
+          }
+
+          // ── Set end (re-parse after begin change) ──
+          const ch2 = parseStrudelCode(c)[selectedWaveformChannel]
+          if (ch2 && ch2.effects.includes('end')) {
+            c = updateParamInCode(c, selectedWaveformChannel, 'end', e)
+          } else if (e < 1) {
+            c = insertEffectInChannel(c, selectedWaveformChannel, `.end(${e})`)
+          }
+
+          // ── Set speed (re-parse after trim changes) ──
+          const ch3 = parseStrudelCode(c)[selectedWaveformChannel]
+          if (ch3 && ch3.effects.includes('speed')) {
+            if (Math.abs(spd - 1) < 0.001) {
+              // Speed is 1.0 — remove .speed() entirely (default behavior)
+              c = removeEffectFromChannel(c, selectedWaveformChannel, 'speed')
+            } else {
+              c = updateParamInCode(c, selectedWaveformChannel, 'speed', spd)
+            }
+          } else if (Math.abs(spd - 1) >= 0.001) {
+            c = insertEffectInChannel(c, selectedWaveformChannel, `.speed(${spd})`)
+          }
+
+          if (onLiveCodeChange) onLiveCodeChange(c)
+          else onCodeChange(c)
+        }}
+      />
     </div>
   )
 }

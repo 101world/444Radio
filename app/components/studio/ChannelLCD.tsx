@@ -8,6 +8,7 @@ interface ChannelLCDProps {
   channel: ParsedChannel
   isPlaying: boolean
   isMuted: boolean
+  onDoubleClick?: () => void
 }
 
 /** Extract orbit number from channel params.
@@ -23,7 +24,7 @@ function getChannelOrbit(channel: ParsedChannel): number {
   return 1 // superdough defaults to orbit 1 when no .orbit() is specified
 }
 
-export default function ChannelLCD({ channel, isPlaying, isMuted }: ChannelLCDProps) {
+export default function ChannelLCD({ channel, isPlaying, isMuted, onDoubleClick }: ChannelLCDProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rafRef = useRef<number>(0)
   const orbit = getChannelOrbit(channel)
@@ -184,7 +185,8 @@ export default function ChannelLCD({ channel, isPlaying, isMuted }: ChannelLCDPr
         ref={canvasRef}
         width={200}
         height={24}
-        className="w-full h-full"
+        className={`w-full h-full ${onDoubleClick ? 'cursor-pointer' : ''}`}
+        onDoubleClick={onDoubleClick}
       />
     </div>
   )

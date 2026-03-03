@@ -57,7 +57,7 @@ export default function StudioEditor() {
   const [pianoRollChannel, setPianoRollChannel] = useState<number | null>(null)
   const [drumSequencerChannel, setDrumSequencerChannel] = useState<number | null>(null)
   const [sampleUploaderOpen, setSampleUploaderOpen] = useState(false)
-  const [userSamples, setUserSamples] = useState<{ id: string; name: string; url: string; duration_ms?: number | null }[]>([])
+  const [userSamples, setUserSamples] = useState<{ id: string; name: string; url: string; duration_ms?: number | null; original_bpm?: number | null }[]>([])
 
   // Undo/Redo
   const undoStack = useRef<string[]>([])
@@ -554,9 +554,10 @@ export default function StudioEditor() {
   }, [])
 
   // ── Add a vocal/sample channel with auto-calculated loopAt ──
-  const handleAddVocalChannel = useCallback((name: string, loopAt: number) => {
+  const handleAddVocalChannel = useCallback((name: string, loopAt: number, sampleBpm?: number) => {
     const currentCode = codeRef.current
-    const newCode = addChannel(currentCode, name, 'vocal', loopAt)
+    const projectBpm = parseBPM(currentCode) ?? 120
+    const newCode = addChannel(currentCode, name, 'vocal', loopAt, sampleBpm, projectBpm)
     if (newCode !== currentCode) {
       handleLiveCodeChange(newCode)
     }

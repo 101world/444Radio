@@ -1320,8 +1320,16 @@ export function duplicateChannel(code: string, channelIdx: number): string {
 
 /** Add a new channel to the code with a given sound/synth source.
  *  Generates a unique name and appends at the end of all channels.
- *  type='vocal' generates a vocal/sample channel with loopAt for tempo-synced playback. */
-export function addChannel(code: string, soundName: string, type: 'synth' | 'sample' | 'vocal' = 'sample', vocalLoopAt?: number): string {
+ *  type='vocal' generates a vocal/sample channel with loopAt for tempo-synced playback.
+ *  sampleBpm/projectBpm: when both known, calculates pitch shift and adds .speed() compensation. */
+export function addChannel(
+  code: string,
+  soundName: string,
+  type: 'synth' | 'sample' | 'vocal' = 'sample',
+  vocalLoopAt?: number,
+  sampleBpm?: number,
+  projectBpm?: number,
+): string {
   const channels = parseStrudelCode(code)
   const existingNames = new Set(channels.map(c => c.name))
 
@@ -1344,7 +1352,18 @@ export function addChannel(code: string, soundName: string, type: 'synth' | 'sam
   } else if (type === 'vocal') {
     // Vocal/long sample channel — tempo-synced via loopAt
     const loopCycles = vocalLoopAt ?? 8
-    block = `$${name}: s("${soundName}")\n  .loopAt(${loopCycles})\n  .gain(0.7)\n  .orbit(${nextOrbit})\n  .room(0.15).delay(0.1).delaytime(0.125).delayfeedback(0.2)`
+    // Calculate pitch shift from BPM mismatch
+    let pitchInfo = ''
+    let speedCompensation = ''
+    if (sampleBpm && projectBpm && sampleBpm !== projectBpm) {
+      const shift = 12 * Math.log2(projectBpm / sampleBpm)
+      pitchInfo = ` // sample: ${sampleBpm}bpm → ${shift > 0 ? '+' : ''}${shift.toFixed(1)}st`
+      // Add .speed() to compensate pitch (counter the loopAt speed change)
+      // compensationSpeed = sampleBpm / projectBpm cancels the pitch shift from tempo change
+      const comp = sampleBpm / projectBpm
+      speedCompensation = `\n  .speed(${comp.toFixed(4)})${pitchInfo}`
+    }
+    block = `$${name}: s("${soundName}")\n  .loopAt(${loopCycles})${speedCompensation}\n  .gain(0.7)\n  .orbit(${nextOrbit})\n  .room(0.15).delay(0.1).delaytime(0.125).delayfeedback(0.2)`
   } else {
     block = `$${name}: s("${soundName}")\n  .gain(0.8)\n  .lpf(6000).lpq(1)\n  .room(0.2).delay(0.1).delaytime(0.125).delayfeedback(0.2)\n  .shape(0)`
   }
