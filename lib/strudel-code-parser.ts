@@ -107,6 +107,7 @@ export const PARAM_DEFS: ParamDef[] = [
   { key: 'loopAt',         label: 'LoopAt',   min: 1,    max: 64,    step: 1 },
   { key: 'begin',          label: 'Begin',    min: 0,    max: 1,     step: 0.01 },
   { key: 'end',            label: 'End',      min: 0,    max: 1,     step: 0.01 },
+  { key: 'speed',          label: 'Speed',    min: 0.25, max: 4,     step: 0.01 },
   { key: 'chop',           label: 'Chop',     min: 1,    max: 64,    step: 1 },
   { key: 'stretch',        label: 'Stretch',  min: 0.25, max: 4,     step: 0.05 },
 ]

@@ -2186,35 +2186,46 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
         onApply={({ begin: b, end: e, speed: spd }) => {
           if (selectedWaveformChannel < 0) return
           let c = codeRef.current
-          const ch = channels[selectedWaveformChannel]
-          if (!ch) return
+          const idx = selectedWaveformChannel
 
-          // ── Set begin ──
-          if (ch.effects.includes('begin')) {
-            c = updateParamInCode(c, selectedWaveformChannel, 'begin', b)
-          } else if (b > 0) {
-            c = insertEffectInChannel(c, selectedWaveformChannel, `.begin(${b})`)
-          }
+          // Format speed to 4 decimal places max
+          const spdStr = Math.round(spd * 10000) / 10000
 
-          // ── Set end (re-parse after begin change) ──
-          const ch2 = parseStrudelCode(c)[selectedWaveformChannel]
-          if (ch2 && ch2.effects.includes('end')) {
-            c = updateParamInCode(c, selectedWaveformChannel, 'end', e)
-          } else if (e < 1) {
-            c = insertEffectInChannel(c, selectedWaveformChannel, `.end(${e})`)
-          }
-
-          // ── Set speed (re-parse after trim changes) ──
-          const ch3 = parseStrudelCode(c)[selectedWaveformChannel]
-          if (ch3 && ch3.effects.includes('speed')) {
-            if (Math.abs(spd - 1) < 0.001) {
-              // Speed is 1.0 — remove .speed() entirely (default behavior)
-              c = removeEffectFromChannel(c, selectedWaveformChannel, 'speed')
+          // ── begin ──
+          const ch1 = parseStrudelCode(c)[idx]
+          if (!ch1) return
+          if (ch1.effects.includes('begin')) {
+            if (Math.abs(b) < 0.005) {
+              c = removeEffectFromChannel(c, idx, 'begin')  // 0 = default, remove
             } else {
-              c = updateParamInCode(c, selectedWaveformChannel, 'speed', spd)
+              c = updateParamInCode(c, idx, 'begin', b)
             }
-          } else if (Math.abs(spd - 1) >= 0.001) {
-            c = insertEffectInChannel(c, selectedWaveformChannel, `.speed(${spd})`)
+          } else if (b > 0.005) {
+            c = insertEffectInChannel(c, idx, `.begin(${b.toFixed(2)})`)
+          }
+
+          // ── end (re-parse after begin change) ──
+          const ch2 = parseStrudelCode(c)[idx]
+          if (ch2 && ch2.effects.includes('end')) {
+            if (Math.abs(e - 1) < 0.005) {
+              c = removeEffectFromChannel(c, idx, 'end')  // 1 = default, remove
+            } else {
+              c = updateParamInCode(c, idx, 'end', e)
+            }
+          } else if (e < 0.995) {
+            c = insertEffectInChannel(c, idx, `.end(${e.toFixed(2)})`)
+          }
+
+          // ── speed (re-parse after trim changes) ──
+          const ch3 = parseStrudelCode(c)[idx]
+          if (ch3 && ch3.effects.includes('speed')) {
+            if (Math.abs(spdStr - 1) < 0.001) {
+              c = removeEffectFromChannel(c, idx, 'speed')  // 1.0 = default, remove
+            } else {
+              c = updateParamInCode(c, idx, 'speed', spdStr)
+            }
+          } else if (Math.abs(spdStr - 1) >= 0.001) {
+            c = insertEffectInChannel(c, idx, `.speed(${spdStr})`)
           }
 
           if (onLiveCodeChange) onLiveCodeChange(c)
