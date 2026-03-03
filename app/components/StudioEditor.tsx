@@ -646,15 +646,20 @@ export default function StudioEditor() {
             const scaleStr = scaleInfo
               ? `${scaleInfo.root}4:${scaleInfo.scale}`
               : 'C4:minor'
-            const currentPattern = patternInfo && !patternInfo.isGenerative
-              ? patternInfo.pattern
-              : ''
-            // Use 'note' mode for note() channels, 'n' for n().scale() channels,
-            // and default to 'note' for channels with no n()/note() so they can be edited
+            // For sample channels with type 's' and no note()/n(), start with empty pattern
+            // so the user draws fresh pitched notes on the piano roll
+            const isSampleChannelNoPitch = ch.sourceType === 'sample' && patternInfo?.type === 's'
+            const currentPattern = isSampleChannelNoPitch
+              ? ''
+              : (patternInfo && !patternInfo.isGenerative ? patternInfo.pattern : '')
+            // Use 'note' mode for note() channels, 'n' for n().scale() channels.
+            // Sample channels without n()/note(): use 'note' mode so piano roll
+            // generates note("c3 e3 ...").s("sample") — the Strudel way to pitch samples.
             const patternType = patternInfo?.type === 'n' ? 'n'
               : patternInfo?.type === 'note' ? 'note'
               : 'note'
-            const isGenerative = patternInfo?.isGenerative ?? (patternInfo === null ? true : false)
+            const isGenerative = isSampleChannelNoPitch ? false
+              : (patternInfo?.isGenerative ?? (patternInfo === null ? true : false))
             return (
               <StudioPianoRoll
                 currentPattern={currentPattern}
@@ -662,8 +667,8 @@ export default function StudioEditor() {
                 color={ch.color}
                 channelName={ch.name}
                 soundSource={ch.source}
-                isGenerative={isGenerative}
-                patternType={patternType as 'n' | 'note' | 's'}
+                isGenerative={isSampleChannelNoPitch ? false : isGenerative}
+                patternType={isSampleChannelNoPitch ? 'note' : patternType as 'n' | 'note' | 's'}
                 channelData={ch}
                 channelIdx={pianoRollChannel}
                 onPatternChange={(newPattern: string) => {
@@ -732,10 +737,16 @@ export default function StudioEditor() {
                     if (SYNTHS.has(source)) {
                       params.note = noteName
                     } else {
-                      // Sample-based instruments (gm_piano, etc.): use note for pitched playback
+                      // Sample-based: use note for pitched playback (Strudel way)
+                      // Pitch = playbackRate derived from note relative to base C3
                       params.note = noteName
                       params.n = 0
                       if (ch.bank) params.bank = ch.bank
+                      // Pass begin/end if channel has trim so preview matches
+                      const beginP = ch.params.find(p => p.key === 'begin')
+                      const endP = ch.params.find(p => p.key === 'end')
+                      if (beginP) params.begin = beginP.value
+                      if (endP) params.end = endP.value
                     }
                     await sd(params, now, 0.4)
                   } catch (err) {

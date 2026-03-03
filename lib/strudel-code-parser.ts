@@ -1177,19 +1177,32 @@ export function replaceChannelPattern(
       return code.substring(0, ch.blockStart) + newRaw + code.substring(ch.blockEnd)
     }
 
-    // Neither n() nor note() found — insert note() after any .s() call or at chain start
-    const sCall = raw.match(/\.s\(\s*"[^"]*"\s*\)/)
-    let insertPos: number
+    // Neither n() nor note() found — insert note()/n() for pitched playback
+    // For sample channels with s("sampleName pattern..."), convert to
+    // note("pattern").s("sampleName") — the Strudel way to pitch samples
+    const sCall = raw.match(/\.?s\(\s*"([^"]*)"\s*\)/)
     if (sCall) {
-      insertPos = sCall.index! + sCall[0].length
+      // Extract the base sample name from s() (strip pattern/mini-notation)
+      const sContent = sCall[1].trim()
+      const baseName = sContent.replace(/[*!<>\[\]:~\-\s]+.*/, '').trim()
+      const method = patternType === 'note' ? 'note' : 'n'
+      const sStart = sCall.index!
+
+      // Replace s() with note("pattern").s("baseName") at the same position
+      // This follows Strudel convention: note() first, .s() specifies sound
+      const cleanSCall = `.s("${baseName || sContent}")`
+      const newRaw = raw.substring(0, sStart) +
+        `${method}("${newPattern}")` + cleanSCall +
+        raw.substring(sStart + sCall[0].length)
+      return code.substring(0, ch.blockStart) + newRaw + code.substring(ch.blockEnd)
     } else {
-      // Insert after "$name:" declaration
+      // No s() call — insert after "$name:" declaration
       const declMatch = raw.match(/^\s*\$\w*:\s*/)
-      insertPos = declMatch ? declMatch[0].length : 0
+      const insertPos = declMatch ? declMatch[0].length : 0
+      const method = patternType === 'note' ? 'note' : 'n'
+      const newRaw = raw.substring(0, insertPos) + `${method}("${newPattern}")` + raw.substring(insertPos)
+      return code.substring(0, ch.blockStart) + newRaw + code.substring(ch.blockEnd)
     }
-    const method = patternType === 'note' ? 'note' : 'n'
-    const newRaw = raw.substring(0, insertPos) + `.${method}("${newPattern}")` + raw.substring(insertPos)
-    return code.substring(0, ch.blockStart) + newRaw + code.substring(ch.blockEnd)
   }
 
   const openIdx = raw.indexOf('(', match.index!)
