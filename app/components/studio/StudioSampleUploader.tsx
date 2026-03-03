@@ -1,0 +1,583 @@
+'use client'
+
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
+
+// ═══════════════════════════════════════════════════════════════
+//  STUDIO SAMPLE UPLOADER — Upload vocals/samples for Studio DAW
+//
+//  Key features:
+//    - Presigned URL upload for large files (up to 50MB)
+//    - Auto audio duration detection via Web Audio API
+//    - Auto loopAt calculation from duration + BPM
+//    - Live preview with play/pause
+//    - Lists existing user samples with Strudel code hints
+//    - Registers uploaded samples in Strudel engine at runtime
+// ═══════════════════════════════════════════════════════════════
+
+interface StudioSample {
+  id: string
+  name: string
+  url: string
+  original_filename: string
+  file_size: number
+  duration_ms?: number | null
+  created_at: string
+}
+
+interface StudioSampleUploaderProps {
+  isOpen: boolean
+  onClose: () => void
+  /** BPM from current project — used to auto-calculate loopAt */
+  bpm: number
+  /** Called to register sound in Strudel engine: webaudio.samples({ name: [url] }) */
+  onRegisterSound: (name: string, url: string) => Promise<void>
+  /** Called to add a vocal channel to the code with auto-calculated loopAt */
+  onAddVocalChannel: (name: string, loopAt: number) => void
+  /** Called when samples list changes (upload/delete) so parent can sync */
+  onSamplesChanged?: (samples: StudioSample[]) => void
+  accentColor?: string
+}
+
+/** Calculate loopAt cycles from audio duration (seconds) and BPM.
+ *  Formula: Math.round(durationSeconds * BPM / 240)
+ *  This ensures the sample fills exactly N cycles at the current tempo. */
+function calculateLoopAt(durationSeconds: number, bpm: number): number {
+  const raw = (durationSeconds * bpm) / 240
+  return Math.max(1, Math.round(raw))
+}
+
+function formatDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60)
+  const s = Math.floor(seconds % 60)
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+export default function StudioSampleUploader({
+  isOpen, onClose, bpm, onRegisterSound, onAddVocalChannel,
+  onSamplesChanged,
+  accentColor = '#22d3ee',
+}: StudioSampleUploaderProps) {
+  const [samples, setSamples] = useState<StudioSample[]>([])
+  const [loading, setLoading] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const [soundName, setSoundName] = useState('')
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
+  const [audioDuration, setAudioDuration] = useState<number | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const dragCounterRef = useRef(0)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  // Computed loopAt from duration + BPM
+  const autoLoopAt = useMemo(() => {
+    if (!audioDuration || !bpm) return null
+    return calculateLoopAt(audioDuration, bpm)
+  }, [audioDuration, bpm])
+
+  // Fetch existing samples on open
+  const fetchSamples = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/studio/samples')
+      const data = await res.json()
+      if (data.samples) {
+        setSamples(data.samples)
+        // Re-register all existing samples in Strudel
+        for (const s of data.samples) {
+          try { await onRegisterSound(s.name, s.url) }
+          catch { /* Strudel may not be ready yet */ }
+        }
+      }
+    } catch (err) {
+      console.error('[StudioSampleUploader] fetch error:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [onRegisterSound])
+
+  useEffect(() => {
+    if (isOpen) fetchSamples()
+  }, [isOpen, fetchSamples])
+
+  // Notify parent when samples list changes
+  useEffect(() => {
+    onSamplesChanged?.(samples)
+  }, [samples, onSamplesChanged])
+
+  // Cleanup preview URL
+  useEffect(() => {
+    return () => { if (previewUrl) URL.revokeObjectURL(previewUrl) }
+  }, [previewUrl])
+
+  // Detect audio duration using Web Audio API (reuse single AudioContext)
+  const audioCtxRef = useRef<AudioContext | null>(null)
+  const detectDuration = useCallback(async (file: File) => {
+    try {
+      const arrayBuffer = await file.arrayBuffer()
+      if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+        audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
+      }
+      const actx = audioCtxRef.current
+      const audioBuffer = await actx.decodeAudioData(arrayBuffer)
+      const duration = audioBuffer.duration
+      setAudioDuration(duration)
+      return duration
+    } catch (err) {
+      console.warn('[StudioSampleUploader] duration detection failed, using HTML5 fallback:', err)
+      // Fallback: use HTML audio element
+      return new Promise<number>((resolve) => {
+        const audio = new Audio()
+        audio.src = URL.createObjectURL(file)
+        audio.addEventListener('loadedmetadata', () => {
+          setAudioDuration(audio.duration)
+          URL.revokeObjectURL(audio.src)
+          resolve(audio.duration)
+        })
+        audio.addEventListener('error', () => {
+          setAudioDuration(null)
+          resolve(0)
+        })
+      })
+    }
+  }, [])
+
+  const handleFileSelect = useCallback(async (file: File) => {
+    if (!file.type.startsWith('audio/')) {
+      setError('Only audio files accepted (WAV, MP3, OGG, FLAC)')
+      return
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      setError('File must be under 50MB')
+      return
+    }
+    setSelectedFile(file)
+    setError(null)
+    setAudioDuration(null)
+
+    // Auto-generate name from filename
+    const baseName = file.name.replace(/\.[^.]+$/, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]/g, '_')
+      .replace(/_+/g, '_')
+      .slice(0, 32)
+    if (!soundName) setSoundName(baseName)
+
+    // Preview URL
+    if (previewUrl) URL.revokeObjectURL(previewUrl)
+    setPreviewUrl(URL.createObjectURL(file))
+
+    // Detect duration
+    await detectDuration(file)
+  }, [soundName, previewUrl, detectDuration])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOver(false)
+    dragCounterRef.current = 0
+    const file = e.dataTransfer.files[0]
+    if (file) handleFileSelect(file)
+  }, [handleFileSelect])
+
+  const handleUpload = useCallback(async () => {
+    if (!selectedFile || !soundName) return
+
+    const cleanName = soundName.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_')
+    if (cleanName.length < 2 || cleanName.length > 32) {
+      setError('Name must be 2-32 characters'); return
+    }
+
+    setUploading(true)
+    setError(null)
+    setSuccess(null)
+    setUploadProgress('Preparing upload...')
+
+    try {
+      const isLargeFile = selectedFile.size > 4 * 1024 * 1024
+
+      if (isLargeFile) {
+        // ── PRESIGNED URL MODE for large files ──
+        setUploadProgress('Getting upload URL...')
+        const initRes = await fetch('/api/studio/samples', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: cleanName,
+            fileName: selectedFile.name,
+            fileType: selectedFile.type,
+            fileSize: selectedFile.size,
+            durationMs: audioDuration ? Math.round(audioDuration * 1000) : null,
+          }),
+        })
+        const initData = await initRes.json()
+        if (!initRes.ok) { setError(initData.error || 'Failed to init upload'); return }
+
+        // Upload directly to R2 via presigned URL
+        setUploadProgress(`Uploading ${formatFileSize(selectedFile.size)}...`)
+        const uploadRes = await fetch(initData.uploadUrl, {
+          method: 'PUT',
+          body: selectedFile,
+          headers: { 'Content-Type': selectedFile.type },
+        })
+
+        if (!uploadRes.ok) {
+          setError('Direct upload to storage failed')
+          return
+        }
+
+        setUploadProgress('Registering in engine...')
+        // Register in Strudel
+        await onRegisterSound(cleanName, initData.sample.url)
+
+        setSamples(prev => [initData.sample, ...prev])
+        setSuccess(`✓ "${cleanName}" uploaded! Use s("${cleanName}") in your code`)
+      } else {
+        // ── FORMDATA MODE for small files ──
+        setUploadProgress('Uploading...')
+        const formData = new FormData()
+        formData.append('file', selectedFile)
+        formData.append('name', cleanName)
+
+        const res = await fetch('/api/studio/samples', {
+          method: 'POST',
+          body: formData,
+        })
+        const data = await res.json()
+        if (!res.ok) { setError(data.error || 'Upload failed'); return }
+
+        setUploadProgress('Registering in engine...')
+        await onRegisterSound(cleanName, data.sample.url)
+
+        setSamples(prev => [data.sample, ...prev])
+        setSuccess(`✓ "${cleanName}" uploaded! Use s("${cleanName}") in your code`)
+      }
+
+      // Reset form
+      setSelectedFile(null)
+      setSoundName('')
+      setAudioDuration(null)
+      if (previewUrl) { URL.revokeObjectURL(previewUrl); setPreviewUrl(null) }
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    } catch (err) {
+      console.error('[StudioSampleUploader] upload error:', err)
+      setError('Upload failed — check connection')
+    } finally {
+      setUploading(false)
+      setUploadProgress(null)
+    }
+  }, [selectedFile, soundName, audioDuration, onRegisterSound, previewUrl])
+
+  const handleDelete = useCallback(async (id: string, name: string) => {
+    if (deletingId) return
+    setDeletingId(id)
+    try {
+      const res = await fetch(`/api/studio/samples?id=${id}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        setSamples(prev => prev.filter(s => s.id !== id))
+        setSuccess(`"${name}" deleted`)
+      } else {
+        setError(data.error || 'Delete failed')
+      }
+    } catch { setError('Delete failed') }
+    finally { setDeletingId(null) }
+  }, [deletingId])
+
+  const togglePreview = useCallback(() => {
+    if (!previewUrl) return
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause()
+        audioRef.current.currentTime = 0
+        setIsPlaying(false)
+      } else {
+        audioRef.current.play()
+        setIsPlaying(true)
+      }
+    } else {
+      const audio = new Audio(previewUrl)
+      audioRef.current = audio
+      audio.onended = () => setIsPlaying(false)
+      audio.play()
+      setIsPlaying(true)
+    }
+  }, [previewUrl, isPlaying])
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current = null
+      setIsPlaying(false)
+    }
+  }, [previewUrl])
+
+  // Use sample as vocal channel
+  const handleUseAsVocal = useCallback((sample: StudioSample) => {
+    const duration = sample.duration_ms ? sample.duration_ms / 1000 : null
+    const loopAt = duration ? calculateLoopAt(duration, bpm) : 8
+    onAddVocalChannel(sample.name, loopAt)
+    onClose()
+  }, [bpm, onAddVocalChannel, onClose])
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+      <div
+        className="relative w-full max-w-lg max-h-[85vh] flex flex-col rounded-2xl overflow-hidden"
+        style={{
+          background: '#1c1e22',
+          border: '1px solid rgba(255,255,255,0.06)',
+          boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* ── Header ── */}
+        <div className="flex items-center justify-between px-5 py-3"
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: '#23262b' }}>
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🎤</span>
+            <span className="text-sm font-black uppercase tracking-wider" style={{ color: '#c8cdd2' }}>
+              Samples / Vocals
+            </span>
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold"
+              style={{ background: `${accentColor}15`, color: accentColor }}>
+              {samples.length}/50
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[8px] font-mono px-2 py-0.5 rounded-full" style={{ background: '#2a2e34', color: '#7fa998' }}>
+              {bpm} BPM
+            </span>
+            <button onClick={onClose}
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-sm cursor-pointer"
+              style={{
+                background: '#2a2e34',
+                color: '#5a616b',
+                boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036',
+              }}>
+              ✕
+            </button>
+          </div>
+        </div>
+
+        {/* ── Upload area ── */}
+        <div className="px-5 py-4 space-y-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+          {/* Drop zone */}
+          <div
+            className={`relative rounded-xl border-2 border-dashed p-5 text-center transition-all cursor-pointer ${dragOver ? 'scale-[1.01]' : ''}`}
+            style={{
+              borderColor: dragOver ? accentColor : 'rgba(255,255,255,0.08)',
+              background: dragOver ? `${accentColor}08` : '#131316',
+            }}
+            onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
+            onDragEnter={e => { e.preventDefault(); e.stopPropagation(); dragCounterRef.current++; setDragOver(true) }}
+            onDragLeave={e => { e.preventDefault(); e.stopPropagation(); dragCounterRef.current--; if (dragCounterRef.current <= 0) { dragCounterRef.current = 0; setDragOver(false) } }}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="audio/*"
+              className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleFileSelect(f) }}
+            />
+            {selectedFile ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-center gap-2">
+                  <span className="text-lg">📎</span>
+                  <span className="text-xs font-medium" style={{ color: '#c8cdd2' }}>{selectedFile.name}</span>
+                  <span className="text-[10px]" style={{ color: '#5a616b' }}>{formatFileSize(selectedFile.size)}</span>
+                </div>
+
+                {/* Duration + auto loopAt info */}
+                {audioDuration !== null && (
+                  <div className="flex items-center justify-center gap-3 text-[10px]">
+                    <span style={{ color: '#7fa998' }}>⏱ {formatDuration(audioDuration)}</span>
+                    {autoLoopAt && (
+                      <span style={{ color: '#b8a47f' }}>
+                        loopAt({autoLoopAt}) @ {bpm}bpm
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-center gap-2">
+                  {previewUrl && (
+                    <button
+                      onClick={e => { e.stopPropagation(); togglePreview() }}
+                      className="px-3 py-1 rounded-lg text-[10px] font-bold cursor-pointer transition-all hover:scale-105"
+                      style={{ background: `${accentColor}15`, color: accentColor, border: `1px solid ${accentColor}30` }}>
+                      {isPlaying ? '⏹ Stop' : '▶ Preview'}
+                    </button>
+                  )}
+                  <button
+                    onClick={e => { e.stopPropagation(); setSelectedFile(null); setSoundName(''); setAudioDuration(null); if (previewUrl) { URL.revokeObjectURL(previewUrl); setPreviewUrl(null) } }}
+                    className="px-2 py-1 rounded-lg text-[10px] font-bold cursor-pointer"
+                    style={{ color: '#5a616b' }}>
+                    Clear
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <p className="text-xs font-medium" style={{ color: '#9aa7b3' }}>
+                  Drop audio file here or click to browse
+                </p>
+                <p className="text-[10px]" style={{ color: '#5a616b' }}>
+                  WAV, MP3, OGG, FLAC — up to 50MB · Vocals, loops, one-shots
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Name input + upload */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-mono" style={{ color: '#5a616b' }}>s(&quot;</span>
+              <input
+                type="text"
+                value={soundName}
+                onChange={e => setSoundName(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '_').slice(0, 32))}
+                placeholder="my_vocal"
+                maxLength={32}
+                className="w-full pl-8 pr-8 py-2 rounded-lg text-xs font-mono outline-none"
+                style={{ background: '#131316', color: '#c8cdd2', border: '1px solid rgba(255,255,255,0.08)' }}
+              />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono" style={{ color: '#5a616b' }}>&quot;)</span>
+            </div>
+            <button
+              onClick={handleUpload}
+              disabled={!selectedFile || !soundName || uploading}
+              className="px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all hover:scale-105 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+              style={{
+                background: '#7fa998',
+                color: '#0a0a0c',
+                boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036',
+              }}>
+              {uploading ? '⏳' : '↑ Upload'}
+            </button>
+          </div>
+
+          {/* Progress / status */}
+          {uploadProgress && (
+            <div className="flex items-center gap-2 px-2 py-1 rounded-lg" style={{ background: '#23262b' }}>
+              <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: accentColor }} />
+              <span className="text-[10px] font-mono" style={{ color: accentColor }}>{uploadProgress}</span>
+            </div>
+          )}
+          {error && (
+            <p className="text-[11px] px-2 py-1 rounded-lg" style={{ background: '#ef444412', color: '#ef4444' }}>
+              ⚠ {error}
+            </p>
+          )}
+          {success && (
+            <p className="text-[11px] px-2 py-1 rounded-lg" style={{ background: '#7fa99812', color: '#7fa998' }}>
+              {success}
+            </p>
+          )}
+        </div>
+
+        {/* ── Existing samples list ── */}
+        <div className="flex-1 overflow-y-auto min-h-0 px-5 py-3 space-y-1">
+          {loading ? (
+            <p className="text-[11px] text-center py-8" style={{ color: '#5a616b' }}>Loading samples…</p>
+          ) : samples.length === 0 ? (
+            <div className="text-center py-8 space-y-2">
+              <p className="text-2xl">🎤</p>
+              <p className="text-xs" style={{ color: '#5a616b' }}>
+                No samples yet. Upload your first vocal or sound!
+              </p>
+              <p className="text-[10px]" style={{ color: '#5a616b' }}>
+                After upload, use <span className="font-mono" style={{ color: accentColor }}>s(&quot;name&quot;)</span> or click &quot;+ Channel&quot; to auto-add
+              </p>
+            </div>
+          ) : (
+            <>
+              <p className="text-[8px] font-black uppercase tracking-[.15em] mb-2" style={{ color: '#5a616b' }}>
+                Your Samples
+              </p>
+              {samples.map(s => {
+                const dur = s.duration_ms ? s.duration_ms / 1000 : null
+                const sampleLoopAt = dur ? calculateLoopAt(dur, bpm) : null
+                return (
+                  <div key={s.id}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl group transition-all"
+                    style={{
+                      background: '#23262b',
+                      border: '1px solid rgba(255,255,255,0.04)',
+                      boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036',
+                    }}>
+                    <span className="text-xs">🔊</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-mono font-bold truncate" style={{ color: '#c8cdd2' }}>
+                        {s.name}
+                      </p>
+                      <div className="flex items-center gap-2 text-[9px]" style={{ color: '#5a616b' }}>
+                        <span>{formatFileSize(s.file_size)}</span>
+                        {dur && <span>⏱ {formatDuration(dur)}</span>}
+                        {sampleLoopAt && <span style={{ color: '#b8a47f' }}>loopAt({sampleLoopAt})</span>}
+                      </div>
+                    </div>
+
+                    {/* Quick-add as vocal channel */}
+                    <button
+                      onClick={() => handleUseAsVocal(s)}
+                      className="shrink-0 px-2 py-1 rounded-lg text-[8px] font-bold uppercase cursor-pointer opacity-0 group-hover:opacity-100 transition-all hover:scale-105"
+                      style={{
+                        background: '#7fa99815',
+                        color: '#7fa998',
+                        border: '1px solid #7fa99830',
+                      }}
+                      title="Add as vocal channel with auto-calculated loopAt">
+                      + Channel
+                    </button>
+
+                    {/* Code hint */}
+                    <code className="text-[8px] px-1.5 py-0.5 rounded font-mono hidden group-hover:block shrink-0"
+                      style={{ background: `${accentColor}10`, color: accentColor }}>
+                      s(&quot;{s.name}&quot;)
+                    </code>
+
+                    {/* Delete */}
+                    <button
+                      onClick={() => handleDelete(s.id, s.name)}
+                      disabled={deletingId === s.id}
+                      className="w-6 h-6 flex items-center justify-center rounded text-[10px] opacity-0 group-hover:opacity-100 transition-all hover:scale-110 cursor-pointer shrink-0"
+                      style={{ background: '#ef444412', color: '#ef4444', border: '1px solid #ef444420' }}
+                      title="Delete sample">
+                      {deletingId === s.id ? '⏳' : '✕'}
+                    </button>
+                  </div>
+                )
+              })}
+            </>
+          )}
+        </div>
+
+        {/* ── Footer ── */}
+        <div className="px-5 py-2 text-center"
+          style={{ borderTop: '1px solid rgba(255,255,255,0.04)', background: '#23262b' }}>
+          <p className="text-[9px]" style={{ color: '#5a616b' }}>
+            Use <span className="font-mono" style={{ color: accentColor }}>s(&quot;name&quot;).loopAt(N)</span> for
+            tempo-synced playback · <span className="font-mono" style={{ color: '#b8a47f' }}>.begin(0).end(0.5)</span> to
+            slice · <span className="font-mono" style={{ color: '#6f8fb3' }}>.speed(1.5)</span> to pitch
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}

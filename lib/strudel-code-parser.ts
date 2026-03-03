@@ -103,6 +103,12 @@ export const PARAM_DEFS: ParamDef[] = [
   { key: 'clip',           label: 'Clip',     min: 0,    max: 4,     step: 0.1 },
   // Output
   { key: 'postgain',       label: 'PostG',    min: 0,    max: 4,     step: 0.1 },
+  // Vocal / Sample
+  { key: 'loopAt',         label: 'LoopAt',   min: 1,    max: 64,    step: 1 },
+  { key: 'begin',          label: 'Begin',    min: 0,    max: 1,     step: 0.01 },
+  { key: 'end',            label: 'End',      min: 0,    max: 1,     step: 0.01 },
+  { key: 'chop',           label: 'Chop',     min: 1,    max: 64,    step: 1 },
+  { key: 'stretch',        label: 'Stretch',  min: 0.25, max: 4,     step: 0.05 },
 ]
 
 // Effect names for detecting which effects are present
@@ -112,6 +118,7 @@ const EFFECT_NAMES = [
   'duckattack', 'jux', 'juxBy', 'off', 'orbit', 'detune', 'vib', 'phaser', 'speed',
   'velocity', 'rel', 'release', 'gain', 'attack', 'decay', 'legato', 'clip',
   'postgain', 'compressor', 'arp', 'arpeggiate', 'superimpose', 'echo', 'fast',
+  'loopAt', 'begin', 'end', 'chop', 'stretch',
 ]
 
 /** Draggable effects palette entries */
@@ -153,6 +160,12 @@ export const DRAGGABLE_EFFECTS = [
   { id: 'off',           label: 'Off +5',  code: '.off(1/8, x => x.add(7))',      icon: '⟩', category: 'pattern', target: 'instrument' as const },
   { id: 'superimpose',   label: 'Super',   code: '.superimpose(x => x.add(12).slow(2))', icon: '⊕', category: 'pattern', target: 'instrument' as const },
   { id: 'echo',          label: 'Echo',    code: '.echo(3, 1/8, 0.5)',            icon: '≡', category: 'pattern', target: 'both' as const },
+  // ── Sample / Vocal ──
+  { id: 'loopAt',         label: 'LoopAt',  code: '.loopAt(8)',            icon: '🔄', category: 'sample',  target: 'sound' as const },
+  { id: 'begin',          label: 'Begin',   code: '.begin(0)',             icon: '⏮️', category: 'sample',  target: 'sound' as const },
+  { id: 'end',            label: 'End',     code: '.end(1)',               icon: '⏭️', category: 'sample',  target: 'sound' as const },
+  { id: 'chop',           label: 'Chop',    code: '.chop(8)',              icon: '🔪', category: 'sample',  target: 'sound' as const },
+  { id: 'stretch',        label: 'Stretch', code: '.stretch(1)',           icon: '🧲', category: 'sample',  target: 'sound' as const },
 ]
 
 // ─── Private Helpers ───
@@ -1306,8 +1319,9 @@ export function duplicateChannel(code: string, channelIdx: number): string {
 // ═══════════════════════════════════════════════════════════════
 
 /** Add a new channel to the code with a given sound/synth source.
- *  Generates a unique name and appends at the end of all channels. */
-export function addChannel(code: string, soundName: string, type: 'synth' | 'sample' = 'sample'): string {
+ *  Generates a unique name and appends at the end of all channels.
+ *  type='vocal' generates a vocal/sample channel with loopAt for tempo-synced playback. */
+export function addChannel(code: string, soundName: string, type: 'synth' | 'sample' | 'vocal' = 'sample', vocalLoopAt?: number): string {
   const channels = parseStrudelCode(code)
   const existingNames = new Set(channels.map(c => c.name))
 
@@ -1320,10 +1334,17 @@ export function addChannel(code: string, soundName: string, type: 'synth' | 'sam
     suffix++
   }
 
+  // Find next free orbit
+  const nextOrbit = findNextFreeOrbit(channels)
+
   // Build the code block with starter effects
   let block: string
   if (type === 'synth') {
     block = `$${name}: note("c3 e3 g3 c4")\n  .s("${soundName}")\n  .gain(0.5)\n  .lpf(4000).lpq(2)\n  .room(0.3).delay(0.15).delaytime(0.125).delayfeedback(0.3)\n  .shape(0)`
+  } else if (type === 'vocal') {
+    // Vocal/long sample channel — tempo-synced via loopAt
+    const loopCycles = vocalLoopAt ?? 8
+    block = `$${name}: s("${soundName}")\n  .loopAt(${loopCycles})\n  .gain(0.7)\n  .orbit(${nextOrbit})\n  .room(0.15).delay(0.1).delaytime(0.125).delayfeedback(0.2)`
   } else {
     block = `$${name}: s("${soundName}")\n  .gain(0.8)\n  .lpf(6000).lpq(1)\n  .room(0.2).delay(0.1).delaytime(0.125).delayfeedback(0.2)\n  .shape(0)`
   }

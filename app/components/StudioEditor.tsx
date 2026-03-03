@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import type { StrudelEngine } from '@/lib/strudel-engine'
 import { fixSoundfontNames } from '@/lib/strudel-engine'
-import { applyMixerOverrides, parseStrudelCode, parseChannelPattern, replaceChannelPattern, replaceChannelBlock, parseScale as parseMixerScale, updateScale, insertScale, updateParamInCode, insertEffectInChannel, removeEffectFromChannel, getArpInfo, setArpMode, setArpRate, getTranspose, setTranspose, getParamDef, PARAM_DEFS } from '@/lib/strudel-code-parser'
+import { applyMixerOverrides, parseStrudelCode, parseChannelPattern, replaceChannelPattern, replaceChannelBlock, parseScale as parseMixerScale, updateScale, insertScale, updateParamInCode, insertEffectInChannel, removeEffectFromChannel, getArpInfo, setArpMode, setArpRate, getTranspose, setTranspose, getParamDef, PARAM_DEFS, parseBPM, addChannel } from '@/lib/strudel-code-parser'
 import { generateMetronomeCode } from '@/lib/strudel-code-parser'
 import { setOrbitAnalyser, clearOrbitAnalysers } from '@/lib/studio-analysers'
 import StudioPianoRoll from './studio/StudioPianoRoll'
@@ -21,6 +21,7 @@ import StudioSliderPanel from './studio/StudioSliderPanel'
 import StudioMethodsPanel from './studio/StudioMethodsPanel'
 import StudioCodeEditor, { type StudioCodeEditorHandle } from './studio/StudioCodeEditor'
 import StudioMixerRack from './studio/StudioMixerRack'
+import StudioSampleUploader from './studio/StudioSampleUploader'
 
 // Simple WebAudio fallback for drum preview when engine isn't available
 let _prevCtx: AudioContext | null = null
@@ -55,6 +56,8 @@ export default function StudioEditor() {
   const [metronomeEnabled, setMetronomeEnabled] = useState(false)
   const [pianoRollChannel, setPianoRollChannel] = useState<number | null>(null)
   const [drumSequencerChannel, setDrumSequencerChannel] = useState<number | null>(null)
+  const [sampleUploaderOpen, setSampleUploaderOpen] = useState(false)
+  const [userSamples, setUserSamples] = useState<{ id: string; name: string; url: string; duration_ms?: number | null }[]>([])
 
   // Undo/Redo
   const undoStack = useRef<string[]>([])
@@ -176,6 +179,23 @@ export default function StudioEditor() {
         }
 
         setStatus('ready')
+
+        // Auto-register user samples so s("name") works without opening the modal
+        try {
+          const res = await fetch('/api/studio/samples')
+          const data = await res.json()
+          if (data.samples && engine.webaudio) {
+            const samplesList = data.samples as { id: string; name: string; url: string; duration_ms?: number | null }[]
+            for (const s of samplesList) {
+              try { await engine.webaudio.samples({ [s.name]: [s.url] }) }
+              catch { /* individual sample registration failure is non-fatal */ }
+            }
+            if (!cancelled) setUserSamples(samplesList)
+            if (samplesList.length > 0) {
+              console.log(`[444 STUDIO] Auto-registered ${samplesList.length} custom sample(s)`)
+            }
+          }
+        } catch { /* samples fetch failure is non-fatal */ }
       } catch (err: any) {
         console.error('[444 STUDIO] init failed:', err)
         if (!cancelled) {
@@ -518,6 +538,30 @@ export default function StudioEditor() {
     }
   }, [])
 
+  // ── Register custom sound in Strudel engine ──
+  const registerCustomSound = useCallback(async (name: string, url: string) => {
+    const engine = engineRef.current
+    if (!engine?.webaudio) {
+      console.warn('[444 STUDIO] Engine not ready for sample registration')
+      return
+    }
+    try {
+      await engine.webaudio.samples({ [name]: [url] })
+      console.log(`[444 STUDIO] Registered custom sound: s("${name}")`)
+    } catch (err) {
+      console.error('[444 STUDIO] Failed to register sound:', err)
+    }
+  }, [])
+
+  // ── Add a vocal/sample channel with auto-calculated loopAt ──
+  const handleAddVocalChannel = useCallback((name: string, loopAt: number) => {
+    const currentCode = codeRef.current
+    const newCode = addChannel(currentCode, name, 'vocal', loopAt)
+    if (newCode !== currentCode) {
+      handleLiveCodeChange(newCode)
+    }
+  }, [handleLiveCodeChange])
+
   // ═══════════════════════════════════════════════════════════════
   //  RENDER
   // ═══════════════════════════════════════════════════════════════
@@ -586,6 +630,9 @@ export default function StudioEditor() {
             onPreview={handlePreviewSound}
             onOpenPianoRoll={(idx) => { setDrumSequencerChannel(null); setPianoRollChannel(prev => prev === idx ? null : idx) }}
             onOpenDrumSequencer={(idx) => { setPianoRollChannel(null); setDrumSequencerChannel(prev => prev === idx ? null : idx) }}
+            onOpenSampleUploader={() => setSampleUploaderOpen(true)}
+            onAddVocalChannel={handleAddVocalChannel}
+            userSamples={userSamples}
           />
 
           {/* Piano Roll — docks at bottom */}
@@ -745,6 +792,16 @@ export default function StudioEditor() {
           })()}
         </div>
       </div>
+
+      {/* ── SAMPLE UPLOADER MODAL ── */}
+      <StudioSampleUploader
+        isOpen={sampleUploaderOpen}
+        onClose={() => setSampleUploaderOpen(false)}
+        bpm={parseBPM(code) ?? 120}
+        onRegisterSound={registerCustomSound}
+        onAddVocalChannel={handleAddVocalChannel}
+        onSamplesChanged={setUserSamples}
+      />
 
       {/* ── CODE EDITOR DRAWER (slides from right) ── */}
       <div

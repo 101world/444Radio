@@ -11,7 +11,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react'
-import { ChevronDown, ChevronRight, Plus, Volume2, VolumeX, Headphones, GripVertical, Link, Unlink, X, Music, Clock, Piano, Grid3X3, Copy, Trash2, RotateCcw } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus, Volume2, VolumeX, Headphones, GripVertical, Link, Unlink, X, Music, Clock, Piano, Grid3X3, Copy, Trash2, RotateCcw, Mic } from 'lucide-react'
 import StudioKnob from './StudioKnob'
 import ChannelLCD from './ChannelLCD'
 import {
@@ -202,7 +202,7 @@ const BANK_OPTIONS: [string, string][] = [
 
 // ─── Quick-add presets for Add Channel menu ───
 
-const ADD_CHANNEL_PRESETS: { section: string; type: 'synth' | 'sample'; items: [string, string][] }[] = [
+const ADD_CHANNEL_PRESETS: { section: string; type: 'synth' | 'sample' | 'vocal'; items: [string, string][] }[] = [
   { section: '🎹 Instruments', type: 'synth', items: [
     ['sawtooth', 'Sawtooth'], ['supersaw', 'Supersaw'], ['sine', 'Sine'],
     ['square', 'Square'], ['triangle', 'Triangle'],
@@ -216,9 +216,14 @@ const ADD_CHANNEL_PRESETS: { section: string; type: 'synth' | 'sample'; items: [
     ['oh', 'Open HH'], ['rim', 'Rim'], ['tom', 'Tom'], ['ride', 'Ride'],
     ['crash', 'Crash'], ['perc', 'Perc'],
   ]},
+  { section: '🎤 Vocals & Voice', type: 'vocal', items: [
+    ['gm_choir_aahs', 'Choir Aahs'], ['gm_voice_oohs', 'Voice Oohs'],
+    ['gm_synth_choir', 'Synth Choir'], ['gm_pad_choir', 'Choir Pad'],
+    ['mouth', 'Mouth'],
+  ]},
   { section: '🎵 Samples', type: 'sample', items: [
     ['casio', 'Casio'], ['jazz', 'Jazz Kit'], ['gabba', 'Gabba'],
-    ['metal', 'Metal'], ['mouth', 'Mouth'], ['space', 'Space'],
+    ['metal', 'Metal'], ['space', 'Space'],
   ]},
 ]
 
@@ -227,9 +232,10 @@ const ADD_CHANNEL_PRESETS: { section: string; type: 'synth' | 'sample'; items: [
 const FX_GROUPS: { label: string; icon: string; keys: string[] }[] = [
   { label: 'FILTER', icon: '🔽', keys: ['lpf', 'lp', 'hpf', 'hp', 'lpq', 'lpenv', 'lps', 'lpd'] },
   { label: 'DRIVE',  icon: '🔥', keys: ['shape', 'distort', 'crush'] },
-  { label: 'SPACE',  icon: '🌌', keys: ['room', 'delay', 'delayfeedback', 'delaytime'] },
+  { label: 'SPACE',  icon: '🌌', keys: ['room', 'delay', 'delayfeedback', 'delaytime', 'orbit'] },
   { label: 'MOD',    icon: '🎵', keys: ['detune', 'speed', 'pan', 'velocity', 'postgain'] },
   { label: 'ENV',    icon: '⏳', keys: ['attack', 'decay', 'rel', 'release', 'legato', 'clip'] },
+  { label: 'SAMPLE', icon: '🎤', keys: ['loopAt', 'begin', 'end', 'chop', 'stretch'] },
 ]
 
 // ─── Draggable Effect Badge ───
@@ -523,6 +529,7 @@ function ChannelStrip({
             >
               {channel.name}
             </span>
+            {channel.sourceType === 'sample' && channel.effects.includes('loopAt') && <span className="text-[6px]" title="Vocal/Sample channel">🎤</span>}
             {sidechainInfo.isSource && <span className="text-[5px]" style={{ color: '#7fa998', opacity: 0.6 }}>SC</span>}
             {sidechainInfo.isDucked && <span className="text-[5px]">🦆</span>}
           </button>
@@ -1117,6 +1124,13 @@ function ChannelStrip({
 
 // ─── Mixer Rack (right sidebar) ───
 
+interface UserSample {
+  id: string
+  name: string
+  url: string
+  duration_ms?: number | null
+}
+
 interface StudioMixerRackProps {
   code: string
   onCodeChange: (code: string) => void
@@ -1126,11 +1140,14 @@ interface StudioMixerRackProps {
   onMetronomeToggle?: (enabled: boolean) => void
   onOpenPianoRoll?: (channelIdx: number) => void
   onOpenDrumSequencer?: (channelIdx: number) => void
+  onOpenSampleUploader?: () => void
+  onAddVocalChannel?: (name: string, loopAt: number) => void
+  userSamples?: UserSample[]
   isPlaying?: boolean
   onPreview?: (soundCode: string) => void
 }
 
-export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, onMixerStateChange, metronomeEnabled = false, onMetronomeToggle, onOpenPianoRoll, onOpenDrumSequencer, isPlaying: isPlayingProp = false, onPreview }: StudioMixerRackProps) {
+export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, onMixerStateChange, metronomeEnabled = false, onMetronomeToggle, onOpenPianoRoll, onOpenDrumSequencer, onOpenSampleUploader, onAddVocalChannel, userSamples = [], isPlaying: isPlayingProp = false, onPreview }: StudioMixerRackProps) {
   const channels = useMemo(() => parseStrudelCode(code), [code])
   const [expandedChannels, setExpandedChannels] = useState<Set<string>>(new Set())
   const [mutedChannels, setMutedChannels] = useState<Set<number>>(new Set())
@@ -1414,9 +1431,9 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
 
   // ── Add channel handler ──
   const handleAddChannel = useCallback(
-    (sound: string, type: 'synth' | 'sample') => {
+    (sound: string, type: 'synth' | 'sample' | 'vocal', vocalLoopAt?: number) => {
       const currentCode = codeRef.current
-      const newCode = addChannel(currentCode, sound, type)
+      const newCode = addChannel(currentCode, sound, type, vocalLoopAt)
       if (newCode !== currentCode) onCodeChange(newCode)
       setShowAddMenu(false)
     },
@@ -1804,10 +1821,10 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                 <span className="text-[7px] font-black uppercase tracking-[.2em]" style={{ color: '#5a616b' }}>EFFECTS</span>
                 <span className="text-[5px] ml-auto font-mono" style={{ color: '#5a616b' }}>drag → channel</span>
               </div>
-              {(['filter', 'space', 'drive', 'mod', 'env', 'sidechain', 'pattern'] as const).map(cat => {
+              {(['filter', 'space', 'drive', 'mod', 'env', 'sidechain', 'pattern', 'sample'] as const).map(cat => {
                 const fxInCat = DRAGGABLE_EFFECTS.filter(fx => fx.category === cat)
                 if (fxInCat.length === 0) return null
-                const catLabels: Record<string, string> = { filter: 'FILTER', space: 'SPACE', drive: 'DRIVE', mod: 'MOD', env: 'ENVELOPE', sidechain: 'SIDECHAIN', pattern: 'PATTERN' }
+                const catLabels: Record<string, string> = { filter: 'FILTER', space: 'SPACE', drive: 'DRIVE', mod: 'MOD', env: 'ENVELOPE', sidechain: 'SIDECHAIN', pattern: 'PATTERN', sample: 'SAMPLE' }
                 return (
                   <div key={cat} className="mb-1.5">
                     <span className="text-[5px] font-black uppercase tracking-[.15em] px-1" style={{ color: '#5a616b' }}>{catLabels[cat]}</span>
@@ -1822,6 +1839,31 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
             </div>
           )}
         </div>
+
+        {/* Divider */}
+        <div className="w-px h-4" style={{ background: 'rgba(255,255,255,0.06)' }} />
+
+        {/* Samples / Vocals button */}
+        {onOpenSampleUploader && (
+          <button
+            onClick={onOpenSampleUploader}
+            className="cursor-pointer transition-all duration-[180ms] active:scale-95"
+            style={{
+              display: 'flex', alignItems: 'center', gap: '3px',
+              padding: '2px 8px',
+              fontSize: '7px', fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase' as const,
+              borderRadius: '12px',
+              color: '#5a616b',
+              background: '#1c1e22',
+              border: 'none',
+              boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036',
+            }}
+            title="Upload samples / vocals"
+          >
+            <Mic size={8} />
+            SAMPLES
+          </button>
+        )}
 
         {/* Spacer */}
         <div className="flex-1" />
@@ -1988,7 +2030,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                       style={{
                         background: '#1c1e22',
                         boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036',
-                        color: section.type === 'synth' ? '#6f8fb3' : '#b8a47f',
+                        color: section.type === 'synth' ? '#6f8fb3' : section.type === 'vocal' ? '#c77dba' : '#b8a47f',
                         fontSize: '8px',
                         fontWeight: 700,
                         border: 'none',
@@ -2001,6 +2043,67 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                 </div>
               </div>
             ))}
+
+            {/* ── User Uploaded Samples ── */}
+            {userSamples.length > 0 && (
+              <div>
+                <div className="px-3 py-1" style={{ background: '#1c1e22' }}>
+                  <span className="text-[7px] font-black uppercase tracking-[.1em]" style={{ color: '#5a616b' }}>
+                    🎤 Your Uploaded Samples
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1 px-3 py-1.5">
+                  {userSamples.map((s) => {
+                    const dur = s.duration_ms ? s.duration_ms / 1000 : null
+                    const loopAt = dur ? Math.max(1, Math.round(dur * (parseBPM(code) ?? 120) / 240)) : 8
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => {
+                          if (onAddVocalChannel) {
+                            onAddVocalChannel(s.name, loopAt)
+                            setShowAddMenu(false)
+                          } else {
+                            handleAddChannel(s.name, 'vocal', loopAt)
+                          }
+                        }}
+                        className="px-2 py-1 rounded-lg cursor-pointer transition-all duration-[120ms] active:scale-95 hover:opacity-100 group/samp"
+                        style={{
+                          background: '#1c1e22',
+                          boxShadow: '2px 2px 4px #14161a, -2px -2px 4px #2c3036',
+                          color: '#22d3ee',
+                          fontSize: '8px',
+                          fontWeight: 700,
+                          border: '1px solid rgba(34,211,238,0.1)',
+                          opacity: 0.85,
+                        }}
+                        title={`Add s("${s.name}").loopAt(${loopAt}) channel${dur ? ` · ${Math.floor(dur / 60)}:${String(Math.floor(dur % 60)).padStart(2, '0')}` : ''}`}
+                      >
+                        {s.name}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Upload hint */}
+            <div className="flex items-center justify-center px-3 py-2" style={{ borderTop: '1px solid rgba(255,255,255,0.03)' }}>
+              <button
+                onClick={() => { setShowAddMenu(false); onOpenSampleUploader?.() }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg cursor-pointer transition-all hover:scale-105"
+                style={{
+                  background: 'rgba(34,211,238,0.06)',
+                  border: '1px solid rgba(34,211,238,0.12)',
+                  color: '#22d3ee',
+                  fontSize: '8px',
+                  fontWeight: 700,
+                }}
+              >
+                <Mic size={10} />
+                Upload your own vocal / sample
+              </button>
+            </div>
           </div>
         )}
       </div>
