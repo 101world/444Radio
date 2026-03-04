@@ -146,8 +146,8 @@ export const DRAGGABLE_EFFECTS = [
   { id: 'delay',         label: 'Delay',   code: '.delay(.25)',         icon: '📡', category: 'space',   target: 'both' as const },
   { id: 'delayfeedback', label: 'DlyFB',   code: '.delayfeedback(.4)',  icon: '🔁', category: 'space',   target: 'both' as const },
   // ── Drive ──
-  { id: 'shape',         label: 'Shape',   code: '.shape(.3)',          icon: '📐', category: 'drive',   target: 'instrument' as const },
-  { id: 'distort',       label: 'Distort', code: '.distort(.5)',        icon: '🔥', category: 'drive',   target: 'instrument' as const },
+  { id: 'shape',         label: 'Shape',   code: '.shape(.3)',          icon: '📐', category: 'drive',   target: 'both' as const },
+  { id: 'distort',       label: 'Distort', code: '.distort(.5)',        icon: '🔥', category: 'drive',   target: 'both' as const },
   { id: 'crush',         label: 'Crush',   code: '.crush(8)',           icon: '👾', category: 'drive',   target: 'both' as const },
   // ── Mod ──
   { id: 'pan',           label: 'Pan',     code: '.pan(.5)',            icon: '↔️', category: 'mod',     target: 'both' as const },
@@ -160,9 +160,9 @@ export const DRAGGABLE_EFFECTS = [
   { id: 'fast',          label: 'Fast',    code: '.fast(2)',            icon: '⏩', category: 'mod',     target: 'both' as const },
   { id: 'slow',          label: 'Slow',    code: '.slow(2)',            icon: '🐌', category: 'mod',     target: 'both' as const },
   // ── Envelope ──
-  { id: 'attack',        label: 'Attack',  code: '.attack(.1)',         icon: '⏫', category: 'env',     target: 'instrument' as const },
+  { id: 'attack',        label: 'Attack',  code: '.attack(.1)',         icon: '⏫', category: 'env',     target: 'both' as const },
   { id: 'decay',         label: 'Decay',   code: '.decay(.3)',          icon: '⏳', category: 'env',     target: 'both' as const },
-  { id: 'rel',           label: 'Release', code: '.rel(.5)',            icon: '⏬', category: 'env',     target: 'instrument' as const },
+  { id: 'rel',           label: 'Release', code: '.rel(.5)',            icon: '⏬', category: 'env',     target: 'both' as const },
   { id: 'legato',        label: 'Legato',  code: '.legato(1)',          icon: '🎵', category: 'env',     target: 'both' as const },
   { id: 'clip',          label: 'Clip',    code: '.clip(1)',            icon: '✂️', category: 'env',     target: 'both' as const },
   // ── Sidechain ──
@@ -527,6 +527,14 @@ export function insertEffectInChannel(
   const channels = parseStrudelCode(code)
   const ch = channels[channelIdx]
   if (!ch) return code
+
+  // Prevent duplicate: extract method name and check if it already exists in the channel
+  const methodMatch = effectCode.match(/^\.([a-zA-Z]+)\(/)
+  if (methodMatch) {
+    const methodName = methodMatch[1]
+    const methodRegex = new RegExp(`\\.${methodName}\\(`)
+    if (methodRegex.test(ch.rawCode)) return code // Effect already present
+  }
 
   const lines = code.split('\n')
 

@@ -273,6 +273,7 @@ const FX_GROUPS: { label: string; icon: string; keys: string[] }[] = [
   { label: 'SPACE',  icon: '🌌', keys: ['room', 'delay', 'delayfeedback', 'delaytime', 'orbit', 'echo'] },
   { label: 'MOD',    icon: '🎵', keys: ['detune', 'speed', 'pan', 'velocity', 'postgain', 'vib', 'phaser', 'fast', 'slow'] },
   { label: 'ENV',    icon: '⏳', keys: ['attack', 'decay', 'rel', 'release', 'legato', 'clip'] },
+  { label: 'CHAIN',  icon: '🦆', keys: ['duckdepth', 'duckattack'] },
   { label: 'SAMPLE', icon: '🎤', keys: ['loopAt', 'begin', 'end', 'chop', 'stretch', 'slice'] },
 ]
 
