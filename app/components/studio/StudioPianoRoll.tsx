@@ -1126,13 +1126,32 @@ export default function StudioPianoRoll({
 
   const isSampleChannel = channelData?.sourceType === 'sample' && !!sampleUrl
 
-  // ── Initialize begin/end from channel params ──
+  // ── Detect sliced channel (pad sampler owns trim) ──
+  const sliceMeta = useMemo(() => {
+    if (!channelData?.rawCode) return null
+    const trimComment = channelData.rawCode.match(/\/\/\s*trim:([\d.]+):([\d.]+):(\d+)/)
+    const hasSlice = /\.slice\(\s*\d+/.test(channelData.rawCode) || /\.splice\(\s*\d+/.test(channelData.rawCode)
+    if (!hasSlice) return null
+    return {
+      isSliced: true,
+      trimBegin: trimComment ? parseFloat(trimComment[1]) : 0,
+      trimEnd: trimComment ? parseFloat(trimComment[2]) : 1,
+      chopCount: trimComment ? parseInt(trimComment[3]) : 16,
+    }
+  }, [channelData?.rawCode])
+
+  const isSlicedChannel = !!sliceMeta
+
+  // ── Initialize begin/end from channel params OR //trim comment ──
   const sampleBeginFromCode = useMemo(() => {
+    // Sliced channels: read from //trim comment (pad sampler ate the .begin()/.end())
+    if (sliceMeta) return sliceMeta.trimBegin
     return channelData?.params.find(p => p.key === 'begin')?.value ?? 0
-  }, [channelData])
+  }, [channelData, sliceMeta])
   const sampleEndFromCode = useMemo(() => {
+    if (sliceMeta) return sliceMeta.trimEnd
     return channelData?.params.find(p => p.key === 'end')?.value ?? 1
-  }, [channelData])
+  }, [channelData, sliceMeta])
 
   // Sync from code params when they change externally
   const lastSyncedBegin = useRef<number | null>(null)
@@ -1244,14 +1263,42 @@ export default function StudioPianoRoll({
       ctx.stroke()
     }
 
-    // Begin handle (green)
-    ctx.fillStyle = '#10b981'
+    // ── Chop markers for sliced channels ──
+    if (sliceMeta && sliceMeta.chopCount > 1) {
+      const chopN = sliceMeta.chopCount
+      const trimRange = exVal - bx
+      ctx.strokeStyle = 'rgba(34,211,238,0.25)' // cyan chop lines
+      ctx.lineWidth = 0.5
+      for (let c = 1; c < chopN; c++) {
+        const cx = bx + (c / chopN) * trimRange
+        ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, h); ctx.stroke()
+      }
+      // Chop count label
+      ctx.font = '7px monospace'
+      ctx.fillStyle = 'rgba(34,211,238,0.5)'
+      ctx.textAlign = 'center'
+      ctx.fillText(`${chopN} chops`, (bx + exVal) / 2, 10)
+    }
+
+    // Begin handle (green) — dimmed if sliced (locked)
+    const handleAlpha = sliceMeta ? '60' : ''
+    ctx.fillStyle = `#10b981${handleAlpha}`
     ctx.fillRect(bx - 1, 0, 2, h)
     ctx.beginPath(); ctx.moveTo(bx, 0); ctx.lineTo(bx + 7, 0); ctx.lineTo(bx, 9); ctx.closePath(); ctx.fill()
-    // End handle (red)
-    ctx.fillStyle = '#f43f5e'
+    // End handle (red) — dimmed if sliced (locked)
+    ctx.fillStyle = `#f43f5e${handleAlpha}`
     ctx.fillRect(exVal - 1, 0, 2, h)
     ctx.beginPath(); ctx.moveTo(exVal, 0); ctx.lineTo(exVal - 7, 0); ctx.lineTo(exVal, 9); ctx.closePath(); ctx.fill()
+
+    // Lock icon on handles when sliced
+    if (sliceMeta) {
+      ctx.font = '7px sans-serif'
+      ctx.fillStyle = 'rgba(255,255,255,0.3)'
+      ctx.textAlign = 'left'
+      ctx.fillText('🔒', bx + 3, 20)
+      ctx.textAlign = 'right'
+      ctx.fillText('🔒', exVal - 3, 20)
+    }
 
     // Time labels
     ctx.font = '9px monospace'
@@ -1268,7 +1315,7 @@ export default function StudioPianoRoll({
     ctx.textAlign = 'center'
     ctx.font = '8px monospace'
     ctx.fillText(`${regionDur.toFixed(2)}s`, (bx + exVal) / 2, h - 3)
-  }, [sampleBegin, sampleEnd, color, sampleDuration])
+  }, [sampleBegin, sampleEnd, color, sampleDuration, sliceMeta])
 
   // Redraw waveform when trim values change
   useEffect(() => { drawSampleWaveform() }, [drawSampleWaveform])
@@ -1287,6 +1334,8 @@ export default function StudioPianoRoll({
   }, [])
 
   const handleWaveformMouseDown = useCallback((e: React.MouseEvent) => {
+    // Sliced channels: trim is locked — Pad Sampler owns the chop boundaries
+    if (isSlicedChannel) return
     const x = getWaveformX(e)
     const bDist = Math.abs(x - sampleBegin)
     const eDist = Math.abs(x - sampleEnd)
@@ -1295,7 +1344,7 @@ export default function StudioPianoRoll({
     } else if (eDist < 0.025 || eDist < 0.05) {
       setWaveformDragging('end')
     }
-  }, [sampleBegin, sampleEnd, getWaveformX])
+  }, [sampleBegin, sampleEnd, getWaveformX, isSlicedChannel])
 
   useEffect(() => {
     if (!waveformDragging) return
@@ -1311,8 +1360,10 @@ export default function StudioPianoRoll({
   }, [waveformDragging, sampleBegin, sampleEnd, getWaveformX])
 
   // ── Apply trim to channel code when drag ends ──
+  // Sliced channels: skip — Pad Sampler owns trim via // trim: comment + scaled slice indices
   useEffect(() => {
     if (waveformDragging !== null) return
+    if (isSlicedChannel) return // Pad Sampler controls trim for sliced channels
     if (!channelData || channelIdx === undefined) return
     if (Math.abs(sampleBegin - sampleBeginFromCode) < 0.005 && Math.abs(sampleEnd - sampleEndFromCode) < 0.005) return
 
@@ -2574,27 +2625,34 @@ export default function StudioPianoRoll({
           <div className="flex items-center justify-between px-3 py-1"
             style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
             <div className="flex items-center gap-2">
-              <span className="text-[7px] font-black uppercase tracking-wider" style={{ color: '#10b981' }}>
-                SAMPLE TRIM
+              <span className="text-[7px] font-black uppercase tracking-wider" style={{ color: isSlicedChannel ? '#22d3ee' : '#10b981' }}>
+                {isSlicedChannel ? '🎹 PAD SAMPLER TRIM' : 'SAMPLE TRIM'}
               </span>
+              {isSlicedChannel && (
+                <span className="text-[5px] font-mono px-1 py-0.5 rounded" style={{ background: '#22d3ee15', color: '#22d3ee80' }}>
+                  LOCKED — adjust in Pad Sampler
+                </span>
+              )}
               {sampleDuration > 0 && (
                 <span className="text-[6px] font-mono" style={{ color: '#5a616b' }}>
                   {sampleDuration.toFixed(1)}s total
                 </span>
               )}
               <div className="w-px h-3 bg-white/[0.06]" />
-              {/* Shot / Full toggle */}
-              <button
-                onClick={toggleFullSample}
-                className="px-2 py-0.5 text-[7px] font-bold cursor-pointer transition-all rounded-md"
-                style={{
-                  background: isFullSample ? '#10b98120' : '#f59e0b20',
-                  color: isFullSample ? '#10b981' : '#f59e0b',
-                  border: `1px solid ${isFullSample ? '#10b98130' : '#f59e0b30'}`,
-                }}
-              >
-                {isFullSample ? 'FULL SAMPLE' : 'SOUND SHOT'}
-              </button>
+              {/* Shot / Full toggle — hidden on sliced channels (pad sampler controls this) */}
+              {!isSlicedChannel && (
+                <button
+                  onClick={toggleFullSample}
+                  className="px-2 py-0.5 text-[7px] font-bold cursor-pointer transition-all rounded-md"
+                  style={{
+                    background: isFullSample ? '#10b98120' : '#f59e0b20',
+                    color: isFullSample ? '#10b981' : '#f59e0b',
+                    border: `1px solid ${isFullSample ? '#10b98130' : '#f59e0b30'}`,
+                  }}
+                >
+                  {isFullSample ? 'FULL SAMPLE' : 'SOUND SHOT'}
+                </button>
+              )}
               {!isFullSample && sampleDuration > 0 && (
                 <span className="text-[6px] font-mono" style={{ color: '#f59e0b' }}>
                   {((sampleEnd - sampleBegin) * sampleDuration).toFixed(2)}s region
@@ -2625,25 +2683,27 @@ export default function StudioPianoRoll({
               >
                 {isWaveformPreviewing ? 'STOP' : 'PREVIEW'}
               </button>
-              {/* Reset */}
-              <button
-                onClick={() => {
-                  setSampleBegin(0)
-                  setSampleEnd(1)
-                  setIsFullSample(true)
-                  if (channelData) {
-                    if (channelData.effects.includes('begin')) onEffectRemove?.('begin')
-                    if (channelData.effects.includes('end')) onEffectRemove?.('end')
-                  }
-                }}
-                className="px-1.5 py-0.5 text-[7px] font-bold cursor-pointer transition-all rounded-md"
-                style={{
-                  background: '#0a0b0d', color: '#5a616b',
-                  boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
-                }}
-              >
-                RESET
-              </button>
+              {/* Reset — disabled on sliced channels */}
+              {!isSlicedChannel && (
+                <button
+                  onClick={() => {
+                    setSampleBegin(0)
+                    setSampleEnd(1)
+                    setIsFullSample(true)
+                    if (channelData) {
+                      if (channelData.effects.includes('begin')) onEffectRemove?.('begin')
+                      if (channelData.effects.includes('end')) onEffectRemove?.('end')
+                    }
+                  }}
+                  className="px-1.5 py-0.5 text-[7px] font-bold cursor-pointer transition-all rounded-md"
+                  style={{
+                    background: '#0a0b0d', color: '#5a616b',
+                    boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+                  }}
+                >
+                  RESET
+                </button>
+              )}
             </div>
           </div>
           {/* Waveform canvas */}
@@ -2660,7 +2720,7 @@ export default function StudioPianoRoll({
                 className="w-full rounded-md"
                 style={{
                   height: 56,
-                  cursor: waveformDragging ? 'ew-resize' : 'default',
+                  cursor: isSlicedChannel ? 'not-allowed' : waveformDragging ? 'ew-resize' : 'default',
                 }}
                 onMouseDown={handleWaveformMouseDown}
               />
