@@ -81,7 +81,7 @@ function compressPattern(tokens: string[]): string {
 
 /** Build slice-based pattern from recorded hits.
  *  Output: slice indices for n() — e.g. "0 ~ 3 ~ 7 ~ ~ ~"
- *  Strudel form: n("pattern").s("sample").slice(chopCount).loopAt(bars)
+ *  Strudel form: s("sample").splice(chopCount, "pattern")
  */
 function buildSlicePattern(hits: RecordedHit[], chopCount: number, bars: number): string {
   const barPatterns: string[] = []
@@ -355,9 +355,9 @@ export default function StudioVocalPadSampler({
       sidechainStr = `\n  .duck("${sidechainOrbit}").duckdepth(${sidechainDepth.toFixed(2)})`
     }
 
-    // n("pattern") provides slice selection, .slice(N) divides sample, .loopAt(bars) sets playback speed
+    // splice(N, "pat") chops sample into N slices, selects by pattern, adjusts speed per slice
     const effectsStr = effectsToKeep.length > 0 ? '\n  ' + effectsToKeep.join('\n  ') : ''
-    const newCode = `$${name}: n("${pattern}")\n  .s("${sampleName}")\n  .slice(${localChopCount})\n  .loopAt(${loopBars})${pitchStr}${sidechainStr}${effectsStr}\n  .orbit(${orbit})._scope()`
+    const newCode = `$${name}: s("${sampleName}")\n  .splice(${localChopCount}, "${pattern}")${pitchStr}${sidechainStr}${effectsStr}\n  .orbit(${orbit})._scope()`
 
     onPatternChange(newCode)
     setHasEdited(false)
@@ -371,8 +371,9 @@ export default function StudioVocalPadSampler({
 
   // ─── Parse existing pattern from code ───
   useEffect(() => {
-    // Try to parse slice(N, "...") or n("...") pattern from the channel code
-    const sliceMatch = channelRawCode.match(/\.slice\(\s*\d+\s*,\s*"([^"]*)"\s*\)/)
+    // Try to parse splice(N, "...") or slice(N, "...") or n("...") pattern from the channel code
+    const spliceMatch = channelRawCode.match(/\.splice\(\s*\d+\s*,\s*"([^"]*)"\s*\)/)
+    const sliceMatch = spliceMatch || channelRawCode.match(/\.slice\(\s*\d+\s*,\s*"([^"]*)"\s*\)/)
     const nMatch = sliceMatch || channelRawCode.match(/\bn\(\s*"([^"]*)"\s*\)/)
     if (!nMatch) return
 
