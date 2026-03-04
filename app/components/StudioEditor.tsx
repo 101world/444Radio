@@ -909,10 +909,11 @@ export default function StudioEditor() {
             const channels = parseStrudelCode(code)
             const ch = channels[padSamplerChannel]
             if (!ch) return null
-            // Extract chop/slice count from channel code (e.g., .slice(16) or .chop(16) → 16)
-            const sliceMatch = ch.rawCode.match(/\.slice\(\s*(\d+)/)
-            const chopMatch = ch.rawCode.match(/\.chop\(\s*(\d+)\s*\)/)
-            const chopCount = sliceMatch ? parseInt(sliceMatch[1]) : chopMatch ? parseInt(chopMatch[1]) : 16
+            // Extract chop/slice count from channel code (e.g., .splice(16,...) or .slice(16,...) or .chop(16) → 16)
+            const spliceMatch = ch.rawCode.match(/\.splice\(\s*(\d+)/)
+            const sliceMatch = spliceMatch || ch.rawCode.match(/\.slice\(\s*(\d+)/)
+            const chopMatch = sliceMatch || ch.rawCode.match(/\.chop\(\s*(\d+)\s*\)/)
+            const chopCount = chopMatch ? parseInt(chopMatch[1]) : 16
             // Extract loopAt from channel code
             const loopAtMatch = ch.rawCode.match(/\.loopAt\(\s*(\d+)\s*\)/)
             const loopAtVal = loopAtMatch ? parseInt(loopAtMatch[1]) : 4
@@ -956,15 +957,14 @@ export default function StudioEditor() {
                       s: sampleName,
                       begin,
                       end,
-                      gain: 0.6,
+                      gain: 0.7,
                       cut: 2,
-                      clip: 1,
                     }
                     if (speed !== undefined && speed !== 1) params.speed = speed
                     if (ch.bank) params.bank = ch.bank
-                    // Compute a reasonable duration based on the slice size
-                    const sliceDur = Math.max(0.15, (end - begin) * 4) // rough estimate: 4s per full sample
-                    await sd(params, now, Math.min(sliceDur, 2))
+                    // Duration: generous so the full slice is audible (superdough trims to begin/end)
+                    const sliceDur = Math.max(0.25, (end - begin) * 60) // vocal stems can be long
+                    await sd(params, now, Math.min(sliceDur, 8))
                   } catch (err) {
                     console.error('[444 STUDIO] pad preview error:', err)
                   }
