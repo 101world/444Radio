@@ -974,7 +974,7 @@ function ChannelStrip({
       {/* ── Action icons row ── */}
       <div className="flex items-center justify-center gap-1 px-1 pb-1.5">
         {/* Piano Roll — for instrument channels AND sample channels (pitched sample playback) */}
-        {onOpenPianoRoll && (channel.sourceType === 'synth' || channel.sourceType === 'note' || (channel.sourceType === 'sample' && channel.effects.includes('loopAt'))) && (
+        {onOpenPianoRoll && (channel.sourceType === 'synth' || channel.sourceType === 'note' || channel.sourceType === 'sample') && (
           <button
             onClick={(e) => { e.stopPropagation(); onOpenPianoRoll() }}
             className="p-1 rounded-lg transition-colors cursor-pointer"
