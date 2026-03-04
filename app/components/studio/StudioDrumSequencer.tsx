@@ -728,8 +728,18 @@ export default function StudioDrumSequencer({
     }
     fullInstrumentMapRef.current = newFullMap
 
-    // If only one instrument, also show complementary drums
-    if (rowIds.length === 1) {
+    // Preserve existing empty rows that the user added (prevents rows from disappearing
+    // when the round-trip re-parse filters out rows with no hits from the code)
+    const currentActive = activeRowsRef.current
+    for (const existingRow of currentActive) {
+      if (!rowIds.includes(existingRow)) {
+        rowIds.push(existingRow)
+        if (!newGrid.has(existingRow)) newGrid.set(existingRow, new Set())
+      }
+    }
+
+    // If only one instrument and no pre-existing rows to preserve, show complementary drums
+    if (rowIds.length === 1 && currentActive.length === 0) {
       const existing = rowIds[0]
       const defaults = ['bd', 'sd', 'hh', 'cp']
       for (const d of defaults) {
@@ -876,6 +886,29 @@ export default function StudioDrumSequencer({
     })
     setHasUserEdited(true)
   }, [])
+
+  // Randomize: generate random hits for active rows
+  const randomize = useCallback(() => {
+    const densities: Record<string, number> = {
+      bd: 0.25, sd: 0.18, cp: 0.12, rim: 0.10,
+      hh: 0.40, oh: 0.08, tom: 0.10, ride: 0.15,
+      crash: 0.05, perc: 0.12,
+    }
+    const newGrid = new Map<string, Set<number>>()
+    const total = bars * stepsPerBar
+    for (const row of activeRows) {
+      const density = densities[row] ?? 0.15
+      const hits = new Set<number>()
+      for (let s = 0; s < total; s++) {
+        if (Math.random() < density) hits.add(s)
+      }
+      newGrid.set(row, hits)
+      // Preview first hit instrument
+      if (hits.size > 0) previewDrum(row)
+    }
+    setGrid(newGrid)
+    setHasUserEdited(true)
+  }, [activeRows, bars, stepsPerBar, previewDrum])
 
   // â”€â”€ Load preset â”€â”€
   const loadPreset = useCallback((preset: DrumPreset) => {
@@ -1132,6 +1165,16 @@ export default function StudioDrumSequencer({
             )}
           </div>
         </div>
+
+          {/* Dice/Random button */}
+          <button
+            onClick={randomize}
+            className="px-2 py-0.5 rounded-xl text-[7px] font-bold uppercase tracking-wider cursor-pointer transition-all duration-[180ms]"
+            style={{ background: '#16181d', color: '#b8a47f', boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22' }}
+            title="Generate random pattern"
+          >
+            🎲 Dice
+          </button>
 
         {/* Right side */}
         <div className="flex items-center gap-1.5">

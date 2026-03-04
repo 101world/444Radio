@@ -305,6 +305,172 @@ function EffectBadge({ effect }: { effect: typeof DRAGGABLE_EFFECTS[number] }) {
 
 // â”€â”€â”€ Single Channel Strip â”€â”€â”€
 
+
+// ─── Mini Pattern Preview — shows pattern dots in channel node ───
+
+function MiniPatternPreview({ channel, onClick, color }: {
+  channel: { rawCode: string; sourceType: string; effects: string[] }
+  onClick?: () => void
+  color: string
+}) {
+  // Parse pattern from rawCode
+  const patternData = useMemo(() => {
+    const raw = channel.rawCode
+
+    // Determine what kind of pattern this channel has
+    const isVocal = channel.sourceType === 'sample' && channel.effects.includes('loopAt')
+    const isDrum = channel.sourceType === 'sample' || channel.sourceType === 'stack'
+    const isMelodic = channel.sourceType === 'synth' || channel.sourceType === 'note'
+
+    // For drum/sample channels, parse s("...") pattern
+    if (isDrum && !isMelodic) {
+      const sMatch = raw.match(/\.?s\s*\(\s*"([^"]*)"/)
+      if (sMatch) {
+        const pattern = sMatch[1]
+        // Tokenize: split by spaces, handle brackets, count steps
+        const tokens = pattern.replace(/[\[\]<>]/g, ' ').split(/\s+/).filter(Boolean)
+        const steps = Math.max(tokens.length, 1)
+        const totalSlots = Math.min(Math.max(steps, 8), 32)
+        // Build hit map: each token is a hit unless it's "~"
+        const hits: boolean[] = []
+        for (let i = 0; i < totalSlots; i++) {
+          if (i < tokens.length) {
+            hits.push(tokens[i] !== '~' && tokens[i] !== '-')
+          } else {
+            hits.push(false)
+          }
+        }
+        return { type: 'drum' as const, hits, totalSlots, isVocal }
+      }
+    }
+
+    // For melodic channels, parse n("...") or note("...") pattern
+    const nMatch = raw.match(/\bn\s*\(\s*"([^"]*)"/) || raw.match(/\bnote\s*\(\s*"([^"]*)"/)
+    if (nMatch) {
+      const pattern = nMatch[1]
+      const tokens = pattern.replace(/[\[\]<>]/g, ' ').split(/\s+/).filter(Boolean)
+      const totalSlots = Math.min(Math.max(tokens.length, 8), 32)
+      // Parse note values (scale degrees or note names)
+      const notes: { step: number; value: number; isRest: boolean }[] = []
+      for (let i = 0; i < totalSlots; i++) {
+        if (i < tokens.length) {
+          const token = tokens[i]
+          if (token === '~' || token === '-') {
+            notes.push({ step: i, value: 0, isRest: true })
+          } else {
+            // Try parse as number (scale degree)
+            const num = parseFloat(token.replace(/[^0-9.-]/g, ''))
+            notes.push({ step: i, value: isNaN(num) ? 4 : num, isRest: false })
+          }
+        } else {
+          notes.push({ step: i, value: 0, isRest: true })
+        }
+      }
+      return { type: 'melodic' as const, notes, totalSlots, isVocal: false }
+    }
+
+    // For vocal/loop channels with no note pattern
+    if (isVocal) {
+      return { type: 'vocal' as const, hits: [true], totalSlots: 1, isVocal: true }
+    }
+
+    return null
+  }, [channel.rawCode, channel.sourceType, channel.effects])
+
+  if (!patternData) return null
+
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    onClick?.()
+  }, [onClick])
+
+  // Drum pattern: row of dots
+  if (patternData.type === 'drum') {
+    return (
+      <div
+        onClick={handleClick}
+        className="mx-1.5 my-0.5 px-1 py-[3px] rounded-lg cursor-pointer transition-all hover:opacity-80 active:scale-[0.98]"
+        style={{
+          background: '#0a0b0d',
+          boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #16181d',
+        }}
+        title={patternData.isVocal ? 'Open vocal editor' : 'Open drum sequencer'}
+      >
+        <div className="flex gap-px justify-center">
+          {patternData.hits.slice(0, 16).map((hit, i) => (
+            <div key={i} className="rounded-sm" style={{
+              width: 3, height: 6,
+              background: hit ? `${color}90` : 'rgba(255,255,255,0.04)',
+            }} />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // Melodic pattern: mini piano roll dots at different heights
+  if (patternData.type === 'melodic') {
+    const activeNotes = patternData.notes.filter(n => !n.isRest)
+    const minVal = activeNotes.length > 0 ? Math.min(...activeNotes.map(n => n.value)) : 0
+    const maxVal = activeNotes.length > 0 ? Math.max(...activeNotes.map(n => n.value)) : 7
+    const range = Math.max(maxVal - minVal, 1)
+
+    return (
+      <div
+        onClick={handleClick}
+        className="mx-1.5 my-0.5 px-1 py-[3px] rounded-lg cursor-pointer transition-all hover:opacity-80 active:scale-[0.98]"
+        style={{
+          background: '#0a0b0d',
+          boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #16181d',
+        }}
+        title="Open piano roll"
+      >
+        <div className="flex gap-px justify-center items-end" style={{ height: 14 }}>
+          {patternData.notes.slice(0, 16).map((note, i) => {
+            if (note.isRest) {
+              return <div key={i} style={{ width: 3, height: 2, background: 'rgba(255,255,255,0.03)' }} className="rounded-sm self-end" />
+            }
+            const normalizedHeight = ((note.value - minVal) / range) * 10 + 3
+            return (
+              <div key={i} className="rounded-sm self-end" style={{
+                width: 3,
+                height: Math.max(3, normalizedHeight),
+                background: `${color}80`,
+              }} />
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  // Vocal: waveform-like icon
+  if (patternData.type === 'vocal') {
+    return (
+      <div
+        onClick={handleClick}
+        className="mx-1.5 my-0.5 px-1 py-[3px] rounded-lg cursor-pointer transition-all hover:opacity-80 active:scale-[0.98]"
+        style={{
+          background: '#0a0b0d',
+          boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #16181d',
+        }}
+        title="Open vocal editor"
+      >
+        <div className="flex gap-px justify-center items-center" style={{ height: 10 }}>
+          {[3,5,8,11,9,12,10,8,11,7,5,9,6,4,7,3].map((h, i) => (
+            <div key={i} className="rounded-sm" style={{
+              width: 2, height: h,
+              background: `${color}${i % 2 === 0 ? '60' : '40'}`,
+            }} />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  return null
+}
+
 function ChannelStrip({
   channel,
   channelIdx,
@@ -448,7 +614,6 @@ function ChannelStrip({
     <div
       className={`rounded-xl overflow-hidden transition-all duration-[180ms] ease-in-out ${isMuted ? 'opacity-30' : ''}`}
       style={{
-        gridColumn: isExpanded ? 'span 2' : undefined,
         background: '#111318',
         border: isDragOver
           ? '1px solid rgba(127,169,152,0.25)'
@@ -657,6 +822,23 @@ function ChannelStrip({
         onDoubleClick={channel.sourceType === 'sample' && channel.effects.includes('loopAt') ? onOpenWaveform : undefined}
       />
 
+      {/* ── Mini pattern preview (clickable → opens editor) ── */}
+      <MiniPatternPreview
+        channel={channel}
+        color={channel.color}
+        onClick={() => {
+          const isVocal = channel.sourceType === 'sample' && channel.effects.includes('loopAt')
+          const isMelodic = channel.sourceType === 'synth' || channel.sourceType === 'note'
+          if (isMelodic && onOpenPianoRoll) {
+            onOpenPianoRoll()
+          } else if (isVocal && onOpenPianoRoll) {
+            onOpenPianoRoll()
+          } else if (onOpenDrumSequencer) {
+            onOpenDrumSequencer()
+          }
+        }}
+      />
+
       {/* â”€â”€ Active effect tags â€” removable pills â”€â”€ */}
       {channel.effects.length > 0 && (
         <div className="flex flex-wrap gap-[2px] px-1.5 py-0.5" onClick={(e) => e.stopPropagation()}>
@@ -739,7 +921,7 @@ function ChannelStrip({
       {/* â”€â”€ Action icons row â”€â”€ */}
       <div className="flex items-center justify-center gap-1 px-1 pb-1.5">
         {/* Piano Roll â€” for instrument channels AND sample channels (pitched sample playback) */}
-        {onOpenPianoRoll && (channel.sourceType === 'synth' || channel.sourceType === 'note' || channel.sourceType === 'sample') && (
+        {onOpenPianoRoll && (channel.sourceType === 'synth' || channel.sourceType === 'note' || (channel.sourceType === 'sample' && channel.effects.includes('loopAt'))) && (
           <button
             onClick={(e) => { e.stopPropagation(); onOpenPianoRoll() }}
             className="p-1 rounded-lg transition-colors cursor-pointer"
@@ -755,7 +937,7 @@ function ChannelStrip({
             onClick={(e) => { e.stopPropagation(); onOpenDrumSequencer() }}
             className="p-1 rounded-lg transition-colors cursor-pointer"
             style={{ color: '#b8a47f', opacity: 0.4 }}
-            title="Drum Sequencer"
+            title={channel.sourceType === 'sample' && channel.effects.includes('loopAt') ? "Chop / Drum Pad" : "Drum Sequencer"}
           >
             <Grid3X3 size={9} />
           </button>
@@ -1972,7 +2154,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
           <>
             <div
               className="grid gap-2"
-              style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))' }}
+              style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))' }}
             >
               {channels.map((ch, idx) => (
                 <ChannelStrip

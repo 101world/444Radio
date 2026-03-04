@@ -52,7 +52,9 @@ export default function StudioEditor() {
   const [masterVolume, setMasterVolume] = useState(0.75)
   const [activeGenre, setActiveGenre] = useState('acid')
   const [sliderDefs, setSliderDefs] = useState<Record<string, { min: number; max: number; value: number }>>({})
-  const [leftPanelOpen, setLeftPanelOpen] = useState(true)
+  const [leftPanelOpen, setLeftPanelOpen] = useState(false)
+  const [leftPanelPinned, setLeftPanelPinned] = useState(false)
+  const leftPanelHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [leftPanelTab, setLeftPanelTab] = useState<'browser' | 'tools'>('browser')
   const [codeVisible, setCodeVisible] = useState(false)
   const [metronomeEnabled, setMetronomeEnabled] = useState(false)
@@ -576,6 +578,23 @@ export default function StudioEditor() {
     }
   }, [handleLiveCodeChange])
 
+  const handleAddInstrumentChannel = useCallback((name: string, begin: number, end: number) => {
+    const currentCode = codeRef.current
+    const newCode = addChannel(currentCode, name, 'instrument', undefined, undefined, undefined, begin, end)
+    if (newCode !== currentCode) {
+      handleLiveCodeChange(newCode)
+    }
+  }, [handleLiveCodeChange])
+
+  const handleAddDrumPadChannel = useCallback((name: string, chopCount: number, loopAt: number) => {
+    const currentCode = codeRef.current
+    const projectBpm = parseBPM(currentCode) ?? 120
+    const newCode = addChannel(currentCode, name, 'drumpad', loopAt, undefined, projectBpm, undefined, undefined, chopCount)
+    if (newCode !== currentCode) {
+      handleLiveCodeChange(newCode)
+    }
+  }, [handleLiveCodeChange])
+
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   //  RENDER
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -610,10 +629,21 @@ export default function StudioEditor() {
       <div className="flex-1 flex overflow-hidden relative" style={{ zIndex: 1 }}>
 
         {/* â”€â”€ LEFT PANEL (collapsible genre/sounds/methods) â”€â”€ */}
-        <div className={`shrink-0 flex flex-col overflow-hidden transition-all duration-300 ease-out ${leftPanelOpen ? 'w-60' : 'w-0'}`}>
-          {leftPanelOpen && (
+                {/* LEFT PANEL (hover-reveal, pin to keep open) */}
+        <div
+          className={`shrink-0 flex flex-col overflow-hidden transition-all duration-300 ease-out ${(leftPanelOpen || leftPanelPinned) ? 'w-60' : 'w-0'}`}
+          onMouseEnter={() => {
+            if (leftPanelHoverTimer.current) clearTimeout(leftPanelHoverTimer.current)
+            setLeftPanelOpen(true)
+          }}
+          onMouseLeave={() => {
+            if (leftPanelPinned) return
+            leftPanelHoverTimer.current = setTimeout(() => setLeftPanelOpen(false), 300)
+          }}
+        >
+          {(leftPanelOpen || leftPanelPinned) && (
             <div className="flex-1 flex flex-col overflow-hidden w-60" style={{ background: '#111318', borderRight: '1px solid rgba(255,255,255,0.05)' }}>
-              {/* Tab switcher */}
+              {/* Tab switcher + Pin */}
               <div className="flex shrink-0 border-b border-white/5">
                 <button
                   onClick={() => setLeftPanelTab('browser')}
@@ -626,6 +656,14 @@ export default function StudioEditor() {
                   className={`flex-1 py-1.5 text-[8px] font-bold uppercase tracking-widest transition-colors ${leftPanelTab === 'tools' ? 'text-white/90 bg-white/[0.06]' : 'text-white/30 hover:text-white/50'}`}
                 >
                   TOOLS
+                </button>
+                <button
+                  onClick={() => setLeftPanelPinned(p => !p)}
+                  className="px-1.5 py-1.5 text-[8px] transition-colors cursor-pointer"
+                  style={{ color: leftPanelPinned ? '#e8ecf0' : '#5a616b' }}
+                  title={leftPanelPinned ? 'Unpin sidebar' : 'Pin sidebar open'}
+                >
+                  {leftPanelPinned ? '📌' : '📎'}
                 </button>
               </div>
 
@@ -649,14 +687,17 @@ export default function StudioEditor() {
           )}
         </div>
 
-        {/* â”€â”€ LEFT PANEL TOGGLE â”€â”€ */}
-        <button
-          onClick={() => setLeftPanelOpen(p => !p)}
+        {/* LEFT PANEL HOVER ZONE */}
+        <div
           className="shrink-0 w-3 flex items-center justify-center hover:bg-white/[0.04] text-white/10 hover:text-white/30 transition-all duration-[180ms] ease-in-out cursor-pointer"
-          title={leftPanelOpen ? 'Collapse panel' : 'Expand panel'}
+          onMouseEnter={() => {
+            if (leftPanelHoverTimer.current) clearTimeout(leftPanelHoverTimer.current)
+            setLeftPanelOpen(true)
+          }}
+          title={leftPanelPinned ? 'Sidebar pinned' : 'Hover to open sidebar'}
         >
-          <span className="text-[7px] font-mono">{leftPanelOpen ? 'â—‚' : 'â–¸'}</span>
-        </button>
+          <span className="text-[7px] font-mono">{(leftPanelOpen || leftPanelPinned) ? '◂' : '▸'}</span>
+        </div>
 
         {/* â”€â”€ CENTER: MIXER RACK (Main View) â”€â”€ */}
         <div className="flex-1 flex flex-col min-w-0 relative">
@@ -805,6 +846,7 @@ export default function StudioEditor() {
             if (!ch) return null
             return (
               <StudioDrumSequencer
+                key={drumSequencerChannel}
                 channelRawCode={ch.rawCode}
                 color={ch.color}
                 channelName={ch.name}
@@ -852,6 +894,8 @@ export default function StudioEditor() {
         bpm={parseBPM(code) ?? 120}
         onRegisterSound={registerCustomSound}
         onAddVocalChannel={handleAddVocalChannel}
+        onAddInstrumentChannel={handleAddInstrumentChannel}
+        onAddDrumPadChannel={handleAddDrumPadChannel}
         onSamplesChanged={setUserSamples}
       />
 

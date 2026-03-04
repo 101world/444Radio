@@ -34,6 +34,10 @@ interface StudioSampleUploaderProps {
   onRegisterSound: (name: string, url: string) => Promise<void>
   /** Called to add a vocal channel to the code with auto-calculated loopAt */
   onAddVocalChannel: (name: string, loopAt: number, sampleBpm?: number) => void
+  /** Called to add a trimmed instrument channel usable on piano roll */
+  onAddInstrumentChannel?: (name: string, begin: number, end: number) => void
+  /** Called to add a drum pad channel with auto-chopped slices */
+  onAddDrumPadChannel?: (name: string, chopCount: number, loopAt: number) => void
   /** Called when samples list changes (upload/delete) so parent can sync */
   onSamplesChanged?: (samples: StudioSample[]) => void
   accentColor?: string
@@ -124,6 +128,8 @@ function formatFileSize(bytes: number): string {
 export default function StudioSampleUploader({
   isOpen, onClose, bpm, onRegisterSound, onAddVocalChannel,
   onSamplesChanged,
+  onAddInstrumentChannel,
+  onAddDrumPadChannel,
   accentColor = '#22d3ee',
 }: StudioSampleUploaderProps) {
   const [samples, setSamples] = useState<StudioSample[]>([])
@@ -141,6 +147,10 @@ export default function StudioSampleUploader({
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [sampleBpm, setSampleBpm] = useState<number | null>(null)
   const [detectedBpm, setDetectedBpm] = useState<number | null>(null)
+  const [importMode, setImportMode] = useState<'instrument' | 'drumpad'>('instrument')
+  const [trimBegin, setTrimBegin] = useState(0)   // 0.0 - 1.0 fraction
+  const [trimEnd, setTrimEnd] = useState(1)       // 0.0 - 1.0 fraction
+  const [chopCount, setChopCount] = useState(8)   // auto-chop slices for drum pad mode
   const dragCounterRef = useRef(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -345,6 +355,9 @@ export default function StudioSampleUploader({
       setSelectedFile(null)
       setSoundName('')
       setAudioDuration(null)
+      setTrimBegin(0)
+      setTrimEnd(1)
+      setChopCount(8)
       setSampleBpm(null)
       setDetectedBpm(null)
       lastAudioBufferRef.current = null
@@ -418,6 +431,35 @@ export default function StudioSampleUploader({
     onAddVocalChannel(sample.name, loopAt, sample.original_bpm || undefined)
     onClose()
   }, [bpm, onAddVocalChannel, onClose])
+
+  // Use sample as trimmed instrument (piano roll)
+  const handleUseAsInstrument = useCallback((sample: StudioSample) => {
+    if (onAddInstrumentChannel) {
+      onAddInstrumentChannel(sample.name, trimBegin, trimEnd)
+    } else {
+      // Fallback: add as vocal with begin/end in the code hint
+      const duration = sample.duration_ms ? sample.duration_ms / 1000 : null
+      const calcBpm = sample.original_bpm || bpm
+      const loopAt = duration ? calculateLoopAt(duration, calcBpm) : 8
+      onAddVocalChannel(sample.name, loopAt, sample.original_bpm || undefined)
+    }
+    onClose()
+  }, [bpm, onAddInstrumentChannel, onAddVocalChannel, onClose, trimBegin, trimEnd])
+
+  // Use sample as auto-chopped drum pad
+  const handleUseAsDrumPad = useCallback((sample: StudioSample) => {
+    const duration = sample.duration_ms ? sample.duration_ms / 1000 : null
+    const calcBpm = sample.original_bpm || bpm
+    const loopAt = duration ? calculateLoopAt(duration, calcBpm) : 8
+    if (onAddDrumPadChannel) {
+      onAddDrumPadChannel(sample.name, chopCount, loopAt)
+    } else {
+      // Fallback: add as vocal channel (user can manually add .chop)
+      onAddVocalChannel(sample.name, loopAt, sample.original_bpm || undefined)
+    }
+    onClose()
+  }, [bpm, chopCount, onAddDrumPadChannel, onAddVocalChannel, onClose])
+
 
   if (!isOpen) return null
 
@@ -571,6 +613,119 @@ export default function StudioSampleUploader({
             )}
           </div>
 
+
+          {/* Import Mode Toggle */}
+          {selectedFile && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-center gap-2 mt-2" onClick={e => e.stopPropagation()}>
+                <span className="text-[8px] font-bold uppercase tracking-wider" style={{ color: '#5a616b' }}>Mode:</span>
+                <button
+                  onClick={() => setImportMode('instrument')}
+                  className="px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider cursor-pointer transition-all"
+                  style={{
+                    background: importMode === 'instrument' ? '#6f8fb320' : '#0a0b0d',
+                    color: importMode === 'instrument' ? '#6f8fb3' : '#5a616b',
+                    border: importMode === 'instrument' ? '1px solid #6f8fb340' : '1px solid rgba(255,255,255,0.06)',
+                    boxShadow: importMode === 'instrument' ? 'inset 0 0 8px #6f8fb310' : 'none',
+                  }}
+                >
+                  🎹 Instrument
+                </button>
+                <button
+                  onClick={() => setImportMode('drumpad')}
+                  className="px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider cursor-pointer transition-all"
+                  style={{
+                    background: importMode === 'drumpad' ? '#b8a47f20' : '#0a0b0d',
+                    color: importMode === 'drumpad' ? '#b8a47f' : '#5a616b',
+                    border: importMode === 'drumpad' ? '1px solid #b8a47f40' : '1px solid rgba(255,255,255,0.06)',
+                    boxShadow: importMode === 'drumpad' ? 'inset 0 0 8px #b8a47f10' : 'none',
+                  }}
+                >
+                  🥁 Drum Pad
+                </button>
+              </div>
+              {/* Instrument Mode: Trim Controls */}
+              {importMode === 'instrument' && audioDuration !== null && (
+                <div className="space-y-1.5 mt-2 px-2 py-2 rounded-lg" style={{ background: '#0a0a0c', border: '1px solid rgba(255,255,255,0.04)' }} onClick={e => e.stopPropagation()}>
+                  <p className="text-[8px] font-bold uppercase tracking-wider" style={{ color: '#6f8fb3' }}>
+                    Trim Range — plays on Piano Roll as pitched instrument
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[8px] font-mono" style={{ color: '#5a616b' }}>Begin:</span>
+                      <input
+                        type="range" min={0} max={0.99} step={0.01} value={trimBegin}
+                        onChange={e => { const v = parseFloat(e.target.value); if (v < trimEnd) setTrimBegin(v) }}
+                        className="w-16 h-1 accent-[#6f8fb3]"
+                      />
+                      <span className="text-[8px] font-mono w-8 text-right" style={{ color: '#e8ecf0' }}>
+                        {(trimBegin * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[8px] font-mono" style={{ color: '#5a616b' }}>End:</span>
+                      <input
+                        type="range" min={0.01} max={1} step={0.01} value={trimEnd}
+                        onChange={e => { const v = parseFloat(e.target.value); if (v > trimBegin) setTrimEnd(v) }}
+                        className="w-16 h-1 accent-[#6f8fb3]"
+                      />
+                      <span className="text-[8px] font-mono w-8 text-right" style={{ color: '#e8ecf0' }}>
+                        {(trimEnd * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                  </div>
+                  {/* Visual trim bar */}
+                  <div className="relative h-3 rounded-full overflow-hidden" style={{ background: '#16181d' }}>
+                    <div className="absolute top-0 h-full rounded-full" style={{
+                      left: `${trimBegin * 100}%`,
+                      width: `${(trimEnd - trimBegin) * 100}%`,
+                      background: 'linear-gradient(90deg, #6f8fb340, #6f8fb380)',
+                    }} />
+                  </div>
+                  <p className="text-[7px] font-mono text-center" style={{ color: '#5a616b' }}>
+                    .begin({trimBegin.toFixed(2)}).end({trimEnd.toFixed(2)}) — {audioDuration ? formatDuration(audioDuration * (trimEnd - trimBegin)) : '?'} selected
+                  </p>
+                </div>
+              )}
+              {/* Drum Pad Mode: Chop Controls */}
+              {importMode === 'drumpad' && audioDuration !== null && (
+                <div className="space-y-1.5 mt-2 px-2 py-2 rounded-lg" style={{ background: '#0a0a0c', border: '1px solid rgba(255,255,255,0.04)' }} onClick={e => e.stopPropagation()}>
+                  <p className="text-[8px] font-bold uppercase tracking-wider" style={{ color: '#b8a47f' }}>
+                    Auto-Chop — splits into drum pad slices
+                  </p>
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="text-[8px] font-mono" style={{ color: '#5a616b' }}>Slices:</span>
+                    {[2, 4, 8, 16, 32].map(n => (
+                      <button
+                        key={n}
+                        onClick={() => setChopCount(n)}
+                        className="px-2 py-0.5 rounded text-[9px] font-bold cursor-pointer transition-all"
+                        style={{
+                          background: chopCount === n ? '#b8a47f25' : '#16181d',
+                          color: chopCount === n ? '#b8a47f' : '#5a616b',
+                          border: chopCount === n ? '1px solid #b8a47f40' : '1px solid transparent',
+                        }}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Visual chop bar */}
+                  <div className="relative h-3 rounded-full overflow-hidden flex gap-px" style={{ background: '#16181d' }}>
+                    {Array.from({ length: chopCount }, (_, i) => (
+                      <div key={i} className="flex-1 rounded-sm" style={{
+                        background: `hsl(${35 + (i * 360 / chopCount) % 60}, 40%, ${30 + (i % 2) * 8}%)`,
+                      }} />
+                    ))}
+                  </div>
+                  <p className="text-[7px] font-mono text-center" style={{ color: '#5a616b' }}>
+                    .chop({chopCount}) — each slice = {audioDuration ? formatDuration(audioDuration / chopCount) : '?'}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Name input + upload */}
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
@@ -673,18 +828,30 @@ export default function StudioSampleUploader({
                       </div>
                     </div>
 
-                    {/* Quick-add as vocal channel */}
-                    <button
-                      onClick={() => handleUseAsVocal(s)}
-                      className="shrink-0 px-2 py-1 rounded-lg text-[8px] font-bold uppercase cursor-pointer opacity-0 group-hover:opacity-100 transition-all hover:scale-105"
-                      style={{
-                        background: '#7fa99815',
-                        color: '#7fa998',
-                        border: '1px solid #7fa99830',
-                      }}
-                      title="Add as vocal channel with auto-calculated loopAt">
-                      + Channel
-                    </button>
+                    {/* Mode-aware add buttons */}
+                    <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-all">
+                      <button
+                        onClick={() => handleUseAsVocal(s)}
+                        className="px-1.5 py-1 rounded-lg text-[7px] font-bold uppercase cursor-pointer hover:scale-105 transition-all"
+                        style={{ background: '#7fa99815', color: '#7fa998', border: '1px solid #7fa99830' }}
+                        title="Add as vocal/loop channel">
+                        + Loop
+                      </button>
+                      <button
+                        onClick={() => handleUseAsInstrument(s)}
+                        className="px-1.5 py-1 rounded-lg text-[7px] font-bold uppercase cursor-pointer hover:scale-105 transition-all"
+                        style={{ background: '#6f8fb315', color: '#6f8fb3', border: '1px solid #6f8fb330' }}
+                        title="Add as pitched instrument for piano roll">
+                        + Inst
+                      </button>
+                      <button
+                        onClick={() => handleUseAsDrumPad(s)}
+                        className="px-1.5 py-1 rounded-lg text-[7px] font-bold uppercase cursor-pointer hover:scale-105 transition-all"
+                        style={{ background: '#b8a47f15', color: '#b8a47f', border: '1px solid #b8a47f30' }}
+                        title="Add as auto-chopped drum pad">
+                        + Pad
+                      </button>
+                    </div>
 
                     {/* Code hint */}
                     <code className="text-[8px] px-1.5 py-0.5 rounded font-mono hidden group-hover:block shrink-0"

@@ -4,7 +4,7 @@ import { useState, useCallback, useRef } from 'react'
 import { ChevronDown, ChevronRight, Copy, Check, Search, Volume2 } from 'lucide-react'
 import StudioKnob from './StudioKnob'
 
-// â”€â”€â”€ Sound/instrument/sample data for quick swap â”€â”€â”€
+// ─── Sound/instrument/sample data for quick swap ───
 
 export const SOUND_BANKS: {
   label: string
@@ -12,312 +12,312 @@ export const SOUND_BANKS: {
   section: 'instrument' | 'sound' | 'bank'
   items: { code: string; desc: string }[]
 }[] = [
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ SYNTHS & OSCILLATORS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ──────────────── SYNTHS & OSCILLATORS ────────────────
   {
     label: 'Synth Waveforms',
-    icon: 'ðŸ”»',
+    icon: '🔻',
     section: 'instrument',
     items: [
-      { code: 's("sawtooth")', desc: 'Classic saw â€” leads, bass, pads' },
-      { code: 's("supersaw")', desc: 'Detuned saw â€” trance, rave' },
-      { code: 's("sine")', desc: 'Pure sine â€” sub bass, bells' },
-      { code: 's("square")', desc: 'Square â€” chiptune, leads' },
-      { code: 's("triangle")', desc: 'Triangle â€” soft leads, bass' },
-      { code: 's("pulse")', desc: 'Pulse â€” PWM synth' },
-      { code: 's("sbd")', desc: 'Synth bass drum â€” 808-style' },
+      { code: 's("sawtooth")', desc: 'Classic saw — leads, bass, pads' },
+      { code: 's("supersaw")', desc: 'Detuned saw — trance, rave' },
+      { code: 's("sine")', desc: 'Pure sine — sub bass, bells' },
+      { code: 's("square")', desc: 'Square — chiptune, leads' },
+      { code: 's("triangle")', desc: 'Triangle — soft leads, bass' },
+      { code: 's("pulse")', desc: 'Pulse — PWM synth' },
+      { code: 's("sbd")', desc: 'Synth bass drum — 808-style' },
     ],
   },
   {
     label: 'Noise Generators',
-    icon: 'ðŸ“¡',
+    icon: '📡',
     section: 'instrument',
     items: [
-      { code: 's("white")', desc: 'White noise â€” full spectrum' },
-      { code: 's("pink")', desc: 'Pink noise â€” warm, natural' },
-      { code: 's("brown")', desc: 'Brown noise â€” deep rumble' },
-      { code: 's("crackle")', desc: 'Crackle â€” vinyl/fire texture' },
+      { code: 's("white")', desc: 'White noise — full spectrum' },
+      { code: 's("pink")', desc: 'Pink noise — warm, natural' },
+      { code: 's("brown")', desc: 'Brown noise — deep rumble' },
+      { code: 's("crackle")', desc: 'Crackle — vinyl/fire texture' },
       { code: 's("noise")', desc: 'Noise sample' },
       { code: 's("noise2")', desc: 'Noise variants (:0-:7)' },
     ],
   },
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ DRUM MACHINES (71 banks) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ──────────────── DRUM MACHINES (71 banks) ────────────────
   {
     label: 'Roland Machines',
     icon: 'ðŸ¥',
     section: 'bank',
     items: [
-      { code: '.bank("RolandTR808")', desc: 'TR-808 â€” hip-hop, trap' },
-      { code: '.bank("RolandTR909")', desc: 'TR-909 â€” house, techno' },
-      { code: '.bank("RolandTR707")', desc: 'TR-707 â€” 80s pop, electro' },
-      { code: '.bank("RolandTR606")', desc: 'TR-606 â€” acid, minimal' },
-      { code: '.bank("RolandTR626")', desc: 'TR-626 â€” digital 80s' },
-      { code: '.bank("RolandTR505")', desc: 'TR-505 â€” budget classic' },
-      { code: '.bank("RolandTR727")', desc: 'TR-727 â€” latin perc' },
-      { code: '.bank("RolandCompurhythm78")', desc: 'CR-78 â€” vintage analog' },
-      { code: '.bank("RolandCompurhythm1000")', desc: 'CR-1000 â€” analog perc' },
-      { code: '.bank("RolandCompurhythm8000")', desc: 'CR-8000 â€” disco, 80s' },
-      { code: '.bank("RolandR8")', desc: 'R-8 â€” pro session drums' },
-      { code: '.bank("RolandD110")', desc: 'D-110 â€” LA synthesis' },
-      { code: '.bank("RolandD70")', desc: 'D-70 â€” SuperLA percussion' },
-      { code: '.bank("RolandDDR30")', desc: 'DDR-30 â€” compact analog' },
-      { code: '.bank("RolandJD990")', desc: 'JD-990 â€” digital flagship' },
-      { code: '.bank("RolandMC202")', desc: 'MC-202 â€” SH-101 family' },
-      { code: '.bank("RolandMC303")', desc: 'MC-303 â€” groovebox' },
-      { code: '.bank("RolandMT32")', desc: 'MT-32 â€” MIDI module' },
-      { code: '.bank("RolandS50")', desc: 'S-50 â€” 12-bit sampler' },
-      { code: '.bank("RolandSH09")', desc: 'SH-09 â€” monosynth kick' },
-      { code: '.bank("RolandSystem100")', desc: 'System-100 â€” modular' },
+      { code: '.bank("RolandTR808")', desc: 'TR-808 — hip-hop, trap' },
+      { code: '.bank("RolandTR909")', desc: 'TR-909 — house, techno' },
+      { code: '.bank("RolandTR707")', desc: 'TR-707 — 80s pop, electro' },
+      { code: '.bank("RolandTR606")', desc: 'TR-606 — acid, minimal' },
+      { code: '.bank("RolandTR626")', desc: 'TR-626 — digital 80s' },
+      { code: '.bank("RolandTR505")', desc: 'TR-505 — budget classic' },
+      { code: '.bank("RolandTR727")', desc: 'TR-727 — latin perc' },
+      { code: '.bank("RolandCompurhythm78")', desc: 'CR-78 — vintage analog' },
+      { code: '.bank("RolandCompurhythm1000")', desc: 'CR-1000 — analog perc' },
+      { code: '.bank("RolandCompurhythm8000")', desc: 'CR-8000 — disco, 80s' },
+      { code: '.bank("RolandR8")', desc: 'R-8 — pro session drums' },
+      { code: '.bank("RolandD110")', desc: 'D-110 — LA synthesis' },
+      { code: '.bank("RolandD70")', desc: 'D-70 — SuperLA percussion' },
+      { code: '.bank("RolandDDR30")', desc: 'DDR-30 — compact analog' },
+      { code: '.bank("RolandJD990")', desc: 'JD-990 — digital flagship' },
+      { code: '.bank("RolandMC202")', desc: 'MC-202 — SH-101 family' },
+      { code: '.bank("RolandMC303")', desc: 'MC-303 — groovebox' },
+      { code: '.bank("RolandMT32")', desc: 'MT-32 — MIDI module' },
+      { code: '.bank("RolandS50")', desc: 'S-50 — 12-bit sampler' },
+      { code: '.bank("RolandSH09")', desc: 'SH-09 — monosynth kick' },
+      { code: '.bank("RolandSystem100")', desc: 'System-100 — modular' },
     ],
   },
   {
     label: 'Korg Machines',
-    icon: 'ðŸŽ›ï¸',
+    icon: '🎛ï¸',
     section: 'bank',
     items: [
-      { code: '.bank("KorgDDM110")', desc: 'DDM-110 â€” SuperDrums' },
-      { code: '.bank("KorgKPR77")', desc: 'KPR-77 â€” analog budget' },
-      { code: '.bank("KorgKR55")', desc: 'KR-55 â€” preset rhythms' },
-      { code: '.bank("KorgKRZ")', desc: 'KR-Z â€” digital budget' },
-      { code: '.bank("KorgM1")', desc: 'M1 â€” iconic workstation' },
-      { code: '.bank("KorgMinipops")', desc: 'Minipops â€” vintage preset' },
-      { code: '.bank("KorgPoly800")', desc: 'Poly-800 â€” lo-fi synth' },
-      { code: '.bank("KorgT3")', desc: 'T3 â€” workstation drums' },
+      { code: '.bank("KorgDDM110")', desc: 'DDM-110 — SuperDrums' },
+      { code: '.bank("KorgKPR77")', desc: 'KPR-77 — analog budget' },
+      { code: '.bank("KorgKR55")', desc: 'KR-55 — preset rhythms' },
+      { code: '.bank("KorgKRZ")', desc: 'KR-Z — digital budget' },
+      { code: '.bank("KorgM1")', desc: 'M1 — iconic workstation' },
+      { code: '.bank("KorgMinipops")', desc: 'Minipops — vintage preset' },
+      { code: '.bank("KorgPoly800")', desc: 'Poly-800 — lo-fi synth' },
+      { code: '.bank("KorgT3")', desc: 'T3 — workstation drums' },
     ],
   },
   {
     label: 'Linn & Akai',
-    icon: 'ðŸŽšï¸',
+    icon: '🎚ï¸',
     section: 'bank',
     items: [
-      { code: '.bank("AkaiLinn")', desc: 'Akai/Linn â€” 80s classic' },
-      { code: '.bank("AkaiMPC60")', desc: 'MPC60 â€” golden hip-hop' },
-      { code: '.bank("AkaiXR10")', desc: 'XR-10 â€” digital perc' },
-      { code: '.bank("Linn9000")', desc: 'Linn 9000 â€” flagship' },
-      { code: '.bank("LinnDrum")', desc: 'LinnDrum â€” Prince, 80s' },
-      { code: '.bank("LinnLM1")', desc: 'LM-1 â€” first-ever sampled' },
-      { code: '.bank("LinnLM2")', desc: 'LM-2 â€” cheaper LinnDrum' },
-      { code: '.bank("MPC1000")', desc: 'MPC1000 â€” modern hip-hop' },
+      { code: '.bank("AkaiLinn")', desc: 'Akai/Linn — 80s classic' },
+      { code: '.bank("AkaiMPC60")', desc: 'MPC60 — golden hip-hop' },
+      { code: '.bank("AkaiXR10")', desc: 'XR-10 — digital perc' },
+      { code: '.bank("Linn9000")', desc: 'Linn 9000 — flagship' },
+      { code: '.bank("LinnDrum")', desc: 'LinnDrum — Prince, 80s' },
+      { code: '.bank("LinnLM1")', desc: 'LM-1 — first-ever sampled' },
+      { code: '.bank("LinnLM2")', desc: 'LM-2 — cheaper LinnDrum' },
+      { code: '.bank("MPC1000")', desc: 'MPC1000 — modern hip-hop' },
     ],
   },
   {
     label: 'Boss & Yamaha',
-    icon: 'ðŸ”Š',
+    icon: '🔊',
     section: 'bank',
     items: [
-      { code: '.bank("BossDR110")', desc: 'DR-110 â€” Dr. Rhythm' },
-      { code: '.bank("BossDR220")', desc: 'DR-220 â€” 80s digital' },
-      { code: '.bank("BossDR55")', desc: 'DR-55 â€” Dr. Rhythm mkI' },
-      { code: '.bank("BossDR550")', desc: 'DR-550 â€” Dr. Rhythm pro' },
-      { code: '.bank("YamahaRM50")', desc: 'RM50 â€” pro module' },
-      { code: '.bank("YamahaRX21")', desc: 'RX21 â€” FM digital' },
-      { code: '.bank("YamahaRX5")', desc: 'RX5 â€” flagship digital' },
-      { code: '.bank("YamahaRY30")', desc: 'RY30 â€” waveshaping' },
-      { code: '.bank("YamahaTG33")', desc: 'TG33 â€” vector synthesis' },
+      { code: '.bank("BossDR110")', desc: 'DR-110 — Dr. Rhythm' },
+      { code: '.bank("BossDR220")', desc: 'DR-220 — 80s digital' },
+      { code: '.bank("BossDR55")', desc: 'DR-55 — Dr. Rhythm mkI' },
+      { code: '.bank("BossDR550")', desc: 'DR-550 — Dr. Rhythm pro' },
+      { code: '.bank("YamahaRM50")', desc: 'RM50 — pro module' },
+      { code: '.bank("YamahaRX21")', desc: 'RX21 — FM digital' },
+      { code: '.bank("YamahaRX5")', desc: 'RX5 — flagship digital' },
+      { code: '.bank("YamahaRY30")', desc: 'RY30 — waveshaping' },
+      { code: '.bank("YamahaTG33")', desc: 'TG33 — vector synthesis' },
     ],
   },
   {
     label: 'Emu & Oberheim',
-    icon: 'ðŸ”ˆ',
+    icon: '🔈',
     section: 'bank',
     items: [
-      { code: '.bank("EmuDrumulator")', desc: 'Drumulator â€” budget 80s' },
-      { code: '.bank("EmuModular")', desc: 'Emu Modular â€” modular perc' },
-      { code: '.bank("EmuSP12")', desc: 'SP-12 â€” hip-hop legend' },
-      { code: '.bank("OberheimDMX")', desc: 'DMX â€” electro, hip-hop' },
+      { code: '.bank("EmuDrumulator")', desc: 'Drumulator — budget 80s' },
+      { code: '.bank("EmuModular")', desc: 'Emu Modular — modular perc' },
+      { code: '.bank("EmuSP12")', desc: 'SP-12 — hip-hop legend' },
+      { code: '.bank("OberheimDMX")', desc: 'DMX — electro, hip-hop' },
     ],
   },
   {
     label: 'More Machines',
-    icon: 'ðŸŽµ',
+    icon: '🎵',
     section: 'bank',
     items: [
-      { code: '.bank("AJKPercusyn")', desc: 'Percusyn â€” analog perc' },
-      { code: '.bank("AlesisHR16")', desc: 'HR-16 â€” 16-bit digital' },
-      { code: '.bank("AlesisSR16")', desc: 'SR-16 â€” legendary preset' },
-      { code: '.bank("CasioRZ1")', desc: 'RZ-1 â€” sampling drum' },
-      { code: '.bank("CasioSK1")', desc: 'SK-1 â€” lo-fi sampling' },
-      { code: '.bank("CasioVL1")', desc: 'VL-1 â€” toy keyboard' },
-      { code: '.bank("DoepferMS404")', desc: 'MS-404 â€” analog synth' },
-      { code: '.bank("MFB512")', desc: 'MFB-512 â€” analog berlin' },
-      { code: '.bank("MoogConcertMateMG1")', desc: 'MG-1 â€” Moog budget' },
-      { code: '.bank("RhodesPolaris")', desc: 'Polaris â€” digital analog' },
-      { code: '.bank("RhythmAce")', desc: 'Rhythm Ace â€” retro preset' },
-      { code: '.bank("SakataDPM48")', desc: 'DPM-48 â€” rare digital' },
-      { code: '.bank("SequentialCircuitsDrumtracks")', desc: 'Drumtraks â€” SCI classic' },
-      { code: '.bank("SequentialCircuitsTom")', desc: 'Tom â€” SCI companion' },
-      { code: '.bank("SergeModular")', desc: 'Serge â€” modular perc' },
-      { code: '.bank("SimmonsSDS400")', desc: 'SDS-400 â€” electronic toms' },
-      { code: '.bank("SimmonsSDS5")', desc: 'SDS-5 â€” iconic hex pads' },
-      { code: '.bank("SoundmastersR88")', desc: 'SR-88 â€” analog rhythm' },
-      { code: '.bank("UnivoxMicroRhythmer12")', desc: 'MicroRhythmer â€” vintage' },
-      { code: '.bank("ViscoSpaceDrum")', desc: 'Space Drum â€” sci-fi perc' },
-      { code: '.bank("XdrumLM8953")', desc: 'LM8953 â€” rack module' },
+      { code: '.bank("AJKPercusyn")', desc: 'Percusyn — analog perc' },
+      { code: '.bank("AlesisHR16")', desc: 'HR-16 — 16-bit digital' },
+      { code: '.bank("AlesisSR16")', desc: 'SR-16 — legendary preset' },
+      { code: '.bank("CasioRZ1")', desc: 'RZ-1 — sampling drum' },
+      { code: '.bank("CasioSK1")', desc: 'SK-1 — lo-fi sampling' },
+      { code: '.bank("CasioVL1")', desc: 'VL-1 — toy keyboard' },
+      { code: '.bank("DoepferMS404")', desc: 'MS-404 — analog synth' },
+      { code: '.bank("MFB512")', desc: 'MFB-512 — analog berlin' },
+      { code: '.bank("MoogConcertMateMG1")', desc: 'MG-1 — Moog budget' },
+      { code: '.bank("RhodesPolaris")', desc: 'Polaris — digital analog' },
+      { code: '.bank("RhythmAce")', desc: 'Rhythm Ace — retro preset' },
+      { code: '.bank("SakataDPM48")', desc: 'DPM-48 — rare digital' },
+      { code: '.bank("SequentialCircuitsDrumtracks")', desc: 'Drumtraks — SCI classic' },
+      { code: '.bank("SequentialCircuitsTom")', desc: 'Tom — SCI companion' },
+      { code: '.bank("SergeModular")', desc: 'Serge — modular perc' },
+      { code: '.bank("SimmonsSDS400")', desc: 'SDS-400 — electronic toms' },
+      { code: '.bank("SimmonsSDS5")', desc: 'SDS-5 — iconic hex pads' },
+      { code: '.bank("SoundmastersR88")', desc: 'SR-88 — analog rhythm' },
+      { code: '.bank("UnivoxMicroRhythmer12")', desc: 'MicroRhythmer — vintage' },
+      { code: '.bank("ViscoSpaceDrum")', desc: 'Space Drum — sci-fi perc' },
+      { code: '.bank("XdrumLM8953")', desc: 'LM8953 — rack module' },
     ],
   },
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ DRUM SAMPLES (dirt-samples) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ──────────────── DRUM SAMPLES (dirt-samples) ────────────────
   {
     label: 'Kicks',
-    icon: 'ðŸ¦¶',
+    icon: '🦶',
     section: 'sound',
     items: [
-      { code: 's("bd")', desc: 'Kick drum (:0-:23) â€” 24 flavors' },
-      { code: 's("hardkick")', desc: 'Hard kicks (:0-:5) â€” punchy' },
-      { code: 's("clubkick")', desc: 'Club kicks (:0-:4) â€” big room' },
-      { code: 's("popkick")', desc: 'Pop kicks (:0-:9) â€” clean' },
-      { code: 's("reverbkick")', desc: 'Reverb kick â€” boomy' },
-      { code: 's("kicklinn")', desc: 'Linn kick â€” vintage' },
-      { code: 's("gabba")', desc: 'Gabba kick (:0-:3) â€” hardcore' },
+      { code: 's("bd")', desc: 'Kick drum (:0-:23) — 24 flavors' },
+      { code: 's("hardkick")', desc: 'Hard kicks (:0-:5) — punchy' },
+      { code: 's("clubkick")', desc: 'Club kicks (:0-:4) — big room' },
+      { code: 's("popkick")', desc: 'Pop kicks (:0-:9) — clean' },
+      { code: 's("reverbkick")', desc: 'Reverb kick — boomy' },
+      { code: 's("kicklinn")', desc: 'Linn kick — vintage' },
+      { code: 's("gabba")', desc: 'Gabba kick (:0-:3) — hardcore' },
       { code: 's("gabbaloud")', desc: 'Gabba loud (:0-:3)' },
       { code: 's("gabbalouder")', desc: 'Gabba loudest (:0-:3)' },
     ],
   },
   {
     label: 'Snares & Claps',
-    icon: 'ðŸ’¥',
+    icon: '💥',
     section: 'sound',
     items: [
       { code: 's("sd")', desc: 'Snare drum (:0-:1)' },
-      { code: 's("sn")', desc: 'Snare collection (:0-:51) â€” 52 snares!' },
+      { code: 's("sn")', desc: 'Snare collection (:0-:51) — 52 snares!' },
       { code: 's("cp")', desc: 'Clap (:0-:1)' },
-      { code: 's("realclaps")', desc: 'Real claps (:0-:3) â€” organic' },
+      { code: 's("realclaps")', desc: 'Real claps (:0-:3) — organic' },
       { code: 's("rim")', desc: 'Rimshot' },
     ],
   },
   {
     label: 'Hats & Cymbals',
-    icon: 'ðŸ””',
+    icon: '🔔',
     section: 'sound',
     items: [
-      { code: 's("hh")', desc: 'Hi-hat (:0-:12) â€” 13 hats' },
+      { code: 's("hh")', desc: 'Hi-hat (:0-:12) — 13 hats' },
       { code: 's("hh27")', desc: 'Alt hi-hats (:0-:12)' },
       { code: 's("hc")', desc: 'Closed hat (:0-:5)' },
       { code: 's("ho")', desc: 'Open hat (:0-:5)' },
       { code: 's("oh")', desc: 'Open hi-hat' },
-      { code: 's("linnhats")', desc: 'Linn hats (:0-:5) â€” vintage' },
+      { code: 's("linnhats")', desc: 'Linn hats (:0-:5) — vintage' },
       { code: 's("cr")', desc: 'Crash cymbal (:0-:5)' },
       { code: 's("ride")', desc: 'Ride cymbal' },
     ],
   },
   {
     label: 'Toms & Perc',
-    icon: 'ðŸª˜',
+    icon: '🪘',
     section: 'sound',
     items: [
-      { code: 's("ht")', desc: 'High tom (:0-:15) â€” 16 toms' },
-      { code: 's("mt")', desc: 'Mid tom (:0-:15) â€” 16 toms' },
-      { code: 's("lt")', desc: 'Low tom (:0-:15) â€” 16 toms' },
+      { code: 's("ht")', desc: 'High tom (:0-:15) — 16 toms' },
+      { code: 's("mt")', desc: 'Mid tom (:0-:15) — 16 toms' },
+      { code: 's("lt")', desc: 'Low tom (:0-:15) — 16 toms' },
       { code: 's("perc")', desc: 'Percussion (:0-:5)' },
-      { code: 's("hand")', desc: 'Hand perc (:0-:16) â€” 17 hits' },
-      { code: 's("stomp")', desc: 'Stomps (:0-:9) â€” 10 stomps' },
+      { code: 's("hand")', desc: 'Hand perc (:0-:16) — 17 hits' },
+      { code: 's("stomp")', desc: 'Stomps (:0-:9) — 10 stomps' },
       { code: 's("cb")', desc: 'Cowbell' },
       { code: 's("click")', desc: 'Clicks (:0-:3)' },
       { code: 's("clak")', desc: 'Clak (:0-:1)' },
       { code: 's("tok")', desc: 'Tok (:0-:3)' },
       { code: 's("tink")', desc: 'Tink (:0-:4)' },
-      { code: 's("mouth")', desc: 'Mouth perc (:0-:14) â€” vocal' },
-      { code: 's("tabla")', desc: 'Tabla (:0-:25) â€” 26 strokes' },
-      { code: 's("tabla2")', desc: 'Tabla 2 (:0-:45) â€” 46 strokes!' },
+      { code: 's("mouth")', desc: 'Mouth perc (:0-:14) — vocal' },
+      { code: 's("tabla")', desc: 'Tabla (:0-:25) — 26 strokes' },
+      { code: 's("tabla2")', desc: 'Tabla 2 (:0-:45) — 46 strokes!' },
       { code: 's("conga")', desc: 'Conga' },
-      { code: 's("east")', desc: 'East (:0-:8) â€” Japanese perc' },
+      { code: 's("east")', desc: 'East (:0-:8) — Japanese perc' },
     ],
   },
   {
     label: 'Full Drum Kits',
-    icon: 'ðŸŽª',
+    icon: '🎪',
     section: 'sound',
     items: [
-      { code: 's("gretsch")', desc: 'Gretsch kit (:0-:23) â€” acoustic' },
-      { code: 's("jazz")', desc: 'Jazz kit â€” brush/ride' },
-      { code: 's("drumtraks")', desc: 'Drumtraks (:0-:12) â€” SCI' },
+      { code: 's("gretsch")', desc: 'Gretsch kit (:0-:23) — acoustic' },
+      { code: 's("jazz")', desc: 'Jazz kit — brush/ride' },
+      { code: 's("drumtraks")', desc: 'Drumtraks (:0-:12) — SCI' },
       { code: 's("electro1")', desc: 'Electro kit (:0-:12)' },
     ],
   },
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ BREAKBEATS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ──────────────── BREAKBEATS ────────────────
   {
     label: 'Breaks & Loops',
     icon: 'ðŸ”',
     section: 'sound',
     items: [
-      { code: 's("amencutup")', desc: 'Amen break cuts (:0-:31) â€” 32 chops' },
-      { code: 's("jungle")', desc: 'Jungle breaks (:0-:12) â€” 13 loops' },
+      { code: 's("amencutup")', desc: 'Amen break cuts (:0-:31) — 32 chops' },
+      { code: 's("jungle")', desc: 'Jungle breaks (:0-:12) — 13 loops' },
       { code: 's("breaks125")', desc: 'Break 125bpm (:0-:1)' },
       { code: 's("breaks152")', desc: 'Break 152bpm' },
       { code: 's("breaks157")', desc: 'Break 157bpm' },
       { code: 's("breaks165")', desc: 'Break 165bpm' },
     ],
   },
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ BASS & SYNTH SAMPLES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ──────────────── BASS & SYNTH SAMPLES ────────────────
   {
     label: 'Bass Samples',
-    icon: 'ðŸ”‰',
+    icon: '🔉',
     section: 'sound',
     items: [
       { code: 's("bass")', desc: 'Bass (:0-:3)' },
-      { code: 's("bass1")', desc: 'Bass 1 (:0-:29) â€” 30 basses!' },
+      { code: 's("bass1")', desc: 'Bass 1 (:0-:29) — 30 basses!' },
       { code: 's("bass2")', desc: 'Bass 2 (:0-:4)' },
       { code: 's("bass3")', desc: 'Bass 3 (:0-:10)' },
-      { code: 's("bassdm")', desc: 'DM Bass (:0-:23) â€” 24 hits' },
-      { code: 's("jungbass")', desc: 'Jungle bass (:0-:19) â€” 20 basses' },
+      { code: 's("bassdm")', desc: 'DM Bass (:0-:23) — 24 hits' },
+      { code: 's("jungbass")', desc: 'Jungle bass (:0-:19) — 20 basses' },
     ],
   },
   {
     label: 'Synth Bass & Keys',
-    icon: 'ðŸŽ¹',
+    icon: '🎹',
     section: 'instrument',
     items: [
-      { code: 's("jvbass")', desc: 'JV bass (:0-:12) â€” Roland JV' },
-      { code: 's("hoover")', desc: 'Hoover bass (:0-:5) â€” rave classic' },
-      { code: 's("moog")', desc: 'Moog synth (:0-:6) â€” analog' },
-      { code: 's("juno")', desc: 'Juno synth (:0-:11) â€” pads/bass' },
-      { code: 's("casio")', desc: 'Casio â€” lo-fi keys' },
+      { code: 's("jvbass")', desc: 'JV bass (:0-:12) — Roland JV' },
+      { code: 's("hoover")', desc: 'Hoover bass (:0-:5) — rave classic' },
+      { code: 's("moog")', desc: 'Moog synth (:0-:6) — analog' },
+      { code: 's("juno")', desc: 'Juno synth (:0-:11) — pads/bass' },
+      { code: 's("casio")', desc: 'Casio — lo-fi keys' },
     ],
   },
   {
     label: 'Melodic Samples',
-    icon: 'ðŸŽ¶',
+    icon: '🎶',
     section: 'instrument',
     items: [
-      { code: 's("pluck")', desc: 'Plucked (:0-:16) â€” 17 plucks' },
-      { code: 's("arpy")', desc: 'Arp patterns (:0-:10) â€” cascading' },
-      { code: 's("stab")', desc: 'Stabs (:0-:22) â€” 23 stabs' },
-      { code: 's("piano")', desc: 'Sampled piano â€” all notes' },
+      { code: 's("pluck")', desc: 'Plucked (:0-:16) — 17 plucks' },
+      { code: 's("arpy")', desc: 'Arp patterns (:0-:10) — cascading' },
+      { code: 's("stab")', desc: 'Stabs (:0-:22) — 23 stabs' },
+      { code: 's("piano")', desc: 'Sampled piano — all notes' },
       { code: 's("sitar")', desc: 'Sitar (:0-:7)' },
-      { code: 's("sax")', desc: 'Saxophone (:0-:21) â€” 22 samples' },
+      { code: 's("sax")', desc: 'Saxophone (:0-:21) — 22 samples' },
     ],
   },
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ RAVE & ELECTRONIC â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ──────────────── RAVE & ELECTRONIC ────────────────
   {
     label: 'Rave & Electronic',
-    icon: 'âš¡',
+    icon: '⚡',
     section: 'sound',
     items: [
       { code: 's("rave")', desc: 'Rave samples (:0-:7)' },
       { code: 's("rave2")', desc: 'More rave (:0-:3)' },
-      { code: 's("hardcore")', desc: 'Hardcore (:0-:11) â€” 12 hits' },
+      { code: 's("hardcore")', desc: 'Hardcore (:0-:11) — 12 hits' },
       { code: 's("techno")', desc: 'Techno hits (:0-:6)' },
-      { code: 's("tech")', desc: 'Tech (:0-:12) â€” 13 hits' },
-      { code: 's("future")', desc: 'Future sounds (:0-:16) â€” 17 hits' },
-      { code: 's("industrial")', desc: 'Industrial (:0-:31) â€” 32 hits!' },
+      { code: 's("tech")', desc: 'Tech (:0-:12) — 13 hits' },
+      { code: 's("future")', desc: 'Future sounds (:0-:16) — 17 hits' },
+      { code: 's("industrial")', desc: 'Industrial (:0-:31) — 32 hits!' },
       { code: 's("metal")', desc: 'Metal hits (:0-:9)' },
     ],
   },
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ AMBIENT & NATURE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ──────────────── AMBIENT & NATURE ────────────────
   {
     label: 'Ambient & Nature',
-    icon: 'ðŸŒ¿',
+    icon: '🌿',
     section: 'sound',
     items: [
       { code: 's("space")', desc: 'Space sounds (:0-:17)' },
       { code: 's("birds")', desc: 'Birds (:0-:9)' },
-      { code: 's("birds3")', desc: 'More birds (:0-:18) â€” 19 calls' },
-      { code: 's("wind")', desc: 'Wind (:0-:9) â€” ambience' },
-      { code: 's("fire")', desc: 'Fire â€” crackle' },
+      { code: 's("birds3")', desc: 'More birds (:0-:18) — 19 calls' },
+      { code: 's("wind")', desc: 'Wind (:0-:9) — ambience' },
+      { code: 's("fire")', desc: 'Fire — crackle' },
     ],
   },
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ WAVETABLES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ──────────────── WAVETABLES ────────────────
   {
     label: 'Wavetable Banks',
-    icon: 'ðŸŒ€',
+    icon: '🌀',
     section: 'bank',
     items: [
       { code: '.bank("wt_digital")', desc: 'Digital wavetable' },
@@ -329,31 +329,31 @@ export const SOUND_BANKS: {
       { code: '.bank("wt_vgame")', desc: 'Video game wavetable' },
     ],
   },
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ MRIDANGAM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ──────────────── MRIDANGAM ────────────────
   {
     label: 'Mridangam (Tabla)',
-    icon: 'ðŸª˜',
+    icon: '🪘',
     section: 'instrument',
     items: [
-      { code: 's("mridangam_thom")', desc: 'Thom â€” deep bass stroke' },
-      { code: 's("mridangam_dhi")', desc: 'Dhi â€” resonant' },
-      { code: 's("mridangam_dhin")', desc: 'Dhin â€” full tone' },
-      { code: 's("mridangam_dhum")', desc: 'Dhum â€” muted bass' },
-      { code: 's("mridangam_ta")', desc: 'Ta â€” sharp treble' },
-      { code: 's("mridangam_tha")', desc: 'Tha â€” soft treble' },
-      { code: 's("mridangam_na")', desc: 'Na â€” ring stroke' },
-      { code: 's("mridangam_nam")', desc: 'Nam â€” closed ring' },
-      { code: 's("mridangam_ka")', desc: 'Ka â€” muted edge' },
-      { code: 's("mridangam_ki")', desc: 'Ki â€” sharp edge' },
-      { code: 's("mridangam_gumki")', desc: 'Gumki â€” pitch bend' },
-      { code: 's("mridangam_chaapu")', desc: 'Chaapu â€” slap' },
-      { code: 's("mridangam_ardha")', desc: 'Ardha â€” half stroke' },
+      { code: 's("mridangam_thom")', desc: 'Thom — deep bass stroke' },
+      { code: 's("mridangam_dhi")', desc: 'Dhi — resonant' },
+      { code: 's("mridangam_dhin")', desc: 'Dhin — full tone' },
+      { code: 's("mridangam_dhum")', desc: 'Dhum — muted bass' },
+      { code: 's("mridangam_ta")', desc: 'Ta — sharp treble' },
+      { code: 's("mridangam_tha")', desc: 'Tha — soft treble' },
+      { code: 's("mridangam_na")', desc: 'Na — ring stroke' },
+      { code: 's("mridangam_nam")', desc: 'Nam — closed ring' },
+      { code: 's("mridangam_ka")', desc: 'Ka — muted edge' },
+      { code: 's("mridangam_ki")', desc: 'Ki — sharp edge' },
+      { code: 's("mridangam_gumki")', desc: 'Gumki — pitch bend' },
+      { code: 's("mridangam_chaapu")', desc: 'Chaapu — slap' },
+      { code: 's("mridangam_ardha")', desc: 'Ardha — half stroke' },
     ],
   },
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ VCSL ORCHESTRAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ──────────────── VCSL ORCHESTRAL ────────────────
   {
     label: 'VCSL Percussion',
-    icon: 'ðŸŽ¼',
+    icon: '🎼',
     section: 'instrument',
     items: [
       { code: 's("glockenspiel")', desc: 'VCSL Glockenspiel' },
@@ -381,7 +381,7 @@ export const SOUND_BANKS: {
   },
   {
     label: 'VCSL Melodic',
-    icon: 'ðŸŽ»',
+    icon: '🎻',
     section: 'instrument',
     items: [
       { code: 's("steinway")', desc: 'Steinway piano' },
@@ -399,18 +399,18 @@ export const SOUND_BANKS: {
       { code: 's("recorder_soprano_sus")', desc: 'Recorder soprano' },
       { code: 's("sax")', desc: 'VCSL Saxophone' },
       { code: 's("saxello")', desc: 'Saxello' },
-      { code: 's("wineglass")', desc: 'Wine glass â€” eerie' },
+      { code: 's("wineglass")', desc: 'Wine glass — eerie' },
       { code: 's("clavisynth")', desc: 'Clavi synth' },
       { code: 's("didgeridoo")', desc: 'Didgeridoo' },
-      { code: 's("dantranh")', desc: 'Dan Tranh â€” Vietnamese' },
+      { code: 's("dantranh")', desc: 'Dan Tranh — Vietnamese' },
       { code: 's("strumstick")', desc: 'Strumstick' },
       { code: 's("super64")', desc: 'Super 64 harmonica' },
     ],
   },
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ GM SOUNDFONTS (128 instruments) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ──────────────── GM SOUNDFONTS (128 instruments) ────────────────
   {
     label: 'GM Piano & Keys',
-    icon: 'ðŸŽ¹',
+    icon: '🎹',
     section: 'instrument',
     items: [
       { code: 's("gm_piano")', desc: 'Acoustic Grand Piano' },
@@ -430,7 +430,7 @@ export const SOUND_BANKS: {
   },
   {
     label: 'GM Organ',
-    icon: 'â›ª',
+    icon: '⛪',
     section: 'instrument',
     items: [
       { code: 's("gm_drawbar_organ")', desc: 'Drawbar Organ' },
@@ -445,7 +445,7 @@ export const SOUND_BANKS: {
   },
   {
     label: 'GM Guitar & Bass',
-    icon: 'ðŸŽ¸',
+    icon: '🎸',
     section: 'instrument',
     items: [
       { code: 's("gm_acoustic_guitar_nylon")', desc: 'Nylon Guitar' },
@@ -468,7 +468,7 @@ export const SOUND_BANKS: {
   },
   {
     label: 'GM Strings & Orch',
-    icon: 'ðŸŽ»',
+    icon: '🎻',
     section: 'instrument',
     items: [
       { code: 's("gm_violin")', desc: 'Violin' },
@@ -487,7 +487,7 @@ export const SOUND_BANKS: {
   },
   {
     label: 'GM Choir & Voice',
-    icon: 'ðŸŽ¤',
+    icon: '🎤',
     section: 'instrument',
     items: [
       { code: 's("gm_choir_aahs")', desc: 'Choir Aahs' },
@@ -498,7 +498,7 @@ export const SOUND_BANKS: {
   },
   {
     label: 'GM Brass',
-    icon: 'ðŸŽº',
+    icon: '🎺',
     section: 'instrument',
     items: [
       { code: 's("gm_trumpet")', desc: 'Trumpet' },
@@ -513,7 +513,7 @@ export const SOUND_BANKS: {
   },
   {
     label: 'GM Woodwind',
-    icon: 'ðŸªˆ',
+    icon: '🪈',
     section: 'instrument',
     items: [
       { code: 's("gm_soprano_sax")', desc: 'Soprano Sax' },
@@ -536,47 +536,47 @@ export const SOUND_BANKS: {
   },
   {
     label: 'GM Synth Leads',
-    icon: 'âš¡',
+    icon: '⚡',
     section: 'instrument',
     items: [
-      { code: 's("gm_lead_1_square")', desc: 'Lead 1 â€” Square' },
-      { code: 's("gm_lead_2_sawtooth")', desc: 'Lead 2 â€” Sawtooth' },
-      { code: 's("gm_lead_3_calliope")', desc: 'Lead 3 â€” Calliope' },
-      { code: 's("gm_lead_4_chiff")', desc: 'Lead 4 â€” Chiff' },
-      { code: 's("gm_lead_5_charang")', desc: 'Lead 5 â€” Charang' },
-      { code: 's("gm_lead_6_voice")', desc: 'Lead 6 â€” Voice' },
-      { code: 's("gm_lead_7_fifths")', desc: 'Lead 7 â€” Fifths' },
-      { code: 's("gm_lead_8_bass_lead")', desc: 'Lead 8 â€” Bass+Lead' },
+      { code: 's("gm_lead_1_square")', desc: 'Lead 1 — Square' },
+      { code: 's("gm_lead_2_sawtooth")', desc: 'Lead 2 — Sawtooth' },
+      { code: 's("gm_lead_3_calliope")', desc: 'Lead 3 — Calliope' },
+      { code: 's("gm_lead_4_chiff")', desc: 'Lead 4 — Chiff' },
+      { code: 's("gm_lead_5_charang")', desc: 'Lead 5 — Charang' },
+      { code: 's("gm_lead_6_voice")', desc: 'Lead 6 — Voice' },
+      { code: 's("gm_lead_7_fifths")', desc: 'Lead 7 — Fifths' },
+      { code: 's("gm_lead_8_bass_lead")', desc: 'Lead 8 — Bass+Lead' },
     ],
   },
   {
     label: 'GM Synth Pads',
-    icon: 'ðŸŒŠ',
+    icon: '🌊',
     section: 'instrument',
     items: [
-      { code: 's("gm_pad_new_age")', desc: 'Pad â€” New Age' },
-      { code: 's("gm_pad_warm")', desc: 'Pad â€” Warm' },
-      { code: 's("gm_pad_poly")', desc: 'Pad â€” Polysynth' },
-      { code: 's("gm_pad_choir")', desc: 'Pad â€” Choir' },
-      { code: 's("gm_pad_bowed")', desc: 'Pad â€” Bowed' },
-      { code: 's("gm_pad_metallic")', desc: 'Pad â€” Metallic' },
-      { code: 's("gm_pad_halo")', desc: 'Pad â€” Halo' },
-      { code: 's("gm_pad_sweep")', desc: 'Pad â€” Sweep' },
+      { code: 's("gm_pad_new_age")', desc: 'Pad — New Age' },
+      { code: 's("gm_pad_warm")', desc: 'Pad — Warm' },
+      { code: 's("gm_pad_poly")', desc: 'Pad — Polysynth' },
+      { code: 's("gm_pad_choir")', desc: 'Pad — Choir' },
+      { code: 's("gm_pad_bowed")', desc: 'Pad — Bowed' },
+      { code: 's("gm_pad_metallic")', desc: 'Pad — Metallic' },
+      { code: 's("gm_pad_halo")', desc: 'Pad — Halo' },
+      { code: 's("gm_pad_sweep")', desc: 'Pad — Sweep' },
     ],
   },
   {
     label: 'GM FX & SFX',
-    icon: 'âœ¨',
+    icon: '✨',
     section: 'sound',
     items: [
-      { code: 's("gm_fx_rain")', desc: 'FX â€” Rain' },
-      { code: 's("gm_fx_soundtrack")', desc: 'FX â€” Soundtrack' },
-      { code: 's("gm_fx_crystal")', desc: 'FX â€” Crystal' },
-      { code: 's("gm_fx_atmosphere")', desc: 'FX â€” Atmosphere' },
-      { code: 's("gm_fx_brightness")', desc: 'FX â€” Brightness' },
-      { code: 's("gm_fx_goblins")', desc: 'FX â€” Goblins' },
-      { code: 's("gm_fx_echoes")', desc: 'FX â€” Echoes' },
-      { code: 's("gm_fx_sci_fi")', desc: 'FX â€” Sci-Fi' },
+      { code: 's("gm_fx_rain")', desc: 'FX — Rain' },
+      { code: 's("gm_fx_soundtrack")', desc: 'FX — Soundtrack' },
+      { code: 's("gm_fx_crystal")', desc: 'FX — Crystal' },
+      { code: 's("gm_fx_atmosphere")', desc: 'FX — Atmosphere' },
+      { code: 's("gm_fx_brightness")', desc: 'FX — Brightness' },
+      { code: 's("gm_fx_goblins")', desc: 'FX — Goblins' },
+      { code: 's("gm_fx_echoes")', desc: 'FX — Echoes' },
+      { code: 's("gm_fx_sci_fi")', desc: 'FX — Sci-Fi' },
       { code: 's("gm_guitar_fret_noise")', desc: 'Guitar fret noise' },
       { code: 's("gm_breath_noise")', desc: 'Breath noise' },
       { code: 's("gm_seashore")', desc: 'Seashore' },
@@ -604,7 +604,7 @@ export const SOUND_BANKS: {
   },
   {
     label: 'GM Perc & Misc',
-    icon: 'ðŸ””',
+    icon: '🔔',
     section: 'sound',
     items: [
       { code: 's("gm_tinkle_bell")', desc: 'Tinkle Bell' },
@@ -617,13 +617,13 @@ export const SOUND_BANKS: {
       { code: 's("gm_reverse_cymbal")', desc: 'Reverse Cymbal' },
     ],
   },
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ ZZFX GENERATORS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ──────────────── ZZFX GENERATORS ────────────────
   {
     label: 'ZZFX Generators',
-    icon: 'ðŸŽ®',
+    icon: '🎮',
     section: 'instrument',
     items: [
-      { code: 's("zzfx")', desc: 'ZZFX â€” procedural SFX' },
+      { code: 's("zzfx")', desc: 'ZZFX — procedural SFX' },
       { code: 's("z_sine")', desc: 'ZZFX sine generator' },
       { code: 's("z_sawtooth")', desc: 'ZZFX sawtooth generator' },
       { code: 's("z_triangle")', desc: 'ZZFX triangle generator' },
@@ -634,7 +634,7 @@ export const SOUND_BANKS: {
   },
 ]
 
-// â”€â”€â”€ Method types â”€â”€â”€
+// ─── Method types ───
 
 interface KnobMethodDef {
   type: 'knob'
@@ -664,13 +664,13 @@ interface MethodSection {
   methods: MethodDef[]
 }
 
-// â”€â”€â”€ Method Reference: organized by Universal / Sound / Visual â”€â”€â”€
+// ─── Method Reference: organized by Universal / Sound / Visual ───
 
 export const ORGANIZED_METHODS: MethodSection[] = [
-  // â•â•â•â•â•â• UNIVERSAL â€” works on any channel â•â•â•â•â•â•
+  // â•â•â•â•â•â• UNIVERSAL — works on any channel â•â•â•â•â•â•
   {
     label: 'Mix',
-    icon: 'ðŸ“Š',
+    icon: '📊',
     category: 'universal',
     methods: [
       { type: 'knob', label: 'GAIN', desc: 'Volume level', codeTemplate: '.gain({v})', min: 0, max: 2, default: 0.8, step: 0.01, color: '#7fa998' },
@@ -680,7 +680,7 @@ export const ORGANIZED_METHODS: MethodSection[] = [
   },
   {
     label: 'Space',
-    icon: 'ðŸŒŒ',
+    icon: '🌌',
     category: 'universal',
     methods: [
       { type: 'knob', label: 'ROOM', desc: 'Reverb amount', codeTemplate: '.room({v})', min: 0, max: 1, default: 0.5, step: 0.01, color: '#6f8fb3' },
@@ -702,12 +702,12 @@ export const ORGANIZED_METHODS: MethodSection[] = [
   },
   {
     label: 'Pattern',
-    icon: 'ðŸ§©',
+    icon: '🧩',
     category: 'universal',
     methods: [
       { type: 'button', code: '.jux(rev)', desc: 'Reverse in other ear' },
       { type: 'button', code: '.rarely(add(note(12)))', desc: 'Occasionally +octave' },
-      { type: 'button', code: '.chunk(4, add(note(12)))', desc: 'Transpose Â¼ pattern' },
+      { type: 'button', code: '.chunk(4, add(note(12)))', desc: 'Transpose ¼ pattern' },
       { type: 'button', code: '.off(1/4, add(note(12)))', desc: 'Delayed octave echo' },
       { type: 'button', code: '.struct("<x(3,8) x*2>*2")', desc: 'Euclidean rhythm' },
       { type: 'button', code: 'irand(10).sub(7).seg(16)', desc: 'Random 16-step seq' },
@@ -715,7 +715,7 @@ export const ORGANIZED_METHODS: MethodSection[] = [
   },
   {
     label: 'Sidechain',
-    icon: 'ðŸ¦†',
+    icon: '🦆',
     category: 'universal',
     methods: [
       { type: 'knob', label: 'DUCK', desc: 'Sidechain trigger', codeTemplate: '.duck("{v}")', min: 0, max: 4, default: 1, step: 1, color: '#7fa998' },
@@ -723,10 +723,10 @@ export const ORGANIZED_METHODS: MethodSection[] = [
       { type: 'knob', label: 'ATK', desc: 'Duck attack', codeTemplate: '.duckattack({v})', min: 0, max: 1, default: 0.2, step: 0.01, color: '#7fa998' },
     ],
   },
-  // â•â•â•â•â•â• SOUND-SPECIFIC â€” affects tone & pitch â•â•â•â•â•â•
+  // â•â•â•â•â•â• SOUND-SPECIFIC — affects tone & pitch â•â•â•â•â•â•
   {
     label: 'Filter',
-    icon: 'ðŸŽ›ï¸',
+    icon: '🎛ï¸',
     category: 'sound',
     methods: [
       { type: 'knob', label: 'LPF', desc: 'Low-pass filter', codeTemplate: '.lpf({v})', min: 20, max: 20000, default: 800, step: 10, unit: 'Hz', color: '#b86f6f' },
@@ -737,7 +737,7 @@ export const ORGANIZED_METHODS: MethodSection[] = [
   },
   {
     label: 'Distortion',
-    icon: 'ðŸ’¥',
+    icon: '💥',
     category: 'sound',
     methods: [
       { type: 'knob', label: 'SHAPE', desc: 'Waveshaping', codeTemplate: '.shape({v})', min: 0, max: 1, default: 0.3, step: 0.01, color: '#b86f6f' },
@@ -747,7 +747,7 @@ export const ORGANIZED_METHODS: MethodSection[] = [
   },
   {
     label: 'Pitch',
-    icon: 'ðŸŽµ',
+    icon: '🎵',
     category: 'sound',
     methods: [
       { type: 'knob', label: 'TRANS', desc: 'Transpose semitones', codeTemplate: '.trans({v})', min: -24, max: 24, default: -12, step: 1, color: '#b8a47f' },
@@ -761,7 +761,7 @@ export const ORGANIZED_METHODS: MethodSection[] = [
   },
   {
     label: 'Modulation',
-    icon: 'ã€°ï¸',
+    icon: '〰ï¸',
     category: 'sound',
     methods: [
       { type: 'knob', label: 'VIB', desc: 'Vibrato rate', codeTemplate: '.vib("{v}:.25")', min: 1, max: 16, default: 8, step: 1, color: '#b8a47f' },
@@ -775,7 +775,7 @@ export const ORGANIZED_METHODS: MethodSection[] = [
   // â•â•â•â•â•â• VISUAL â•â•â•â•â•â•
   {
     label: 'Visual',
-    icon: 'ðŸ“Š',
+    icon: '📊',
     category: 'visual',
     methods: [
       { type: 'button', code: '.scope()', desc: 'Oscilloscope' },
@@ -785,12 +785,15 @@ export const ORGANIZED_METHODS: MethodSection[] = [
   },
 ]
 
-// â”€â”€â”€ Component â”€â”€â”€
+// ─── Component ───
 
 interface StudioMethodsPanelProps {
   onInsert: (snippet: string) => void
   onPreview?: (soundCode: string) => void
 }
+
+// Force emoji font so iPadOS doesn't render emoji glyphs through monospace
+const emojiFont = '"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji",sans-serif'
 
 export default function StudioMethodsPanel({ onInsert, onPreview }: StudioMethodsPanelProps) {
   const [activeTab, setActiveTab] = useState<'sounds' | 'methods'>('sounds')
@@ -827,7 +830,7 @@ export default function StudioMethodsPanel({ onInsert, onPreview }: StudioMethod
     return m.codeTemplate.replace('{v}', val.toString())
   }, [])
 
-  // â”€â”€ SOUNDS tab filter â”€â”€
+  // ── SOUNDS tab filter ──
   const filteredSounds = search.trim()
     ? SOUND_BANKS.map(cat => {
         const matching = cat.items.filter(
@@ -838,7 +841,7 @@ export default function StudioMethodsPanel({ onInsert, onPreview }: StudioMethod
       }).filter(Boolean) as typeof SOUND_BANKS
     : SOUND_BANKS
 
-  // â”€â”€ METHODS tab filter â”€â”€
+  // ── METHODS tab filter ──
   const filteredMethods = search.trim()
     ? ORGANIZED_METHODS.map(section => {
         const matching = section.methods.filter(m => {
@@ -862,7 +865,7 @@ export default function StudioMethodsPanel({ onInsert, onPreview }: StudioMethod
 
   return (
     <div className="flex-1 overflow-y-auto">
-      {/* Tab switcher â€” clay pills */}
+      {/* Tab switcher — clay pills */}
       <div className="flex items-center gap-1.5 px-2 pt-2 pb-1">
         <button
           onClick={() => { setActiveTab('sounds'); setExpandedCat(null); setSearch('') }}
@@ -876,7 +879,7 @@ export default function StudioMethodsPanel({ onInsert, onPreview }: StudioMethod
               : '3px 3px 6px #050607, -3px -3px 6px #1a1d22',
           }}
         >
-          ðŸŽ¹ SOUNDS
+          <span style={{ fontFamily: emojiFont }}>🎹</span> SOUNDS
         </button>
         <button
           onClick={() => { setActiveTab('methods'); setExpandedCat(null); setSearch('') }}
@@ -890,11 +893,11 @@ export default function StudioMethodsPanel({ onInsert, onPreview }: StudioMethod
               : '3px 3px 6px #050607, -3px -3px 6px #1a1d22',
           }}
         >
-          ðŸ”§ METHODS
+          <span style={{ fontFamily: emojiFont }}>🔧</span> METHODS
         </button>
       </div>
 
-      {/* Search â€” clay inset input */}
+      {/* Search — clay inset input */}
       <div className="px-2 py-1">
         <div className="relative">
           <Search size={10} className="absolute left-2 top-1/2 -translate-y-1/2" style={{ color: '#5a616b' }} />
@@ -914,16 +917,16 @@ export default function StudioMethodsPanel({ onInsert, onPreview }: StudioMethod
         </div>
       </div>
 
-      {/* â•â•â• SOUNDS tab â€” accordion categories grouped by type â•â•â• */}
+      {/* â•â•â• SOUNDS tab — accordion categories grouped by type â•â•â• */}
       {activeTab === 'sounds' && (
         <div className="px-1 pb-3 space-y-0.5">
           {filteredSounds.length === 0 && (
             <div className="text-center py-4 text-[9px]" style={{ color: '#5a616b' }}>No results for &quot;{search}&quot;</div>
           )}
           {([
-            { key: 'instrument' as const, label: 'INSTRUMENTS', icon: 'ðŸŽ¹', color: '#6f8fb3', desc: 'Pitched / note-based' },
+            { key: 'instrument' as const, label: 'INSTRUMENTS', icon: '🎹', color: '#6f8fb3', desc: 'Pitched / note-based' },
             { key: 'sound' as const, label: 'SOUNDS', icon: 'ðŸ¥', color: '#b8a47f', desc: 'Drums, samples & FX' },
-            { key: 'bank' as const, label: 'BANKS', icon: 'ðŸŽ›ï¸', color: '#b86f6f', desc: 'Drum machine presets' },
+            { key: 'bank' as const, label: 'BANKS', icon: '🎛ï¸', color: '#b86f6f', desc: 'Drum machine presets' },
           ] as const).map(sectionDef => {
             const sectionCats = filteredSounds.filter(c => c.section === sectionDef.key)
             if (sectionCats.length === 0) return null
@@ -931,7 +934,7 @@ export default function StudioMethodsPanel({ onInsert, onPreview }: StudioMethod
               <div key={sectionDef.key}>
                 {/* Section header */}
                 <div className="flex items-center gap-1.5 px-2 py-1 mt-1.5 mb-0.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                  <span className="text-[7px]">{sectionDef.icon}</span>
+                  <span className="text-[7px]" style={{ fontFamily: emojiFont }}>{sectionDef.icon}</span>
                   <span className="text-[7px] font-black uppercase tracking-[.25em]" style={{ color: sectionDef.color }}>{sectionDef.label}</span>
                   <span className="text-[6px] ml-auto" style={{ color: '#5a616b' }}>{sectionDef.desc}</span>
                 </div>
@@ -945,7 +948,7 @@ export default function StudioMethodsPanel({ onInsert, onPreview }: StudioMethod
                   background: expandedCat === cat.label ? '#16181d' : 'transparent',
                 }}
               >
-                <span>{cat.icon}</span>
+                <span style={{ fontFamily: emojiFont }}>{cat.icon}</span>
                 <span className="flex-1 text-left uppercase tracking-wider">{cat.label}</span>
                 <span className="text-[7px] font-mono" style={{ color: '#5a616b' }}>{cat.items.length}</span>
                 {expandedCat === cat.label ? <ChevronDown size={8} /> : <ChevronRight size={8} />}
@@ -978,7 +981,7 @@ export default function StudioMethodsPanel({ onInsert, onPreview }: StudioMethod
                         className="flex items-center gap-1 px-2 py-1 rounded-lg group cursor-grab active:cursor-grabbing transition-colors"
                         style={{ background: 'transparent' }}
                         onClick={() => onInsert(m.code)}
-                        title={`Drag onto a channel or click to insert\n${m.code} â€” ${m.desc}`}
+                        title={`Drag onto a channel or click to insert\n${m.code} — ${m.desc}`}
                         onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)' }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
                       >
@@ -1003,7 +1006,7 @@ export default function StudioMethodsPanel({ onInsert, onPreview }: StudioMethod
                             <Volume2 size={10} />
                           </button>
                         )}
-                        <span className="opacity-0 group-hover:opacity-40 text-[8px] shrink-0 mr-0.5" style={{ color: '#5a616b' }}>â £</span>
+                        <span className="opacity-0 group-hover:opacity-40 text-[8px] shrink-0 mr-0.5" style={{ color: '#5a616b' }}>⠣</span>
                         <button
                           onClick={(e) => { e.stopPropagation(); copySnippet(m.code) }}
                           className="opacity-0 group-hover:opacity-100 transition-all cursor-pointer shrink-0"
@@ -1025,7 +1028,7 @@ export default function StudioMethodsPanel({ onInsert, onPreview }: StudioMethod
         </div>
       )}
 
-      {/* â•â•â• METHODS tab â€” knobs + buttons organized by category â•â•â• */}
+      {/* â•â•â• METHODS tab — knobs + buttons organized by category â•â•â• */}
       {activeTab === 'methods' && (
         <div className="px-1 pb-3 space-y-1">
           {filteredMethods.length === 0 && (
@@ -1033,14 +1036,14 @@ export default function StudioMethodsPanel({ onInsert, onPreview }: StudioMethod
           )}
 
           {[
-            { label: 'UNIVERSAL', icon: 'âš¡', sections: universalMethods, color: '#7fa998' },
-            { label: 'SOUND', icon: 'ðŸŽµ', sections: soundMethods, color: '#b86f6f' },
-            { label: 'VISUAL', icon: 'ðŸ“Š', sections: visualMethods, color: '#6f8fb3' },
+            { label: 'UNIVERSAL', icon: '⚡', sections: universalMethods, color: '#7fa998' },
+            { label: 'SOUND', icon: '🎵', sections: soundMethods, color: '#b86f6f' },
+            { label: 'VISUAL', icon: '📊', sections: visualMethods, color: '#6f8fb3' },
           ].map(group => group.sections.length > 0 && (
             <div key={group.label}>
               {/* Category header */}
               <div className="flex items-center gap-1.5 px-2 py-1 mt-1" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                <span className="text-[7px]">{group.icon}</span>
+                <span className="text-[7px]" style={{ fontFamily: emojiFont }}>{group.icon}</span>
                 <span className="text-[7px] font-black uppercase tracking-[.25em]" style={{ color: group.color }}>{group.label}</span>
               </div>
 
@@ -1052,7 +1055,7 @@ export default function StudioMethodsPanel({ onInsert, onPreview }: StudioMethod
                   <div key={section.label} className="mb-0.5">
                     {/* Section label */}
                     <div className="px-2 pt-1.5 pb-0.5 text-[7px] font-bold uppercase tracking-wider flex items-center gap-1" style={{ color: '#5a616b' }}>
-                      <span>{section.icon}</span>
+                      <span style={{ fontFamily: emojiFont }}>{section.icon}</span>
                       <span>{section.label}</span>
                     </div>
 
@@ -1071,7 +1074,7 @@ export default function StudioMethodsPanel({ onInsert, onPreview }: StudioMethod
                               onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)' }}
                               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
                             >
-                              {/* Knob â€” blocks HTML drag so value adjustment works */}
+                              {/* Knob — blocks HTML drag so value adjustment works */}
                               <div onDragStart={(e) => e.preventDefault()} draggable={false}>
                                 <StudioKnob
                                   label={m.label}
@@ -1085,7 +1088,7 @@ export default function StudioMethodsPanel({ onInsert, onPreview }: StudioMethod
                                   onChange={(v) => setKnobValues(prev => ({ ...prev, [m.label]: v }))}
                                 />
                               </div>
-                              {/* Insert button â€” also draggable for D&D to channels */}
+                              {/* Insert button — also draggable for D&D to channels */}
                               <div
                                 className="mt-0.5 px-1.5 py-0.5 rounded-md cursor-pointer opacity-50 group-hover:opacity-100 transition-all text-center"
                                 style={{

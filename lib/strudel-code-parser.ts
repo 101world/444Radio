@@ -1339,10 +1339,15 @@ export function duplicateChannel(code: string, channelIdx: number): string {
 export function addChannel(
   code: string,
   soundName: string,
-  type: 'synth' | 'sample' | 'vocal' = 'sample',
+  type: 'synth' | 'sample' | 'vocal' | 'instrument' | 'drumpad' = 'sample',
   vocalLoopAt?: number,
   sampleBpm?: number,
   projectBpm?: number,
+  /** For instrument type: begin/end trim (0-1) */
+  trimBegin?: number,
+  trimEnd?: number,
+  /** For drumpad type: chop count */
+  chopCount?: number,
 ): string {
   const channels = parseStrudelCode(code)
   const existingNames = new Set(channels.map(c => c.name))
@@ -1378,6 +1383,17 @@ export function addChannel(
       speedCompensation = `\n  .speed(${comp.toFixed(4)})${pitchInfo}`
     }
     block = `$${name}: s("${soundName}")\n  .loopAt(${loopCycles})${speedCompensation}\n  .gain(0.7)\n  .orbit(${nextOrbit})\n  .room(0.15).delay(0.1).delaytime(0.125).delayfeedback(0.2)`
+  } else if (type === 'instrument') {
+    // Trimmed sample → pitched instrument playable on piano roll
+    const begin = trimBegin ?? 0
+    const end = trimEnd ?? 1
+    const trimCode = (begin > 0 || end < 1) ? `\n  .begin(${begin.toFixed(2)}).end(${end.toFixed(2)})` : ''
+    block = `$${name}: note("c3 e3 g3 c4")\n  .s("${soundName}")${trimCode}\n  .gain(0.6)\n  .lpf(6000).lpq(1)\n  .room(0.2).delay(0.1).delaytime(0.125).delayfeedback(0.2)`
+  } else if (type === 'drumpad') {
+    // Auto-chopped sample → drum pad / step sequencer
+    const chops = chopCount ?? 8
+    const loopCycles = vocalLoopAt ?? 8
+    block = `$${name}: s("${soundName}")\n  .loopAt(${loopCycles})\n  .chop(${chops})\n  .gain(0.7)\n  .orbit(${nextOrbit})\n  .room(0.15)`
   } else {
     block = `$${name}: s("${soundName}")\n  .gain(0.8)\n  .lpf(6000).lpq(1)\n  .room(0.2).delay(0.1).delaytime(0.125).delayfeedback(0.2)\n  .shape(0)`
   }

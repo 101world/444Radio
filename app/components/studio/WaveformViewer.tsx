@@ -49,22 +49,31 @@ export default function WaveformViewer({
   const [speed, setSpeed] = useState(speedValue)
   const [dragging, setDragging] = useState<'begin' | 'end' | null>(null)
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false)
+  const [isLooping, setIsLooping] = useState(false)
   const [duration, setDuration] = useState(0)
+  const [showBeatGrid, setShowBeatGrid] = useState(true)
+  const [snapToBeats, setSnapToBeats] = useState(false)
+  const [manualBpm, setManualBpm] = useState<number | null>(null)
+  const [tapTimes, setTapTimes] = useState<number[]>([])
+  const [tapBpm, setTapBpm] = useState<number | null>(null)
+
+  // Effective sample BPM: manual override > tap tempo > auto-detected > null
+  const effectiveSampleBpm = manualBpm ?? tapBpm ?? sampleBpm ?? null
 
   // Computed pitch shift from speed
   const pitchShiftSt = useMemo(() => speedToSemitones(speed), [speed])
 
   // BPM-mismatch pitch shift (what loopAt causes)
   const bpmPitchShift = useMemo(() => {
-    if (!sampleBpm || !projectBpm || sampleBpm === projectBpm) return null
-    return 12 * Math.log2(projectBpm / sampleBpm)
-  }, [sampleBpm, projectBpm])
+    if (!effectiveSampleBpm || !projectBpm || effectiveSampleBpm === projectBpm) return null
+    return 12 * Math.log2(projectBpm / effectiveSampleBpm)
+  }, [effectiveSampleBpm, projectBpm])
 
   // Speed needed to compensate BPM pitch shift
   const compensationSpeed = useMemo(() => {
-    if (!sampleBpm || !projectBpm || sampleBpm === projectBpm) return null
-    return sampleBpm / projectBpm
-  }, [sampleBpm, projectBpm])
+    if (!effectiveSampleBpm || !projectBpm || effectiveSampleBpm === projectBpm) return null
+    return effectiveSampleBpm / projectBpm
+  }, [effectiveSampleBpm, projectBpm])
 
   // Net pitch after both loopAt shift and speed compensation
   const netPitchSt = useMemo(() => {
@@ -79,10 +88,59 @@ export default function WaveformViewer({
       setBegin(beginValue)
       setEnd(endValue)
       setSpeed(speedValue)
+      setManualBpm(null)
+      setTapTimes([])
+      setTapBpm(null)
     }
   }, [isOpen, beginValue, endValue, speedValue])
 
-  // â”€â”€ Load audio + compute waveform â”€â”€
+  // Beat positions (0-1 normalized) for the grid overlay
+  const beatPositions = useMemo(() => {
+    if (!showBeatGrid || !projectBpm || duration <= 0) return []
+    const beatDuration = 60 / projectBpm // seconds per beat
+    const positions: number[] = []
+    for (let t = 0; t < duration; t += beatDuration) {
+      positions.push(t / duration)
+    }
+    return positions
+  }, [showBeatGrid, projectBpm, duration])
+
+  // Snap a normalized position to nearest beat
+  const snapToBeat = useCallback((pos: number): number => {
+    if (!snapToBeats || beatPositions.length === 0) return pos
+    let closest = pos
+    let minDist = Infinity
+    for (const bp of beatPositions) {
+      const d = Math.abs(pos - bp)
+      if (d < minDist) { minDist = d; closest = bp }
+    }
+    return closest
+  }, [snapToBeats, beatPositions])
+
+  // Tap tempo handler
+  const handleTap = useCallback(() => {
+    const now = performance.now()
+    setTapTimes(prev => {
+      const recent = prev.filter(t => now - t < 5000) // keep last 5s of taps
+      const next = [...recent, now]
+      if (next.length >= 3) {
+        // Calculate average interval from consecutive taps
+        const intervals: number[] = []
+        for (let i = 1; i < next.length; i++) {
+          intervals.push(next[i] - next[i - 1])
+        }
+        const avgMs = intervals.reduce((a, b) => a + b, 0) / intervals.length
+        const bpm = Math.round(60000 / avgMs)
+        if (bpm >= 40 && bpm <= 300) {
+          setTapBpm(bpm)
+          setManualBpm(null) // tap overrides manual until user types again
+        }
+      }
+      return next
+    })
+  }, [])
+
+  // ── Load audio + compute waveform ──
   useEffect(() => {
     if (!isOpen || !url) return
     setLoading(true)
@@ -164,6 +222,29 @@ export default function WaveformViewer({
       ctx.stroke()
     }
 
+    // Beat grid overlay
+    if (beatPositions.length > 0) {
+      const beatDur = projectBpm ? 60 / projectBpm : 0
+      for (let i = 0; i < beatPositions.length; i++) {
+        const bpx = beatPositions[i] * w
+        const isBar = i % 4 === 0 // every 4 beats = bar line
+        ctx.strokeStyle = isBar ? 'rgba(255,200,50,0.35)' : 'rgba(255,200,50,0.12)'
+        ctx.lineWidth = isBar ? 1.5 : 0.5
+        ctx.beginPath()
+        ctx.moveTo(bpx, 0)
+        ctx.lineTo(bpx, h)
+        ctx.stroke()
+        // Bar number labels (every 4 beats)
+        if (isBar && beatDur > 0) {
+          const barNum = Math.floor(i / 4) + 1
+          ctx.font = '8px monospace'
+          ctx.fillStyle = 'rgba(255,200,50,0.4)'
+          ctx.textAlign = 'center'
+          ctx.fillText(`${barNum}`, bpx, 10)
+        }
+      }
+    }
+
     // Begin handle
     ctx.fillStyle = '#10b981'
     ctx.fillRect(bx - 1.5, 0, 3, h)
@@ -185,7 +266,7 @@ export default function WaveformViewer({
     ctx.fillStyle = '#f43f5e'
     ctx.textAlign = 'right'
     ctx.fillText(`${(end * duration).toFixed(2)}s`, ex - 4, h - 4)
-  }, [begin, end, color, duration])
+  }, [begin, end, color, duration, beatPositions, projectBpm])
 
   // Redraw on trim change
   useEffect(() => { drawWaveform() }, [drawWaveform])
@@ -212,7 +293,7 @@ export default function WaveformViewer({
   useEffect(() => {
     if (!dragging) return
     const onMove = (e: MouseEvent) => {
-      const x = getX(e)
+      const x = snapToBeat(getX(e))
       if (dragging === 'begin') setBegin(Math.min(x, end - 0.01))
       else setEnd(Math.max(x, begin + 0.01))
     }
@@ -220,7 +301,7 @@ export default function WaveformViewer({
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
-  }, [dragging, begin, end])
+  }, [dragging, begin, end, snapToBeat])
 
   // â”€â”€ Preview trimmed audio at current speed â”€â”€
   const togglePreview = useCallback(() => {
@@ -233,15 +314,24 @@ export default function WaveformViewer({
     if (!audioBufferRef.current || !audioCtxRef.current) return
     const src = audioCtxRef.current.createBufferSource()
     src.buffer = audioBufferRef.current
-    src.playbackRate.value = speed // Strudel-style: speed changes pitch + time
+    src.playbackRate.value = speed
+    src.loop = isLooping
+    if (isLooping) {
+      src.loopStart = begin * audioBufferRef.current.duration
+      src.loopEnd = end * audioBufferRef.current.duration
+    }
     src.connect(audioCtxRef.current.destination)
     const startTime = begin * audioBufferRef.current.duration
     const dur = (end - begin) * audioBufferRef.current.duration
-    src.start(0, startTime, dur / speed) // adjusted for speed
+    if (isLooping) {
+      src.start(0, startTime)
+    } else {
+      src.start(0, startTime, dur / speed)
+    }
     src.onended = () => { setIsPreviewPlaying(false); sourceRef.current = null }
     sourceRef.current = src
     setIsPreviewPlaying(true)
-  }, [begin, end, speed, isPreviewPlaying])
+  }, [begin, end, speed, isPreviewPlaying, isLooping])
 
   // Stop preview on close
   useEffect(() => {
@@ -278,12 +368,12 @@ export default function WaveformViewer({
           boxShadow: '0 24px 80px rgba(0,0,0,0.7)',
         }}
       >
-        {/* Header â€” minimal */}
+        {/* Header */}
         <div className="flex items-center justify-between px-5 py-3"
           style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-black uppercase tracking-[.15em]" style={{ color }}>
-              âœ‚ TRIM / PITCH
+              TRIM / PITCH
             </span>
             {sampleName && (
               <span className="text-[9px] font-mono" style={{ color: 'rgba(255,255,255,0.3)' }}>
@@ -294,6 +384,108 @@ export default function WaveformViewer({
           <button onClick={onClose} className="text-white/20 hover:text-white/60 transition-colors cursor-pointer text-sm font-bold">
             ESC
           </button>
+        </div>
+
+        {/* Sync toolbar — beat grid, tap tempo, manual BPM, snap */}
+        <div className="flex items-center gap-2 px-5 py-2 flex-wrap"
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', background: '#0a0b0e' }}>
+          {/* Beat grid toggle */}
+          <button
+            onClick={() => setShowBeatGrid(!showBeatGrid)}
+            className="px-2 py-1 rounded text-[8px] font-bold uppercase tracking-wider cursor-pointer transition-all"
+            style={{
+              background: showBeatGrid ? '#ffc83220' : '#0a0b0d',
+              color: showBeatGrid ? '#ffc832' : 'rgba(255,255,255,0.2)',
+              border: `1px solid ${showBeatGrid ? '#ffc83240' : 'rgba(255,255,255,0.04)'}`,
+            }}
+          >
+            GRID
+          </button>
+
+          {/* Snap to beats toggle */}
+          <button
+            onClick={() => setSnapToBeats(!snapToBeats)}
+            className="px-2 py-1 rounded text-[8px] font-bold uppercase tracking-wider cursor-pointer transition-all"
+            style={{
+              background: snapToBeats ? '#10b98120' : '#0a0b0d',
+              color: snapToBeats ? '#10b981' : 'rgba(255,255,255,0.2)',
+              border: `1px solid ${snapToBeats ? '#10b98140' : 'rgba(255,255,255,0.04)'}`,
+            }}
+          >
+            SNAP
+          </button>
+
+          {/* Loop toggle */}
+          <button
+            onClick={() => setIsLooping(!isLooping)}
+            className="px-2 py-1 rounded text-[8px] font-bold uppercase tracking-wider cursor-pointer transition-all"
+            style={{
+              background: isLooping ? `${color}20` : '#0a0b0d',
+              color: isLooping ? color : 'rgba(255,255,255,0.2)',
+              border: `1px solid ${isLooping ? `${color}40` : 'rgba(255,255,255,0.04)'}`,
+            }}
+          >
+            LOOP
+          </button>
+
+          <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.06)' }} />
+
+          {/* Tap tempo */}
+          <button
+            onClick={handleTap}
+            className="px-2.5 py-1 rounded text-[8px] font-bold uppercase tracking-wider cursor-pointer transition-all active:scale-95"
+            style={{
+              background: tapBpm ? '#a78bfa20' : '#0a0b0d',
+              color: tapBpm ? '#a78bfa' : 'rgba(255,255,255,0.25)',
+              border: `1px solid ${tapBpm ? '#a78bfa40' : 'rgba(255,255,255,0.04)'}`,
+            }}
+          >
+            TAP {tapBpm ? `${tapBpm}` : ''}
+          </button>
+
+          {/* Manual BPM input */}
+          <div className="flex items-center gap-1">
+            <span className="text-[7px] font-bold uppercase tracking-[.1em]" style={{ color: 'rgba(255,255,255,0.2)' }}>
+              BPM
+            </span>
+            <input
+              type="number"
+              min={40}
+              max={300}
+              step={1}
+              placeholder={effectiveSampleBpm ? String(effectiveSampleBpm) : '—'}
+              value={manualBpm ?? ''}
+              onChange={e => {
+                const v = parseInt(e.target.value)
+                if (!isNaN(v) && v >= 40 && v <= 300) { setManualBpm(v); setTapBpm(null) }
+                else if (e.target.value === '') { setManualBpm(null) }
+              }}
+              className="w-14 text-center text-[10px] font-mono rounded px-1 py-0.5 outline-none"
+              style={{ background: '#0c0e12', color: effectiveSampleBpm ? '#a78bfa' : 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.08)' }}
+            />
+          </div>
+
+          {/* Show detected/effective BPM info */}
+          <div className="flex items-center gap-1 ml-auto">
+            {sampleBpm && (
+              <span className="text-[8px] font-mono px-1.5 py-0.5 rounded" style={{ background: '#16181d', color: 'rgba(255,255,255,0.25)' }}>
+                detected: {sampleBpm}
+              </span>
+            )}
+            {projectBpm && (
+              <span className="text-[8px] font-mono px-1.5 py-0.5 rounded" style={{ background: '#16181d', color: 'rgba(255,255,255,0.25)' }}>
+                project: {projectBpm}
+              </span>
+            )}
+            {effectiveSampleBpm && projectBpm && effectiveSampleBpm !== projectBpm && (
+              <span className="text-[8px] font-mono font-bold px-1.5 py-0.5 rounded" style={{
+                background: '#f59e0b15',
+                color: '#f59e0b',
+              }}>
+                {effectiveSampleBpm > projectBpm ? '-' : '+'}{Math.abs(12 * Math.log2(projectBpm / effectiveSampleBpm)).toFixed(1)}st
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Waveform canvas area */}
@@ -380,7 +572,7 @@ export default function WaveformViewer({
                 color: '#7fa998',
                 border: '1px solid #7fa99830',
               }}
-              title={`Set speed to ${compensationSpeed.toFixed(4)} to cancel BPM pitch shift (${sampleBpm}â†’${projectBpm} BPM)`}
+              title={`Set speed to ${compensationSpeed.toFixed(4)} to cancel BPM pitch shift (${effectiveSampleBpm}\u2192${projectBpm} BPM)`}
             >
               Match BPM
             </button>
@@ -450,6 +642,14 @@ export default function WaveformViewer({
                 {((end - begin) * duration).toFixed(2)}s
               </span>
             </div>
+            {projectBpm && duration > 0 && (
+              <div className="flex flex-col items-center">
+                <span className="text-[7px] font-bold uppercase tracking-[.1em]" style={{ color: '#ffc832' }}>BEATS</span>
+                <span className="text-xs font-mono font-bold" style={{ color: '#ffc832' }}>
+                  {(((end - begin) * duration * projectBpm) / 60).toFixed(1)}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Action buttons */}

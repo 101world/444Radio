@@ -910,7 +910,23 @@ export default function StudioPianoRoll({
   const isBoxSelecting = useRef(false)
   const boxStartCell = useRef<{ midi: number; step: number } | null>(null)
 
-  // â”€â”€ Effects panel state â”€â”€
+  // Tool state (V = pointer, C = split/scissors)
+  const [activeTool, setActiveTool] = useState<'pointer' | 'split'>('pointer')
+
+  // Note drag-move state
+  const isDraggingNotes = useRef(false)
+  const dragStartCell = useRef<{ midi: number; step: number } | null>(null)
+  const dragOriginalNotes = useRef<Map<string, { midi: number; step: number; length: number }>>(new Map())
+
+  // Double-click tracking for delete
+  const lastClickTime = useRef(0)
+  const lastClickKey = useRef<string | null>(null)
+
+  // Piano roll height (resizable from top)
+  const [pianoRollHeight, setPianoRollHeight] = useState(340)
+  const isResizingHeight = useRef(false)
+
+  // Effects panel state
   const [showEffectsPanel, setShowEffectsPanel] = useState(true)
 
   // â”€â”€ Preset menu state â”€â”€
@@ -1157,6 +1173,13 @@ export default function StudioPianoRoll({
     const up = () => {
       isDrawing.current = false
       lastCell.current = null
+      // End note drag
+      if (isDraggingNotes.current) {
+        isDraggingNotes.current = false
+        dragStartCell.current = null
+        dragOriginalNotes.current = new Map()
+        setHasUserEdited(true)
+      }
       // End box selection â€” compute selected notes
       if (isBoxSelecting.current && boxStartCell.current) {
         isBoxSelecting.current = false
@@ -1165,6 +1188,51 @@ export default function StudioPianoRoll({
     window.addEventListener('mouseup', up)
     return () => window.removeEventListener('mouseup', up)
   }, [])
+
+  // —— Global mousemove for note drag-move ——
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!isDraggingNotes.current || !dragStartCell.current || !scrollRef.current) return
+      const rect = scrollRef.current.getBoundingClientRect()
+      const x = e.clientX - rect.left + scrollRef.current.scrollLeft - PIANO_W
+      const y = e.clientY - rect.top + scrollRef.current.scrollTop - 16 // ruler height
+      const currentStep = Math.max(0, Math.floor(x / cellW))
+      const currentRowIdx = Math.max(0, Math.floor(y / cellH))
+      const currentMidi = rows[Math.min(currentRowIdx, rows.length - 1)] ?? rows[0]
+
+      const deltaStep = currentStep - dragStartCell.current.step
+      const deltaMidi = currentMidi - dragStartCell.current.midi
+
+      if (deltaStep === 0 && deltaMidi === 0) return
+
+      setNoteMap(prev => {
+        const next = new Map(prev)
+        const newSel = new Set<string>()
+        // Remove old positions
+        dragOriginalNotes.current.forEach((_n, oldKey) => {
+          next.delete(oldKey)
+        })
+        // Add new positions
+        const updatedOrig = new Map<string, { midi: number; step: number; length: number }>()
+        dragOriginalNotes.current.forEach((n) => {
+          const newMidi = n.midi + deltaMidi
+          const newStep = Math.max(0, n.step + deltaStep)
+          if (scaleMidiSet.has(newMidi) && newStep < bars * stepsPerBar) {
+            const newKey = `${newMidi}:${newStep}`
+            next.set(newKey, { length: n.length })
+            newSel.add(newKey)
+            updatedOrig.set(newKey, { midi: newMidi, step: newStep, length: n.length })
+          }
+        })
+        dragOriginalNotes.current = updatedOrig
+        dragStartCell.current = { midi: currentMidi, step: currentStep }
+        setSelectedNotes(newSel)
+        return next
+      })
+    }
+    window.addEventListener('mousemove', onMove)
+    return () => window.removeEventListener('mousemove', onMove)
+  }, [cellW, cellH, rows, scaleMidiSet, bars, stepsPerBar])
 
   // â”€â”€ Box selection handlers â”€â”€
   const handleGridMouseDown = useCallback((e: React.MouseEvent) => {
@@ -1219,6 +1287,16 @@ export default function StudioPianoRoll({
   // â”€â”€ Keyboard: Escape, Ctrl+C/V/D/A, Delete â”€â”€
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // Tool shortcuts: C = split/scissors, V = pointer
+      if (e.key === 'c' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        setActiveTool('split')
+        return
+      }
+      if (e.key === 'v' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        setActiveTool('pointer')
+        return
+      }
+
       if (e.key === 'Escape') {
         if (selectedNotes.size > 0) {
           setSelectedNotes(new Set())
@@ -1348,14 +1426,44 @@ export default function StudioPianoRoll({
     <div
       className="absolute bottom-0 left-0 right-0 z-[100] flex flex-col select-none"
       style={{
-        height: 340,
+        height: pianoRollHeight,
         background: '#111318',
         borderTop: '1px solid rgba(255,255,255,0.04)',
         boxShadow: '0 -8px 16px #050607',
       }}
       onClick={e => e.stopPropagation()}
     >
-      {/* â•â•â• TOOLBAR â•â•â• */}
+            {/* ══ TOP RESIZE HANDLE ══ */}
+      <div
+        className="shrink-0 cursor-ns-resize flex items-center justify-center group"
+        style={{
+          height: 6,
+          background: '#16181d',
+          borderBottom: '1px solid rgba(255,255,255,0.04)',
+        }}
+        onMouseDown={(e) => {
+          e.preventDefault()
+          isResizingHeight.current = true
+          const startY = e.clientY
+          const startH = pianoRollHeight
+          const onMove = (ev: MouseEvent) => {
+            if (!isResizingHeight.current) return
+            const delta = startY - ev.clientY
+            setPianoRollHeight(Math.max(200, Math.min(startH + delta, window.innerHeight - 100)))
+          }
+          const onUp = () => {
+            isResizingHeight.current = false
+            window.removeEventListener('mousemove', onMove)
+            window.removeEventListener('mouseup', onUp)
+          }
+          window.addEventListener('mousemove', onMove)
+          window.addEventListener('mouseup', onUp)
+        }}
+      >
+        <div className="w-8 h-0.5 rounded-full bg-white/10 group-hover:bg-white/30 transition-colors" />
+      </div>
+
+{/* â•â•â• TOOLBAR â•â•â• */}
       <div className="flex items-center justify-between px-3 py-1.5 shrink-0"
         style={{ background: '#16181d', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
         <div className="flex items-center gap-2">
@@ -1687,6 +1795,36 @@ export default function StudioPianoRoll({
               <div className="flex items-center gap-1.5">
                 <div className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
                 <span className="text-[8px] font-black uppercase tracking-wider" style={{ color: `${color}cc` }}>{channelName}</span>
+          {/* Active tool indicator */}
+          <div className="w-px h-3.5 bg-white/[0.08]" />
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={() => setActiveTool('pointer')}
+              className="px-1.5 py-0.5 text-[7px] font-bold cursor-pointer transition-all rounded-md"
+              style={{
+                background: activeTool === 'pointer' ? '#16181d' : 'transparent',
+                color: activeTool === 'pointer' ? color : '#5a616b',
+                border: 'none',
+                boxShadow: activeTool === 'pointer' ? 'inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22' : 'none',
+              }}
+              title="Pointer tool (V)"
+            >
+              V
+            </button>
+            <button
+              onClick={() => setActiveTool('split')}
+              className="px-1.5 py-0.5 text-[7px] font-bold cursor-pointer transition-all rounded-md"
+              style={{
+                background: activeTool === 'split' ? '#16181d' : 'transparent',
+                color: activeTool === 'split' ? '#e8a040' : '#5a616b',
+                border: 'none',
+                boxShadow: activeTool === 'split' ? 'inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22' : 'none',
+              }}
+              title="Split/scissors tool (C)"
+            >
+              C
+            </button>
+          </div>
               </div>
               <div className="text-[6px] font-mono mt-0.5" style={{ color: '#5a616b' }}>
                 {channelData.source} Â· {channelData.sourceType}
@@ -2059,10 +2197,78 @@ export default function StudioPianoRoll({
                     }}
                     onMouseDown={(e) => {
                       if (isResizing.current) return
-                      // Ctrl/Cmd click toggles selection
+                      e.preventDefault()
+                      e.stopPropagation()
+
+                      // Split tool: click a note to split it at this step
+                      if (activeTool === 'split') {
+                        const noteData = noteMap.get(key)
+                        if (noteData && noteData.length > 1) {
+                          const noteStep = parseInt(key.split(':')[1])
+                          const clickStep = step
+                          const splitAt = clickStep - noteStep
+                          if (splitAt > 0 && splitAt < noteData.length) {
+                            setNoteMap(prev => {
+                              const next = new Map(prev)
+                              next.set(key, { length: splitAt })
+                              next.set(`${midi}:${clickStep}`, { length: noteData.length - splitAt })
+                              return next
+                            })
+                            setHasUserEdited(true)
+                          }
+                        }
+                        return
+                      }
+
+                      // Double-click: delete note
+                      const now = Date.now()
+                      if (lastClickKey.current === key && now - lastClickTime.current < 350) {
+                        lastClickKey.current = null
+                        lastClickTime.current = 0
+                        toggleNote(midi, step, 'remove')
+                        setSelectedNotes(prev => { const n = new Set(prev); n.delete(key); return n })
+                        return
+                      }
+                      lastClickKey.current = key
+                      lastClickTime.current = now
+
+                      // Alt+click: duplicate note(s) and start drag
+                      if (e.altKey) {
+                        const notesToDup = isSelected && selectedNotes.size > 0
+                          ? [...selectedNotes]
+                          : [key]
+                        const dupNotes: { key: string; midi: number; step: number; length: number }[] = []
+                        notesToDup.forEach(k => {
+                          const d = noteMapRef.current.get(k)
+                          if (d) {
+                            const [m, s] = k.split(':')
+                            dupNotes.push({ key: k, midi: parseInt(m), step: parseInt(s), length: d.length })
+                          }
+                        })
+                        // Create duplicates in place (they'll be dragged)
+                        setNoteMap(prev => {
+                          const next = new Map(prev)
+                          const newSel = new Set<string>()
+                          dupNotes.forEach(n => {
+                            const newKey = `${n.midi}:${n.step}`
+                            next.set(newKey, { length: n.length })
+                            newSel.add(newKey)
+                          })
+                          setSelectedNotes(newSel)
+                          return next
+                        })
+                        // Start dragging the duplicates
+                        isDraggingNotes.current = true
+                        dragStartCell.current = { midi, step }
+                        const origMap = new Map<string, { midi: number; step: number; length: number }>()
+                        dupNotes.forEach(n => origMap.set(`${n.midi}:${n.step}`, n))
+                        dragOriginalNotes.current = origMap
+                        setHasUserEdited(true)
+                        return
+                      }
+
+                      // Ctrl/Cmd click: toggle selection
                       if (e.ctrlKey || e.metaKey) {
-                        e.preventDefault()
-                        e.stopPropagation()
                         setSelectedNotes(prev => {
                           const next = new Set(prev)
                           if (next.has(key)) next.delete(key)
@@ -2071,16 +2277,34 @@ export default function StudioPianoRoll({
                         })
                         return
                       }
-                      // Shift+click is for box select, ignore here
-                      if (e.shiftKey) return
-                      e.preventDefault()
-                      e.stopPropagation()
-                      // If clicking a selected note without Ctrl, start drag-remove normally
-                      if (!isSelected) setSelectedNotes(new Set())
-                      isDrawing.current = true
-                      drawMode.current = 'remove'
-                      lastCell.current = key
-                      toggleNote(midi, step, 'remove')
+
+                      // Shift+click: add to selection
+                      if (e.shiftKey) {
+                        setSelectedNotes(prev => {
+                          const next = new Set(prev)
+                          next.add(key)
+                          return next
+                        })
+                        return
+                      }
+
+                      // Single click: select note and prepare for drag-move
+                      if (!isSelected) {
+                        setSelectedNotes(new Set([key]))
+                      }
+                      isDraggingNotes.current = true
+                      dragStartCell.current = { midi, step }
+                      // Store original positions of all selected/clicked notes
+                      const toTrack = isSelected ? [...selectedNotes] : [key]
+                      const origMap = new Map<string, { midi: number; step: number; length: number }>()
+                      toTrack.forEach(k => {
+                        const d = noteMapRef.current.get(k)
+                        if (d) {
+                          const [m, s] = k.split(':')
+                          origMap.set(k, { midi: parseInt(m), step: parseInt(s), length: d.length })
+                        }
+                      })
+                      dragOriginalNotes.current = origMap
                     }}
                     onMouseEnter={() => {
                       if (!isDrawing.current || drawMode.current !== 'remove') return
