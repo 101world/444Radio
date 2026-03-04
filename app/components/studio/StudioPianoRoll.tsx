@@ -1017,6 +1017,7 @@ export default function StudioPianoRoll({
   const [sampleEnd, setSampleEnd] = useState(1)
   const [isFullSample, setIsFullSample] = useState(false)
   const waveformCanvasRef = useRef<HTMLCanvasElement>(null)
+  const loadedSampleUrlRef = useRef<string | null>(null)
   const waveformDataRef = useRef<{ min: number; max: number }[]>([])
   const sampleAudioCtxRef = useRef<AudioContext | null>(null)
   const sampleBufferRef = useRef<AudioBuffer | null>(null)
@@ -1154,8 +1155,15 @@ export default function StudioPianoRoll({
   // ── Load waveform audio data ──
   useEffect(() => {
     if (!sampleUrl || !showWaveform) return
+    // Re-fetch if URL changed (sample swap) — clear stale cache
+    if (loadedSampleUrlRef.current && loadedSampleUrlRef.current !== sampleUrl) {
+      sampleBufferRef.current = null
+      waveformDataRef.current = []
+      setSampleDuration(0)
+    }
     if (sampleBufferRef.current && sampleDuration > 0) return
 
+    loadedSampleUrlRef.current = sampleUrl
     setWaveformLoading(true)
     let cancelled = false
     const load = async () => {
@@ -1186,12 +1194,8 @@ export default function StudioPianoRoll({
         }
         waveformDataRef.current = wave
 
-        // Default "shot" mode: ~1 second unless already trimmed in code
-        if (sampleBeginFromCode <= 0.005 && sampleEndFromCode >= 0.995 && ab.duration > 1.5) {
-          const shotEnd = Math.min(1, 1.0 / ab.duration)
-          setSampleEnd(shotEnd)
-          setIsFullSample(false)
-        }
+        // NOTE: No auto-trim on load — let the user explicitly trim.
+        // Previously auto-trimmed to ~1s which silently modified channel code.
       } catch {
         // Failed to load sample audio
       } finally {
@@ -1517,6 +1521,14 @@ export default function StudioPianoRoll({
   }, [currentPattern, scale]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // â”€â”€ Emit pattern when user edits (debounced) â”€â”€
+  // Track whether any note has length > 1 → needs legato for proper sustained playback
+  const hasStretchedNotes = useMemo(() => {
+    for (const [, data] of noteMap) {
+      if (data.length > 1) return true
+    }
+    return false
+  }, [noteMap])
+
   const emitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     if (!hasUserEdited) return
@@ -1530,9 +1542,16 @@ export default function StudioPianoRoll({
       // should edit the code directly.
       lastEmittedPattern.current = pat
       onPatternChange(pat)
+
+      // Auto-legato: when notes have @N > 1, Strudel needs .legato(1) for the
+      // note to actually sustain for its visual length (like a professional DAW).
+      // Without legato, notes trigger once and decay regardless of @-duration.
+      if (hasStretchedNotes && channelData && !channelData.effects.includes('legato')) {
+        onEffectAdd?.('.legato(1)')
+      }
     }, 80)
     return () => { if (emitTimer.current) clearTimeout(emitTimer.current) }
-  }, [noteMap, hasUserEdited, bars, scale, onPatternChange, stepsPerBar])
+  }, [noteMap, hasUserEdited, bars, scale, onPatternChange, stepsPerBar, hasStretchedNotes, channelData, onEffectAdd])
 
   // â”€â”€ Toggle note â”€â”€
   const toggleNote = useCallback((midi: number, step: number, forceMode?: 'add' | 'remove') => {
@@ -1616,12 +1635,14 @@ export default function StudioPianoRoll({
     const startX = e.clientX
     const startLen = noteMapRef.current.get(key)?.length || 1
     const cw = cellW
-    const maxSteps = stepsPerBar
+    const noteStartStep = parseInt(key.split(':')[1])
+    const totalSteps = bars * stepsPerBar
+    const maxLen = totalSteps - noteStartStep  // Allow stretching across bar boundaries
 
     const onMove = (ev: MouseEvent) => {
       if (!isResizing.current || resizeKey.current !== key) return
       const delta = Math.round((ev.clientX - startX) / cw)
-      const newLen = Math.max(1, Math.min(startLen + delta, maxSteps))
+      const newLen = Math.max(1, Math.min(startLen + delta, maxLen))
       setNoteMap(prev => {
         const next = new Map(prev)
         const data = next.get(key)
@@ -1638,7 +1659,7 @@ export default function StudioPianoRoll({
     }
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
-  }, [cellW, stepsPerBar])
+  }, [cellW, bars, stepsPerBar])
 
   // â”€â”€ Mouse handlers for click+drag painting â”€â”€
   const handleCellDown = useCallback((midi: number, step: number, e: React.MouseEvent) => {
@@ -3118,18 +3139,22 @@ export default function StudioPianoRoll({
                       e.preventDefault()
                       e.stopPropagation()
 
-                      // Split tool: click a note to split it at this step
+                      // Split tool: click a note to split it at the mouse position
                       if (activeTool === 'split') {
                         const noteData = noteMap.get(key)
                         if (noteData && noteData.length > 1) {
                           const noteStep = parseInt(key.split(':')[1])
-                          const clickStep = step
-                          const splitAt = clickStep - noteStep
+                          // Calculate the actual grid step from mouse X position
+                          const noteDiv = e.currentTarget as HTMLElement
+                          const noteRect = noteDiv.getBoundingClientRect()
+                          const relX = e.clientX - noteRect.left
+                          const clickGridStep = noteStep + Math.max(1, Math.round(relX / cellW))
+                          const splitAt = clickGridStep - noteStep
                           if (splitAt > 0 && splitAt < noteData.length) {
                             setNoteMap(prev => {
                               const next = new Map(prev)
                               next.set(key, { length: splitAt })
-                              next.set(`${midi}:${clickStep}`, { length: noteData.length - splitAt })
+                              next.set(`${midi}:${clickGridStep}`, { length: noteData.length - splitAt })
                               return next
                             })
                             setHasUserEdited(true)
