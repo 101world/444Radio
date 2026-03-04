@@ -513,6 +513,9 @@ export default function StudioEditor() {
     if (isPlayingRef.current && engineRef.current?.evaluate) {
       const src = newCode.trim()
       if (!src) return
+      // Mark as already evaluated so the auto-update debounce skips
+      // redundant re-evaluation (which would restart the scheduler clock)
+      lastEvaluatedRef.current = src
       const { muted, soloed } = mixerStateRef.current
       const finalCode = applyMixerOverrides(
         fixSoundfontNames(src) + (metronomeRef.current ? generateMetronomeCode(0) : ''),

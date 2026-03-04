@@ -1065,10 +1065,13 @@ export default function StudioPianoRoll({
     emitTimer.current = setTimeout(() => {
       // Pass noteMap directly to gridToPattern so it can encode note lengths with @
       const pat = gridToPattern(noteMapRef.current, bars, scale, parseMode, stepsPerBar)
-      const fullPat = speedModRef.current ? pat + speedModRef.current : pat
-      lastEmittedPattern.current = fullPat
-      onPatternChange(fullPat)
-    }, 120)
+      // Don't re-attach speedMod — the grid IS the timing authority.
+      // Appending raw *2 or /4 would apply to the last token, not the whole
+      // pattern, breaking Strudel timing. Users who need speed modifiers
+      // should edit the code directly.
+      lastEmittedPattern.current = pat
+      onPatternChange(pat)
+    }, 80)
     return () => { if (emitTimer.current) clearTimeout(emitTimer.current) }
   }, [noteMap, hasUserEdited, bars, scale, onPatternChange, stepsPerBar])
 
