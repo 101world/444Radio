@@ -1,10 +1,10 @@
 ﻿'use client'
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-//  STUDIO MIXER RACK v2 â€” Right sidebar hardware rack mixer
+//  STUDIO MIXER RACK v2 — Right sidebar hardware rack mixer
 //  Features:
 //    - Auto-parses code into channel strips with knobs
-//    - Solo (S) / Mute (M) per channel â€” affects evaluation only
+//    - Solo (S) / Mute (M) per channel — affects evaluation only
 //    - Drag & drop effects from palette onto channels
 //    - Knobs use position-based code replacement (never fails)
 //    - Visual indicators for complex/modulated params (~)
@@ -31,7 +31,7 @@ import {
   DRAGGABLE_EFFECTS, type ParsedChannel, type StackRow,
 } from '@/lib/strudel-code-parser'
 
-// â”€â”€â”€ Sound / Bank pick-lists for dropdown â”€â”€â”€
+// ─── Sound / Bank pick-lists for dropdown ───
 
 // Groups that are melodic instruments (for n()/note() channels)
 const INSTRUMENT_GROUPS = new Set(['Synth', 'Keys', 'Organ', 'Guitar & Bass', 'Strings', 'Brass & Sax', 'Flute & Pipe', 'Voice', 'Synth Leads', 'Synth Pads', 'SFX & Ethnic'])
@@ -114,7 +114,7 @@ const SOUND_OPTIONS: { group: string; sounds: [string, string][] }[] = [
 ]
 
 const BANK_OPTIONS: [string, string][] = [
-  // â”€â”€ Roland â”€â”€
+  // ── Roland ──
   ['RolandTR808', 'TR-808'],
   ['RolandTR909', 'TR-909'],
   ['RolandTR707', 'TR-707'],
@@ -136,7 +136,7 @@ const BANK_OPTIONS: [string, string][] = [
   ['RolandS50', 'S-50'],
   ['RolandSH09', 'SH-09'],
   ['RolandSystem100', 'System-100'],
-  // â”€â”€ Korg â”€â”€
+  // ── Korg ──
   ['KorgDDM110', 'KorgDDM-110'],
   ['KorgKPR77', 'KPR-77'],
   ['KorgKR55', 'KR-55'],
@@ -145,7 +145,7 @@ const BANK_OPTIONS: [string, string][] = [
   ['KorgMinipops', 'Minipops'],
   ['KorgPoly800', 'Poly-800'],
   ['KorgT3', 'Korg T3'],
-  // â”€â”€ Linn & Akai â”€â”€
+  // ── Linn & Akai ──
   ['AkaiLinn', 'Akai/Linn'],
   ['AkaiMPC60', 'MPC60'],
   ['AkaiXR10', 'XR-10'],
@@ -154,7 +154,7 @@ const BANK_OPTIONS: [string, string][] = [
   ['LinnLM1', 'LM-1'],
   ['LinnLM2', 'LM-2'],
   ['MPC1000', 'MPC1000'],
-  // â”€â”€ Boss & Yamaha â”€â”€
+  // ── Boss & Yamaha ──
   ['BossDR110', 'DR-110'],
   ['BossDR220', 'DR-220'],
   ['BossDR55', 'DR-55'],
@@ -164,12 +164,12 @@ const BANK_OPTIONS: [string, string][] = [
   ['YamahaRX5', 'RX5'],
   ['YamahaRY30', 'RY30'],
   ['YamahaTG33', 'TG33'],
-  // â”€â”€ Emu & Oberheim â”€â”€
+  // ── Emu & Oberheim ──
   ['EmuDrumulator', 'Drumulator'],
   ['EmuModular', 'Emu Modular'],
   ['EmuSP12', 'SP-12'],
   ['OberheimDMX', 'DMX'],
-  // â”€â”€ More Machines â”€â”€
+  // ── More Machines ──
   ['AJKPercusyn', 'Percusyn'],
   ['AlesisHR16', 'HR-16'],
   ['AlesisSR16', 'SR-16'],
@@ -191,7 +191,7 @@ const BANK_OPTIONS: [string, string][] = [
   ['UnivoxMicroRhythmer12', 'MicroRhythmer'],
   ['ViscoSpaceDrum', 'Space Drum'],
   ['XdrumLM8953', 'LM8953'],
-  // â”€â”€ Wavetable â”€â”€
+  // ── Wavetable ──
   ['wt_digital', 'WT Digital'],
   ['wt_digital_bad_day', 'WT Bad Day'],
   ['wt_digital_basique', 'WT Basique'],
@@ -237,10 +237,10 @@ function getSourceIcon(source: string, sourceType: string): string {
 }
 
 
-// â”€â”€â”€ Quick-add presets for Add Channel menu â”€â”€â”€
+// ─── Quick-add presets for Add Channel menu ───
 
 const ADD_CHANNEL_PRESETS: { section: string; type: 'synth' | 'sample' | 'vocal'; items: [string, string][] }[] = [
-  { section: 'ðŸŽ¹ Instruments', type: 'synth', items: [
+  { section: '🎹 Instruments', type: 'synth', items: [
     ['sawtooth', 'Sawtooth'], ['supersaw', 'Supersaw'], ['sine', 'Sine'],
     ['square', 'Square'], ['triangle', 'Triangle'],
     ['gm_piano', 'Piano'], ['gm_epiano1', 'E.Piano'],
@@ -248,37 +248,37 @@ const ADD_CHANNEL_PRESETS: { section: string; type: 'synth' | 'sample' | 'vocal'
     ['gm_flute', 'Flute'], ['gm_alto_sax', 'Alto Sax'],
     ['gm_acoustic_bass', 'Ac. Bass'], ['gm_synth_bass_1', 'Synth Bass'],
   ]},
-  { section: 'ðŸ¥ Drums', type: 'sample', items: [
+  { section: '🥁 Drums', type: 'sample', items: [
     ['bd', 'Kick'], ['sd', 'Snare'], ['cp', 'Clap'], ['hh', 'Hi-hat'],
     ['oh', 'Open HH'], ['rim', 'Rim'], ['tom', 'Tom'], ['ride', 'Ride'],
     ['crash', 'Crash'], ['perc', 'Perc'],
   ]},
-  { section: 'ðŸŽ¤ Vocals & Voice', type: 'vocal', items: [
+  { section: '🎤 Vocals & Voice', type: 'vocal', items: [
     ['gm_choir_aahs', 'Choir Aahs'], ['gm_voice_oohs', 'Voice Oohs'],
     ['gm_synth_choir', 'Synth Choir'], ['gm_pad_choir', 'Choir Pad'],
     ['mouth', 'Mouth'],
   ]},
-  { section: 'ðŸŽµ Samples', type: 'sample', items: [
+  { section: '🎵 Samples', type: 'sample', items: [
     ['casio', 'Casio'], ['jazz', 'Jazz Kit'], ['gabba', 'Gabba'],
     ['metal', 'Metal'], ['space', 'Space'],
   ]},
 ]
 
-// â”€â”€â”€ Effect category grouping for nested rack display â”€â”€â”€
+// ─── Effect category grouping for nested rack display ───
 
 const FX_GROUPS: { label: string; icon: string; keys: string[] }[] = [
-  { label: 'FILTER', icon: 'ðŸ”½', keys: ['lpf', 'lp', 'hpf', 'hp', 'lpq', 'lpenv', 'lps', 'lpd'] },
-  { label: 'DRIVE',  icon: 'ðŸ”¥', keys: ['shape', 'distort', 'crush'] },
-  { label: 'SPACE',  icon: 'ðŸŒŒ', keys: ['room', 'delay', 'delayfeedback', 'delaytime', 'orbit'] },
-  { label: 'MOD',    icon: 'ðŸŽµ', keys: ['detune', 'speed', 'pan', 'velocity', 'postgain'] },
-  { label: 'ENV',    icon: 'â³', keys: ['attack', 'decay', 'rel', 'release', 'legato', 'clip'] },
-  { label: 'SAMPLE', icon: 'ðŸŽ¤', keys: ['loopAt', 'begin', 'end', 'chop', 'stretch'] },
+  { label: 'FILTER', icon: '🔽', keys: ['lpf', 'lp', 'hpf', 'hp', 'lpq', 'lpenv', 'lps', 'lpd'] },
+  { label: 'DRIVE',  icon: '🔥', keys: ['shape', 'distort', 'crush'] },
+  { label: 'SPACE',  icon: '🌌', keys: ['room', 'delay', 'delayfeedback', 'delaytime', 'orbit'] },
+  { label: 'MOD',    icon: '🎵', keys: ['detune', 'speed', 'pan', 'velocity', 'postgain'] },
+  { label: 'ENV',    icon: '⏳', keys: ['attack', 'decay', 'rel', 'release', 'legato', 'clip'] },
+  { label: 'SAMPLE', icon: '🎤', keys: ['loopAt', 'begin', 'end', 'chop', 'stretch'] },
 ]
 
-// â”€â”€â”€ Draggable Effect Badge â”€â”€â”€
+// ─── Draggable Effect Badge ───
 
 function EffectBadge({ effect }: { effect: typeof DRAGGABLE_EFFECTS[number] }) {
-  const targetIcon = effect.target === 'instrument' ? 'ðŸŽ¹' : effect.target === 'sound' ? 'ðŸ¥' : ''
+  const targetIcon = effect.target === 'instrument' ? '🎹' : effect.target === 'sound' ? '🥁' : ''
   return (
     <div
       draggable
@@ -303,7 +303,7 @@ function EffectBadge({ effect }: { effect: typeof DRAGGABLE_EFFECTS[number] }) {
   )
 }
 
-// â”€â”€â”€ Single Channel Strip â”€â”€â”€
+// ─── Single Channel Strip ───
 
 
 // ─── Mini Pattern Preview — shows pattern dots in channel node ───
@@ -614,6 +614,7 @@ function ChannelStrip({
     <div
       className={`rounded-xl overflow-hidden transition-all duration-[180ms] ease-in-out ${isMuted ? 'opacity-30' : ''}`}
       style={{
+        gridColumn: isExpanded ? 'span 2' : undefined,
         background: '#111318',
         border: isDragOver
           ? '1px solid rgba(127,169,152,0.25)'
@@ -633,7 +634,7 @@ function ChannelStrip({
       onDragLeave={handleDragLeaveLocal}
       onDrop={handleDropLocal}
     >
-      {/* â”€â”€ Color bar / LED strip at top â”€â”€ */}
+      {/* ── Color bar / LED strip at top ── */}
       <div
         className="h-[2px] rounded-t-2xl transition-all duration-300"
         style={{
@@ -642,8 +643,9 @@ function ChannelStrip({
           boxShadow: isActiveNode ? `0 0 6px ${channel.color}60` : 'none',
         }}
       />
-
-      {/* â”€â”€ Compact header: S M Â· Name â”€â”€ */}
+      {/* Flex row: collapsed controls | expanded panel */}
+      <div className={`flex ${isExpanded ? 'flex-row' : 'flex-col'}`}>
+        <div className={isExpanded ? 'w-[120px] shrink-0' : 'w-full'}>
       <div className="flex items-center gap-1 px-1.5 pt-1.5 pb-0.5">
         {/* Solo */}
         <button
@@ -681,7 +683,7 @@ function ChannelStrip({
           title="Mute"
         >M</button>
 
-        {/* Channel name â€” click to expand, double-click to rename */}
+        {/* Channel name — click to expand, double-click to rename */}
         {isRenaming ? (
           <input
             ref={renameInputRef}
@@ -725,7 +727,7 @@ function ChannelStrip({
               setIsRenaming(true)
             }}
             className="flex-1 min-w-0 flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity"
-            title="Click to expand Â· Double-click to rename"
+            title="Click to expand · Double-click to rename"
           >
             <span
               className="text-[11px] leading-none shrink-0"
@@ -735,14 +737,14 @@ function ChannelStrip({
               {getSourceIcon(channel.source, channel.sourceType)}
             </span>
             <span
-              className="text-[7px] font-extrabold uppercase tracking-[.1em] truncate"
+              className="text-[7px] font-extrabold uppercase tracking-[.1em] truncate font-mono"
               style={{ color: `${channel.color}aa` }}
             >
               {channel.name}
             </span>
-            {channel.sourceType === 'sample' && channel.effects.includes('loopAt') && <span className="text-[6px]" title="Vocal/Sample channel">ðŸŽ¤</span>}
+            {channel.sourceType === 'sample' && channel.effects.includes('loopAt') && <span className="text-[6px]" title="Vocal/Sample channel">🎤</span>}
             {sidechainInfo.isSource && <span className="text-[5px]" style={{ color: '#7fa998', opacity: 0.6 }}>SC</span>}
-            {sidechainInfo.isDucked && <span className="text-[5px]">ðŸ¦†</span>}
+            {sidechainInfo.isDucked && <span className="text-[5px]">🦆</span>}
           </button>
         )}
 
@@ -755,7 +757,7 @@ function ChannelStrip({
         </button>
       </div>
 
-      {/* â”€â”€ Gain knob â€” centered â”€â”€ */}
+      {/* ── Gain knob — centered ── */}
       <div className="flex justify-center py-0.5" onClick={(e) => e.stopPropagation()}>
         <StudioKnob
           label="GAIN"
@@ -770,7 +772,7 @@ function ChannelStrip({
         />
       </div>
 
-      {/* â”€â”€ Transpose: [-12] knob [+12] â€” only for instrument channels â”€â”€ */}
+      {/* ── Transpose: [-12] knob [+12] — only for instrument channels ── */}
       {(channel.sourceType === 'synth' || channel.sourceType === 'note') && (() => {
         const currentTranspose = getTranspose(channel.rawCode)
         return (
@@ -786,7 +788,7 @@ function ChannelStrip({
                 boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
               }}
               title="-1 octave"
-            >âˆ’12</button>
+            >−12</button>
             <StudioKnob
               label="TRANS"
               value={currentTranspose}
@@ -814,7 +816,7 @@ function ChannelStrip({
         )
       })()}
 
-      {/* â”€â”€ Mini LCD visualizer â”€â”€ */}
+      {/* ── Mini LCD visualizer ── */}
       <ChannelLCD
         channel={channel}
         isPlaying={isPlaying}
@@ -839,7 +841,7 @@ function ChannelStrip({
         }}
       />
 
-      {/* â”€â”€ Active effect tags â€” removable pills â”€â”€ */}
+      {/* ── Active effect tags — removable pills ── */}
       {channel.effects.length > 0 && (
         <div className="flex flex-wrap gap-[2px] px-1.5 py-0.5" onClick={(e) => e.stopPropagation()}>
           {channel.effects
@@ -877,7 +879,7 @@ function ChannelStrip({
                       }}
                       title={`Remove .${fx}()`}
                     >
-                      Ã—
+                      ×
                     </button>
                   )}
                 </span>
@@ -886,7 +888,7 @@ function ChannelStrip({
         </div>
       )}
 
-      {/* â”€â”€ Effect knobs â€” tight grid â”€â”€ */}
+      {/* ── Effect knobs — tight grid ── */}
       {effectKnobs.length > 0 && (
         <div
           className="mx-1 mb-1 px-1 py-1 rounded-xl"
@@ -918,9 +920,9 @@ function ChannelStrip({
         </div>
       )}
 
-      {/* â”€â”€ Action icons row â”€â”€ */}
+      {/* ── Action icons row ── */}
       <div className="flex items-center justify-center gap-1 px-1 pb-1.5">
-        {/* Piano Roll â€” for instrument channels AND sample channels (pitched sample playback) */}
+        {/* Piano Roll — for instrument channels AND sample channels (pitched sample playback) */}
         {onOpenPianoRoll && (channel.sourceType === 'synth' || channel.sourceType === 'note' || (channel.sourceType === 'sample' && channel.effects.includes('loopAt'))) && (
           <button
             onClick={(e) => { e.stopPropagation(); onOpenPianoRoll() }}
@@ -931,7 +933,7 @@ function ChannelStrip({
             <Piano size={9} />
           </button>
         )}
-        {/* Drum Sequencer â€” only for sound/sample channels (sample/stack) */}
+        {/* Drum Sequencer — only for sound/sample channels (sample/stack) */}
         {onOpenDrumSequencer && (channel.sourceType === 'sample' || channel.sourceType === 'stack') && (
           <button
             onClick={(e) => { e.stopPropagation(); onOpenDrumSequencer() }}
@@ -973,22 +975,23 @@ function ChannelStrip({
           </button>
         )}
         {effectKnobs.length > 0 && (
-          <span className="text-[5px] font-bold px-1 py-0.5 rounded" style={{ color: `${channel.color}50` }}>
+          <span className="text-[5px] font-bold font-mono px-1 py-0.5 rounded" style={{ color: `${channel.color}50` }}>
             {effectKnobs.length}fx
           </span>
         )}
       </div>
 
-      {/* â”€â”€ Drop indicator â”€â”€ */}
+      {/* ── Drop indicator ── */}
       {isDragOver && (
         <div className="px-1.5 py-1 text-[6px] text-center font-mono font-bold" style={{ color: '#7fa998' }}>
-          â¬‡ DROP FX
+          ⬇ DROP FX
         </div>
       )}
 
-      {/* â”€â”€ Expanded detail panel (inline, spans card width) â”€â”€ */}
+      {/* ── Expanded detail panel (inline, spans card width) ── */}
+        </div>
       {isExpanded && (
-        <div style={{ borderTop: `1px solid rgba(255,255,255,0.04)`, background: '#0a0b0d' }} className="rounded-b-2xl">
+        <div style={{ borderLeft: '1px solid rgba(255,255,255,0.06)', background: '#0a0b0d' }} className="flex-1 rounded-r-2xl overflow-y-auto min-w-0">
           {/* Stack per-row controls */}
           {channel.sourceType === 'stack' && stackRows.length > 0 && (
             <div className="px-2 py-1.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
@@ -1060,7 +1063,7 @@ function ChannelStrip({
                         className="cursor-pointer transition-all duration-100 hover:text-red-400 active:scale-90"
                         style={{ color: '#5a616b', fontSize: '8px', lineHeight: 1, padding: '2px', background: 'none', border: 'none' }}
                         title="Remove sound from stack"
-                      >Ã—</button>
+                      >×</button>
                     )}
                   </div>
                   <div className="flex items-center gap-1">
@@ -1093,7 +1096,7 @@ function ChannelStrip({
               ))}
             </div>
           )}
-          {/* Sound / Bank selectors â€” hidden for stacks (managed per-row above) */}
+          {/* Sound / Bank selectors — hidden for stacks (managed per-row above) */}
           {channel.sourceType !== 'stack' && (channel.isSimpleSource || channel.bank || channel.sourceType === 'sample' || channel.sourceType === 'synth') && (
             <div className="flex flex-col gap-1 px-2 py-1.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
               <div className="flex items-center justify-between">
@@ -1158,7 +1161,7 @@ function ChannelStrip({
               ) : (
                 <span className="text-[6px] text-white/20 font-mono truncate">{channel.source}</span>
               )}
-              {/* Bank selector â€” only for sound/sample channels (drum machines) */}
+              {/* Bank selector — only for sound/sample channels (drum machines) */}
               {channel.sourceType !== 'synth' && channel.sourceType !== 'note' && (
                 <div className="flex items-center gap-1">
                   <select
@@ -1210,17 +1213,17 @@ function ChannelStrip({
             </div>
           ))}
 
-          {/* â”€â”€ ARP section â”€â”€ */}
+          {/* ── ARP section ── */}
           {(() => {
             const arpInfo = getArpInfo(channel.rawCode)
             const isActive = arpInfo.mode !== 'off'
             return (
               <div style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
                 <div className="flex items-center gap-1 px-2 py-1">
-                  <span className="text-[7px]">ðŸŽ¹</span>
+                  <span className="text-[7px]">🎹</span>
                   <span className="text-[6px] font-bold uppercase tracking-[.12em]" style={{ color: isActive ? '#b8a47f' : '#5a616b' }}>ARP</span>
                   <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.03)' }} />
-                  {isActive && <span className="text-[5px] font-bold" style={{ color: '#b8a47f' }}>{arpInfo.mode.toUpperCase()} Ã—{arpInfo.rate}</span>}
+                  {isActive && <span className="text-[5px] font-bold" style={{ color: '#b8a47f' }}>{arpInfo.mode.toUpperCase()} ×{arpInfo.rate}</span>}
                 </div>
                 <div className="flex flex-wrap gap-0.5 px-1.5 pb-1 justify-center" onClick={(e) => e.stopPropagation()}>
                   {ARP_MODES.map(mode => (
@@ -1255,7 +1258,7 @@ function ChannelStrip({
                       step={1}
                       size={26}
                       color="#b8a47f"
-                      formatValue={(v) => `Ã—${v}`}
+                      formatValue={(v) => `×${v}`}
                       onChange={(v) => onArpRateChange?.(channelIdx, v)}
                     />
                   </div>
@@ -1332,7 +1335,7 @@ function ChannelStrip({
           {/* Ducked by indicator */}
           {sidechainInfo.isDucked && sidechainInfo.duckedBySource && (
             <div className="flex items-center gap-1 px-2 py-1" style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-              <span className="text-[6px]">ðŸ¦†</span>
+              <span className="text-[6px]">🦆</span>
               <span className="text-[6px] font-bold uppercase" style={{ color: sidechainInfo.duckedBySource.color }}>{sidechainInfo.duckedBySource.name}</span>
               <button onClick={(e) => { e.stopPropagation(); onDisconnectSidechain() }} className="ml-auto text-white/15 hover:text-red-400/60 cursor-pointer"><X size={7} /></button>
             </div>
@@ -1341,17 +1344,18 @@ function ChannelStrip({
           {/* Orbit */}
           {channel.params.find(p => p.key === 'orbit') && (
             <div className="flex items-center gap-1 px-2 py-1">
-              <span className="text-[6px]">ðŸ”€</span>
+              <span className="text-[6px]">🔀</span>
               <span className="text-[6px] text-white/15 font-mono">ORB {channel.params.find(p => p.key === 'orbit')?.value}</span>
             </div>
           )}
         </div>
       )}
+      </div>
     </div>
   )
 }
 
-// â”€â”€â”€ Mixer Rack (right sidebar) â”€â”€â”€
+// ─── Mixer Rack (right sidebar) ───
 
 interface UserSample {
   id: string
@@ -1402,7 +1406,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     return () => document.removeEventListener('mousedown', handler)
   }, [fxDropdownOpen])
 
-  // â”€â”€ Global project state (parsed from code) â”€â”€
+  // ── Global project state (parsed from code) ──
   const currentBPM = useMemo(() => parseBPM(code), [code])
   const currentScale = useMemo(() => parseScale(code), [code])
 
@@ -1435,13 +1439,13 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     })
   }, [])
 
-  // â”€â”€ Solo handler â”€â”€
+  // ── Solo handler ──
   // Click = exclusive solo (only this channel).
   // Ctrl/Shift+click = additive (toggle this channel in solo set).
   const handleSolo = useCallback((idx: number, exclusive: boolean) => {
     setSoloedChannels(prev => {
       if (exclusive) {
-        // If already the only solo â†’ clear all solos
+        // If already the only solo → clear all solos
         if (prev.has(idx) && prev.size === 1) return new Set()
         // Otherwise solo only this channel
         return new Set([idx])
@@ -1455,7 +1459,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     })
   }, [])
 
-  // â”€â”€ Mute handler â”€â”€
+  // ── Mute handler ──
   const handleMute = useCallback((idx: number) => {
     setMutedChannels(prev => {
       const next = new Set(prev)
@@ -1470,10 +1474,10 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     (onLiveCodeChange ?? onCodeChange)(newCode)
   }, [onLiveCodeChange, onCodeChange])
 
-  // â”€â”€ Param change handler â”€â”€
+  // ── Param change handler ──
   // Uses codeRef (not closure `code`) to always read latest code.
   // For 'gain', if the param doesn't exist in code, auto-inserts .gain(value).
-  // Only inserts ONCE â€” if .gain( already exists in the channel, skip insert.
+  // Only inserts ONCE — if .gain( already exists in the channel, skip insert.
   // For other params, knob does nothing if param missing (use drag-and-drop).
   const handleParamChange = useCallback(
     (channelIdx: number, paramKey: string, value: number) => {
@@ -1496,7 +1500,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     [liveUpdate],
   )
 
-  // â”€â”€ Transpose handler â”€â”€
+  // ── Transpose handler ──
   const handleTranspose = useCallback(
     (channelIdx: number, semitones: number) => {
       // Clamp to Â±24
@@ -1510,7 +1514,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     [liveUpdate],
   )
 
-  // â”€â”€ Arp rate change handler â”€â”€
+  // ── Arp rate change handler ──
   const handleArpRateChange = useCallback(
     (channelIdx: number, rate: number) => {
       const currentCode = codeRef.current
@@ -1522,7 +1526,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     [liveUpdate],
   )
 
-  // â”€â”€ Arp mode change handler â”€â”€
+  // ── Arp mode change handler ──
   const handleArpChange = useCallback(
     (channelIdx: number, mode: string) => {
       const currentCode = codeRef.current
@@ -1534,7 +1538,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     [liveUpdate],
   )
 
-  // â”€â”€ Remove effect handler â”€â”€
+  // ── Remove effect handler ──
   const handleRemoveEffect = useCallback(
     (channelIdx: number, effectKey: string) => {
       const currentCode = codeRef.current
@@ -1546,7 +1550,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     [liveUpdate],
   )
 
-  // â”€â”€ Sound / Bank swap handlers â”€â”€
+  // ── Sound / Bank swap handlers ──
   const handleSoundChange = useCallback(
     (channelIdx: number, newSound: string) => {
       const currentCode = codeRef.current
@@ -1575,7 +1579,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     [onCodeChange],
   )
 
-  // â”€â”€ Rename handler â”€â”€
+  // ── Rename handler ──
   const handleRename = useCallback(
     (channelIdx: number, newName: string) => {
       const currentCode = codeRef.current
@@ -1585,7 +1589,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     [onCodeChange],
   )
 
-  // â”€â”€ Duplicate handler â”€â”€
+  // ── Duplicate handler ──
   const handleDuplicate = useCallback(
     (channelIdx: number) => {
       const currentCode = codeRef.current
@@ -1595,7 +1599,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     [onCodeChange],
   )
 
-  // â”€â”€ Delete handler â”€â”€
+  // ── Delete handler ──
   const handleDelete = useCallback(
     (channelIdx: number) => {
       const currentCode = codeRef.current
@@ -1605,7 +1609,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     [onCodeChange],
   )
 
-  // â”€â”€ Reset handler â”€â”€
+  // ── Reset handler ──
   const handleReset = useCallback(
     (channelIdx: number) => {
       const currentCode = codeRef.current
@@ -1615,7 +1619,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     [onCodeChange],
   )
 
-  // â”€â”€ Stack row handlers (per-sub-sound in stack channels) â”€â”€
+  // ── Stack row handlers (per-sub-sound in stack channels) ──
   const stackRowsMap = useMemo(() => {
     const map = new Map<number, StackRow[]>()
     channels.forEach((ch, idx) => {
@@ -1662,7 +1666,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     [onCodeChange],
   )
 
-  // â”€â”€ Add channel handler â”€â”€
+  // ── Add channel handler ──
   const handleAddChannel = useCallback(
     (sound: string, type: 'synth' | 'sample' | 'vocal', vocalLoopAt?: number) => {
       const currentCode = codeRef.current
@@ -1673,7 +1677,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     [onCodeChange],
   )
 
-  // â”€â”€ Drag & drop handlers â”€â”€
+  // ── Drag & drop handlers ──
   const handleDragOver = useCallback((idx: number) => {
     setDragOverChannel(idx)
   }, [])
@@ -1688,7 +1692,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
       setDragOverChannel(null)
 
       try {
-        // â”€â”€ 1) FX drop â”€â”€
+        // ── 1) FX drop ──
         const fxData = e.dataTransfer.getData('application/x-strudel-fx')
         if (fxData) {
           const effect = JSON.parse(fxData)
@@ -1707,18 +1711,18 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
           return
         }
 
-        // â”€â”€ 2) Sound/bank drop â”€â”€
+        // ── 2) Sound/bank drop ──
         const soundData = e.dataTransfer.getData('application/x-strudel-sound')
         if (soundData) {
           const sound = JSON.parse(soundData)
           const currentCode = codeRef.current
 
           if (sound.type === 'bank') {
-            // Swap the bank: .bank("RolandTR808") â†’ .bank("newBank")
+            // Swap the bank: .bank("RolandTR808") → .bank("newBank")
             const newCode = swapBankInChannel(currentCode, channelIdx, sound.name)
             if (newCode !== currentCode) liveUpdate(newCode)
           } else {
-            // Swap the sound source: s("bd") â†’ s("newSound") or .s("sawtooth") â†’ .s("newSynth")
+            // Swap the sound source: s("bd") → s("newSound") or .s("sawtooth") → .s("newSynth")
             const newCode = swapSoundInChannel(currentCode, channelIdx, sound.name)
             if (newCode !== currentCode) liveUpdate(newCode)
           }
@@ -1731,9 +1735,9 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     [liveUpdate, channels],
   )
 
-  // â”€â”€ Sidechain routing map â”€â”€
+  // ── Sidechain routing map ──
   const sidechainMap = useMemo(() => {
-    // Build: sourceIdx â†’ duckTargetOrbit, orbitToSourceIdx, targetIdx â†’ sourceIdx
+    // Build: sourceIdx → duckTargetOrbit, orbitToSourceIdx, targetIdx → sourceIdx
     const sourceToOrbit = new Map<number, number>()
     const orbitToSource = new Map<number, number>()
 
@@ -1819,7 +1823,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     }
   }, [channels, sidechainMap])
 
-  // â”€â”€ Sidechain handlers â”€â”€
+  // ── Sidechain handlers ──
   const handleEnableSidechain = useCallback(
     (sourceIdx: number) => {
       const currentCode = codeRef.current
@@ -1893,7 +1897,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      {/* â”€â”€ Header bar â€” hardware control strip â”€â”€ */}
+      {/* ── Header bar — hardware control strip ── */}
       <div
         className="shrink-0 flex items-center gap-2 px-3 py-1.5"
         style={{
@@ -1912,7 +1916,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
         {/* Divider */}
         <div className="w-px h-4" style={{ background: 'rgba(255,255,255,0.06)' }} />
 
-        {/* BPM â€” compact inline */}
+        {/* BPM — compact inline */}
         <div className="flex items-center gap-1.5">
           <span className="text-[7px] font-black uppercase" style={{ color: '#7fa998' }}>BPM</span>
           <input
@@ -1929,13 +1933,13 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
               [&::-webkit-slider-thumb]:border-none
               bg-white/[0.08]"
           />
-          <span className="text-[10px] font-mono font-black w-6 tabular-nums" style={{ color: '#7fa998' }}>{currentBPM ?? 'â€”'}</span>
+          <span className="text-[10px] font-mono font-black w-6 tabular-nums" style={{ color: '#7fa998' }}>{currentBPM ?? '—'}</span>
         </div>
 
         {/* Divider */}
         <div className="w-px h-4" style={{ background: 'rgba(255,255,255,0.06)' }} />
 
-        {/* Key / Scale â€” hardware readout */}
+        {/* Key / Scale — hardware readout */}
         <div className="flex items-center gap-1">
           <span className="text-[7px] font-black uppercase" style={{ color: '#b8a47f' }}>KEY</span>
           {currentScale ? (
@@ -1993,7 +1997,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
         {/* Divider */}
         <div className="w-px h-4" style={{ background: 'rgba(255,255,255,0.06)' }} />
 
-        {/* Metro toggle â€” clay pill button */}
+        {/* Metro toggle — clay pill button */}
         <button
           onClick={() => onMetronomeToggle?.(!metronomeEnabled)}
           className="cursor-pointer transition-all duration-[180ms] active:scale-95"
@@ -2017,7 +2021,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
         {/* Divider */}
         <div className="w-px h-4" style={{ background: 'rgba(255,255,255,0.06)' }} />
 
-        {/* FX dropdown â€” clay pill button */}
+        {/* FX dropdown — clay pill button */}
         <div className="relative" ref={fxDropdownRef}>
           <button
             onClick={() => setFxDropdownOpen(p => !p)}
@@ -2052,7 +2056,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
             >
               <div className="flex items-center gap-1.5 mb-1.5 px-1">
                 <span className="text-[7px] font-black uppercase tracking-[.2em]" style={{ color: '#5a616b' }}>EFFECTS</span>
-                <span className="text-[5px] ml-auto font-mono" style={{ color: '#5a616b' }}>drag â†’ channel</span>
+                <span className="text-[5px] ml-auto font-mono" style={{ color: '#5a616b' }}>drag → channel</span>
               </div>
               {(['filter', 'space', 'drive', 'mod', 'env', 'sidechain', 'pattern', 'sample'] as const).map(cat => {
                 const fxInCat = DRAGGABLE_EFFECTS.filter(fx => fx.category === cat)
@@ -2123,10 +2127,10 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
         )}
       </div>
 
-      {/* â”€â”€ Channel Strips â€” glass card grid â”€â”€ */}
+      {/* ── Channel Strips — glass card grid ── */}
       <div className="flex-1 overflow-y-auto px-3 py-3 relative">
         {channels.length === 0 ? (
-          /* â”€â”€ Empty state: prompt to add first channel â”€â”€ */
+          /* ── Empty state: prompt to add first channel ── */
           <div className="flex flex-col items-center justify-center h-full text-center gap-3">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-2"
               style={{ background: '#0a0b0d', boxShadow: 'inset 3px 3px 6px #050607, inset -3px -3px 6px #1a1d22' }}>
@@ -2202,7 +2206,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                 />
               ))}
 
-              {/* â”€â”€ Add Channel tile (inline in grid) â”€â”€ */}
+              {/* ── Add Channel tile (inline in grid) ── */}
               <button
                 onClick={() => setShowAddMenu(v => !v)}
                 className="flex flex-col items-center justify-center gap-1.5 rounded-2xl cursor-pointer transition-all duration-[180ms] active:scale-95"
@@ -2223,7 +2227,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
           </>
         )}
 
-        {/* â”€â”€ Add Channel Dropdown Menu (overlay) â”€â”€ */}
+        {/* ── Add Channel Dropdown Menu (overlay) ── */}
         {showAddMenu && (
           <div
             className="absolute left-3 right-3 rounded-2xl overflow-hidden z-50"
@@ -2278,12 +2282,12 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
               </div>
             ))}
 
-            {/* â”€â”€ User Uploaded Samples â”€â”€ */}
+            {/* ── User Uploaded Samples ── */}
             {userSamples.length > 0 && (
               <div>
                 <div className="px-3 py-1" style={{ background: '#0a0b0d' }}>
                   <span className="text-[7px] font-black uppercase tracking-[.1em]" style={{ color: '#5a616b' }}>
-                    ðŸŽ¤ Your Uploaded Samples
+                    🎤 Your Uploaded Samples
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-1 px-3 py-1.5">
@@ -2312,7 +2316,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                           border: '1px solid rgba(34,211,238,0.1)',
                           opacity: 0.85,
                         }}
-                        title={`Add s("${s.name}").loopAt(${loopAt}) channel${dur ? ` Â· ${Math.floor(dur / 60)}:${String(Math.floor(dur % 60)).padStart(2, '0')}` : ''}`}
+                        title={`Add s("${s.name}").loopAt(${loopAt}) channel${dur ? ` · ${Math.floor(dur / 60)}:${String(Math.floor(dur % 60)).padStart(2, '0')}` : ''}`}
                       >
                         {s.name}
                       </button>
@@ -2343,7 +2347,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
         )}
       </div>
 
-      {/* Signal flow â€” hardware bottom strip */}
+      {/* Signal flow — hardware bottom strip */}
       {channels.length > 0 && (
         <div
           className="shrink-0 px-3 py-1"
@@ -2362,7 +2366,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                 return (
                   <span key={srcIdx} className="flex items-center gap-1 text-[7px] font-mono px-2 py-0.5 rounded-full" style={{ background: '#111318', boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22' }}>
                     <span style={{ color: src.color }} className="opacity-70">{src.name}</span>
-                    <span style={{ color: '#7fa998', opacity: 0.5 }}>â†’</span>
+                    <span style={{ color: '#7fa998', opacity: 0.5 }}>→</span>
                     {targets.length > 0 ? targets.map((t, ti) => (
                       <span key={t.id}>
                         {ti > 0 && <span style={{ color: '#5a616b' }}>,</span>}
@@ -2389,11 +2393,11 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                   }}
                 />
                 {i < channels.length - 1 && (
-                  <span className="text-[6px]" style={{ color: '#5a616b', opacity: 0.3 }}>Â·</span>
+                  <span className="text-[6px]" style={{ color: '#5a616b', opacity: 0.3 }}>·</span>
                 )}
               </span>
             ))}
-            <span className="text-[7px] ml-2 font-mono" style={{ color: '#5a616b' }}>â†’ OUT</span>
+            <span className="text-[7px] ml-2 font-mono" style={{ color: '#5a616b' }}>→ OUT</span>
           </div>
         </div>
       )}
@@ -2416,7 +2420,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
           // Format speed to 4 decimal places max
           const spdStr = Math.round(spd * 10000) / 10000
 
-          // â”€â”€ begin â”€â”€
+          // ── begin ──
           const ch1 = parseStrudelCode(c)[idx]
           if (!ch1) return
           if (ch1.effects.includes('begin')) {
@@ -2429,7 +2433,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
             c = insertEffectInChannel(c, idx, `.begin(${b.toFixed(2)})`)
           }
 
-          // â”€â”€ end (re-parse after begin change) â”€â”€
+          // ── end (re-parse after begin change) ──
           const ch2 = parseStrudelCode(c)[idx]
           if (ch2 && ch2.effects.includes('end')) {
             if (Math.abs(e - 1) < 0.005) {
@@ -2441,7 +2445,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
             c = insertEffectInChannel(c, idx, `.end(${e.toFixed(2)})`)
           }
 
-          // â”€â”€ speed (re-parse after trim changes) â”€â”€
+          // ── speed (re-parse after trim changes) ──
           const ch3 = parseStrudelCode(c)[idx]
           if (ch3 && ch3.effects.includes('speed')) {
             if (Math.abs(spdStr - 1) < 0.001) {
