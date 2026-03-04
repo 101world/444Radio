@@ -357,7 +357,7 @@ export default function StudioVocalPadSampler({
 
     // splice(N, "pat") chops sample into N slices, selects by pattern, adjusts speed per slice
     const effectsStr = effectsToKeep.length > 0 ? '\n  ' + effectsToKeep.join('\n  ') : ''
-    const newCode = `$${name}: s("${sampleName}")\n  .splice(${localChopCount}, "${pattern}")${pitchStr}${sidechainStr}${effectsStr}\n  .orbit(${orbit})._scope()`
+    const newCode = `$${name}: s("${sampleName}")\n  .splice(${localChopCount}, "${pattern}")${pitchStr}${sidechainStr}${effectsStr}\n  .orbit(${orbit}).scope()`
 
     onPatternChange(newCode)
     setHasEdited(false)
