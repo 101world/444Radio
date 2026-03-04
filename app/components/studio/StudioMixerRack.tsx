@@ -277,6 +277,21 @@ const FX_GROUPS: { label: string; icon: string; keys: string[] }[] = [
   { label: 'SAMPLE', icon: '🎤', keys: ['loopAt', 'begin', 'end', 'chop', 'stretch', 'slice'] },
 ]
 
+// ─── Channel-type → relevant FX groups & effect keys ───
+// Groups listed here are "native" to the type and shown in expanded view.
+// Effects outside these groups still appear if user manually added them.
+
+const TYPE_RELEVANT_FX_GROUPS: Record<string, Set<string>> = {
+  synth:  new Set(['FILTER', 'DRIVE', 'SPACE', 'MOD', 'ENV']),             // No SAMPLE, CHAIN only if active
+  note:   new Set(['FILTER', 'DRIVE', 'SPACE', 'MOD', 'ENV']),
+  sample: new Set(['FILTER', 'DRIVE', 'SPACE', 'MOD', 'ENV', 'SAMPLE', 'CHAIN']),
+  stack:  new Set(['FILTER', 'DRIVE', 'SPACE', 'MOD', 'CHAIN']),
+}
+
+// Effect keys that only make sense for specific channel types
+const INSTRUMENT_ONLY_KEYS = new Set(['detune'])      // Synth/note only
+const SAMPLE_ONLY_KEYS = new Set(['speed', 'loopAt', 'begin', 'end', 'chop', 'stretch', 'slice'])  // Sample only
+
 // ─── Draggable Effect Badge ───
 
 function EffectBadge({ effect }: { effect: typeof DRAGGABLE_EFFECTS[number] }) {
@@ -580,21 +595,41 @@ function ChannelStrip({
   const [showMoreMenu, setShowMoreMenu] = useState(false)
   const moreMenuRef = useRef<HTMLDivElement>(null)
 
-  // All effect params (everything except gain, orbit, duck routing, and speed for sample channels)
+  // Derived: is this channel melodic (synth/note) vs sample-based?
+  const isMelodic = channel.sourceType === 'synth' || channel.sourceType === 'note'
+  const isSample = channel.sourceType === 'sample' || channel.sourceType === 'stack'
+
+  // All effect params — filtered by channel type relevance
+  // Hides instrument-only knobs on sample channels and vice versa
   const effectKnobs = useMemo(() => {
     const skipKeys = new Set(['gain', 'orbit', 'duck'])
-    // For sample channels, speed is handled by the dedicated PITCH knob
+    // Speed is handled by the dedicated PITCH knob for sample channels
     if (channel.sourceType === 'sample') skipKeys.add('speed')
+    // Filter out type-incompatible effects from compact knob view
+    if (isMelodic) {
+      SAMPLE_ONLY_KEYS.forEach(k => skipKeys.add(k))
+    }
+    if (isSample) {
+      INSTRUMENT_ONLY_KEYS.forEach(k => skipKeys.add(k))
+    }
     return channel.params.filter(p => !skipKeys.has(p.key))
-  }, [channel])
+  }, [channel, isMelodic, isSample])
 
-  // Group effects by category
+  // Group effects by category — type-aware filtering
+  // Shows: (1) relevant groups that have active params, (2) irrelevant groups only if they have active params (manually added)
   const fxGroups = useMemo(() => {
+    const relevantGroups = TYPE_RELEVANT_FX_GROUPS[channel.sourceType] || TYPE_RELEVANT_FX_GROUPS.sample
     return FX_GROUPS.map(group => ({
       ...group,
       params: channel.params.filter(p => group.keys.includes(p.key)),
       active: group.keys.some(k => channel.effects.includes(k)),
-    })).filter(g => g.active || g.params.length > 0)
+      isRelevant: relevantGroups.has(group.label),
+    })).filter(g => {
+      // Always show groups with active params (user added them manually)
+      if (g.active || g.params.length > 0) return true
+      // Don't show empty irrelevant groups
+      return false
+    })
   }, [channel])
 
   // Close "more" menu on outside click
@@ -916,14 +951,16 @@ function ChannelStrip({
         }}
       />
 
-      {/* ── Active effect tags — removable pills ── */}
+      {/* ── Active effect tags — removable pills, organized by type relevance ── */}
       {channel.effects.length > 0 && (
         <div className="flex flex-wrap gap-[2px] px-1.5 py-0.5" onClick={(e) => e.stopPropagation()}>
           {channel.effects
             .filter(fx => !['scope', 'pianoroll', 'orbit', 'gain'].includes(fx))
             .map(fx => {
               const isArp = fx === 'arp' || fx === 'arpeggiate'
-              const tagColor = isArp ? '#b8a47f' : channel.color
+              // Check type relevance: instrument-only effects on sample channels (or vice versa) get dimmed
+              const isOffType = (isMelodic && SAMPLE_ONLY_KEYS.has(fx)) || (isSample && INSTRUMENT_ONLY_KEYS.has(fx))
+              const tagColor = isArp ? '#b8a47f' : isOffType ? '#6b5a5a' : channel.color
               return (
                 <span
                   key={fx}
@@ -1365,12 +1402,13 @@ function ChannelStrip({
             </div>
           )}
 
-          {/* FX Group racks */}
+          {/* FX Group racks — organized by channel type relevance */}
           {fxGroups.map((group) => (
             <div key={group.label} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }} className="last:border-b-0">
               <div className="flex items-center gap-1 px-2 py-1">
                 <span className="text-[7px]">{group.icon}</span>
-                <span className="text-[6px] font-bold uppercase tracking-[.12em]" style={{ color: '#5a616b' }}>{group.label}</span>
+                <span className="text-[6px] font-bold uppercase tracking-[.12em]" style={{ color: group.isRelevant ? '#5a616b' : '#3a3f46' }}>{group.label}</span>
+                {!group.isRelevant && <span className="text-[5px] opacity-30" title="Not standard for this channel type">⚠</span>}
                 <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.03)' }} />
               </div>
               <div className="flex flex-wrap gap-0.5 px-1.5 pb-2 justify-center">
@@ -1385,8 +1423,8 @@ function ChannelStrip({
             </div>
           ))}
 
-          {/* ── ARP section ── */}
-          {(() => {
+          {/* ── ARP section — melodic channels only (synth/note) ── */}
+          {isMelodic && (() => {
             const arpInfo = getArpInfo(channel.rawCode)
             const isActive = arpInfo.mode !== 'off'
             return (
