@@ -14,6 +14,7 @@ import { generateMetronomeCode } from '@/lib/strudel-code-parser'
 import { setOrbitAnalyser, clearOrbitAnalysers } from '@/lib/studio-analysers'
 import StudioPianoRoll from './studio/StudioPianoRoll'
 import StudioDrumSequencer from './studio/StudioDrumSequencer'
+import StudioVocalPadSampler from './studio/StudioVocalPadSampler'
 // Sub-components
 import StudioTopBar from './studio/StudioTopBar'
 import StudioGenreSelector, { GENRE_TEMPLATES } from './studio/StudioGenreSelector'
@@ -61,6 +62,7 @@ export default function StudioEditor() {
   const [metronomeEnabled, setMetronomeEnabled] = useState(false)
   const [pianoRollChannel, setPianoRollChannel] = useState<number | null>(null)
   const [drumSequencerChannel, setDrumSequencerChannel] = useState<number | null>(null)
+  const [padSamplerChannel, setPadSamplerChannel] = useState<number | null>(null)
   const [sampleUploaderOpen, setSampleUploaderOpen] = useState(false)
   const [userSamples, setUserSamples] = useState<{ id: string; name: string; url: string; duration_ms?: number | null; original_bpm?: number | null }[]>([])
 
@@ -714,8 +716,9 @@ export default function StudioEditor() {
             onMetronomeToggle={handleMetronomeToggle}
             isPlaying={isPlaying}
             onPreview={handlePreviewSound}
-            onOpenPianoRoll={(idx) => { setDrumSequencerChannel(null); setPianoRollChannel(prev => prev === idx ? null : idx) }}
-            onOpenDrumSequencer={(idx) => { setPianoRollChannel(null); setDrumSequencerChannel(prev => prev === idx ? null : idx) }}
+            onOpenPianoRoll={(idx) => { setDrumSequencerChannel(null); setPadSamplerChannel(null); setPianoRollChannel(prev => prev === idx ? null : idx) }}
+            onOpenDrumSequencer={(idx) => { setPianoRollChannel(null); setPadSamplerChannel(null); setDrumSequencerChannel(prev => prev === idx ? null : idx) }}
+            onOpenPadSampler={(idx) => { setPianoRollChannel(null); setDrumSequencerChannel(null); setPadSamplerChannel(prev => prev === idx ? null : idx) }}
             onOpenSampleUploader={() => setSampleUploaderOpen(true)}
             onAddVocalChannel={handleAddVocalChannel}
             userSamples={userSamples}
@@ -891,10 +894,65 @@ export default function StudioEditor() {
               />
             )
           })()}
+
+          {/* Vocal Pad Sampler — docks at bottom */}
+          {padSamplerChannel !== null && (() => {
+            const channels = parseStrudelCode(code)
+            const ch = channels[padSamplerChannel]
+            if (!ch) return null
+            // Extract chop count from channel code (e.g., .chop(16) → 16)
+            const chopMatch = ch.rawCode.match(/\.chop\(\s*(\d+)\s*\)/)
+            const chopCount = chopMatch ? parseInt(chopMatch[1]) : 16
+            // Extract loopAt from channel code
+            const loopAtMatch = ch.rawCode.match(/\.loopAt\(\s*(\d+)\s*\)/)
+            const loopAtVal = loopAtMatch ? parseInt(loopAtMatch[1]) : 4
+            return (
+              <StudioVocalPadSampler
+                key={padSamplerChannel}
+                sampleName={ch.source}
+                color={ch.color}
+                channelName={ch.name}
+                channelRawCode={ch.rawCode}
+                chopCount={chopCount}
+                projectBpm={parseBPM(code) ?? 120}
+                onPatternChange={(newRawCode: string) => {
+                  const latest = codeRef.current
+                  const newCode = replaceChannelBlock(latest, padSamplerChannel, newRawCode)
+                  if (newCode !== latest) handleLiveCodeChange(newCode)
+                }}
+                onPreviewPad={async (sampleName: string, begin: number, end: number) => {
+                  const engine = engineRef.current
+                  if (!engine) return
+                  try {
+                    const actx = engine.webaudio.getAudioContext()
+                    await actx.resume()
+                    let sd = engine.superdough || engine.webaudio.superdough
+                    if (!sd) {
+                      const sdMod = await import('superdough')
+                      sd = sdMod.superdough
+                    }
+                    if (!sd) return
+                    const now = actx.currentTime + 0.05
+                    const params: Record<string, unknown> = {
+                      s: sampleName,
+                      begin,
+                      end,
+                      gain: 0.6,
+                    }
+                    if (ch.bank) params.bank = ch.bank
+                    await sd(params, now, 0.5)
+                  } catch (err) {
+                    console.error('[444 STUDIO] pad preview error:', err)
+                  }
+                }}
+                onClose={() => setPadSamplerChannel(null)}
+              />
+            )
+          })()}
         </div>
       </div>
 
-      {/* â”€â”€ SAMPLE UPLOADER MODAL â”€â”€ */}
+      {/* — SAMPLE UPLOADER MODAL — */}
       <StudioSampleUploader
         isOpen={sampleUploaderOpen}
         onClose={() => setSampleUploaderOpen(false)}

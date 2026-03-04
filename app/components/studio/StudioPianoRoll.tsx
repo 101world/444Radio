@@ -854,7 +854,7 @@ interface StudioPianoRollProps {
 const CELL_W_BASE = 28
 const CELL_H_BASE = 16
 const PIANO_W = 44
-const BAR_OPTIONS = [1, 2, 4] as const
+const BAR_OPTIONS = [1, 2, 4, 8, 16, 32] as const
 const GRID_OPTIONS = [16, 32] as const
 const RESIZE_HANDLE_W = 6
 
@@ -929,7 +929,18 @@ export default function StudioPianoRoll({
   // Effects panel state
   const [showEffectsPanel, setShowEffectsPanel] = useState(true)
 
-  // â”€â”€ Preset menu state â”€â”€
+  // ── Loop Recording state ──
+  const [isLoopRecording, setIsLoopRecording] = useState(false)
+  const loopRecordStart = useRef(0)
+  const loopStepTimer = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [loopCurrentStep, setLoopCurrentStep] = useState(0)
+
+  // Cleanup loop recording timer on unmount
+  useEffect(() => {
+    return () => { if (loopStepTimer.current) clearInterval(loopStepTimer.current) }
+  }, [])
+
+  // ── Preset menu state ──
   const [showPresetMenu, setShowPresetMenu] = useState(false)
   const [presetCategory, setPresetCategory] = useState<PresetCategory>('chords')
   const presetMenuRef = useRef<HTMLDivElement>(null)
@@ -1037,7 +1048,7 @@ export default function StudioPianoRoll({
     speedModRef.current = speedMod
     console.log('[PianoRoll] result:', { notesCount: parsed.size, bars: parsedBars, speedMod })
     setNoteMap(parsed)
-    setBars(Math.max(1, parsedBars) as 1 | 2 | 4)
+    setBars(Math.max(1, parsedBars))
     setHasUserEdited(false)
 
     // Auto-scroll to center on notes (only on first open)
@@ -1079,7 +1090,11 @@ export default function StudioPianoRoll({
   const toggleNote = useCallback((midi: number, step: number, forceMode?: 'add' | 'remove') => {
     // Block out-of-scale notes in ALL modes (scale is mandatory)
     if (!scaleMidiSet.has(midi)) return
-    const key = `${midi}:${step}`
+
+    // In loop recording mode, override step to current playhead position
+    const effectiveStep = isLoopRecording ? loopCurrentStep : step
+
+    const key = `${midi}:${effectiveStep}`
     setNoteMap(prev => {
       const next = new Map(prev)
       const mode = forceMode || (prev.has(key) ? 'remove' : 'add')
@@ -1108,7 +1123,41 @@ export default function StudioPianoRoll({
       return next
     })
     setHasUserEdited(true)
-  }, [soundSource, scaleMidiSet, isNoteMode, onNotePreview])
+  }, [soundSource, scaleMidiSet, isNoteMode, onNotePreview, isLoopRecording, loopCurrentStep])
+
+  // ── Loop Recording: start/stop functions ──
+  const startLoopRecording = useCallback(() => {
+    loopRecordStart.current = Date.now()
+    setIsLoopRecording(true)
+    setLoopCurrentStep(0)
+
+    const totalSteps = bars * stepsPerBar
+    const stepMs = (60000 / 120) / (stepsPerBar / 4) // ~125ms at 120bpm, 16 steps
+    const loopMs = totalSteps * stepMs
+
+    // Step indicator update
+    if (loopStepTimer.current) clearInterval(loopStepTimer.current)
+
+    const wrapTimer = setInterval(() => {
+      loopRecordStart.current = Date.now()
+    }, loopMs)
+
+    loopStepTimer.current = setInterval(() => {
+      const elapsed = Date.now() - loopRecordStart.current
+      setLoopCurrentStep(Math.floor(elapsed / stepMs) % totalSteps)
+    }, stepMs / 2)
+
+    // Store wrap timer for cleanup
+    ;(loopRecordStart as unknown as { _wrap?: ReturnType<typeof setInterval> })._wrap = wrapTimer
+  }, [bars, stepsPerBar])
+
+  const stopLoopRecording = useCallback(() => {
+    setIsLoopRecording(false)
+    setLoopCurrentStep(0)
+    if (loopStepTimer.current) { clearInterval(loopStepTimer.current); loopStepTimer.current = null }
+    const w = (loopRecordStart as unknown as { _wrap?: ReturnType<typeof setInterval> })._wrap
+    if (w) { clearInterval(w); delete (loopRecordStart as unknown as { _wrap?: ReturnType<typeof setInterval> })._wrap }
+  }, [])
 
   // â”€â”€ Resize note (drag right edge) â”€â”€
   const handleResizeStart = useCallback((key: string, e: React.MouseEvent) => {
@@ -1290,6 +1339,14 @@ export default function StudioPianoRoll({
   // â”€â”€ Keyboard: Escape, Ctrl+C/V/D/A, Delete â”€â”€
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // Space = toggle loop recording
+      if (e.key === ' ') {
+        e.preventDefault()
+        if (isLoopRecording) stopLoopRecording()
+        else startLoopRecording()
+        return
+      }
+
       // Tool shortcuts: C = split/scissors, V = pointer
       if (e.key === 'c' && !e.ctrlKey && !e.metaKey && !e.altKey) {
         setActiveTool('split')
@@ -1413,7 +1470,7 @@ export default function StudioPianoRoll({
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [onClose, selectedNotes, bars, stepsPerBar])
+  }, [onClose, selectedNotes, bars, stepsPerBar, isLoopRecording, startLoopRecording, stopLoopRecording])
 
   // â”€â”€ Clear all â”€â”€
   const clearAll = useCallback(() => {
@@ -1599,6 +1656,32 @@ export default function StudioPianoRoll({
             className="px-1 py-0.5 text-[9px] font-bold cursor-pointer transition-all"
             style={{ background: '#0a0b0d', color: '#e8ecf0', border: 'none', borderRadius: '8px', boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22', lineHeight: 1 }}
           >+</button>
+
+          <div className="w-px h-3.5 bg-white/[0.08]" />
+
+          {/* Loop Record toggle */}
+          <button
+            onClick={isLoopRecording ? stopLoopRecording : startLoopRecording}
+            className="px-2.5 py-0.5 text-[8px] font-bold cursor-pointer transition-all rounded-lg flex items-center gap-1"
+            style={{
+              background: isLoopRecording ? '#7f1d1d' : '#0a0b0d',
+              color: isLoopRecording ? '#fca5a5' : '#ef4444',
+              border: 'none',
+              borderRadius: '8px',
+              boxShadow: isLoopRecording
+                ? 'inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22'
+                : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+              ...(isLoopRecording ? { animation: 'pulse 1s ease-in-out infinite' } : {}),
+            }}
+            title="Loop record — play notes in real-time, quantized to grid (Space)"
+          >
+            ⏺ {isLoopRecording ? 'STOP' : 'REC'}
+          </button>
+          {isLoopRecording && (
+            <span className="text-[7px] font-mono" style={{ color: '#fca5a5' }}>
+              step {loopCurrentStep + 1}/{bars * stepsPerBar}
+            </span>
+          )}
 
           <div className="w-px h-3.5 bg-white/[0.08]" />
 
@@ -2060,6 +2143,23 @@ export default function StudioPianoRoll({
             </div>
             <div className="text-[10px] mt-2" style={{ color: '#5a616b' }}>Click any cell to start composing a static pattern</div>
           </div>
+        )}
+
+        {/* Loop recording playhead */}
+        {isLoopRecording && (
+          <div
+            className="absolute z-50 pointer-events-none"
+            style={{
+              left: PIANO_W + loopCurrentStep * cellW,
+              top: 0,
+              width: 2,
+              height: '100%',
+              background: '#ef4444',
+              opacity: 0.8,
+              boxShadow: '0 0 6px #ef4444',
+              transition: 'left 50ms linear',
+            }}
+          />
         )}
 
         <div style={{ width: PIANO_W + gridW, position: 'relative' }}>

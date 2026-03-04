@@ -664,7 +664,7 @@ interface StudioDrumSequencerProps {
 const CELL_W_BASE = 32
 const CELL_H_BASE = 32
 const LABEL_W = 140
-const BAR_OPTIONS = [1, 2, 4] as const
+const BAR_OPTIONS = [1, 2, 4, 8, 16, 32] as const
 const GRID_OPTIONS = [16, 32] as const
 
 export default function StudioDrumSequencer({
@@ -718,7 +718,7 @@ export default function StudioDrumSequencer({
       const { hits, bars: parsedBars } = parseDrumPattern(row.pattern, stepsPerBar)
       newGrid.set(row.instrument, hits)
       rowIds.push(row.instrument)
-      if (parsedBars > 1) setBars(parsedBars as 1 | 2 | 4)
+      if (parsedBars > 1) setBars(parsedBars)
     }
 
     // Build fullInstrument map (preserves sample variants like "bd:3")

@@ -1179,7 +1179,9 @@ export function replaceChannelPattern(
 
     // Neither n() nor note() found — insert note()/n() for pitched playback
     // For sample channels with s("sampleName pattern..."), convert to
-    // note("pattern").s("sampleName") — the Strudel way to pitch samples
+    // note("pattern").s("sampleName") — the Strudel way to pitch samples.
+    // IMPORTANT: Also strip .loopAt() when converting — loopAt stretches the
+    // sample over N cycles which conflicts with per-note pitched playback.
     const sCall = raw.match(/\.?s\(\s*"([^"]*)"\s*\)/)
     if (sCall) {
       // Extract the base sample name from s() (strip pattern/mini-notation)
@@ -1191,9 +1193,17 @@ export function replaceChannelPattern(
       // Replace s() with note("pattern").s("baseName") at the same position
       // This follows Strudel convention: note() first, .s() specifies sound
       const cleanSCall = `.s("${baseName || sContent}")`
-      const newRaw = raw.substring(0, sStart) +
+      let newRaw = raw.substring(0, sStart) +
         `${method}("${newPattern}")` + cleanSCall +
         raw.substring(sStart + sCall[0].length)
+
+      // Strip .loopAt(...) — incompatible with per-note pitched playback.
+      // Each note should trigger the sample at natural speed, not stretched.
+      newRaw = newRaw.replace(/\.loopAt\(\s*\d+\s*\)/g, '')
+      // Also strip .speed() compensation that was paired with loopAt
+      // (the BPM pitch correction comment line too)
+      newRaw = newRaw.replace(/\n\s*\.speed\([^)]*\)\s*\/\/\s*sample:.*$/m, '')
+
       return code.substring(0, ch.blockStart) + newRaw + code.substring(ch.blockEnd)
     } else {
       // No s() call — insert after "$name:" declaration

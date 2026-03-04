@@ -497,6 +497,7 @@ function ChannelStrip({
   onDisconnectSidechain,
   onOpenPianoRoll,
   onOpenDrumSequencer,
+  onOpenPadSampler,
   onOpenWaveform,
   onRename,
   onDuplicate,
@@ -548,6 +549,7 @@ function ChannelStrip({
   onDisconnectSidechain: () => void
   onOpenPianoRoll?: () => void
   onOpenDrumSequencer?: () => void
+  onOpenPadSampler?: () => void
   onOpenWaveform?: () => void
   onRename: (channelIdx: number, newName: string) => void
   onDuplicate?: (channelIdx: number) => void
@@ -941,6 +943,17 @@ function ChannelStrip({
             title={channel.sourceType === 'sample' && channel.effects.includes('loopAt') ? "Chop / Drum Pad" : "Drum Sequencer"}
           >
             <Grid3X3 size={9} />
+          </button>
+        )}
+        {/* Pad Sampler — for vocal/sample channels with loopAt + chop */}
+        {onOpenPadSampler && channel.sourceType === 'sample' && channel.effects.includes('loopAt') && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onOpenPadSampler() }}
+            className="p-1 rounded-lg transition-colors cursor-pointer"
+            style={{ color: '#22d3ee', opacity: 0.4 }}
+            title="Pad Sampler (MPC)"
+          >
+            <span className="text-[9px] font-bold">🎛️</span>
           </button>
         )}
         {onDuplicate && (
@@ -1373,6 +1386,7 @@ interface StudioMixerRackProps {
   onMetronomeToggle?: (enabled: boolean) => void
   onOpenPianoRoll?: (channelIdx: number) => void
   onOpenDrumSequencer?: (channelIdx: number) => void
+  onOpenPadSampler?: (channelIdx: number) => void
   onOpenSampleUploader?: () => void
   onAddVocalChannel?: (name: string, loopAt: number, sampleBpm?: number) => void
   userSamples?: UserSample[]
@@ -1380,7 +1394,7 @@ interface StudioMixerRackProps {
   onPreview?: (soundCode: string) => void
 }
 
-export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, onMixerStateChange, metronomeEnabled = false, onMetronomeToggle, onOpenPianoRoll, onOpenDrumSequencer, onOpenSampleUploader, onAddVocalChannel, userSamples = [], isPlaying: isPlayingProp = false, onPreview }: StudioMixerRackProps) {
+export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, onMixerStateChange, metronomeEnabled = false, onMetronomeToggle, onOpenPianoRoll, onOpenDrumSequencer, onOpenPadSampler, onOpenSampleUploader, onAddVocalChannel, userSamples = [], isPlaying: isPlayingProp = false, onPreview }: StudioMixerRackProps) {
   const channels = useMemo(() => parseStrudelCode(code), [code])
   const [expandedChannels, setExpandedChannels] = useState<Set<string>>(new Set())
   const [mutedChannels, setMutedChannels] = useState<Set<number>>(new Set())
@@ -2480,6 +2494,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                     onDisconnectSidechain={() => handleDisconnectSidechain(idx)}
                     onOpenPianoRoll={onOpenPianoRoll ? () => onOpenPianoRoll(idx) : undefined}
                     onOpenDrumSequencer={onOpenDrumSequencer ? () => onOpenDrumSequencer(idx) : undefined}
+                    onOpenPadSampler={onOpenPadSampler ? () => onOpenPadSampler(idx) : undefined}
                     onOpenWaveform={() => { const sample = userSamples.find(s => s.name === ch.source); if (sample) { setSelectedWaveformUrl(sample.url); setSelectedWaveformChannel(idx); setWaveformModalOpen(true); } }}
                     onRename={handleRename}
                     onDuplicate={handleDuplicate}
