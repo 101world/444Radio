@@ -1425,6 +1425,34 @@ export function removeChannel(code: string, channelIdx: number): string {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  Reorder Channels — swap two channel blocks in the code
+// ═══════════════════════════════════════════════════════════════
+
+/** Move a channel from one position to another by rewriting code blocks. */
+export function reorderChannels(code: string, fromIdx: number, toIdx: number): string {
+  if (fromIdx === toIdx) return code
+  const channels = parseStrudelCode(code)
+  if (fromIdx < 0 || fromIdx >= channels.length) return code
+  if (toIdx < 0 || toIdx >= channels.length) return code
+
+  // Extract each channel's raw code block
+  const blocks = channels.map(ch => ch.rawCode)
+
+  // Get the preamble (everything before the first channel)
+  const preamble = code.slice(0, channels[0].blockStart)
+
+  // Get the epilogue (everything after the last channel)
+  const epilogue = code.slice(channels[channels.length - 1].blockEnd)
+
+  // Reorder the blocks array
+  const moved = blocks.splice(fromIdx, 1)[0]
+  blocks.splice(toIdx, 0, moved)
+
+  // Reconstruct code
+  return preamble + blocks.join('\n\n') + epilogue
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  Stack Row Utilities — per-sub-pattern parsing & manipulation
 // ═══════════════════════════════════════════════════════════════
 

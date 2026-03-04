@@ -18,7 +18,7 @@ import WaveformViewer from './WaveformViewer'
 import {
   parseStrudelCode, updateParamInCode, insertEffectInChannel,
   swapSoundInChannel, swapBankInChannel, addSoundToChannel, renameChannel, duplicateChannel,
-  addChannel, removeChannel, resetChannel,
+  addChannel, removeChannel, resetChannel, reorderChannels,
   getParamDef, findNextFreeOrbit, setChannelOrbit,
   enableSidechain, disableSidechain, removeEffectFromChannel,
   parseBPM, updateBPM, parseScale, updateScale, insertScale,
@@ -614,7 +614,6 @@ function ChannelStrip({
     <div
       className={`rounded-xl overflow-hidden transition-all duration-[180ms] ease-in-out ${isMuted ? 'opacity-30' : ''}`}
       style={{
-        gridColumn: isExpanded ? 'span 2' : undefined,
         background: '#111318',
         border: isDragOver
           ? '1px solid rgba(127,169,152,0.25)'
@@ -1392,7 +1391,15 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   const [waveformModalOpen, setWaveformModalOpen] = useState(false)
   const [selectedWaveformUrl, setSelectedWaveformUrl] = useState<string>('')
   const [selectedWaveformChannel, setSelectedWaveformChannel] = useState<number>(-1)
+  const [reorderDragIdx, setReorderDragIdx] = useState<number | null>(null)
+  const [reorderOverIdx, setReorderOverIdx] = useState<number | null>(null)
+  const [selectedChannels, setSelectedChannels] = useState<Set<number>>(new Set())
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; channelIdx: number } | null>(null)
+  // Channel groups: each group has a name, color accent, and set of channel indices
+  const [channelGroups, setChannelGroups] = useState<{ id: string; name: string; color: string; channels: Set<number> }[]>([])
+  const groupCounter = useRef(0)
   const fxDropdownRef = useRef<HTMLDivElement>(null)
+  const addMenuRef = useRef<HTMLDivElement>(null)
 
   // Close FX dropdown on outside click
   useEffect(() => {
@@ -1405,6 +1412,18 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [fxDropdownOpen])
+
+  // Close Add Channel dropdown on outside click
+  useEffect(() => {
+    if (!showAddMenu) return
+    const handler = (e: MouseEvent) => {
+      if (addMenuRef.current && !addMenuRef.current.contains(e.target as Node)) {
+        setShowAddMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showAddMenu])
 
   // ── Global project state (parsed from code) ──
   const currentBPM = useMemo(() => parseBPM(code), [code])
@@ -1676,6 +1695,70 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     },
     [onCodeChange],
   )
+
+  // ── Channel reorder (drag-to-move) handlers ──
+  const handleReorderDragStart = useCallback((idx: number) => {
+    setReorderDragIdx(idx)
+  }, [])
+
+  const handleReorderDragOver = useCallback((idx: number, e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setReorderOverIdx(idx)
+  }, [])
+
+  const handleReorderDrop = useCallback((targetIdx: number, e: React.DragEvent) => {
+    e.preventDefault()
+    if (reorderDragIdx !== null && reorderDragIdx !== targetIdx) {
+      const currentCode = codeRef.current
+      const newCode = reorderChannels(currentCode, reorderDragIdx, targetIdx)
+      if (newCode !== currentCode) onCodeChange(newCode)
+    }
+    setReorderDragIdx(null)
+    setReorderOverIdx(null)
+  }, [reorderDragIdx, onCodeChange])
+
+  const handleReorderDragEnd = useCallback(() => {
+    setReorderDragIdx(null)
+    setReorderOverIdx(null)
+  }, [])
+
+  // ── Multi-select & context menu handlers ──
+  const handleChannelSelect = useCallback((idx: number, e: React.MouseEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      setSelectedChannels(prev => {
+        const next = new Set(prev)
+        if (next.has(idx)) next.delete(idx)
+        else next.add(idx)
+        return next
+      })
+    } else if (e.shiftKey && selectedChannels.size > 0) {
+      const existingIdxs = Array.from(selectedChannels)
+      const minSel = Math.min(...existingIdxs)
+      const lo = Math.min(minSel, idx)
+      const hi = Math.max(Math.max(...existingIdxs), idx)
+      const next = new Set<number>()
+      for (let i = lo; i <= hi; i++) next.add(i)
+      setSelectedChannels(next)
+    }
+  }, [selectedChannels])
+
+  const handleContextMenu = useCallback((idx: number, e: React.MouseEvent) => {
+    e.preventDefault()
+    // If the right-clicked channel isn't selected, select only it
+    if (!selectedChannels.has(idx)) {
+      setSelectedChannels(new Set([idx]))
+    }
+    setContextMenu({ x: e.clientX, y: e.clientY, channelIdx: idx })
+  }, [selectedChannels])
+
+  // Close context menu on outside click
+  useEffect(() => {
+    if (!contextMenu) return
+    const handler = () => setContextMenu(null)
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [contextMenu])
 
   // ── Drag & drop handlers ──
   const handleDragOver = useCallback((idx: number) => {
@@ -2102,6 +2185,159 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
           </button>
         )}
 
+        {/* Divider */}
+        <div className="w-px h-4" style={{ background: 'rgba(255,255,255,0.06)' }} />
+
+        {/* Add Channel dropdown — clay pill button (like FX) */}
+        <div className="relative" ref={addMenuRef}>
+          <button
+            onClick={() => setShowAddMenu(p => !p)}
+            className="cursor-pointer transition-all duration-[180ms] active:scale-95"
+            style={{
+              display: 'flex', alignItems: 'center', gap: '3px',
+              padding: '2px 8px',
+              fontSize: '7px', fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase' as const,
+              borderRadius: '12px',
+              color: showAddMenu ? '#7fa998' : '#5a616b',
+              background: showAddMenu ? '#16181d' : '#0a0b0d',
+              border: 'none',
+              boxShadow: showAddMenu
+                ? 'inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22'
+                : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+            }}
+          >
+            <Plus size={8} />
+            ADD
+          </button>
+
+          {/* Add Channel dropdown panel */}
+          {showAddMenu && (
+            <div
+              className="absolute top-full mt-1.5 right-0 z-50 p-0 min-w-[320px] overflow-hidden"
+              style={{
+                background: '#111318',
+                border: '1px solid rgba(127,169,152,0.12)',
+                borderRadius: '14px',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.6), 6px 6px 12px #050607, -4px -4px 8px #1a1d22',
+                maxHeight: '360px',
+                overflowY: 'auto',
+              }}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-3 py-2 sticky top-0 z-10"
+                style={{ background: '#111318', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#7fa998' }} />
+                  <span className="text-[8px] font-black uppercase tracking-[.15em]" style={{ color: '#7fa998' }}>
+                    Add Channel
+                  </span>
+                </div>
+                <button onClick={() => setShowAddMenu(false)} className="cursor-pointer hover:opacity-80 transition-opacity" style={{ color: '#5a616b', background: 'none', border: 'none' }}>
+                  <X size={11} />
+                </button>
+              </div>
+
+              {ADD_CHANNEL_PRESETS.map(section => {
+                const sectionColors: Record<string, string> = {
+                  synth: '#6f8fb3',
+                  sample: '#b8a47f',
+                  vocal: '#c77dba',
+                }
+                return (
+                  <div key={section.section}>
+                    <div className="px-3 py-1" style={{ background: 'rgba(10,11,13,0.6)' }}>
+                      <span className="text-[7px] font-black uppercase tracking-[.1em]" style={{ color: '#5a616b' }}>
+                        {section.section}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 px-3 py-2">
+                      {section.items.map(([sound, label]) => (
+                        <button
+                          key={sound}
+                          onClick={() => handleAddChannel(sound, section.type)}
+                          className="px-2.5 py-1 rounded-lg cursor-pointer transition-all duration-[120ms] active:scale-95 hover:brightness-125"
+                          style={{
+                            background: '#0a0b0d',
+                            boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+                            color: sectionColors[section.type] || '#b8a47f',
+                            fontSize: '8px',
+                            fontWeight: 700,
+                            border: 'none',
+                          }}
+                        >
+                          <span className="mr-1 opacity-60">{getSourceIcon(sound, section.type === 'synth' ? 'synth' : 'sample')}</span>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+
+              {/* User Uploaded Samples */}
+              {userSamples.length > 0 && (
+                <div>
+                  <div className="px-3 py-1" style={{ background: 'rgba(10,11,13,0.6)' }}>
+                    <span className="text-[7px] font-black uppercase tracking-[.1em]" style={{ color: '#5a616b' }}>
+                      🎤 Your Uploaded Samples
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 px-3 py-2">
+                    {userSamples.map((s) => {
+                      const dur = s.duration_ms ? s.duration_ms / 1000 : null
+                      const calcBpm = s.original_bpm || (parseBPM(code) ?? 120)
+                      const loopAt = dur ? Math.max(1, Math.round(dur * calcBpm / 240)) : 8
+                      return (
+                        <button
+                          key={s.id}
+                          onClick={() => {
+                            if (onAddVocalChannel) {
+                              onAddVocalChannel(s.name, loopAt, s.original_bpm || undefined)
+                              setShowAddMenu(false)
+                            } else {
+                              handleAddChannel(s.name, 'vocal', loopAt)
+                            }
+                          }}
+                          className="px-2.5 py-1 rounded-lg cursor-pointer transition-all duration-[120ms] active:scale-95 hover:brightness-125"
+                          style={{
+                            background: '#0a0b0d',
+                            boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+                            color: '#22d3ee',
+                            fontSize: '8px',
+                            fontWeight: 700,
+                            border: '1px solid rgba(34,211,238,0.1)',
+                          }}
+                          title={`Add s("${s.name}").loopAt(${loopAt}) channel${dur ? ` · ${Math.floor(dur / 60)}:${String(Math.floor(dur % 60)).padStart(2, '0')}` : ''}`}
+                        >
+                          {s.name}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Upload hint */}
+              <div className="px-3 py-2" style={{ borderTop: '1px solid rgba(255,255,255,0.03)' }}>
+                <button
+                  onClick={() => { setShowAddMenu(false); onOpenSampleUploader?.() }}
+                  className="flex items-center gap-1.5 w-full justify-center px-3 py-1.5 rounded-lg cursor-pointer transition-all hover:brightness-110"
+                  style={{
+                    background: 'rgba(34,211,238,0.06)',
+                    border: '1px solid rgba(34,211,238,0.12)',
+                    color: '#22d3ee',
+                    fontSize: '8px',
+                    fontWeight: 700,
+                  }}
+                >
+                  <Mic size={10} />
+                  Upload your own vocal / sample
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Spacer */}
         <div className="flex-1" />
 
@@ -2160,51 +2396,110 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
               className="grid gap-2"
               style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))' }}
             >
-              {channels.map((ch, idx) => (
-                <ChannelStrip
+              {channels.map((ch, idx) => {
+                const channelGroup = channelGroups.find(g => g.channels.has(idx))
+                return (
+                <div
                   key={ch.id}
-                  channel={ch}
-                  channelIdx={idx}
-                  isExpanded={expandedChannels.has(ch.id)}
-                  isMuted={mutedChannels.has(idx)}
-                  isSoloed={soloedChannels.has(idx)}
-                  isDragOver={dragOverChannel === idx}
-                  isPlaying={isPlayingProp}
-                  onToggle={() => toggleChannel(ch.id)}
-                  onParamChange={handleParamChange}
-                  onMute={handleMute}
-                  onSolo={handleSolo}
-                  onSoundChange={handleSoundChange}
-                  onBankChange={handleBankChange}
-                  onDragOver={() => handleDragOver(idx)}
-                  onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(idx, e)}
-                  sidechainInfo={getSidechainInfo(idx)}
-                  onEnableSidechain={() => handleEnableSidechain(idx)}
-                  onDisableSidechain={() => handleDisableSidechain(idx)}
-                  onAddSidechainTarget={(targetIdx) => handleAddSidechainTarget(idx, targetIdx)}
-                  onRemoveSidechainTarget={(targetIdx) => handleRemoveSidechainTarget(idx, targetIdx)}
-                  onDisconnectSidechain={() => handleDisconnectSidechain(idx)}
-                  onOpenPianoRoll={onOpenPianoRoll ? () => onOpenPianoRoll(idx) : undefined}
-                  onOpenDrumSequencer={onOpenDrumSequencer ? () => onOpenDrumSequencer(idx) : undefined}
-                  onOpenWaveform={() => { const sample = userSamples.find(s => s.name === ch.source); if (sample) { setSelectedWaveformUrl(sample.url); setSelectedWaveformChannel(idx); setWaveformModalOpen(true); } }}
-                  onRename={handleRename}
-                  onDuplicate={handleDuplicate}
-                  onDelete={handleDelete}
-                  onReset={handleReset}
-                  stackRows={stackRowsMap.get(idx) || []}
-                  onStackRowSoundChange={handleStackRowSoundChange}
-                  onStackRowGainChange={handleStackRowGainChange}
-                  onStackRowBankChange={handleStackRowBankChange}
-                  onRemoveStackRow={handleRemoveStackRow}
-                  onRemoveEffect={handleRemoveEffect}
-                  onArpChange={handleArpChange}
-                  onArpRateChange={handleArpRateChange}
-                  onTranspose={handleTranspose}
-                  onAddSound={handleAddSound}
-                  onPreview={onPreview}
-                />
-              ))}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('application/x-channel-reorder', String(idx))
+                    e.dataTransfer.effectAllowed = 'move'
+                    handleReorderDragStart(idx)
+                  }}
+                  onDragOver={(e) => handleReorderDragOver(idx, e)}
+                  onDragEnd={handleReorderDragEnd}
+                  onDrop={(e) => {
+                    // Only handle reorder drops (not FX drops)
+                    const reorderData = e.dataTransfer.getData('application/x-channel-reorder')
+                    if (reorderData) {
+                      handleReorderDrop(idx, e)
+                      return
+                    }
+                  }}
+                  onClick={(e) => handleChannelSelect(idx, e)}
+                  onContextMenu={(e) => handleContextMenu(idx, e)}
+                  className="relative"
+                  style={{
+                    opacity: reorderDragIdx === idx ? 0.4 : 1,
+                    transition: 'opacity 150ms, transform 150ms',
+                    transform: reorderOverIdx === idx && reorderDragIdx !== idx ? 'scale(1.02)' : undefined,
+                    gridColumn: expandedChannels.has(ch.id) ? 'span 2' : undefined,
+                  }}
+                >
+                  {/* Group indicator badge */}
+                  {channelGroup && (
+                    <div className="absolute -top-1 -right-1 z-20 flex items-center gap-0.5 px-1 py-0.5 rounded-full"
+                      style={{
+                        background: '#111318',
+                        border: `1px solid ${channelGroup.color}40`,
+                        boxShadow: `0 0 4px ${channelGroup.color}20`,
+                      }}
+                    >
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ background: channelGroup.color }} />
+                      <span className="text-[6px] font-black" style={{ color: channelGroup.color }}>{channelGroup.name}</span>
+                    </div>
+                  )}
+                  {/* Group border */}
+                  {channelGroup && (
+                    <div className="absolute inset-0 rounded-2xl pointer-events-none z-[5]"
+                      style={{ border: `1px solid ${channelGroup.color}25` }} />
+                  )}
+                  {/* Selection ring */}
+                  {selectedChannels.has(idx) && (
+                    <div className="absolute inset-0 rounded-2xl pointer-events-none z-10"
+                      style={{ border: '2px solid rgba(127,169,152,0.5)', boxShadow: '0 0 8px rgba(127,169,152,0.2)' }} />
+                  )}
+                  {/* Reorder drop indicator */}
+                  {reorderOverIdx === idx && reorderDragIdx !== null && reorderDragIdx !== idx && (
+                    <div className="absolute -left-1 top-0 bottom-0 w-0.5 rounded-full z-10"
+                      style={{ background: '#7fa998', boxShadow: '0 0 6px #7fa998' }} />
+                  )}
+                  <ChannelStrip
+                    channel={ch}
+                    channelIdx={idx}
+                    isExpanded={expandedChannels.has(ch.id)}
+                    isMuted={mutedChannels.has(idx)}
+                    isSoloed={soloedChannels.has(idx)}
+                    isDragOver={dragOverChannel === idx}
+                    isPlaying={isPlayingProp}
+                    onToggle={() => toggleChannel(ch.id)}
+                    onParamChange={handleParamChange}
+                    onMute={handleMute}
+                    onSolo={handleSolo}
+                    onSoundChange={handleSoundChange}
+                    onBankChange={handleBankChange}
+                    onDragOver={() => handleDragOver(idx)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(idx, e)}
+                    sidechainInfo={getSidechainInfo(idx)}
+                    onEnableSidechain={() => handleEnableSidechain(idx)}
+                    onDisableSidechain={() => handleDisableSidechain(idx)}
+                    onAddSidechainTarget={(targetIdx) => handleAddSidechainTarget(idx, targetIdx)}
+                    onRemoveSidechainTarget={(targetIdx) => handleRemoveSidechainTarget(idx, targetIdx)}
+                    onDisconnectSidechain={() => handleDisconnectSidechain(idx)}
+                    onOpenPianoRoll={onOpenPianoRoll ? () => onOpenPianoRoll(idx) : undefined}
+                    onOpenDrumSequencer={onOpenDrumSequencer ? () => onOpenDrumSequencer(idx) : undefined}
+                    onOpenWaveform={() => { const sample = userSamples.find(s => s.name === ch.source); if (sample) { setSelectedWaveformUrl(sample.url); setSelectedWaveformChannel(idx); setWaveformModalOpen(true); } }}
+                    onRename={handleRename}
+                    onDuplicate={handleDuplicate}
+                    onDelete={handleDelete}
+                    onReset={handleReset}
+                    stackRows={stackRowsMap.get(idx) || []}
+                    onStackRowSoundChange={handleStackRowSoundChange}
+                    onStackRowGainChange={handleStackRowGainChange}
+                    onStackRowBankChange={handleStackRowBankChange}
+                    onRemoveStackRow={handleRemoveStackRow}
+                    onRemoveEffect={handleRemoveEffect}
+                    onArpChange={handleArpChange}
+                    onArpRateChange={handleArpRateChange}
+                    onTranspose={handleTranspose}
+                    onAddSound={handleAddSound}
+                    onPreview={onPreview}
+                  />
+                </div>
+                )
+              })}
 
               {/* ── Add Channel tile (inline in grid) ── */}
               <button
@@ -2224,128 +2519,167 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                 <span className="text-[8px] font-bold" style={{ color: '#5a616b' }}>Add Channel</span>
               </button>
             </div>
-          </>
-        )}
 
-        {/* ── Add Channel Dropdown Menu (overlay) ── */}
-        {showAddMenu && (
-          <div
-            className="absolute left-3 right-3 rounded-2xl overflow-hidden z-50"
-            style={{
-              top: channels.length === 0 ? '60%' : undefined,
-              bottom: channels.length > 0 ? '8px' : undefined,
-              background: '#111318',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.5), 4px 4px 8px #050607, -4px -4px 8px #1a1d22',
-              border: '1px solid rgba(127,169,152,0.15)',
-              maxHeight: '260px',
-              overflowY: 'auto',
-            }}
-          >
-            {/* Close bar */}
-            <div className="flex items-center justify-between px-3 py-1.5 sticky top-0 z-10"
-              style={{ background: '#111318', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-              <span className="text-[8px] font-black uppercase tracking-[.15em]" style={{ color: '#7fa998' }}>
-                Add Channel
-              </span>
-              <button onClick={() => setShowAddMenu(false)} className="cursor-pointer" style={{ color: '#5a616b', background: 'none', border: 'none' }}>
-                <X size={12} />
-              </button>
-            </div>
-
-            {ADD_CHANNEL_PRESETS.map(section => (
-              <div key={section.section}>
-                <div className="px-3 py-1" style={{ background: '#0a0b0d' }}>
-                  <span className="text-[7px] font-black uppercase tracking-[.1em]" style={{ color: '#5a616b' }}>
-                    {section.section}
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-1 px-3 py-1.5">
-                  {section.items.map(([sound, label]) => (
-                    <button
-                      key={sound}
-                      onClick={() => handleAddChannel(sound, section.type)}
-                      className="px-2 py-1 rounded-lg cursor-pointer transition-all duration-[120ms] active:scale-95 hover:opacity-100"
-                      style={{
-                        background: '#0a0b0d',
-                        boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
-                        color: section.type === 'synth' ? '#6f8fb3' : section.type === 'vocal' ? '#c77dba' : '#b8a47f',
-                        fontSize: '8px',
-                        fontWeight: 700,
-                        border: 'none',
-                        opacity: 0.8,
-                      }}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-
-            {/* ── User Uploaded Samples ── */}
-            {userSamples.length > 0 && (
-              <div>
-                <div className="px-3 py-1" style={{ background: '#0a0b0d' }}>
-                  <span className="text-[7px] font-black uppercase tracking-[.1em]" style={{ color: '#5a616b' }}>
-                    🎤 Your Uploaded Samples
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-1 px-3 py-1.5">
-                  {userSamples.map((s) => {
-                    const dur = s.duration_ms ? s.duration_ms / 1000 : null
-                    const calcBpm = s.original_bpm || (parseBPM(code) ?? 120)
-                    const loopAt = dur ? Math.max(1, Math.round(dur * calcBpm / 240)) : 8
-                    return (
-                      <button
-                        key={s.id}
-                        onClick={() => {
-                          if (onAddVocalChannel) {
-                            onAddVocalChannel(s.name, loopAt, s.original_bpm || undefined)
-                            setShowAddMenu(false)
-                          } else {
-                            handleAddChannel(s.name, 'vocal', loopAt)
-                          }
-                        }}
-                        className="px-2 py-1 rounded-lg cursor-pointer transition-all duration-[120ms] active:scale-95 hover:opacity-100 group/samp"
-                        style={{
-                          background: '#0a0b0d',
-                          boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
-                          color: '#22d3ee',
-                          fontSize: '8px',
-                          fontWeight: 700,
-                          border: '1px solid rgba(34,211,238,0.1)',
-                          opacity: 0.85,
-                        }}
-                        title={`Add s("${s.name}").loopAt(${loopAt}) channel${dur ? ` · ${Math.floor(dur / 60)}:${String(Math.floor(dur % 60)).padStart(2, '0')}` : ''}`}
-                      >
-                        {s.name}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Upload hint */}
-            <div className="flex items-center justify-center px-3 py-2" style={{ borderTop: '1px solid rgba(255,255,255,0.03)' }}>
-              <button
-                onClick={() => { setShowAddMenu(false); onOpenSampleUploader?.() }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg cursor-pointer transition-all hover:scale-105"
+            {/* ── Context Menu (right-click) ── */}
+            {contextMenu && (
+              <div
+                className="fixed z-[100] py-1 rounded-lg overflow-hidden"
                 style={{
-                  background: 'rgba(34,211,238,0.06)',
-                  border: '1px solid rgba(34,211,238,0.12)',
-                  color: '#22d3ee',
-                  fontSize: '8px',
-                  fontWeight: 700,
+                  left: contextMenu.x,
+                  top: contextMenu.y,
+                  background: '#16181d',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.6), 4px 4px 8px #050607',
+                  minWidth: '140px',
                 }}
               >
-                <Mic size={10} />
-                Upload your own vocal / sample
-              </button>
-            </div>
-          </div>
+                {selectedChannels.size >= 2 && (
+                  <button
+                    className="w-full text-left px-3 py-1.5 text-[9px] font-bold cursor-pointer hover:bg-white/[0.06] transition-colors flex items-center gap-2"
+                    style={{ color: '#7fa998', border: 'none', background: 'none' }}
+                    onClick={() => {
+                      // Group selected channels — shared orbit + visual group
+                      const sorted = Array.from(selectedChannels).sort((a, b) => a - b)
+                      let c = codeRef.current
+                      const parsedChs = parseStrudelCode(c)
+                      const targetOrbit = findNextFreeOrbit(parsedChs)
+                      for (const chIdx of sorted) {
+                        c = setChannelOrbit(c, chIdx, targetOrbit)
+                      }
+                      onCodeChange(c)
+
+                      // Create visual group
+                      groupCounter.current++
+                      const GROUP_COLORS = ['#7fa998', '#6f8fb3', '#c77dba', '#b8a47f', '#22d3ee', '#e879a8']
+                      const gColor = GROUP_COLORS[(groupCounter.current - 1) % GROUP_COLORS.length]
+                      setChannelGroups(prev => [
+                        ...prev,
+                        {
+                          id: `grp-${groupCounter.current}`,
+                          name: `Group ${groupCounter.current}`,
+                          color: gColor,
+                          channels: new Set(sorted),
+                        }
+                      ])
+                      setSelectedChannels(new Set())
+                      setContextMenu(null)
+                    }}
+                  >
+                    <span>⬡</span> Group Channels ({selectedChannels.size})
+                  </button>
+                )}
+                {/* Ungroup option — if right-clicked channel is in a group */}
+                {channelGroups.some(g => g.channels.has(contextMenu.channelIdx)) && (
+                  <button
+                    className="w-full text-left px-3 py-1.5 text-[9px] font-bold cursor-pointer hover:bg-white/[0.06] transition-colors flex items-center gap-2"
+                    style={{ color: '#b8a47f', border: 'none', background: 'none' }}
+                    onClick={() => {
+                      // Ungroup: remove channel(s) from their group
+                      const idxsToRemove = selectedChannels.size >= 2 ? selectedChannels : new Set([contextMenu.channelIdx])
+                      setChannelGroups(prev => prev
+                        .map(g => ({
+                          ...g,
+                          channels: new Set(Array.from(g.channels).filter(i => !idxsToRemove.has(i)))
+                        }))
+                        .filter(g => g.channels.size >= 2) // dissolve groups with < 2 members
+                      )
+                      // Also remove shared orbit
+                      let c = codeRef.current
+                      for (const chIdx of idxsToRemove) {
+                        c = removeEffectFromChannel(c, chIdx, 'orbit')
+                      }
+                      onCodeChange(c)
+                      setSelectedChannels(new Set())
+                      setContextMenu(null)
+                    }}
+                  >
+                    <span>⊘</span> Ungroup
+                  </button>
+                )}
+                <button
+                  className="w-full text-left px-3 py-1.5 text-[9px] font-bold cursor-pointer hover:bg-white/[0.06] transition-colors flex items-center gap-2"
+                  style={{ color: '#6f8fb3', border: 'none', background: 'none' }}
+                  onClick={() => {
+                    handleDuplicate(contextMenu.channelIdx)
+                    setContextMenu(null)
+                  }}
+                >
+                  <Copy size={10} /> Duplicate
+                </button>
+                <button
+                  className="w-full text-left px-3 py-1.5 text-[9px] font-bold cursor-pointer hover:bg-white/[0.06] transition-colors flex items-center gap-2"
+                  style={{ color: '#b8a47f', border: 'none', background: 'none' }}
+                  onClick={() => {
+                    handleReset(contextMenu.channelIdx)
+                    setContextMenu(null)
+                  }}
+                >
+                  <RotateCcw size={10} /> Reset
+                </button>
+                <div className="mx-2 my-0.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }} />
+                <button
+                  className="w-full text-left px-3 py-1.5 text-[9px] font-bold cursor-pointer hover:bg-white/[0.06] transition-colors flex items-center gap-2"
+                  style={{ color: '#b86f6f', border: 'none', background: 'none' }}
+                  onClick={() => {
+                    // Delete all selected, or just the right-clicked one
+                    const toDelete = selectedChannels.size >= 2 ? Array.from(selectedChannels).sort((a, b) => b - a) : [contextMenu.channelIdx]
+                    let c = codeRef.current
+                    for (const delIdx of toDelete) {
+                      c = removeChannel(c, delIdx)
+                    }
+                    onCodeChange(c)
+                    setSelectedChannels(new Set())
+                    setContextMenu(null)
+                  }}
+                >
+                  <Trash2 size={10} /> Delete {selectedChannels.size >= 2 ? `(${selectedChannels.size})` : ''}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
+
+      {/* Group summary strip */}
+      {channelGroups.length > 0 && (
+        <div
+          className="shrink-0 px-3 py-1.5 flex flex-wrap items-center gap-2"
+          style={{ borderTop: '1px solid rgba(255,255,255,0.04)', background: '#0d0e11' }}
+        >
+          <span className="text-[6px] font-black uppercase tracking-[.15em]" style={{ color: '#5a616b' }}>GROUPS</span>
+          {channelGroups.map(group => (
+            <div key={group.id} className="flex items-center gap-1.5 px-2 py-0.5 rounded-full"
+              style={{
+                background: '#111318',
+                border: `1px solid ${group.color}30`,
+                boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22',
+              }}
+            >
+              <div className="w-1.5 h-1.5 rounded-full" style={{ background: group.color }} />
+              <span className="text-[7px] font-bold" style={{ color: group.color }}>{group.name}</span>
+              <span className="text-[6px] font-mono" style={{ color: '#5a616b' }}>
+                {Array.from(group.channels).map(i => channels[i]?.name || `ch${i}`).join(', ')}
+              </span>
+              <button
+                onClick={() => {
+                  // Dissolve this group
+                  let c = codeRef.current
+                  for (const chIdx of group.channels) {
+                    c = removeEffectFromChannel(c, chIdx, 'orbit')
+                  }
+                  onCodeChange(c)
+                  setChannelGroups(prev => prev.filter(g => g.id !== group.id))
+                }}
+                className="cursor-pointer hover:opacity-80 transition-opacity"
+                style={{ color: '#5a616b', background: 'none', border: 'none' }}
+                title="Dissolve group"
+              >
+                <X size={8} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Signal flow — hardware bottom strip */}
       {channels.length > 0 && (
