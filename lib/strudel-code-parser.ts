@@ -1349,7 +1349,7 @@ export function duplicateChannel(code: string, channelIdx: number): string {
 export function addChannel(
   code: string,
   soundName: string,
-  type: 'synth' | 'sample' | 'vocal' | 'instrument' | 'drumpad' = 'sample',
+  type: 'synth' | 'sample' | 'vocal' | 'instrument' | 'drumpad' | 'soundkit' = 'sample',
   vocalLoopAt?: number,
   sampleBpm?: number,
   projectBpm?: number,
@@ -1404,6 +1404,14 @@ export function addChannel(
     const chops = chopCount ?? 8
     const loopCycles = vocalLoopAt ?? 8
     block = `$${name}: s("${soundName}")\n  .loopAt(${loopCycles})\n  .chop(${chops})\n  .gain(0.7)\n  .orbit(${nextOrbit})\n  .room(0.15)`
+  } else if (type === 'soundkit') {
+    // Sound Kit — trimmed sample usable as BOTH pitched instrument (piano roll) AND drum pads
+    // Uses note() for pitch + loopAt for tempo-sync + begin/end for trim
+    const begin = trimBegin ?? 0
+    const end = trimEnd ?? 1
+    const trimCode = (begin > 0 || end < 1) ? `\n  .begin(${begin.toFixed(2)}).end(${end.toFixed(2)})` : ''
+    const loopCycles = vocalLoopAt ?? 4
+    block = `$${name}: note("c3 e3 g3 c4")\n  .s("${soundName}")\n  .loopAt(${loopCycles})${trimCode}\n  .gain(0.6)\n  .orbit(${nextOrbit})\n  .lpf(8000).lpq(1)\n  .room(0.15).delay(0.1).delaytime(0.125).delayfeedback(0.2)`
   } else {
     block = `$${name}: s("${soundName}")\n  .gain(0.8)\n  .lpf(6000).lpq(1)\n  .room(0.2).delay(0.1).delaytime(0.125).delayfeedback(0.2)\n  .shape(0)`
   }

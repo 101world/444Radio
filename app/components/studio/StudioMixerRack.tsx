@@ -945,13 +945,16 @@ function ChannelStrip({
             <Grid3X3 size={9} />
           </button>
         )}
-        {/* Pad Sampler — for vocal/sample channels with loopAt or slice */}
-        {onOpenPadSampler && channel.sourceType === 'sample' && (channel.effects.includes('loopAt') || channel.effects.includes('slice')) && (
+        {/* Pad Sampler — for vocal/sample channels with loopAt or slice, AND sound kit (note + loopAt) */}
+        {onOpenPadSampler && (
+          (channel.sourceType === 'sample' && (channel.effects.includes('loopAt') || channel.effects.includes('slice'))) ||
+          (channel.sourceType === 'note' && channel.effects.includes('loopAt'))
+        ) && (
           <button
             onClick={(e) => { e.stopPropagation(); onOpenPadSampler() }}
             className="p-1 rounded-lg transition-colors cursor-pointer"
             style={{ color: '#22d3ee', opacity: 0.65 }}
-            title="Vocal Pad Sampler — chop, pitch, sidechain, test beat"
+            title="Pad Sampler — chop, pitch, sidechain, test beat"
           >
             <span className="text-[9px] font-bold">🎹</span>
           </button>

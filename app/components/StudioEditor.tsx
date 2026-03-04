@@ -601,6 +601,15 @@ export default function StudioEditor() {
     }
   }, [handleLiveCodeChange])
 
+  const handleAddSoundKitChannel = useCallback((name: string, begin: number, end: number, loopAt: number) => {
+    const currentCode = codeRef.current
+    const projectBpm = parseBPM(currentCode) ?? 120
+    const newCode = addChannel(currentCode, name, 'soundkit', loopAt, undefined, projectBpm, begin, end)
+    if (newCode !== currentCode) {
+      handleLiveCodeChange(newCode)
+    }
+  }, [handleLiveCodeChange])
+
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   //  RENDER
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -1000,6 +1009,7 @@ export default function StudioEditor() {
         onAddVocalChannel={handleAddVocalChannel}
         onAddInstrumentChannel={handleAddInstrumentChannel}
         onAddDrumPadChannel={handleAddDrumPadChannel}
+        onAddSoundKitChannel={handleAddSoundKitChannel}
         onSamplesChanged={setUserSamples}
       />
 

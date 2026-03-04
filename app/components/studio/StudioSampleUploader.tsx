@@ -38,6 +38,8 @@ interface StudioSampleUploaderProps {
   onAddInstrumentChannel?: (name: string, begin: number, end: number) => void
   /** Called to add a drum pad channel with auto-chopped slices */
   onAddDrumPadChannel?: (name: string, chopCount: number, loopAt: number) => void
+  /** Called to add a sound kit channel — trimmed sample usable as both pitched instrument and drum pads */
+  onAddSoundKitChannel?: (name: string, begin: number, end: number, loopAt: number) => void
   /** Called when samples list changes (upload/delete) so parent can sync */
   onSamplesChanged?: (samples: StudioSample[]) => void
   accentColor?: string
@@ -130,6 +132,7 @@ export default function StudioSampleUploader({
   onSamplesChanged,
   onAddInstrumentChannel,
   onAddDrumPadChannel,
+  onAddSoundKitChannel,
   accentColor = '#22d3ee',
 }: StudioSampleUploaderProps) {
   const [samples, setSamples] = useState<StudioSample[]>([])
@@ -147,7 +150,7 @@ export default function StudioSampleUploader({
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [sampleBpm, setSampleBpm] = useState<number | null>(null)
   const [detectedBpm, setDetectedBpm] = useState<number | null>(null)
-  const [importMode, setImportMode] = useState<'instrument' | 'drumpad'>('instrument')
+  const [importMode, setImportMode] = useState<'soundkit' | 'instrument' | 'drumpad'>('soundkit')
   const [trimBegin, setTrimBegin] = useState(0)   // 0.0 - 1.0 fraction
   const [trimEnd, setTrimEnd] = useState(1)       // 0.0 - 1.0 fraction
   const [chopCount, setChopCount] = useState(8)   // auto-chop slices for drum pad mode
@@ -460,6 +463,24 @@ export default function StudioSampleUploader({
     onClose()
   }, [bpm, chopCount, onAddDrumPadChannel, onAddVocalChannel, onClose])
 
+  // Use sample as sound kit — trimmed, pitched, usable on piano roll AND pad sampler
+  const handleUseAsSoundKit = useCallback((sample: StudioSample) => {
+    const duration = sample.duration_ms ? sample.duration_ms / 1000 : null
+    const calcBpm = sample.original_bpm || bpm
+    const loopAt = duration ? calculateLoopAt(duration, calcBpm) : 4
+    if (onAddSoundKitChannel) {
+      onAddSoundKitChannel(sample.name, trimBegin, trimEnd, loopAt)
+    } else {
+      // Fallback: add as instrument
+      if (onAddInstrumentChannel) {
+        onAddInstrumentChannel(sample.name, trimBegin, trimEnd)
+      } else {
+        onAddVocalChannel(sample.name, loopAt, sample.original_bpm || undefined)
+      }
+    }
+    onClose()
+  }, [bpm, trimBegin, trimEnd, onAddSoundKitChannel, onAddInstrumentChannel, onAddVocalChannel, onClose])
+
 
   if (!isOpen) return null
 
@@ -620,6 +641,18 @@ export default function StudioSampleUploader({
               <div className="flex items-center justify-center gap-2 mt-2" onClick={e => e.stopPropagation()}>
                 <span className="text-[8px] font-bold uppercase tracking-wider" style={{ color: '#5a616b' }}>Mode:</span>
                 <button
+                  onClick={() => setImportMode('soundkit')}
+                  className="px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider cursor-pointer transition-all"
+                  style={{
+                    background: importMode === 'soundkit' ? '#22d3ee20' : '#0a0b0d',
+                    color: importMode === 'soundkit' ? '#22d3ee' : '#5a616b',
+                    border: importMode === 'soundkit' ? '1px solid #22d3ee40' : '1px solid rgba(255,255,255,0.06)',
+                    boxShadow: importMode === 'soundkit' ? 'inset 0 0 8px #22d3ee10' : 'none',
+                  }}
+                >
+                  🎛️ Sound Kit
+                </button>
+                <button
                   onClick={() => setImportMode('instrument')}
                   className="px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider cursor-pointer transition-all"
                   style={{
@@ -644,6 +677,49 @@ export default function StudioSampleUploader({
                   🥁 Drum Pad
                 </button>
               </div>
+              {/* Sound Kit Mode: Trim Controls — produces note+loopAt channel for piano roll + pad sampler */}
+              {importMode === 'soundkit' && audioDuration !== null && (
+                <div className="space-y-1.5 mt-2 px-2 py-2 rounded-lg" style={{ background: '#0a0a0c', border: '1px solid rgba(255,255,255,0.04)' }} onClick={e => e.stopPropagation()}>
+                  <p className="text-[8px] font-bold uppercase tracking-wider" style={{ color: '#22d3ee' }}>
+                    Sound Kit — usable on Piano Roll and Drum Pads
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[8px] font-mono" style={{ color: '#5a616b' }}>Begin:</span>
+                      <input
+                        type="range" min={0} max={0.99} step={0.01} value={trimBegin}
+                        onChange={e => { const v = parseFloat(e.target.value); if (v < trimEnd) setTrimBegin(v) }}
+                        className="w-16 h-1 accent-[#22d3ee]"
+                      />
+                      <span className="text-[8px] font-mono w-8 text-right" style={{ color: '#e8ecf0' }}>
+                        {(trimBegin * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[8px] font-mono" style={{ color: '#5a616b' }}>End:</span>
+                      <input
+                        type="range" min={0.01} max={1} step={0.01} value={trimEnd}
+                        onChange={e => { const v = parseFloat(e.target.value); if (v > trimBegin) setTrimEnd(v) }}
+                        className="w-16 h-1 accent-[#22d3ee]"
+                      />
+                      <span className="text-[8px] font-mono w-8 text-right" style={{ color: '#e8ecf0' }}>
+                        {(trimEnd * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                  </div>
+                  {/* Visual trim bar */}
+                  <div className="relative h-3 rounded-full overflow-hidden" style={{ background: '#16181d' }}>
+                    <div className="absolute top-0 h-full rounded-full" style={{
+                      left: `${trimBegin * 100}%`,
+                      width: `${(trimEnd - trimBegin) * 100}%`,
+                      background: 'linear-gradient(90deg, #22d3ee40, #22d3ee80)',
+                    }} />
+                  </div>
+                  <p className="text-[7px] font-mono text-center" style={{ color: '#5a616b' }}>
+                    note + .loopAt + {trimBegin > 0 || trimEnd < 1 ? `.begin(${trimBegin.toFixed(2)}).end(${trimEnd.toFixed(2)})` : 'full sample'} — opens in Piano Roll or Pad Sampler
+                  </p>
+                </div>
+              )}
               {/* Instrument Mode: Trim Controls */}
               {importMode === 'instrument' && audioDuration !== null && (
                 <div className="space-y-1.5 mt-2 px-2 py-2 rounded-lg" style={{ background: '#0a0a0c', border: '1px solid rgba(255,255,255,0.04)' }} onClick={e => e.stopPropagation()}>
@@ -830,6 +906,13 @@ export default function StudioSampleUploader({
 
                     {/* Mode-aware add buttons */}
                     <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-all">
+                      <button
+                        onClick={() => handleUseAsSoundKit(s)}
+                        className="px-1.5 py-1 rounded-lg text-[7px] font-bold uppercase cursor-pointer hover:scale-105 transition-all"
+                        style={{ background: '#22d3ee15', color: '#22d3ee', border: '1px solid #22d3ee30' }}
+                        title="Add as sound kit — piano roll + drum pads">
+                        + Kit
+                      </button>
                       <button
                         onClick={() => handleUseAsVocal(s)}
                         className="px-1.5 py-1 rounded-lg text-[7px] font-bold uppercase cursor-pointer hover:scale-105 transition-all"
