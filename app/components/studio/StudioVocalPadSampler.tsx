@@ -205,6 +205,64 @@ export default function StudioVocalPadSampler({
   const totalSteps = loopBars * STEPS_PER_BAR
   const stepDurationMs = (60000 / projectBpm) / (STEPS_PER_BAR / 4) // ms per step
 
+  // ─── Hold-to-loop: re-trigger pad while key/mouse is held ───
+  const heldPadTimers = useRef<Map<number, ReturnType<typeof setInterval>>>(new Map())
+  const heldPadsSet = useRef<Set<number>>(new Set())
+
+  const startPadHold = useCallback((padIdx: number) => {
+    if (heldPadsSet.current.has(padIdx)) return // already holding
+    heldPadsSet.current.add(padIdx)
+
+    const chop = chops[padIdx]
+    if (!chop) return
+
+    // Calculate chop duration in ms for loop interval
+    // Use a reference duration (assume ~60s max sample at default BPM)
+    const chopDuration = (chop.end - chop.begin) * 60 // seconds estimate
+    const pitchSpeed = pitchSemitones !== 0 ? Math.pow(2, pitchSemitones / 12) : 1
+    const loopMs = Math.max(80, (chopDuration / pitchSpeed) * 1000) // at least 80ms between triggers
+
+    // Re-trigger on interval while held
+    const timer = setInterval(() => {
+      if (!heldPadsSet.current.has(padIdx)) {
+        clearInterval(timer)
+        heldPadTimers.current.delete(padIdx)
+        return
+      }
+      // Flash + audio
+      setFlashPad(padIdx)
+      setTimeout(() => setFlashPad(null), 80)
+      if (onPreviewPad) {
+        const spd = pitchSemitonesRef.current !== 0 ? Math.pow(2, pitchSemitonesRef.current / 12) : undefined
+        onPreviewPad(sampleName, chop.begin, chop.end, spd)
+      }
+    }, loopMs)
+    heldPadTimers.current.set(padIdx, timer)
+  }, [chops, pitchSemitones, sampleName, onPreviewPad])
+
+  const stopPadHold = useCallback((padIdx: number) => {
+    heldPadsSet.current.delete(padIdx)
+    const timer = heldPadTimers.current.get(padIdx)
+    if (timer) {
+      clearInterval(timer)
+      heldPadTimers.current.delete(padIdx)
+    }
+  }, [])
+
+  const stopAllPadHolds = useCallback(() => {
+    heldPadsSet.current.clear()
+    heldPadTimers.current.forEach(timer => clearInterval(timer))
+    heldPadTimers.current.clear()
+  }, [])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      heldPadTimers.current.forEach(timer => clearInterval(timer))
+    }
+  }, [])
+
   // ─── Pad playback ───
   const playPad = useCallback((padIdx: number) => {
     const chop = chops[padIdx]
@@ -478,7 +536,7 @@ export default function StudioVocalPadSampler({
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.repeat) return
+      if (e.repeat) return // Block auto-repeat — we handle looping ourselves
       const target = e.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
 
@@ -486,7 +544,7 @@ export default function StudioVocalPadSampler({
       if (padIdx !== undefined && padIdx < padCount) {
         e.preventDefault()
         playPad(padIdx)
-        // Also set as selected pad for grid painting
+        startPadHold(padIdx) // Begin hold-to-loop
         setSelectedPad(padIdx)
       }
 
@@ -497,15 +555,27 @@ export default function StudioVocalPadSampler({
         else startLoop(true)
       }
 
-      // Escape = deselect pad
+      // Escape = deselect pad + stop all holds
       if (e.key === 'Escape') {
         setSelectedPad(null)
+        stopAllPadHolds()
+      }
+    }
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      const padIdx = keyMap[e.key.toLowerCase()]
+      if (padIdx !== undefined) {
+        stopPadHold(padIdx) // Stop loop on key release
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [playPad, padCount, isRecording, isPlaying, startLoop, stopLoop])
+    window.addEventListener('keyup', handleKeyUp)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+    }
+  }, [playPad, padCount, isRecording, isPlaying, startLoop, stopLoop, startPadHold, stopPadHold, stopAllPadHolds])
 
   // ─── Grid visualization of recorded hits ───
   const gridCols = padCount <= 4 ? 2 : padCount <= 16 ? 4 : 8
@@ -711,8 +781,11 @@ export default function StudioVocalPadSampler({
                 key={chop.idx}
                 onMouseDown={() => {
                   playPad(chop.idx)
+                  startPadHold(chop.idx) // Begin hold-to-loop on mouse hold
                   setSelectedPad(chop.idx)
                 }}
+                onMouseUp={() => stopPadHold(chop.idx)}
+                onMouseLeave={() => stopPadHold(chop.idx)}
                 className="relative cursor-pointer transition-all duration-75 active:scale-95 select-none"
                 style={{
                   width: padCount <= 4 ? 72 : padCount <= 8 ? 56 : padCount <= 16 ? 44 : padCount <= 32 ? 32 : 26,
