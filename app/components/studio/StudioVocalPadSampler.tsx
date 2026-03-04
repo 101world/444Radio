@@ -192,6 +192,13 @@ export default function StudioVocalPadSampler({
   const recordStartTime = useRef(0)
   const loopTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const stepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const lastPlayedStepRef = useRef(-1) // avoid double-triggering same step
+  const recordedHitsRef = useRef(recordedHits) // keep ref in sync for timer callback
+  useEffect(() => { recordedHitsRef.current = recordedHits }, [recordedHits])
+  const chopsRef = useRef(chops)
+  useEffect(() => { chopsRef.current = chops }, [chops])
+  const pitchSemitonesRef = useRef(pitchSemitones)
+  useEffect(() => { pitchSemitonesRef.current = pitchSemitones }, [pitchSemitones])
 
   const totalSteps = loopBars * STEPS_PER_BAR
   const stepDurationMs = (60000 / projectBpm) / (STEPS_PER_BAR / 4) // ms per step
@@ -228,35 +235,58 @@ export default function StudioVocalPadSampler({
     }
   }, [chops, sampleName, isRecording, quantize, totalSteps, stepDurationMs, onPreviewPad, pitchSemitones])
 
-  // ─── Recording loop ───
-  const startRecording = useCallback(() => {
+  // ─── Internal playback: trigger pad sounds on step hits ───
+  const triggerStepHits = useCallback((step: number) => {
+    if (step === lastPlayedStepRef.current) return
+    lastPlayedStepRef.current = step
+    const hits = recordedHitsRef.current.filter(h => h.step === step)
+    for (const hit of hits) {
+      const chop = chopsRef.current[hit.padIdx]
+      if (!chop) continue
+      // Visual flash
+      setFlashPad(hit.padIdx)
+      setTimeout(() => setFlashPad(null), 80)
+      // Audio
+      if (onPreviewPad) {
+        const pitchSpeed = pitchSemitonesRef.current !== 0 ? Math.pow(2, pitchSemitonesRef.current / 12) : undefined
+        onPreviewPad(sampleName, chop.begin, chop.end, pitchSpeed)
+      }
+    }
+  }, [sampleName, onPreviewPad])
+
+  // ─── Start/Stop internal loop (shared by REC and PLAY) ───
+  const startLoop = useCallback((recording: boolean) => {
     recordStartTime.current = Date.now()
-    setIsRecording(true)
+    lastPlayedStepRef.current = -1
+    if (recording) setIsRecording(true)
     setIsPlaying(true)
     setCurrentStep(0)
 
-    // Step indicator timer
+    // Step indicator + audio trigger timer
     if (stepTimerRef.current) clearInterval(stepTimerRef.current)
     stepTimerRef.current = setInterval(() => {
       const elapsed = Date.now() - recordStartTime.current
       const step = Math.floor(elapsed / stepDurationMs) % totalSteps
       setCurrentStep(step)
-    }, stepDurationMs / 2) // update at 2x rate for smooth display
+      triggerStepHits(step)
+    }, stepDurationMs / 2) // update at 2× rate for smooth display
 
     // Loop boundary — wrap around
     if (loopTimerRef.current) clearInterval(loopTimerRef.current)
     const loopDurationMs = totalSteps * stepDurationMs
     loopTimerRef.current = setInterval(() => {
       recordStartTime.current = Date.now()
+      lastPlayedStepRef.current = -1
     }, loopDurationMs)
-  }, [totalSteps, stepDurationMs])
+  }, [totalSteps, stepDurationMs, triggerStepHits])
 
-  const stopRecording = useCallback(() => {
+  const stopLoop = useCallback(() => {
     setIsRecording(false)
     setIsPlaying(false)
     if (stepTimerRef.current) { clearInterval(stepTimerRef.current); stepTimerRef.current = null }
     if (loopTimerRef.current) { clearInterval(loopTimerRef.current); loopTimerRef.current = null }
     setCurrentStep(0)
+    lastPlayedStepRef.current = -1
   }, [])
 
   // ─── Test beat timer ───
@@ -420,8 +450,8 @@ export default function StudioVocalPadSampler({
       // Space = toggle record
       if (e.key === ' ') {
         e.preventDefault()
-        if (isRecording) stopRecording()
-        else startRecording()
+        if (isRecording || isPlaying) stopLoop()
+        else startLoop(true)
       }
 
       // Escape = deselect pad
@@ -432,7 +462,7 @@ export default function StudioVocalPadSampler({
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [playPad, padLayout, isRecording, startRecording, stopRecording])
+  }, [playPad, padLayout, isRecording, isPlaying, startLoop, stopLoop])
 
   // ─── Grid visualization of recorded hits ───
   const gridCols = padLayout <= 4 ? 2 : 4
@@ -551,8 +581,24 @@ export default function StudioVocalPadSampler({
         <div className="w-px h-3.5 bg-white/[0.08]" />
 
         {/* Transport controls */}
+        {/* PLAY button — plays back pattern with audio */}
         <button
-          onClick={isRecording ? stopRecording : startRecording}
+          onClick={isPlaying && !isRecording ? stopLoop : () => startLoop(false)}
+          className="px-2.5 py-0.5 text-[8px] font-bold cursor-pointer transition-all rounded-lg flex items-center gap-1"
+          style={{
+            background: isPlaying && !isRecording ? '#16493020' : '#16181d',
+            color: isPlaying && !isRecording ? '#4ade80' : '#5a616b',
+            boxShadow: isPlaying && !isRecording
+              ? 'inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22'
+              : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+          }}
+          title="Play back recorded pattern with audio"
+        >
+          {isPlaying && !isRecording ? '⏹ STOP' : '▶ PLAY'}
+        </button>
+        {/* REC button */}
+        <button
+          onClick={isRecording ? stopLoop : () => startLoop(true)}
           className="px-2.5 py-0.5 text-[8px] font-bold cursor-pointer transition-all rounded-lg flex items-center gap-1"
           style={{
             background: isRecording ? '#7f1d1d' : '#16181d',
@@ -856,7 +902,13 @@ export default function StudioVocalPadSampler({
         {/* ── PLAY WITH SONG ── */}
         {onToggleTransport && (
           <button
-            onClick={onToggleTransport}
+            onClick={() => {
+              // Auto-apply pattern before toggling transport so vocal plays with song
+              if (!isTransportPlaying && recordedHits.length > 0) {
+                applyPattern()
+              }
+              onToggleTransport()
+            }}
             className="flex items-center gap-1 px-2 py-0.5 text-[8px] font-bold cursor-pointer transition-all rounded-lg"
             style={{
               background: isTransportPlaying ? '#4ade8020' : '#16181d',
@@ -865,7 +917,7 @@ export default function StudioVocalPadSampler({
                 ? `inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22, 0 0 8px #4ade8020`
                 : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
             }}
-            title={isTransportPlaying ? 'Stop song playback' : 'Play song so you can test vocal pitch against it'}
+            title={isTransportPlaying ? 'Stop song playback' : 'Apply pattern & play full song — test vocal pitch against the mix'}
           >
             {isTransportPlaying ? '⏹' : '▶'} PLAY W/ SONG
           </button>

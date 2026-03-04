@@ -950,10 +950,10 @@ function ChannelStrip({
           <button
             onClick={(e) => { e.stopPropagation(); onOpenPadSampler() }}
             className="p-1 rounded-lg transition-colors cursor-pointer"
-            style={{ color: '#22d3ee', opacity: 0.4 }}
-            title="Pad Sampler (MPC)"
+            style={{ color: '#22d3ee', opacity: 0.65 }}
+            title="Vocal Pad Sampler — chop, pitch, sidechain, test beat"
           >
-            <span className="text-[9px] font-bold">🎛️</span>
+            <span className="text-[9px] font-bold">🎹</span>
           </button>
         )}
         {onDuplicate && (

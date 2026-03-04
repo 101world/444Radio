@@ -893,7 +893,7 @@ export default function StudioEditor() {
                     const variantMatch = instrument.match(/^([^:]+):(\d+)$/)
                     const sName = variantMatch ? variantMatch[1] : instrument
                     const sampleN = variantMatch ? parseInt(variantMatch[2]) : 0
-                    const params: Record<string, unknown> = { s: sName, n: sampleN, gain: 0.6 }
+                    const params: Record<string, unknown> = { s: sName, n: sampleN, gain: 0.6, cut: 1 }
                     if (bank) params.bank = bank
                     await sd(params, now, 0.5)
                   } catch {
@@ -957,10 +957,14 @@ export default function StudioEditor() {
                       begin,
                       end,
                       gain: 0.6,
+                      cut: 2,
+                      clip: 1,
                     }
                     if (speed !== undefined && speed !== 1) params.speed = speed
                     if (ch.bank) params.bank = ch.bank
-                    await sd(params, now, 0.5)
+                    // Compute a reasonable duration based on the slice size
+                    const sliceDur = Math.max(0.15, (end - begin) * 4) // rough estimate: 4s per full sample
+                    await sd(params, now, Math.min(sliceDur, 2))
                   } catch (err) {
                     console.error('[444 STUDIO] pad preview error:', err)
                   }
