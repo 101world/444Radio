@@ -357,13 +357,36 @@ export default function StudioVocalPadSampler({
       sidechainStr = `\n  .duck("${sidechainOrbit}").duckdepth(${sidechainDepth.toFixed(2)})`
     }
 
-    // splice(N, "pat") chops sample into N slices, selects by pattern, adjusts speed per slice
     const effectsStr = effectsToKeep.length > 0 ? '\n  ' + effectsToKeep.join('\n  ') : ''
-    const newCode = `$${name}: s("${sampleName}")\n  .splice(${localChopCount}, "${pattern}")${pitchStr}${sidechainStr}${effectsStr}\n  .orbit(${orbit}).scope()`
+
+    // When trimmed, scale up splice count and remap indices so slices map to correct positions
+    const isTrimmed = trimBegin > 0.001 || trimEnd < 0.999
+    let spliceCount = localChopCount
+    let finalPattern = pattern
+
+    if (isTrimmed) {
+      const range = trimEnd - trimBegin
+      // Total slices for full sample: enough resolution that our chop count fits in the trim region
+      spliceCount = Math.round(localChopCount / range)
+      const offset = Math.round(trimBegin * spliceCount)
+      // Remap each numeric index in the pattern: padIdx → padIdx + offset
+      finalPattern = pattern.replace(/\b(\d+)\b/g, (_match, numStr) => {
+        const padIdx = parseInt(numStr)
+        return String(padIdx + offset)
+      })
+    }
+
+    // splice(N, "pat") chops sample into N slices, selects by pattern, adjusts speed per slice
+    let trimComment = ''
+    if (isTrimmed) {
+      // Store trim metadata for round-trip parsing
+      trimComment = ` // trim:${trimBegin.toFixed(4)}:${trimEnd.toFixed(4)}:${localChopCount}`
+    }
+    const newCode = `$${name}: s("${sampleName}")\n  .splice(${spliceCount}, "${finalPattern}")${trimComment}${pitchStr}${sidechainStr}${effectsStr}\n  .orbit(${orbit}).scope()`
 
     onPatternChange(newCode)
     setHasEdited(false)
-  }, [recordedHits, localChopCount, loopBars, sampleName, channelRawCode, channelName, onPatternChange, pitchSemitones, sidechainEnabled, sidechainOrbit, sidechainDepth])
+  }, [recordedHits, localChopCount, loopBars, sampleName, channelRawCode, channelName, onPatternChange, pitchSemitones, sidechainEnabled, sidechainOrbit, sidechainDepth, trimBegin, trimEnd])
 
   // ─── Clear recorded pattern ───
   const clearPattern = useCallback(() => {
@@ -381,6 +404,19 @@ export default function StudioVocalPadSampler({
 
     const pattern = nMatch[1]
     if (!pattern || pattern === '~') return
+
+    // Check for trim metadata comment: // trim:BEGIN:END:CHOPCOUNT
+    const trimMeta = channelRawCode.match(/\/\/\s*trim:([\d.]+):([\d.]+):(\d+)/)
+    let indexOffset = 0
+    let effectiveChopCount = localChopCount
+    if (trimMeta) {
+      const metaBegin = parseFloat(trimMeta[1])
+      const metaEnd = parseFloat(trimMeta[2])
+      effectiveChopCount = parseInt(trimMeta[3])
+      const range = metaEnd - metaBegin
+      const totalSlices = Math.round(effectiveChopCount / range)
+      indexOffset = Math.round(metaBegin * totalSlices)
+    }
 
     // Parse the pattern into hits
     const parsedHits: RecordedHit[] = []
@@ -404,8 +440,9 @@ export default function StudioVocalPadSampler({
         const tokens = clean.split(/\s+/)
         tokens.forEach((tok, s) => {
           if (tok !== '~') {
-            const padIdx = parseInt(tok)
-            if (!isNaN(padIdx) && padIdx >= 0 && padIdx < localChopCount) {
+            const rawIdx = parseInt(tok)
+            const padIdx = rawIdx - indexOffset
+            if (!isNaN(padIdx) && padIdx >= 0 && padIdx < effectiveChopCount) {
               parsedHits.push({ padIdx, step: barIdx * STEPS_PER_BAR + s })
             }
           }
@@ -416,8 +453,9 @@ export default function StudioVocalPadSampler({
       const tokens = pattern.split(/\s+/)
       tokens.forEach((tok, s) => {
         if (tok !== '~') {
-          const padIdx = parseInt(tok)
-          if (!isNaN(padIdx) && padIdx >= 0 && padIdx < localChopCount) {
+          const rawIdx = parseInt(tok)
+          const padIdx = rawIdx - indexOffset
+          if (!isNaN(padIdx) && padIdx >= 0 && padIdx < effectiveChopCount) {
             parsedHits.push({ padIdx, step: s })
           }
         }

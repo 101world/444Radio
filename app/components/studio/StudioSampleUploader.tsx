@@ -465,9 +465,12 @@ export default function StudioSampleUploader({
 
   // Use sample as sound kit — trimmed, pitched, usable on piano roll AND pad sampler
   const handleUseAsSoundKit = useCallback((sample: StudioSample) => {
-    const duration = sample.duration_ms ? sample.duration_ms / 1000 : null
-    const calcBpm = sample.original_bpm || bpm
-    const loopAt = duration ? calculateLoopAt(duration, calcBpm) : 4
+    const fullDuration = sample.duration_ms ? sample.duration_ms / 1000 : null
+    // For sound kits, use the TRIMMED duration (user only cares about the selected region)
+    const trimRange = trimEnd - trimBegin
+    const trimmedDuration = fullDuration ? fullDuration * trimRange : null
+    // Use project BPM for loopAt calculation (we want the trimmed portion to sync with the project)
+    const loopAt = trimmedDuration ? Math.max(1, calculateLoopAt(trimmedDuration, bpm)) : 4
     if (onAddSoundKitChannel) {
       onAddSoundKitChannel(sample.name, trimBegin, trimEnd, loopAt)
     } else {
@@ -475,7 +478,8 @@ export default function StudioSampleUploader({
       if (onAddInstrumentChannel) {
         onAddInstrumentChannel(sample.name, trimBegin, trimEnd)
       } else {
-        onAddVocalChannel(sample.name, loopAt, sample.original_bpm || undefined)
+        const fullLoopAt = fullDuration ? calculateLoopAt(fullDuration, bpm) : 4
+        onAddVocalChannel(sample.name, fullLoopAt, sample.original_bpm || undefined)
       }
     }
     onClose()

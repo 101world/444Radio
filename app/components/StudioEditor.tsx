@@ -82,6 +82,7 @@ export default function StudioEditor() {
   const isPlayingRef = useRef(false)
   const lastEvaluatedRef = useRef('')
   const masterGainRef = useRef<GainNode | null>(null)
+  const padPreviewCacheRef = useRef<Map<string, AudioBuffer>>(new Map())
   const sliderValuesRef = useRef<Record<string, number>>({})
   const sliderDefsRef = useRef<Record<string, { min: number; max: number; value: number }>>({})
   const drawStateRef = useRef({ counter: 0 })
@@ -922,15 +923,23 @@ export default function StudioEditor() {
             const spliceMatch = ch.rawCode.match(/\.splice\(\s*(\d+)/)
             const sliceMatch = spliceMatch || ch.rawCode.match(/\.slice\(\s*(\d+)/)
             const chopMatch = sliceMatch || ch.rawCode.match(/\.chop\(\s*(\d+)\s*\)/)
-            const chopCount = chopMatch ? parseInt(chopMatch[1]) : 16
+            let chopCount = chopMatch ? parseInt(chopMatch[1]) : 16
             // Extract loopAt from channel code
             const loopAtMatch = ch.rawCode.match(/\.loopAt\(\s*(\d+)\s*\)/)
             const loopAtVal = loopAtMatch ? parseInt(loopAtMatch[1]) : 4
-            // Extract trim begin/end from channel params for chop sync
-            const trimBeginParam = ch.params.find(p => p.key === 'begin')
-            const trimEndParam = ch.params.find(p => p.key === 'end')
-            const trimBegin = trimBeginParam?.value ?? 0
-            const trimEnd = trimEndParam?.value ?? 1
+            // Extract trim begin/end — first check trim metadata comment, then fall back to params
+            const trimMeta = ch.rawCode.match(/\/\/\s*trim:([\d.]+):([\d.]+):(\d+)/)
+            let trimBegin: number, trimEnd: number
+            if (trimMeta) {
+              trimBegin = parseFloat(trimMeta[1])
+              trimEnd = parseFloat(trimMeta[2])
+              chopCount = parseInt(trimMeta[3]) // restore original pad count
+            } else {
+              const trimBeginParam = ch.params.find(p => p.key === 'begin')
+              const trimEndParam = ch.params.find(p => p.key === 'end')
+              trimBegin = trimBeginParam?.value ?? 0
+              trimEnd = trimEndParam?.value ?? 1
+            }
             return (
               <StudioVocalPadSampler
                 key={padSamplerChannel}
@@ -950,32 +959,62 @@ export default function StudioEditor() {
                   if (newCode !== latest) handleLiveCodeChange(newCode)
                 }}
                 onPreviewPad={async (sampleName: string, begin: number, end: number, speed?: number) => {
+                  // ── Try superdough first ──
                   const engine = engineRef.current
-                  if (!engine) return
+                  if (engine) {
+                    try {
+                      const actx = engine.webaudio.getAudioContext()
+                      await actx.resume()
+                      let sd = engine.superdough || engine.webaudio.superdough
+                      if (!sd) {
+                        const sdMod = await import('superdough')
+                        sd = sdMod.superdough
+                      }
+                      if (sd) {
+                        const now = actx.currentTime + 0.05
+                        const params: Record<string, unknown> = {
+                          s: sampleName,
+                          begin,
+                          end,
+                          gain: 0.7,
+                          cut: 2,
+                        }
+                        if (speed !== undefined && speed !== 1) params.speed = speed
+                        if (ch.bank) params.bank = ch.bank
+                        const sliceDur = Math.max(0.25, (end - begin) * 60)
+                        await sd(params, now, Math.min(sliceDur, 8))
+                        return // superdough worked
+                      }
+                    } catch (err) {
+                      console.warn('[444 STUDIO] superdough pad preview failed, trying direct playback:', err)
+                    }
+                  }
+
+                  // ── Fallback: Direct Web Audio API using cached buffer ──
+                  const sampleUrl = userSamples.find(s => s.name === sampleName)?.url
+                  if (!sampleUrl) { console.warn('[444 STUDIO] pad preview: no URL for sample', sampleName); return }
                   try {
-                    const actx = engine.webaudio.getAudioContext()
+                    const actx = new AudioContext()
                     await actx.resume()
-                    let sd = engine.superdough || engine.webaudio.superdough
-                    if (!sd) {
-                      const sdMod = await import('superdough')
-                      sd = sdMod.superdough
+                    let buffer = padPreviewCacheRef.current.get(sampleName)
+                    if (!buffer) {
+                      const response = await fetch(sampleUrl)
+                      const arrayBuffer = await response.arrayBuffer()
+                      buffer = await actx.decodeAudioData(arrayBuffer)
+                      padPreviewCacheRef.current.set(sampleName, buffer)
                     }
-                    if (!sd) return
-                    const now = actx.currentTime + 0.05
-                    const params: Record<string, unknown> = {
-                      s: sampleName,
-                      begin,
-                      end,
-                      gain: 0.7,
-                      cut: 2,
-                    }
-                    if (speed !== undefined && speed !== 1) params.speed = speed
-                    if (ch.bank) params.bank = ch.bank
-                    // Duration: generous so the full slice is audible (superdough trims to begin/end)
-                    const sliceDur = Math.max(0.25, (end - begin) * 60) // vocal stems can be long
-                    await sd(params, now, Math.min(sliceDur, 8))
-                  } catch (err) {
-                    console.error('[444 STUDIO] pad preview error:', err)
+                    const source = actx.createBufferSource()
+                    source.buffer = buffer
+                    if (speed !== undefined && speed !== 1) source.playbackRate.value = speed
+                    const gainNode = actx.createGain()
+                    gainNode.gain.value = 0.7
+                    source.connect(gainNode)
+                    gainNode.connect(actx.destination)
+                    const startOffset = begin * buffer.duration
+                    const dur = (end - begin) * buffer.duration
+                    source.start(0, startOffset, Math.min(dur, 8))
+                  } catch (err2) {
+                    console.error('[444 STUDIO] direct pad playback also failed:', err2)
                   }
                 }}
                 onPreviewDrum={async (sound: string, gain?: number) => {
