@@ -355,9 +355,9 @@ export default function StudioVocalPadSampler({
       sidechainStr = `\n  .duck("${sidechainOrbit}").duckdepth(${sidechainDepth.toFixed(2)})`
     }
 
-    // slice(N) divides sample into N equal-length parts and n() selects which part
+    // slice(N, pat) divides sample into N equal-length parts; second arg selects which part
     const effectsStr = effectsToKeep.length > 0 ? '\n  ' + effectsToKeep.join('\n  ') : ''
-    const newCode = `$${name}: n("${pattern}")\n  .s("${sampleName}")\n  .slice(${localChopCount})\n  .loopAt(${loopBars})${pitchStr}${sidechainStr}${effectsStr}\n  .orbit(${orbit})._scope()`
+    const newCode = `$${name}: s("${sampleName}")\n  .slice(${localChopCount}, "${pattern}")\n  .loopAt(${loopBars})${pitchStr}${sidechainStr}${effectsStr}\n  .orbit(${orbit})._scope()`
 
     onPatternChange(newCode)
     setHasEdited(false)
@@ -371,8 +371,9 @@ export default function StudioVocalPadSampler({
 
   // ─── Parse existing pattern from code ───
   useEffect(() => {
-    // Try to parse n("...") pattern from the channel code
-    const nMatch = channelRawCode.match(/\bn\(\s*"([^"]*)"\s*\)/)
+    // Try to parse slice(N, "...") or n("...") pattern from the channel code
+    const sliceMatch = channelRawCode.match(/\.slice\(\s*\d+\s*,\s*"([^"]*)"\s*\)/)
+    const nMatch = sliceMatch || channelRawCode.match(/\bn\(\s*"([^"]*)"\s*\)/)
     if (!nMatch) return
 
     const pattern = nMatch[1]
