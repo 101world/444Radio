@@ -286,7 +286,7 @@ function EffectBadge({ effect }: { effect: typeof DRAGGABLE_EFFECTS[number] }) {
       draggable
       onDragStart={(e) => {
         e.dataTransfer.setData('application/x-strudel-fx', JSON.stringify(effect))
-        e.dataTransfer.effectAllowed = 'copy'
+        e.dataTransfer.effectAllowed = 'copyMove'
       }}
       className="flex items-center gap-1.5 px-2 py-1 cursor-grab active:cursor-grabbing
         transition-all text-[8px] select-none shrink-0 hover:scale-105 duration-[180ms]"
@@ -1853,7 +1853,12 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
 
   const handleReorderDragOver = useCallback((idx: number, e: React.DragEvent) => {
     e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
+    // Only set 'move' dropEffect for channel reorder drags.
+    // FX badge drags set effectAllowed='copyMove' — setting dropEffect='move'
+    // unconditionally would conflict and the browser blocks the drop event.
+    if (e.dataTransfer.types.includes('application/x-channel-reorder')) {
+      e.dataTransfer.dropEffect = 'move'
+    }
     setReorderOverIdx(idx)
   }, [])
 
