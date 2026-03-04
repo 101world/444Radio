@@ -81,7 +81,7 @@ function compressPattern(tokens: string[]): string {
 
 /** Build slice-based pattern from recorded hits.
  *  Output: slice indices for n() — e.g. "0 ~ 3 ~ 7 ~ ~ ~"
- *  Strudel form: s("sample").splice(chopCount, "pattern")
+ *  Strudel form: s("sample").slice(chopCount, "pattern")
  */
 function buildSlicePattern(hits: RecordedHit[], chopCount: number, bars: number): string {
   const barPatterns: string[] = []
@@ -376,13 +376,13 @@ export default function StudioVocalPadSampler({
       })
     }
 
-    // splice(N, "pat") chops sample into N slices, selects by pattern, adjusts speed per slice
+    // slice(N, "pat") chops sample into N slices, selects by pattern index
     let trimComment = ''
     if (isTrimmed) {
       // Store trim metadata for round-trip parsing
       trimComment = ` // trim:${trimBegin.toFixed(4)}:${trimEnd.toFixed(4)}:${localChopCount}`
     }
-    const newCode = `$${name}: s("${sampleName}")\n  .splice(${spliceCount}, "${finalPattern}")${trimComment}${pitchStr}${sidechainStr}${effectsStr}\n  .orbit(${orbit}).scope()`
+    const newCode = `$${name}: s("${sampleName}")\n  .slice(${spliceCount}, "${finalPattern}")${trimComment}${pitchStr}${sidechainStr}${effectsStr}\n  .orbit(${orbit}).scope()`
 
     onPatternChange(newCode)
     setHasEdited(false)
@@ -396,13 +396,13 @@ export default function StudioVocalPadSampler({
 
   // ─── Parse existing pattern from code ───
   useEffect(() => {
-    // Try to parse splice(N, "...") or slice(N, "...") or n("...") pattern from the channel code
-    const spliceMatch = channelRawCode.match(/\.splice\(\s*\d+\s*,\s*"([^"]*)"\s*\)/)
-    const sliceMatch = spliceMatch || channelRawCode.match(/\.slice\(\s*\d+\s*,\s*"([^"]*)"\s*\)/)
-    const nMatch = sliceMatch || channelRawCode.match(/\bn\(\s*"([^"]*)"\s*\)/)
-    if (!nMatch) return
+    // Try to parse slice(N, "...") or splice(N, "...") or n("...") pattern from the channel code
+    const sliceMatch = channelRawCode.match(/\.slice\(\s*\d+\s*,\s*"([^"]*)"\s*\)/)
+    const spliceMatch = sliceMatch || channelRawCode.match(/\.splice\(\s*\d+\s*,\s*"([^"]*)"\s*\)/)
+    const patternMatch = spliceMatch || channelRawCode.match(/\bn\(\s*"([^"]*)"\s*\)/)
+    if (!patternMatch) return
 
-    const pattern = nMatch[1]
+    const pattern = patternMatch[1]
     if (!pattern || pattern === '~') return
 
     // Check for trim metadata comment: // trim:BEGIN:END:CHOPCOUNT
