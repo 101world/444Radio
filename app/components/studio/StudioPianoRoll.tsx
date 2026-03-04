@@ -21,6 +21,73 @@ import StudioKnob from './StudioKnob'
 
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
+// Roman numeral labels for scale degrees
+const ROMAN_NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII']
+
+/** Identify a chord from a set of MIDI notes. Returns chord name or null. */
+function identifyChord(midiNotes: number[]): string | null {
+  if (midiNotes.length < 2) return null
+  const sorted = [...midiNotes].sort((a, b) => a - b)
+  const root = sorted[0]
+  const rootName = NOTE_NAMES[root % 12]
+  // Get intervals relative to root (mod 12, deduplicated)
+  const intervals = [...new Set(sorted.map(m => ((m - root) % 12 + 12) % 12))].sort((a, b) => a - b)
+  const key = intervals.join(',')
+
+  const CHORD_NAMES: Record<string, string> = {
+    '0,4,7': 'maj',      '0,3,7': 'min',      '0,3,6': 'dim',
+    '0,4,8': 'aug',      '0,5,7': 'sus4',     '0,2,7': 'sus2',
+    '0,4,7,11': 'maj7',  '0,3,7,10': 'min7',  '0,4,7,10': '7',
+    '0,3,6,9': 'dim7',   '0,3,6,10': 'm7b5',  '0,4,8,11': 'maj7#5',
+    '0,3,7,11': 'mMaj7', '0,4,7,10,14': '9',  '0,2,4,7': 'add2',
+    '0,4,7,14': 'add9',  '0,3,7,14': 'madd9', '0,4,7,9': '6',
+    '0,3,7,9': 'm6',     '0,5,7,10': '7sus4', '0,2,7,10': '7sus2',
+    '0,7': '5',
+  }
+
+  const name = CHORD_NAMES[key]
+  if (name) return `${rootName}${name}`
+
+  // Try inversions: rotate intervals
+  for (let inv = 1; inv < sorted.length; inv++) {
+    const invRoot = sorted[inv]
+    const invRootName = NOTE_NAMES[invRoot % 12]
+    const invIntervals = [...new Set(sorted.map(m => ((m - invRoot) % 12 + 12) % 12))].sort((a, b) => a - b)
+    const invKey = invIntervals.join(',')
+    const invName = CHORD_NAMES[invKey]
+    if (invName) return `${invRootName}${invName}/${rootName}`
+  }
+  return null
+}
+
+/** Get the diatonic chord quality at each scale degree (for chord palette) */
+function getDiatonicChords(scale: string): { degree: number; roman: string; quality: string; notes: number[] }[] {
+  const { root, octave, mode } = parseScaleStr(scale)
+  const intervals = SCALE_INTERVALS[mode] || SCALE_INTERVALS.minor
+  const chords: { degree: number; roman: string; quality: string; notes: number[] }[] = []
+
+  for (let deg = 0; deg < intervals.length && deg < 7; deg++) {
+    const rootMidi = degreeToMidi(deg, scale)
+    const thirdMidi = degreeToMidi(deg + 2, scale)
+    const fifthMidi = degreeToMidi(deg + 4, scale)
+
+    // Determine quality from intervals
+    const thirdInterval = ((thirdMidi - rootMidi) % 12 + 12) % 12
+    const fifthInterval = ((fifthMidi - rootMidi) % 12 + 12) % 12
+
+    let quality = ''
+    let roman = ROMAN_NUMERALS[deg] || String(deg + 1)
+    if (thirdInterval === 4 && fifthInterval === 7) { quality = ''; /* major */ }
+    else if (thirdInterval === 3 && fifthInterval === 7) { quality = 'm'; roman = roman.toLowerCase() }
+    else if (thirdInterval === 3 && fifthInterval === 6) { quality = 'dim'; roman = roman.toLowerCase() + '°' }
+    else if (thirdInterval === 4 && fifthInterval === 8) { quality = 'aug'; roman = roman + '+' }
+    else { quality = ''; }
+
+    chords.push({ degree: deg, roman, quality, notes: [rootMidi, thirdMidi, fifthMidi] })
+  }
+  return chords
+}
+
 const SCALE_INTERVALS: Record<string, number[]> = {
   major:            [0, 2, 4, 5, 7, 9, 11],
   minor:            [0, 2, 3, 5, 7, 8, 10],
@@ -926,6 +993,9 @@ export default function StudioPianoRoll({
   const isDraggingNotes = useRef(false)
   const dragStartCell = useRef<{ midi: number; step: number } | null>(null)
   const dragOriginalNotes = useRef<Map<string, { midi: number; step: number; length: number }>>(new Map())
+  const isAltDuplicating = useRef(false) // Alt+drag = duplicate notes
+  const dragConstraint = useRef<'none' | 'h' | 'v'>('none') // Shift = axis-lock
+  const dragBaseNoteMap = useRef<Map<string, NoteData>>(new Map()) // Snapshot of noteMap at drag start
 
   // Double-click tracking for delete
   const lastClickTime = useRef(0)
@@ -937,6 +1007,21 @@ export default function StudioPianoRoll({
 
   // Effects panel state
   const [showEffectsPanel, setShowEffectsPanel] = useState(true)
+
+  // ── Sample Waveform / Trim state ──
+  const [showWaveform, setShowWaveform] = useState(false)
+  const [sampleBegin, setSampleBegin] = useState(0)
+  const [sampleEnd, setSampleEnd] = useState(1)
+  const [isFullSample, setIsFullSample] = useState(false)
+  const waveformCanvasRef = useRef<HTMLCanvasElement>(null)
+  const waveformDataRef = useRef<{ min: number; max: number }[]>([])
+  const sampleAudioCtxRef = useRef<AudioContext | null>(null)
+  const sampleBufferRef = useRef<AudioBuffer | null>(null)
+  const [sampleDuration, setSampleDuration] = useState(0)
+  const [waveformLoading, setWaveformLoading] = useState(false)
+  const [waveformDragging, setWaveformDragging] = useState<'begin' | 'end' | null>(null)
+  const waveformPreviewSrc = useRef<AudioBufferSourceNode | null>(null)
+  const [isWaveformPreviewing, setIsWaveformPreviewing] = useState(false)
 
   // ── Loop Recording state ──
   const [isLoopRecording, setIsLoopRecording] = useState(false)
@@ -1018,6 +1103,301 @@ export default function StudioPianoRoll({
     if (!channelData) return { mode: 'off', rate: 1 }
     return getArpInfo(channelData.rawCode)
   }, [channelData])
+
+  // ── Sample URL extraction from channel rawCode ──
+  const sampleUrl = useMemo(() => {
+    if (!channelData?.rawCode) return null
+    const urlMatch = channelData.rawCode.match(/\.?s\(\s*"(https?:\/\/[^"]+)"/)
+    return urlMatch ? urlMatch[1] : null
+  }, [channelData?.rawCode])
+
+  const isSampleChannel = channelData?.sourceType === 'sample' && !!sampleUrl
+
+  // ── Initialize begin/end from channel params ──
+  const sampleBeginFromCode = useMemo(() => {
+    return channelData?.params.find(p => p.key === 'begin')?.value ?? 0
+  }, [channelData])
+  const sampleEndFromCode = useMemo(() => {
+    return channelData?.params.find(p => p.key === 'end')?.value ?? 1
+  }, [channelData])
+
+  // Sync from code params when they change externally
+  const lastSyncedBegin = useRef<number | null>(null)
+  const lastSyncedEnd = useRef<number | null>(null)
+  useEffect(() => {
+    if (lastSyncedBegin.current !== sampleBeginFromCode || lastSyncedEnd.current !== sampleEndFromCode) {
+      setSampleBegin(sampleBeginFromCode)
+      setSampleEnd(sampleEndFromCode)
+      lastSyncedBegin.current = sampleBeginFromCode
+      lastSyncedEnd.current = sampleEndFromCode
+      setIsFullSample(sampleBeginFromCode <= 0.005 && sampleEndFromCode >= 0.995)
+    }
+  }, [sampleBeginFromCode, sampleEndFromCode])
+
+  // Auto-show waveform for sample channels
+  useEffect(() => {
+    if (isSampleChannel) setShowWaveform(true)
+  }, [isSampleChannel])
+
+  // ── Load waveform audio data ──
+  useEffect(() => {
+    if (!sampleUrl || !showWaveform) return
+    if (sampleBufferRef.current && sampleDuration > 0) return
+
+    setWaveformLoading(true)
+    let cancelled = false
+    const load = async () => {
+      try {
+        const resp = await fetch(sampleUrl)
+        const buf = await resp.arrayBuffer()
+        if (cancelled) return
+        if (!sampleAudioCtxRef.current) sampleAudioCtxRef.current = new AudioContext()
+        const ab = await sampleAudioCtxRef.current.decodeAudioData(buf)
+        if (cancelled) return
+        sampleBufferRef.current = ab
+        setSampleDuration(ab.duration)
+
+        // Compute waveform peaks
+        const chData = ab.getChannelData(0)
+        const peakCount = 800
+        const block = Math.floor(chData.length / peakCount)
+        const wave: { min: number; max: number }[] = []
+        for (let i = 0; i < peakCount; i++) {
+          const startIdx = i * block
+          let mn = 1, mx = -1
+          for (let j = 0; j < block; j++) {
+            const v = chData[startIdx + j]
+            if (v < mn) mn = v
+            if (v > mx) mx = v
+          }
+          wave.push({ min: mn, max: mx })
+        }
+        waveformDataRef.current = wave
+
+        // Default "shot" mode: ~1 second unless already trimmed in code
+        if (sampleBeginFromCode <= 0.005 && sampleEndFromCode >= 0.995 && ab.duration > 1.5) {
+          const shotEnd = Math.min(1, 1.0 / ab.duration)
+          setSampleEnd(shotEnd)
+          setIsFullSample(false)
+        }
+      } catch {
+        // Failed to load sample audio
+      } finally {
+        if (!cancelled) setWaveformLoading(false)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sampleUrl, showWaveform])
+
+  // ── Draw waveform on canvas ──
+  const drawSampleWaveform = useCallback(() => {
+    const canvas = waveformCanvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    const w = canvas.width, h = canvas.height, hh = h / 2
+    const wave = waveformDataRef.current
+    if (!wave.length) return
+
+    ctx.clearRect(0, 0, w, h)
+    ctx.fillStyle = '#0a0b0d'
+    ctx.fillRect(0, 0, w, h)
+
+    // Dimmed regions outside trim
+    const bx = sampleBegin * w, exVal = sampleEnd * w
+    ctx.fillStyle = 'rgba(0,0,0,0.6)'
+    ctx.fillRect(0, 0, bx, h)
+    ctx.fillRect(exVal, 0, w - exVal, h)
+
+    // Center line
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)'
+    ctx.lineWidth = 1
+    ctx.beginPath(); ctx.moveTo(0, hh); ctx.lineTo(w, hh); ctx.stroke()
+
+    // Waveform bars
+    for (let i = 0; i < wave.length; i++) {
+      const x = (i / wave.length) * w
+      const inTrim = x >= bx && x <= exVal
+      ctx.strokeStyle = inTrim ? color : `${color}25`
+      ctx.lineWidth = inTrim ? 1.5 : 0.6
+      ctx.beginPath()
+      ctx.moveTo(x, hh + wave[i].min * hh)
+      ctx.lineTo(x, hh + wave[i].max * hh)
+      ctx.stroke()
+    }
+
+    // Begin handle (green)
+    ctx.fillStyle = '#10b981'
+    ctx.fillRect(bx - 1, 0, 2, h)
+    ctx.beginPath(); ctx.moveTo(bx, 0); ctx.lineTo(bx + 7, 0); ctx.lineTo(bx, 9); ctx.closePath(); ctx.fill()
+    // End handle (red)
+    ctx.fillStyle = '#f43f5e'
+    ctx.fillRect(exVal - 1, 0, 2, h)
+    ctx.beginPath(); ctx.moveTo(exVal, 0); ctx.lineTo(exVal - 7, 0); ctx.lineTo(exVal, 9); ctx.closePath(); ctx.fill()
+
+    // Time labels
+    ctx.font = '9px monospace'
+    ctx.fillStyle = '#10b981'
+    ctx.textAlign = 'left'
+    ctx.fillText(`${(sampleBegin * sampleDuration).toFixed(1)}s`, bx + 3, h - 3)
+    ctx.fillStyle = '#f43f5e'
+    ctx.textAlign = 'right'
+    ctx.fillText(`${(sampleEnd * sampleDuration).toFixed(1)}s`, exVal - 3, h - 3)
+
+    // Region duration label
+    const regionDur = (sampleEnd - sampleBegin) * sampleDuration
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'
+    ctx.textAlign = 'center'
+    ctx.font = '8px monospace'
+    ctx.fillText(`${regionDur.toFixed(2)}s`, (bx + exVal) / 2, h - 3)
+  }, [sampleBegin, sampleEnd, color, sampleDuration])
+
+  // Redraw waveform when trim values change
+  useEffect(() => { drawSampleWaveform() }, [drawSampleWaveform])
+  useEffect(() => {
+    if (!waveformLoading && waveformDataRef.current.length > 0) {
+      requestAnimationFrame(drawSampleWaveform)
+    }
+  }, [waveformLoading, drawSampleWaveform])
+
+  // ── Waveform drag handlers ──
+  const getWaveformX = useCallback((e: MouseEvent | React.MouseEvent) => {
+    const canvas = waveformCanvasRef.current
+    if (!canvas) return 0
+    const rect = canvas.getBoundingClientRect()
+    return Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+  }, [])
+
+  const handleWaveformMouseDown = useCallback((e: React.MouseEvent) => {
+    const x = getWaveformX(e)
+    const bDist = Math.abs(x - sampleBegin)
+    const eDist = Math.abs(x - sampleEnd)
+    if (bDist < 0.025 || (bDist < eDist && bDist < 0.05)) {
+      setWaveformDragging('begin')
+    } else if (eDist < 0.025 || eDist < 0.05) {
+      setWaveformDragging('end')
+    }
+  }, [sampleBegin, sampleEnd, getWaveformX])
+
+  useEffect(() => {
+    if (!waveformDragging) return
+    const onMove = (e: MouseEvent) => {
+      const x = getWaveformX(e)
+      if (waveformDragging === 'begin') setSampleBegin(Math.max(0, Math.min(x, sampleEnd - 0.01)))
+      else setSampleEnd(Math.min(1, Math.max(x, sampleBegin + 0.01)))
+    }
+    const onUp = () => setWaveformDragging(null)
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
+  }, [waveformDragging, sampleBegin, sampleEnd, getWaveformX])
+
+  // ── Apply trim to channel code when drag ends ──
+  useEffect(() => {
+    if (waveformDragging !== null) return
+    if (!channelData || channelIdx === undefined) return
+    if (Math.abs(sampleBegin - sampleBeginFromCode) < 0.005 && Math.abs(sampleEnd - sampleEndFromCode) < 0.005) return
+
+    const hasBegin = channelData.effects.includes('begin')
+    if (sampleBegin > 0.005) {
+      if (hasBegin) onEffectChange?.('begin', Math.round(sampleBegin * 100) / 100)
+      else onEffectAdd?.(`.begin(${sampleBegin.toFixed(2)})`)
+    } else if (hasBegin) {
+      onEffectRemove?.('begin')
+    }
+
+    const hasEnd = channelData.effects.includes('end')
+    if (sampleEnd < 0.995) {
+      if (hasEnd) onEffectChange?.('end', Math.round(sampleEnd * 100) / 100)
+      else onEffectAdd?.(`.end(${sampleEnd.toFixed(2)})`)
+    } else if (hasEnd) {
+      onEffectRemove?.('end')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [waveformDragging])
+
+  // ── Toggle full sample / shot mode ──
+  const toggleFullSample = useCallback(() => {
+    if (isFullSample) {
+      const shotEnd = sampleDuration > 1.5 ? Math.min(1, 1.0 / sampleDuration) : 1
+      setSampleBegin(0)
+      setSampleEnd(shotEnd)
+      setIsFullSample(false)
+      if (channelData && channelIdx !== undefined) {
+        if (channelData.effects.includes('begin')) onEffectRemove?.('begin')
+        if (shotEnd < 0.995) {
+          if (channelData.effects.includes('end')) onEffectChange?.('end', Math.round(shotEnd * 100) / 100)
+          else onEffectAdd?.(`.end(${shotEnd.toFixed(2)})`)
+        }
+      }
+    } else {
+      setSampleBegin(0)
+      setSampleEnd(1)
+      setIsFullSample(true)
+      if (channelData && channelIdx !== undefined) {
+        if (channelData.effects.includes('begin')) onEffectRemove?.('begin')
+        if (channelData.effects.includes('end')) onEffectRemove?.('end')
+      }
+    }
+  }, [isFullSample, sampleDuration, channelData, channelIdx, onEffectChange, onEffectAdd, onEffectRemove])
+
+  // ── Preview trimmed region ──
+  const toggleWaveformPreview = useCallback(() => {
+    if (isWaveformPreviewing && waveformPreviewSrc.current) {
+      waveformPreviewSrc.current.stop()
+      waveformPreviewSrc.current = null
+      setIsWaveformPreviewing(false)
+      return
+    }
+    if (!sampleBufferRef.current || !sampleAudioCtxRef.current) return
+    const actx = sampleAudioCtxRef.current
+    if (actx.state === 'suspended') actx.resume()
+    const src = actx.createBufferSource()
+    src.buffer = sampleBufferRef.current
+    src.connect(actx.destination)
+    const startSec = sampleBegin * sampleBufferRef.current.duration
+    const durSec = (sampleEnd - sampleBegin) * sampleBufferRef.current.duration
+    src.start(0, startSec, durSec)
+    src.onended = () => { setIsWaveformPreviewing(false); waveformPreviewSrc.current = null }
+    waveformPreviewSrc.current = src
+    setIsWaveformPreviewing(true)
+  }, [sampleBegin, sampleEnd, isWaveformPreviewing])
+
+  // Cleanup preview on unmount
+  useEffect(() => {
+    return () => { if (waveformPreviewSrc.current) { try { waveformPreviewSrc.current.stop() } catch { /* noop */ } } }
+  }, [])
+
+
+  // Chord detection: identify chord from selected notes
+  const detectedChord = useMemo(() => {
+    if (selectedNotes.size < 2) return null
+    const midiNotes: number[] = []
+    selectedNotes.forEach(key => {
+      midiNotes.push(parseInt(key.split(':')[0]))
+    })
+    return identifyChord(midiNotes)
+  }, [selectedNotes])
+
+  // Diatonic chord palette for current scale
+  const diatonicChords = useMemo(() => getDiatonicChords(scale), [scale])
+
+  // Chord palette state
+  const [showChordPalette, setShowChordPalette] = useState(false)
+  const chordPaletteRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!showChordPalette) return
+    const handler = (e: MouseEvent) => {
+      if (chordPaletteRef.current && !chordPaletteRef.current.contains(e.target as Node)) {
+        setShowChordPalette(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showChordPalette])
 
   const transposeValue = useMemo(() => {
     if (!channelData) return 0
@@ -1253,6 +1633,32 @@ export default function StudioPianoRoll({
     if (isResizing.current) return
     if (e.shiftKey) return // Let grid-level box selection handle shift+drag
     e.preventDefault()
+
+    // Ctrl+click on grid: stamp a triad chord (root + 3rd + 5th) at this position
+    if (e.ctrlKey && scaleMidiSet.has(midi)) {
+      const deg = midiToDegree(midi, scale)
+      if (deg !== null) {
+        const third = degreeToMidi(deg + 2, scale)
+        const fifth = degreeToMidi(deg + 4, scale)
+        const chordLen = Math.max(1, Math.floor(stepsPerBar / 4))
+        setNoteMap(prev => {
+          const next = new Map(prev)
+          next.set(`${midi}:${step}`, { length: chordLen })
+          if (scaleMidiSet.has(third)) next.set(`${third}:${step}`, { length: chordLen })
+          if (scaleMidiSet.has(fifth)) next.set(`${fifth}:${step}`, { length: chordLen })
+          return next
+        })
+        setHasUserEdited(true)
+        if (onNotePreview) { onNotePreview(midi) } else { playPreview(midi, soundSource) }
+        return
+      }
+    }
+
+    // Clear note selection when clicking on empty grid
+    if (selectedNotes.size > 0) {
+      setSelectedNotes(new Set())
+    }
+
     const key = `${midi}:${step}`
     isDrawing.current = true
     // Check if this cell is covered by any note
@@ -1267,7 +1673,7 @@ export default function StudioPianoRoll({
     drawMode.current = isCovered ? 'remove' : 'add'
     lastCell.current = key
     toggleNote(midi, step, drawMode.current)
-  }, [noteMap, toggleNote])
+  }, [noteMap, toggleNote, selectedNotes, scaleMidiSet, scale, stepsPerBar, soundSource, onNotePreview])
 
   const handleCellEnter = useCallback((midi: number, step: number) => {
     if (!isDrawing.current || isBoxSelecting.current) return
@@ -1284,8 +1690,11 @@ export default function StudioPianoRoll({
       // End note drag
       if (isDraggingNotes.current) {
         isDraggingNotes.current = false
+        isAltDuplicating.current = false
+        dragConstraint.current = 'none'
         dragStartCell.current = null
         dragOriginalNotes.current = new Map()
+        dragBaseNoteMap.current = new Map()
         setHasUserEdited(true)
       }
       // End box selection â€” compute selected notes
@@ -1298,6 +1707,11 @@ export default function StudioPianoRoll({
   }, [])
 
   // —— Global mousemove for note drag-move ——
+  // Uses absolute delta from drag start (never mutates original positions).
+  // dragBaseNoteMap = snapshot of noteMap at drag start:
+  //   Normal drag: base = noteMap minus dragged notes
+  //   Alt+drag:    base = noteMap (originals stay, copies are added)
+  // On each move: newNoteMap = Map(base) + notes at (orig + totalDelta)
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
       if (!isDraggingNotes.current || !dragStartCell.current || !scrollRef.current) return
@@ -1308,35 +1722,48 @@ export default function StudioPianoRoll({
       const currentRowIdx = Math.max(0, Math.floor(y / cellH))
       const currentMidi = rows[Math.min(currentRowIdx, rows.length - 1)] ?? rows[0]
 
-      const deltaStep = currentStep - dragStartCell.current.step
-      const deltaMidi = currentMidi - dragStartCell.current.midi
+      let deltaStep = currentStep - dragStartCell.current.step
+      let deltaMidi = currentMidi - dragStartCell.current.midi
 
-      if (deltaStep === 0 && deltaMidi === 0) return
+      // Shift key: constrain to one axis (auto-detect on first significant movement)
+      if (e.shiftKey) {
+        if (dragConstraint.current === 'none' && (deltaStep !== 0 || deltaMidi !== 0)) {
+          dragConstraint.current = Math.abs(deltaStep) >= Math.abs(deltaMidi) ? 'h' : 'v'
+        }
+        if (dragConstraint.current === 'h') deltaMidi = 0
+        else if (dragConstraint.current === 'v') deltaStep = 0
+      } else {
+        dragConstraint.current = 'none'
+      }
 
-      setNoteMap(prev => {
-        const next = new Map(prev)
-        const newSel = new Set<string>()
-        // Remove old positions
-        dragOriginalNotes.current.forEach((_n, oldKey) => {
-          next.delete(oldKey)
-        })
-        // Add new positions
-        const updatedOrig = new Map<string, { midi: number; step: number; length: number }>()
-        dragOriginalNotes.current.forEach((n) => {
-          const newMidi = n.midi + deltaMidi
-          const newStep = Math.max(0, n.step + deltaStep)
-          if (scaleMidiSet.has(newMidi) && newStep < bars * stepsPerBar) {
-            const newKey = `${newMidi}:${newStep}`
+      const totalStepsMax = bars * stepsPerBar
+
+      // Reconstruct noteMap from base snapshot + moved/copied notes at new positions
+      const next = new Map(dragBaseNoteMap.current)
+      const newSel = new Set<string>()
+
+      dragOriginalNotes.current.forEach((n) => {
+        const newMidi = n.midi + deltaMidi
+        const newStep = Math.max(0, n.step + deltaStep)
+        if (newStep < totalStepsMax) {
+          // Snap to nearest in-scale note if target is out of scale
+          let targetMidi = newMidi
+          if (!scaleMidiSet.has(targetMidi)) {
+            for (let d = 1; d <= 2; d++) {
+              if (scaleMidiSet.has(targetMidi + d)) { targetMidi = targetMidi + d; break }
+              if (scaleMidiSet.has(targetMidi - d)) { targetMidi = targetMidi - d; break }
+            }
+          }
+          if (scaleMidiSet.has(targetMidi)) {
+            const newKey = `${targetMidi}:${newStep}`
             next.set(newKey, { length: n.length })
             newSel.add(newKey)
-            updatedOrig.set(newKey, { midi: newMidi, step: newStep, length: n.length })
           }
-        })
-        dragOriginalNotes.current = updatedOrig
-        dragStartCell.current = { midi: currentMidi, step: currentStep }
-        setSelectedNotes(newSel)
-        return next
+        }
       })
+
+      setSelectedNotes(newSel)
+      setNoteMap(next)
     }
     window.addEventListener('mousemove', onMove)
     return () => window.removeEventListener('mousemove', onMove)
@@ -1523,10 +1950,65 @@ export default function StudioPianoRoll({
         setHasUserEdited(true)
         return
       }
+
+      // Arrow keys: nudge selected notes (Shift = bigger jumps)
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && selectedNotes.size > 0) {
+        e.preventDefault()
+        const bigJump = e.shiftKey
+        let dStep = 0, dMidi = 0
+        if (e.key === 'ArrowLeft')  dStep = bigJump ? -stepsPerBar : -1
+        if (e.key === 'ArrowRight') dStep = bigJump ? stepsPerBar : 1
+        if (e.key === 'ArrowUp')    dMidi = bigJump ? 12 : 1  // semitone or octave
+        if (e.key === 'ArrowDown')  dMidi = bigJump ? -12 : -1
+
+        setNoteMap(prev => {
+          const next = new Map(prev)
+          const newSel = new Set<string>()
+          const totalMax = bars * stepsPerBar
+
+          // Collect notes to move
+          const toMove: { key: string; midi: number; step: number; length: number }[] = []
+          selectedNotes.forEach(k => {
+            const d = prev.get(k)
+            if (d) {
+              const [m, s] = k.split(':')
+              toMove.push({ key: k, midi: parseInt(m), step: parseInt(s), length: d.length })
+            }
+          })
+
+          // Remove old positions
+          toMove.forEach(n => next.delete(n.key))
+
+          // Add at new positions, snapping to scale
+          toMove.forEach(n => {
+            let newMidi = n.midi + dMidi
+            const newStep = Math.max(0, Math.min(n.step + dStep, totalMax - 1))
+
+            // For up/down: walk to nearest in-scale note
+            if (dMidi !== 0 && !scaleMidiSet.has(newMidi)) {
+              const dir = dMidi > 0 ? 1 : -1
+              for (let walk = 1; walk <= 12; walk++) {
+                if (scaleMidiSet.has(newMidi + dir * walk)) { newMidi = newMidi + dir * walk; break }
+              }
+            }
+
+            if (scaleMidiSet.has(newMidi) && newStep < totalMax) {
+              const newKey = `${newMidi}:${newStep}`
+              next.set(newKey, { length: n.length })
+              newSel.add(newKey)
+            }
+          })
+
+          setSelectedNotes(newSel)
+          return next
+        })
+        setHasUserEdited(true)
+        return
+      }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [onClose, selectedNotes, bars, stepsPerBar, isLoopRecording, startLoopRecording, stopLoopRecording])
+  }, [onClose, selectedNotes, bars, stepsPerBar, isLoopRecording, startLoopRecording, stopLoopRecording, scaleMidiSet])
 
   // â”€â”€ Clear all â”€â”€
   const clearAll = useCallback(() => {
@@ -1833,6 +2315,110 @@ export default function StudioPianoRoll({
             )}
           </div>
 
+          {/* Chord Palette dropdown */}
+          <div className="relative" ref={chordPaletteRef}>
+            <button
+              onClick={() => setShowChordPalette(v => !v)}
+              className="px-2 py-0.5 text-[7px] font-bold cursor-pointer transition-all uppercase tracking-wider flex items-center gap-1"
+              style={{
+                background: showChordPalette ? '#16181d' : '#0a0b0d',
+                color: showChordPalette ? '#b8a47f' : '#5a616b',
+                border: 'none',
+                borderRadius: '8px',
+                boxShadow: showChordPalette
+                  ? 'inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22'
+                  : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+              }}
+              title="Insert diatonic chords from the current scale"
+            >
+              Chords
+            </button>
+
+            {showChordPalette && (
+              <div
+                className="absolute bottom-full left-0 mb-1 rounded-xl overflow-hidden z-[200]"
+                style={{
+                  background: '#0a0b0d',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  boxShadow: '0 -8px 24px rgba(0,0,0,0.5)',
+                  minWidth: '200px',
+                }}
+              >
+                <div className="px-2 py-1.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <span className="text-[7px] font-bold uppercase tracking-wider" style={{ color: '#b8a47f' }}>
+                    Diatonic Chords in {scale.replace(/\d+:/, ':')}
+                  </span>
+                  <div className="text-[6px] font-mono mt-0.5" style={{ color: '#5a616b' }}>
+                    Click to insert at next empty beat · Ctrl+click grid to stamp
+                  </div>
+                </div>
+                <div className="px-1.5 py-1 flex flex-wrap gap-1">
+                  {diatonicChords.map((chord) => (
+                    <button
+                      key={chord.degree}
+                      onClick={() => {
+                        // Find the next empty beat position (quarter note grid)
+                        const beatLen = Math.max(1, Math.floor(stepsPerBar / 4))
+                        const totalS = bars * stepsPerBar
+                        let insertStep = 0
+                        // Find first empty beat
+                        for (let s = 0; s < totalS; s += beatLen) {
+                          let occupied = false
+                          noteMapRef.current.forEach((_d, k) => {
+                            const kStep = parseInt(k.split(':')[1])
+                            if (kStep >= s && kStep < s + beatLen) occupied = true
+                          })
+                          if (!occupied) { insertStep = s; break }
+                        }
+                        setNoteMap(prev => {
+                          const next = new Map(prev)
+                          chord.notes.forEach(midi => {
+                            if (scaleMidiSet.has(midi)) {
+                              next.set(`${midi}:${insertStep}`, { length: beatLen })
+                            }
+                          })
+                          return next
+                        })
+                        setHasUserEdited(true)
+                        if (onNotePreview && chord.notes.length > 0) onNotePreview(chord.notes[0])
+                      }}
+                      className="px-2 py-1.5 text-center cursor-pointer transition-all rounded-lg hover:brightness-125"
+                      style={{
+                        background: '#111318',
+                        color: '#e8ecf0',
+                        border: 'none',
+                        borderRadius: '8px',
+                        boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+                        minWidth: '36px',
+                      }}
+                    >
+                      <div className="text-[9px] font-bold" style={{ color: '#b8a47f' }}>{chord.roman}</div>
+                      <div className="text-[6px] font-mono mt-0.5" style={{ color: '#5a616b' }}>
+                        {NOTE_NAMES[chord.notes[0] % 12]}{chord.quality}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <div className="px-2 py-1" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                  <span className="text-[6px] font-mono" style={{ color: '#5a616b' }}>
+                    Tip: Ctrl+click any grid cell to stamp a triad
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Detected chord name */}
+          {detectedChord && (
+            <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-lg" style={{
+              color: '#b8a47f',
+              background: '#0a0b0d',
+              boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22',
+            }}>
+              {detectedChord}
+            </span>
+          )}
+
           {isGenerative && !hasUserEdited && (
             <>
               <div className="w-px h-3.5 bg-white/[0.08]" />
@@ -1917,6 +2503,21 @@ export default function StudioPianoRoll({
               âœ¦ FX
             </button>
           )}
+
+          {isSampleChannel && (
+            <button onClick={() => setShowWaveform(p => !p)}
+              className="px-1.5 py-0.5 text-[7px] cursor-pointer transition-all duration-[180ms] font-bold rounded-lg"
+              style={{
+                background: showWaveform ? '#16181d' : '#0a0b0d',
+                color: showWaveform ? '#10b981' : '#5a616b',
+                boxShadow: showWaveform
+                  ? 'inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22'
+                  : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+              }}
+              title="Toggle Waveform / Sample Trim">
+              WAVE
+            </button>
+          )}
           <button onClick={onClose}
             className="px-1.5 py-0.5 text-[7px] cursor-pointer transition-all duration-[180ms] font-bold rounded-lg"
             style={{ background: '#0a0b0d', color: '#5a616b', boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22' }}
@@ -1925,6 +2526,115 @@ export default function StudioPianoRoll({
           </button>
         </div>
       </div>
+
+
+      {/* ══ WAVEFORM / SAMPLE TRIM STRIP ══ */}
+      {showWaveform && isSampleChannel && (
+        <div
+          className="shrink-0 select-none"
+          style={{
+            background: '#0c0e12',
+            borderBottom: '1px solid rgba(255,255,255,0.04)',
+          }}
+        >
+          {/* Waveform toolbar */}
+          <div className="flex items-center justify-between px-3 py-1"
+            style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+            <div className="flex items-center gap-2">
+              <span className="text-[7px] font-black uppercase tracking-wider" style={{ color: '#10b981' }}>
+                SAMPLE TRIM
+              </span>
+              {sampleDuration > 0 && (
+                <span className="text-[6px] font-mono" style={{ color: '#5a616b' }}>
+                  {sampleDuration.toFixed(1)}s total
+                </span>
+              )}
+              <div className="w-px h-3 bg-white/[0.06]" />
+              {/* Shot / Full toggle */}
+              <button
+                onClick={toggleFullSample}
+                className="px-2 py-0.5 text-[7px] font-bold cursor-pointer transition-all rounded-md"
+                style={{
+                  background: isFullSample ? '#10b98120' : '#f59e0b20',
+                  color: isFullSample ? '#10b981' : '#f59e0b',
+                  border: `1px solid ${isFullSample ? '#10b98130' : '#f59e0b30'}`,
+                }}
+              >
+                {isFullSample ? 'FULL SAMPLE' : 'SOUND SHOT'}
+              </button>
+              {!isFullSample && sampleDuration > 0 && (
+                <span className="text-[6px] font-mono" style={{ color: '#f59e0b' }}>
+                  {((sampleEnd - sampleBegin) * sampleDuration).toFixed(2)}s region
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5">
+              {/* Begin/End readouts */}
+              <span className="text-[7px] font-mono font-bold px-1 py-0.5 rounded"
+                style={{ background: '#111318', color: '#10b981' }}>
+                B:{sampleBegin.toFixed(2)}
+              </span>
+              <span className="text-[7px] font-mono font-bold px-1 py-0.5 rounded"
+                style={{ background: '#111318', color: '#f43f5e' }}>
+                E:{sampleEnd.toFixed(2)}
+              </span>
+              <div className="w-px h-3 bg-white/[0.06]" />
+              {/* Preview button */}
+              <button
+                onClick={toggleWaveformPreview}
+                className="px-2 py-0.5 text-[7px] font-bold cursor-pointer transition-all rounded-md"
+                style={{
+                  background: isWaveformPreviewing ? `${color}20` : '#0a0b0d',
+                  color: isWaveformPreviewing ? color : 'rgba(255,255,255,0.4)',
+                  border: `1px solid ${isWaveformPreviewing ? `${color}40` : 'rgba(255,255,255,0.06)'}`,
+                  boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+                }}
+              >
+                {isWaveformPreviewing ? 'STOP' : 'PREVIEW'}
+              </button>
+              {/* Reset */}
+              <button
+                onClick={() => {
+                  setSampleBegin(0)
+                  setSampleEnd(1)
+                  setIsFullSample(true)
+                  if (channelData) {
+                    if (channelData.effects.includes('begin')) onEffectRemove?.('begin')
+                    if (channelData.effects.includes('end')) onEffectRemove?.('end')
+                  }
+                }}
+                className="px-1.5 py-0.5 text-[7px] font-bold cursor-pointer transition-all rounded-md"
+                style={{
+                  background: '#0a0b0d', color: '#5a616b',
+                  boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+                }}
+              >
+                RESET
+              </button>
+            </div>
+          </div>
+          {/* Waveform canvas */}
+          <div className="px-3 py-1.5">
+            {waveformLoading ? (
+              <div className="flex items-center justify-center" style={{ height: 56, color: 'rgba(255,255,255,0.2)' }}>
+                <span className="text-[8px] animate-pulse">Loading waveform...</span>
+              </div>
+            ) : (
+              <canvas
+                ref={waveformCanvasRef}
+                width={800}
+                height={56}
+                className="w-full rounded-md"
+                style={{
+                  height: 56,
+                  cursor: waveformDragging ? 'ew-resize' : 'default',
+                }}
+                onMouseDown={handleWaveformMouseDown}
+              />
+            )}
+          </div>
+        </div>
+      )}
 
       {/* â•â•â• MAIN CONTENT: Effects Panel + Grid â•â•â• */}
       <div className="flex-1 flex overflow-hidden">
@@ -2429,6 +3139,7 @@ export default function StudioPianoRoll({
                       lastClickTime.current = now
 
                       // Alt+click: duplicate note(s) and start drag
+                      // Originals stay in place; copies follow the mouse
                       if (e.altKey) {
                         const notesToDup = isSelected && selectedNotes.size > 0
                           ? [...selectedNotes]
@@ -2441,25 +3152,17 @@ export default function StudioPianoRoll({
                             dupNotes.push({ key: k, midi: parseInt(m), step: parseInt(s), length: d.length })
                           }
                         })
-                        // Create duplicates in place (they'll be dragged)
-                        setNoteMap(prev => {
-                          const next = new Map(prev)
-                          const newSel = new Set<string>()
-                          dupNotes.forEach(n => {
-                            const newKey = `${n.midi}:${n.step}`
-                            next.set(newKey, { length: n.length })
-                            newSel.add(newKey)
-                          })
-                          setSelectedNotes(newSel)
-                          return next
-                        })
-                        // Start dragging the duplicates
+                        // Set up drag: base = FULL noteMap (originals stay), copies will be added at delta
                         isDraggingNotes.current = true
+                        isAltDuplicating.current = true
+                        dragConstraint.current = 'none'
                         dragStartCell.current = { midi, step }
+                        dragBaseNoteMap.current = new Map(noteMapRef.current) // originals stay
                         const origMap = new Map<string, { midi: number; step: number; length: number }>()
-                        dupNotes.forEach(n => origMap.set(`${n.midi}:${n.step}`, n))
+                        dupNotes.forEach(n => origMap.set(n.key, { midi: n.midi, step: n.step, length: n.length }))
                         dragOriginalNotes.current = origMap
-                        setHasUserEdited(true)
+                        // Select the notes being duplicated
+                        setSelectedNotes(new Set(notesToDup))
                         return
                       }
 
@@ -2489,6 +3192,8 @@ export default function StudioPianoRoll({
                         setSelectedNotes(new Set([key]))
                       }
                       isDraggingNotes.current = true
+                      isAltDuplicating.current = false
+                      dragConstraint.current = 'none'
                       dragStartCell.current = { midi, step }
                       // Store original positions of all selected/clicked notes
                       const toTrack = isSelected ? [...selectedNotes] : [key]
@@ -2501,6 +3206,10 @@ export default function StudioPianoRoll({
                         }
                       })
                       dragOriginalNotes.current = origMap
+                      // Base = noteMap MINUS the notes being dragged (they'll be re-added at new positions)
+                      const base = new Map(noteMapRef.current)
+                      toTrack.forEach(k => base.delete(k))
+                      dragBaseNoteMap.current = base
                     }}
                     onMouseEnter={() => {
                       if (!isDrawing.current || drawMode.current !== 'remove') return
