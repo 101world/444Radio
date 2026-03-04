@@ -15,6 +15,7 @@ import { ChevronDown, ChevronRight, Plus, Volume2, VolumeX, Headphones, GripVert
 import StudioKnob from './StudioKnob'
 import ChannelLCD from './ChannelLCD'
 import WaveformViewer from './WaveformViewer'
+import { detectPitch, semitonesBetweenRoots, semitonesToSpeed } from '@/lib/pitch-detection'
 import {
   parseStrudelCode, updateParamInCode, insertEffectInChannel,
   swapSoundInChannel, swapBankInChannel, addSoundToChannel, renameChannel, duplicateChannel,
@@ -513,6 +514,8 @@ function ChannelStrip({
   onTranspose,
   onAddSound,
   onPreview,
+  onAutoPitchMatch,
+  scaleRoot,
   stackRows,
 }: {
   channel: ParsedChannel
@@ -565,6 +568,8 @@ function ChannelStrip({
   onTranspose?: (channelIdx: number, semitones: number) => void
   onAddSound?: (channelIdx: number, sound: string) => void
   onPreview?: (soundCode: string) => void
+  onAutoPitchMatch?: (channelIdx: number) => void
+  scaleRoot?: string | null
   stackRows: StackRow[]
 }) {
   const gainParam = channel.params.find(p => p.key === 'gain')
@@ -572,9 +577,11 @@ function ChannelStrip({
   const [renameValue, setRenameValue] = useState(channel.name)
   const renameInputRef = useRef<HTMLInputElement>(null)
 
-  // All effect params (everything except gain, orbit, duck routing)
+  // All effect params (everything except gain, orbit, duck routing, and speed for sample channels)
   const effectKnobs = useMemo(() => {
     const skipKeys = new Set(['gain', 'orbit', 'duck'])
+    // For sample channels, speed is handled by the dedicated PITCH knob
+    if (channel.sourceType === 'sample') skipKeys.add('speed')
     return channel.params.filter(p => !skipKeys.has(p.key))
   }, [channel])
 
@@ -772,6 +779,48 @@ function ChannelStrip({
           onChange={(v) => onParamChange(channelIdx, 'gain', v)}
         />
       </div>
+
+      {/* ── Pitch (semitones via .speed()) — only for sample channels ── */}
+      {channel.sourceType === 'sample' && (() => {
+        const speedParam = channel.params.find(p => p.key === 'speed')
+        const currentSpeed = speedParam ? speedParam.value : 1
+        const currentSemitones = Math.round(12 * Math.log2(currentSpeed))
+        return (
+          <div className="flex items-center justify-center gap-0.5 py-0.5 px-1" onClick={(e) => e.stopPropagation()}>
+            <StudioKnob
+              label="PITCH"
+              value={currentSemitones}
+              min={-24}
+              max={24}
+              step={1}
+              size={24}
+              color="#c4a87a"
+              formatValue={(v) => (v > 0 ? `+${v}` : `${v}`)}
+              onChange={(v) => {
+                const newSpeed = Math.pow(2, v / 12)
+                onParamChange(channelIdx, 'speed', parseFloat(newSpeed.toFixed(4)))
+              }}
+            />
+            {/* Auto-match to project scale */}
+            {scaleRoot && onAutoPitchMatch && (
+              <button
+                onClick={() => onAutoPitchMatch(channelIdx)}
+                className="cursor-pointer transition-all duration-100 active:scale-90 group/pitch"
+                style={{
+                  width: 18, height: 18, borderRadius: 6,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '7px', lineHeight: 1,
+                  color: '#c4a87a', background: '#0a0b0d', border: 'none',
+                  boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+                }}
+                title={`Auto-match pitch to project scale (${scaleRoot})`}
+              >
+                <span className="group-hover/pitch:scale-125 transition-transform">🎯</span>
+              </button>
+            )}
+          </div>
+        )
+      })()}
 
       {/* ── Transpose: [-12] knob [+12] — only for instrument channels ── */}
       {(channel.sourceType === 'synth' || channel.sourceType === 'note') && (() => {
@@ -1542,6 +1591,16 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
             liveUpdate(inserted)
           }
         }
+      } else if (paramKey === 'speed') {
+        // Auto-insert .speed() if not present (for pitch knob)
+        const channels = parseStrudelCode(currentCode)
+        const ch = channels[channelIdx]
+        if (ch && !ch.rawCode.includes('.speed(')) {
+          const inserted = insertEffectInChannel(currentCode, channelIdx, `.speed(${value})`)
+          if (inserted !== currentCode) {
+            liveUpdate(inserted)
+          }
+        }
       }
     },
     [liveUpdate],
@@ -1559,6 +1618,68 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
       }
     },
     [liveUpdate],
+  )
+
+  // ── Auto-pitch-match handler ──
+  // Fetches sample audio, detects pitch via YIN, then shifts .speed() to match project scale root
+  const handleAutoPitchMatch = useCallback(
+    async (channelIdx: number) => {
+      const currentCode = codeRef.current
+      const channels = parseStrudelCode(currentCode)
+      const ch = channels[channelIdx]
+      if (!ch || ch.sourceType !== 'sample') return
+
+      const scale = parseScale(currentCode)
+      if (!scale?.root) return
+
+      // Find sample URL from userSamples
+      const sample = userSamples.find(s => s.name === ch.source)
+      if (!sample?.url) return
+
+      try {
+        // Fetch and decode audio
+        const response = await fetch(sample.url)
+        const arrayBuffer = await response.arrayBuffer()
+        const audioCtx = new AudioContext()
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer)
+
+        // Detect pitch
+        const pitchResult = detectPitch(audioBuffer)
+        audioCtx.close()
+
+        if (!pitchResult || pitchResult.confidence < 0.3) {
+          console.warn('[AutoPitch] Could not detect pitch (low confidence)')
+          return
+        }
+
+        const sampleRoot = pitchResult.noteName
+        const targetRoot = scale.root
+
+        // Calculate semitones and speed
+        const semitones = semitonesBetweenRoots(sampleRoot, targetRoot)
+        if (semitones === 0) return // Already matched
+
+        // Factor in any existing speed value
+        const speedParam = ch.params.find(p => p.key === 'speed')
+        const existingSpeed = speedParam ? speedParam.value : 1
+        const pitchSpeed = semitonesToSpeed(semitones)
+        const finalSpeed = parseFloat((existingSpeed * pitchSpeed).toFixed(4))
+
+        // Write .speed() to code
+        if (speedParam) {
+          const newCode2 = updateParamInCode(currentCode, channelIdx, 'speed', finalSpeed)
+          if (newCode2 !== currentCode) liveUpdate(newCode2)
+        } else {
+          const inserted = insertEffectInChannel(currentCode, channelIdx, `.speed(${finalSpeed})`)
+          if (inserted !== currentCode) liveUpdate(inserted)
+        }
+
+        console.log(`[AutoPitch] ${sampleRoot} → ${targetRoot} (${semitones > 0 ? '+' : ''}${semitones}st) speed=${finalSpeed}`)
+      } catch (err) {
+        console.error('[AutoPitch] Failed:', err)
+      }
+    },
+    [userSamples, liveUpdate],
   )
 
   // ── Arp rate change handler ──
@@ -2598,6 +2719,8 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                     onTranspose={handleTranspose}
                     onAddSound={handleAddSound}
                     onPreview={onPreview}
+                    onAutoPitchMatch={handleAutoPitchMatch}
+                    scaleRoot={currentScale?.root ?? null}
                   />
                 </div>
                 )
