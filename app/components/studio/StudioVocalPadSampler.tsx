@@ -81,7 +81,7 @@ function compressPattern(tokens: string[]): string {
 
 /** Build slice-based pattern from recorded hits.
  *  Output: slice indices for n() — e.g. "0 ~ 3 ~ 7 ~ ~ ~"
- *  Strudel form: s("sample").loopAt(bars).slice(chopCount, "pattern")
+ *  Strudel form: n("pattern").s("sample").slice(chopCount).loopAt(bars)
  */
 function buildSlicePattern(hits: RecordedHit[], chopCount: number, bars: number): string {
   const barPatterns: string[] = []
@@ -355,9 +355,9 @@ export default function StudioVocalPadSampler({
       sidechainStr = `\n  .duck("${sidechainOrbit}").duckdepth(${sidechainDepth.toFixed(2)})`
     }
 
-    // loopAt MUST come before slice — loopAt sets base speed, slice subdivides
+    // n("pattern") provides slice selection, .slice(N) divides sample, .loopAt(bars) sets playback speed
     const effectsStr = effectsToKeep.length > 0 ? '\n  ' + effectsToKeep.join('\n  ') : ''
-    const newCode = `$${name}: s("${sampleName}")\n  .loopAt(${loopBars})\n  .slice(${localChopCount}, "${pattern}")${pitchStr}${sidechainStr}${effectsStr}\n  .orbit(${orbit})._scope()`
+    const newCode = `$${name}: n("${pattern}")\n  .s("${sampleName}")\n  .slice(${localChopCount})\n  .loopAt(${loopBars})${pitchStr}${sidechainStr}${effectsStr}\n  .orbit(${orbit})._scope()`
 
     onPatternChange(newCode)
     setHasEdited(false)
