@@ -900,9 +900,10 @@ export default function StudioEditor() {
             const channels = parseStrudelCode(code)
             const ch = channels[padSamplerChannel]
             if (!ch) return null
-            // Extract chop count from channel code (e.g., .chop(16) → 16)
+            // Extract chop/slice count from channel code (e.g., .slice(16) or .chop(16) → 16)
+            const sliceMatch = ch.rawCode.match(/\.slice\(\s*(\d+)/)
             const chopMatch = ch.rawCode.match(/\.chop\(\s*(\d+)\s*\)/)
-            const chopCount = chopMatch ? parseInt(chopMatch[1]) : 16
+            const chopCount = sliceMatch ? parseInt(sliceMatch[1]) : chopMatch ? parseInt(chopMatch[1]) : 16
             // Extract loopAt from channel code
             const loopAtMatch = ch.rawCode.match(/\.loopAt\(\s*(\d+)\s*\)/)
             const loopAtVal = loopAtMatch ? parseInt(loopAtMatch[1]) : 4

@@ -11,7 +11,7 @@
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react'
-import { ChevronDown, ChevronRight, Plus, Volume2, VolumeX, Headphones, GripVertical, Link, Unlink, X, Music, Clock, Piano, Grid3X3, Copy, Trash2, RotateCcw, Mic } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus, Volume2, VolumeX, Headphones, GripVertical, Link, Unlink, X, Music, Clock, Piano, Grid3X3, Copy, Trash2, RotateCcw, Mic, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react'
 import StudioKnob from './StudioKnob'
 import ChannelLCD from './ChannelLCD'
 import WaveformViewer from './WaveformViewer'
@@ -945,8 +945,8 @@ function ChannelStrip({
             <Grid3X3 size={9} />
           </button>
         )}
-        {/* Pad Sampler — for vocal/sample channels with loopAt + chop */}
-        {onOpenPadSampler && channel.sourceType === 'sample' && channel.effects.includes('loopAt') && (
+        {/* Pad Sampler — for vocal/sample channels with loopAt or slice */}
+        {onOpenPadSampler && channel.sourceType === 'sample' && (channel.effects.includes('loopAt') || channel.effects.includes('slice')) && (
           <button
             onClick={(e) => { e.stopPropagation(); onOpenPadSampler() }}
             className="p-1 rounded-lg transition-colors cursor-pointer"
@@ -1415,6 +1415,17 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   const fxDropdownRef = useRef<HTMLDivElement>(null)
   const addMenuRef = useRef<HTMLDivElement>(null)
 
+  // ── Grid zoom & pan state ──
+  const [gridZoom, setGridZoom] = useState(1)
+  const [gridPan, setGridPan] = useState({ x: 0, y: 0 })
+  const isPanningRef = useRef(false)
+  const panStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 })
+  const gridContainerRef = useRef<HTMLDivElement>(null)
+
+  const ZOOM_MIN = 0.4
+  const ZOOM_MAX = 2.5
+  const ZOOM_STEP = 0.15
+
   // Close FX dropdown on outside click
   useEffect(() => {
     if (!fxDropdownOpen) return
@@ -1737,9 +1748,62 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     setReorderOverIdx(null)
   }, [])
 
+  // ── Grid zoom & pan handlers ──
+  const handleGridWheel = useCallback((e: React.WheelEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault()
+      e.stopPropagation()
+      setGridZoom(prev => {
+        const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP
+        return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, prev + delta))
+      })
+    }
+  }, [])
+
+  const handleGridPointerDown = useCallback((e: React.PointerEvent) => {
+    // Middle mouse button (button=1) or Alt+left click for panning
+    if (e.button === 1 || (e.button === 0 && e.altKey)) {
+      e.preventDefault()
+      isPanningRef.current = true
+      panStartRef.current = { x: e.clientX, y: e.clientY, panX: gridPan.x, panY: gridPan.y }
+      ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+    }
+  }, [gridPan])
+
+  const handleGridPointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isPanningRef.current) return
+    const dx = e.clientX - panStartRef.current.x
+    const dy = e.clientY - panStartRef.current.y
+    setGridPan({
+      x: panStartRef.current.panX + dx,
+      y: panStartRef.current.panY + dy,
+    })
+  }, [])
+
+  const handleGridPointerUp = useCallback((e: React.PointerEvent) => {
+    if (isPanningRef.current) {
+      isPanningRef.current = false
+      ;(e.target as HTMLElement).releasePointerCapture(e.pointerId)
+    }
+  }, [])
+
+  const handleZoomIn = useCallback(() => {
+    setGridZoom(prev => Math.min(ZOOM_MAX, prev + ZOOM_STEP))
+  }, [])
+
+  const handleZoomOut = useCallback(() => {
+    setGridZoom(prev => Math.max(ZOOM_MIN, prev - ZOOM_STEP))
+  }, [])
+
+  const handleZoomReset = useCallback(() => {
+    setGridZoom(1)
+    setGridPan({ x: 0, y: 0 })
+  }, [])
+
   // ── Multi-select & context menu handlers ──
   const handleChannelSelect = useCallback((idx: number, e: React.MouseEvent) => {
     if (e.ctrlKey || e.metaKey) {
+      // Ctrl/Cmd+click: toggle individual channel in selection
       setSelectedChannels(prev => {
         const next = new Set(prev)
         if (next.has(idx)) next.delete(idx)
@@ -1747,6 +1811,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
         return next
       })
     } else if (e.shiftKey && selectedChannels.size > 0) {
+      // Shift+click: range select from existing selection to clicked
       const existingIdxs = Array.from(selectedChannels)
       const minSel = Math.min(...existingIdxs)
       const lo = Math.min(minSel, idx)
@@ -1754,6 +1819,13 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
       const next = new Set<number>()
       for (let i = lo; i <= hi; i++) next.add(i)
       setSelectedChannels(next)
+    } else {
+      // Plain click: select only this channel (deselect others)
+      setSelectedChannels(prev => {
+        // If already the sole selection, deselect (toggle off)
+        if (prev.size === 1 && prev.has(idx)) return new Set()
+        return new Set([idx])
+      })
     }
   }, [selectedChannels])
 
@@ -2378,7 +2450,15 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
       </div>
 
       {/* ── Channel Strips — glass card grid ── */}
-      <div className="flex-1 overflow-y-auto px-3 py-3 relative">
+      <div
+        ref={gridContainerRef}
+        className="flex-1 overflow-auto px-3 py-3 relative"
+        onWheel={handleGridWheel}
+        onPointerDown={handleGridPointerDown}
+        onPointerMove={handleGridPointerMove}
+        onPointerUp={handleGridPointerUp}
+        style={{ cursor: isPanningRef.current ? 'grabbing' : undefined }}
+      >
         {channels.length === 0 ? (
           /* ── Empty state: prompt to add first channel ── */
           <div className="flex flex-col items-center justify-center h-full text-center gap-3">
@@ -2408,7 +2488,11 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
           <>
             <div
               className="grid gap-2"
-              style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))' }}
+              style={{
+                gridTemplateColumns: `repeat(auto-fill, minmax(${Math.round(100 * gridZoom)}px, 1fr))`,
+                transform: `translate(${gridPan.x}px, ${gridPan.y}px)`,
+                transformOrigin: '0 0',
+              }}
             >
               {channels.map((ch, idx) => {
                 const channelGroup = channelGroups.find(g => g.channels.has(idx))
@@ -2652,6 +2736,34 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
               </div>
             )}
           </>
+        )}
+
+        {/* ── Grid Zoom Controls (bottom-right) ── */}
+        {channels.length > 0 && (
+          <div className="absolute bottom-2 right-4 z-30 flex items-center gap-1 px-1.5 py-1 rounded-xl"
+            style={{
+              background: '#0a0b0d',
+              boxShadow: '3px 3px 6px #050607, -3px -3px 6px #1a1d22',
+              border: '1px solid rgba(255,255,255,0.05)',
+            }}
+          >
+            <button onClick={handleZoomOut} className="p-1 cursor-pointer transition-colors hover:text-white/60"
+              style={{ color: '#5a616b', background: 'none', border: 'none' }} title="Zoom out (Ctrl+scroll)">
+              <ZoomOut size={11} />
+            </button>
+            <span className="text-[7px] font-mono font-bold px-1" style={{ color: '#7fa998', minWidth: 28, textAlign: 'center' }}>
+              {Math.round(gridZoom * 100)}%
+            </span>
+            <button onClick={handleZoomIn} className="p-1 cursor-pointer transition-colors hover:text-white/60"
+              style={{ color: '#5a616b', background: 'none', border: 'none' }} title="Zoom in (Ctrl+scroll)">
+              <ZoomIn size={11} />
+            </button>
+            <div className="w-px h-3 bg-white/[0.08]" />
+            <button onClick={handleZoomReset} className="p-1 cursor-pointer transition-colors hover:text-white/60"
+              style={{ color: '#5a616b', background: 'none', border: 'none' }} title="Reset zoom & pan">
+              <Maximize2 size={10} />
+            </button>
+          </div>
         )}
       </div>
 

@@ -119,7 +119,7 @@ const EFFECT_NAMES = [
   'duckattack', 'jux', 'juxBy', 'off', 'orbit', 'detune', 'vib', 'phaser', 'speed',
   'velocity', 'rel', 'release', 'gain', 'attack', 'decay', 'legato', 'clip',
   'postgain', 'compressor', 'arp', 'arpeggiate', 'superimpose', 'echo', 'fast',
-  'loopAt', 'begin', 'end', 'chop', 'stretch',
+  'loopAt', 'begin', 'end', 'chop', 'slice', 'stretch',
 ]
 
 /** Draggable effects palette entries */

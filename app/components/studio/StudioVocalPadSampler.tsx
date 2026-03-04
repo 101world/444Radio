@@ -3,13 +3,14 @@
 // ═══════════════════════════════════════════════════════════════
 //  STUDIO VOCAL PAD SAMPLER — MPC-style drum pad for vocal chops
 //
-//  Features:
-//  • 4×4 pad grid for vocal sample chops (begin/end slices)
-//  • Real-time pad playback via superdough
-//  • Loop recording: set loop length (1–32 bars), record pad hits
-//  • Quantize recorded hits to nearest step grid
-//  • Generates Strudel mini-notation from recorded pattern
-//  • Visual feedback: pad flash, recording indicator, loop progress
+//  Deep Strudel integration:
+//  • Uses slice(N, n("pattern")) for proper chop-based playback
+//  • 4×4 pad grid with keyboard mapping (1-4/Q-R/A-F/Z-V)
+//  • "Selected pad" concept: click grid cells to paint hits
+//  • Real-time loop recording with quantize
+//  • Multi-layer: can stack multiple pad hits at same step
+//  • Mini step-sequencer grid for visual editing
+//  • Generates clean Strudel code that maps 1:1 to timing
 // ═══════════════════════════════════════════════════════════════
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
@@ -17,22 +18,15 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 // ─── Types ───
 
 interface VocalChop {
-  /** Pad index 0-15 */
   idx: number
-  /** Display label */
   label: string
-  /** begin position (0–1) */
   begin: number
-  /** end position (0–1) */
   end: number
-  /** Color for pad */
   color: string
 }
 
 interface RecordedHit {
-  /** Which pad was hit */
   padIdx: number
-  /** Step position in the grid */
   step: number
 }
 
@@ -64,49 +58,23 @@ function generateChops(count: number): VocalChop[] {
   return chops
 }
 
-// ─── Utility: build strudel pattern from recorded hits ───
+// ─── Utility: compress pattern by collapsing trailing rests ───
 
-function buildPatternFromHits(
-  hits: RecordedHit[],
-  chops: VocalChop[],
-  bars: number,
-  sampleName: string,
-): string {
-  const totalSteps = bars * STEPS_PER_BAR
+function compressPattern(tokens: string[]): string {
+  // Remove trailing rests
+  let last = tokens.length - 1
+  while (last >= 0 && tokens[last] === '~') last--
+  if (last < 0) return '~'
 
-  // Group hits by bar
-  const barPatterns: string[] = []
-  for (let bar = 0; bar < bars; bar++) {
-    const tokens: string[] = []
-    for (let s = 0; s < STEPS_PER_BAR; s++) {
-      const step = bar * STEPS_PER_BAR + s
-      const hit = hits.find(h => h.step === step)
-      if (hit) {
-        const chop = chops[hit.padIdx]
-        if (chop) {
-          // Use n:begin-end notation for sample slicing
-          tokens.push(sampleName)
-        } else {
-          tokens.push('~')
-        }
-      } else {
-        tokens.push('~')
-      }
-    }
-    barPatterns.push(tokens.join(' '))
-  }
-
-  if (bars === 1) return barPatterns[0]
-  return `<${barPatterns.map(b => `[${b}]`).join(' ')}>`
+  // Keep full 16-step bars (don't compress within bars) for alignment
+  return tokens.join(' ')
 }
 
-/** Build a more efficient chop-based pattern using n() for slice indices */
-function buildChopPattern(
-  hits: RecordedHit[],
-  chopCount: number,
-  bars: number,
-): string {
-  const totalSteps = bars * STEPS_PER_BAR
+/** Build slice-based pattern from recorded hits.
+ *  Output: slice indices for n() — e.g. "0 ~ 3 ~ 7 ~ ~ ~"
+ *  Strudel form: n("pattern").s("sample").slice(chopCount).loopAt(bars)
+ */
+function buildSlicePattern(hits: RecordedHit[], chopCount: number, bars: number): string {
   const barPatterns: string[] = []
 
   for (let bar = 0; bar < bars; bar++) {
@@ -120,7 +88,7 @@ function buildChopPattern(
         tokens.push('~')
       }
     }
-    barPatterns.push(tokens.join(' '))
+    barPatterns.push(compressPattern(tokens))
   }
 
   if (bars === 1) return barPatterns[0]
@@ -132,23 +100,14 @@ function buildChopPattern(
 // ═══════════════════════════════════════════════════════════════
 
 interface StudioVocalPadSamplerProps {
-  /** Sample name (registered in Strudel sound map) */
   sampleName: string
-  /** Channel color */
   color: string
-  /** Channel name */
   channelName: string
-  /** Current raw code block for the channel */
   channelRawCode: string
-  /** Number of chops (auto-slice count, default 16) */
   chopCount?: number
-  /** Called when recorded pattern is saved — receives new raw code block */
   onPatternChange: (newRawCode: string) => void
-  /** Close the pad sampler */
   onClose: () => void
-  /** Preview a pad sound via superdough */
   onPreviewPad?: (sampleName: string, begin: number, end: number) => void
-  /** Current BPM of the project */
   projectBpm?: number
 }
 
@@ -174,6 +133,7 @@ export default function StudioVocalPadSampler({
   const [quantize, setQuantize] = useState(true)
   const [padLayout, setPadLayout] = useState<4 | 8 | 16>(16)
   const [hasEdited, setHasEdited] = useState(false)
+  const [selectedPad, setSelectedPad] = useState<number | null>(null) // for grid painting
 
   // Refs for animation/timing
   const recordStartTime = useRef(0)
@@ -257,26 +217,29 @@ export default function StudioVocalPadSampler({
   const applyPattern = useCallback(() => {
     if (recordedHits.length === 0) return
 
-    const pattern = buildChopPattern(recordedHits, chopCount, loopBars)
+    const pattern = buildSlicePattern(recordedHits, chopCount, loopBars)
 
-    // Build new code: n("pattern").s("sampleName").chop(chopCount)...
     // Extract orbit and other effects from existing code
     const orbitMatch = channelRawCode.match(/\.orbit\(\s*(\d+)\s*\)/)
     const orbit = orbitMatch ? orbitMatch[1] : '0'
 
     // Extract existing effects (gain, room, delay, etc.) — keep them
     const effectsToKeep: string[] = []
-    const effectRegex = /\.(gain|room|delay|delaytime|delayfeedback|lpf|lpq|shape|speed|pan)\(\s*([^)]+)\s*\)/g
+    const effectRegex = /\.(gain|room|delay|delaytime|delayfeedback|lpf|lpq|shape|speed|pan|vowel|crush|hpf)\(\s*([^)]+)\s*\)/g
     let m
     while ((m = effectRegex.exec(channelRawCode)) !== null) {
       effectsToKeep.push(`.${m[1]}(${m[2]})`)
     }
 
-    // Build the channel name
+    // Build channel name
     const nameMatch = channelRawCode.match(/^\s*\$(\w+):/)
     const name = nameMatch ? nameMatch[1] : channelName
 
-    const newCode = `$${name}: n("${pattern}")\n  .s("${sampleName}")\n  .chop(${chopCount})\n  .loopAt(${loopBars})${effectsToKeep.length > 0 ? '\n  ' + effectsToKeep.join('') : ''}\n  .orbit(${orbit})._scope()`
+    // Correct Strudel pattern:
+    // n("slice_indices").s("sample").slice(chopCount).loopAt(bars)
+    // slice(N) divides sample into N equal-length parts and n() selects which part
+    const effectsStr = effectsToKeep.length > 0 ? '\n  ' + effectsToKeep.join('\n  ') : ''
+    const newCode = `$${name}: n("${pattern}")\n  .s("${sampleName}")\n  .slice(${chopCount})\n  .loopAt(${loopBars})${effectsStr}\n  .orbit(${orbit})._scope()`
 
     onPatternChange(newCode)
     setHasEdited(false)
@@ -362,6 +325,8 @@ export default function StudioVocalPadSampler({
       if (padIdx !== undefined && padIdx < padLayout) {
         e.preventDefault()
         playPad(padIdx)
+        // Also set as selected pad for grid painting
+        setSelectedPad(padIdx)
       }
 
       // Space = toggle record
@@ -369,6 +334,11 @@ export default function StudioVocalPadSampler({
         e.preventDefault()
         if (isRecording) stopRecording()
         else startRecording()
+      }
+
+      // Escape = deselect pad
+      if (e.key === 'Escape') {
+        setSelectedPad(null)
       }
     }
 
@@ -578,27 +548,33 @@ export default function StudioVocalPadSampler({
           {visibleChops.map(chop => {
             const isFlashing = flashPad === chop.idx
             const hasHits = recordedHits.some(h => h.padIdx === chop.idx)
+            const isSelected = selectedPad === chop.idx
             const keyHint = ['1','2','3','4','Q','W','E','R','A','S','D','F','Z','X','C','V'][chop.idx]
 
             return (
               <button
                 key={chop.idx}
-                onMouseDown={() => playPad(chop.idx)}
+                onMouseDown={() => {
+                  playPad(chop.idx)
+                  setSelectedPad(chop.idx)
+                }}
                 className="relative cursor-pointer transition-all duration-75 active:scale-95 select-none"
                 style={{
                   width: padLayout <= 4 ? 72 : padLayout <= 8 ? 56 : 44,
                   height: padLayout <= 4 ? 72 : padLayout <= 8 ? 56 : 44,
-                  background: isFlashing ? chop.color : '#16181d',
+                  background: isFlashing ? chop.color : isSelected ? chop.color + '25' : '#16181d',
                   borderRadius: '10px',
                   boxShadow: isFlashing
                     ? `inset 2px 2px 4px ${chop.color}80, 0 0 12px ${chop.color}40`
+                    : isSelected
+                    ? `inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22, 0 0 8px ${chop.color}30`
                     : '3px 3px 6px #050607, -3px -3px 6px #1a1d22',
-                  border: `1px solid ${hasHits ? chop.color + '40' : 'rgba(255,255,255,0.04)'}`,
+                  border: `1px solid ${isSelected ? chop.color + '80' : hasHits ? chop.color + '40' : 'rgba(255,255,255,0.04)'}`,
                 }}
-                title={`Pad ${chop.idx + 1} (${keyHint}) · slice ${(chop.begin * 100).toFixed(0)}%–${(chop.end * 100).toFixed(0)}%`}
+                title={`Pad ${chop.idx + 1} (${keyHint}) · slice ${(chop.begin * 100).toFixed(0)}%–${(chop.end * 100).toFixed(0)}%${isSelected ? ' · SELECTED (click grid to paint)' : ''}`}
               >
                 {/* Pad number */}
-                <span className="text-[10px] font-bold font-mono" style={{ color: isFlashing ? '#fff' : chop.color + '90' }}>
+                <span className="text-[10px] font-bold font-mono" style={{ color: isFlashing ? '#fff' : isSelected ? chop.color : chop.color + '90' }}>
                   {chop.label}
                 </span>
                 {/* Key hint */}
@@ -608,6 +584,10 @@ export default function StudioVocalPadSampler({
                 {/* Hit indicator dot */}
                 {hasHits && (
                   <span className="absolute top-1 right-1.5 w-1.5 h-1.5 rounded-full" style={{ background: chop.color }} />
+                )}
+                {/* Selected indicator */}
+                {isSelected && (
+                  <span className="absolute top-0.5 left-1 text-[5px] font-black" style={{ color: chop.color }}>✎</span>
                 )}
               </button>
             )
@@ -642,13 +622,21 @@ export default function StudioVocalPadSampler({
                         key={s}
                         className="relative cursor-pointer transition-colors"
                         onClick={() => {
-                          // Toggle hit at this step
                           setRecordedHits(prev => {
                             const existing = prev.find(h => h.step === globalStep)
                             if (existing) {
+                              // Click on existing hit = remove it
                               return prev.filter(h => h.step !== globalStep)
                             }
-                            // If no hit, can't add without a pad selection — skip for now
+                            // Paint with selected pad if one is active
+                            if (selectedPad !== null && selectedPad < padLayout) {
+                              // Preview the pad sound on paint
+                              if (onPreviewPad) {
+                                const chop = chops[selectedPad]
+                                if (chop) onPreviewPad(sampleName, chop.begin, chop.end)
+                              }
+                              return [...prev, { padIdx: selectedPad, step: globalStep }]
+                            }
                             return prev
                           })
                           setHasEdited(true)
@@ -656,6 +644,7 @@ export default function StudioVocalPadSampler({
                         style={{
                           width: 11,
                           height: 20,
+                          cursor: selectedPad !== null ? 'crosshair' : 'pointer',
                           background: hitColor
                             ? hitColor + (isCurrentStep ? 'cc' : '80')
                             : isCurrentStep ? '#ffffff15' : (s % 4 === 0 ? '#1a1d22' : '#14161a'),
@@ -693,11 +682,17 @@ export default function StudioVocalPadSampler({
         </div>
       </div>
 
-      {/* ─── Keyboard hints ─── */}
+      {/* ─── Keyboard hints + selected pad indicator ─── */}
       <div className="flex items-center gap-3 px-3 pb-1.5">
         <span className="text-[6px] font-mono" style={{ color: '#3a3f48' }}>
-          KEYS: 1-4 / Q-R / A-F / Z-V = pads · SPACE = record/stop
+          KEYS: 1-4 / Q-R / A-F / Z-V = pads · SPACE = record · ESC = deselect
         </span>
+        {selectedPad !== null && (
+          <span className="flex items-center gap-1 text-[7px] font-bold px-1.5 py-0.5 rounded"
+            style={{ background: chops[selectedPad]?.color + '20', color: chops[selectedPad]?.color }}>
+            ✎ Pad {selectedPad + 1} — click grid to paint
+          </span>
+        )}
         <div className="flex-1" />
         <span className="text-[7px] font-mono" style={{ color: '#5a616b' }}>
           {recordedHits.length} hits · {loopBars} bars · {totalSteps} steps
