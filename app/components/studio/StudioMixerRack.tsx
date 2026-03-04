@@ -972,48 +972,61 @@ function ChannelStrip({
       )}
 
       {/* ── Action icons row ── */}
-      <div className="flex items-center justify-center gap-1 px-1 pb-1.5">
-        {/* Piano Roll — for instrument channels AND sample channels (pitched sample playback) */}
+      {/* Icon visibility rationale per sourceType:
+       *   synth/note → Piano Roll (melodic editing)
+       *   sample     → Piano Roll (waveform trim + pitched playback) + Drum Seq (step pattern)
+       *   stack      → Drum Seq (multi-sample step pattern)
+       *   sample+loopAt → also Pad Sampler (chop, slice, beat-making)
+       *   note+loopAt   → also Pad Sampler (sound kit pitched + chopped)
+       *   All channels  → Copy, Reset, Delete (universal management)
+       */}
+      <div className="flex items-center justify-center gap-0.5 px-1 pb-1.5 flex-wrap">
+        {/* Piano Roll — synth/note: melodic note editing | sample: waveform trim + pitched sample playback */}
         {onOpenPianoRoll && (channel.sourceType === 'synth' || channel.sourceType === 'note' || channel.sourceType === 'sample') && (
           <button
             onClick={(e) => { e.stopPropagation(); onOpenPianoRoll() }}
-            className="p-1 rounded-lg transition-colors cursor-pointer"
-            style={{ color: '#6f8fb3', opacity: 0.4 }}
-            title="Piano Roll"
+            className="p-1 rounded-lg transition-all cursor-pointer hover:opacity-100 hover:scale-110"
+            style={{ color: '#6f8fb3', opacity: 0.7 }}
+            title={channel.sourceType === 'sample'
+              ? 'Piano Roll — waveform trim & pitched playback'
+              : 'Piano Roll — edit notes & melody'}
           >
-            <Piano size={9} />
+            <Piano size={11} />
           </button>
         )}
-        {/* Drum Sequencer — only for sound/sample channels (sample/stack) */}
+        {/* Drum Sequencer — sample/stack: step-based pattern editing for percussion & samples */}
         {onOpenDrumSequencer && (channel.sourceType === 'sample' || channel.sourceType === 'stack') && (
           <button
             onClick={(e) => { e.stopPropagation(); onOpenDrumSequencer() }}
-            className="p-1 rounded-lg transition-colors cursor-pointer"
-            style={{ color: '#b8a47f', opacity: 0.4 }}
+            className="p-1 rounded-lg transition-all cursor-pointer hover:opacity-100 hover:scale-110"
+            style={{ color: '#b8a47f', opacity: 0.7 }}
             title={channel.sourceType === 'sample' && channel.effects.includes('loopAt') ? "Chop / Drum Pad" : "Drum Sequencer"}
           >
-            <Grid3X3 size={9} />
+            <Grid3X3 size={11} />
           </button>
         )}
-        {/* Pad Sampler — for vocal/sample channels with loopAt or slice, AND sound kit (note + loopAt) */}
+        {/* Pad Sampler — sample+loopAt/slice: chop sample into pads for beat-making
+         *             — note+loopAt (sound kit): pitched + chopped playback */}
         {onOpenPadSampler && (
           (channel.sourceType === 'sample' && (channel.effects.includes('loopAt') || channel.effects.includes('slice'))) ||
           (channel.sourceType === 'note' && channel.effects.includes('loopAt'))
         ) && (
           <button
             onClick={(e) => { e.stopPropagation(); onOpenPadSampler() }}
-            className="p-1 rounded-lg transition-colors cursor-pointer"
-            style={{ color: '#22d3ee', opacity: 0.65 }}
+            className="p-1 rounded-lg transition-all cursor-pointer hover:opacity-100 hover:scale-110"
+            style={{ color: '#22d3ee', opacity: 0.75 }}
             title="Pad Sampler — chop, pitch, sidechain, test beat"
           >
-            <span className="text-[9px] font-bold">🎹</span>
+            <span className="text-[10px] font-bold leading-none">🎹</span>
           </button>
         )}
+        {/* Divider — visual separation between editors and management */}
+        <div className="w-px h-2 mx-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }} />
         {onDuplicate && (
           <button
             onClick={(e) => { e.stopPropagation(); onDuplicate(channelIdx) }}
-            className="p-1 rounded-lg transition-colors cursor-pointer hover:opacity-80"
-            style={{ color: '#7fa998', opacity: 0.4 }}
+            className="p-1 rounded-lg transition-all cursor-pointer hover:opacity-80 hover:scale-110"
+            style={{ color: '#7fa998', opacity: 0.45 }}
             title="Duplicate Channel"
           >
             <Copy size={9} />
@@ -1022,8 +1035,8 @@ function ChannelStrip({
         {onReset && (
           <button
             onClick={(e) => { e.stopPropagation(); if (confirm('Reset channel? This removes all effects and patterns.')) onReset(channelIdx) }}
-            className="p-1 rounded-lg transition-colors cursor-pointer hover:opacity-80"
-            style={{ color: '#b8a47f', opacity: 0.4 }}
+            className="p-1 rounded-lg transition-all cursor-pointer hover:opacity-80 hover:scale-110"
+            style={{ color: '#b8a47f', opacity: 0.45 }}
             title="Reset Channel"
           >
             <RotateCcw size={9} />
@@ -1032,8 +1045,8 @@ function ChannelStrip({
         {onDelete && (
           <button
             onClick={(e) => { e.stopPropagation(); if (confirm('Delete this channel?')) onDelete(channelIdx) }}
-            className="p-1 rounded-lg transition-colors cursor-pointer hover:opacity-100"
-            style={{ color: '#b86f6f', opacity: 0.3 }}
+            className="p-1 rounded-lg transition-all cursor-pointer hover:opacity-100 hover:scale-110"
+            style={{ color: '#b86f6f', opacity: 0.35 }}
             title="Delete Channel"
           >
             <Trash2 size={9} />
