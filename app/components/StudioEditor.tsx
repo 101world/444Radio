@@ -88,6 +88,8 @@ export default function StudioEditor() {
   const drawStateRef = useRef({ counter: 0 })
   const mixerStateRef = useRef<{ muted: Set<number>; soloed: Set<number> }>({ muted: new Set(), soloed: new Set() })
   const metronomeRef = useRef(false)
+  const evalThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingEvalRef = useRef<string | null>(null)
   const [analyserNode, setAnalyserNode] = useState<AnalyserNode | null>(null)
 
   useEffect(() => { isPlayingRef.current = isPlaying }, [isPlaying])
@@ -510,26 +512,43 @@ export default function StudioEditor() {
     }
   }, [])
 
-  // â”€â”€ Live code change (updates text + re-evaluates immediately) â”€â”€
-  // Used by BPM slider, scale selector, etc. so changes are heard instantly
+  // Throttled evaluate helper - pre-warms orbits so effects (room, delay) work
+  const doEvaluate = useCallback((src: string) => {
+    if (!isPlayingRef.current || !engineRef.current?.evaluate) return
+    lastEvaluatedRef.current = src
+    const { muted, soloed } = mixerStateRef.current
+    const finalCode = applyMixerOverrides(
+      fixSoundfontNames(src) + (metronomeRef.current ? generateMetronomeCode(0) : ''),
+      muted, soloed
+    )
+    // Pre-warm orbits so effects (room, delay) work on all orbit buses
+    try {
+      const controller = (engineRef.current.webaudio as any).getSuperdoughAudioController?.()
+      if (controller?.getOrbit) {
+        for (let i = 0; i < 12; i++) controller.getOrbit(i)
+      }
+    } catch {}
+    engineRef.current.evaluate(finalCode).catch(err => {
+      console.error('[444 STUDIO] live code change error:', err)
+    })
+  }, [])
   const handleLiveCodeChange = useCallback((newCode: string) => {
     setCodeWithUndo(newCode)
-    if (isPlayingRef.current && engineRef.current?.evaluate) {
-      const src = newCode.trim()
-      if (!src) return
-      // Mark as already evaluated so the auto-update debounce skips
-      // redundant re-evaluation (which would restart the scheduler clock)
-      lastEvaluatedRef.current = src
-      const { muted, soloed } = mixerStateRef.current
-      const finalCode = applyMixerOverrides(
-        fixSoundfontNames(src) + (metronomeRef.current ? generateMetronomeCode(0) : ''),
-        muted, soloed
-      )
-      engineRef.current.evaluate(finalCode).catch(err => {
-        console.error('[444 STUDIO] live code change error:', err)
-      })
+    const src = newCode.trim()
+    if (!src) return
+    pendingEvalRef.current = src
+    if (!evalThrottleRef.current) {
+      // Leading edge: evaluate immediately
+      doEvaluate(src)
+      evalThrottleRef.current = setTimeout(() => {
+        evalThrottleRef.current = null
+        // Trailing edge: if a newer code arrived during the throttle window, evaluate it
+        if (pendingEvalRef.current && pendingEvalRef.current !== lastEvaluatedRef.current) {
+          doEvaluate(pendingEvalRef.current)
+        }
+      }, 120)
     }
-  }, [setCodeWithUndo])
+  }, [setCodeWithUndo, doEvaluate])
 
   // â”€â”€ Metronome toggle (re-evaluate during playback) â”€â”€
   const handleMetronomeToggle = useCallback((enabled: boolean) => {
