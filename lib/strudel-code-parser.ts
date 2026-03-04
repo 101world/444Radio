@@ -110,6 +110,17 @@ export const PARAM_DEFS: ParamDef[] = [
   { key: 'speed',          label: 'Speed',    min: 0.25, max: 4,     step: 0.01 },
   { key: 'chop',           label: 'Chop',     min: 1,    max: 64,    step: 1 },
   { key: 'stretch',        label: 'Stretch',  min: 0.25, max: 4,     step: 0.05 },
+  { key: 'slice',          label: 'Slice',    min: 2,    max: 64,    step: 1 },
+  // Modulation FX
+  { key: 'vib',            label: 'Vibrato',  min: 0,    max: 12,    step: 0.5 },
+  { key: 'phaser',         label: 'Phaser',   min: 0,    max: 12,    step: 0.1 },
+  // Pattern rate
+  { key: 'fast',           label: 'Fast',     min: 0.25, max: 16,    step: 0.25 },
+  { key: 'slow',           label: 'Slow',     min: 0.25, max: 16,    step: 0.25 },
+  // Echo / Multi-arg (knob controls first arg)
+  { key: 'echo',           label: 'Echo',     min: 1,    max: 16,    step: 1 },
+  // Dynamics
+  { key: 'compressor',     label: 'Comp',     min: -60,  max: 0,     step: 1,    unit: 'dB' },
 ]
 
 // Effect names for detecting which effects are present
@@ -118,8 +129,8 @@ const EFFECT_NAMES = [
   'room', 'delay', 'delayfeedback', 'delaytime', 'pan', 'duck', 'duckdepth',
   'duckattack', 'jux', 'juxBy', 'off', 'orbit', 'detune', 'vib', 'phaser', 'speed',
   'velocity', 'rel', 'release', 'gain', 'attack', 'decay', 'legato', 'clip',
-  'postgain', 'compressor', 'arp', 'arpeggiate', 'superimpose', 'echo', 'fast',
-  'loopAt', 'begin', 'end', 'chop', 'slice', 'stretch',
+  'postgain', 'compressor', 'arp', 'arpeggiate', 'superimpose', 'echo', 'fast', 'slow',
+  'loopAt', 'begin', 'end', 'chop', 'slice', 'stretch', 'vowel',
 ]
 
 /** Draggable effects palette entries */
@@ -145,6 +156,10 @@ export const DRAGGABLE_EFFECTS = [
   { id: 'speed',         label: 'Speed',   code: '.speed(1)',           icon: '⏩', category: 'mod',     target: 'sound' as const },
   { id: 'velocity',      label: 'Vel',     code: '.velocity(.8)',       icon: '💨', category: 'mod',     target: 'both' as const },
   { id: 'postgain',      label: 'PostG',   code: '.postgain(1.5)',      icon: '📈', category: 'mod',     target: 'both' as const },
+  { id: 'vib',           label: 'Vibrato', code: '.vib(4)',             icon: '〰️', category: 'mod',     target: 'both' as const },
+  { id: 'phaser',        label: 'Phaser',  code: '.phaser(4)',          icon: '🌀', category: 'mod',     target: 'both' as const },
+  { id: 'fast',          label: 'Fast',    code: '.fast(2)',            icon: '⏩', category: 'mod',     target: 'both' as const },
+  { id: 'slow',          label: 'Slow',    code: '.slow(2)',            icon: '🐌', category: 'mod',     target: 'both' as const },
   // ── Envelope ──
   { id: 'attack',        label: 'Attack',  code: '.attack(.1)',         icon: '⏫', category: 'env',     target: 'instrument' as const },
   { id: 'decay',         label: 'Decay',   code: '.decay(.3)',          icon: '⏳', category: 'env',     target: 'both' as const },
@@ -155,6 +170,8 @@ export const DRAGGABLE_EFFECTS = [
   { id: 'duck',          label: 'Duck',    code: '.duck(1)',            icon: '🦆', category: 'sidechain', target: 'both' as const },
   { id: 'duckdepth',     label: 'DkDpth',  code: '.duckdepth(.8)',      icon: '⬇️', category: 'sidechain', target: 'both' as const },
   { id: 'duckattack',    label: 'DkAtk',   code: '.duckattack(.2)',     icon: '⬆️', category: 'sidechain', target: 'both' as const },
+  // ── Dynamics ──
+  { id: 'compressor',    label: 'Comp',    code: '.compressor(-20, 30, 12)', icon: '🗜️', category: 'dynamics', target: 'both' as const },
   // ── Arpeggiator (modes are now in ARP_MODES, rate via .fast() knob) ──
   // ── Pattern ──
   { id: 'jux',           label: 'Jux',     code: '.jux(rev)',                     icon: '◐', category: 'pattern', target: 'both' as const },
@@ -167,6 +184,7 @@ export const DRAGGABLE_EFFECTS = [
   { id: 'end',            label: 'End',     code: '.end(1)',               icon: '⏭️', category: 'sample',  target: 'sound' as const },
   { id: 'chop',           label: 'Chop',    code: '.chop(8)',              icon: '🔪', category: 'sample',  target: 'sound' as const },
   { id: 'stretch',        label: 'Stretch', code: '.stretch(1)',           icon: '🧲', category: 'sample',  target: 'sound' as const },
+  { id: 'slice',          label: 'Slice',   code: '.slice(8, "0 1 2 3 4 5 6 7")', icon: '🔀', category: 'sample', target: 'sound' as const },
 ]
 
 // ─── Private Helpers ───
@@ -201,6 +219,25 @@ function isInComment(code: string, pos: number): boolean {
   while (lineStart > 0 && code[lineStart - 1] !== '\n') lineStart--
   const linePrefix = code.substring(lineStart, pos)
   return /^\s*\/\//.test(linePrefix)
+}
+
+/**
+ * Find the first comma at depth 0 in an argument string.
+ * Returns its index within argStr, or -1 if none found.
+ * Respects nested parens/brackets/strings so `.echo(irand(5), 1/8)` works.
+ */
+function findFirstComma(argStr: string): number {
+  let depth = 0
+  for (let i = 0; i < argStr.length; i++) {
+    const ch = argStr[i]
+    if (ch === '(' || ch === '[') depth++
+    else if (ch === ')' || ch === ']') depth--
+    else if (ch === '"' || ch === "'" || ch === '`') {
+      const q = ch; i++
+      while (i < argStr.length && argStr[i] !== q) i++
+    } else if (ch === ',' && depth === 0) return i
+  }
+  return -1
 }
 
 /** Extract a representative numeric value from an expression string */
@@ -345,17 +382,26 @@ export function parseStrudelCode(code: string): ParsedChannel[] {
         const closeParenInBlock = findClosingParen(rawCode, openParenInBlock)
         if (closeParenInBlock === -1) continue
 
-        const argStr = rawCode.substring(openParenInBlock + 1, closeParenInBlock)
-        const repValue = extractValue(argStr)
+        const fullArgStr = rawCode.substring(openParenInBlock + 1, closeParenInBlock)
+
+        // For multi-arg effects like .echo(3, 1/8, 0.5), parse only the first arg
+        // so knob changes don't clobber subsequent arguments
+        const firstCommaIdx = findFirstComma(fullArgStr)
+        const firstArgStr = firstCommaIdx > -1 ? fullArgStr.substring(0, firstCommaIdx) : fullArgStr
+        const firstArgEnd = firstCommaIdx > -1
+          ? openParenInBlock + 1 + firstCommaIdx
+          : closeParenInBlock
+
+        const repValue = extractValue(firstArgStr)
         if (repValue === null) continue // Can't extract a display value
 
-        const isSimple = /^\s*-?[\d.]+\s*$/.test(argStr)
+        const isSimple = /^\s*-?[\d.]+\s*$/.test(firstArgStr)
         params.push({
           key: paramDef.key,
           value: repValue,
-          raw: argStr,
+          raw: firstArgStr,
           argStart: blockCharStart + openParenInBlock + 1,
-          argEnd: blockCharStart + closeParenInBlock,
+          argEnd: blockCharStart + firstArgEnd,
           isComplex: !isSimple,
         })
         break // Only match first occurrence per param key

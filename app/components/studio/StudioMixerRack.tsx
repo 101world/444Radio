@@ -268,12 +268,12 @@ const ADD_CHANNEL_PRESETS: { section: string; type: 'synth' | 'sample' | 'vocal'
 // ─── Effect category grouping for nested rack display ───
 
 const FX_GROUPS: { label: string; icon: string; keys: string[] }[] = [
-  { label: 'FILTER', icon: '🔽', keys: ['lpf', 'lp', 'hpf', 'hp', 'lpq', 'lpenv', 'lps', 'lpd'] },
-  { label: 'DRIVE',  icon: '🔥', keys: ['shape', 'distort', 'crush'] },
-  { label: 'SPACE',  icon: '🌌', keys: ['room', 'delay', 'delayfeedback', 'delaytime', 'orbit'] },
-  { label: 'MOD',    icon: '🎵', keys: ['detune', 'speed', 'pan', 'velocity', 'postgain'] },
+  { label: 'FILTER', icon: '🔽', keys: ['lpf', 'lp', 'hpf', 'hp', 'lpq', 'lpenv', 'lps', 'lpd', 'vowel'] },
+  { label: 'DRIVE',  icon: '🔥', keys: ['shape', 'distort', 'crush', 'compressor'] },
+  { label: 'SPACE',  icon: '🌌', keys: ['room', 'delay', 'delayfeedback', 'delaytime', 'orbit', 'echo'] },
+  { label: 'MOD',    icon: '🎵', keys: ['detune', 'speed', 'pan', 'velocity', 'postgain', 'vib', 'phaser', 'fast', 'slow'] },
   { label: 'ENV',    icon: '⏳', keys: ['attack', 'decay', 'rel', 'release', 'legato', 'clip'] },
-  { label: 'SAMPLE', icon: '🎤', keys: ['loopAt', 'begin', 'end', 'chop', 'stretch'] },
+  { label: 'SAMPLE', icon: '🎤', keys: ['loopAt', 'begin', 'end', 'chop', 'stretch', 'slice'] },
 ]
 
 // ─── Draggable Effect Badge ───
