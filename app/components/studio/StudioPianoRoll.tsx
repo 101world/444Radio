@@ -849,6 +849,12 @@ interface StudioPianoRollProps {
   onNotePreview?: (midi: number) => void
   /** Close the piano roll */
   onClose: () => void
+  /** Whether the transport is currently playing */
+  isPlaying?: boolean
+  /** Project BPM for playhead timing */
+  projectBpm?: number
+  /** Optional callback that returns the current fractional cycle position from the Strudel scheduler */
+  getCyclePosition?: () => number | null
 }
 
 const CELL_W_BASE = 28
@@ -880,6 +886,9 @@ export default function StudioPianoRoll({
   onTransposeChange,
   onNotePreview,
   onClose,
+  isPlaying: transportPlaying = false,
+  projectBpm = 120,
+  getCyclePosition,
 }: StudioPianoRollProps) {
   const isNoteMode = patternType === 'note'
   const parseMode = isNoteMode ? 'note' as const : 'degree' as const
@@ -935,9 +944,56 @@ export default function StudioPianoRoll({
   const loopStepTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const [loopCurrentStep, setLoopCurrentStep] = useState(0)
 
+  // ── Transport Playhead (marquee) ──
+  const [playheadStep, setPlayheadStep] = useState(-1)
+  const playheadRAF = useRef<number | null>(null)
+  const playheadStartTime = useRef(0)
+
+  useEffect(() => {
+    if (!transportPlaying) {
+      setPlayheadStep(-1)
+      if (playheadRAF.current) { cancelAnimationFrame(playheadRAF.current); playheadRAF.current = null }
+      return
+    }
+    // Start playhead animation
+    playheadStartTime.current = performance.now()
+    const animate = () => {
+      // Try to get cycle position from Strudel scheduler
+      let cyclePos: number | null = null
+      if (getCyclePosition) {
+        try { cyclePos = getCyclePosition() } catch { /* ignore */ }
+      }
+
+      if (cyclePos !== null && cyclePos >= 0) {
+        // Strudel cycle position: fractional cycle count (e.g. 2.75 = beat 4 of bar 3)
+        // Map to our grid: one cycle = one bar = stepsPerBar steps
+        const totalGridSteps = bars * stepsPerBar
+        const stepInCycle = (cyclePos % bars) * stepsPerBar
+        setPlayheadStep(stepInCycle)
+      } else {
+        // Fallback: compute from BPM + elapsed time
+        // 1 bar = 4 beats = 4 × (60/bpm) seconds
+        const barDurationMs = (4 * 60000) / projectBpm
+        const elapsed = performance.now() - playheadStartTime.current
+        const totalGridSteps = bars * stepsPerBar
+        const cycleMs = bars * barDurationMs
+        const posInCycle = (elapsed % cycleMs) / cycleMs
+        setPlayheadStep(posInCycle * totalGridSteps)
+      }
+      playheadRAF.current = requestAnimationFrame(animate)
+    }
+    playheadRAF.current = requestAnimationFrame(animate)
+    return () => {
+      if (playheadRAF.current) { cancelAnimationFrame(playheadRAF.current); playheadRAF.current = null }
+    }
+  }, [transportPlaying, projectBpm, bars, stepsPerBar, getCyclePosition])
+
   // Cleanup loop recording timer on unmount
   useEffect(() => {
-    return () => { if (loopStepTimer.current) clearInterval(loopStepTimer.current) }
+    return () => {
+      if (loopStepTimer.current) clearInterval(loopStepTimer.current)
+      if (playheadRAF.current) cancelAnimationFrame(playheadRAF.current)
+    }
   }, [])
 
   // ── Preset menu state ──
@@ -1683,6 +1739,15 @@ export default function StudioPianoRoll({
             </span>
           )}
 
+          {/* Transport position indicator */}
+          {transportPlaying && !isLoopRecording && playheadStep >= 0 && (
+            <span className="text-[7px] font-mono px-1.5 py-0.5 rounded flex items-center gap-1"
+              style={{ background: `${color}15`, color, border: `1px solid ${color}25` }}>
+              <span style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: color, animation: 'pulse 1s ease-in-out infinite' }} />
+              Bar {Math.floor(playheadStep / stepsPerBar) + 1} · Beat {Math.floor((playheadStep % stepsPerBar) / (stepsPerBar / 4)) + 1}
+            </span>
+          )}
+
           <div className="w-px h-3.5 bg-white/[0.08]" />
 
           {/* Preset dropdown */}
@@ -2160,6 +2225,34 @@ export default function StudioPianoRoll({
               transition: 'left 50ms linear',
             }}
           />
+        )}
+
+        {/* Transport playhead (marquee) — shows current playback position */}
+        {transportPlaying && playheadStep >= 0 && !isLoopRecording && (
+          <div
+            className="absolute z-40 pointer-events-none"
+            style={{
+              left: PIANO_W + playheadStep * cellW,
+              top: 0,
+              width: 2,
+              height: '100%',
+              background: color,
+              opacity: 0.9,
+              boxShadow: `0 0 8px ${color}80, 0 0 2px ${color}`,
+            }}
+          >
+            {/* Playhead triangle marker at top */}
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: -4,
+              width: 0,
+              height: 0,
+              borderLeft: '5px solid transparent',
+              borderRight: '5px solid transparent',
+              borderTop: `6px solid ${color}`,
+            }} />
+          </div>
         )}
 
         <div style={{ width: PIANO_W + gridW, position: 'relative' }}>

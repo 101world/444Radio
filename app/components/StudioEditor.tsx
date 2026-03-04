@@ -845,6 +845,15 @@ export default function StudioEditor() {
                   }
                 }}
                 onClose={() => setPianoRollChannel(null)}
+                isPlaying={isPlaying}
+                projectBpm={parseBPM(code) ?? 120}
+                getCyclePosition={() => {
+                  try {
+                    const engine = engineRef.current
+                    if (!engine?.scheduler?.now) return null
+                    return engine.scheduler.now()
+                  } catch { return null }
+                }}
               />
             )
           })()}
