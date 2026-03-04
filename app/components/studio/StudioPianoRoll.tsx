@@ -922,6 +922,8 @@ interface StudioPianoRollProps {
   projectBpm?: number
   /** Optional callback that returns the current fractional cycle position from the Strudel scheduler */
   getCyclePosition?: () => number | null
+  /** User-uploaded samples list for resolving sample names to URLs */
+  userSamples?: { id: string | number; name: string; url: string; duration_ms?: number | null; original_bpm?: number | null }[]
 }
 
 const CELL_W_BASE = 28
@@ -956,6 +958,7 @@ export default function StudioPianoRoll({
   isPlaying: transportPlaying = false,
   projectBpm = 120,
   getCyclePosition,
+  userSamples = [],
 }: StudioPianoRollProps) {
   const isNoteMode = patternType === 'note'
   const parseMode = isNoteMode ? 'note' as const : 'degree' as const
@@ -1107,9 +1110,18 @@ export default function StudioPianoRoll({
   // ── Sample URL extraction from channel rawCode ──
   const sampleUrl = useMemo(() => {
     if (!channelData?.rawCode) return null
+    // 1. Direct URL in s("https://...")
     const urlMatch = channelData.rawCode.match(/\.?s\(\s*"(https?:\/\/[^"]+)"/)
-    return urlMatch ? urlMatch[1] : null
-  }, [channelData?.rawCode])
+    if (urlMatch) return urlMatch[1]
+    // 2. Sample name in s("name") — resolve via userSamples
+    const nameMatch = channelData.rawCode.match(/\.?s\(\s*"([^"]+)"/)
+    if (nameMatch && userSamples.length > 0) {
+      const name = nameMatch[1]
+      const found = userSamples.find(s => s.name === name)
+      if (found?.url) return found.url
+    }
+    return null
+  }, [channelData?.rawCode, userSamples])
 
   const isSampleChannel = channelData?.sourceType === 'sample' && !!sampleUrl
 

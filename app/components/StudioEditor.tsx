@@ -876,6 +876,7 @@ export default function StudioEditor() {
                 onClose={() => setPianoRollChannel(null)}
                 isPlaying={isPlaying}
                 projectBpm={parseBPM(code) ?? 120}
+                userSamples={userSamples}
                 getCyclePosition={() => {
                   try {
                     const engine = engineRef.current
