@@ -40,7 +40,13 @@ const PAD_COLORS = [
 ]
 
 const LOOP_BAR_OPTIONS = [1, 2, 4, 8, 16, 32] as const
+const CHOP_OPTIONS = [4, 8, 16, 32, 64] as const
 const STEPS_PER_BAR = 16
+
+// Test beat step pattern (simple boom-bap)
+const TEST_KICK_STEPS = [0, 8]          // beats 1, 3
+const TEST_SNARE_STEPS = [4, 12]        // beats 2, 4
+const TEST_HH_STEPS = [0, 2, 4, 6, 8, 10, 12, 14] // 8th notes
 
 // ─── Utility: auto-slice sample into N equal chops ───
 // When trimBegin/trimEnd are provided, slices are mapped to the trimmed region
@@ -114,8 +120,14 @@ interface StudioVocalPadSamplerProps {
   trimEnd?: number
   onPatternChange: (newRawCode: string) => void
   onClose: () => void
-  onPreviewPad?: (sampleName: string, begin: number, end: number) => void
+  onPreviewPad?: (sampleName: string, begin: number, end: number, speed?: number) => void
+  /** Play a drum sound for test beat (e.g. 'bd', 'sd', 'hh') */
+  onPreviewDrum?: (sound: string, gain?: number) => void
   projectBpm?: number
+  /** Is the main Strudel transport currently playing? */
+  isTransportPlaying?: boolean
+  /** Toggle the main transport play/stop */
+  onToggleTransport?: () => void
 }
 
 export default function StudioVocalPadSampler({
@@ -129,14 +141,18 @@ export default function StudioVocalPadSampler({
   onPatternChange,
   onClose,
   onPreviewPad,
+  onPreviewDrum,
   projectBpm = 120,
+  isTransportPlaying = false,
+  onToggleTransport,
 }: StudioVocalPadSamplerProps) {
   // ─── State ───
+  const [localChopCount, setLocalChopCount] = useState(chopCount)
   const [chops, setChops] = useState(() => generateChops(chopCount, trimBegin, trimEnd))
   const [loopBars, setLoopBars] = useState<number>(4)
   const [isRecording, setIsRecording] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
-  const [recordedHits, setRecordedHits] = useState<RecordedHit[]>([])
+  const [recordedHits, setRecordedHits] = useState<RecordedHit[]>([])  
   const [flashPad, setFlashPad] = useState<number | null>(null)
   const [currentStep, setCurrentStep] = useState(0)
   const [quantize, setQuantize] = useState(true)
@@ -144,10 +160,33 @@ export default function StudioVocalPadSampler({
   const [hasEdited, setHasEdited] = useState(false)
   const [selectedPad, setSelectedPad] = useState<number | null>(null) // for grid painting
 
+  // ─── New: Pitch / Sidechain / Test Beat state ───
+  const [pitchSemitones, setPitchSemitones] = useState(() => {
+    // Parse existing .speed() from channel code to initialize
+    const speedMatch = channelRawCode.match(/\.speed\(\s*([\d.]+)\s*\)/)
+    if (speedMatch) {
+      const spd = parseFloat(speedMatch[1])
+      if (spd > 0) return Math.round(12 * Math.log2(spd))
+    }
+    return 0
+  })
+  const [sidechainEnabled, setSidechainEnabled] = useState(() => /\.duck\(/.test(channelRawCode))
+  const [sidechainOrbit, setSidechainOrbit] = useState(() => {
+    const dm = channelRawCode.match(/\.duck\(\s*"?(\d+)"?\s*\)/)
+    return dm ? parseInt(dm[1]) : 0
+  })
+  const [sidechainDepth, setSidechainDepth] = useState(() => {
+    const dm = channelRawCode.match(/\.duckdepth\(\s*([\d.]+)\s*\)/)
+    return dm ? parseFloat(dm[1]) : 0.8
+  })
+  const [testBeatOn, setTestBeatOn] = useState(false)
+
   // Re-generate chops when trim bounds or chop count change
   useEffect(() => {
-    setChops(generateChops(chopCount, trimBegin, trimEnd))
-  }, [chopCount, trimBegin, trimEnd])
+    setChops(generateChops(localChopCount, trimBegin, trimEnd))
+    // Trim any hits that reference pads beyond the new count
+    setRecordedHits(prev => prev.filter(h => h.padIdx < localChopCount))
+  }, [localChopCount, trimBegin, trimEnd])
 
   // Refs for animation/timing
   const recordStartTime = useRef(0)
@@ -166,9 +205,10 @@ export default function StudioVocalPadSampler({
     setFlashPad(padIdx)
     setTimeout(() => setFlashPad(null), 120)
 
-    // Audio preview
+    // Audio preview (with pitch shift)
     if (onPreviewPad) {
-      onPreviewPad(sampleName, chop.begin, chop.end)
+      const pitchSpeed = pitchSemitones !== 0 ? Math.pow(2, pitchSemitones / 12) : undefined
+      onPreviewPad(sampleName, chop.begin, chop.end, pitchSpeed)
     }
 
     // If recording, add hit to recorded pattern
@@ -186,7 +226,7 @@ export default function StudioVocalPadSampler({
       })
       setHasEdited(true)
     }
-  }, [chops, sampleName, isRecording, quantize, totalSteps, stepDurationMs, onPreviewPad])
+  }, [chops, sampleName, isRecording, quantize, totalSteps, stepDurationMs, onPreviewPad, pitchSemitones])
 
   // ─── Recording loop ───
   const startRecording = useCallback(() => {
@@ -219,11 +259,34 @@ export default function StudioVocalPadSampler({
     setCurrentStep(0)
   }, [])
 
+  // ─── Test beat timer ───
+  const testBeatRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const testBeatStepRef = useRef(0)
+
+  useEffect(() => {
+    if (testBeatOn && onPreviewDrum) {
+      const stepMs = (60000 / projectBpm) / 4 // 16th note duration
+      testBeatStepRef.current = 0
+      testBeatRef.current = setInterval(() => {
+        const step = testBeatStepRef.current % 16
+        if (TEST_KICK_STEPS.includes(step)) onPreviewDrum('bd', 0.8)
+        if (TEST_SNARE_STEPS.includes(step)) onPreviewDrum('sd', 0.6)
+        if (TEST_HH_STEPS.includes(step)) onPreviewDrum('hh', 0.25)
+        testBeatStepRef.current++
+      }, stepMs)
+    } else {
+      if (testBeatRef.current) { clearInterval(testBeatRef.current); testBeatRef.current = null }
+      testBeatStepRef.current = 0
+    }
+    return () => { if (testBeatRef.current) { clearInterval(testBeatRef.current); testBeatRef.current = null } }
+  }, [testBeatOn, projectBpm, onPreviewDrum])
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (stepTimerRef.current) clearInterval(stepTimerRef.current)
       if (loopTimerRef.current) clearInterval(loopTimerRef.current)
+      if (testBeatRef.current) clearInterval(testBeatRef.current)
     }
   }, [])
 
@@ -231,15 +294,15 @@ export default function StudioVocalPadSampler({
   const applyPattern = useCallback(() => {
     if (recordedHits.length === 0) return
 
-    const pattern = buildSlicePattern(recordedHits, chopCount, loopBars)
+    const pattern = buildSlicePattern(recordedHits, localChopCount, loopBars)
 
     // Extract orbit and other effects from existing code
     const orbitMatch = channelRawCode.match(/\.orbit\(\s*(\d+)\s*\)/)
     const orbit = orbitMatch ? orbitMatch[1] : '0'
 
-    // Extract existing effects (gain, room, delay, etc.) — keep them
+    // Extract existing effects — keep them (but NOT speed/duck, we handle those)
     const effectsToKeep: string[] = []
-    const effectRegex = /\.(gain|room|delay|delaytime|delayfeedback|lpf|lpq|shape|speed|pan|vowel|crush|hpf)\(\s*([^)]+)\s*\)/g
+    const effectRegex = /\.(gain|room|delay|delaytime|delayfeedback|lpf|lpq|shape|pan|vowel|crush|hpf)\(\s*([^)]+)\s*\)/g
     let m
     while ((m = effectRegex.exec(channelRawCode)) !== null) {
       effectsToKeep.push(`.${m[1]}(${m[2]})`)
@@ -249,15 +312,26 @@ export default function StudioVocalPadSampler({
     const nameMatch = channelRawCode.match(/^\s*\$(\w+):/)
     const name = nameMatch ? nameMatch[1] : channelName
 
-    // Correct Strudel pattern:
-    // n("slice_indices").s("sample").slice(chopCount).loopAt(bars)
+    // Pitch shift via .speed() — speed = 2^(semitones/12)
+    let pitchStr = ''
+    if (pitchSemitones !== 0) {
+      const spd = Math.pow(2, pitchSemitones / 12)
+      pitchStr = `\n  .speed(${spd.toFixed(4)})`
+    }
+
+    // Sidechain via .duck()
+    let sidechainStr = ''
+    if (sidechainEnabled) {
+      sidechainStr = `\n  .duck("${sidechainOrbit}").duckdepth(${sidechainDepth.toFixed(2)})`
+    }
+
     // slice(N) divides sample into N equal-length parts and n() selects which part
     const effectsStr = effectsToKeep.length > 0 ? '\n  ' + effectsToKeep.join('\n  ') : ''
-    const newCode = `$${name}: n("${pattern}")\n  .s("${sampleName}")\n  .slice(${chopCount})\n  .loopAt(${loopBars})${effectsStr}\n  .orbit(${orbit})._scope()`
+    const newCode = `$${name}: n("${pattern}")\n  .s("${sampleName}")\n  .slice(${localChopCount})\n  .loopAt(${loopBars})${pitchStr}${sidechainStr}${effectsStr}\n  .orbit(${orbit})._scope()`
 
     onPatternChange(newCode)
     setHasEdited(false)
-  }, [recordedHits, chopCount, loopBars, sampleName, channelRawCode, channelName, onPatternChange])
+  }, [recordedHits, localChopCount, loopBars, sampleName, channelRawCode, channelName, onPatternChange, pitchSemitones, sidechainEnabled, sidechainOrbit, sidechainDepth])
 
   // ─── Clear recorded pattern ───
   const clearPattern = useCallback(() => {
@@ -297,7 +371,7 @@ export default function StudioVocalPadSampler({
         tokens.forEach((tok, s) => {
           if (tok !== '~') {
             const padIdx = parseInt(tok)
-            if (!isNaN(padIdx) && padIdx >= 0 && padIdx < chopCount) {
+            if (!isNaN(padIdx) && padIdx >= 0 && padIdx < localChopCount) {
               parsedHits.push({ padIdx, step: barIdx * STEPS_PER_BAR + s })
             }
           }
@@ -309,7 +383,7 @@ export default function StudioVocalPadSampler({
       tokens.forEach((tok, s) => {
         if (tok !== '~') {
           const padIdx = parseInt(tok)
-          if (!isNaN(padIdx) && padIdx >= 0 && padIdx < chopCount) {
+          if (!isNaN(padIdx) && padIdx >= 0 && padIdx < localChopCount) {
             parsedHits.push({ padIdx, step: s })
           }
         }
@@ -647,7 +721,10 @@ export default function StudioVocalPadSampler({
                               // Preview the pad sound on paint
                               if (onPreviewPad) {
                                 const chop = chops[selectedPad]
-                                if (chop) onPreviewPad(sampleName, chop.begin, chop.end)
+                                if (chop) {
+                                  const pitchSpeed = pitchSemitones !== 0 ? Math.pow(2, pitchSemitones / 12) : undefined
+                                  onPreviewPad(sampleName, chop.begin, chop.end, pitchSpeed)
+                                }
                               }
                               return [...prev, { padIdx: selectedPad, step: globalStep }]
                             }
@@ -693,6 +770,174 @@ export default function StudioVocalPadSampler({
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* ─── Tools Row: Chops / Pitch / Transport / Sidechain / Test Beat ─── */}
+      <div className="flex items-center gap-2 px-3 py-1.5 flex-wrap"
+        style={{ background: '#0c0d10', borderTop: '1px solid rgba(255,255,255,0.03)' }}>
+
+        {/* ── CHOPS selector ── */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-[7px] font-bold uppercase tracking-widest" style={{ color: '#5a616b' }}>CHOPS</span>
+          {CHOP_OPTIONS.map(c => (
+            <button
+              key={c}
+              onClick={() => { setLocalChopCount(c); setHasEdited(true) }}
+              className="px-1.5 py-0.5 text-[8px] font-bold cursor-pointer transition-all"
+              style={{
+                background: localChopCount === c ? `${color}20` : '#0a0b0d',
+                color: localChopCount === c ? color : '#5a616b',
+                border: 'none',
+                borderRadius: '6px',
+                boxShadow: localChopCount === c
+                  ? `inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22, 0 0 6px ${color}20`
+                  : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+              }}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+
+        <div className="w-px h-4 bg-white/[0.06]" />
+
+        {/* ── PITCH knob (semitones) ── */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-[7px] font-bold uppercase tracking-widest" style={{ color: '#5a616b' }}>PITCH</span>
+          <button
+            onClick={() => setPitchSemitones(p => Math.max(-24, p - 1))}
+            className="w-4 h-4 flex items-center justify-center text-[9px] font-bold cursor-pointer rounded"
+            style={{
+              background: '#16181d', color: '#818cf8', border: 'none',
+              boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+            }}
+          >−</button>
+          <input
+            type="range"
+            min={-24}
+            max={24}
+            step={1}
+            value={pitchSemitones}
+            onChange={e => setPitchSemitones(parseInt(e.target.value))}
+            className="w-20 h-1 rounded-full appearance-none cursor-pointer"
+            style={{
+              background: `linear-gradient(to right, #818cf8 ${((pitchSemitones + 24) / 48) * 100}%, #16181d ${((pitchSemitones + 24) / 48) * 100}%)`,
+              accentColor: '#818cf8',
+            }}
+          />
+          <button
+            onClick={() => setPitchSemitones(p => Math.min(24, p + 1))}
+            className="w-4 h-4 flex items-center justify-center text-[9px] font-bold cursor-pointer rounded"
+            style={{
+              background: '#16181d', color: '#818cf8', border: 'none',
+              boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+            }}
+          >+</button>
+          <span className="text-[9px] font-mono font-bold w-10 text-center px-1 py-0.5 rounded"
+            style={{
+              background: pitchSemitones !== 0 ? '#818cf820' : '#16181d',
+              color: pitchSemitones !== 0 ? '#818cf8' : '#5a616b',
+            }}>
+            {pitchSemitones > 0 ? '+' : ''}{pitchSemitones} st
+          </span>
+          {pitchSemitones !== 0 && (
+            <button
+              onClick={() => setPitchSemitones(0)}
+              className="text-[7px] font-bold cursor-pointer px-1 py-0.5 rounded"
+              style={{ background: '#16181d', color: '#f87171', border: 'none' }}
+              title="Reset pitch to 0"
+            >RST</button>
+          )}
+        </div>
+
+        <div className="w-px h-4 bg-white/[0.06]" />
+
+        {/* ── PLAY WITH SONG ── */}
+        {onToggleTransport && (
+          <button
+            onClick={onToggleTransport}
+            className="flex items-center gap-1 px-2 py-0.5 text-[8px] font-bold cursor-pointer transition-all rounded-lg"
+            style={{
+              background: isTransportPlaying ? '#4ade8020' : '#16181d',
+              color: isTransportPlaying ? '#4ade80' : '#5a616b',
+              boxShadow: isTransportPlaying
+                ? `inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22, 0 0 8px #4ade8020`
+                : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+            }}
+            title={isTransportPlaying ? 'Stop song playback' : 'Play song so you can test vocal pitch against it'}
+          >
+            {isTransportPlaying ? '⏹' : '▶'} PLAY W/ SONG
+          </button>
+        )}
+
+        <div className="w-px h-4 bg-white/[0.06]" />
+
+        {/* ── TEST BEAT ── */}
+        <button
+          onClick={() => setTestBeatOn(t => !t)}
+          className="flex items-center gap-1 px-2 py-0.5 text-[8px] font-bold cursor-pointer transition-all rounded-lg"
+          style={{
+            background: testBeatOn ? '#fb923c20' : '#16181d',
+            color: testBeatOn ? '#fb923c' : '#5a616b',
+            boxShadow: testBeatOn
+              ? 'inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22'
+              : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+            ...(testBeatOn ? { animation: 'pulse 2s ease-in-out infinite' } : {}),
+          }}
+          title="Play a simple kick-snare-hihat pattern at project BPM to test vocal timing"
+        >
+          🥁 TEST BEAT
+        </button>
+
+        <div className="w-px h-4 bg-white/[0.06]" />
+
+        {/* ── SIDECHAIN ── */}
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => { setSidechainEnabled(s => !s); setHasEdited(true) }}
+            className="flex items-center gap-1 px-2 py-0.5 text-[8px] font-bold cursor-pointer transition-all rounded-lg"
+            style={{
+              background: sidechainEnabled ? '#7fa99820' : '#16181d',
+              color: sidechainEnabled ? '#7fa998' : '#5a616b',
+              boxShadow: sidechainEnabled
+                ? 'inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22'
+                : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+            }}
+            title="Sidechain duck this vocal to a drum orbit — vocal ducks when the kick hits"
+          >
+            🦆 DUCK
+          </button>
+          {sidechainEnabled && (
+            <>
+              <span className="text-[6px] font-bold" style={{ color: '#5a616b' }}>ORB</span>
+              <select
+                value={sidechainOrbit}
+                onChange={e => { setSidechainOrbit(parseInt(e.target.value)); setHasEdited(true) }}
+                className="text-[8px] font-mono px-1 py-0.5 rounded cursor-pointer outline-none"
+                style={{ background: '#16181d', color: '#7fa998', border: '1px solid rgba(255,255,255,0.05)' }}
+              >
+                {[0,1,2,3,4,5].map(o => <option key={o} value={o}>Orbit {o}</option>)}
+              </select>
+              <span className="text-[6px] font-bold" style={{ color: '#5a616b' }}>DEPTH</span>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                value={sidechainDepth}
+                onChange={e => { setSidechainDepth(parseFloat(e.target.value)); setHasEdited(true) }}
+                className="w-12 h-1 rounded-full appearance-none cursor-pointer"
+                style={{
+                  background: `linear-gradient(to right, #7fa998 ${sidechainDepth * 100}%, #16181d ${sidechainDepth * 100}%)`,
+                  accentColor: '#7fa998',
+                }}
+              />
+              <span className="text-[7px] font-mono" style={{ color: '#7fa998' }}>
+                {sidechainDepth.toFixed(2)}
+              </span>
+            </>
+          )}
         </div>
       </div>
 

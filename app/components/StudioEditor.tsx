@@ -932,12 +932,14 @@ export default function StudioEditor() {
                 trimBegin={trimBegin}
                 trimEnd={trimEnd}
                 projectBpm={parseBPM(code) ?? 120}
+                isTransportPlaying={isPlaying}
+                onToggleTransport={handlePlay}
                 onPatternChange={(newRawCode: string) => {
                   const latest = codeRef.current
                   const newCode = replaceChannelBlock(latest, padSamplerChannel, newRawCode)
                   if (newCode !== latest) handleLiveCodeChange(newCode)
                 }}
-                onPreviewPad={async (sampleName: string, begin: number, end: number) => {
+                onPreviewPad={async (sampleName: string, begin: number, end: number, speed?: number) => {
                   const engine = engineRef.current
                   if (!engine) return
                   try {
@@ -956,11 +958,27 @@ export default function StudioEditor() {
                       end,
                       gain: 0.6,
                     }
+                    if (speed !== undefined && speed !== 1) params.speed = speed
                     if (ch.bank) params.bank = ch.bank
                     await sd(params, now, 0.5)
                   } catch (err) {
                     console.error('[444 STUDIO] pad preview error:', err)
                   }
+                }}
+                onPreviewDrum={async (sound: string, gain?: number) => {
+                  const engine = engineRef.current
+                  if (!engine) return
+                  try {
+                    const actx = engine.webaudio.getAudioContext()
+                    await actx.resume()
+                    let sd = engine.superdough || engine.webaudio.superdough
+                    if (!sd) {
+                      const sdMod = await import('superdough')
+                      sd = sdMod.superdough
+                    }
+                    if (!sd) return
+                    await sd({ s: sound, gain: gain ?? 0.7 }, actx.currentTime + 0.01, 0.3)
+                  } catch {}
                 }}
                 onClose={() => setPadSamplerChannel(null)}
               />
