@@ -43,15 +43,18 @@ const LOOP_BAR_OPTIONS = [1, 2, 4, 8, 16, 32] as const
 const STEPS_PER_BAR = 16
 
 // ─── Utility: auto-slice sample into N equal chops ───
+// When trimBegin/trimEnd are provided, slices are mapped to the trimmed region
+// so chop boundaries stay in sync with the user's waveform trim.
 
-function generateChops(count: number): VocalChop[] {
+function generateChops(count: number, trimBegin = 0, trimEnd = 1): VocalChop[] {
   const chops: VocalChop[] = []
+  const range = trimEnd - trimBegin
   for (let i = 0; i < count; i++) {
     chops.push({
       idx: i,
       label: `${i + 1}`,
-      begin: i / count,
-      end: (i + 1) / count,
+      begin: trimBegin + (i / count) * range,
+      end: trimBegin + ((i + 1) / count) * range,
       color: PAD_COLORS[i % PAD_COLORS.length],
     })
   }
@@ -105,6 +108,10 @@ interface StudioVocalPadSamplerProps {
   channelName: string
   channelRawCode: string
   chopCount?: number
+  /** Trim begin from waveform viewer (0–1). Chops map to this region. */
+  trimBegin?: number
+  /** Trim end from waveform viewer (0–1). Chops map to this region. */
+  trimEnd?: number
   onPatternChange: (newRawCode: string) => void
   onClose: () => void
   onPreviewPad?: (sampleName: string, begin: number, end: number) => void
@@ -117,13 +124,15 @@ export default function StudioVocalPadSampler({
   channelName,
   channelRawCode,
   chopCount = 16,
+  trimBegin = 0,
+  trimEnd = 1,
   onPatternChange,
   onClose,
   onPreviewPad,
   projectBpm = 120,
 }: StudioVocalPadSamplerProps) {
   // ─── State ───
-  const [chops] = useState(() => generateChops(chopCount))
+  const [chops, setChops] = useState(() => generateChops(chopCount, trimBegin, trimEnd))
   const [loopBars, setLoopBars] = useState<number>(4)
   const [isRecording, setIsRecording] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -134,6 +143,11 @@ export default function StudioVocalPadSampler({
   const [padLayout, setPadLayout] = useState<4 | 8 | 16>(16)
   const [hasEdited, setHasEdited] = useState(false)
   const [selectedPad, setSelectedPad] = useState<number | null>(null) // for grid painting
+
+  // Re-generate chops when trim bounds or chop count change
+  useEffect(() => {
+    setChops(generateChops(chopCount, trimBegin, trimEnd))
+  }, [chopCount, trimBegin, trimEnd])
 
   // Refs for animation/timing
   const recordStartTime = useRef(0)

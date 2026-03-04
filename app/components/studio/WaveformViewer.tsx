@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
+import { detectPitch, semitonesBetweenRoots, semitonesToSpeed, type PitchResult } from '@/lib/pitch-detection'
 
 interface WaveformViewerProps {
   url: string
@@ -22,6 +23,8 @@ interface WaveformViewerProps {
   color?: string
   /** Sample name for display */
   sampleName?: string
+  /** Project master scale root (e.g. "C", "F#") for auto-pitch */
+  scaleRoot?: string | null
 }
 
 /** Semitones from speed ratio: 12 Ã— logâ‚‚(speed) */
@@ -34,6 +37,7 @@ export default function WaveformViewer({
   beginValue = 0, endValue = 1,
   speedValue = 1, sampleBpm, projectBpm,
   onApply, color = '#22d3ee', sampleName,
+  scaleRoot = null,
 }: WaveformViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -56,6 +60,8 @@ export default function WaveformViewer({
   const [manualBpm, setManualBpm] = useState<number | null>(null)
   const [tapTimes, setTapTimes] = useState<number[]>([])
   const [tapBpm, setTapBpm] = useState<number | null>(null)
+  const [detectedPitch, setDetectedPitch] = useState<PitchResult | null>(null)
+  const [isDetectingPitch, setIsDetectingPitch] = useState(false)
 
   // Effective sample BPM: manual override > tap tempo > auto-detected > null
   const effectiveSampleBpm = manualBpm ?? tapBpm ?? sampleBpm ?? null
@@ -171,6 +177,20 @@ export default function WaveformViewer({
         }
         waveformRef.current = wave
         drawWaveform()
+
+        // Auto-detect pitch after audio loads
+        setIsDetectingPitch(true)
+        try {
+          const pitchResult = detectPitch(ab, {
+            regionStart: beginValue,
+            regionEnd: endValue,
+          })
+          setDetectedPitch(pitchResult)
+        } catch {
+          setDetectedPitch(null)
+        } finally {
+          setIsDetectingPitch(false)
+        }
       } catch {
         setError('Failed to load audio')
       } finally {
@@ -342,6 +362,40 @@ export default function WaveformViewer({
     }
   }, [isOpen])
 
+  // Re-detect pitch for the current trimmed region
+  const redetectPitch = useCallback(() => {
+    const ab = audioBufferRef.current
+    if (!ab) return
+    setIsDetectingPitch(true)
+    try {
+      const pitchResult = detectPitch(ab, {
+        regionStart: begin,
+        regionEnd: end,
+      })
+      setDetectedPitch(pitchResult)
+    } catch {
+      setDetectedPitch(null)
+    } finally {
+      setIsDetectingPitch(false)
+    }
+  }, [begin, end])
+
+  // Auto-pitch to project scale root
+  const autoPitchToScale = useCallback(() => {
+    if (!detectedPitch || !scaleRoot) return
+    const st = semitonesBetweenRoots(detectedPitch.noteName, scaleRoot)
+    if (st === 0) return // already in key
+    const pitchSpeed = semitonesToSpeed(st)
+    // Combine with existing speed (preserve any BPM compensation)
+    setSpeed(pitchSpeed)
+  }, [detectedPitch, scaleRoot])
+
+  // Computed: semitone offset from detected key to scale root
+  const pitchToScaleOffset = useMemo(() => {
+    if (!detectedPitch || !scaleRoot) return null
+    return semitonesBetweenRoots(detectedPitch.noteName, scaleRoot)
+  }, [detectedPitch, scaleRoot])
+
   const handleApply = () => {
     onApply?.({
       begin: Math.round(begin * 100) / 100,
@@ -379,6 +433,70 @@ export default function WaveformViewer({
               <span className="text-[9px] font-mono" style={{ color: 'rgba(255,255,255,0.3)' }}>
                 {sampleName}
               </span>
+            )}
+
+            {/* Detected pitch badge */}
+            {isDetectingPitch && (
+              <span className="text-[8px] font-mono px-1.5 py-0.5 rounded animate-pulse"
+                style={{ background: '#a78bfa15', color: '#a78bfa' }}>
+                detecting…
+              </span>
+            )}
+            {detectedPitch && !isDetectingPitch && (
+              <span className="flex items-center gap-1.5">
+                <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded"
+                  style={{
+                    background: detectedPitch.confidence > 0.7 ? '#22c55e18' : '#f59e0b18',
+                    color: detectedPitch.confidence > 0.7 ? '#22c55e' : '#f59e0b',
+                    border: `1px solid ${detectedPitch.confidence > 0.7 ? '#22c55e30' : '#f59e0b30'}`,
+                  }}
+                  title={`Detected: ${detectedPitch.noteString} (${detectedPitch.frequency}Hz) · confidence: ${(detectedPitch.confidence * 100).toFixed(0)}%${detectedPitch.cents !== 0 ? ` · ${detectedPitch.cents > 0 ? '+' : ''}${detectedPitch.cents}¢` : ''}`}
+                >
+                  🎵 {detectedPitch.noteString}
+                  {detectedPitch.cents !== 0 && (
+                    <span style={{ opacity: 0.6 }}> {detectedPitch.cents > 0 ? '+' : ''}{detectedPitch.cents}¢</span>
+                  )}
+                </span>
+                {/* Re-detect button */}
+                <button
+                  onClick={redetectPitch}
+                  className="text-[7px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded cursor-pointer transition-all hover:scale-105"
+                  style={{ background: '#16181d', color: '#a78bfa', border: '1px solid #a78bfa25' }}
+                  title="Re-detect pitch for current trim region"
+                >
+                  ↻
+                </button>
+                {/* Auto-pitch to scale button */}
+                {scaleRoot && pitchToScaleOffset !== null && pitchToScaleOffset !== 0 && (
+                  <button
+                    onClick={autoPitchToScale}
+                    className="text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 rounded cursor-pointer transition-all hover:scale-105"
+                    style={{
+                      background: '#7fa99815',
+                      color: '#7fa998',
+                      border: '1px solid #7fa99830',
+                    }}
+                    title={`Pitch-shift ${detectedPitch.noteName}→${scaleRoot} (${pitchToScaleOffset > 0 ? '+' : ''}${pitchToScaleOffset}st)`}
+                  >
+                    → {scaleRoot} ({pitchToScaleOffset > 0 ? '+' : ''}{pitchToScaleOffset}st)
+                  </button>
+                )}
+                {scaleRoot && pitchToScaleOffset === 0 && (
+                  <span className="text-[7px] font-bold px-1.5 py-0.5 rounded" style={{ background: '#22c55e15', color: '#22c55e' }}>
+                    ✓ in key
+                  </span>
+                )}
+              </span>
+            )}
+            {!detectedPitch && !isDetectingPitch && !loading && (
+              <button
+                onClick={redetectPitch}
+                className="text-[7px] font-bold uppercase tracking-wider px-2 py-0.5 rounded cursor-pointer transition-all hover:scale-105"
+                style={{ background: '#16181d', color: '#a78bfa', border: '1px solid #a78bfa25' }}
+                title="Detect sample pitch"
+              >
+                🎵 DETECT KEY
+              </button>
             )}
           </div>
           <button onClick={onClose} className="text-white/20 hover:text-white/60 transition-colors cursor-pointer text-sm font-bold">

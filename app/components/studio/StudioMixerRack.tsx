@@ -2873,6 +2873,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
         projectBpm={currentBPM ?? 120}
         color={selectedWaveformChannel >= 0 ? channels[selectedWaveformChannel]?.color : undefined}
         sampleName={selectedWaveformChannel >= 0 ? channels[selectedWaveformChannel]?.source : undefined}
+        scaleRoot={currentScale?.root ?? null}
         onApply={({ begin: b, end: e, speed: spd }) => {
           if (selectedWaveformChannel < 0) return
           let c = codeRef.current

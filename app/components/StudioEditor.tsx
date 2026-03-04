@@ -907,6 +907,11 @@ export default function StudioEditor() {
             // Extract loopAt from channel code
             const loopAtMatch = ch.rawCode.match(/\.loopAt\(\s*(\d+)\s*\)/)
             const loopAtVal = loopAtMatch ? parseInt(loopAtMatch[1]) : 4
+            // Extract trim begin/end from channel params for chop sync
+            const trimBeginParam = ch.params.find(p => p.key === 'begin')
+            const trimEndParam = ch.params.find(p => p.key === 'end')
+            const trimBegin = trimBeginParam?.value ?? 0
+            const trimEnd = trimEndParam?.value ?? 1
             return (
               <StudioVocalPadSampler
                 key={padSamplerChannel}
@@ -915,6 +920,8 @@ export default function StudioEditor() {
                 channelName={ch.name}
                 channelRawCode={ch.rawCode}
                 chopCount={chopCount}
+                trimBegin={trimBegin}
+                trimEnd={trimEnd}
                 projectBpm={parseBPM(code) ?? 120}
                 onPatternChange={(newRawCode: string) => {
                   const latest = codeRef.current
