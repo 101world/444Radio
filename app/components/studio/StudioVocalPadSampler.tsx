@@ -5,7 +5,7 @@
 //
 //  Deep Strudel integration:
 //  • Uses slice(N, n("pattern")) for proper chop-based playback
-//  • 4×4 pad grid with keyboard mapping (1-4/Q-R/A-F/Z-V)
+//  • 4-row pad grid with full keyboard mapping (number/QWERTY/ASDF/ZXCV rows)
 //  • "Selected pad" concept: click grid cells to paint hits
 //  • Real-time loop recording with quantize
 //  • Multi-layer: can stack multiple pad hits at same step
@@ -42,6 +42,15 @@ const PAD_COLORS = [
 const LOOP_BAR_OPTIONS = [1, 2, 4, 8, 16, 32] as const
 const CHOP_OPTIONS = [4, 8, 16, 32, 64] as const
 const STEPS_PER_BAR = 16
+
+// Full keyboard rows for pad mapping (45 keys total)
+const KEYBOARD_ROWS: string[][] = [
+  ['1','2','3','4','5','6','7','8','9','0','-','='],   // 12 keys
+  ['q','w','e','r','t','y','u','i','o','p','[',']'],   // 12 keys
+  ['a','s','d','f','g','h','j','k','l',';',"'"],       // 11 keys
+  ['z','x','c','v','b','n','m',',','.','/'],            // 10 keys
+]
+const ALL_PAD_KEYS = KEYBOARD_ROWS.flat() // 45 keys
 
 // Test beat step pattern (simple boom-bap)
 const TEST_KICK_STEPS = [0, 8]          // beats 1, 3
@@ -527,14 +536,10 @@ export default function StudioVocalPadSampler({
 
   // ─── Keyboard shortcuts for pads ───
   useEffect(() => {
-    // Build keyboard map based on pad count — MPC-style QWERTY layout
-    // Top visual row → Q-row, middle → A-row, bottom → Z-row, overflow → number row
-    const allKeys = ['q','w','e','r','a','s','d','f','z','x','c','v',
-      '1','2','3','4','t','y','u','i','g','h','j','k','b','n','m',',',
-      '5','6','7','8']
+    // Full keyboard layout: number row → QWERTY → ASDF → ZXCV
     const keyMap: Record<string, number> = {}
-    for (let i = 0; i < Math.min(padCount, allKeys.length); i++) {
-      keyMap[allKeys[i]] = i
+    for (let i = 0; i < Math.min(padCount, ALL_PAD_KEYS.length); i++) {
+      keyMap[ALL_PAD_KEYS[i]] = i
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -580,9 +585,26 @@ export default function StudioVocalPadSampler({
   }, [playPad, padCount, isRecording, isPlaying, startLoop, stopLoop, startPadHold, stopPadHold, stopAllPadHolds])
 
   // ─── Grid visualization of recorded hits ───
-  const gridCols = padCount <= 4 ? 2 : padCount <= 16 ? 4 : 8
-  const gridRows = Math.ceil(padCount / gridCols)
   const visibleChops = chops.slice(0, padCount)
+
+  // Distribute pads across 4 keyboard rows
+  const padRows = useMemo(() => {
+    const rows: { keys: string[]; chops: (VocalChop | null)[]; startIdx: number }[] = []
+    let idx = 0
+    for (const row of KEYBOARD_ROWS) {
+      const rowChops: (VocalChop | null)[] = []
+      for (let k = 0; k < row.length; k++) {
+        if (idx < padCount) {
+          rowChops.push(visibleChops[idx])
+          idx++
+        } else {
+          rowChops.push(null) // empty slot
+        }
+      }
+      rows.push({ keys: row, chops: rowChops, startIdx: idx - rowChops.filter(c => c !== null).length })
+    }
+    return rows
+  }, [padCount, visibleChops])
 
   // Progress bar percentage
   const progressPct = totalSteps > 0 ? (currentStep / totalSteps) * 100 : 0
@@ -763,67 +785,83 @@ export default function StudioVocalPadSampler({
 
       {/* ─── Main content: Pads + Mini grid ─── */}
       <div className="flex gap-3 px-3 py-2" style={{ minHeight: 200 }}>
-        {/* Pad grid */}
-        <div
-          className="shrink-0 grid gap-1.5"
-          style={{
-            gridTemplateColumns: `repeat(${gridCols}, 1fr)`,
-            gridTemplateRows: `repeat(${gridRows}, 1fr)`,
-          }}
-        >
-          {visibleChops.map(chop => {
-            const isFlashing = flashPad === chop.idx
-            const hasHits = recordedHits.some(h => h.padIdx === chop.idx)
-            const isSelected = selectedPad === chop.idx
-            const KEY_HINTS = ['Q','W','E','R','A','S','D','F','Z','X','C','V','1','2','3','4']
-            const keyHint = chop.idx < KEY_HINTS.length ? KEY_HINTS[chop.idx] : undefined
+        {/* Pad grid — 4 keyboard rows */}
+        <div className="shrink-0 flex flex-col gap-1">
+          {padRows.map((row, rowIdx) => (
+            <div key={rowIdx} className="flex gap-1" style={{ paddingLeft: rowIdx * 8 }}>
+              {row.chops.map((chop, colIdx) => {
+                if (!chop) {
+                  // Empty slot — show blank key placeholder
+                  return (
+                    <div
+                      key={`empty-${rowIdx}-${colIdx}`}
+                      className="flex items-center justify-center select-none"
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: '6px',
+                        background: '#0e1014',
+                        border: '1px solid rgba(255,255,255,0.02)',
+                      }}
+                    >
+                      <span className="text-[7px] font-mono" style={{ color: '#2a2e36' }}>
+                        {row.keys[colIdx].toUpperCase()}
+                      </span>
+                    </div>
+                  )
+                }
 
-            return (
-              <button
-                key={chop.idx}
-                onMouseDown={() => {
-                  playPad(chop.idx)
-                  startPadHold(chop.idx) // Begin hold-to-loop on mouse hold
-                  setSelectedPad(chop.idx)
-                }}
-                onMouseUp={() => stopPadHold(chop.idx)}
-                onMouseLeave={() => stopPadHold(chop.idx)}
-                className="relative cursor-pointer transition-all duration-75 active:scale-95 select-none"
-                style={{
-                  width: padCount <= 4 ? 72 : padCount <= 8 ? 56 : padCount <= 16 ? 44 : padCount <= 32 ? 32 : 26,
-                  height: padCount <= 4 ? 72 : padCount <= 8 ? 56 : padCount <= 16 ? 44 : padCount <= 32 ? 32 : 26,
-                  background: isFlashing ? chop.color : isSelected ? chop.color + '25' : '#16181d',
-                  borderRadius: '10px',
-                  boxShadow: isFlashing
-                    ? `inset 2px 2px 4px ${chop.color}80, 0 0 12px ${chop.color}40`
-                    : isSelected
-                    ? `inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22, 0 0 8px ${chop.color}30`
-                    : '3px 3px 6px #050607, -3px -3px 6px #1a1d22',
-                  border: `1px solid ${isSelected ? chop.color + '80' : hasHits ? chop.color + '40' : 'rgba(255,255,255,0.04)'}`,
-                }}
-                title={`Pad ${chop.idx + 1}${keyHint ? ` (${keyHint})` : ''} · slice ${(chop.begin * 100).toFixed(0)}%–${(chop.end * 100).toFixed(0)}%${isSelected ? ' · SELECTED (click grid to paint)' : ''}`}
-              >
-                {/* Pad number */}
-                <span className={`${padCount > 32 ? 'text-[7px]' : padCount > 16 ? 'text-[8px]' : 'text-[10px]'} font-bold font-mono`} style={{ color: isFlashing ? '#fff' : isSelected ? chop.color : chop.color + '90' }}>
-                  {chop.label}
-                </span>
-                {/* Key hint */}
-                {keyHint && padCount <= 16 && (
-                <span className="absolute bottom-1 right-1.5 text-[6px] font-mono" style={{ color: '#5a616b' }}>
-                  {keyHint}
-                </span>
-                )}
-                {/* Hit indicator dot */}
-                {hasHits && (
-                  <span className="absolute top-1 right-1.5 w-1.5 h-1.5 rounded-full" style={{ background: chop.color }} />
-                )}
-                {/* Selected indicator */}
-                {isSelected && (
-                  <span className="absolute top-0.5 left-1 text-[5px] font-black" style={{ color: chop.color }}>✎</span>
-                )}
-              </button>
-            )
-          })}
+                const isFlashing = flashPad === chop.idx
+                const hasHits = recordedHits.some(h => h.padIdx === chop.idx)
+                const isSelected = selectedPad === chop.idx
+                const keyHint = row.keys[colIdx]?.toUpperCase()
+
+                return (
+                  <button
+                    key={chop.idx}
+                    onMouseDown={() => {
+                      playPad(chop.idx)
+                      startPadHold(chop.idx)
+                      setSelectedPad(chop.idx)
+                    }}
+                    onMouseUp={() => stopPadHold(chop.idx)}
+                    onMouseLeave={() => stopPadHold(chop.idx)}
+                    className="relative cursor-pointer transition-all duration-75 active:scale-95 select-none flex flex-col items-center justify-center"
+                    style={{
+                      width: 32,
+                      height: 32,
+                      background: isFlashing ? chop.color : isSelected ? chop.color + '25' : '#16181d',
+                      borderRadius: '6px',
+                      boxShadow: isFlashing
+                        ? `inset 1px 1px 3px ${chop.color}80, 0 0 8px ${chop.color}40`
+                        : isSelected
+                        ? `inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22, 0 0 6px ${chop.color}30`
+                        : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+                      border: `1px solid ${isSelected ? chop.color + '80' : hasHits ? chop.color + '40' : 'rgba(255,255,255,0.04)'}`,
+                    }}
+                    title={`Pad ${chop.idx + 1} (${keyHint}) · slice ${(chop.begin * 100).toFixed(0)}%–${(chop.end * 100).toFixed(0)}%${isSelected ? ' · SELECTED (click grid to paint)' : ''}`}
+                  >
+                    {/* Pad number */}
+                    <span className="text-[8px] font-bold font-mono leading-none" style={{ color: isFlashing ? '#fff' : isSelected ? chop.color : chop.color + '90' }}>
+                      {chop.label}
+                    </span>
+                    {/* Key hint */}
+                    <span className="text-[6px] font-mono leading-none mt-0.5" style={{ color: '#4a5060' }}>
+                      {keyHint}
+                    </span>
+                    {/* Hit indicator dot */}
+                    {hasHits && (
+                      <span className="absolute top-0.5 right-1 w-1.5 h-1.5 rounded-full" style={{ background: chop.color }} />
+                    )}
+                    {/* Selected indicator */}
+                    {isSelected && (
+                      <span className="absolute top-0 left-0.5 text-[5px] font-black" style={{ color: chop.color }}>✎</span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          ))}
         </div>
 
         {/* Mini step grid — shows recorded pattern */}
@@ -1094,7 +1132,7 @@ export default function StudioVocalPadSampler({
       {/* ─── Keyboard hints + selected pad indicator ─── */}
       <div className="flex items-center gap-3 px-3 pb-1.5">
         <span className="text-[6px] font-mono" style={{ color: '#3a3f48' }}>
-          {padCount <= 16 ? 'KEYS: 1-4 / Q-R / A-F / Z-V = pads · ' : ''}SPACE = record · ESC = deselect
+          KEYS: 1-= / Q-] / A-&apos; / Z-/ = pads · SPACE = record · ESC = deselect
         </span>
         {selectedPad !== null && (
           <span className="flex items-center gap-1 text-[7px] font-bold px-1.5 py-0.5 rounded"
