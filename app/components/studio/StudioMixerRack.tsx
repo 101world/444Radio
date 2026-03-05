@@ -268,13 +268,15 @@ const ADD_CHANNEL_PRESETS: { section: string; type: 'synth' | 'sample' | 'vocal'
 // ─── Effect category grouping for nested rack display ───
 
 const FX_GROUPS: { label: string; icon: string; keys: string[] }[] = [
-  { label: 'FILTER', icon: '🔽', keys: ['lpf', 'lp', 'hpf', 'hp', 'lpq', 'lpenv', 'lps', 'lpd', 'vowel'] },
-  { label: 'DRIVE',  icon: '🔥', keys: ['shape', 'distort', 'crush', 'compressor'] },
-  { label: 'SPACE',  icon: '🌌', keys: ['room', 'delay', 'delayfeedback', 'delaytime', 'orbit', 'echo'] },
-  { label: 'MOD',    icon: '🎵', keys: ['detune', 'speed', 'pan', 'velocity', 'postgain', 'vib', 'phaser', 'fast', 'slow'] },
+  { label: 'FILTER', icon: '🔽', keys: ['lpf', 'lp', 'hpf', 'hp', 'lpq', 'lpenv', 'lps', 'lpd', 'bpf', 'bpq', 'ftype', 'vowel'] },
+  { label: 'DRIVE',  icon: '🔥', keys: ['shape', 'distort', 'crush', 'coarse', 'compressor'] },
+  { label: 'SPACE',  icon: '🌌', keys: ['room', 'roomsize', 'roomfade', 'roomlp', 'roomdim', 'iresponse', 'delay', 'delayfeedback', 'delaytime', 'orbit', 'echo'] },
+  { label: 'MOD',    icon: '🎵', keys: ['detune', 'speed', 'pan', 'velocity', 'postgain', 'vib', 'vibmod', 'phaser', 'phaserdepth', 'phasercenter', 'phasersweep', 'tremolosync', 'tremolodepth', 'tremoloskew', 'fast', 'slow'] },
+  { label: 'FM',     icon: '📻', keys: ['fm', 'fmh', 'fmattack', 'fmdecay', 'fmsustain'] },
+  { label: 'PITCH',  icon: '📈', keys: ['penv', 'pattack', 'pdecay', 'prelease', 'pcurve', 'panchor'] },
   { label: 'ENV',    icon: '⏳', keys: ['attack', 'decay', 'rel', 'release', 'legato', 'clip'] },
   { label: 'CHAIN',  icon: '🦆', keys: ['duckdepth', 'duckattack'] },
-  { label: 'SAMPLE', icon: '🎤', keys: ['loopAt', 'begin', 'end', 'chop', 'stretch', 'slice'] },
+  { label: 'SAMPLE', icon: '🎤', keys: ['loopAt', 'begin', 'end', 'chop', 'stretch', 'slice', 'splice', 'striate', 'fit', 'scrub', 'loopBegin', 'loopEnd'] },
 ]
 
 // ─── Channel-type → relevant FX groups & effect keys ───
@@ -282,15 +284,15 @@ const FX_GROUPS: { label: string; icon: string; keys: string[] }[] = [
 // Effects outside these groups still appear if user manually added them.
 
 const TYPE_RELEVANT_FX_GROUPS: Record<string, Set<string>> = {
-  synth:  new Set(['FILTER', 'DRIVE', 'SPACE', 'MOD', 'ENV']),             // No SAMPLE, CHAIN only if active
-  note:   new Set(['FILTER', 'DRIVE', 'SPACE', 'MOD', 'ENV']),
-  sample: new Set(['FILTER', 'DRIVE', 'SPACE', 'MOD', 'ENV', 'SAMPLE', 'CHAIN']),
+  synth:  new Set(['FILTER', 'DRIVE', 'SPACE', 'MOD', 'FM', 'PITCH', 'ENV']),
+  note:   new Set(['FILTER', 'DRIVE', 'SPACE', 'MOD', 'FM', 'PITCH', 'ENV']),
+  sample: new Set(['FILTER', 'DRIVE', 'SPACE', 'MOD', 'PITCH', 'ENV', 'SAMPLE', 'CHAIN']),
   stack:  new Set(['FILTER', 'DRIVE', 'SPACE', 'MOD', 'CHAIN']),
 }
 
 // Effect keys that only make sense for specific channel types
 const INSTRUMENT_ONLY_KEYS = new Set(['detune'])      // Synth/note only
-const SAMPLE_ONLY_KEYS = new Set(['speed', 'loopAt', 'begin', 'end', 'chop', 'stretch', 'slice'])  // Sample only
+const SAMPLE_ONLY_KEYS = new Set(['speed', 'loopAt', 'begin', 'end', 'chop', 'stretch', 'slice', 'splice', 'striate', 'fit', 'scrub', 'loopBegin', 'loopEnd'])  // Sample only
 
 // ─── Draggable Effect Badge ───
 

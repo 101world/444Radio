@@ -112,7 +112,46 @@ export const PARAM_DEFS: ParamDef[] = [
   { key: 'slice',          label: 'Slice',    min: 2,    max: 64,    step: 1 },
   // Modulation FX
   { key: 'vib',            label: 'Vibrato',  min: 0,    max: 12,    step: 0.5 },
+  { key: 'vibmod',         label: 'VibDpth',  min: 0,    max: 12,    step: 0.1 },
   { key: 'phaser',         label: 'Phaser',   min: 0,    max: 12,    step: 0.1 },
+  { key: 'phaserdepth',    label: 'PhDpth',   min: 0,    max: 1,     step: 0.01 },
+  { key: 'phasercenter',   label: 'PhCtr',    min: 100,  max: 8000,  step: 50,   unit: 'Hz' },
+  { key: 'phasersweep',    label: 'PhSwp',    min: 0,    max: 4000,  step: 50 },
+  // FM Synthesis
+  { key: 'fm',             label: 'FM',       min: 0,    max: 32,    step: 0.1 },
+  { key: 'fmh',            label: 'FM Harm',  min: 0.1,  max: 12,    step: 0.01 },
+  { key: 'fmattack',       label: 'FM Atk',   min: 0,    max: 1,     step: 0.01 },
+  { key: 'fmdecay',        label: 'FM Dec',   min: 0,    max: 1,     step: 0.01 },
+  { key: 'fmsustain',      label: 'FM Sus',   min: 0,    max: 1,     step: 0.01 },
+  // Pitch Envelope
+  { key: 'penv',           label: 'PitchEnv', min: -24,  max: 24,    step: 0.5 },
+  { key: 'pattack',        label: 'PAtk',     min: 0,    max: 1,     step: 0.01 },
+  { key: 'pdecay',         label: 'PDec',     min: 0,    max: 1,     step: 0.01 },
+  { key: 'prelease',       label: 'PRel',     min: 0,    max: 1,     step: 0.01 },
+  { key: 'pcurve',         label: 'PCurve',   min: 0,    max: 1,     step: 0.1 },
+  { key: 'panchor',        label: 'PAnch',    min: 0,    max: 1,     step: 0.1 },
+  // Tremolo / AM
+  { key: 'tremolosync',    label: 'TremSpd',  min: 0.5,  max: 32,    step: 0.5 },
+  { key: 'tremolodepth',   label: 'TremDp',   min: 0,    max: 1,     step: 0.01 },
+  { key: 'tremoloskew',    label: 'TremSkw',  min: 0,    max: 1,     step: 0.01 },
+  // Bandpass filter
+  { key: 'bpf',            label: 'BPF',      min: 20,   max: 20000, step: 10,   unit: 'Hz' },
+  { key: 'bpq',            label: 'BPQ',      min: 0,    max: 50,    step: 0.5 },
+  // Filter type
+  { key: 'ftype',          label: 'FType',    min: 0,    max: 2,     step: 1 },
+  // Reverb controls
+  { key: 'roomsize',       label: 'RmSize',   min: 0,    max: 10,    step: 0.1 },
+  { key: 'roomfade',       label: 'RmFade',   min: 0.1,  max: 10,    step: 0.1 },
+  { key: 'roomlp',         label: 'RmLP',     min: 200,  max: 20000, step: 100,  unit: 'Hz' },
+  { key: 'roomdim',        label: 'RmDim',    min: 200,  max: 20000, step: 100,  unit: 'Hz' },
+  // Drive extras
+  { key: 'coarse',         label: 'Coarse',   min: 1,    max: 32,    step: 1 },
+  // Sample extras
+  { key: 'splice',         label: 'Splice',   min: 2,    max: 64,    step: 1 },
+  { key: 'striate',        label: 'Striate',  min: 2,    max: 64,    step: 1 },
+  // Loop controls
+  { key: 'loopBegin',      label: 'LpBeg',    min: 0,    max: 1,     step: 0.01 },
+  { key: 'loopEnd',        label: 'LpEnd',    min: 0,    max: 1,     step: 0.01 },
   // Pattern rate
   { key: 'fast',           label: 'Fast',     min: 0.25, max: 16,    step: 0.25 },
   { key: 'slow',           label: 'Slow',     min: 0.25, max: 16,    step: 0.25 },
@@ -124,12 +163,19 @@ export const PARAM_DEFS: ParamDef[] = [
 
 // Effect names for detecting which effects are present
 const EFFECT_NAMES = [
-  'lpf', 'lp', 'hpf', 'hp', 'lpq', 'lpenv', 'lps', 'lpd', 'shape', 'distort', 'crush',
-  'room', 'delay', 'delayfeedback', 'delaytime', 'pan', 'duck', 'duckdepth',
-  'duckattack', 'jux', 'juxBy', 'off', 'orbit', 'detune', 'vib', 'phaser', 'speed',
+  'lpf', 'lp', 'hpf', 'hp', 'lpq', 'lpenv', 'lps', 'lpd', 'bpf', 'bpq', 'ftype',
+  'shape', 'distort', 'crush', 'coarse',
+  'room', 'roomsize', 'roomfade', 'roomlp', 'roomdim', 'iresponse',
+  'delay', 'delayfeedback', 'delaytime', 'pan', 'duck', 'duckdepth',
+  'duckattack', 'jux', 'juxBy', 'off', 'orbit', 'detune', 'vib', 'vibmod', 'phaser',
+  'phaserdepth', 'phasercenter', 'phasersweep', 'speed',
   'velocity', 'rel', 'release', 'gain', 'attack', 'decay', 'legato', 'clip',
   'postgain', 'compressor', 'arp', 'arpeggiate', 'superimpose', 'echo', 'fast', 'slow',
-  'loopAt', 'begin', 'end', 'chop', 'slice', 'stretch', 'vowel',
+  'loopAt', 'begin', 'end', 'chop', 'slice', 'splice', 'striate', 'stretch', 'fit', 'scrub', 'vowel',
+  'fm', 'fmh', 'fmattack', 'fmdecay', 'fmsustain', 'fmenv',
+  'penv', 'pattack', 'pdecay', 'prelease', 'pcurve', 'panchor',
+  'tremolosync', 'tremolodepth', 'tremoloskew', 'tremolophase', 'tremoloshape',
+  'loop', 'loopBegin', 'loopEnd', 'rev', 'ply',
 ]
 
 /** Draggable effects palette entries */
@@ -177,6 +223,36 @@ export const DRAGGABLE_EFFECTS = [
   { id: 'off',           label: 'Off +5',  code: '.off(1/8, x => x.add(7))',      icon: '⟩', category: 'pattern', target: 'instrument' as const },
   { id: 'superimpose',   label: 'Super',   code: '.superimpose(x => x.add(12).slow(2))', icon: '⊕', category: 'pattern', target: 'instrument' as const },
   { id: 'echo',          label: 'Echo',    code: '.echo(3, 1/8, 0.5)',            icon: '≡', category: 'pattern', target: 'both' as const },
+  // ── FM Synthesis ──
+  { id: 'fm',             label: 'FM',      code: '.fm(4)',                icon: '📻', category: 'fm',      target: 'instrument' as const },
+  { id: 'fmh',            label: 'FM Harm', code: '.fmh(1.5)',             icon: '🔢', category: 'fm',      target: 'instrument' as const },
+  { id: 'fmattack',       label: 'FM Atk',  code: '.fmattack(.05)',        icon: '⏫', category: 'fm',      target: 'instrument' as const },
+  { id: 'fmdecay',        label: 'FM Dec',  code: '.fmdecay(.2)',          icon: '⏬', category: 'fm',      target: 'instrument' as const },
+  { id: 'fmsustain',      label: 'FM Sus',  code: '.fmsustain(.4)',        icon: '➡️', category: 'fm',      target: 'instrument' as const },
+  // ── Pitch Envelope ──
+  { id: 'penv',           label: 'PitchE',  code: '.penv(7)',              icon: '📈', category: 'pitch',   target: 'both' as const },
+  { id: 'pattack',        label: 'PAtk',    code: '.pattack(.05)',         icon: '⏫', category: 'pitch',   target: 'both' as const },
+  { id: 'pdecay',         label: 'PDec',    code: '.pdecay(.1)',           icon: '⏬', category: 'pitch',   target: 'both' as const },
+  { id: 'pcurve',         label: 'PCurve',  code: '.pcurve(1)',            icon: '📉', category: 'pitch',   target: 'both' as const },
+  // ── Tremolo / AM ──
+  { id: 'tremolosync',    label: 'TremSpd', code: '.tremolosync(4)',       icon: '〰️', category: 'mod',     target: 'both' as const },
+  { id: 'tremolodepth',   label: 'TremDp',  code: '.tremolodepth(.5)',     icon: '📊', category: 'mod',     target: 'both' as const },
+  // ── Bandpass ──
+  { id: 'bpf',            label: 'BPF',     code: '.bpf(1000)',            icon: '🎯', category: 'filter',  target: 'both' as const },
+  { id: 'bpq',            label: 'BPQ',     code: '.bpq(3)',               icon: '🎯', category: 'filter',  target: 'both' as const },
+  { id: 'ftype',          label: 'FType',   code: '.ftype(1)',             icon: '🔧', category: 'filter',  target: 'both' as const },
+  // ── Reverb Controls ──
+  { id: 'roomsize',       label: 'RmSize',  code: '.roomsize(4)',          icon: '🏛️', category: 'space',   target: 'both' as const },
+  { id: 'roomfade',       label: 'RmFade',  code: '.roomfade(2)',          icon: '🌫️', category: 'space',   target: 'both' as const },
+  { id: 'roomlp',         label: 'RmLP',    code: '.roomlp(5000)',         icon: '🔽', category: 'space',   target: 'both' as const },
+  // ── Drive Extras ──
+  { id: 'coarse',         label: 'Coarse',  code: '.coarse(8)',            icon: '📟', category: 'drive',   target: 'both' as const },
+  // ── Phaser Controls ──
+  { id: 'phaserdepth',    label: 'PhDpth',  code: '.phaserdepth(.75)',     icon: '🌀', category: 'mod',     target: 'both' as const },
+  { id: 'phasercenter',   label: 'PhCtr',   code: '.phasercenter(1000)',   icon: '🌀', category: 'mod',     target: 'both' as const },
+  // ── Pattern Extras ──
+  { id: 'juxBy',          label: 'JuxBy',   code: '.juxBy(.5, rev)',       icon: '◑', category: 'pattern', target: 'both' as const },
+  { id: 'ply',            label: 'Ply',     code: '.ply(2)',               icon: '✖️', category: 'pattern', target: 'both' as const },
   // ── Sample / Vocal ──
   { id: 'loopAt',         label: 'LoopAt',  code: '.loopAt(8)',            icon: '🔄', category: 'sample',  target: 'sound' as const },
   { id: 'begin',          label: 'Begin',   code: '.begin(0)',             icon: '⏮️', category: 'sample',  target: 'sound' as const },
@@ -184,6 +260,12 @@ export const DRAGGABLE_EFFECTS = [
   { id: 'chop',           label: 'Chop',    code: '.chop(8)',              icon: '🔪', category: 'sample',  target: 'sound' as const },
   { id: 'stretch',        label: 'Stretch', code: '.stretch(1)',           icon: '🧲', category: 'sample',  target: 'sound' as const },
   { id: 'slice',          label: 'Slice',   code: '.slice(8, "0 1 2 3 4 5 6 7")', icon: '🔀', category: 'sample', target: 'sound' as const },
+  { id: 'splice',         label: 'Splice',  code: '.splice(8, "0 1 2 3 4 5 6 7")', icon: '🎞️', category: 'sample', target: 'sound' as const },
+  { id: 'striate',        label: 'Striate', code: '.striate(6)',           icon: '▤', category: 'sample',  target: 'sound' as const },
+  { id: 'fit',            label: 'Fit',     code: '.fit()',                icon: '📏', category: 'sample',  target: 'sound' as const },
+  { id: 'scrub',          label: 'Scrub',   code: '.scrub(0.5)',           icon: '💿', category: 'sample',  target: 'sound' as const },
+  { id: 'loopBegin',      label: 'LpBeg',   code: '.loopBegin(0)',         icon: '↩️', category: 'sample',  target: 'sound' as const },
+  { id: 'loopEnd',        label: 'LpEnd',   code: '.loopEnd(1)',           icon: '↪️', category: 'sample',  target: 'sound' as const },
 ]
 
 // ─── Private Helpers ───
