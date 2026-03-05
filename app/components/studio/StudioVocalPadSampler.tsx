@@ -527,9 +527,11 @@ export default function StudioVocalPadSampler({
 
   // ─── Keyboard shortcuts for pads ───
   useEffect(() => {
-    // Build keyboard map based on pad count
-    const allKeys = ['1','2','3','4','q','w','e','r','a','s','d','f','z','x','c','v',
-      '5','6','7','8','t','y','u','i','g','h','j','k','b','n','m',',']
+    // Build keyboard map based on pad count — MPC-style QWERTY layout
+    // Top visual row → Q-row, middle → A-row, bottom → Z-row, overflow → number row
+    const allKeys = ['q','w','e','r','a','s','d','f','z','x','c','v',
+      '1','2','3','4','t','y','u','i','g','h','j','k','b','n','m',',',
+      '5','6','7','8']
     const keyMap: Record<string, number> = {}
     for (let i = 0; i < Math.min(padCount, allKeys.length); i++) {
       keyMap[allKeys[i]] = i
@@ -773,7 +775,7 @@ export default function StudioVocalPadSampler({
             const isFlashing = flashPad === chop.idx
             const hasHits = recordedHits.some(h => h.padIdx === chop.idx)
             const isSelected = selectedPad === chop.idx
-            const KEY_HINTS = ['1','2','3','4','Q','W','E','R','A','S','D','F','Z','X','C','V']
+            const KEY_HINTS = ['Q','W','E','R','A','S','D','F','Z','X','C','V','1','2','3','4']
             const keyHint = chop.idx < KEY_HINTS.length ? KEY_HINTS[chop.idx] : undefined
 
             return (

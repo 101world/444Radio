@@ -9,6 +9,8 @@ const SCOPE_TYPES = [
   { id: 'circular', label: 'RING', icon: '◎' },
   { id: 'lissajous', label: 'XY', icon: '∞' },
   { id: 'mirror', label: 'MIRROR', icon: '⬡' },
+  { id: 'spectrogram', label: 'SPECTRO', icon: '▓' },
+  { id: 'vu', label: 'VU', icon: '█' },
 ] as const
 
 type ScopeType = typeof SCOPE_TYPES[number]['id']
@@ -25,6 +27,8 @@ export default function MasterScope({ analyserNode, isPlaying }: MasterScopeProp
   const scopeTypeRef = useRef<ScopeType>(scopeType)
   const peakRef = useRef(0)
   const historyRef = useRef<Float32Array[]>([])
+  const spectroImageRef = useRef<ImageData | null>(null)
+  const vuPeakRef = useRef({ left: 0, right: 0 })
 
   useEffect(() => { scopeTypeRef.current = scopeType }, [scopeType])
 
@@ -106,6 +110,12 @@ export default function MasterScope({ analyserNode, isPlaying }: MasterScopeProp
         break
       case 'mirror':
         drawMirror(ctx, timeData, w, h, accent, accentDim, accentGlow, intensity)
+        break
+      case 'spectrogram':
+        drawSpectrogram(ctx, freqData, w, h, spectroImageRef)
+        break
+      case 'vu':
+        drawVU(ctx, timeData, w, h, accent, intensity, vuPeakRef)
         break
     }
 
@@ -464,4 +474,142 @@ function drawMirror(
   ctx.moveTo(0, cy)
   ctx.lineTo(w, cy)
   ctx.stroke()
+}
+
+// ── Spectrogram — scrolling frequency waterfall ──
+function drawSpectrogram(
+  ctx: CanvasRenderingContext2D,
+  freqData: Uint8Array,
+  w: number, h: number,
+  imageRef: React.MutableRefObject<ImageData | null>
+) {
+  // Shift existing image left by 2px
+  if (imageRef.current) {
+    ctx.putImageData(imageRef.current, -2, 0)
+  }
+
+  // Draw new frequency column on the right edge
+  const colWidth = 2
+  const numBins = Math.floor(freqData.length * 0.6) // Focus on lower frequencies
+  for (let y = 0; y < h; y++) {
+    const binIdx = Math.floor(((h - y) / h) * numBins)
+    const val = freqData[binIdx] / 255
+
+    // Color: dark → teal → green → yellow → white
+    let r: number, g: number, b: number
+    if (val < 0.2) {
+      r = 10; g = 12 + val * 80; b = 15 + val * 60
+    } else if (val < 0.5) {
+      const t = (val - 0.2) / 0.3
+      r = 16 + t * 30; g = 28 + t * 140; b = 27 + t * 80
+    } else if (val < 0.8) {
+      const t = (val - 0.5) / 0.3
+      r = 46 + t * 180; g = 168 + t * 60; b = 107 - t * 60
+    } else {
+      const t = (val - 0.8) / 0.2
+      r = 226 + t * 29; g = 228 + t * 27; b = 47 + t * 208
+    }
+
+    ctx.fillStyle = `rgb(${r},${g},${b})`
+    ctx.fillRect(w - colWidth, y, colWidth, 1)
+  }
+
+  // Save current frame for next shift
+  imageRef.current = ctx.getImageData(0, 0, w, h)
+}
+
+// ── VU Meter — stereo bar levels with peak hold ──
+function drawVU(
+  ctx: CanvasRenderingContext2D,
+  data: Uint8Array,
+  w: number, h: number,
+  accent: string,
+  intensity: number,
+  peakRef: React.MutableRefObject<{ left: number; right: number }>
+) {
+  // Calculate pseudo-stereo RMS from time-domain data
+  const halfLen = Math.floor(data.length / 2)
+  let sumL = 0, sumR = 0
+  for (let i = 0; i < halfLen; i++) {
+    const vL = (data[i * 2] - 128) / 128
+    const vR = (data[i * 2 + 1] - 128) / 128
+    sumL += vL * vL
+    sumR += vR * vR
+  }
+  const rmsL = Math.sqrt(sumL / halfLen)
+  const rmsR = Math.sqrt(sumR / halfLen)
+
+  // Peak hold with decay
+  peakRef.current.left = Math.max(rmsL, peakRef.current.left * 0.97)
+  peakRef.current.right = Math.max(rmsR, peakRef.current.right * 0.97)
+
+  const barH = (h - 6) / 2
+  const maxBarW = w - 80
+
+  // Draw labels
+  ctx.font = '7px monospace'
+  ctx.fillStyle = 'rgba(127,169,152,0.5)'
+  ctx.textAlign = 'left'
+  ctx.fillText('L', 4, barH / 2 + 5)
+  ctx.fillText('R', 4, barH + barH / 2 + 7)
+
+  // Draw L channel
+  const barX = 16
+  const lW = Math.min(rmsL * 3, 1) * maxBarW
+  const lPeakX = Math.min(peakRef.current.left * 3, 1) * maxBarW
+
+  drawVUBar(ctx, barX, 2, lW, barH, lPeakX, accent, intensity)
+
+  // Draw R channel
+  const rW = Math.min(rmsR * 3, 1) * maxBarW
+  const rPeakX = Math.min(peakRef.current.right * 3, 1) * maxBarW
+
+  drawVUBar(ctx, barX, barH + 4, rW, barH, rPeakX, accent, intensity)
+
+  // dB markers
+  ctx.font = '5px monospace'
+  ctx.fillStyle = 'rgba(255,255,255,0.15)'
+  ctx.textAlign = 'center'
+  const markers = ['-24', '-12', '-6', '-3', '0']
+  const positions = [0.05, 0.2, 0.4, 0.65, 0.95]
+  for (let i = 0; i < markers.length; i++) {
+    const mx = barX + positions[i] * maxBarW
+    ctx.fillText(markers[i], mx, h - 0.5)
+  }
+}
+
+function drawVUBar(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number,
+  fillW: number, h: number,
+  peakX: number,
+  accent: string,
+  intensity: number
+) {
+  // Background track
+  ctx.fillStyle = 'rgba(255,255,255,0.03)'
+  const maxW = ctx.canvas.width - 80
+  ctx.fillRect(x, y, maxW, h)
+
+  // Filled bar — gradient from teal to yellow to red
+  if (fillW > 0) {
+    const grad = ctx.createLinearGradient(x, 0, x + maxW, 0)
+    grad.addColorStop(0, 'rgba(16, 185, 129, 0.7)')    // teal
+    grad.addColorStop(0.6, 'rgba(250, 204, 21, 0.7)')   // yellow
+    grad.addColorStop(0.85, 'rgba(239, 68, 68, 0.7)')   // red
+    grad.addColorStop(1, 'rgba(239, 68, 68, 0.9)')      // hot red
+    ctx.fillStyle = grad
+    ctx.fillRect(x, y, fillW, h)
+
+    // Glow
+    ctx.fillStyle = `rgba(127, 169, 152, ${0.1 + intensity * 0.15})`
+    ctx.fillRect(x, y, fillW, h)
+  }
+
+  // Peak hold indicator
+  if (peakX > 2) {
+    const peakColor = peakX > maxW * 0.85 ? '#ef4444' : peakX > maxW * 0.6 ? '#facc15' : accent
+    ctx.fillStyle = peakColor
+    ctx.fillRect(x + peakX - 1, y, 2, h)
+  }
 }

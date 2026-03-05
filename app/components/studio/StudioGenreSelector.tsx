@@ -1,12 +1,12 @@
-'use client'
+﻿'use client'
 
 // Genre Templates: the PRO way to make songs
 // Derived from real Strudel live-coding sessions.
-// Each uses: $: / $name: blocks, stack(), .scope(), .pianoroll(),
+// Each uses: $: / $name: blocks, stack(), .scope(),
 // slider(), .trans(), .duck(), .off(), .jux(), perlin, etc.
 //
 // IMPORTANT: Only use methods that exist in the installed Strudel packages:
-// - .scope() / .pianoroll() (NOT ._scope / ._pianoroll - underscore prefix doesn't exist)
+// - .scope() (NOT ._scope - underscore prefix doesn't exist)
 // - .duck(orbit) .duckattack() .duckdepth() - sidechain ducking
 // - .trans() - transpose from @strudel/tonal
 // - .beat(positions, divisions) - from @strudel/core
@@ -43,13 +43,13 @@ $bass: n("0 3 -4 2 5 -2 1 -5 3 0 -3 4 2 -1 5 -4").scale("c:minor")
   .s("sawtooth").gain(.5).lpf(200).lpenv(slider(2.28, 0, 8))
   .lpq(12).orbit(2)
   .distort(.8)
-  .scope().pianoroll()
+  .scope()
 
 $pad: note("<c3 c3 ~ c3 ~ ~ c3 ~>")
   .s("supersaw").detune(1).rel(5).gain(.15)
   .slow(2).orbit(3)
   .room(.3)
-  .scope().pianoroll()
+  .scope()
 
 $: s("hh*8").gain("[.15 .25]*4")
   .lpf(3000).hpf(800)
@@ -70,13 +70,13 @@ $: n("<0 4 0 9 7>*16").scale("g:minor").trans(-12)
   .o(3).s("sawtooth")
   .lpf(100).lpenv(slider(4, 0, 9)).lps(.2).lpd(.12)
   .gain(.6).orbit(1)
-  .scope().pianoroll()
+  .scope()
 
 $: n("<0>*16").scale("g:minor").trans(-24)
   .o(4).s("supersaw")
   .lpf(100).lpenv(slider(4, 0, 9)).lps(.2).lpd(.12)
   .gain(.6).orbit(2)
-  .scope().pianoroll()
+  .scope()
 
 $: s("bd:2!4")
   .duck(1).duckdepth(.8).duckattack(.16)
@@ -118,13 +118,13 @@ $bass: note("<c2 c2 a1 b1>*2").scale("C4:major")
   .s("sawtooth").gain(.45)
   .lpf(slider(400, 80, 2000)).lpq(4).shape(.12)
   .orbit(1)
-  .scope().pianoroll()
+  .scope()
 
 $chords: note("<[c3,e3,g3] [c3,e3,g3] [a2,c3,e3] [b2,d3,f3]>")
   .s("gm_epiano1").gain(slider(.2, 0, .5))
   .lpf(1800).room(.4).delay(.15).delayfeedback(.3)
   .slow(2).orbit(4)
-  .scope().pianoroll()`,
+  .scope()`,
   },
   {
     id: 'boombap',
@@ -156,13 +156,13 @@ $bass: note("<c2 [~ c2] f1 g1>").scale("C4:major")
   .s("sine").gain(.5)
   .lpf(180).shape(.15)
   .orbit(1)
-  .scope().pianoroll()
+  .scope()
 
 $keys: note("<[d3,f3,a3] [g2,b2,d3] [c3,e3,g3] [a2,c3,e3]>")
   .s("gm_epiano1").gain(.18)
   .lpf(1400).room(.5).delay(.12)
   .slow(2).orbit(2)
-  .scope().pianoroll()`,
+  .scope()`,
   },
   {
     id: 'ambient',
@@ -179,7 +179,7 @@ $pad: note("<[c3,e3,g3,b3] [a2,c3,e3,g3] [f3,a3,c4,e4] [d3,f3,a3,c4]>")
   .lpf(perlin.range(300, 900).slow(8))
   .room(.9).delay(.3).delayfeedback(.55)
   .slow(4).orbit(0)
-  .scope().pianoroll()
+  .scope()
 
 $shimmer: n("<4 3 2 1 2 3>*4").scale("C5:major")
   .s("gm_music_box").gain(.03)
@@ -187,7 +187,7 @@ $shimmer: n("<4 3 2 1 2 3>*4").scale("C5:major")
   .lpf(2800).hpf(400)
   .jux(rev).off(1/8, x => x.speed(.5).gain(.02))
   .slow(2).orbit(1)
-  .scope().pianoroll()
+  .scope()
 
 $: s("hh*8").gain(sine.range(.005,.02).slow(16))
   .speed("[2.5 2.8 2.3 2.7]*2")
@@ -225,13 +225,13 @@ $bass: note("<c1 [~ c1] eb1 [f1 ~]>*2")
   .lpf(slider(300, 60, 1500)).lpq(6)
   .shape(.25).distort(.15)
   .orbit(1)
-  .scope().pianoroll()
+  .scope()
 
 $: n("<0 4 7 [4 0]>*2").scale("C4:minor")
   .s("gm_piano").gain(.15)
   .room(.5).delay(.2).delayfeedback(.35)
   .lpf(2000).orbit(2)
-  .scope().pianoroll()`,
+  .scope()`,
   },
   {
     id: 'techno',
@@ -264,14 +264,14 @@ $bass: n("0 -3 2 -1 4 -2 1 -4").scale("c:minor")
   .s("sawtooth").gain(.35)
   .lpf(slider(200, 50, 800)).lpenv(3).lpq(8)
   .shape(.3).orbit(2)
-  .scope().pianoroll()
+  .scope()
 
 $pad: note("<c3 ~ ~ c3 ~ ~ ~ ~ c3 ~ ~ ~ ~ ~ ~ ~>")
   .s("supersaw").detune(2).gain(.08)
   .room(.6).delay(.3).delayfeedback(.45)
   .lpf(perlin.range(400, 1200).slow(6))
   .slow(4).orbit(4)
-  .scope().pianoroll()`,
+  .scope()`,
   },
   {
     id: 'lofi',
@@ -305,20 +305,20 @@ $rhodes: note("<[d3,f3,a3,c4] [g2,b2,d3,f3] [c3,e3,g3,b3] [a2,c3,e3,g3]>").scale
   .lpf(sine.range(900,2000).slow(32))
   .room(.55).delay(.2).delayfeedback(.32)
   .slow(2).orbit(3)
-  .scope().pianoroll()
+  .scope()
 
 $bass: note("<d2 g1 c2 a1>")
   .s("sine").gain(.2)
   .lpf(100).room(.1).slow(2)
   .orbit(4)
-  .scope().pianoroll()
+  .scope()
 
 $pad: note("<[d3,a3,f4] [g3,d4,b4] [c3,g3,e4] [a2,e3,c4]>")
   .s("sawtooth").gain(.015)
   .lpf(sine.range(180,500).slow(40))
   .room(.85).delay(.3).delayfeedback(.48)
   .slow(4).orbit(5)
-  .scope().pianoroll()`,
+  .scope()`,
   },
   {
     id: 'rave',
@@ -347,7 +347,7 @@ $stabs: note("[c,eb,f,ab](5,16)/2").scale("C4:minor")
   .rarely(add(note(12)))
   .chunk(4,add(note(12)))
   .orbit(3).fast(2)
-  .scope().pianoroll()
+  .scope()
 
 $bass: note("f1*4")
   .s("sawtooth").gain(.5)
@@ -356,12 +356,12 @@ $bass: note("f1*4")
   .lpf(perlin.range(500,800).slow(4))
   .lpq(slider(4, 0, 8))
   .orbit(4)
-  .scope().pianoroll()`,
+  .scope()`,
   },
   {
     id: 'birdsofafeather',
     label: 'BIRDS OF A FEATHER',
-    icon: 'ðŸ¦',
+    icon: 'Ã°Å¸ÂÂ¦',
     bpm: 105,
     desc: 'Billie-style kalimba + guitar with arranged sections',
     code: `setcps(105/60/4)
@@ -479,7 +479,7 @@ export default function StudioGenreSelector({ activeGenre, onSelect }: StudioGen
                 color: isActive ? '#7fa998' : '#5a616b',
                 boxShadow: isActive ? 'inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22' : 'none',
               }}
-              title={`${t.label} â€” ${t.desc}`}
+              title={`${t.label} Ã¢â‚¬â€ ${t.desc}`}
             >
               <span className="text-[11px] leading-none">{t.icon}</span>
               <span className="text-[7px] font-black uppercase tracking-[.08em] truncate">{t.label}</span>

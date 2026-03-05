@@ -43,15 +43,6 @@ const StudioCodeEditor = forwardRef<StudioCodeEditorHandle, StudioCodeEditorProp
 
     return (
       <div className="flex-1 h-full flex flex-col overflow-hidden relative">
-        {/* Visualization Canvas (overlays behind code) */}
-        <canvas
-          ref={canvasRef}
-          width={1920}
-          height={1080}
-          className="absolute inset-0 w-full h-full pointer-events-none opacity-30"
-          style={{ zIndex: 0 }}
-        />
-
         {/* Code Editor */}
         <div ref={editorRef} className="flex-1 relative overflow-hidden" style={{ zIndex: 1 }}>
           <div className="absolute inset-0 flex overflow-auto">
