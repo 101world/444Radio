@@ -546,6 +546,8 @@ export default function StudioVocalPadSampler({
       if (e.repeat) return // Block auto-repeat — we handle looping ourselves
       const target = e.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
+      // Skip if user is typing in contentEditable code editor
+      if ((target as HTMLElement).isContentEditable) return
 
       const padIdx = keyMap[e.key.toLowerCase()]
       if (padIdx !== undefined && padIdx < padCount) {
@@ -553,13 +555,6 @@ export default function StudioVocalPadSampler({
         playPad(padIdx)
         startPadHold(padIdx) // Begin hold-to-loop
         setSelectedPad(padIdx)
-      }
-
-      // Space = toggle record
-      if (e.key === ' ') {
-        e.preventDefault()
-        if (isRecording || isPlaying) stopLoop()
-        else startLoop(true)
       }
 
       // Escape = deselect pad + stop all holds
@@ -570,6 +565,9 @@ export default function StudioVocalPadSampler({
     }
 
     const handleKeyUp = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
+      if ((target as HTMLElement).isContentEditable) return
       const padIdx = keyMap[e.key.toLowerCase()]
       if (padIdx !== undefined) {
         stopPadHold(padIdx) // Stop loop on key release
@@ -582,7 +580,7 @@ export default function StudioVocalPadSampler({
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
     }
-  }, [playPad, padCount, isRecording, isPlaying, startLoop, stopLoop, startPadHold, stopPadHold, stopAllPadHolds])
+  }, [playPad, padCount, startPadHold, stopPadHold, stopAllPadHolds])
 
   // ─── Grid visualization of recorded hits ───
   const visibleChops = chops.slice(0, padCount)
@@ -1132,7 +1130,7 @@ export default function StudioVocalPadSampler({
       {/* ─── Keyboard hints + selected pad indicator ─── */}
       <div className="flex items-center gap-3 px-3 pb-1.5">
         <span className="text-[6px] font-mono" style={{ color: '#3a3f48' }}>
-          KEYS: 1-= / Q-] / A-&apos; / Z-/ = pads · SPACE = record · ESC = deselect
+          KEYS: 1-= / Q-] / A-&apos; / Z-/ = pads · ESC = deselect
         </span>
         {selectedPad !== null && (
           <span className="flex items-center gap-1 text-[7px] font-bold px-1.5 py-0.5 rounded"
