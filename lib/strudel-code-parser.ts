@@ -74,6 +74,11 @@ export const PARAM_DEFS: ParamDef[] = [
   { key: 'lpenv',          label: 'FltEnv',   min: 0,    max: 8,     step: 0.1 },
   { key: 'lps',            label: 'FltSus',   min: 0,    max: 1,     step: 0.01 },
   { key: 'lpd',            label: 'FltDec',   min: 0,    max: 1,     step: 0.01 },
+  { key: 'hpq',            label: 'HPQ',      min: 0,    max: 20,    step: 0.5 },
+  { key: 'hpenv',          label: 'HPEnv',    min: 0,    max: 8,     step: 0.1 },
+  { key: 'bpenv',          label: 'BPEnv',    min: 0,    max: 8,     step: 0.1 },
+  { key: 'lpattack',       label: 'FltAtk',   min: 0,    max: 1,     step: 0.01 },
+  { key: 'lprelease',      label: 'FltRel',   min: 0,    max: 1,     step: 0.01 },
   // Drive
   { key: 'shape',          label: 'Shape',    min: 0,    max: 1,     step: 0.01 },
   { key: 'distort',        label: 'Dist',     min: 0,    max: 5,     step: 0.1 },
@@ -100,8 +105,10 @@ export const PARAM_DEFS: ParamDef[] = [
   { key: 'release',        label: 'Release',  min: 0,    max: 10,    step: 0.1 },
   { key: 'legato',         label: 'Legato',   min: 0,    max: 4,     step: 0.1 },
   { key: 'clip',           label: 'Clip',     min: 0,    max: 4,     step: 0.1 },
+  { key: 'sustain',        label: 'Sustain',  min: 0,    max: 1,     step: 0.01 },
   // Output
   { key: 'postgain',       label: 'PostG',    min: 0,    max: 4,     step: 0.1 },
+  { key: 'dry',            label: 'Dry',      min: 0,    max: 1,     step: 0.01 },
   // Vocal / Sample
   { key: 'loopAt',         label: 'LoopAt',   min: 1,    max: 64,    step: 1 },
   { key: 'begin',          label: 'Begin',    min: 0,    max: 1,     step: 0.01 },
@@ -134,6 +141,8 @@ export const PARAM_DEFS: ParamDef[] = [
   { key: 'tremolosync',    label: 'TremSpd',  min: 0.5,  max: 32,    step: 0.5 },
   { key: 'tremolodepth',   label: 'TremDp',   min: 0,    max: 1,     step: 0.01 },
   { key: 'tremoloskew',    label: 'TremSkw',  min: 0,    max: 1,     step: 0.01 },
+  { key: 'tremolophase',   label: 'TremPh',   min: 0,    max: 1,     step: 0.01 },
+  { key: 'tremoloshape',   label: 'TremShp',  min: 0,    max: 4,     step: 1 },
   // Bandpass filter
   { key: 'bpf',            label: 'BPF',      min: 20,   max: 20000, step: 10,   unit: 'Hz' },
   { key: 'bpq',            label: 'BPQ',      min: 0,    max: 50,    step: 0.5 },
@@ -150,8 +159,10 @@ export const PARAM_DEFS: ParamDef[] = [
   { key: 'splice',         label: 'Splice',   min: 2,    max: 64,    step: 1 },
   { key: 'striate',        label: 'Striate',  min: 2,    max: 64,    step: 1 },
   // Loop controls
+  { key: 'loop',           label: 'Loop',     min: 0,    max: 1,     step: 1 },
   { key: 'loopBegin',      label: 'LpBeg',    min: 0,    max: 1,     step: 0.01 },
   { key: 'loopEnd',        label: 'LpEnd',    min: 0,    max: 1,     step: 0.01 },
+  { key: 'vowel',          label: 'Vowel',    min: 0,    max: 4,     step: 1 },
   // Breakbeat / Sample Control
   { key: 'cut',            label: 'Cut',      min: 0,    max: 16,    step: 1 },
   { key: 'n',              label: 'N',        min: 0,    max: 127,   step: 1 },
@@ -168,19 +179,19 @@ export const PARAM_DEFS: ParamDef[] = [
 
 // Effect names for detecting which effects are present
 const EFFECT_NAMES = [
-  'lpf', 'lp', 'hpf', 'hp', 'lpq', 'lpenv', 'lps', 'lpd', 'bpf', 'bpq', 'ftype',
+  'lpf', 'lp', 'hpf', 'hp', 'lpq', 'lpenv', 'lps', 'lpd', 'hpq', 'hpenv', 'bpenv', 'lpattack', 'lpa', 'lprelease', 'lpr', 'bpf', 'bpq', 'ftype',
   'shape', 'distort', 'crush', 'coarse',
   'room', 'roomsize', 'roomfade', 'roomlp', 'roomdim', 'iresponse',
   'delay', 'delayfeedback', 'delaytime', 'pan', 'duck', 'duckdepth',
   'duckattack', 'jux', 'juxBy', 'off', 'orbit', 'detune', 'vib', 'vibmod', 'phaser',
   'phaserdepth', 'phasercenter', 'phasersweep', 'speed',
-  'velocity', 'rel', 'release', 'gain', 'attack', 'decay', 'legato', 'clip',
-  'postgain', 'compressor', 'arp', 'arpeggiate', 'superimpose', 'echo', 'fast', 'slow',
+  'velocity', 'rel', 'release', 'gain', 'attack', 'decay', 'sustain', 'sus', 'legato', 'clip',
+  'postgain', 'dry', 'compressor', 'arp', 'arpeggiate', 'superimpose', 'echo', 'fast', 'slow',
   'loopAt', 'begin', 'end', 'chop', 'slice', 'splice', 'striate', 'stretch', 'fit', 'scrub', 'vowel',
   'cut', 'n', 'hurry', 'unit',
   'fm', 'fmh', 'fmattack', 'fmdecay', 'fmsustain', 'fmenv',
   'penv', 'pattack', 'pdecay', 'prelease', 'pcurve', 'panchor',
-  'tremolosync', 'tremolodepth', 'tremoloskew', 'tremolophase', 'tremoloshape',
+  'tremolosync', 'tremolodepth', 'tremoloskew', 'tremolophase', 'tremoloshape', 'dry',
   'loop', 'loopBegin', 'loopEnd', 'rev', 'ply',
 ]
 
@@ -193,10 +204,17 @@ export const DRAGGABLE_EFFECTS = [
   { id: 'lpq',           label: 'Reso',    code: '.lpq(3)',             icon: '〰️', category: 'filter',  target: 'both' as const },
   { id: 'lps',           label: 'FltSus',  code: '.lps(.2)',            icon: '📉', category: 'filter',  target: 'both' as const },
   { id: 'lpd',           label: 'FltDec',  code: '.lpd(.12)',           icon: '📊', category: 'filter',  target: 'both' as const },
+  { id: 'hpq',           label: 'HPReso',  code: '.hpq(3)',             icon: '〰️', category: 'filter',  target: 'both' as const },
+  { id: 'hpenv',         label: 'HPEnv',   code: '.hpenv(4)',           icon: '📈', category: 'filter',  target: 'both' as const },
+  { id: 'bpenv',         label: 'BPEnv',   code: '.bpenv(4)',           icon: '📈', category: 'filter',  target: 'both' as const },
+  { id: 'lpattack',      label: 'FltAtk',  code: '.lpattack(.1)',       icon: '⏫', category: 'filter',  target: 'both' as const },
+  { id: 'lprelease',     label: 'FltRel',  code: '.lprelease(.2)',      icon: '⏬', category: 'filter',  target: 'both' as const },
+  { id: 'vowel',         label: 'Vowel',   code: '.vowel("a")',         icon: '🗣️', category: 'filter',  target: 'both' as const },
   // ── Space ──
   { id: 'room',          label: 'Reverb',  code: '.room(.5)',           icon: '🏛️', category: 'space',   target: 'both' as const },
   { id: 'delay',         label: 'Delay',   code: '.delay(.25)',         icon: '📡', category: 'space',   target: 'both' as const },
   { id: 'delayfeedback', label: 'DlyFB',   code: '.delayfeedback(.4)',  icon: '🔁', category: 'space',   target: 'both' as const },
+  { id: 'dry',           label: 'Dry',     code: '.dry(1)',             icon: '🏜️', category: 'space',   target: 'both' as const },
   // ── Drive ──
   { id: 'shape',         label: 'Shape',   code: '.shape(.3)',          icon: '📐', category: 'drive',   target: 'both' as const },
   { id: 'distort',       label: 'Distort', code: '.distort(.5)',        icon: '🔥', category: 'drive',   target: 'both' as const },
@@ -215,6 +233,7 @@ export const DRAGGABLE_EFFECTS = [
   { id: 'attack',        label: 'Attack',  code: '.attack(.1)',         icon: '⏫', category: 'env',     target: 'both' as const },
   { id: 'decay',         label: 'Decay',   code: '.decay(.3)',          icon: '⏳', category: 'env',     target: 'both' as const },
   { id: 'rel',           label: 'Release', code: '.rel(.5)',            icon: '⏬', category: 'env',     target: 'both' as const },
+  { id: 'sustain',       label: 'Sustain', code: '.sustain(.5)',        icon: '➡️', category: 'env',     target: 'both' as const },
   { id: 'legato',        label: 'Legato',  code: '.legato(1)',          icon: '🎵', category: 'env',     target: 'both' as const },
   { id: 'clip',          label: 'Clip',    code: '.clip(1)',            icon: '✂️', category: 'env',     target: 'both' as const },
   // ── Sidechain ──
@@ -260,6 +279,7 @@ export const DRAGGABLE_EFFECTS = [
   { id: 'juxBy',          label: 'JuxBy',   code: '.juxBy(.5, rev)',       icon: '◑', category: 'pattern', target: 'both' as const },
   { id: 'ply',            label: 'Ply',     code: '.ply(2)',               icon: '✖️', category: 'pattern', target: 'both' as const },
   // ── Sample / Vocal ──
+  { id: 'loop',            label: 'Loop',    code: '.loop(1)',               icon: '🔂', category: 'sample',  target: 'sound' as const },
   { id: 'loopAt',         label: 'LoopAt',  code: '.loopAt(8)',            icon: '🔄', category: 'sample',  target: 'sound' as const },
   { id: 'begin',          label: 'Begin',   code: '.begin(0)',             icon: '⏮️', category: 'sample',  target: 'sound' as const },
   { id: 'end',            label: 'End',     code: '.end(1)',               icon: '⏭️', category: 'sample',  target: 'sound' as const },
