@@ -152,6 +152,11 @@ export const PARAM_DEFS: ParamDef[] = [
   // Loop controls
   { key: 'loopBegin',      label: 'LpBeg',    min: 0,    max: 1,     step: 0.01 },
   { key: 'loopEnd',        label: 'LpEnd',    min: 0,    max: 1,     step: 0.01 },
+  // Breakbeat / Sample Control
+  { key: 'cut',            label: 'Cut',      min: 0,    max: 16,    step: 1 },
+  { key: 'n',              label: 'N',        min: 0,    max: 127,   step: 1 },
+  { key: 'hurry',          label: 'Hurry',    min: 0.25, max: 8,     step: 0.25 },
+  { key: 'unit',           label: 'Unit',     min: 0,    max: 2,     step: 1 },
   // Pattern rate
   { key: 'fast',           label: 'Fast',     min: 0.25, max: 16,    step: 0.25 },
   { key: 'slow',           label: 'Slow',     min: 0.25, max: 16,    step: 0.25 },
@@ -172,6 +177,7 @@ const EFFECT_NAMES = [
   'velocity', 'rel', 'release', 'gain', 'attack', 'decay', 'legato', 'clip',
   'postgain', 'compressor', 'arp', 'arpeggiate', 'superimpose', 'echo', 'fast', 'slow',
   'loopAt', 'begin', 'end', 'chop', 'slice', 'splice', 'striate', 'stretch', 'fit', 'scrub', 'vowel',
+  'cut', 'n', 'hurry', 'unit',
   'fm', 'fmh', 'fmattack', 'fmdecay', 'fmsustain', 'fmenv',
   'penv', 'pattack', 'pdecay', 'prelease', 'pcurve', 'panchor',
   'tremolosync', 'tremolodepth', 'tremoloskew', 'tremolophase', 'tremoloshape',
@@ -266,6 +272,10 @@ export const DRAGGABLE_EFFECTS = [
   { id: 'scrub',          label: 'Scrub',   code: '.scrub(0.5)',           icon: '💿', category: 'sample',  target: 'sound' as const },
   { id: 'loopBegin',      label: 'LpBeg',   code: '.loopBegin(0)',         icon: '↩️', category: 'sample',  target: 'sound' as const },
   { id: 'loopEnd',        label: 'LpEnd',   code: '.loopEnd(1)',           icon: '↪️', category: 'sample',  target: 'sound' as const },
+  { id: 'cut',             label: 'Cut',     code: '.cut(1)',               icon: '✂️', category: 'sample',  target: 'sound' as const },
+  { id: 'n',               label: 'N',       code: '.n(0)',                 icon: '#️⃣', category: 'sample',  target: 'sound' as const },
+  { id: 'hurry',           label: 'Hurry',   code: '.hurry(2)',             icon: '⏩', category: 'sample',  target: 'sound' as const },
+  { id: 'unit',            label: 'Unit',    code: '.unit("c")',            icon: '📐', category: 'sample',  target: 'sound' as const },
 ]
 
 // ─── Private Helpers ───

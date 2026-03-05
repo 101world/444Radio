@@ -276,7 +276,7 @@ const FX_GROUPS: { label: string; icon: string; keys: string[] }[] = [
   { label: 'PITCH',  icon: '📈', keys: ['penv', 'pattack', 'pdecay', 'prelease', 'pcurve', 'panchor'] },
   { label: 'ENV',    icon: '⏳', keys: ['attack', 'decay', 'rel', 'release', 'legato', 'clip'] },
   { label: 'CHAIN',  icon: '🦆', keys: ['duckdepth', 'duckattack'] },
-  { label: 'SAMPLE', icon: '🎤', keys: ['loopAt', 'begin', 'end', 'chop', 'stretch', 'slice', 'splice', 'striate', 'fit', 'scrub', 'loopBegin', 'loopEnd'] },
+  { label: 'SAMPLE', icon: '🎤', keys: ['loopAt', 'begin', 'end', 'chop', 'stretch', 'slice', 'splice', 'striate', 'fit', 'scrub', 'loopBegin', 'loopEnd', 'cut', 'n', 'hurry', 'unit'] },
 ]
 
 // ─── Channel-type → relevant FX groups & effect keys ───
@@ -292,7 +292,7 @@ const TYPE_RELEVANT_FX_GROUPS: Record<string, Set<string>> = {
 
 // Effect keys that only make sense for specific channel types
 const INSTRUMENT_ONLY_KEYS = new Set(['detune'])      // Synth/note only
-const SAMPLE_ONLY_KEYS = new Set(['speed', 'loopAt', 'begin', 'end', 'chop', 'stretch', 'slice', 'splice', 'striate', 'fit', 'scrub', 'loopBegin', 'loopEnd'])  // Sample only
+const SAMPLE_ONLY_KEYS = new Set(['speed', 'loopAt', 'begin', 'end', 'chop', 'stretch', 'slice', 'splice', 'striate', 'fit', 'scrub', 'loopBegin', 'loopEnd', 'cut', 'n', 'hurry', 'unit'])  // Sample only
 
 // ─── Draggable Effect Badge ───
 
@@ -2505,10 +2505,10 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                 <span className="text-[7px] font-black uppercase tracking-[.2em]" style={{ color: '#5a616b' }}>EFFECTS</span>
                 <span className="text-[5px] ml-auto font-mono" style={{ color: '#5a616b' }}>drag → channel</span>
               </div>
-              {(['filter', 'space', 'drive', 'mod', 'env', 'sidechain', 'pattern', 'sample'] as const).map(cat => {
+              {(['filter', 'space', 'drive', 'mod', 'fm', 'pitch', 'env', 'sidechain', 'dynamics', 'pattern', 'sample'] as const).map(cat => {
                 const fxInCat = DRAGGABLE_EFFECTS.filter(fx => fx.category === cat)
                 if (fxInCat.length === 0) return null
-                const catLabels: Record<string, string> = { filter: 'FILTER', space: 'SPACE', drive: 'DRIVE', mod: 'MOD', env: 'ENVELOPE', sidechain: 'SIDECHAIN', pattern: 'PATTERN', sample: 'SAMPLE' }
+                const catLabels: Record<string, string> = { filter: 'FILTER', space: 'SPACE', drive: 'DRIVE', mod: 'MOD', fm: 'FM SYNTH', pitch: 'PITCH ENV', env: 'ENVELOPE', sidechain: 'SIDECHAIN', dynamics: 'DYNAMICS', pattern: 'PATTERN', sample: 'SAMPLE' }
                 return (
                   <div key={cat} className="mb-1.5">
                     <span className="text-[5px] font-black uppercase tracking-[.15em] px-1" style={{ color: '#5a616b' }}>{catLabels[cat]}</span>
