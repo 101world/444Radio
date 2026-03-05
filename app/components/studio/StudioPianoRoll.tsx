@@ -1058,6 +1058,18 @@ export default function StudioPianoRoll({
   const loopStepTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const [loopCurrentStep, setLoopCurrentStep] = useState(0)
 
+  // ── Slow/Fast factor — how many cycles this channel's pattern spans ──
+  // .slow(2) means the pattern takes 2 cycles; .fast(2) means it takes 0.5 cycles
+  const slowFactor = useMemo(() => {
+    if (!channelData?.rawCode) return 1
+    const slowMatch = channelData.rawCode.match(/\.slow\(\s*([\d.]+)\s*\)/)
+    const fastMatch = channelData.rawCode.match(/\.fast\(\s*([\d.]+)\s*\)/)
+    let factor = 1
+    if (slowMatch) factor *= parseFloat(slowMatch[1]) || 1
+    if (fastMatch) factor /= parseFloat(fastMatch[1]) || 1
+    return factor
+  }, [channelData?.rawCode])
+
   // ── Transport Playhead (marquee) ──
   const [playheadStep, setPlayheadStep] = useState(-1)
   const playheadRAF = useRef<number | null>(null)
@@ -1080,14 +1092,17 @@ export default function StudioPianoRoll({
 
       if (cyclePos !== null && cyclePos >= 0) {
         // Strudel cycle position: fractional cycle count (e.g. 2.75 = beat 4 of bar 3)
-        // Map to our grid: one cycle = one bar = stepsPerBar steps
+        // .slow(N) stretches the pattern over N cycles, so 1 piano-roll bar = slowFactor cycles.
+        // Total pattern span in cycles = bars * slowFactor
+        const totalCycleSpan = bars * slowFactor
         const totalGridSteps = bars * stepsPerBar
-        const stepInCycle = (cyclePos % bars) * stepsPerBar
-        setPlayheadStep(stepInCycle)
+        // Map cycle position into the pattern's span, then to grid steps
+        const posInPattern = (cyclePos % totalCycleSpan) / totalCycleSpan
+        setPlayheadStep(posInPattern * totalGridSteps)
       } else {
         // Fallback: compute from BPM + elapsed time
-        // 1 bar = 4 beats = 4 × (60/bpm) seconds
-        const barDurationMs = (4 * 60000) / projectBpm
+        // With .slow(N), each bar takes N × (4 beats) to play
+        const barDurationMs = (4 * 60000 * slowFactor) / projectBpm
         const elapsed = performance.now() - playheadStartTime.current
         const totalGridSteps = bars * stepsPerBar
         const cycleMs = bars * barDurationMs
@@ -1100,7 +1115,7 @@ export default function StudioPianoRoll({
     return () => {
       if (playheadRAF.current) { cancelAnimationFrame(playheadRAF.current); playheadRAF.current = null }
     }
-  }, [transportPlaying, projectBpm, bars, stepsPerBar, getCyclePosition])
+  }, [transportPlaying, projectBpm, bars, stepsPerBar, getCyclePosition, slowFactor])
 
   // Cleanup loop recording timer on unmount
   useEffect(() => {
@@ -1502,6 +1517,17 @@ export default function StudioPianoRoll({
   const transposeValue = useMemo(() => {
     if (!channelData) return 0
     return getTranspose(channelData.rawCode)
+  }, [channelData])
+
+  // Channel speed factor: accounts for .slow(N) and .fast(N) effects.
+  // Used to correct playhead position so it matches actual playback timing.
+  const channelSpeed = useMemo(() => {
+    if (!channelData) return 1
+    const slowP = channelData.params.find(p => p.key === 'slow')
+    const fastP = channelData.params.find(p => p.key === 'fast')
+    const slowVal = slowP ? slowP.value : 1
+    const fastVal = fastP ? fastP.value : 1
+    return fastVal / slowVal
   }, [channelData])
 
   // Effect params (everything except gain, orbit, duck)
@@ -2240,6 +2266,17 @@ export default function StudioPianoRoll({
               <span className="text-[7px] font-bold px-1.5 py-0.5 rounded-lg"
                 style={{ color: '#6f8fb3', background: '#0a0b0d', boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22' }}>
                 â¬† TRANS {transposeValue > 0 ? `+${transposeValue}` : transposeValue}
+              </span>
+              <div className="w-px h-3.5 bg-white/[0.08]" />
+            </>
+          )}
+
+          {/* Slow/Fast indicator — tempo stretch active */}
+          {slowFactor !== 1 && (
+            <>
+              <span className="text-[7px] font-bold px-1.5 py-0.5 rounded-lg"
+                style={{ color: '#e879f9', background: '#0a0b0d', boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22' }}>
+                {slowFactor > 1 ? `\u{1F422} SLOW \u00D7${slowFactor}` : `\u26A1 FAST \u00D7${+(1/slowFactor).toFixed(1)}`}
               </span>
               <div className="w-px h-3.5 bg-white/[0.08]" />
             </>
