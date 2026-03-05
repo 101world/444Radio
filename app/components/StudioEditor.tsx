@@ -585,10 +585,10 @@ export default function StudioEditor() {
 
   // â”€â”€ Add a vocal/sample channel with auto-calculated loopAt â”€â”€
   // — Add channel from browser panel —
-  const handleBrowserAddChannel = useCallback((soundId: string, type: 'synth' | 'sample' | 'vocal' | 'instrument', loopAt?: number) => {
+  const handleBrowserAddChannel = useCallback((soundId: string, type: 'synth' | 'sample' | 'vocal' | 'instrument' | 'drumpad', loopAt?: number) => {
     const currentCode = codeRef.current
     const projectBpm = parseBPM(currentCode) ?? 120
-    const chanType = type === 'vocal' ? 'vocal' : type === 'instrument' ? 'instrument' : type === 'synth' ? 'synth' : 'sample'
+    const chanType = type === 'vocal' ? 'vocal' : type === 'instrument' ? 'instrument' : type === 'drumpad' ? 'drumpad' : type === 'synth' ? 'synth' : 'sample'
     const newCode = addChannel(currentCode, soundId, chanType, loopAt, undefined, projectBpm)
     if (newCode !== currentCode) {
       handleLiveCodeChange(newCode)
@@ -780,10 +780,6 @@ export default function StudioEditor() {
               : 'note'
             const isGenerative = isSampleChannelNoPitch ? false
               : (patternInfo?.isGenerative ?? (patternInfo === null ? true : false))
-            // Detect full-vocal channels: sample type with loopAt() and no pitched pattern (n/note)
-            const isVocalChannel = ch.sourceType === 'sample'
-              && patternInfo?.type === 's'
-              && /\.loopAt\s*\(/.test(ch.rawCode)
             return (
               <StudioPianoRoll
                 currentPattern={currentPattern}
@@ -795,7 +791,6 @@ export default function StudioEditor() {
                 patternType={isSampleChannelNoPitch ? 'note' : patternType as 'n' | 'note' | 's'}
                 channelData={ch}
                 channelIdx={pianoRollChannel}
-                isVocalChannel={isVocalChannel}
                 onPatternChange={(newPattern: string) => {
                   const latest = codeRef.current
                   const newCode = replaceChannelPattern(latest, pianoRollChannel, newPattern, patternType as 'n' | 'note')

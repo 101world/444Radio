@@ -648,8 +648,8 @@ function ChannelStrip({
     const isMelodic = channel.sourceType === 'synth' || channel.sourceType === 'note'
     const isDrum = (channel.sourceType === 'sample' && !channel.effects.includes('loopAt')) || channel.sourceType === 'stack'
 
+    if (isVocal) return 'sampler' as const    // Vocal samples with loopAt → Pad Sampler only
     if (isMelodic) return 'piano' as const    // Synths/notes → Piano Roll for melody
-    if (isVocal) return 'piano' as const      // Vocals with loopAt → Piano Roll for waveform trim
     if (isDrum) return 'drum' as const        // Drum samples → Drum Sequencer for step patterns
     return 'piano' as const                   // Fallback
   }, [channel.sourceType, channel.effects])
@@ -941,9 +941,9 @@ function ChannelStrip({
         onClick={() => {
           const isVocal = channel.sourceType === 'sample' && channel.effects.includes('loopAt')
           const isMelodic = channel.sourceType === 'synth' || channel.sourceType === 'note'
-          if (isMelodic && onOpenPianoRoll) {
-            onOpenPianoRoll()
-          } else if (isVocal && onOpenPianoRoll) {
+          if (isVocal && onOpenPadSampler) {
+            onOpenPadSampler()
+          } else if (isMelodic && onOpenPianoRoll) {
             onOpenPianoRoll()
           } else if (onOpenDrumSequencer) {
             onOpenDrumSequencer()
@@ -1037,21 +1037,37 @@ function ChannelStrip({
        *
        * Primary editor per sourceType:
        *   synth/note           → Piano Roll "Notes"  (melodic editing)
-       *   sample + loopAt      → Piano Roll "Trim"   (waveform trim + pitched playback)
+       *   sample + loopAt      → Pad Sampler         (chop & sequence — EXCLUSIVE, no piano/drum)
        *   sample (no loopAt)   → Drum Seq   "Steps"  (step-based pattern for percussion)
        *   stack                → Drum Seq   "Steps"  (multi-layer step pattern)
        *
-       * Secondary editors (shown as small icons beside primary):
-       *   sample               → Drum Seq if primary is Piano, Piano if primary is Drum
-       *   sample + loopAt      → Drum Seq + Pad Sampler
-       *   note + loopAt        → Pad Sampler
+       * Vocal (sample+loopAt) channels: ONLY pad sampler shown.
+       * Instrument (pitched sample): ONLY piano roll shown.
+       * No drum sequencer for uploaded samples.
        *
        * ⋮ Overflow menu: Copy, Reset, Delete (universal management — rarely used, decluttered)
        */}
       <div className="flex items-center justify-between px-1.5 pb-1.5">
         {/* Left: Editor buttons */}
         <div className="flex items-center gap-1">
-          {/* ── Primary Editor Button (large, labeled) ── */}
+          {/* ── Pad Sampler — primary for vocal/loopAt channels (EXCLUSIVE) ── */}
+          {primaryEditor === 'sampler' && onOpenPadSampler && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onOpenPadSampler() }}
+              className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md transition-all cursor-pointer hover:opacity-100 active:scale-95"
+              style={{
+                color: '#22d3ee',
+                opacity: 0.8,
+                background: 'rgba(34,211,238,0.08)',
+                border: '1px solid rgba(34,211,238,0.12)',
+              }}
+              title="Pad Sampler — chop & sequence vocal"
+            >
+              <span className="text-[10px] leading-none">🎹</span>
+              <span className="text-[6px] font-bold leading-none">SAMPLER</span>
+            </button>
+          )}
+          {/* ── Piano Roll — primary for melodic/pitched channels ── */}
           {primaryEditor === 'piano' && onOpenPianoRoll && (channel.sourceType === 'synth' || channel.sourceType === 'note' || channel.sourceType === 'sample') && (
             <button
               onClick={(e) => { e.stopPropagation(); onOpenPianoRoll() }}
@@ -1062,18 +1078,15 @@ function ChannelStrip({
                 background: 'rgba(111,143,179,0.08)',
                 border: '1px solid rgba(111,143,179,0.12)',
               }}
-              title={channel.sourceType === 'sample' && channel.effects.includes('loopAt')
-                ? 'Waveform trim & pitched playback'
-                : channel.sourceType === 'sample'
+              title={channel.sourceType === 'sample'
                   ? 'Piano Roll — pitched sample editing'
                   : 'Piano Roll — edit notes & melody'}
             >
               <Piano size={11} />
-              <span className="text-[6px] font-bold leading-none">
-                {channel.sourceType === 'sample' && channel.effects.includes('loopAt') ? 'TRIM' : 'NOTES'}
-              </span>
+              <span className="text-[6px] font-bold leading-none">NOTES</span>
             </button>
           )}
+          {/* ── Drum Sequencer — primary for percussion/stack channels ── */}
           {primaryEditor === 'drum' && onOpenDrumSequencer && (channel.sourceType === 'sample' || channel.sourceType === 'stack') && (
             <button
               onClick={(e) => { e.stopPropagation(); onOpenDrumSequencer() }}
@@ -1092,7 +1105,7 @@ function ChannelStrip({
           )}
 
           {/* ── Secondary Editor Icons (small, no label) ── */}
-          {/* Piano as secondary — when primary is drum seq (sample without loopAt) */}
+          {/* Piano as secondary — only for drum seq channels (sample without loopAt) */}
           {primaryEditor === 'drum' && onOpenPianoRoll && channel.sourceType === 'sample' && (
             <button
               onClick={(e) => { e.stopPropagation(); onOpenPianoRoll() }}
@@ -1103,31 +1116,18 @@ function ChannelStrip({
               <Piano size={9} />
             </button>
           )}
-          {/* Drum Seq as secondary — when primary is piano (vocal/melodic sample) */}
-          {primaryEditor === 'piano' && onOpenDrumSequencer && (channel.sourceType === 'sample' || channel.sourceType === 'stack') && (
+          {/* Drum Seq as secondary — only for melodic synth/note channels (not sample) */}
+          {primaryEditor === 'piano' && onOpenDrumSequencer && (channel.sourceType === 'synth' || channel.sourceType === 'note' || channel.sourceType === 'stack') && (
             <button
               onClick={(e) => { e.stopPropagation(); onOpenDrumSequencer() }}
               className="p-0.5 rounded transition-all cursor-pointer hover:opacity-100 hover:scale-110"
               style={{ color: '#b8a47f', opacity: 0.45 }}
-              title={channel.effects.includes('loopAt') ? "Chop / Drum Pad" : "Drum Sequencer"}
+              title="Drum Sequencer"
             >
               <Grid3X3 size={9} />
             </button>
           )}
-          {/* Pad Sampler as secondary — for sample+loopAt or note+loopAt */}
-          {onOpenPadSampler && (
-            (channel.sourceType === 'sample' && (channel.effects.includes('loopAt') || channel.effects.includes('slice'))) ||
-            (channel.sourceType === 'note' && channel.effects.includes('loopAt'))
-          ) && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onOpenPadSampler() }}
-              className="p-0.5 rounded transition-all cursor-pointer hover:opacity-100 hover:scale-110"
-              style={{ color: '#22d3ee', opacity: 0.55 }}
-              title="Pad Sampler — chop & beat-making"
-            >
-              <span className="text-[8px] leading-none">🎹</span>
-            </button>
-          )}
+          {/* No secondary editors for sampler channels — pad sampler is exclusive */}
         </div>
 
         {/* Right: FX count + ⋮ overflow menu */}
@@ -1982,9 +1982,10 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
 
   // ── Add channel handler ──
   const handleAddChannel = useCallback(
-    (sound: string, type: 'synth' | 'sample' | 'vocal', vocalLoopAt?: number) => {
+    (sound: string, type: 'synth' | 'sample' | 'vocal' | 'drumpad', vocalLoopAt?: number) => {
       const currentCode = codeRef.current
-      const newCode = addChannel(currentCode, sound, type, vocalLoopAt)
+      const projectBpm = parseBPM(currentCode) ?? 120
+      const newCode = addChannel(currentCode, sound, type, vocalLoopAt, undefined, projectBpm)
       if (newCode !== currentCode) onCodeChange(newCode)
       setShowAddMenu(false)
     },
@@ -2640,41 +2641,39 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                 <div>
                   <div className="px-3 py-1" style={{ background: 'rgba(10,11,13,0.6)' }}>
                     <span className="text-[7px] font-black uppercase tracking-[.1em]" style={{ color: '#5a616b' }}>
-                      🎤 Your Uploaded Samples
+                      Your Uploaded Samples
                     </span>
                   </div>
-                  <div className="flex flex-wrap gap-1.5 px-3 py-2">
-                    {userSamples.map((s) => {
-                      const dur = s.duration_ms ? s.duration_ms / 1000 : null
-                      const calcBpm = s.original_bpm || (parseBPM(code) ?? 120)
-                      const loopAt = dur ? Math.max(1, Math.round(dur * calcBpm / 240)) : 8
-                      return (
-                        <button
-                          key={s.id}
-                          onClick={() => {
-                            if (onAddVocalChannel) {
-                              onAddVocalChannel(s.name, loopAt, s.original_bpm || undefined)
-                              setShowAddMenu(false)
-                            } else {
-                              handleAddChannel(s.name, 'vocal', loopAt)
-                            }
-                          }}
-                          className="px-2.5 py-1 rounded-lg cursor-pointer transition-all duration-[120ms] active:scale-95 hover:brightness-125"
-                          style={{
-                            background: '#0a0b0d',
-                            boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
-                            color: '#22d3ee',
-                            fontSize: '8px',
-                            fontWeight: 700,
-                            border: '1px solid rgba(34,211,238,0.1)',
-                          }}
-                          title={`Add s("${s.name}").loopAt(${loopAt}) channel${dur ? ` · ${Math.floor(dur / 60)}:${String(Math.floor(dur % 60)).padStart(2, '0')}` : ''}`}
-                        >
-                          {s.name}
-                        </button>
-                      )
-                    })}
-                  </div>
+                  {userSamples.map((s) => {
+                    const dur = s.duration_ms ? s.duration_ms / 1000 : null
+                    const calcBpm = s.original_bpm || (parseBPM(code) ?? 120)
+                    const loopAt = dur ? Math.max(1, Math.round(dur * calcBpm / 240)) : 8
+                    return (
+                      <div key={s.id} className="px-3 py-1.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                        <div className="text-[8px] font-bold mb-1" style={{ color: '#ccc' }}>{s.name}</div>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => { handleAddChannel(s.name, 'vocal', loopAt); }}
+                            className="flex-1 px-2 py-1 rounded-md cursor-pointer transition-all active:scale-95 hover:brightness-125 text-[6px] font-bold"
+                            style={{ background: '#0a0b0d', color: '#22d3ee', border: '1px solid rgba(34,211,238,0.12)' }}
+                            title="Vocal stem — BPM-synced loop"
+                          >🎤 VOCAL</button>
+                          <button
+                            onClick={() => { handleAddChannel(s.name, 'drumpad', loopAt); }}
+                            className="flex-1 px-2 py-1 rounded-md cursor-pointer transition-all active:scale-95 hover:brightness-125 text-[6px] font-bold"
+                            style={{ background: '#0a0b0d', color: '#b8a47f', border: '1px solid rgba(184,164,127,0.12)' }}
+                            title="Drum pad — chop & sequence"
+                          >🥁 PAD</button>
+                          <button
+                            onClick={() => { handleAddChannel(s.name, 'sample'); }}
+                            className="flex-1 px-2 py-1 rounded-md cursor-pointer transition-all active:scale-95 hover:brightness-125 text-[6px] font-bold"
+                            style={{ background: '#0a0b0d', color: '#6f8fb3', border: '1px solid rgba(111,143,179,0.12)' }}
+                            title="Instrument — piano roll"
+                          >🎹 INST</button>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
 
@@ -2692,7 +2691,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                   }}
                 >
                   <Mic size={10} />
-                  Upload your own vocal / sample
+                  Upload sample / vocal stem
                 </button>
               </div>
             </div>
