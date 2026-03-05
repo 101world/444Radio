@@ -1235,6 +1235,13 @@ export function replaceChannelPattern(
     // note("pattern").s("sampleName") — the Strudel way to pitch samples.
     // IMPORTANT: Also strip .loopAt() when converting — loopAt stretches the
     // sample over N cycles which conflicts with per-note pitched playback.
+    //
+    // VOCAL GUARD: If channel has .loopAt(), it's a full-vocal channel.
+    // Don't strip loopAt or insert note() — just return code unchanged.
+    // The vocal piano roll mode handles these channels differently.
+    if (/\.loopAt\s*\(/.test(raw)) {
+      return code
+    }
     const sCall = raw.match(/\.?s\(\s*"([^"]*)"\s*\)/)
     if (sCall) {
       // Extract the base sample name from s() (strip pattern/mini-notation)
@@ -1445,7 +1452,7 @@ export function addChannel(
       const comp = sampleBpm / projectBpm
       speedCompensation = `\n  .speed(${comp.toFixed(4)})${pitchInfo}`
     }
-    block = `$${name}: s("${soundName}")\n  .loopAt(${loopCycles})${speedCompensation}\n  .gain(0.7)\n  .orbit(${nextOrbit})\n  .room(0.15).delay(0.1).delaytime(0.125).delayfeedback(0.2)`
+    block = `$${name}: s("${soundName}")\n  .loopAt(${loopCycles})${speedCompensation}\n  .cut(${nextOrbit + 1})\n  .gain(0.7)\n  .orbit(${nextOrbit})\n  .room(0.15).delay(0.1).delaytime(0.125).delayfeedback(0.2)`
   } else if (type === 'instrument') {
     // Trimmed sample → pitched instrument playable on piano roll
     const begin = trimBegin ?? 0

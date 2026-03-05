@@ -586,19 +586,33 @@ function parseToken(tok: string, step: number, scale: string, notes: Map<string,
     return
   }
 
-  // Chord: [d3,f3,a3,c4] or [2,5] or [1,3,5]
+  // Chord: [d3,f3,a3,c4] or [2,5] or [1,3,5] or [0,2,4]@4
+  // Handles bracket-level @N weight: [a,b,c]@N
   if (tok.startsWith('[') && tok.includes(',')) {
-    const inner = tok.replace(/^\[|\]$/g, '')
-    for (const part of inner.split(',')) {
-      const { clean: trimmed, length } = parseSustain(part.trim())
+    let chordInner: string
+    let chordLength = defaultLength
+    // Check for bracket-level weight: [a,b,c]@N
+    const bracketWeightMatch = tok.match(/^\[(.+)\]@(\d+)$/)
+    if (bracketWeightMatch) {
+      chordInner = bracketWeightMatch[1]
+      chordLength = parseInt(bracketWeightMatch[2])
+    } else {
+      chordInner = tok.replace(/^\[|\]$/g, '')
+    }
+    for (const part of chordInner.split(',')) {
+      const partTrimmed = part.trim()
+      // Check if element has its own @N (per-element overrides bracket-level)
+      const atMatch = partTrimmed.match(/^(.+?)@(\d+)$/)
+      const clean = atMatch ? atMatch[1] : partTrimmed
+      const noteLen = atMatch ? parseInt(atMatch[2]) : chordLength
       if (mode === 'note') {
-        const midi = strudelNoteToMidi(trimmed)
-        if (midi !== null) notes.set(`${midi}:${step}`, { length })
+        const midi = strudelNoteToMidi(clean)
+        if (midi !== null) notes.set(`${midi}:${step}`, { length: noteLen })
       } else {
-        const num = parseInt(trimmed, 10)
+        const num = parseInt(clean, 10)
         if (!isNaN(num)) {
           const midi = degreeToMidi(num, scale)
-          notes.set(`${midi}:${step}`, { length })
+          notes.set(`${midi}:${step}`, { length: noteLen })
         }
       }
     }
@@ -753,18 +767,8 @@ function buildHeldInfo(
     if (step < totalSteps) noteStartSteps.add(step)
   })
 
-  // Build safe held steps: held continuation AND no note starts there
-  const safeHeldSteps = new Set<number>()
-  noteMap.forEach((data, key) => {
-    const startStep = parseInt(key.split(':')[1])
-    for (let s = startStep + 1; s < startStep + data.length && s < totalSteps; s++) {
-      if (!noteStartSteps.has(s)) {
-        safeHeldSteps.add(s)
-      }
-    }
-  })
-
-  // Effective length: truncate at first conflict (note start on any row)
+  // Effective length: truncate at first conflict (note start on any row).
+  // Defined BEFORE safeHeldSteps so we can use it to compute correct skip ranges.
   function effectiveLength(startStep: number, fullLength: number): number {
     for (let i = 1; i < fullLength; i++) {
       const s = startStep + i
@@ -772,6 +776,21 @@ function buildHeldInfo(
     }
     return fullLength
   }
+
+  // Build safe held steps using the EFFECTIVE length (not the raw UI length).
+  // Previously this used data.length which could extend past a truncation point,
+  // causing steps to be skipped that shouldn't be — producing the wrong total
+  // weight and breaking Strudel timing.
+  const safeHeldSteps = new Set<number>()
+  noteMap.forEach((data, key) => {
+    const startStep = parseInt(key.split(':')[1])
+    const effLen = effectiveLength(startStep, data.length)
+    for (let s = startStep + 1; s < startStep + effLen && s < totalSteps; s++) {
+      if (!noteStartSteps.has(s)) {
+        safeHeldSteps.add(s)
+      }
+    }
+  })
 
   return { safeHeldSteps, effectiveLength }
 }
@@ -817,12 +836,13 @@ function gridToPattern(
           const name = midiToStrudelNote(n.midi)
           tokens.push(eff > 1 ? `${name}@${eff}` : name)
         } else {
-          const chord = notes.sort((a, b) => a.midi - b.midi).map(n => {
-            const eff = effectiveLength(step, n.length)
-            const name = midiToStrudelNote(n.midi)
-            return eff > 1 ? `${name}@${eff}` : name
-          }).join(',')
-          tokens.push(`[${chord}]`)
+          // Chords: @N must go on the bracket [a,b,c]@N — NOT on individual
+          // elements. Strudel ignores @ inside comma-chords (simultaneous
+          // notes), so [a@4,b@4] has weight 1 instead of 4, breaking timing.
+          const sorted = notes.sort((a, b) => a.midi - b.midi)
+          const chord = sorted.map(n => midiToStrudelNote(n.midi)).join(',')
+          const chordEff = Math.max(...sorted.map(n => effectiveLength(step, n.length)))
+          tokens.push(chordEff > 1 ? `[${chord}]@${chordEff}` : `[${chord}]`)
         }
       }
       barPatterns.push(tokens.join(' '))
@@ -861,11 +881,13 @@ function gridToPattern(
         const eff = effectiveLength(step, d.length)
         tokens.push(eff > 1 ? `${d.deg}@${eff}` : String(d.deg))
       } else {
-        const chord = degs.sort((a, b) => a.deg - b.deg).map(d => {
-          const eff = effectiveLength(step, d.length)
-          return eff > 1 ? `${d.deg}@${eff}` : String(d.deg)
-        }).join(',')
-        tokens.push(`[${chord}]`)
+        // Chords: @N must go on the bracket [a,b,c]@N — NOT on individual
+        // elements. Strudel ignores @ inside comma-chords (simultaneous
+        // notes), so [0@4,2@4] has weight 1 instead of 4, breaking timing.
+        const sorted = degs.sort((a, b) => a.deg - b.deg)
+        const chord = sorted.map(d => String(d.deg)).join(',')
+        const chordEff = Math.max(...sorted.map(d => effectiveLength(step, d.length)))
+        tokens.push(chordEff > 1 ? `[${chord}]@${chordEff}` : `[${chord}]`)
       }
     }
     barPatterns.push(tokens.join(' '))
@@ -924,6 +946,8 @@ interface StudioPianoRollProps {
   getCyclePosition?: () => number | null
   /** User-uploaded samples list for resolving sample names to URLs */
   userSamples?: { id: string | number; name: string; url: string; duration_ms?: number | null; original_bpm?: number | null }[]
+  /** Whether this is a full-vocal channel (loopAt-based, no note grid) */
+  isVocalChannel?: boolean
 }
 
 const CELL_W_BASE = 28
@@ -959,6 +983,7 @@ export default function StudioPianoRoll({
   projectBpm = 120,
   getCyclePosition,
   userSamples = [],
+  isVocalChannel = false,
 }: StudioPianoRollProps) {
   const isNoteMode = patternType === 'note'
   const parseMode = isNoteMode ? 'note' as const : 'degree' as const
@@ -1170,6 +1195,14 @@ export default function StudioPianoRoll({
   useEffect(() => {
     if (isSampleChannel) setShowWaveform(true)
   }, [isSampleChannel])
+
+  // Auto-show effects panel for vocal channels (waveform + effects is the primary UI)
+  useEffect(() => {
+    if (isVocalChannel) {
+      setShowWaveform(true)
+      setShowEffectsPanel(true)
+    }
+  }, [isVocalChannel])
 
   // ── Load waveform audio data ──
   useEffect(() => {
@@ -2151,14 +2184,33 @@ export default function StudioPianoRoll({
         <div className="flex items-center gap-2">
           {/* Channel name + source */}
           <span className="text-[9px] font-black uppercase tracking-wider" style={{ color }}>
-            ðŸŽ¹ {channelName}
+            {isVocalChannel ? '\u{1F3A4}' : '\u{1F3B9}'} {channelName}
           </span>
           {channelData && (
             <span className="text-[6px] font-mono px-1 py-0.5 rounded" style={{ color: '#5a616b', background: '#0a0b0d' }}>
               {channelData.source}
             </span>
           )}
-          {isNoteMode ? (
+          {isVocalChannel ? (
+            <>
+              <span className="text-[7px] font-bold font-mono px-1.5 py-0.5" style={{ color: '#22d3ee', background: '#22d3ee10', borderRadius: '8px', border: '1px solid #22d3ee20' }}>
+                FULL VOCAL
+              </span>
+              {sampleDuration > 0 && (
+                <span className="text-[7px] font-mono" style={{ color: '#5a616b' }}>
+                  {sampleDuration.toFixed(1)}s &middot; {projectBpm}bpm
+                </span>
+              )}
+              {channelData?.rawCode && (() => {
+                const loopMatch = channelData.rawCode.match(/\.loopAt\(\s*(\d+)\s*\)/)
+                return loopMatch ? (
+                  <span className="text-[7px] font-mono px-1 py-0.5 rounded" style={{ color: '#10b981', background: '#10b98110', border: '1px solid #10b98120' }}>
+                    loopAt({loopMatch[1]})
+                  </span>
+                ) : null
+              })()}
+            </>
+          ) : isNoteMode ? (
             <span className="text-[7px] font-bold font-mono px-1 py-0.5" style={{ color: '#b8a47f', background: '#0a0b0d', borderRadius: '8px', boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22' }}>
               NOTE â™¯â™­
             </span>
@@ -2172,7 +2224,7 @@ export default function StudioPianoRoll({
           <div className="w-px h-3.5 bg-white/[0.08]" />
 
           {/* Arp indicator */}
-          {arpInfo.mode !== 'off' && (
+          {!isVocalChannel && arpInfo.mode !== 'off' && (
             <>
               <span className="text-[7px] font-bold px-1.5 py-0.5 rounded-lg flex items-center gap-1"
                 style={{ color: '#b8a47f', background: '#0a0b0d', boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22' }}>
@@ -2204,7 +2256,9 @@ export default function StudioPianoRoll({
             </>
           )}
 
-          {/* Bars selector */}
+          {/* Bars selector — note grid only */}
+          {!isVocalChannel && (
+          <>
           <span className="text-[7px] uppercase tracking-wider font-bold" style={{ color: '#5a616b' }}>Bars</span>
           {BAR_OPTIONS.map(b => (
             <button
@@ -2511,19 +2565,23 @@ export default function StudioPianoRoll({
               </span>
             </>
           )}
+          </>
+          )}{/* end !isVocalChannel */}
         </div>
 
         <div className="flex items-center gap-1.5">
-          {hasUserEdited && (
+          {!isVocalChannel && hasUserEdited && (
             <span className="text-[7px] font-black px-1.5 py-0.5 rounded-lg"
               style={{ color: '#7fa998', background: '#0a0b0d', boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22' }}>
               â— LIVE
             </span>
           )}
+          {!isVocalChannel && (
           <span className="text-[7px] font-mono font-bold" style={{ color: '#5a616b' }}>
             {noteMap.size} note{noteMap.size !== 1 ? 's' : ''}
           </span>
-          {selectedNotes.size > 0 && (
+          )}
+          {!isVocalChannel && selectedNotes.size > 0 && (
             <>
               <span className="text-[7px] font-mono font-bold px-1.5 py-0.5 rounded-lg" style={{ color, background: '#0a0b0d', boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22' }}>
                 {selectedNotes.size} sel
@@ -2556,7 +2614,7 @@ export default function StudioPianoRoll({
                 title="Delete (Del)">Del</button>
             </>
           )}
-          {clipboardRef.current.length > 0 && (
+          {!isVocalChannel && clipboardRef.current.length > 0 && (
             <button onClick={() => {
               const clip = clipboardRef.current; const minStep = Math.min(...clip.map(n => n.step))
               let pasteOffset = 0
@@ -2568,11 +2626,13 @@ export default function StudioPianoRoll({
               style={{ background: '#0a0b0d', color: '#7fa998', boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22' }}
               title="Paste (Ctrl+V)">Paste</button>
           )}
+          {!isVocalChannel && (
           <button onClick={clearAll}
             className="px-1.5 py-0.5 text-[7px] cursor-pointer transition-all duration-[180ms] font-bold rounded-lg"
             style={{ background: '#0a0b0d', color: '#5a616b', boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22' }}>
             Clear
           </button>
+          )}
           {channelData && (
             <button onClick={() => setShowEffectsPanel(p => !p)}
               className="px-1.5 py-0.5 text-[7px] cursor-pointer transition-all duration-[180ms] font-bold rounded-lg"
@@ -2974,6 +3034,68 @@ export default function StudioPianoRoll({
           </div>
         )}
 
+      {isVocalChannel ? (
+        /* ═══ VOCAL MODE — no note grid, effects + waveform only ═══ */
+        <div className="flex-1 flex flex-col items-center justify-center overflow-auto"
+          style={{ background: '#0c0e12' }}>
+          <div className="flex flex-col items-center gap-4 py-8 px-6 max-w-md text-center">
+            {/* Big vocal icon */}
+            <div className="text-[48px] opacity-60">{'\u{1F3A4}'}</div>
+            <div className="text-[14px] font-black uppercase tracking-wider" style={{ color: '#22d3ee' }}>
+              Full Vocal Mode
+            </div>
+            <div className="text-[10px] leading-relaxed" style={{ color: '#5a616b' }}>
+              This channel plays your full vocal file synced to the project BPM.
+              Use the <span className="font-bold" style={{ color: '#10b981' }}>waveform trimmer</span> above
+              to adjust the playback region, and the <span className="font-bold" style={{ color }}>effects panel</span> to
+              shape your sound.
+            </div>
+            <div className="flex flex-wrap justify-center gap-2 mt-2">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
+                style={{ background: '#10b98115', border: '1px solid #10b98125' }}>
+                <span className="text-[8px] font-bold" style={{ color: '#10b981' }}>loopAt</span>
+                <span className="text-[8px] font-mono" style={{ color: '#5a616b' }}>
+                  BPM-synced stretching
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
+                style={{ background: '#22d3ee15', border: '1px solid #22d3ee25' }}>
+                <span className="text-[8px] font-bold" style={{ color: '#22d3ee' }}>cut</span>
+                <span className="text-[8px] font-mono" style={{ color: '#5a616b' }}>
+                  no retrigger overlap
+                </span>
+              </div>
+            </div>
+            {!showEffectsPanel && channelData && (
+              <button
+                onClick={() => setShowEffectsPanel(true)}
+                className="mt-2 px-4 py-1.5 text-[9px] font-bold cursor-pointer rounded-lg transition-all hover:scale-105 active:scale-95"
+                style={{
+                  background: '#16181d',
+                  color,
+                  border: `1px solid ${color}30`,
+                  boxShadow: '2px 2px 6px #050607, -2px -2px 6px #1a1d22',
+                }}>
+                Open Effects Panel
+              </button>
+            )}
+            {!showWaveform && isSampleChannel && (
+              <button
+                onClick={() => setShowWaveform(true)}
+                className="px-4 py-1.5 text-[9px] font-bold cursor-pointer rounded-lg transition-all hover:scale-105 active:scale-95"
+                style={{
+                  background: '#16181d',
+                  color: '#10b981',
+                  border: '1px solid #10b98130',
+                  boxShadow: '2px 2px 6px #050607, -2px -2px 6px #1a1d22',
+                }}>
+                Open Waveform Trimmer
+              </button>
+            )}
+          </div>
+        </div>
+      ) : (
+      <>
       {/* â•â•â• GRID â•â•â• */}
       <div ref={scrollRef} className="flex-1 overflow-auto relative"
         style={{ scrollbarWidth: 'thin', scrollbarColor: `${color}25 transparent` }}
@@ -3365,6 +3487,8 @@ export default function StudioPianoRoll({
           })}
         </div>
       </div>
+      </>
+      )}
       </div>{/* â•â•â• END MAIN CONTENT â•â•â• */}
     </div>
   )

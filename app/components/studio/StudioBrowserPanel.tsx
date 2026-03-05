@@ -241,7 +241,7 @@ interface UserSample {
 // ── Props ──
 
 interface StudioBrowserPanelProps {
-  onAddChannel: (soundId: string, type: 'synth' | 'sample' | 'vocal', loopAt?: number) => void
+  onAddChannel: (soundId: string, type: 'synth' | 'sample' | 'vocal' | 'instrument', loopAt?: number) => void
   onPreview?: (code: string) => void
   userSamples?: UserSample[]
   projectBpm?: number
@@ -452,20 +452,37 @@ export default function StudioBrowserPanel({
                       const calcBpm = sample?.original_bpm || projectBpm
                       const loopAt = dur ? Math.max(1, Math.round(dur * calcBpm / 240)) : 8
                       return (
-                        <button
-                          key={item.id}
-                          onClick={() => onAddChannel(item.id, 'vocal', loopAt)}
-                          className="flex flex-col items-center gap-0.5 py-2 px-1 rounded-lg cursor-pointer transition-all duration-150 hover:scale-[1.04] active:scale-95 group"
-                          style={{
-                            background: '#0a0b0d',
-                            border: '1px solid rgba(34,211,238,0.08)',
-                            boxShadow: '2px 2px 4px #050607, -1px -1px 3px #1a1d22',
-                          }}
-                          title={`Add ${item.label}`}
-                        >
-                          <span className="text-[16px] leading-none opacity-60 group-hover:opacity-100 transition-opacity">🎤</span>
-                          <span className="text-[6px] font-bold truncate w-full text-center transition-colors" style={{ color: 'rgba(34,211,238,0.5)' }}>{item.label}</span>
-                        </button>
+                        <div key={item.id} className="flex flex-col gap-0.5">
+                          {/* Full Vocal — loopAt, BPM-synced, no retrigger */}
+                          <button
+                            onClick={() => onAddChannel(item.id, 'vocal', loopAt)}
+                            className="flex flex-col items-center gap-0.5 py-1.5 px-1 rounded-lg cursor-pointer transition-all duration-150 hover:scale-[1.04] active:scale-95 group"
+                            style={{
+                              background: '#0a0b0d',
+                              border: '1px solid rgba(34,211,238,0.12)',
+                              boxShadow: '2px 2px 4px #050607, -1px -1px 3px #1a1d22',
+                            }}
+                            title={`Add ${item.label} as Full Vocal (BPM-synced, no retrigger)`}
+                          >
+                            <span className="text-[12px] leading-none opacity-60 group-hover:opacity-100 transition-opacity">{'\u{1F3A4}'}</span>
+                            <span className="text-[5px] font-bold truncate w-full text-center transition-colors" style={{ color: 'rgba(34,211,238,0.6)' }}>{item.label}</span>
+                            <span className="text-[5px] font-black uppercase tracking-wider" style={{ color: '#22d3ee80' }}>VOCAL</span>
+                          </button>
+                          {/* Pitched Instrument — piano roll, per-note playback */}
+                          <button
+                            onClick={() => onAddChannel(item.id, 'instrument')}
+                            className="flex flex-col items-center gap-0.5 py-1 px-1 rounded-lg cursor-pointer transition-all duration-150 hover:scale-[1.04] active:scale-95 group"
+                            style={{
+                              background: '#0a0b0d',
+                              border: '1px solid rgba(111,143,179,0.08)',
+                              boxShadow: '2px 2px 4px #050607, -1px -1px 3px #1a1d22',
+                            }}
+                            title={`Add ${item.label} as Pitched Instrument (piano roll)`}
+                          >
+                            <span className="text-[10px] leading-none opacity-40 group-hover:opacity-80 transition-opacity">{'\u{1F3B9}'}</span>
+                            <span className="text-[5px] font-black uppercase tracking-wider" style={{ color: '#6f8fb380' }}>PITCH</span>
+                          </button>
+                        </div>
                       )
                     })}
                   </div>
