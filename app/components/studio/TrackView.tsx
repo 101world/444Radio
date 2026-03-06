@@ -14,6 +14,7 @@
 import { useRef, useEffect, useCallback, useState, useMemo, memo } from 'react'
 import { ChevronDown, ChevronRight, Plus, Piano, Grid3X3 } from 'lucide-react'
 import StudioKnob from './StudioKnob'
+import HardwareKnob from './HardwareKnob'
 import { getOrbitAnalyser } from '@/lib/studio-analysers'
 import { PARAM_DEFS, type ParsedChannel, type ParamDef } from '@/lib/strudel-code-parser'
 
@@ -411,8 +412,70 @@ function BeatGrid() {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  Effects Panel — bottom dock showing FX knobs for selected track
+//  Effects Panel — Hardware rack unit style FX plugin
+//  Realistic metallic textures, beveled panels, screws, big knobs
 // ─────────────────────────────────────────────────────────────
+
+// Screw component for realistic hardware look
+function Screw({ x, y }: { x: string; y: string }) {
+  return (
+    <div
+      className="absolute"
+      style={{
+        left: x, top: y, width: 8, height: 8,
+        borderRadius: '50%',
+        background: 'linear-gradient(135deg, #4a4e56 0%, #2a2d32 50%, #3a3d44 100%)',
+        boxShadow: 'inset 1px 1px 2px rgba(255,255,255,0.1), inset -1px -1px 2px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.5)',
+      }}
+    >
+      {/* Phillips head cross */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div style={{ width: 5, height: 0.8, background: 'rgba(0,0,0,0.5)', borderRadius: 1, position: 'absolute' }} />
+        <div style={{ width: 0.8, height: 5, background: 'rgba(0,0,0,0.5)', borderRadius: 1, position: 'absolute' }} />
+      </div>
+    </div>
+  )
+}
+
+// Group label badge
+function GroupBadge({ label, icon, isActive, hasActiveKnobs, color, onClick }: {
+  label: string; icon: string; isActive: boolean; hasActiveKnobs: boolean; color: string; onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded transition-all duration-150 cursor-pointer border"
+      style={{
+        background: isActive
+          ? 'linear-gradient(180deg, #2a2d35 0%, #1e2028 100%)'
+          : 'linear-gradient(180deg, #1a1c22 0%, #14161a 100%)',
+        border: isActive
+          ? `1px solid ${color}50`
+          : '1px solid rgba(255,255,255,0.06)',
+        boxShadow: isActive
+          ? `inset 0 1px 0 rgba(255,255,255,0.06), 0 0 8px ${color}15`
+          : 'inset 0 1px 0 rgba(255,255,255,0.03), 0 1px 3px rgba(0,0,0,0.3)',
+        color: isActive ? color : '#6b7280',
+        fontSize: '8px',
+        fontWeight: 800,
+        letterSpacing: '0.12em',
+      }}
+    >
+      <span className="text-[10px]">{icon}</span>
+      <span>{label}</span>
+      {hasActiveKnobs && (
+        <div
+          className="w-1.5 h-1.5 rounded-full"
+          style={{
+            background: color,
+            boxShadow: `0 0 4px ${color}80`,
+          }}
+        />
+      )}
+    </button>
+  )
+}
+
 function EffectsPanel({
   channel, channelIdx,
   onParamChange, onEffectInsert,
@@ -424,6 +487,8 @@ function EffectsPanel({
   onEffectInsert: (channelIdx: number, effectCode: string) => void
 }) {
   const [activeGroup, setActiveGroup] = useState<string | null>(null)
+  const [panelHeight, setPanelHeight] = useState(220)
+  const resizeRef = useRef<{ startY: number; startH: number } | null>(null)
 
   // Get relevant groups for this channel type
   const relevantGroupNames = TYPE_RELEVANT_GROUPS[channel.sourceType] || TYPE_RELEVANT_GROUPS.sample
@@ -433,7 +498,6 @@ function EffectsPanel({
     return FX_GROUPS
       .filter(g => relevantGroupNames.has(g.label))
       .map(group => {
-        // For each key in group, find if channel already has it
         const knobs = group.keys
           .map(key => {
             const paramDef = PARAM_DEFS.find((p: ParamDef) => p.key === key)
@@ -456,70 +520,176 @@ function EffectsPanel({
 
   const currentGroup = groups.find(g => g.label === activeGroup)
 
+  // Resize handle
+  const handleResizeDown = useCallback((e: React.PointerEvent) => {
+    e.preventDefault()
+    resizeRef.current = { startY: e.clientY, startH: panelHeight }
+    const onMove = (ev: PointerEvent) => {
+      if (!resizeRef.current) return
+      const dy = resizeRef.current.startY - ev.clientY
+      setPanelHeight(Math.max(160, Math.min(450, resizeRef.current.startH + dy)))
+    }
+    const onUp = () => {
+      resizeRef.current = null
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }, [panelHeight])
+
+  // Channel type label
+  const typeLabel = channel.sourceType === 'synth' ? 'SYNTHESIZER' :
+    channel.sourceType === 'note' ? 'INSTRUMENT' :
+    channel.sourceType === 'stack' ? 'DRUM MACHINE' :
+    channel.sourceType === 'sample' ? (channel.effects.includes('loopAt') ? 'VOCAL' : 'SAMPLER') : 'CHANNEL'
+
   return (
     <div
-      className="shrink-0 border-t"
+      className="shrink-0 relative overflow-hidden"
       style={{
-        background: '#0d0e11',
-        borderColor: `${channel.color}20`,
-        minHeight: 100,
+        height: panelHeight,
+        // Faceplate: brushed dark metal look
+        background: `
+          linear-gradient(180deg,
+            #1c1e24 0%,
+            #181a1f 3%,
+            #151720 50%,
+            #131518 97%,
+            #1a1c22 100%
+          )`,
+        borderTop: '2px solid #2a2d35',
+        boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.4), inset 0 -1px 0 rgba(255,255,255,0.03)',
       }}
     >
-      {/* ── Group tabs ── */}
-      <div className="flex items-center gap-0 overflow-x-auto px-2 py-1 border-b"
-        style={{ borderColor: 'rgba(255,255,255,0.04)', background: '#0a0b0d' }}
+      {/* ── Resize handle bar ── */}
+      <div
+        className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize z-30 flex items-center justify-center"
+        onPointerDown={handleResizeDown}
+        style={{ background: 'linear-gradient(180deg, #2a2d35 0%, transparent 100%)' }}
       >
-        <span className="text-[7px] font-black uppercase tracking-[.15em] mr-2 shrink-0"
-          style={{ color: channel.color }}>
-          FX
-        </span>
-        {groups.map(g => (
-          <button
-            key={g.label}
-            onClick={() => setActiveGroup(g.label)}
-            className="flex items-center gap-1 px-2 py-1 rounded-md cursor-pointer transition-all duration-100 shrink-0"
-            style={{
-              color: activeGroup === g.label ? channel.color : '#5a616b',
-              background: activeGroup === g.label ? `${channel.color}12` : 'transparent',
-              border: activeGroup === g.label ? `1px solid ${channel.color}25` : '1px solid transparent',
-              fontSize: '7px',
-              fontWeight: 800,
-            }}
-          >
-            <span className="text-[9px]">{g.icon}</span>
-            <span className="tracking-wider">{g.label}</span>
-            {g.hasActive && (
-              <div className="w-1 h-1 rounded-full" style={{ background: channel.color }} />
-            )}
-          </button>
-        ))}
+        <div style={{ width: 32, height: 2, borderRadius: 1, background: 'rgba(255,255,255,0.08)' }} />
       </div>
 
-      {/* ── Knobs grid ── */}
-      {currentGroup && (
-        <div className="flex flex-wrap gap-1.5 px-3 py-2 overflow-y-auto" style={{ maxHeight: 120 }}>
-          {currentGroup.knobs.map(({ paramDef, existingParam, key }) => {
-            const hasValue = !!existingParam
-            const value = existingParam ? existingParam.value : paramDef.min
-            const isComplex = existingParam?.isComplex
+      {/* ── Corner screws ── */}
+      <Screw x="6px" y="6px" />
+      <Screw x="calc(100% - 14px)" y="6px" />
+      <Screw x="6px" y="calc(100% - 14px)" />
+      <Screw x="calc(100% - 14px)" y="calc(100% - 14px)" />
 
-            return (
-              <div
-                key={key}
-                className="flex flex-col items-center transition-all duration-150"
-                style={{ opacity: hasValue ? 1 : 0.45 }}
-                title={hasValue ? `${paramDef.label}: ${value}` : `Click to add .${key}()`}
-              >
-                <StudioKnob
+      {/* ── Header strip ── */}
+      <div
+        className="flex items-center gap-3 px-8 pt-3 pb-1.5"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+      >
+        {/* Brand plate */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* LED power indicator */}
+          <div
+            className="rounded-full"
+            style={{
+              width: 6, height: 6,
+              background: `radial-gradient(circle, ${channel.color} 30%, ${channel.color}60 70%, transparent 100%)`,
+              boxShadow: `0 0 6px ${channel.color}60, 0 0 2px ${channel.color}`,
+            }}
+          />
+          <div className="flex flex-col">
+            <span
+              className="text-[10px] font-black tracking-[.25em] uppercase leading-none"
+              style={{
+                color: channel.color,
+                textShadow: `0 0 8px ${channel.color}30`,
+                fontFamily: 'system-ui, sans-serif',
+              }}
+            >
+              444 FX
+            </span>
+            <span className="text-[6px] font-bold tracking-[.2em] uppercase leading-none mt-0.5"
+              style={{ color: '#5a616b' }}>
+              {typeLabel}
+            </span>
+          </div>
+        </div>
+
+        {/* Embossed channel name */}
+        <div
+          className="px-3 py-1 rounded"
+          style={{
+            background: 'linear-gradient(180deg, #0d0e12 0%, #111318 100%)',
+            border: '1px solid rgba(255,255,255,0.04)',
+            boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.02)',
+          }}
+        >
+          <span className="text-[9px] font-extrabold uppercase tracking-[.15em] font-mono" style={{ color: channel.color }}>
+            {channel.name}
+          </span>
+        </div>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Group selector tabs */}
+        <div className="flex items-center gap-1 overflow-x-auto">
+          {groups.map(g => (
+            <GroupBadge
+              key={g.label}
+              label={g.label}
+              icon={g.icon}
+              isActive={activeGroup === g.label}
+              hasActiveKnobs={g.hasActive}
+              color={channel.color}
+              onClick={() => setActiveGroup(g.label)}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* ── Knobs faceplate area ── */}
+      {currentGroup && (
+        <div className="flex-1 overflow-y-auto px-6 pt-3 pb-4"
+          style={{ height: panelHeight - 56 }}
+        >
+          {/* Group section header with recessed strip */}
+          <div className="flex items-center gap-3 mb-3">
+            <div
+              className="px-3 py-1 rounded-sm"
+              style={{
+                background: 'linear-gradient(180deg, #0c0d10 0%, #111318 100%)',
+                border: '1px solid rgba(255,255,255,0.03)',
+                boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.6)',
+              }}
+            >
+              <span className="text-[8px] font-black tracking-[.2em] uppercase"
+                style={{ color: `${channel.color}90` }}>
+                {currentGroup.icon} {currentGroup.label}
+              </span>
+            </div>
+            <div className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, rgba(255,255,255,0.06) 0%, transparent 100%)' }} />
+            <span className="text-[7px] font-bold" style={{ color: '#3a3d44' }}>
+              {currentGroup.knobs.filter(k => k.existingParam).length}/{currentGroup.knobs.length}
+            </span>
+          </div>
+
+          {/* Knobs grid — big hardware knobs */}
+          <div className="flex flex-wrap gap-x-2 gap-y-3 justify-start">
+            {currentGroup.knobs.map(({ paramDef, existingParam, key }) => {
+              const hasValue = !!existingParam
+              const knobValue = existingParam ? existingParam.value : paramDef.min
+              const isComplex = existingParam?.isComplex
+
+              return (
+                <HardwareKnob
+                  key={key}
                   label={paramDef.label}
-                  value={value}
+                  value={knobValue}
                   min={paramDef.min}
                   max={paramDef.max}
                   step={paramDef.step}
-                  size={28}
-                  color={hasValue ? channel.color : '#5a616b'}
+                  size={48}
+                  color={hasValue ? channel.color : '#4a4e56'}
                   unit={paramDef.unit}
                   isComplex={isComplex}
+                  active={hasValue}
                   onChange={(v: number) => {
                     if (hasValue) {
                       onParamChange(channelIdx, key, v)
@@ -528,11 +698,42 @@ function EffectsPanel({
                     }
                   }}
                 />
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
       )}
+
+      {/* ── Bottom strip — embossed branding ── */}
+      <div
+        className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-8 py-1"
+        style={{
+          background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.2) 100%)',
+          borderTop: '1px solid rgba(255,255,255,0.02)',
+        }}
+      >
+        <span className="text-[6px] font-bold tracking-[.3em] uppercase" style={{ color: '#2a2d32' }}>
+          444RADIO EFFECTS RACK
+        </span>
+        <span className="text-[6px] font-bold tracking-[.2em]" style={{ color: '#2a2d32' }}>
+          v1.0
+        </span>
+      </div>
+
+      {/* ── Subtle texture overlay for brushed metal feel ── */}
+      <div
+        className="absolute inset-0 pointer-events-none z-10"
+        style={{
+          backgroundImage: `repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 1px,
+            rgba(255,255,255,0.003) 1px,
+            rgba(255,255,255,0.003) 2px
+          )`,
+          mixBlendMode: 'overlay',
+        }}
+      />
     </div>
   )
 }
