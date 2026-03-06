@@ -22,7 +22,6 @@ import StudioSliderPanel from './studio/StudioSliderPanel'
 import StudioMethodsPanel from './studio/StudioMethodsPanel'
 import StudioCodeEditor, { type StudioCodeEditorHandle } from './studio/StudioCodeEditor'
 import StudioMixerRack from './studio/StudioMixerRack'
-import StudioSampleUploader from './studio/StudioSampleUploader'
 import StudioBrowserPanel from './studio/StudioBrowserPanel'
 import MasterScope from './studio/MasterScope'
 
@@ -63,7 +62,6 @@ export default function StudioEditor() {
   const [pianoRollChannel, setPianoRollChannel] = useState<number | null>(null)
   const [drumSequencerChannel, setDrumSequencerChannel] = useState<number | null>(null)
   const [padSamplerChannel, setPadSamplerChannel] = useState<number | null>(null)
-  const [sampleUploaderOpen, setSampleUploaderOpen] = useState(false)
   const [userSamples, setUserSamples] = useState<{ id: string; name: string; url: string; duration_ms?: number | null; original_bpm?: number | null }[]>([])
 
   // Undo/Redo
@@ -748,7 +746,6 @@ export default function StudioEditor() {
             onOpenPianoRoll={(idx) => { setDrumSequencerChannel(null); setPadSamplerChannel(null); setPianoRollChannel(prev => prev === idx ? null : idx) }}
             onOpenDrumSequencer={(idx) => { setPianoRollChannel(null); setPadSamplerChannel(null); setDrumSequencerChannel(prev => prev === idx ? null : idx) }}
             onOpenPadSampler={(idx) => { setPianoRollChannel(null); setDrumSequencerChannel(null); setPadSamplerChannel(prev => prev === idx ? null : idx) }}
-            onOpenSampleUploader={() => setSampleUploaderOpen(true)}
             onAddVocalChannel={handleAddVocalChannel}
             userSamples={userSamples}
           />
@@ -1058,19 +1055,6 @@ export default function StudioEditor() {
           })()}
         </div>
       </div>
-
-      {/* — SAMPLE UPLOADER MODAL — */}
-      <StudioSampleUploader
-        isOpen={sampleUploaderOpen}
-        onClose={() => setSampleUploaderOpen(false)}
-        bpm={parseBPM(code) ?? 120}
-        onRegisterSound={registerCustomSound}
-        onAddVocalChannel={handleAddVocalChannel}
-        onAddInstrumentChannel={handleAddInstrumentChannel}
-        onAddDrumPadChannel={handleAddDrumPadChannel}
-        onAddSoundKitChannel={handleAddSoundKitChannel}
-        onSamplesChanged={setUserSamples}
-      />
 
       {/* â”€â”€ CODE EDITOR DRAWER (slides from right) â”€â”€ */}
       <div

@@ -1589,14 +1589,13 @@ interface StudioMixerRackProps {
   onOpenPianoRoll?: (channelIdx: number) => void
   onOpenDrumSequencer?: (channelIdx: number) => void
   onOpenPadSampler?: (channelIdx: number) => void
-  onOpenSampleUploader?: () => void
   onAddVocalChannel?: (name: string, loopAt: number, sampleBpm?: number) => void
   userSamples?: UserSample[]
   isPlaying?: boolean
   onPreview?: (soundCode: string) => void
 }
 
-export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, onMixerStateChange, metronomeEnabled = false, onMetronomeToggle, onOpenPianoRoll, onOpenDrumSequencer, onOpenPadSampler, onOpenSampleUploader, onAddVocalChannel, userSamples = [], isPlaying: isPlayingProp = false, onPreview }: StudioMixerRackProps) {
+export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, onMixerStateChange, metronomeEnabled = false, onMetronomeToggle, onOpenPianoRoll, onOpenDrumSequencer, onOpenPadSampler, onAddVocalChannel, userSamples = [], isPlaying: isPlayingProp = false, onPreview }: StudioMixerRackProps) {
   const channels = useMemo(() => parseStrudelCode(code), [code])
   const [expandedChannels, setExpandedChannels] = useState<Set<string>>(new Set())
   const [mutedChannels, setMutedChannels] = useState<Set<number>>(new Set())
@@ -2713,28 +2712,6 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
         {/* Divider */}
         <div className="w-px h-4" style={{ background: 'rgba(255,255,255,0.06)' }} />
 
-        {/* Samples / Vocals button */}
-        {onOpenSampleUploader && (
-          <button
-            onClick={onOpenSampleUploader}
-            className="cursor-pointer transition-all duration-[180ms] active:scale-95"
-            style={{
-              display: 'flex', alignItems: 'center', gap: '3px',
-              padding: '2px 8px',
-              fontSize: '7px', fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase' as const,
-              borderRadius: '12px',
-              color: '#5a616b',
-              background: '#0a0b0d',
-              border: 'none',
-              boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
-            }}
-            title="Upload samples / vocals"
-          >
-            <Mic size={8} />
-            SAMPLES
-          </button>
-        )}
-
         {/* Divider */}
         <div className="w-px h-4" style={{ background: 'rgba(255,255,255,0.06)' }} />
 
@@ -2824,64 +2801,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                 )
               })}
 
-              {/* User Uploaded Samples */}
-              {userSamples.length > 0 && (
-                <div>
-                  <div className="px-3 py-1" style={{ background: 'rgba(10,11,13,0.6)' }}>
-                    <span className="text-[7px] font-black uppercase tracking-[.1em]" style={{ color: '#5a616b' }}>
-                      Your Uploaded Samples
-                    </span>
-                  </div>
-                  {userSamples.map((s) => {
-                    const dur = s.duration_ms ? s.duration_ms / 1000 : null
-                    const calcBpm = s.original_bpm || (parseBPM(code) ?? 120)
-                    const loopAt = dur ? Math.max(1, Math.round(dur * calcBpm / 240)) : 8
-                    return (
-                      <div key={s.id} className="px-3 py-1.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
-                        <div className="text-[8px] font-bold mb-1" style={{ color: '#ccc' }}>{s.name}</div>
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => { handleAddChannel(s.name, 'vocal', loopAt); }}
-                            className="flex-1 px-2 py-1 rounded-md cursor-pointer transition-all active:scale-95 hover:brightness-125 text-[6px] font-bold"
-                            style={{ background: '#0a0b0d', color: '#22d3ee', border: '1px solid rgba(34,211,238,0.12)' }}
-                            title="Vocal stem — BPM-synced loop"
-                          >🎤 VOCAL</button>
-                          <button
-                            onClick={() => { handleAddChannel(s.name, 'drumpad', loopAt); }}
-                            className="flex-1 px-2 py-1 rounded-md cursor-pointer transition-all active:scale-95 hover:brightness-125 text-[6px] font-bold"
-                            style={{ background: '#0a0b0d', color: '#b8a47f', border: '1px solid rgba(184,164,127,0.12)' }}
-                            title="Drum pad — chop & sequence"
-                          >🥁 PAD</button>
-                          <button
-                            onClick={() => { handleAddChannel(s.name, 'sample'); }}
-                            className="flex-1 px-2 py-1 rounded-md cursor-pointer transition-all active:scale-95 hover:brightness-125 text-[6px] font-bold"
-                            style={{ background: '#0a0b0d', color: '#6f8fb3', border: '1px solid rgba(111,143,179,0.12)' }}
-                            title="Instrument — piano roll"
-                          >🎹 INST</button>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-
               {/* Upload hint */}
-              <div className="px-3 py-2" style={{ borderTop: '1px solid rgba(255,255,255,0.03)' }}>
-                <button
-                  onClick={() => { setShowAddMenu(false); onOpenSampleUploader?.() }}
-                  className="flex items-center gap-1.5 w-full justify-center px-3 py-1.5 rounded-lg cursor-pointer transition-all hover:brightness-110"
-                  style={{
-                    background: 'rgba(34,211,238,0.06)',
-                    border: '1px solid rgba(34,211,238,0.12)',
-                    color: '#22d3ee',
-                    fontSize: '8px',
-                    fontWeight: 700,
-                  }}
-                >
-                  <Mic size={10} />
-                  Upload sample / vocal stem
-                </button>
-              </div>
             </div>
           )}
         </div>
