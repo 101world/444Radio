@@ -55,6 +55,17 @@ export const GET = withAuth(async (userId, request) => {
 // ── POST /api/chat/messages — append a single message ──
 export const POST = withAuth(async (userId, request) => {
   const body = await request!.json()
+
+  // Support sendBeacon bulk sync (browser sends POST with _method: 'PUT' on page unload)
+  if (body._method === 'PUT' && Array.isArray(body.messages)) {
+    const { error } = await bulkReplace(supabase, userId, body.messages as ChatInsertPayload[])
+    if (error) {
+      console.error('Beacon bulk sync error:', error)
+      return NextResponse.json({ error: 'Beacon sync failed' }, { status: 500 })
+    }
+    return NextResponse.json({ success: true, count: body.messages.length })
+  }
+
   const { type, content, generationType, generationId, result, timestamp } = body
 
   if (!type || !content) {

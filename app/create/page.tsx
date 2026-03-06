@@ -573,9 +573,33 @@ function CreatePageContent() {
       }).catch(() => { syncedIdsRef.current.delete(msg.id) }) // retry on next cycle if failed
     }
 
-    // Debounced full sync for in-place updates (generation completes, content changes)
-    // Only fire if no new messages were appended (pure mutation)
-    if (newMessages.length === 0 && messages.length > 1) {
+    // Immediately sync completed generation messages (isGenerating was true, now false)
+    // These were skipped during their initial append; sync them now so results survive refresh.
+    for (const msg of messages) {
+      if (msg.isGenerating) continue                     // still generating — skip
+      if (!msg.generationType && !msg.generationId) continue // not a generation message
+      if (syncedIdsRef.current.has(msg.id)) continue     // already synced
+      // Only sync if it has result data or is a completed/failed generation message
+      if (!msg.result && !msg.content.startsWith('✅') && !msg.content.startsWith('❌')) continue
+
+      syncedIdsRef.current.add(msg.id)
+      fetch('/api/chat/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: msg.type,
+          content: msg.content,
+          generationType: msg.generationType || null,
+          generationId: msg.generationId || null,
+          result: msg.result || null,
+          timestamp: msg.timestamp instanceof Date ? msg.timestamp.toISOString() : msg.timestamp,
+        })
+      }).catch(() => { syncedIdsRef.current.delete(msg.id) })
+    }
+
+    // Debounced full sync for in-place updates (content changes, result data updates)
+    // Always schedule when there are real messages, to catch any mutations
+    if (messages.length > 1) {
       dirtySyncTimerRef.current = setTimeout(() => {
         const syncPayload = messages.map(m => ({
           type: m.type,
@@ -590,8 +614,34 @@ function CreatePageContent() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ messages: syncPayload })
         }).catch(() => {/* ignore sync errors */})
-      }, 10000) // 10s debounce for mutations (was 3s for everything)
+      }, 3000) // 3s debounce — fast enough to survive most refreshes
     }
+  }, [messages])
+
+  // Flush pending messages to server on page unload (refresh/navigate away)
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // Fire-and-forget: use sendBeacon for reliability during unload
+      if (messages.length <= 1) return
+      const syncPayload = messages
+        .filter(m => !m.isGenerating)
+        .map(m => ({
+          type: m.type,
+          content: m.content,
+          generationType: m.generationType || null,
+          generationId: m.generationId || null,
+          result: m.result || null,
+          timestamp: m.timestamp instanceof Date ? m.timestamp.toISOString() : m.timestamp,
+        }))
+      try {
+        navigator.sendBeacon(
+          '/api/chat/messages',
+          new Blob([JSON.stringify({ messages: syncPayload, _method: 'PUT' })], { type: 'application/json' })
+        )
+      } catch { /* ignore */ }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [messages])
 
   // Centralized clear-chat handler: archive → reset messages → purge completed generations
