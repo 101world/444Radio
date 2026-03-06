@@ -3,56 +3,62 @@ import { auth } from '@clerk/nextjs/server'
 import { downloadAndUploadToR2 } from '@/lib/storage'
 import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { refundCredits } from '@/lib/refund-credits'
+import { fal } from '@fal-ai/client'
 
 // Allow up to 5 minutes for fal.ai generation
 export const maxDuration = 300
 
 const FAL_MODEL = 'fal-ai/ace-step/audio-to-audio'
 
-/** Call fal.ai synchronously (blocks until generation complete) */
+/** Call fal.ai via the official client (handles queue, retries, cold starts) */
 async function runFalAi(falKey: string, input: Record<string, unknown>): Promise<{ data: any }> {
-  console.log('🎤 Calling fal.ai ACE-Step audio-to-audio...')
+  console.log('🎤 Calling fal.ai ACE-Step audio-to-audio via client...')
   console.log('🎤 Input audio_url:', input.audio_url)
   console.log('🎤 Input params:', JSON.stringify({ ...input, audio_url: '(omitted)' }))
-  
-  const res = await fetch(`https://fal.run/${FAL_MODEL}`, {
-    method: 'POST',
-    headers: { Authorization: `Key ${falKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
-  })
-  if (!res.ok) {
-    const body = await res.text()
-    console.error(`❌ fal.ai returned ${res.status}:`, body.substring(0, 500))
-    
-    // On 500, retry once with minimal params (audio might need simpler config)
-    if (res.status === 500) {
-      console.log('🔄 Retrying fal.ai with minimal parameters...')
+
+  // Configure the fal client with our key
+  fal.config({ credentials: falKey })
+
+  try {
+    const result = await fal.subscribe(FAL_MODEL as string, {
+      input: input as any,
+      logs: true,
+      onQueueUpdate: (update) => {
+        if (update.status === 'IN_PROGRESS' && update.logs) {
+          update.logs.map((log: any) => log.message).forEach((msg: string) => console.log('🎤 fal.ai log:', msg))
+        }
+      },
+    })
+    console.log('🎤 fal.ai ACE-Step response received via client')
+    return { data: result.data }
+  } catch (err: any) {
+    console.error(`❌ fal.ai client error:`, err?.message || err)
+
+    // On failure, retry once with minimal params
+    console.log('🔄 Retrying fal.ai with minimal parameters...')
+    try {
       const minimalInput: Record<string, unknown> = {
         audio_url: input.audio_url,
         original_tags: input.original_tags,
         tags: input.tags,
         edit_mode: input.edit_mode || 'remix',
       }
-      const retryRes = await fetch(`https://fal.run/${FAL_MODEL}`, {
-        method: 'POST',
-        headers: { Authorization: `Key ${falKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(minimalInput),
+      const retryResult = await fal.subscribe(FAL_MODEL as string, {
+        input: minimalInput as any,
+        logs: true,
+        onQueueUpdate: (update) => {
+          if (update.status === 'IN_PROGRESS' && update.logs) {
+            update.logs.map((log: any) => log.message).forEach((msg: string) => console.log('🎤 fal.ai retry log:', msg))
+          }
+        },
       })
-      if (retryRes.ok) {
-        const data = await retryRes.json()
-        console.log('🎤 fal.ai retry succeeded')
-        return { data }
-      }
-      const retryBody = await retryRes.text()
-      console.error(`❌ fal.ai retry also failed (${retryRes.status}):`, retryBody.substring(0, 500))
-      throw new Error(`fal.ai request failed (${retryRes.status}): ${retryBody}`)
+      console.log('🎤 fal.ai retry succeeded via client')
+      return { data: retryResult.data }
+    } catch (retryErr: any) {
+      console.error(`❌ fal.ai retry also failed:`, retryErr?.message || retryErr)
+      throw new Error(`fal.ai generation failed: ${retryErr?.message || 'Internal Server Error'}`)
     }
-    
-    throw new Error(`fal.ai request failed (${res.status}): ${body}`)
   }
-  const data = await res.json()
-  console.log('🎤 fal.ai ACE-Step response received')
-  return { data }
 }
 
 function sanitizeError(error: any): string {
