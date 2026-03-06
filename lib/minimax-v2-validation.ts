@@ -32,7 +32,7 @@ const LYRICS_MIN = 10
 const LYRICS_MAX = 3000
 
 // Only these structure tags are supported by MiniMax v2
-const SUPPORTED_TAGS = ['intro', 'verse', 'chorus', 'bridge', 'outro']
+const SUPPORTED_TAGS = ['intro', 'verse', 'chorus', 'bridge', 'instrumental', 'outro']
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -84,14 +84,14 @@ function sanitizeLyrics(raw: string): string {
   lyrics = lyrics.replace(/\[drop\]/gi, '[Chorus]')
   lyrics = lyrics.replace(/\[breakdown\]/gi, '[Bridge]')
 
-  // Remove any remaining unsupported tags (keep only intro/verse/chorus/bridge/outro)
+  // Remove any remaining unsupported tags (keep only intro/verse/chorus/bridge/instrumental/outro)
   lyrics = lyrics.replace(
-    /\[(?!intro\]|verse\]|chorus\]|bridge\]|outro\])([^\]]*)\]/gi,
+    /\[(?!intro\]|verse\]|chorus\]|bridge\]|instrumental\]|outro\])([^\]]*)\]/gi,
     ''
   )
 
   // Remove trailing empty tags (tag at end with no content after it)
-  lyrics = lyrics.replace(/\[(intro|verse|chorus|bridge|outro)\]\s*$/gi, '').trim()
+  lyrics = lyrics.replace(/\[(intro|verse|chorus|bridge|instrumental|outro)\]\s*$/gi, '').trim()
 
   // Clean up excessive whitespace / blank lines
   lyrics = lyrics.replace(/\n{3,}/g, '\n\n')
@@ -100,12 +100,18 @@ function sanitizeLyrics(raw: string): string {
 }
 
 /**
- * Check if text appears to be instrumental (no actual lyrics content)
+ * Check if text appears to be instrumental (no actual lyrics content).
+ *
+ * IMPORTANT: Only returns true when the ENTIRE input is instrumental.
+ * An [Instrumental] section tag within otherwise valid lyrics does NOT
+ * make the whole song instrumental — it's just a brief break.
  */
 function isInstrumental(text: string | null | undefined): boolean {
   if (!text || text.trim().length === 0) return true
   const lower = text.toLowerCase().trim()
-  if (lower.includes('[instrumental]')) return true
+  // Only exact match — NOT substring. Prevents [Instrumental] section tags
+  // within real lyrics from wiping the entire lyrics_prompt.
+  if (lower === '[instrumental]') return true
   if (lower === 'instrumental' || lower === 'no vocals' || lower === 'no lyrics') return true
   // If after stripping tags there's no real text content
   const withoutTags = lower.replace(/\[[^\]]*\]/g, '').trim()

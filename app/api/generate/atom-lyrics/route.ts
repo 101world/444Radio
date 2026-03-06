@@ -225,7 +225,7 @@ Keep lines short and rhyming. Under 550 characters. Return ONLY lyrics with tags
     lyrics = lyrics.replace(/\[drop\]/gi, '[Chorus]')
     lyrics = lyrics.replace(/\[breakdown\]/gi, '[Bridge]')
     // Remove any other unsupported tags
-    lyrics = lyrics.replace(/\[(?!Intro\]|Verse\]|Chorus\]|Bridge\]|Instrumental\]|Outro\])([^\]]*)\ ]/gi, '')
+    lyrics = lyrics.replace(/\[(?!Intro\]|Verse\]|Chorus\]|Bridge\]|Instrumental\]|Outro\])([^\]]*)\]/gi, '')
     // Clean up double newlines from removed tags
     lyrics = lyrics.replace(/\n{3,}/g, '\n\n').trim()
 
