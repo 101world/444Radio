@@ -18,7 +18,11 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
 /** Short timeout for quest tracking fetches — fail fast, never block generation */
-const QUEST_TIMEOUT_MS = 5000
+const QUEST_TIMEOUT_MS = 12000
+
+/** In-memory cache to prevent spamming quest checks for the same user+action */
+const recentlyTracked = new Map<string, number>()
+const DEDUP_WINDOW_MS = 30_000 // Don't re-check same user+action within 30s
 
 function questSignal(): AbortSignal {
   return AbortSignal.timeout(QUEST_TIMEOUT_MS)
@@ -51,6 +55,20 @@ export async function trackQuestProgress(
 ): Promise<void> {
   try {
     if (!supabaseUrl || !supabaseKey) return
+
+    // Dedup: skip if we just tracked this user+action recently
+    const dedupKey = `${userId}:${action}`
+    const lastRun = recentlyTracked.get(dedupKey)
+    if (lastRun && Date.now() - lastRun < DEDUP_WINDOW_MS) return
+    recentlyTracked.set(dedupKey, Date.now())
+
+    // Evict stale entries periodically (keep map small)
+    if (recentlyTracked.size > 500) {
+      const now = Date.now()
+      for (const [k, v] of recentlyTracked) {
+        if (now - v > DEDUP_WINDOW_MS) recentlyTracked.delete(k)
+      }
+    }
 
     // 1. Check user has an active quest pass
     const passRes = await qfetch(
