@@ -439,6 +439,464 @@ $:arrange(
   )
 `,
   },
+  // ═══════════════════════════════════════════════════════
+  //  NEW GENRE TEMPLATES — Uses vocals, advanced FX, pro patterns
+  // ═══════════════════════════════════════════════════════
+  {
+    id: 'gospel',
+    label: 'GOSPEL CHOIR',
+    icon: '⛪',
+    bpm: 88,
+    desc: 'Soulful choir harmonies with organ and claps',
+    code: `setCps(88/60/4)
+
+// GOSPEL SUNDAY
+
+$choir: note("<[c3,e3,g3,b3] [f3,a3,c4,e4] [g3,b3,d4,f4] [c3,e3,g3,c4]>")
+  .s("gm_choir_aahs").gain(.35)
+  .lpf(sine.range(800,2500).slow(16))
+  .room(.7).delay(.15).delayfeedback(.25)
+  .attack(.15).rel(2).slow(2)
+  .orbit(0).scope()
+
+$oohs: note("<[e4,g4] [a4,c5] [b4,d5] [g4,c5]>")
+  .s("gm_voice_oohs").gain(.18)
+  .lpf(2000).room(.8).delay(.2).delayfeedback(.3)
+  .attack(.2).rel(3).pan(sine.range(.3,.7).slow(8))
+  .slow(2).orbit(1).scope()
+
+$organ: note("<[c2,e2,g2,c3] [f2,a2,c3,f3] [g2,b2,d3,g3] [c2,e2,g2,c3]>")
+  .s("gm_church_organ").gain(.22)
+  .lpf(1200).room(.5).slow(2)
+  .orbit(2).scope()
+
+$kick: s("[bd ~ ~ ~] ~ [~ bd] ~").bank("RolandTR808")
+  .gain(.7).lpf(300).shape(.1)
+  .orbit(3).scope()
+
+$clap: s("~ [cp ~ cp] ~ [cp ~ ~ cp]").bank("RolandTR808")
+  .gain(.4).room(.5).delay(.1)
+  .orbit(4).scope()
+
+$bass: note("<c2 f1 g1 c2>")
+  .s("gm_electric_bass_finger").gain(.35)
+  .lpf(400).shape(.08).slow(2)
+  .orbit(5).scope()
+`,
+  },
+  {
+    id: 'synthwave',
+    label: 'SYNTHWAVE',
+    icon: '🌆',
+    bpm: 118,
+    desc: '80s retro synths with gated reverb and arps',
+    code: `setCps(118/60/4)
+
+// MIDNIGHT DRIVE
+
+$lead: n("<0 4 7 11 12 11 7 4>*2").scale("A4:minor")
+  .s("supersaw").gain(.25)
+  .lpf(sine.range(600,3000).slow(8)).lpq(4)
+  .room(.6).delay(.25).delayfeedback(.4)
+  .detune(2).orbit(0).scope()
+
+$pad: note("<[a2,c3,e3] [f2,a2,c3] [g2,b2,d3] [e2,g2,b2]>")
+  .s("gm_pad_warm").gain(.2)
+  .lpf(perlin.range(400,1800).slow(12))
+  .room(.85).attack(.3).rel(4)
+  .slow(2).orbit(1).scope()
+
+$synchoir: note("<[a3,e4] [c4,g4] [d4,a4] [e4,b4]>")
+  .s("gm_synth_choir").gain(.1)
+  .lpf(1500).room(.7).delay(.3).delayfeedback(.45)
+  .attack(.25).rel(3).slow(4)
+  .orbit(2).scope()
+
+$kick: s("bd*4").gain(.85)
+  .shape(.25).lpf(250)
+  .duck(2).duckdepth(.7).duckattack(.15)
+  .orbit(3).scope()
+
+$snare: s("~ sd ~ sd").bank("RolandTR909")
+  .gain(.55).room(.6).delay(.08)
+  .orbit(4).scope()
+
+$hats: s("hh*8").gain("[.15 .3]*4")
+  .speed("[1 1.2 1 1.4]*2").hpf(1000)
+  .orbit(5).scope()
+
+$bass: n("<0 0 -3 -5>*4").scale("A1:minor")
+  .s("gm_synth_bass_1").gain(.4)
+  .lpf(slider(500, 80, 2000)).lpq(6)
+  .shape(.2).orbit(6).scope()
+`,
+  },
+  {
+    id: 'trap',
+    label: 'TRAP',
+    icon: '💎',
+    bpm: 145,
+    desc: 'Hard 808s, rolling hats, dark melodies',
+    code: `setCps(145/60/4)
+
+// TRAP SEASON
+
+$kick: s("bd ~ ~ ~ bd ~ ~ ~ bd ~ ~ ~ bd ~ ~ [~ bd]")
+  .bank("RolandTR808").gain(.9)
+  .shape(.4).lpf(200)
+  .orbit(0).scope()
+
+$hihat: s("hh*16").bank("RolandTR808")
+  .gain("[.15 .1 .2 .1 .15 .1 .25 .1]*2")
+  .speed("[1 1.2 1 1.5 1 1.3 1 1.8]*2")
+  .hpf(1200).orbit(1).scope()
+
+$oh: s("[~ ~ ~ ~] [~ ~ oh ~] [~ ~ ~ ~] [~ oh ~ ~]")
+  .bank("RolandTR808").gain(.25)
+  .hpf(800).orbit(2).scope()
+
+$clap: s("~ cp ~ ~").bank("RolandTR808")
+  .gain(.5).room(.3).delay(.06)
+  .orbit(3).scope()
+
+$bass: note("<a0 ~ ~ a0 ~ ~ a0 ~ a0 ~ ~ ~ a0 ~ ~ [~ a0]>")
+  .s("sine").gain(.55)
+  .lpf(120).shape(.3).rel(.8)
+  .orbit(4).scope()
+
+$melody: n("<0 ~ 7 ~ 5 ~ 3 ~ 0 ~ 7 ~ [10 7] ~ 3 ~>").scale("A3:minor")
+  .s("gm_music_box").gain(.15)
+  .lpf(2500).room(.4).delay(.2).delayfeedback(.35)
+  .orbit(5).scope()
+
+$vox: note("<[a3,c4,e4] ~ ~ ~ [g3,b3,d4] ~ ~ ~>")
+  .s("gm_voice_oohs").gain(.08)
+  .lpf(1800).room(.6).delay(.25).delayfeedback(.4)
+  .attack(.15).rel(2).slow(2)
+  .orbit(6).scope()
+`,
+  },
+  {
+    id: 'jazz',
+    label: 'JAZZY KEYS',
+    icon: '🎷',
+    bpm: 96,
+    desc: 'Walking bass, Rhodes, sax with swing feel',
+    code: `setCps(96/60/4)
+
+// SMOKY JAZZ CLUB
+
+$rhodes: note("<[d3,f3,a3,c4] [g2,b2,d3,f3] [c3,e3,g3,b3] [a2,c3,e3,g3]>")
+  .s("gm_epiano1").gain(.25)
+  .lpf(sine.range(1200,2800).slow(16))
+  .room(.45).delay(.15).delayfeedback(.25)
+  .slow(2).orbit(0).scope()
+
+$sax: n("<0 2 4 5 7 5 4 2>").scale("D4:dorian")
+  .s("gm_tenor_sax").gain(.18)
+  .lpf(2200).room(.35).delay(.1)
+  .attack(.05).rel(.8)
+  .orbit(1).scope()
+
+$bass: note("<d2 [~ d2] g1 [~ g1] c2 [~ c2] a1 [~ a1]>")
+  .s("gm_acoustic_bass").gain(.35)
+  .lpf(600).shape(.05).room(.15)
+  .orbit(2).scope()
+
+$kick: s("[bd ~ ~ bd] ~ [~ bd] ~").bank("RolandTR808")
+  .gain(.45).lpf(350).room(.2)
+  .orbit(3).scope()
+
+$ride: s("ride*8").gain("[.1 .15 .12 .18]*2")
+  .speed("[1 1.05]*4").hpf(1500)
+  .pan(sine.range(.3,.7).slow(6))
+  .orbit(4).scope()
+
+$brush: s("~ [sd:3 ~] ~ [~ sd:3]").bank("RolandTR808")
+  .gain(.15).lpf(1800).room(.3)
+  .orbit(5).scope()
+`,
+  },
+  {
+    id: 'reggaeton',
+    label: 'REGGAETON',
+    icon: '🔊',
+    bpm: 95,
+    desc: 'Dembow rhythm with brass and vocal chops',
+    code: `setCps(95/60/4)
+
+// DEMBOW HEAT
+
+$kick: s("bd ~ ~ bd ~ ~ bd ~").bank("RolandTR808")
+  .gain(.85).shape(.3).lpf(200)
+  .orbit(0).scope()
+
+$snare: s("~ ~ sd ~ ~ sd ~ [sd ~]").bank("RolandTR909")
+  .gain(.55).room(.2)
+  .orbit(1).scope()
+
+$dembow: s("[~ rim] [~ rim] [~ rim] [~ rim]").bank("RolandTR808")
+  .gain(.35).room(.15).speed(1.1)
+  .orbit(2).scope()
+
+$hats: s("oh*8").bank("RolandTR808")
+  .gain("[.1 .2 .1 .15]*2")
+  .speed("[1 1.5]*4").hpf(1200)
+  .orbit(3).scope()
+
+$brass: note("<[g3,bb3,d4] [f3,a3,c4] [eb3,g3,bb3] [f3,a3,c4]>")
+  .s("gm_brass_section").gain(.2)
+  .lpf(1600).attack(.05).rel(.5)
+  .room(.25).slow(2)
+  .orbit(4).scope()
+
+$voxchop: note("<g4 ~ bb4 ~ a4 ~ g4 ~>")
+  .s("gm_choir_aahs").gain(.12)
+  .lpf(2000).chop(4).room(.3)
+  .delay(.12).delayfeedback(.2)
+  .orbit(5).scope()
+
+$bass: note("<g1 ~ ~ g1 f1 ~ ~ f1>")
+  .s("sine").gain(.5)
+  .lpf(150).shape(.2).rel(.6)
+  .orbit(6).scope()
+`,
+  },
+  {
+    id: 'edm',
+    label: 'EDM / BIG ROOM',
+    icon: '🎆',
+    bpm: 128,
+    desc: 'Festival drops with supersaw builds and vocal stabs',
+    code: `setCps(128/60/4)
+
+// FESTIVAL MAIN STAGE
+
+$kick: s("bd*4").gain(.9)
+  .shape(.25).lpf(250)
+  .duck(2).duckdepth(.85).duckattack(.15)
+  .orbit(0).scope()
+
+$clap: s("~ cp ~ cp").bank("RolandTR909")
+  .gain(.5).room(.4).delay(.06)
+  .orbit(1).scope()
+
+$drop: n("<0 0 3 5 0 0 7 5>*2").scale("E3:minor")
+  .s("supersaw").gain(.55)
+  .lpf(slider(1500, 200, 4000)).lpq(3)
+  .detune(3).room(.3)
+  .duck(0).duckdepth(.7).duckattack(.1)
+  .orbit(2).scope()
+
+$voxstab: note("<[e4,g4,b4] ~ ~ ~ [d4,g4,b4] ~ ~ ~>")
+  .s("gm_synth_choir").gain(.2)
+  .lpf(3000).room(.5).chop(8)
+  .delay(.15).delayfeedback(.3)
+  .orbit(3).scope()
+
+$hats: s("hh*16").gain(perlin.range(.08,.22).slow(2))
+  .speed("[1 1.3 1 1.5]*4").hpf(1200)
+  .orbit(4).scope()
+
+$bass: n("<0 0 3 5>*2").scale("E1:minor")
+  .s("sawtooth").gain(.4)
+  .lpf(300).shape(.35).lpq(4)
+  .duck(0).duckdepth(.6).duckattack(.1)
+  .orbit(5).scope()
+
+$riser: note("e3")
+  .s("gm_pad_sweep").gain(sine.range(0,.12).slow(32))
+  .lpf(sine.range(200,4000).slow(32))
+  .room(.7).slow(8)
+  .orbit(6).scope()
+`,
+  },
+  {
+    id: 'afrobeat',
+    label: 'AFROBEATS',
+    icon: '🌍',
+    bpm: 108,
+    desc: 'Afrobeat grooves with kalimba and percussion',
+    code: `setCps(108/60/4)
+
+// AFRO GROOVE
+
+$kick: s("[bd ~ bd ~] [~ bd ~ bd]").bank("RolandTR808")
+  .gain(.75).lpf(300).shape(.15)
+  .orbit(0).scope()
+
+$snare: s("~ [sd ~] ~ [~ sd]").bank("RolandTR909")
+  .gain(.45).room(.25).delay(.05)
+  .orbit(1).scope()
+
+$perc: s("[rim cp] [~ rim] [cp ~] [rim ~]").bank("RolandTR808")
+  .gain(.3).room(.2).speed("[1 1.15]*2")
+  .orbit(2).scope()
+
+$shaker: s("hh*16").gain("[.08 .15 .1 .18]*4")
+  .speed("[2 2.3 2 2.5]*4").hpf(2000)
+  .orbit(3).scope()
+
+$kalimba: n("<0 2 4 7 9 7 4 2>*2").scale("G4:major")
+  .s("gm_kalimba").gain(.2)
+  .room(.5).delay(.2).delayfeedback(.35)
+  .lpf(3500).orbit(4).scope()
+
+$choir: note("<[g3,b3,d4] [c4,e4,g4] [d4,f4,a4] [c4,e4,g4]>")
+  .s("gm_choir_aahs").gain(.12)
+  .lpf(1800).room(.5).attack(.1).rel(2)
+  .slow(2).orbit(5).scope()
+
+$bass: note("<g1 [~ g1] c2 [~ c2] d2 [~ d2] c2 [~ c2]>")
+  .s("gm_synth_bass_1").gain(.35)
+  .lpf(500).shape(.1).orbit(6).scope()
+
+$guitar: n("<0 4 7 4>*4").scale("G3:major")
+  .s("gm_electric_guitar_clean").gain(.12)
+  .lpf(2000).room(.3).delay(.1)
+  .orbit(7).scope()
+`,
+  },
+  {
+    id: 'cinematic',
+    label: 'CINEMATIC',
+    icon: '🎬',
+    bpm: 65,
+    desc: 'Epic strings, choir, and thunderous percussion',
+    code: `setCps(65/60/4)
+
+// EPIC CINEMATIC
+
+$strings: note("<[d2,a2,d3,f3] [c2,g2,c3,e3] [bb1,f2,bb2,d3] [a1,e2,a2,c3]>")
+  .s("gm_string_ensemble_1").gain(.3)
+  .lpf(perlin.range(600,2500).slow(16))
+  .room(.8).attack(.4).rel(4)
+  .slow(4).orbit(0).scope()
+
+$choir: note("<[d3,f3,a3] [c3,e3,g3] [bb2,d3,f3] [a2,c3,e3]>")
+  .s("gm_choir_aahs").gain(.2)
+  .lpf(1800).room(.85).delay(.2).delayfeedback(.3)
+  .attack(.3).rel(3).slow(4)
+  .orbit(1).scope()
+
+$voxhigh: note("<a4 g4 f4 e4>")
+  .s("gm_voice_oohs").gain(.1)
+  .lpf(2500).room(.9).delay(.3).delayfeedback(.45)
+  .attack(.5).rel(4).slow(8)
+  .orbit(2).scope()
+
+$horn: note("<d3 c3 bb2 a2>")
+  .s("gm_french_horn").gain(.15)
+  .lpf(1400).room(.6).attack(.2).rel(2)
+  .slow(4).orbit(3).scope()
+
+$timpani: s("[bd:5 ~ ~ ~] ~ [~ bd:5] ~")
+  .gain(.45).speed(.5).lpf(250).room(.6)
+  .slow(2).orbit(4).scope()
+
+$cymbal: s("~ ~ ~ [crash ~]")
+  .gain(sine.range(.05,.2).slow(16))
+  .room(.7).hpf(600).slow(4)
+  .orbit(5).scope()
+
+$cello: note("<d2 c2 bb1 a1>")
+  .s("gm_cello").gain(.2)
+  .lpf(800).room(.5).attack(.1).rel(3)
+  .slow(4).orbit(6).scope()
+`,
+  },
+  {
+    id: 'phonk',
+    label: 'PHONK',
+    icon: '👹',
+    bpm: 140,
+    desc: 'Dark Memphis beats with cowbell and distorted choir',
+    code: `setCps(140/60/4)
+
+// DRIFT PHONK
+
+$kick: s("bd*4").bank("RolandTR808")
+  .gain(.9).shape(.4).lpf(200)
+  .orbit(0).scope()
+
+$clap: s("~ cp ~ cp").bank("RolandTR808")
+  .gain(.5).room(.25)
+  .orbit(1).scope()
+
+$cowbell: s("~ [rim rim] ~ [rim ~ rim ~]").bank("RolandTR808")
+  .gain(.3).speed(1.8).hpf(2000)
+  .delay(.08).delayfeedback(.15)
+  .orbit(2).scope()
+
+$hats: s("oh*8").bank("RolandTR808")
+  .gain("[.1 .2 .15 .25]*2")
+  .speed("[1.5 1.8]*4").hpf(1500)
+  .orbit(3).scope()
+
+$darkchoir: note("<[a2,c3,e3] ~ [g2,b2,d3] ~>")
+  .s("gm_choir_aahs").gain(.2)
+  .lpf(800).distort(.4).crush(12)
+  .room(.5).delay(.2).delayfeedback(.3)
+  .slow(2).orbit(4).scope()
+
+$bass: note("<a0 ~ a0 ~ a0 ~ a0 [a0 g0]>")
+  .s("sine").gain(.5)
+  .lpf(100).shape(.5).rel(.5)
+  .orbit(5).scope()
+
+$melody: n("<0 3 5 7 8 7 5 3>").scale("A3:phrygian")
+  .s("gm_music_box").gain(.12)
+  .lpf(1600).crush(10).room(.3)
+  .delay(.15).delayfeedback(.25)
+  .orbit(6).scope()
+`,
+  },
+  {
+    id: 'rnb',
+    label: 'R&B',
+    icon: '💜',
+    bpm: 80,
+    desc: 'Smooth R&B with vocal pads and neo-soul keys',
+    code: `setCps(80/60/4)
+
+// SMOOTH R&B
+
+$rhodes: note("<[e3,g3,b3,d4] [a2,c3,e3,g3] [d3,f3,a3,c4] [g2,b2,d3,f3]>")
+  .s("gm_epiano1").gain(.22)
+  .lpf(sine.range(1000,2200).slow(16))
+  .room(.5).delay(.15).delayfeedback(.3)
+  .slow(2).orbit(0).scope()
+
+$voxpad: note("<[e3,b3] [a3,e4] [d4,a4] [g3,d4]>")
+  .s("gm_voice_oohs").gain(.12)
+  .lpf(1600).room(.7).delay(.25).delayfeedback(.4)
+  .attack(.2).rel(3).slow(4)
+  .pan(sine.range(.3,.7).slow(10))
+  .orbit(1).scope()
+
+$choir: note("<[e4,g4] [c4,e4] [d4,f4] [b3,d4]>")
+  .s("gm_synth_choir").gain(.08)
+  .lpf(2000).room(.6).attack(.15).rel(2)
+  .slow(4).orbit(2).scope()
+
+$kick: s("[bd ~ ~ ~] ~ [~ bd] ~").bank("RolandTR808")
+  .gain(.55).lpf(350).shape(.08)
+  .orbit(3).scope()
+
+$snare: s("~ [~ sd] ~ [~ ~ sd ~]").bank("RolandTR808")
+  .gain(.3).room(.35).lpf(2000)
+  .orbit(4).scope()
+
+$hats: s("hh*16").gain("[.05 .12 .08 .15]*4")
+  .speed("[1.5 1.8 1.5 2]*4").hpf(1500)
+  .orbit(5).scope()
+
+$bass: note("<e1 a1 d2 g1>")
+  .s("gm_electric_bass_finger").gain(.3)
+  .lpf(500).shape(.05).room(.1)
+  .slow(2).orbit(6).scope()
+`,
+  },
   {
     id: 'blank',
     label: 'BLANK',

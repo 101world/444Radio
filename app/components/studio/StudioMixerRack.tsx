@@ -1621,7 +1621,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   const addMenuRef = useRef<HTMLDivElement>(null)
 
   // ── Grid zoom & pan state ──
-  const [gridZoom, setGridZoom] = useState(1)
+  const [gridZoom, setGridZoom] = useState(1.45)
   const [gridPan, setGridPan] = useState({ x: 0, y: 0 })
   const isPanningRef = useRef(false)
   const panStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 })
@@ -2079,7 +2079,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   }, [])
 
   const handleZoomReset = useCallback(() => {
-    setGridZoom(1)
+    setGridZoom(1.45)
     setGridPan({ x: 0, y: 0 })
   }, [])
 
