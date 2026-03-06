@@ -1018,6 +1018,12 @@ export default function StudioPianoRoll({
   // Tool state (V = pointer, C = split/scissors)
   const [activeTool, setActiveTool] = useState<'pointer' | 'split'>('pointer')
 
+  // Input mode: 'open' = single notes, 'chord' = auto-place triads (root+3rd+5th from scale)
+  const [inputMode, setInputMode] = useState<'open' | 'chord'>('open')
+
+  // Strict scale: when true, only in-scale notes can be placed; when false, all 12 semitones are available
+  const [strictScale, setStrictScale] = useState(true)
+
   // Note drag-move state
   const isDraggingNotes = useRef(false)
   const dragStartCell = useRef<{ midi: number; step: number } | null>(null)
@@ -1093,26 +1099,30 @@ export default function StudioPianoRoll({
 
       if (cyclePos !== null && cyclePos >= 0) {
         // Strudel cycle position: fractional cycle count (e.g. 2.75 = beat 4 of bar 3)
-        // In Strudel, <A B C> alternates: A on cycle 0, B on cycle 1, C on cycle 2.
-        // .slow(N) stretches each alternation entry over N real cycles.
-        // Total pattern span in cycles = bars * slowFactor
+        // In Strudel, 1 cycle = 1 bar. With .slow(N), the pattern spans N real cycles.
+        // A 4-bar pattern with .slow(1) means each bar = 1 cycle, total = 4 cycles.
+        // A 1-bar pattern with .slow(1) means 1 cycle, it just loops faster.
+        // Total pattern span in real Strudel cycles = bars × slowFactor
         const totalCycleSpan = bars * slowFactor
         const totalGridSteps = bars * stepsPerBar
-        // Map cycle position into the pattern's span, then to grid steps
-        const posInPattern = (cyclePos % totalCycleSpan) / totalCycleSpan
-        const newStep = posInPattern * totalGridSteps
-        // Only update state if position changed meaningfully (reduces re-renders)
-        setPlayheadStep(prev => Math.abs(prev - newStep) > 0.3 ? newStep : prev)
+        // Map the global cycle position into this channel's pattern span
+        // Use modulo to wrap correctly regardless of how many global cycles have passed
+        const posInPattern = ((cyclePos % totalCycleSpan) + totalCycleSpan) % totalCycleSpan
+        const fractionalStep = (posInPattern / totalCycleSpan) * totalGridSteps
+        // Sub-step precision: don't round, use fractional for smooth movement
+        setPlayheadStep(prev => Math.abs(prev - fractionalStep) > 0.15 ? fractionalStep : prev)
       } else {
         // Fallback: compute from BPM + elapsed time
         // With .slow(N), each bar takes N × (4 beats) to play
+        // 1 bar = 4 beats at BPM. With slowFactor, each bar takes slowFactor × (4 × 60000/BPM) ms
         const barDurationMs = (4 * 60000 * slowFactor) / projectBpm
         const elapsed = performance.now() - playheadStartTime.current
         const totalGridSteps = bars * stepsPerBar
-        const cycleMs = bars * barDurationMs
-        const posInCycle = (elapsed % cycleMs) / cycleMs
-        const newStep = posInCycle * totalGridSteps
-        setPlayheadStep(prev => Math.abs(prev - newStep) > 0.3 ? newStep : prev)
+        const totalPatternMs = bars * barDurationMs
+        // Wrap elapsed time into the pattern's total duration
+        const posInPattern = ((elapsed % totalPatternMs) + totalPatternMs) % totalPatternMs
+        const fractionalStep = (posInPattern / totalPatternMs) * totalGridSteps
+        setPlayheadStep(prev => Math.abs(prev - fractionalStep) > 0.15 ? fractionalStep : prev)
       }
       playheadRAF.current = requestAnimationFrame(animate)
     }
@@ -1657,8 +1667,8 @@ export default function StudioPianoRoll({
 
   // â”€â”€ Toggle note â”€â”€
   const toggleNote = useCallback((midi: number, step: number, forceMode?: 'add' | 'remove') => {
-    // Block out-of-scale notes in ALL modes (scale is mandatory)
-    if (!scaleMidiSet.has(midi)) return
+    // Block out-of-scale notes only when strict scale is enabled
+    if (strictScale && !scaleMidiSet.has(midi)) return
 
     // In loop recording mode, override step to current playhead position
     const effectiveStep = isLoopRecording ? loopCurrentStep : step
@@ -1668,21 +1678,61 @@ export default function StudioPianoRoll({
       const next = new Map(prev)
       const mode = forceMode || (prev.has(key) ? 'remove' : 'add')
       if (mode === 'remove') {
-        // Also check if this cell is covered by a longer note
-        let found = false
-        prev.forEach((data, k) => {
-          const [mStr, sStr] = k.split(':')
-          if (parseInt(mStr) === midi) {
-            const s = parseInt(sStr)
-            if (step >= s && step < s + data.length) {
-              next.delete(k)
-              found = true
+        if (inputMode === 'chord') {
+          // In chord mode, remove the full triad at this step
+          const deg = midiToDegree(midi, scale)
+          if (deg !== null) {
+            const third = degreeToMidi(deg + 2, scale)
+            const fifth = degreeToMidi(deg + 4, scale)
+            // Remove root, 3rd, 5th at this step
+            for (const m of [midi, third, fifth]) {
+              prev.forEach((data, k) => {
+                const [mStr, sStr] = k.split(':')
+                if (parseInt(mStr) === m) {
+                  const s = parseInt(sStr)
+                  if (effectiveStep >= s && effectiveStep < s + data.length) {
+                    next.delete(k)
+                  }
+                }
+              })
             }
+          } else {
+            next.delete(key)
           }
-        })
-        if (!found) next.delete(key)
+        } else {
+          // Open mode: remove only the clicked note
+          let found = false
+          prev.forEach((data, k) => {
+            const [mStr, sStr] = k.split(':')
+            if (parseInt(mStr) === midi) {
+              const s = parseInt(sStr)
+              if (step >= s && step < s + data.length) {
+                next.delete(k)
+                found = true
+              }
+            }
+          })
+          if (!found) next.delete(key)
+        }
       } else {
-        next.set(key, { length: 1 })
+        if (inputMode === 'chord') {
+          // Chord mode: place a strict diatonic triad (root + 3rd + 5th)
+          // Only notes that exist in the scale are placed — strict scale rules
+          const deg = midiToDegree(midi, scale)
+          if (deg !== null) {
+            const third = degreeToMidi(deg + 2, scale)
+            const fifth = degreeToMidi(deg + 4, scale)
+            next.set(`${midi}:${effectiveStep}`, { length: 1 })
+            if (scaleMidiSet.has(third)) next.set(`${third}:${effectiveStep}`, { length: 1 })
+            if (scaleMidiSet.has(fifth)) next.set(`${fifth}:${effectiveStep}`, { length: 1 })
+          } else {
+            // Clicked note isn't a scale degree — place single note only
+            next.set(key, { length: 1 })
+          }
+        } else {
+          // Open mode: single note
+          next.set(key, { length: 1 })
+        }
         if (onNotePreview) {
           onNotePreview(midi)
         } else {
@@ -1692,7 +1742,7 @@ export default function StudioPianoRoll({
       return next
     })
     setHasUserEdited(true)
-  }, [soundSource, scaleMidiSet, isNoteMode, onNotePreview, isLoopRecording, loopCurrentStep])
+  }, [soundSource, scaleMidiSet, isNoteMode, onNotePreview, isLoopRecording, loopCurrentStep, inputMode, scale, strictScale])
 
   // ── Loop Recording: start/stop functions ──
   const startLoopRecording = useCallback(() => {
@@ -1770,7 +1820,7 @@ export default function StudioPianoRoll({
     e.preventDefault()
 
     // Ctrl+click on grid: stamp a triad chord (root + 3rd + 5th) at this position
-    if (e.ctrlKey && scaleMidiSet.has(midi)) {
+    if (e.ctrlKey && (scaleMidiSet.has(midi) || !strictScale)) {
       const deg = midiToDegree(midi, scale)
       if (deg !== null) {
         const third = degreeToMidi(deg + 2, scale)
@@ -1779,8 +1829,8 @@ export default function StudioPianoRoll({
         setNoteMap(prev => {
           const next = new Map(prev)
           next.set(`${midi}:${step}`, { length: chordLen })
-          if (scaleMidiSet.has(third)) next.set(`${third}:${step}`, { length: chordLen })
-          if (scaleMidiSet.has(fifth)) next.set(`${fifth}:${step}`, { length: chordLen })
+          if (!strictScale || scaleMidiSet.has(third)) next.set(`${third}:${step}`, { length: chordLen })
+          if (!strictScale || scaleMidiSet.has(fifth)) next.set(`${fifth}:${step}`, { length: chordLen })
           return next
         })
         setHasUserEdited(true)
@@ -1881,15 +1931,15 @@ export default function StudioPianoRoll({
         const newMidi = n.midi + deltaMidi
         const newStep = Math.max(0, n.step + deltaStep)
         if (newStep < totalStepsMax) {
-          // Snap to nearest in-scale note if target is out of scale
+          // Snap to nearest in-scale note if target is out of scale (only in strict mode)
           let targetMidi = newMidi
-          if (!scaleMidiSet.has(targetMidi)) {
+          if (strictScale && !scaleMidiSet.has(targetMidi)) {
             for (let d = 1; d <= 2; d++) {
               if (scaleMidiSet.has(targetMidi + d)) { targetMidi = targetMidi + d; break }
               if (scaleMidiSet.has(targetMidi - d)) { targetMidi = targetMidi - d; break }
             }
           }
-          if (scaleMidiSet.has(targetMidi)) {
+          if (!strictScale || scaleMidiSet.has(targetMidi)) {
             const newKey = `${targetMidi}:${newStep}`
             next.set(newKey, { length: n.length })
             newSel.add(newKey)
@@ -2114,20 +2164,20 @@ export default function StudioPianoRoll({
           // Remove old positions
           toMove.forEach(n => next.delete(n.key))
 
-          // Add at new positions, snapping to scale
+          // Add at new positions, snapping to scale (only in strict mode)
           toMove.forEach(n => {
             let newMidi = n.midi + dMidi
             const newStep = Math.max(0, Math.min(n.step + dStep, totalMax - 1))
 
-            // For up/down: walk to nearest in-scale note
-            if (dMidi !== 0 && !scaleMidiSet.has(newMidi)) {
+            // For up/down: walk to nearest in-scale note (only when strict scale is on)
+            if (strictScale && dMidi !== 0 && !scaleMidiSet.has(newMidi)) {
               const dir = dMidi > 0 ? 1 : -1
               for (let walk = 1; walk <= 12; walk++) {
                 if (scaleMidiSet.has(newMidi + dir * walk)) { newMidi = newMidi + dir * walk; break }
               }
             }
 
-            if (scaleMidiSet.has(newMidi) && newStep < totalMax) {
+            if ((!strictScale || scaleMidiSet.has(newMidi)) && newStep < totalMax) {
               const newKey = `${newMidi}:${newStep}`
               next.set(newKey, { length: n.length })
               newSel.add(newKey)
@@ -2376,6 +2426,58 @@ export default function StudioPianoRoll({
               Bar {Math.floor(playheadStep / stepsPerBar) + 1} · Beat {Math.floor((playheadStep % stepsPerBar) / (stepsPerBar / 4)) + 1}
             </span>
           )}
+
+          <div className="w-px h-3.5 bg-white/[0.08]" />
+
+          {/* Input mode toggle: Open / Chord */}
+          <div className="flex items-center gap-0 rounded-lg" style={{ background: '#0a0b0d', boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22' }}>
+            <button
+              onClick={() => setInputMode('open')}
+              className="px-2 py-0.5 text-[7px] font-bold cursor-pointer transition-all rounded-l-lg"
+              style={{
+                background: inputMode === 'open' ? '#16181d' : 'transparent',
+                color: inputMode === 'open' ? '#e8ecf0' : '#5a616b',
+                border: 'none',
+                boxShadow: inputMode === 'open' ? 'inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22' : 'none',
+              }}
+              title="Open mode: place single notes"
+            >
+              ♪ Open
+            </button>
+            <button
+              onClick={() => setInputMode('chord')}
+              className="px-2 py-0.5 text-[7px] font-bold cursor-pointer transition-all rounded-r-lg"
+              style={{
+                background: inputMode === 'chord' ? '#16181d' : 'transparent',
+                color: inputMode === 'chord' ? '#b8a47f' : '#5a616b',
+                border: 'none',
+                boxShadow: inputMode === 'chord' ? 'inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22' : 'none',
+              }}
+              title="Chord mode: click places a diatonic triad (root + 3rd + 5th from the scale)"
+            >
+              🎹 Chord
+            </button>
+          </div>
+
+          {/* Strict Scale toggle */}
+          <button
+            onClick={() => setStrictScale(s => !s)}
+            className="px-2 py-0.5 text-[7px] font-bold cursor-pointer transition-all rounded-lg flex items-center gap-1"
+            style={{
+              background: strictScale ? '#16181d' : '#0a0b0d',
+              color: strictScale ? '#7fa998' : '#5a616b',
+              border: 'none',
+              borderRadius: '8px',
+              boxShadow: strictScale
+                ? 'inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22'
+                : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+            }}
+            title={strictScale
+              ? 'Strict Scale ON — only scale notes can be placed. Click to allow chromatic notes.'
+              : 'Strict Scale OFF — all 12 semitones available. Click to lock to scale.'}
+          >
+            {strictScale ? '🔒 Scale' : '🔓 Free'}
+          </button>
 
           <div className="w-px h-3.5 bg-white/[0.08]" />
 
@@ -3163,7 +3265,7 @@ export default function StudioPianoRoll({
             const black = isBlackKey(midi)
             const inScale = scaleMidiSet.has(midi)
             const isRoot = midi % 12 === NOTE_NAMES.indexOf(parseScaleStr(scale).root)
-            const canClick = inScale
+            const canClick = inScale || !strictScale
 
             // Collect note-bar starts for this MIDI row
             const rowNotes: { step: number; length: number; key: string }[] = []
