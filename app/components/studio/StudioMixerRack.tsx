@@ -11,11 +11,13 @@
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react'
-import { ChevronDown, ChevronRight, Plus, Volume2, VolumeX, Headphones, GripVertical, Link, Unlink, X, Music, Clock, Piano, Grid3X3, Copy, Trash2, RotateCcw, Mic, ZoomIn, ZoomOut, Maximize2, MoreVertical } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus, Volume2, VolumeX, Headphones, GripVertical, Link, Unlink, X, Music, Clock, Piano, Grid3X3, Copy, Trash2, RotateCcw, Mic, ZoomIn, ZoomOut, Maximize2, MoreVertical, BookOpen, Sparkles, Search } from 'lucide-react'
 import StudioKnob from './StudioKnob'
 import ChannelLCD from './ChannelLCD'
 import WaveformViewer from './WaveformViewer'
+import EffectsDocModal from './EffectsDocModal'
 import { detectPitch, semitonesBetweenRoots, semitonesToSpeed } from '@/lib/pitch-detection'
+import { FX_PRESETS, FX_PRESET_CATEGORIES, type FxPresetCategory } from '@/lib/fx-presets'
 import {
   parseStrudelCode, updateParamInCode, insertEffectInChannel,
   swapSoundInChannel, swapBankInChannel, addSoundToChannel, renameChannel, duplicateChannel,
@@ -1602,6 +1604,10 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   const [dragOverChannel, setDragOverChannel] = useState<number | null>(null)
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [fxDropdownOpen, setFxDropdownOpen] = useState(false)
+  const [fxPanelMode, setFxPanelMode] = useState<'effects' | 'presets'>('effects')
+  const [presetCategory, setPresetCategory] = useState<FxPresetCategory>('synth')
+  const [presetSearch, setPresetSearch] = useState('')
+  const [showDocsModal, setShowDocsModal] = useState(false)
   const [waveformModalOpen, setWaveformModalOpen] = useState(false)
   const [selectedWaveformUrl, setSelectedWaveformUrl] = useState<string>('')
   const [selectedWaveformChannel, setSelectedWaveformChannel] = useState<number>(-1)
@@ -2133,13 +2139,38 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     setDragOverChannel(null)
   }, [])
 
+  // ── Apply FX preset (multiple effects) ──
+  const applyPreset = useCallback((channelIdx: number, effects: string[]) => {
+    const currentCode = codeRef.current
+    let newCode = currentCode
+
+    // Apply each effect in sequence
+    for (const effect of effects) {
+      newCode = insertEffectInChannel(newCode, channelIdx, effect)
+    }
+
+    if (newCode !== currentCode) {
+      liveUpdate(newCode)
+    }
+  }, [liveUpdate])
+
   const handleDrop = useCallback(
     (channelIdx: number, e: React.DragEvent) => {
       e.preventDefault()
       setDragOverChannel(null)
 
       try {
-        // ── 1) FX drop ──
+        // ── 1) FX Preset drop (multi-effect chain) ──
+        const presetData = e.dataTransfer.getData('application/x-strudel-preset')
+        if (presetData) {
+          const preset = JSON.parse(presetData)
+          if (preset.effects && Array.isArray(preset.effects)) {
+            applyPreset(channelIdx, preset.effects)
+          }
+          return
+        }
+
+        // ── 2) Single FX drop ──
         const fxData = e.dataTransfer.getData('application/x-strudel-fx')
         if (fxData) {
           const effect = JSON.parse(fxData)
@@ -2158,7 +2189,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
           return
         }
 
-        // ── 2) Sound/bank drop ──
+        // ── 3) Sound/bank drop ──
         const soundData = e.dataTransfer.getData('application/x-strudel-sound')
         if (soundData) {
           const sound = JSON.parse(soundData)
@@ -2179,7 +2210,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
         // Invalid drop data
       }
     },
-    [liveUpdate, channels],
+    [liveUpdate, channels, applyPreset],
   )
 
   // ── Sidechain routing map ──
@@ -2493,33 +2524,188 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
           {/* FX dropdown panel */}
           {fxDropdownOpen && (
             <div
-              className="absolute top-full mt-1.5 left-0 z-50 p-2 min-w-[280px]"
+              className="absolute top-full mt-1.5 left-0 z-50 p-2 min-w-[320px]"
               style={{
                 background: '#111318',
                 border: '1px solid rgba(255,255,255,0.06)',
                 borderRadius: '12px',
                 boxShadow: '6px 6px 12px #050607, -4px -4px 8px #1a1d22',
+                maxHeight: '420px',
+                overflowY: 'auto',
               }}
             >
-              <div className="flex items-center gap-1.5 mb-1.5 px-1">
-                <span className="text-[7px] font-black uppercase tracking-[.2em]" style={{ color: '#5a616b' }}>EFFECTS</span>
-                <span className="text-[5px] ml-auto font-mono" style={{ color: '#5a616b' }}>drag → channel</span>
+              {/* Tab row: FX | PRESETS | 📖 */}
+              <div className="flex items-center gap-1 mb-1.5 px-1">
+                {(['effects', 'presets'] as const).map(mode => (
+                  <button
+                    key={mode}
+                    onClick={() => setFxPanelMode(mode)}
+                    className="cursor-pointer transition-all duration-[120ms]"
+                    style={{
+                      padding: '2px 8px',
+                      fontSize: '7px', fontWeight: 900, letterSpacing: '.12em', textTransform: 'uppercase',
+                      borderRadius: '8px',
+                      color: fxPanelMode === mode ? '#7fa998' : '#5a616b',
+                      background: fxPanelMode === mode ? '#0a0b0d' : 'transparent',
+                      border: 'none',
+                      boxShadow: fxPanelMode === mode ? 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22' : 'none',
+                    }}
+                  >
+                    {mode === 'effects' ? '⚡ FX' : '✨ PRESETS'}
+                  </button>
+                ))}
+                <button
+                  onClick={() => { setShowDocsModal(true); setFxDropdownOpen(false) }}
+                  className="cursor-pointer ml-auto transition-all duration-[120ms] hover:opacity-80"
+                  style={{
+                    padding: '2px 6px',
+                    fontSize: '7px', fontWeight: 900,
+                    borderRadius: '8px',
+                    color: '#5a616b',
+                    background: 'transparent',
+                    border: 'none',
+                  }}
+                  title="Effects documentation"
+                >
+                  <BookOpen size={10} />
+                </button>
               </div>
-              {(['filter', 'space', 'drive', 'mod', 'fm', 'pitch', 'env', 'sidechain', 'dynamics', 'pattern', 'sample'] as const).map(cat => {
-                const fxInCat = DRAGGABLE_EFFECTS.filter(fx => fx.category === cat)
-                if (fxInCat.length === 0) return null
-                const catLabels: Record<string, string> = { filter: 'FILTER', space: 'SPACE', drive: 'DRIVE', mod: 'MOD', fm: 'FM SYNTH', pitch: 'PITCH ENV', env: 'ENVELOPE', sidechain: 'SIDECHAIN', dynamics: 'DYNAMICS', pattern: 'PATTERN', sample: 'SAMPLE' }
-                return (
-                  <div key={cat} className="mb-1.5">
-                    <span className="text-[5px] font-black uppercase tracking-[.15em] px-1" style={{ color: '#5a616b' }}>{catLabels[cat]}</span>
-                    <div className="flex flex-wrap gap-1 mt-0.5">
-                      {fxInCat.map(fx => (
-                        <EffectBadge key={fx.id} effect={fx} />
-                      ))}
-                    </div>
+
+              {/* ── FX Mode: individual draggable effects ── */}
+              {fxPanelMode === 'effects' && (
+                <>
+                  <div className="flex items-center gap-1.5 mb-1.5 px-1">
+                    <span className="text-[7px] font-black uppercase tracking-[.2em]" style={{ color: '#5a616b' }}>EFFECTS</span>
+                    <span className="text-[5px] ml-auto font-mono" style={{ color: '#5a616b' }}>drag → channel</span>
                   </div>
-                )
-              })}
+                  {(['filter', 'space', 'drive', 'mod', 'fm', 'pitch', 'env', 'sidechain', 'dynamics', 'pattern', 'sample'] as const).map(cat => {
+                    const fxInCat = DRAGGABLE_EFFECTS.filter(fx => fx.category === cat)
+                    if (fxInCat.length === 0) return null
+                    const catLabels: Record<string, string> = { filter: 'FILTER', space: 'SPACE', drive: 'DRIVE', mod: 'MOD', fm: 'FM SYNTH', pitch: 'PITCH ENV', env: 'ENVELOPE', sidechain: 'SIDECHAIN', dynamics: 'DYNAMICS', pattern: 'PATTERN', sample: 'SAMPLE' }
+                    return (
+                      <div key={cat} className="mb-1.5">
+                        <span className="text-[5px] font-black uppercase tracking-[.15em] px-1" style={{ color: '#5a616b' }}>{catLabels[cat]}</span>
+                        <div className="flex flex-wrap gap-1 mt-0.5">
+                          {fxInCat.map(fx => (
+                            <EffectBadge key={fx.id} effect={fx} />
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </>
+              )}
+
+              {/* ── PRESETS Mode: preset browser ── */}
+              {fxPanelMode === 'presets' && (
+                <>
+                  {/* Search */}
+                  <div className="relative mb-1.5 px-0.5">
+                    <Search size={9} className="absolute left-2 top-1/2 -translate-y-1/2" style={{ color: '#5a616b' }} />
+                    <input
+                      type="text"
+                      placeholder="Search presets…"
+                      value={presetSearch}
+                      onChange={e => setPresetSearch(e.target.value)}
+                      className="w-full pl-6 pr-2 py-1 text-[8px] font-mono rounded-lg outline-none"
+                      style={{
+                        background: '#0a0b0d',
+                        color: '#9aa7b3',
+                        border: '1px solid rgba(255,255,255,0.04)',
+                        boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22',
+                      }}
+                    />
+                  </div>
+
+                  {/* Category pills */}
+                  <div className="flex flex-wrap gap-1 mb-1.5 px-0.5">
+                    {FX_PRESET_CATEGORIES.map(cat => (
+                      <button
+                        key={cat.key}
+                        onClick={() => { setPresetCategory(cat.key); setPresetSearch('') }}
+                        className="cursor-pointer transition-all duration-[120ms] active:scale-95"
+                        style={{
+                          padding: '1px 6px',
+                          fontSize: '6px', fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase',
+                          borderRadius: '8px',
+                          color: presetCategory === cat.key ? cat.color : '#5a616b',
+                          background: presetCategory === cat.key ? '#0a0b0d' : 'transparent',
+                          border: 'none',
+                          boxShadow: presetCategory === cat.key ? 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22' : 'none',
+                        }}
+                      >
+                        <span className="mr-0.5">{cat.icon}</span> {cat.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Preset list */}
+                  <div className="space-y-1 px-0.5 max-h-[260px] overflow-y-auto">
+                    {(() => {
+                      const q = presetSearch.toLowerCase().trim()
+                      const filtered = FX_PRESETS.filter(p =>
+                        p.category === presetCategory &&
+                        (!q || p.name.toLowerCase().includes(q) || p.tags.some(t => t.includes(q)) || p.desc.toLowerCase().includes(q))
+                      )
+                      if (filtered.length === 0) {
+                        return <span className="text-[7px] italic px-1" style={{ color: '#5a616b' }}>No presets found</span>
+                      }
+                      return filtered.map(preset => (
+                        <div
+                          key={preset.id}
+                          draggable
+                          onDragStart={(e) => {
+                            // Pack as multi-FX — the drop handler treats it like a preset
+                            e.dataTransfer.setData('application/x-strudel-preset', JSON.stringify(preset))
+                            // Also set as regular FX so existing drop handler gets the first effect
+                            e.dataTransfer.setData('application/x-strudel-fx', JSON.stringify({
+                              ...preset,
+                              code: preset.effects[0],
+                              id: preset.id,
+                              label: preset.name,
+                              icon: FX_PRESET_CATEGORIES.find(c => c.key === preset.category)?.icon || '✨',
+                            }))
+                            e.dataTransfer.effectAllowed = 'copyMove'
+                          }}
+                          className="flex flex-col gap-0.5 px-2 py-1.5 rounded-lg cursor-grab active:cursor-grabbing
+                            transition-all duration-[120ms] hover:brightness-125 group"
+                          style={{
+                            background: '#16181d',
+                            border: '1px solid rgba(255,255,255,0.04)',
+                            borderRadius: '10px',
+                            boxShadow: '2px 2px 5px #050607, -2px -2px 5px #1a1d22',
+                          }}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[9px]">{FX_PRESET_CATEGORIES.find(c => c.key === preset.category)?.icon || '✨'}</span>
+                            <span className="text-[8px] font-bold uppercase tracking-wide" style={{ color: FX_PRESET_CATEGORIES.find(c => c.key === preset.category)?.color || '#9aa7b3' }}>
+                              {preset.name}
+                            </span>
+                            <span className="text-[6px] ml-auto font-mono opacity-0 group-hover:opacity-60 transition-opacity" style={{ color: '#5a616b' }}>
+                              {preset.effects.length} fx · drag → ch
+                            </span>
+                          </div>
+                          <span className="text-[6px] leading-tight" style={{ color: '#5a616b' }}>
+                            {preset.desc}
+                          </span>
+                          <div className="flex flex-wrap gap-0.5 mt-0.5">
+                            {preset.effects.slice(0, 5).map((fx, i) => (
+                              <span key={i} className="text-[5px] font-mono px-1 py-0.5 rounded" style={{ background: '#0a0b0d', color: '#7fa998' }}>
+                                {fx}
+                              </span>
+                            ))}
+                            {preset.effects.length > 5 && (
+                              <span className="text-[5px] font-mono px-1 py-0.5" style={{ color: '#5a616b' }}>
+                                +{preset.effects.length - 5} more
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    })()}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
