@@ -47,6 +47,106 @@ const TYPE_RELEVANT_GROUPS: Record<string, Set<string>> = {
   stack:  new Set(['FILTER', 'DRIVE', 'SPACE', 'MOD', 'ENV', 'CHAIN']),
 }
 
+// ─── FX Descriptions — what each effect does to the sound ───
+const FX_DESCRIPTIONS: Record<string, string> = {
+  // FILTER
+  lpf: 'Low-pass filter cutoff. Removes high frequencies above this point — makes sound darker and muffled.',
+  lp: 'Low-pass filter cutoff (alias). Same as lpf — cuts highs, keeps lows warm.',
+  hpf: 'High-pass filter cutoff. Removes low frequencies below this point — thins out the sound.',
+  hp: 'High-pass filter cutoff (alias). Same as hpf — removes bass rumble.',
+  lpq: 'Low-pass resonance (Q). Boosts frequencies near the cutoff — adds a sharp "peak" or whistle.',
+  hpq: 'High-pass resonance (Q). Boosts frequencies near the HP cutoff — adds nasal overtones.',
+  lpenv: 'LP envelope depth. How much the filter opens on each note attack — adds pluck/sweep.',
+  hpenv: 'HP envelope depth. How much the high-pass sweeps on attack — adds breath/texture.',
+  bpenv: 'Band-pass envelope depth. Vowel-like sweep on each note trigger.',
+  lpattack: 'LP filter attack time. How fast the filter opens — slow = gradual sweep, fast = snappy.',
+  lpa: 'LP filter attack (alias). Same as lpattack — controls filter sweep speed.',
+  lprelease: 'LP filter release. How long the filter takes to close after the note — long = smooth tail.',
+  lpr: 'LP filter release (alias). Controls how the filter decays.',
+  lps: 'LP filter sustain. Filter level held during the note — lower = more plucky.',
+  lpd: 'LP filter decay. Time from attack peak to sustain level.',
+  bpf: 'Band-pass filter center frequency. Keeps only frequencies around this point — telephone/radio effect.',
+  bpq: 'Band-pass Q/width. How narrow the pass band is — higher = more focused/nasal.',
+  ftype: 'Filter type selector. Changes between different filter curve shapes.',
+  vowel: 'Vowel filter. Shapes sound like a human vowel (a, e, i, o, u) — voice-like resonances.',
+  // DRIVE
+  shape: 'Waveshaper distortion amount. Adds harmonic overtones — subtle warmth to gnarly crunch.',
+  distort: 'Hard distortion/clipping. Aggressive saturation — makes everything louder and grittier.',
+  crush: 'Bit crusher. Reduces bit depth — adds lo-fi digital grit and aliasing artifacts.',
+  coarse: 'Sample rate reduction. Lowers resolution — creates retro/chiptune digital sounds.',
+  compressor: 'Dynamic compressor ratio. Evens out volume differences — glues and fattens the sound.',
+  // SPACE
+  room: 'Reverb room amount. How much reverb is mixed in — adds space and depth.',
+  roomsize: 'Reverb room size. Small = tight box, large = cathedral — controls tail length.',
+  roomfade: 'Reverb fade time. How quickly the reverb tail decays.',
+  roomlp: 'Reverb low-pass. Darkens the reverb tail — removes harsh reflections.',
+  roomdim: 'Reverb damping. High frequencies decay faster — simulates soft room surfaces.',
+  delay: 'Delay wet amount. Echo effect — adds rhythmic repeats of the sound.',
+  delayfeedback: 'Delay feedback. How many echoes repeat — higher = longer, spiraling echoes.',
+  delaytime: 'Delay time. Gap between echoes — syncs to rhythm for groovy repeats.',
+  dry: 'Dry signal level. Amount of unprocessed sound — lower = more wet/effected.',
+  echo: 'Echo effect amount. Combined delay with feedback — instant dub/space.',
+  // MOD
+  detune: 'Oscillator detune. Slightly shifts pitch — adds thickness and chorus-like width.',
+  pan: 'Stereo panning. Moves sound left (-1) or right (+1) in the stereo field.',
+  velocity: 'Note velocity/dynamics. Controls how hard notes are played — affects volume and tone.',
+  postgain: 'Post-processing gain. Volume boost/cut after all effects — final level control.',
+  vib: 'Vibrato depth. Pitch wobble amount — adds expression and liveliness.',
+  vibmod: 'Vibrato rate. How fast the pitch wobbles — slow = expressive, fast = tremolo.',
+  phaser: 'Phaser speed. Sweeping frequency notches — creates jet/swooshing sounds.',
+  phaserdepth: 'Phaser depth. How deep the sweep goes — more = stronger swoosh.',
+  phasercenter: 'Phaser center frequency. Where the phasing effect is focused.',
+  phasersweep: 'Phaser sweep range. How wide the phaser sweeps across frequencies.',
+  tremolosync: 'Tremolo sync. Locks tremolo speed to the beat — rhythmic volume pulsing.',
+  tremolodepth: 'Tremolo depth. How much the volume wobbles — subtle shimmer to choppy gating.',
+  tremoloskew: 'Tremolo waveform skew. Shapes the tremolo curve — affects the feel of the pulse.',
+  tremolophase: 'Tremolo stereo phase. Left/right offset — creates moving stereo tremolo.',
+  tremoloshape: 'Tremolo wave shape. Square = choppy gate, sine = smooth — changes character.',
+  fast: 'Leslie speaker fast speed. Rotary effect spin rate for fast mode.',
+  slow: 'Leslie speaker slow speed. Rotary effect spin rate for slow mode.',
+  // FM
+  fm: 'FM synthesis depth. Frequency modulation — adds metallic/bell-like harmonics.',
+  fmh: 'FM harmonicity ratio. The modulator frequency multiplier — changes the timbre drastically.',
+  fmattack: 'FM envelope attack. How fast FM kicks in on each note.',
+  fmdecay: 'FM envelope decay. How quickly the FM effect fades after attack.',
+  fmsustain: 'FM envelope sustain. FM level held during the note.',
+  // PITCH
+  penv: 'Pitch envelope depth. How much pitch bends on attack — zap/laser effects.',
+  pattack: 'Pitch envelope attack. Speed of the initial pitch bend.',
+  pdecay: 'Pitch envelope decay. How fast pitch returns to normal after bend.',
+  prelease: 'Pitch envelope release. Pitch behavior after note release.',
+  pcurve: 'Pitch envelope curve shape. Linear vs exponential pitch bending.',
+  panchor: 'Pitch anchor point. Reference frequency for the pitch envelope.',
+  // ENV
+  attack: 'Amplitude attack. How fast the sound fades in — 0 = instant, high = slow swell.',
+  decay: 'Amplitude decay. Time from peak to sustain level — short = percussive.',
+  sustain: 'Amplitude sustain level. Volume held while note is on — 0 = pluck, 1 = organ.',
+  rel: 'Amplitude release. How long the sound fades after note off — long = ambient tail.',
+  release: 'Amplitude release (alias). Same as rel — controls the fade-out time.',
+  legato: 'Legato mode. Overlapping notes glide instead of re-triggering — smooth lead lines.',
+  clip: 'Hard clip level. Cuts the waveform at this amplitude — adds edge and presence.',
+  // CHAIN
+  duckdepth: 'Sidechain duck depth. How much the volume ducks when triggered — pumping/breathing effect.',
+  duckattack: 'Sidechain duck attack. How fast the ducking kicks in — snappy vs smooth pump.',
+  // SAMPLE
+  loopAt: 'Loop point. Where the sample loops — creates sustained textures from one-shots.',
+  loop: 'Loop on/off. Whether the sample repeats — essential for pads and sustained sounds.',
+  begin: 'Sample start point. Where playback begins (0-1) — skip the attack, find sweet spots.',
+  end: 'Sample end point. Where playback stops (0-1) — trim tails, create micro-loops.',
+  speed: 'Playback speed/pitch. 1 = normal, 2 = octave up, 0.5 = octave down, -1 = reverse.',
+  chop: 'Chop into N slices. Cuts sample into equal pieces — instant breakbeat/glitch.',
+  stretch: 'Time-stretch mode. Changes speed without pitch — fit any sample to tempo.',
+  slice: 'Slice selector. Picks which slice to play from a chopped sample.',
+  splice: 'Splice mode. Like chop but with crossfades between slices — smoother cuts.',
+  striate: 'Striate granular. Splits into granular slices with overlap — textural effects.',
+  loopBegin: 'Loop region start. Where the loop portion begins within the sample.',
+  loopEnd: 'Loop region end. Where the loop portion ends within the sample.',
+  cut: 'Cut group. Samples in the same group cut each other off — like hi-hat open/close.',
+  n: 'Sample index. Selects which sample from a folder/bank — browse through variations.',
+  hurry: 'Hurry playback. Combined speed + gain boost — plays sample faster and louder.',
+  unit: 'Speed unit mode. How speed value is interpreted — cycles, seconds, or ratio.',
+}
+
 // ─── Helper: get orbit from channel ───
 function getChannelOrbit(channel: ParsedChannel): number {
   const p = channel.params.find(p => p.key === 'orbit')
@@ -478,13 +578,14 @@ function GroupBadge({ label, icon, isActive, hasActiveKnobs, color, onClick }: {
 
 function EffectsPanel({
   channel, channelIdx,
-  onParamChange, onEffectInsert,
+  onParamChange, onEffectInsert, onRemoveEffect,
 }: {
   channel: ParsedChannel
   channelIdx: number
   isPlaying: boolean
   onParamChange: (channelIdx: number, key: string, value: number) => void
   onEffectInsert: (channelIdx: number, effectCode: string) => void
+  onRemoveEffect: (channelIdx: number, effectKey: string) => void
 }) {
   const [activeGroup, setActiveGroup] = useState<string | null>(null)
   const [panelHeight, setPanelHeight] = useState(220)
@@ -690,6 +791,9 @@ function EffectsPanel({
                   unit={paramDef.unit}
                   isComplex={isComplex}
                   active={hasValue}
+                  paramKey={key}
+                  description={FX_DESCRIPTIONS[key]}
+                  onRemove={hasValue ? () => onRemoveEffect(channelIdx, key) : undefined}
                   onChange={(v: number) => {
                     if (hasValue) {
                       onParamChange(channelIdx, key, v)
@@ -800,6 +904,7 @@ interface TrackViewProps {
   onToggleChannel: (id: string) => void
   onParamChange: (channelIdx: number, key: string, value: number) => void
   onEffectInsert: (channelIdx: number, effectCode: string) => void
+  onRemoveEffect: (channelIdx: number, effectKey: string) => void
   onOpenPianoRoll?: (idx: number) => void
   onOpenDrumSequencer?: (idx: number) => void
   onOpenPadSampler?: (idx: number) => void
@@ -823,6 +928,7 @@ const TrackView = memo(function TrackView({
   onMute,
   onParamChange,
   onEffectInsert,
+  onRemoveEffect,
   onOpenPianoRoll,
   onOpenDrumSequencer,
   onOpenPadSampler,
@@ -1077,6 +1183,7 @@ const TrackView = memo(function TrackView({
           isPlaying={isPlaying}
           onParamChange={onParamChange}
           onEffectInsert={onEffectInsert}
+          onRemoveEffect={onRemoveEffect}
         />
       )}
     </div>

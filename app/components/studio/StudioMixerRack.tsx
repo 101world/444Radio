@@ -2936,6 +2936,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                 onToggleChannel={toggleChannel}
                 onParamChange={handleParamChange}
                 onEffectInsert={handleEffectInsert}
+                onRemoveEffect={handleRemoveEffect}
                 onOpenPianoRoll={onOpenPianoRoll}
                 onOpenDrumSequencer={onOpenDrumSequencer}
                 onOpenPadSampler={onOpenPadSampler}

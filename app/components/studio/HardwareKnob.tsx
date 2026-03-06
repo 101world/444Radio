@@ -29,6 +29,8 @@ interface HardwareKnobProps {
   formatValue?: (v: number) => string
   isComplex?: boolean
   active?: boolean      // whether this effect is on the channel
+  description?: string  // what this effect does (shown on hover)
+  paramKey?: string     // the strudel param key (e.g. 'lpf')
 }
 
 export default function HardwareKnob({
@@ -45,10 +47,14 @@ export default function HardwareKnob({
   formatValue,
   isComplex = false,
   active = true,
+  description,
+  paramKey,
 }: HardwareKnobProps) {
   const dragRef = useRef<{ startY: number; startVal: number } | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
+  const [showTooltip, setShowTooltip] = useState(false)
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const range = max - min
   const normalized = range > 0 ? (value - min) / range : 0
@@ -147,15 +153,84 @@ export default function HardwareKnob({
 
   return (
     <div
-      className="flex flex-col items-center select-none"
+      className="flex flex-col items-center select-none relative"
       style={{
         width: size + 16,
         opacity: active ? 1 : 0.35,
         transition: 'opacity 0.2s',
       }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={() => {
+        setIsHovered(true)
+        if (description) {
+          hoverTimer.current = setTimeout(() => setShowTooltip(true), 500)
+        }
+      }}
+      onMouseLeave={() => {
+        setIsHovered(false)
+        setShowTooltip(false)
+        if (hoverTimer.current) clearTimeout(hoverTimer.current)
+      }}
     >
+      {/* ── Metallic Tooltip ── */}
+      {showTooltip && description && (
+        <div
+          className="absolute z-50 pointer-events-none"
+          style={{
+            bottom: '100%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            marginBottom: 6,
+            minWidth: 160,
+            maxWidth: 220,
+          }}
+        >
+          <div
+            className="rounded-md overflow-hidden"
+            style={{
+              background: 'linear-gradient(180deg, #2a2d35 0%, #1c1e24 100%)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)',
+            }}
+          >
+            {/* Header strip */}
+            <div className="px-2.5 py-1.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(0,0,0,0.15)' }}>
+              <div className="flex items-center gap-1.5">
+                <div className="w-1 h-1 rounded-full" style={{ background: color, boxShadow: `0 0 4px ${color}80` }} />
+                <span className="text-[9px] font-black uppercase tracking-[.15em]" style={{ color: color }}>
+                  {paramKey ? `.${paramKey}()` : label}
+                </span>
+              </div>
+            </div>
+            {/* Description */}
+            <div className="px-2.5 py-2">
+              <p className="text-[8px] leading-relaxed" style={{ color: '#9ca3af' }}>
+                {description}
+              </p>
+              {active && onRemove && (
+                <p className="text-[7px] mt-1.5 font-bold uppercase tracking-wider" style={{ color: '#b86f6f80' }}>
+                  Double-click to remove
+                </p>
+              )}
+              {!active && (
+                <p className="text-[7px] mt-1.5 font-bold uppercase tracking-wider" style={{ color: `${color}60` }}>
+                  Drag to add effect
+                </p>
+              )}
+            </div>
+          </div>
+          {/* Arrow */}
+          <div
+            className="absolute left-1/2 -translate-x-1/2"
+            style={{
+              top: '100%',
+              width: 0, height: 0,
+              borderLeft: '5px solid transparent',
+              borderRight: '5px solid transparent',
+              borderTop: '5px solid #1c1e24',
+            }}
+          />
+        </div>
+      )}
       {/* Label */}
       <span
         className="text-[8px] font-bold uppercase tracking-[.18em] truncate w-full text-center leading-none mb-1"
