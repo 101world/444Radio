@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { X, Upload, Loader2, Mic, Settings, AlertCircle, Play, Pause, Music2 } from 'lucide-react'
+import { X, Upload, Loader2, Mic, MicOff, Settings, AlertCircle, Play, Pause, Music2, Square } from 'lucide-react'
 
 interface VoiceMelodyModalProps {
   isOpen: boolean
@@ -54,6 +54,14 @@ export default function VoiceMelodyModal({ isOpen, onClose, userCredits, onGener
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Recording
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingTime, setRecordingTime] = useState(0)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const recordedChunksRef = useRef<Blob[]>([])
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
 
   // Audio preview
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false)
@@ -163,11 +171,119 @@ export default function VoiceMelodyModal({ isOpen, onClose, userCredits, onGener
     }
   }
 
-  // Cleanup preview audio on unmount/close
+  // Start recording from mic
+  const startRecording = async () => {
+    try {
+      setUploadError('')
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      streamRef.current = stream
+
+      // Pick best supported format
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
+          ? 'audio/webm'
+          : 'audio/ogg'
+
+      const recorder = new MediaRecorder(stream, { mimeType })
+      recordedChunksRef.current = []
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recordedChunksRef.current.push(e.data)
+      }
+
+      recorder.onstop = async () => {
+        // Stop all tracks
+        stream.getTracks().forEach(t => t.stop())
+        streamRef.current = null
+
+        const blob = new Blob(recordedChunksRef.current, { type: mimeType })
+        if (blob.size < 1000) {
+          setUploadError('Recording too short — try again')
+          return
+        }
+        const ext = mimeType.includes('webm') ? 'webm' : 'ogg'
+        const file = new File([blob], `recording-${Date.now()}.${ext}`, { type: mimeType })
+        setInputAudioFile(file)
+        detectAudioDuration(file)
+
+        // Upload the recorded file
+        setIsUploading(true)
+        try {
+          const presignRes = await fetch('/api/generate/upload-reference', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fileName: file.name,
+              fileType: file.type,
+              fileSize: file.size,
+              type: 'song',
+            }),
+          })
+          if (!presignRes.ok) throw new Error('Failed to get upload URL')
+          const presignData = await presignRes.json()
+          if (!presignData.uploadUrl || !presignData.publicUrl) throw new Error('Invalid upload response')
+
+          const uploadRes = await fetch(presignData.uploadUrl, {
+            method: 'PUT',
+            headers: { 'Content-Type': file.type },
+            body: file,
+          })
+          if (!uploadRes.ok) throw new Error('Upload to storage failed')
+
+          setInputAudioUrl(presignData.publicUrl)
+          console.log('✅ Recorded audio uploaded for Voice Melody:', presignData.publicUrl)
+        } catch (err: any) {
+          console.error('Upload error:', err)
+          setUploadError(err.message || 'Upload failed')
+          setInputAudioFile(null)
+        } finally {
+          setIsUploading(false)
+        }
+      }
+
+      mediaRecorderRef.current = recorder
+      recorder.start(250) // collect chunks every 250ms
+      setIsRecording(true)
+      setRecordingTime(0)
+
+      // Timer
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1)
+      }, 1000)
+    } catch (err: any) {
+      console.error('Mic access error:', err)
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setUploadError('Microphone access denied — check browser permissions')
+      } else {
+        setUploadError('Could not access microphone')
+      }
+    }
+  }
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop()
+    }
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current)
+      recordingTimerRef.current = null
+    }
+    setIsRecording(false)
+  }
+
+  const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
+
+  // Cleanup preview audio & recording on unmount/close
   useEffect(() => {
     return () => {
       previewAudioRef.current?.pause()
       previewAudioRef.current = null
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop()
+      }
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
+      streamRef.current?.getTracks().forEach(t => t.stop())
     }
   }, [isOpen])
 
@@ -265,7 +381,26 @@ export default function VoiceMelodyModal({ isOpen, onClose, userCredits, onGener
               <p className="text-[11px] text-purple-300/80">Upload your <strong>voice melody, humming, or existing track</strong> — ACE-Step will transform it into a new style/instrument arrangement.</p>
             </div>
             <input ref={fileInputRef} type="file" accept=".wav,.mp3,.webm,.ogg,audio/*" className="hidden" onChange={handleFileSelect} />
-            {inputAudioFile ? (
+            {isRecording ? (
+              /* ── Recording in progress ── */
+              <div className="flex items-center justify-between px-4 py-4 bg-red-500/[0.1] border border-red-500/30 rounded-xl animate-pulse">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center">
+                    <Mic size={18} className="text-red-400 animate-pulse" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-red-300">Recording…</div>
+                    <div className="text-xs text-red-400/60 tabular-nums">{formatTime(recordingTime)}</div>
+                  </div>
+                </div>
+                <button
+                  onClick={stopRecording}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 rounded-xl text-red-300 text-sm font-medium transition-colors"
+                >
+                  <Square size={14} fill="currentColor" /> Stop
+                </button>
+              </div>
+            ) : inputAudioFile ? (
               <div className="flex items-center justify-between px-4 py-3 bg-purple-500/[0.08] border border-purple-500/20 rounded-xl">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <Music2 size={16} className="text-purple-400 flex-shrink-0" />
@@ -284,21 +419,40 @@ export default function VoiceMelodyModal({ isOpen, onClose, userCredits, onGener
                 </div>
               </div>
             ) : (
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-                className="w-full flex items-center gap-3.5 px-4 py-4 bg-white/[0.03] hover:bg-purple-500/[0.08] border border-dashed border-white/10 hover:border-purple-500/30 rounded-xl transition-all duration-200 group disabled:opacity-50"
-              >
-                <div className="w-10 h-10 rounded-lg bg-purple-500/10 group-hover:bg-purple-500/20 flex items-center justify-center transition-colors">
-                  {isUploading ? <Loader2 size={18} className="text-purple-400 animate-spin" /> : <Upload size={18} className="text-purple-400" />}
-                </div>
-                <div className="text-left">
-                  <div className="text-sm font-medium text-white/80 group-hover:text-purple-200 transition-colors">
-                    {isUploading ? 'Uploading…' : 'Upload your audio'}
+              <div className="flex gap-2">
+                {/* Record button */}
+                <button
+                  onClick={startRecording}
+                  disabled={isUploading}
+                  className="flex-1 flex items-center gap-3.5 px-4 py-4 bg-white/[0.03] hover:bg-red-500/[0.08] border border-dashed border-white/10 hover:border-red-500/30 rounded-xl transition-all duration-200 group disabled:opacity-50"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-red-500/10 group-hover:bg-red-500/20 flex items-center justify-center transition-colors">
+                    <Mic size={18} className="text-red-400" />
                   </div>
-                  <div className="text-[11px] text-white/30">.wav or .mp3 — up to 20 MB</div>
-                </div>
-              </button>
+                  <div className="text-left">
+                    <div className="text-sm font-medium text-white/80 group-hover:text-red-200 transition-colors">
+                      Record
+                    </div>
+                    <div className="text-[11px] text-white/30">Hum or sing into mic</div>
+                  </div>
+                </button>
+                {/* Upload button */}
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="flex-1 flex items-center gap-3.5 px-4 py-4 bg-white/[0.03] hover:bg-purple-500/[0.08] border border-dashed border-white/10 hover:border-purple-500/30 rounded-xl transition-all duration-200 group disabled:opacity-50"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-purple-500/10 group-hover:bg-purple-500/20 flex items-center justify-center transition-colors">
+                    {isUploading ? <Loader2 size={18} className="text-purple-400 animate-spin" /> : <Upload size={18} className="text-purple-400" />}
+                  </div>
+                  <div className="text-left">
+                    <div className="text-sm font-medium text-white/80 group-hover:text-purple-200 transition-colors">
+                      {isUploading ? 'Uploading…' : 'Upload'}
+                    </div>
+                    <div className="text-[11px] text-white/30">.wav / .mp3 — max 20 MB</div>
+                  </div>
+                </button>
+              </div>
             )}
             {uploadError && (
               <div className="flex items-center gap-1.5 mt-2 text-xs text-red-400">
