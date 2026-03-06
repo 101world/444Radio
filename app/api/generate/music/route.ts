@@ -70,9 +70,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing songId or prompt' }, { status: 400 })
     }
 
-    // Determine which model to use based on language
-    const isEnglish = language.toLowerCase() === 'english' || language.toLowerCase() === 'en'
-    const modelName = isEnglish ? 'MiniMax Music-1.5' : 'ACE-Step (Multi-language)'
+    // All languages use MiniMax Music-1.5 via Replicate
+    const modelName = 'MiniMax Music-1.5'
     
     console.log(`🎵 Starting music generation with ${modelName} for language: ${language}`)
     console.log('🎵 Prompt:', prompt)
@@ -89,72 +88,33 @@ export async function POST(req: NextRequest) {
     
     let finalPrediction: any
 
-    if (isEnglish) {
-      // Use MiniMax Music-1.5 for English with retry logic
-      const prediction = await createPredictionWithRetry(
-        replicate,
-        "minimax/music-1.5",
-        {
-          lyrics: prompt.substring(0, 600), // Max 600 characters
-          style_strength: params?.style_strength ?? 0.8, // 0.0 to 1.0, default 0.8
-          audio_format: 'wav', // WAV output for lossless quality
-        }
-      )
-
-      console.log('🎵 MiniMax prediction created:', prediction.id)
-
-      finalPrediction = prediction
-      let attempts = 0
-      const maxAttempts = 135 // 270 seconds total (135 * 2s intervals) to accommodate long generations
-      
-      while (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed' && attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 2000))
-        finalPrediction = await replicate.predictions.get(prediction.id)
-        console.log(`🎵 Music generation status: ${finalPrediction.status} (${attempts * 2}s elapsed)`)
-        attempts++
+    // Use MiniMax Music-1.5 for all languages with retry logic
+    const prediction = await createPredictionWithRetry(
+      replicate,
+      "minimax/music-1.5",
+      {
+        lyrics: prompt.substring(0, 600), // Max 600 characters
+        style_strength: params?.style_strength ?? 0.8, // 0.0 to 1.0, default 0.8
+        audio_format: 'wav', // WAV output for lossless quality
       }
+    )
 
-      if (attempts >= maxAttempts) {
-        console.error(`⏰ Music generation timed out after ${attempts * 2} seconds`)
-        throw new Error('Music generation timed out after 270 seconds. The generation may still complete on Replicate.')
-      }
-    } else {
-      // Use ACE-Step for non-English languages with retry logic
-      const genreTags = prompt.toLowerCase().match(/\b(rock|pop|jazz|blues|electronic|classical|hip hop|rap|country|metal|folk|reggae|indie|funk|soul|rnb|edm|house|techno|ambient|chill|lofi)\b/g) || ['music'];
-      const tags = genreTags.join(',') || 'instrumental,melodic';
+    console.log('🎵 MiniMax prediction created:', prediction.id)
 
-      const prediction = await createPredictionWithRetry(
-        replicate,
-        "280fc4f9ee507577f880a167f639c02622421d8fecf492454320311217b688f1",
-        {
-          tags: tags,
-          lyrics: prompt.substring(0, 600),
-          duration: params?.duration ?? 60,
-          number_of_steps: params?.quality ?? 60,
-          guidance_scale: params?.adherence ?? 15,
-          scheduler: 'euler',
-          guidance_type: 'apg',
-          seed: -1,
-        }
-      )
+    finalPrediction = prediction
+    let attempts = 0
+    const maxAttempts = 135 // 270 seconds total (135 * 2s intervals) to accommodate long generations
+    
+    while (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed' && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      finalPrediction = await replicate.predictions.get(prediction.id)
+      console.log(`🎵 Music generation status: ${finalPrediction.status} (${attempts * 2}s elapsed)`)
+      attempts++
+    }
 
-      console.log('🎵 ACE-Step prediction created:', prediction.id)
-
-      finalPrediction = prediction
-      let attempts = 0
-      const maxAttempts = 135 // 270 seconds total (135 * 2s intervals) to accommodate long generations
-      
-      while (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed' && attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 2000))
-        finalPrediction = await replicate.predictions.get(prediction.id)
-        console.log(`🎵 ACE-Step generation status: ${finalPrediction.status} (${attempts * 2}s elapsed)`)
-        attempts++
-      }
-
-      if (attempts >= maxAttempts) {
-        console.error(`⏰ ACE-Step generation timed out after ${attempts * 2} seconds`)
-        throw new Error('Music generation timed out after 270 seconds. The generation may still complete on Replicate.')
-      }
+    if (attempts >= maxAttempts) {
+      console.error(`⏰ Music generation timed out after ${attempts * 2} seconds`)
+      throw new Error('Music generation timed out after 270 seconds. The generation may still complete on Replicate.')
     }
 
     if (finalPrediction.status === 'failed') {
@@ -200,7 +160,7 @@ export async function POST(req: NextRequest) {
       mediaUrl: permanentAudioUrl,
       mediaType: 'audio',
       title: `Music: ${prompt.substring(0, 50)}`,
-      extraMeta: { model: isEnglish ? 'minimax-music-1.5' : 'ace-step', language, song_id: songId },
+      extraMeta: { model: 'minimax-music-1.5', language, song_id: songId },
     }).catch(() => {})
 
     // Update song in database with permanent R2 URL and status

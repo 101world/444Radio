@@ -19,6 +19,7 @@ import CoverArtGenModal from '@/app/components/CoverArtGenModal'
 import type { StemType, StemAdvancedParams } from '@/app/components/SplitStemsModal'
 const LipSyncModal = lazy(() => import('@/app/components/LipSyncModal'))
 const ResoundModal = lazy(() => import('@/app/components/ResoundModal'))
+const VoiceMelodyModal = lazy(() => import('@/app/components/VoiceMelodyModal'))
 const InputEditor = lazy(() => import('@/app/components/InputEditor'))
 
 // ─── Types (mirrored from create page) ──────────────────────────
@@ -182,6 +183,7 @@ const FEATURES = [
   { key: 'loops', icon: Repeat, label: 'Loops', desc: 'Fixed BPM loops', color: 'cyan', cost: 6 },
   { key: 'image', icon: ImageIcon, label: 'Cover Art', desc: 'AI album artwork', color: 'cyan', cost: 1 },
   { key: 'remix', icon: RotateCw, label: 'Remix', desc: 'Beat upload + AI remix', color: 'purple', cost: 2 },
+  { key: 'voice-melody', icon: Mic, label: 'Voice Melody', desc: 'Hum/sing → instruments', color: 'purple', cost: 10 },
   { key: 'lipsync', icon: Mic, label: 'Lip-Sync', desc: 'Image+Audio→video', color: 'cyan', cost: -1 },
   { key: 'video-to-audio', icon: Film, label: 'Video to Audio', desc: 'Synced SFX from video', color: 'cyan', cost: 4 },
   { key: 'stems', icon: Scissors, label: 'Split Stems', desc: 'Vocals, drums, bass & more', color: 'purple', cost: 0 },
@@ -312,6 +314,7 @@ function PluginPageInner() {
   const [showVisualizerModal, setShowVisualizerModal] = useState(false)
   const [showLipSyncModal, setShowLipSyncModal] = useState(false)
   const [showResoundModal, setShowResoundModal] = useState(false)
+  const [showVoiceMelodyModal, setShowVoiceMelodyModal] = useState(false)
   const [showInputEditor, setShowInputEditor] = useState(false)
   const [showCoverArtGenModal, setShowCoverArtGenModal] = useState(false)
   const [pendingLipSyncImageUrl, setPendingLipSyncImageUrl] = useState<string | null>(null)
@@ -1897,6 +1900,88 @@ function PluginPageInner() {
     }
   }
 
+  // ═══ VOICE MELODY (ACE-Step Audio-to-Audio) — Hum/sing → instruments via fal.ai ═══
+  const generateVoiceMelody = async (
+    params: {
+      title: string; audio_url: string; original_tags: string; tags: string;
+      edit_mode: 'remix' | 'lyrics'; lyrics: string; original_lyrics: string;
+      number_of_steps: number; seed: number | null; scheduler: string;
+      guidance_type: string; guidance_scale: number; minimum_guidance_scale: number;
+      tag_guidance_scale: number; lyric_guidance_scale: number;
+      granularity_scale: number; guidance_interval: number; guidance_interval_decay: number;
+    },
+    signal?: AbortSignal,
+  ) => {
+    const res = await fetch('/api/generate/voice-melody', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+      signal,
+    })
+    if (!res.ok && res.headers.get('content-type')?.includes('application/json')) {
+      const errJson = await res.json().catch(() => ({}))
+      return { error: errJson.error || `Server error (${res.status})` }
+    }
+    const reader = res.body?.getReader()
+    if (!reader) return { error: 'No response stream' }
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let resultData: Record<string, unknown> | null = null
+    try {
+      while (true) {
+        if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n'); buffer = lines.pop() || ''
+        for (const line of lines) {
+          if (!line.trim()) continue
+          try { const p = JSON.parse(line); if (p.type === 'result') resultData = p } catch { /* skip */ }
+        }
+      }
+      if (buffer.trim()) { try { const p = JSON.parse(buffer); if (p.type === 'result') resultData = p } catch { /* skip */ } }
+    } finally { reader.releaseLock() }
+    if (!resultData) return { error: 'No result received' }
+    if (resultData.success) return { audioUrl: resultData.audioUrl as string, title: (resultData.title as string) || params.title, prompt: `[${params.edit_mode}] ${params.tags}`, creditsRemaining: resultData.creditsRemaining as number }
+    return { error: (resultData.error as string) || 'Voice Melody failed' }
+  }
+
+  const handleVoiceMelodyGenerate = async (voiceMelodyParams: {
+    title: string; audio_url: string; original_tags: string; tags: string;
+    edit_mode: 'remix' | 'lyrics'; lyrics: string; original_lyrics: string;
+    number_of_steps: number; seed: number | null; scheduler: 'euler' | 'heun';
+    guidance_type: 'apg' | 'cfg' | 'cfg_star'; guidance_scale: number;
+    minimum_guidance_scale: number; tag_guidance_scale: number; lyric_guidance_scale: number;
+    granularity_scale: number; guidance_interval: number; guidance_interval_decay: number;
+  }) => {
+    setShowVoiceMelodyModal(false)
+    const genMsgId = (Date.now() + 1).toString()
+    setMessages(prev => [...prev,
+      { id: Date.now().toString(), type: 'user' as MessageType, content: `🎤 Voice Melody: "${voiceMelodyParams.title}" — ${voiceMelodyParams.tags.substring(0, 80)} (${voiceMelodyParams.edit_mode})`, timestamp: new Date() },
+      { id: genMsgId, type: 'generation' as MessageType, content: '🎤 Transforming voice melody…', generationType: 'music', isGenerating: true, timestamp: new Date() },
+    ])
+    setActiveGenerations(prev => new Set(prev).add(genMsgId))
+    try {
+      const result = await generateVoiceMelody(voiceMelodyParams)
+      if ('error' in result && result.error) throw new Error(result.error as string)
+      setMessages(prev => prev.map(m => m.id === genMsgId ? {
+        ...m, isGenerating: false, content: '✅ Voice Melody complete!',
+        result: { audioUrl: result.audioUrl, title: result.title, prompt: result.prompt },
+      } : m))
+      if (typeof result.creditsRemaining === 'number') setUserCredits(result.creditsRemaining)
+      try {
+        const lib = JSON.parse(localStorage.getItem(LIBRARY_KEY) || '[]')
+        lib.unshift({ id: Date.now(), type: 'music', title: result.title, audioUrl: result.audioUrl, prompt: result.prompt, createdAt: new Date().toISOString() })
+        localStorage.setItem(LIBRARY_KEY, JSON.stringify(lib.slice(0, 200)))
+      } catch {}
+    } catch (e) {
+      setMessages(prev => prev.map(m => m.id === genMsgId ? { ...m, isGenerating: false, content: `❌ Voice Melody failed: ${e instanceof Error ? e.message : 'Unknown error'}` } : m))
+    } finally {
+      setActiveGenerations(prev => { const s = new Set(prev); s.delete(genMsgId); return s })
+      refreshCredits()
+    }
+  }
+
   // ── Cover Art Generation (from modal) ──
   const handleCoverArtGenerate = async (coverParams: { prompt: string; params: { width: number; height: number; output_format: string; output_quality: number; guidance_scale: number; num_inference_steps: number; go_fast: boolean } }) => {
     setShowCoverArtGenModal(false)
@@ -2510,7 +2595,7 @@ function PluginPageInner() {
                   return true
                 }).map(f => {
                   const Icon = f.icon
-                  const isActive = f.key === selectedType || (f.key === 'lyrics' && !!(customTitle || genre || customLyrics || bpm)) || (f.key === 'input' && showInputEditor) || (f.key === 'lipsync' && showLipSyncModal) || (f.key === 'remix' && showResoundModal) || (f.key === 'image' && showCoverArtGenModal)
+                  const isActive = f.key === selectedType || (f.key === 'lyrics' && !!(customTitle || genre || customLyrics || bpm)) || (f.key === 'input' && showInputEditor) || (f.key === 'lipsync' && showLipSyncModal) || (f.key === 'remix' && showResoundModal) || (f.key === 'voice-melody' && showVoiceMelodyModal) || (f.key === 'image' && showCoverArtGenModal)
                   const colorMap: Record<string, { active: React.CSSProperties; inactive: React.CSSProperties }> = {
                     cyan: {
                       active: {background:'linear-gradient(135deg, rgba(6,182,212,0.18), rgba(20,184,166,0.12))',border:'1px solid rgba(200,200,220,0.45)',color:'rgba(220,240,245,1)',boxShadow:'0 0 24px rgba(6,182,212,0.2), inset 0 1px 0 rgba(6,182,212,0.25)'},
@@ -2544,6 +2629,9 @@ function PluginPageInner() {
                         setShowFeaturesSidebar(false)
                       } else if (f.key === 'remix') {
                         setShowResoundModal(true)
+                        setShowFeaturesSidebar(false)
+                      } else if (f.key === 'voice-melody') {
+                        setShowVoiceMelodyModal(true)
                         setShowFeaturesSidebar(false)
                       } else if (f.key === 'input') {
                         setShowInputEditor(true)
@@ -4101,6 +4189,16 @@ function PluginPageInner() {
           onClose={() => setShowResoundModal(false)}
           userCredits={userCredits || 0}
           onGenerate={handleResoundGenerate}
+        />
+      </Suspense>
+
+      {/* ── Voice Melody Modal — ACE-Step Audio-to-Audio ── */}
+      <Suspense fallback={null}>
+        <VoiceMelodyModal
+          isOpen={showVoiceMelodyModal}
+          onClose={() => setShowVoiceMelodyModal(false)}
+          userCredits={userCredits || 0}
+          onGenerate={handleVoiceMelodyGenerate}
         />
       </Suspense>
 

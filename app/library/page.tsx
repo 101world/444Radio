@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect, lazy, Suspense } from 'react'
 import Link from 'next/link'
@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { supabase } from '@/lib/supabase'
-import { Music, Music2, Image as ImageIcon, Trash2, Download, Play, Pause, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon, Heart, Scissors, ChevronDown, ChevronUp, Volume2, ShoppingBag, Layers, Repeat, Radio, Info, Mic, Mic2 } from 'lucide-react'
+import { Music, Music2, Image as ImageIcon, Trash2, Download, Play, Pause, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon, Heart, Scissors, ChevronDown, ChevronUp, Volume2, ShoppingBag, Layers, Repeat, Radio, Info, Mic, Mic2, AudioWaveform } from 'lucide-react'
 import FloatingMenu from '../components/FloatingMenu'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 import { LibraryTabSkeleton } from '../components/LoadingSkeleton'
@@ -61,7 +61,7 @@ export default function LibraryPage() {
   const router = useRouter()
   const { user } = useUser()
   const { playTrack, currentTrack, isPlaying, togglePlayPause, setPlaylist } = useAudioPlayer()
-  const [activeTab, setActiveTab] = useState<'images' | 'music' | 'videos' | 'releases' | 'liked' | 'stems' | 'mixmaster' | 'bought' | 'extract' | 'loops' | 'effects' | 'autotune' | 'chords' | 'remix' | 'voiceover' | 'beatmaker'>('music')
+  const [activeTab, setActiveTab] = useState<'images' | 'music' | 'videos' | 'releases' | 'liked' | 'stems' | 'mixmaster' | 'bought' | 'extract' | 'loops' | 'effects' | 'autotune' | 'chords' | 'remix' | 'voiceover' | 'beatmaker' | 'voicemelody'>('music')
   const [musicItems, setMusicItems] = useState<LibraryMusic[]>([])
   const [imageItems, setImageItems] = useState<LibraryImage[]>([])
   const [videoItems, setVideoItems] = useState<LibraryMusic[]>([]) // Reuse music interface for videos
@@ -78,6 +78,7 @@ export default function LibraryPage() {
   const [remixItems, setRemixItems] = useState<any[]>([])
   const [beatmakerItems, setBeatmakerItems] = useState<any[]>([])
   const [voiceoverItems, setVoiceoverItems] = useState<LibraryMusic[]>([])
+  const [voiceMelodyItems, setVoiceMelodyItems] = useState<LibraryMusic[]>([])
   const [expandedExtracts, setExpandedExtracts] = useState<Set<number>>(new Set())
   const [expandedStems, setExpandedStems] = useState<Set<number>>(new Set())
   const [isLoading, setIsLoading] = useState(true)
@@ -116,7 +117,7 @@ export default function LibraryPage() {
     }
     try {
       // Fetch all user's content from DB, R2, and releases
-      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, videosRes, r2VideosRes, releasesRes, likedRes, stemsRes, mixmasterRes, boughtRes, extractRes, loopsRes, effectsRes, autotuneRes, chordsRes, remixRes, beatmakerRes, voiceoverRes] = await Promise.all([
+      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, videosRes, r2VideosRes, releasesRes, likedRes, stemsRes, mixmasterRes, boughtRes, extractRes, loopsRes, effectsRes, autotuneRes, chordsRes, remixRes, beatmakerRes, voiceoverRes, voiceMelodyRes] = await Promise.all([
         fetch('/api/library/music'),
         fetch('/api/r2/list-audio'),
         fetch('/api/library/images'),
@@ -135,7 +136,8 @@ export default function LibraryPage() {
         fetch('/api/library/chords'),
         fetch('/api/library/remix'),
         fetch('/api/library/beatmaker'),
-        fetch('/api/library/voiceover')
+        fetch('/api/library/voiceover'),
+        fetch('/api/library/voice-melody')
       ])
 
       const musicData = await musicRes.json()
@@ -157,6 +159,7 @@ export default function LibraryPage() {
       const remixData = await remixRes.json()
       const beatmakerData = await beatmakerRes.json()
       const voiceoverData = await voiceoverRes.json()
+      const voiceMelodyData = await voiceMelodyRes.json()
 
       // Use ONLY database music - it has correct titles from generation
       if (musicData.success && Array.isArray(musicData.music)) {
@@ -182,7 +185,7 @@ export default function LibraryPage() {
           (boughtData.success && Array.isArray(boughtData.bought) ? boughtData.bought : []).map((t: any) => t.audio_url).filter(Boolean)
         )
         const nonStemMusic = uniqueMusic.filter((track: any) =>
-          track.genre !== 'stem' && track.genre !== 'boosted' && track.genre !== 'extract' && track.genre !== 'loop' && track.genre !== 'effects' && track.genre !== 'processed' && track.genre !== 'chords' && track.genre !== 'voice-over' && track.genre !== 'beatmaker' &&
+          track.genre !== 'stem' && track.genre !== 'boosted' && track.genre !== 'extract' && track.genre !== 'loop' && track.genre !== 'effects' && track.genre !== 'processed' && track.genre !== 'chords' && track.genre !== 'voice-over' && track.genre !== 'beatmaker' && track.genre !== 'voice-melody' &&
           !(track.prompt && typeof track.prompt === 'string' && track.prompt.toLowerCase().includes('purchased from earn')) &&
           !boughtAudioUrls.has(track.audio_url)
         )
@@ -276,6 +279,11 @@ export default function LibraryPage() {
       if (beatmakerData.success && Array.isArray(beatmakerData.beats)) {
         setBeatmakerItems(beatmakerData.beats)
         console.log('ðŸ¥ Loaded', beatmakerData.beats.length, 'beat maker items')
+      }
+      // Voice Melody
+      if (voiceMelodyData.success && Array.isArray(voiceMelodyData.tracks)) {
+        setVoiceMelodyItems(voiceMelodyData.tracks)
+        console.log('Loaded', voiceMelodyData.tracks.length, 'voice melody items')
       }
     } catch (error) {
       console.error('Error fetching library:', error)
@@ -556,6 +564,7 @@ export default function LibraryPage() {
     { key: 'remix', label: 'Remix', icon: Music2, count: remixItems.length, gradient: 'from-cyan-500 to-blue-400' },
     { key: 'voiceover', label: 'Voice Labs', icon: Mic2, count: voiceoverItems.length, gradient: 'from-amber-500 to-orange-400' },
     { key: 'beatmaker', label: 'Beat Maker', icon: Music, count: beatmakerItems.length, gradient: 'from-teal-500 to-cyan-400' },
+    { key: 'voicemelody', label: 'Voice Melody', icon: AudioWaveform, count: voiceMelodyItems.length, gradient: 'from-emerald-500 to-green-400' },
   ]
 
   return (
@@ -1516,6 +1525,67 @@ export default function LibraryPage() {
                         </div>
                         <span className="text-[10px] text-white/15 hidden sm:block">{new Date(item.created_at).toLocaleDateString()}</span>
                         {audioUrl && <button onClick={() => handleDownload(audioUrl, `${item.title || 'beat'}.${item.audio_format || 'wav'}`, item.audio_format || 'wav')} className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-teal-500/10 hover:border-teal-500/20 transition-all" title={`Download ${(item.audio_format || 'WAV').toUpperCase()}`}><Download size={14} className="text-teal-400/50" /></button>}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ——— VOICE MELODY TAB ——— */}
+          {!isLoading && activeTab === 'voicemelody' && (
+            <div>
+              {voiceMelodyItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24">
+                  <div className="relative w-24 h-24 mb-6 rounded-3xl bg-gradient-to-br from-emerald-500/20 to-green-500/10 border border-emerald-500/20 flex items-center justify-center">
+                    <AudioWaveform size={40} className="text-emerald-400/60" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white/80 mb-2">No voice melodies yet</h3>
+                  <p className="text-white/30 text-sm mb-8">Hum a melody and transform it into a full track</p>
+                  <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-400 text-black font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-emerald-500/20">
+                    <AudioWaveform size={16} /> Create Voice Melody
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {voiceMelodyItems.map((item, idx) => {
+                    const isCurrentlyPlaying = currentTrack?.id === item.id && isPlaying
+                    const vmTitle = item.title && !item.title.startsWith('r2_') && !item.title.includes('user_')
+                      ? item.title
+                      : (item.prompt && item.prompt !== 'Legacy R2 file'
+                        ? (item.prompt.length > 40 ? `${item.prompt.substring(0, 40)}...` : item.prompt)
+                        : 'Untitled Voice Melody')
+                    return (
+                      <div key={item.id} className="group flex items-center gap-4 p-3 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.05] hover:border-emerald-500/15 transition-all duration-300 animate-slide-in-up" style={{ animationDelay: `${Math.min(idx * 25, 500)}ms` }}>
+                        <div className="relative w-12 h-12 flex-shrink-0 rounded-xl overflow-hidden bg-gradient-to-br from-emerald-500/20 to-green-400/10 border border-emerald-500/20 flex items-center justify-center">
+                          <AudioWaveform size={20} className="text-emerald-400/60" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-white/90 font-medium text-sm truncate">{vmTitle}</h3>
+                          <p className="text-emerald-400/30 text-xs mt-0.5">Voice Melody · {new Date(item.created_at).toLocaleDateString()}</p>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0 sm:opacity-40 sm:group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={async () => {
+                              if (currentTrack?.id === item.id) { togglePlayPause() } else {
+                                const allTracks = voiceMelodyItems.map(i => ({ id: i.id, audioUrl: i.audioUrl || i.audio_url, title: i.title || 'Voice Melody', artist: user?.firstName || 'You', userId: user?.id }))
+                                await setPlaylist(allTracks, voiceMelodyItems.findIndex(i => i.id === item.id))
+                              }
+                            }}
+                            className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-green-400 flex items-center justify-center text-black hover:scale-110 transition-transform shadow-lg shadow-emerald-500/20"
+                          >
+                            {isCurrentlyPlaying ? <Pause size={14} /> : <Play size={14} className="ml-0.5" />}
+                          </button>
+                          <div className="hidden sm:flex gap-1">
+                            <button onClick={() => handleDownload(item.audio_url, `${item.title || 'voice-melody'}.wav`, 'wav')} className="px-2.5 h-8 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-emerald-500/10 hover:border-emerald-500/20 flex items-center gap-1 transition-all" title="WAV">
+                              <Download size={12} className="text-emerald-400/50" /><span className="text-[10px] text-emerald-400/50 font-medium">WAV</span>
+                            </button>
+                          </div>
+                          <button onClick={() => handleDelete('music', item.id)} className="w-8 h-8 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-red-500/10 hover:border-red-500/20 flex items-center justify-center transition-all" title="Delete">
+                            <Trash2 size={13} className="text-red-400/50" />
+                          </button>
+                        </div>
                       </div>
                     )
                   })}

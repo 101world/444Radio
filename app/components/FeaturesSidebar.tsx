@@ -1,6 +1,6 @@
 'use client'
 
-import { Music, Sparkles, Repeat, Image as ImageIcon, Edit3, Rocket, Upload, X, RotateCcw, Mic, Zap, Film, Scissors, Lightbulb, ChevronLeft, Plus, Volume2, Layers, AudioLines, RefreshCw } from 'lucide-react'
+import { Music, Sparkles, Repeat, Image as ImageIcon, Edit3, Rocket, Upload, X, RotateCcw, Mic, Zap, Film, Scissors, Lightbulb, ChevronLeft, Plus, Volume2, Layers, AudioLines, RefreshCw, AudioWaveform } from 'lucide-react'
 import { useState } from 'react'
 
 interface FeaturesSidebarProps {
@@ -30,6 +30,7 @@ interface FeaturesSidebarProps {
   onShowVisualizer: () => void
   onShowLipSync: () => void
   onShowRemix: () => void
+  onShowVoiceMelody: () => void
   onShowBeatMaker: () => void
   onOpenRelease: () => void
   onClearChat: () => void
@@ -73,6 +74,7 @@ export default function FeaturesSidebar({
   onShowVisualizer,
   onShowLipSync,
   onShowRemix,
+  onShowVoiceMelody,
   onShowBeatMaker,
   onOpenRelease,
   onClearChat,
@@ -144,6 +146,15 @@ export default function FeaturesSidebar({
           active: false,
           cost: 10,
           onClick: onShowRemix,
+        },
+        {
+          icon: Mic,
+          label: 'Voice Melody',
+          description: 'Hum → full instrument track',
+          color: 'emerald',
+          active: false,
+          cost: 2,
+          onClick: onShowVoiceMelody,
         },
         {
           icon: RefreshCw,

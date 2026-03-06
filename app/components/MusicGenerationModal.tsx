@@ -26,25 +26,20 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
   const [sampleRate, setSampleRate] = useState(44100)
   const [audioFormat, setAudioFormat] = useState('mp3')
   
-  // ACE-Step specific parameters (for non-English)
-  const [audioLengthInSeconds, setAudioLengthInSeconds] = useState(45)
-  const [numInferenceSteps, setNumInferenceSteps] = useState(50)
-  const [guidanceScale, setGuidanceScale] = useState(7.0)
-  const [denoisingStrength, setDenoisingStrength] = useState(0.8)
+
   
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedAudioUrl, setGeneratedAudioUrl] = useState<string | null>(null)
   
-  const isEnglish = language.toLowerCase() === 'english' || language.toLowerCase() === 'en'
   const languageHook = getLanguageHook(language)
 
   // Update example lyrics when language changes
   useEffect(() => {
-    if (!isEnglish && languageHook) {
+    if (language.toLowerCase() !== 'english' && language.toLowerCase() !== 'en' && languageHook) {
       const structure = getLyricsStructureForLanguage(language)
       setLyrics(structure)
     }
-  }, [language, isEnglish, languageHook])
+  }, [language, languageHook])
 
   const handleGenerate = async () => {
     if (userCredits !== undefined && userCredits < 2) {
@@ -273,7 +268,7 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
             {/* Language */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-white">
-                Language {!isEnglish && <span className="text-purple-400">(ACE-Step Model)</span>}
+                Language
               </label>
               <select
                 value={language}
@@ -342,110 +337,7 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
               </summary>
               
               <div className="mt-4 p-4 bg-white/5 border border-white/10 rounded-xl space-y-4">
-                {/* ACE-Step Parameters (only for non-English) */}
-                {!isEnglish && (
-                  <div className="space-y-4 pb-4 mb-4 border-b border-purple-500/20">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-purple-400 font-semibold text-sm">🎵 ACE-Step Multi-Language Model</span>
-                    </div>
 
-                    {/* Audio Length */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-400 mb-2">
-                        Audio Length: <span className="text-white">{audioLengthInSeconds}s</span>
-                      </label>
-                      <input
-                        type="range"
-                        min="15"
-                        max="90"
-                        step="5"
-                        value={audioLengthInSeconds}
-                        onChange={(e) => setAudioLengthInSeconds(parseInt(e.target.value))}
-                        className="w-full accent-purple-500"
-                        disabled={isGenerating}
-                      />
-                      <div className="flex justify-between text-xs text-gray-500 mt-1">
-                        <span>15s</span>
-                        <span>90s</span>
-                      </div>
-                    </div>
-
-                    {/* Inference Steps */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-400 mb-2">
-                        Inference Steps: <span className="text-white">{numInferenceSteps}</span>
-                        <span className="text-gray-500 ml-2">(Higher = Better Quality, Slower)</span>
-                      </label>
-                      <input
-                        type="range"
-                        min="25"
-                        max="100"
-                        step="5"
-                        value={numInferenceSteps}
-                        onChange={(e) => setNumInferenceSteps(parseInt(e.target.value))}
-                        className="w-full accent-purple-500"
-                        disabled={isGenerating}
-                      />
-                      <div className="flex justify-between text-xs text-gray-500 mt-1">
-                        <span>25 (Fast)</span>
-                        <span>100 (Best)</span>
-                      </div>
-                    </div>
-
-                    {/* Guidance Scale */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-400 mb-2">
-                        Guidance Scale: <span className="text-white">{guidanceScale.toFixed(1)}</span>
-                        <span className="text-gray-500 ml-2">(How closely to follow prompt)</span>
-                      </label>
-                      <input
-                        type="range"
-                        min="1"
-                        max="15"
-                        step="0.5"
-                        value={guidanceScale}
-                        onChange={(e) => setGuidanceScale(parseFloat(e.target.value))}
-                        className="w-full accent-purple-500"
-                        disabled={isGenerating}
-                      />
-                      <div className="flex justify-between text-xs text-gray-500 mt-1">
-                        <span>1 (Creative)</span>
-                        <span>15 (Precise)</span>
-                      </div>
-                    </div>
-
-                    {/* Denoising Strength */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-400 mb-2">
-                        Denoising Strength: <span className="text-white">{denoisingStrength.toFixed(2)}</span>
-                        <span className="text-gray-500 ml-2">(Audio clarity)</span>
-                      </label>
-                      <input
-                        type="range"
-                        min="0.5"
-                        max="1"
-                        step="0.05"
-                        value={denoisingStrength}
-                        onChange={(e) => setDenoisingStrength(parseFloat(e.target.value))}
-                        className="w-full accent-purple-500"
-                        disabled={isGenerating}
-                      />
-                      <div className="flex justify-between text-xs text-gray-500 mt-1">
-                        <span>0.5 (Softer)</span>
-                        <span>1.0 (Cleaner)</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Music Parameters (only for English) */}
-                {isEnglish && (
-                  <div className="pb-4 mb-4 border-b border-white/10">
-                    <div className="flex items-center gap-2 mb-4">
-                      <span className="text-pink-400 font-semibold text-sm">🎵 AI Music (English)</span>
-                    </div>
-                  </div>
-                )}
 
                 {/* Sample Rate */}
                 <div>
