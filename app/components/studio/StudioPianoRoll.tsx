@@ -651,14 +651,18 @@ function tokenizePattern(str: string): string[] {
   return tokens
 }
 
-/** Strip trailing Strudel speed modifiers like *2, /4, *1.5 */
+/** Strip trailing Strudel speed modifiers like *2, /4, *1.5 from a PATTERN string.
+ *  Only matches at the very end after the pattern content: `<...>*2` or `pattern/4`.
+ *  Must NOT match numbers that are part of notes like `c3` or `5`. */
 function stripSpeedMod(p: string): { clean: string; speedMod: string } {
   // Match >*2, >/4, >*1.5 at end of angle-bracket patterns
   const m = p.match(/^(<[\s\S]*>)([*/]\d+(?:\.\d+)?)$/)
   if (m) return { clean: m[1], speedMod: m[2] }
-  // Also match standalone *2, /4 at end (non angle-bracket)
-  const m2 = p.match(/^([\s\S]+?)([*/]\d+(?:\.\d+)?)$/)
-  if (m2 && !m2[1].endsWith('>')) return { clean: m2[1], speedMod: m2[2] }
+  // Match standalone multipliers/divisions but ONLY when preceded by whitespace or
+  // a closing bracket — prevents matching the `*2` in note names like `bd*2`
+  // inside a pattern (those are sub-divisions, not global speed mods).
+  // Global speed mods don't appear inside quoted pattern strings in our architecture;
+  // they're method calls (.fast()/.slow()) on the channel code, handled by slowFactor.
   return { clean: p, speedMod: '' }
 }
 
@@ -1089,13 +1093,16 @@ export default function StudioPianoRoll({
 
       if (cyclePos !== null && cyclePos >= 0) {
         // Strudel cycle position: fractional cycle count (e.g. 2.75 = beat 4 of bar 3)
-        // .slow(N) stretches the pattern over N cycles, so 1 piano-roll bar = slowFactor cycles.
+        // In Strudel, <A B C> alternates: A on cycle 0, B on cycle 1, C on cycle 2.
+        // .slow(N) stretches each alternation entry over N real cycles.
         // Total pattern span in cycles = bars * slowFactor
         const totalCycleSpan = bars * slowFactor
         const totalGridSteps = bars * stepsPerBar
         // Map cycle position into the pattern's span, then to grid steps
         const posInPattern = (cyclePos % totalCycleSpan) / totalCycleSpan
-        setPlayheadStep(posInPattern * totalGridSteps)
+        const newStep = posInPattern * totalGridSteps
+        // Only update state if position changed meaningfully (reduces re-renders)
+        setPlayheadStep(prev => Math.abs(prev - newStep) > 0.3 ? newStep : prev)
       } else {
         // Fallback: compute from BPM + elapsed time
         // With .slow(N), each bar takes N × (4 beats) to play
@@ -1104,7 +1111,8 @@ export default function StudioPianoRoll({
         const totalGridSteps = bars * stepsPerBar
         const cycleMs = bars * barDurationMs
         const posInCycle = (elapsed % cycleMs) / cycleMs
-        setPlayheadStep(posInCycle * totalGridSteps)
+        const newStep = posInCycle * totalGridSteps
+        setPlayheadStep(prev => Math.abs(prev - newStep) > 0.3 ? newStep : prev)
       }
       playheadRAF.current = requestAnimationFrame(animate)
     }
@@ -1510,16 +1518,7 @@ export default function StudioPianoRoll({
     return getTranspose(channelData.rawCode)
   }, [channelData])
 
-  // Channel speed factor: accounts for .slow(N) and .fast(N) effects.
-  // Used to correct playhead position so it matches actual playback timing.
-  const channelSpeed = useMemo(() => {
-    if (!channelData) return 1
-    const slowP = channelData.params.find(p => p.key === 'slow')
-    const fastP = channelData.params.find(p => p.key === 'fast')
-    const slowVal = slowP ? slowP.value : 1
-    const fastVal = fastP ? fastP.value : 1
-    return fastVal / slowVal
-  }, [channelData])
+  // (channelSpeed removed — playhead uses slowFactor from regex match on rawCode)
 
   // Effect params (everything except gain, orbit, duck)
   const effectParams = useMemo(() => {
