@@ -1,176 +1,15 @@
 'use client'
 
-import React, { useState, useMemo, useCallback, useRef, useEffect, memo } from 'react'
-import { GENRE_TEMPLATES, type GenreTemplate } from './StudioGenreSelector'
+import React, { useState, useMemo, useCallback, useRef, memo } from 'react'
+import { FX_PRESETS, FX_PRESET_CATEGORIES, type FxPreset, type FxPresetCategory } from '@/lib/fx-presets'
+import { Search, X, ChevronDown, ChevronUp } from 'lucide-react'
 
 // ═══════════════════════════════════════════════════════════════
-//  PRESET RACK — Futuristic hardware rack plugin for browsing
-//  genre presets. Organised by sound category with visual info
-//  display showing what each preset does.
-//
-//  Design: vertical rack-mount unit, futuristic dark metal with
-//  holographic accents, LED matrix display, machined bevels.
+//  FX PRESET RACK — Vertical hardware rack for 300+ FX presets
+//  Brushed-metal, LED-lit, futuristic rack-mount design.
+//  Shows FX_PRESETS from lib/fx-presets.ts organized by 20
+//  categories. Click to apply effect chain to selected channel.
 // ═══════════════════════════════════════════════════════════════
-
-// ── Preset categories for rack organisation ──
-interface PresetCategory {
-  id: string
-  label: string
-  icon: string
-  color: string
-  presetIds: string[]
-  desc: string
-}
-
-const PRESET_CATEGORIES: PresetCategory[] = [
-  {
-    id: 'electronic',
-    label: 'ELECTRONIC',
-    icon: '⚡',
-    color: '#22d3ee',
-    desc: 'Synthesizer-driven electronic genres',
-    presetIds: ['acid', 'trance', 'techno', 'darkhouse', 'minimal', 'melotechno', 'rave'],
-  },
-  {
-    id: 'house',
-    label: 'HOUSE & DANCE',
-    icon: '🏠',
-    color: '#a78bfa',
-    desc: 'Four-on-the-floor dance music',
-    presetIds: ['house', 'proghouse', 'disco', 'garage', 'edm'],
-  },
-  {
-    id: 'hiphop',
-    label: 'HIP-HOP & R&B',
-    icon: '🎤',
-    color: '#f97316',
-    desc: 'Beat-driven urban sounds',
-    presetIds: ['boombap', 'trap', 'phonk', 'rnb'],
-  },
-  {
-    id: 'bass',
-    label: 'BASS MUSIC',
-    icon: '🔊',
-    color: '#ef4444',
-    desc: 'Heavy bass and breakbeat genres',
-    presetIds: ['dnb', 'futurebass'],
-  },
-  {
-    id: 'melodic',
-    label: 'MELODIC & CHILL',
-    icon: '🎹',
-    color: '#7fa998',
-    desc: 'Melodic, atmospheric, and relaxed styles',
-    presetIds: ['ambient', 'lofi', 'synthwave', 'electropop'],
-  },
-  {
-    id: 'world',
-    label: 'WORLD & RHYTHM',
-    icon: '🌍',
-    color: '#fbbf24',
-    desc: 'Global rhythms and cultural sounds',
-    presetIds: ['afrobeat', 'reggaeton', 'dancehall', 'gospel'],
-  },
-  {
-    id: 'special',
-    label: 'CINEMATIC',
-    icon: '🎬',
-    color: '#ec4899',
-    desc: 'Film score and orchestral textures',
-    presetIds: ['cinematic', 'birdsofafeather', 'jazz', 'pop'],
-  },
-  {
-    id: 'utility',
-    label: 'UTILITY',
-    icon: '📝',
-    color: '#6b7280',
-    desc: 'Blank canvas and starting points',
-    presetIds: ['blank'],
-  },
-]
-
-// ── Detailed preset descriptions ──
-const PRESET_INFO: Record<string, { instruments: string[]; mood: string; techniques: string[] }> = {
-  acid: { instruments: ['303 Bass', 'Kick', 'Hi-Hats', 'Pad'], mood: 'Aggressive, hypnotic', techniques: ['Acid resonance sweeps', 'Sidechain ducking', 'Filter envelope modulation'] },
-  trance: { instruments: ['Supersaw Lead', 'Sub Bass', 'Kick', 'Clap', 'Hi-Hats'], mood: 'Euphoric, uplifting', techniques: ['Trans() pitch shifting', 'Filter sweeps', 'Layered supersaws'] },
-  house: { instruments: ['TR-909 Drums', 'Bass Synth', 'E-Piano Chords'], mood: 'Warm, groovy', techniques: ['Four-on-the-floor', 'Sidechain compression', 'Chord stabs'] },
-  boombap: { instruments: ['TR-808 Kit', 'Sub Bass', 'E-Piano Keys'], mood: 'Classic, head-nodding', techniques: ['Swing timing', 'Vinyl warmth', 'Sample chops'] },
-  ambient: { instruments: ['Pad Synth', 'Music Box', 'Sub Rumble', 'Hi-Hats'], mood: 'Ethereal, drifting', techniques: ['Perlin modulation', 'Long reverb tails', 'Slow LFOs'] },
-  dnb: { instruments: ['TR-909 Drums', 'Reese Bass', 'Piano'], mood: 'Energetic, liquid', techniques: ['Fast breakbeats', 'Bass growl filtering', 'Syncopated rhythms'] },
-  techno: { instruments: ['Kick', 'Percussion', 'Hi-Hats', 'Analog Bass', 'Pad'], mood: 'Dark, industrial', techniques: ['Generative patterns', 'Perlin modulated params', 'Sidechain pumping'] },
-  lofi: { instruments: ['TR-808 Kit', 'Rhodes Keys', 'Vinyl Noise', 'Sub Bass'], mood: 'Cozy, nostalgic', techniques: ['Tape saturation', 'Detuned chords', 'Rain/vinyl textures'] },
-  rave: { instruments: ['Stab Synth', 'Breakbeat Drums', 'Amen Break', 'Sub Bass'], mood: 'Raw, energetic', techniques: ['Break chops', 'Stab riffs', 'Classic rave sounds'] },
-  birdsofafeather: { instruments: ['Pad Layers', 'Melodic Synth', 'Strings', 'Percussion'], mood: 'Dreamlike, cinematic', techniques: ['Layered pads', 'Melodic counterpoint', 'Atmospheric FX'] },
-  gospel: { instruments: ['Organ', 'Choir Pad', 'Piano', 'Hand Claps', 'Bass', 'Tambourine'], mood: 'Soulful, uplifting', techniques: ['Gospel chord progressions', 'Call & response', 'Hammond organ'] },
-  synthwave: { instruments: ['Detuned Lead', 'Arpeggiated Synth', 'TR-808 Drums', 'Retro Pad', 'E-Piano'], mood: 'Retro-futuristic, neon', techniques: ['80s synth sounds', 'Arpeggiated patterns', 'Chorus/detuning'] },
-  trap: { instruments: ['TR-808 Kit', 'Lead Synth', 'Rolling Hi-Hats', 'Sub 808', 'Snare'], mood: 'Hard-hitting, aggressive', techniques: ['808 slides', 'Hi-hat rolls', 'Heavy sidechain'] },
-  jazz: { instruments: ['Electric Piano', 'Upright Bass', 'Brush Kit', 'Vibraphone'], mood: 'Smooth, sophisticated', techniques: ['Extended chords', 'Walking bass', 'Swing feel'] },
-  reggaeton: { instruments: ['Dembow Drums', 'Synth Lead', 'Sub Bass', 'Percussion', 'Vocal Chops'], mood: 'Bouncy, tropical', techniques: ['Dembow rhythm', 'Reggaeton pulse', 'Latin percussion'] },
-  edm: { instruments: ['Lead Synth', 'Pluck Arps', 'Festival Kick', 'White Noise', 'Supersaw Build'], mood: 'Explosive, festival', techniques: ['Build-ups', 'Extreme sidechain', 'Big room drops'] },
-  afrobeat: { instruments: ['Talking Drum', 'Konga', 'Afro Synth', 'Guitar Riff', 'Shaker', 'Bass', 'Keys', 'Lead'], mood: 'Groovy, vibrant', techniques: ['African polyrhythms', '3-2 clave', 'Call & response melodies'] },
-  cinematic: { instruments: ['Drone Pad', 'Brass Stabs', 'Timpani', 'String Ensemble', 'Harp', 'Choir'], mood: 'Epic, dramatic', techniques: ['Orchestral layering', 'Tension builds', 'Slow evolutions'] },
-  phonk: { instruments: ['Memphis Kit', 'Distorted 808', 'Cowbell', 'Dark Pad', 'Chopped Vocal'], mood: 'Dark, aggressive', techniques: ['Memphis style', 'Heavy distortion', 'Cowbell patterns'] },
-  rnb: { instruments: ['Neo-Soul Keys', 'Warm Pad', 'Snappy Drums', 'Sub Bass', 'Vocal Lead'], mood: 'Smooth, sensual', techniques: ['9th/11th chords', 'Warm filters', 'Groove swing'] },
-  pop: { instruments: ['Piano', 'Clean Drums', 'Synth Pad', 'Pluck Bass', 'Vocal Sample'], mood: 'Bright, catchy', techniques: ['Pop structure', 'Clean mixing', 'Hook-focused'] },
-  darkhouse: { instruments: ['Deep Kick', 'Dark Bass', 'Eerie Pad', 'Metallic Perc', 'Noise Sweeps'], mood: 'Menacing, underground', techniques: ['Dark atmospheres', 'Industrial textures', 'Low-end focus'] },
-  garage: { instruments: ['2-Step Kit', 'Warped Bass', 'Vocal Chop', 'Shuffle Hats', 'Organ Stab'], mood: 'Swinging, skippy', techniques: ['2-step shuffle', 'Bass wobbles', 'Chopped vocals'] },
-  disco: { instruments: ['Funky Bass', 'Disco Strings', 'Clav', 'Four-on-the-floor', 'Shaker', 'Brass'], mood: 'Funky, danceable', techniques: ['Disco strings', 'Funky basslines', 'Off-beat hi-hats'] },
-  proghouse: { instruments: ['Progressive Lead', 'Deep Bass', 'Delayed Pluck', 'Atmospheric Pad', 'Driving Kick'], mood: 'Hypnotic, evolving', techniques: ['Progressive builds', 'Long breakdowns', 'Filtered sweeps'] },
-  minimal: { instruments: ['Click Kick', 'Micro Perc', 'Sub Sine', 'Glitch Texture', 'Ping Delay'], mood: 'Sparse, hypnotic', techniques: ['Micro-editing', 'Subtle variations', 'Minimal textures'] },
-  electropop: { instruments: ['Bright Synth', 'Pop Drums', 'Bass Synth', 'Arp', 'Pad'], mood: 'Fun, sparkling', techniques: ['Pop-synth fusion', 'Bright timbres', 'Catchy melodies'] },
-  futurebass: { instruments: ['Wobbly Chord', 'Supersaws', 'Heavy 808', 'Arp Synth', 'Vocal Chop'], mood: 'Emotional, heavy', techniques: ['Sidechain chords', 'LFO wobbles', 'Future sound design'] },
-  dancehall: { instruments: ['Riddim Drums', 'Dancehall Bass', 'Stab Synth', 'Percussion', 'Horn'], mood: 'Energetic, tropical', techniques: ['Dancehall riddim', 'Caribbean rhythm', 'Horn stabs'] },
-  melotechno: { instruments: ['Melodic Lead', 'Driving Kick', 'Atmospheric Strings', 'Rolling Hats', 'Sub Bass', 'Break Layers'], mood: 'Emotional, driving', techniques: ['Melodic techno arps', 'Long filter sweeps', 'Atmospheric breaks'] },
-  blank: { instruments: ['Kick'], mood: 'Neutral', techniques: ['Start from scratch'] },
-}
-
-// ── Visual waveform bar display for preset info ──
-function PresetWaveDisplay({ preset, color, isActive }: { preset: GenreTemplate; color: string; isActive: boolean }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    const W = canvas.width
-    const H = canvas.height
-
-    ctx.clearRect(0, 0, W, H)
-
-    // Generate pseudo-waveform from preset BPM and code length
-    const seed = preset.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
-    const barCount = 48
-    const barW = W / barCount
-
-    for (let i = 0; i < barCount; i++) {
-      // Deterministic "random" based on preset id
-      const hash = Math.sin(seed * 9301 + i * 49297) * 0.5 + 0.5
-      const val = isActive ? hash * 0.7 + 0.15 : hash * 0.3 + 0.05
-      const barH = val * H * 0.8
-
-      const alpha = isActive ? 0.4 + val * 0.6 : 0.15 + val * 0.2
-      ctx.fillStyle = isActive
-        ? `${color}${Math.round(alpha * 255).toString(16).padStart(2, '0')}`
-        : `rgba(255,255,255,${alpha * 0.3})`
-
-      // Mirror bars (top + bottom)
-      const halfH = barH / 2
-      ctx.fillRect(i * barW + 0.5, H / 2 - halfH, barW - 1, halfH)
-      ctx.fillRect(i * barW + 0.5, H / 2, barW - 1, halfH * 0.6)
-    }
-
-    // Center line
-    ctx.strokeStyle = isActive ? `${color}30` : 'rgba(255,255,255,0.04)'
-    ctx.lineWidth = 0.5
-    ctx.beginPath()
-    ctx.moveTo(0, H / 2)
-    ctx.lineTo(W, H / 2)
-    ctx.stroke()
-  }, [preset, color, isActive])
-
-  return <canvas ref={canvasRef} width={240} height={48} className="w-full" style={{ height: 48 }} />
-}
 
 // ── Machined screw detail ──
 function RackScrew({ x, y }: { x: string; y: string }) {
@@ -178,275 +17,391 @@ function RackScrew({ x, y }: { x: string; y: string }) {
     <div
       className="absolute"
       style={{
-        left: x, top: y, width: 8, height: 8,
+        left: x, top: y, width: 7, height: 7,
         borderRadius: '50%',
         background: 'linear-gradient(135deg, #2a2d35 0%, #1a1c22 50%, #22252d 100%)',
         boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.5), 0 0.5px 0 rgba(255,255,255,0.05)',
+        zIndex: 20,
       }}
     >
-      {/* Hex socket */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <div style={{ width: 3, height: 3, borderRadius: '50%', background: '#0a0b0d', boxShadow: 'inset 0 0.5px 1px rgba(255,255,255,0.05)' }} />
+        <div style={{ width: 2.5, height: 2.5, borderRadius: '50%', background: '#0a0b0d', boxShadow: 'inset 0 0.5px 1px rgba(255,255,255,0.05)' }} />
       </div>
     </div>
   )
 }
 
-interface PresetRackProps {
-  activeGenre: string
-  onSelect: (id: string) => void
+// ── LED status indicator ──
+function StatusLED({ color, active }: { color: string; active: boolean }) {
+  return (
+    <div
+      style={{
+        width: 4, height: 4, borderRadius: '50%',
+        background: active ? color : '#1a1c22',
+        boxShadow: active ? `0 0 6px ${color}80, 0 0 2px ${color}40` : 'inset 0 0.5px 1px rgba(0,0,0,0.5)',
+        transition: 'all 150ms',
+      }}
+    />
+  )
 }
 
-export default memo(function PresetRack({ activeGenre, onSelect }: PresetRackProps) {
-  const [activeCategory, setActiveCategory] = useState<string>('electronic')
-  const [hoveredPreset, setHoveredPreset] = useState<string | null>(null)
+// ── Target badge chip ──
+function TargetBadge({ target }: { target: string }) {
+  const cfg = target === 'instrument'
+    ? { label: 'INST', bg: '#8b5cf610', color: '#8b5cf6', border: '#8b5cf615' }
+    : target === 'sound'
+      ? { label: 'SND', bg: '#f9731610', color: '#f97316', border: '#f9731615' }
+      : { label: 'ALL', bg: '#7fa99810', color: '#7fa998', border: '#7fa99815' }
 
-  // Get presets for current category
-  const currentCategory = useMemo(
-    () => PRESET_CATEGORIES.find(c => c.id === activeCategory) || PRESET_CATEGORIES[0],
+  return (
+    <span className="text-[5px] font-black tracking-[.1em] px-1 py-0.5 rounded"
+      style={{ background: cfg.bg, color: cfg.color, border: `0.5px solid ${cfg.border}` }}>
+      {cfg.label}
+    </span>
+  )
+}
+
+interface PresetRackProps {
+  /** Currently selected channel index (-1 = no selection) */
+  selectedChannel: number
+  /** Callback to apply preset effects to channel */
+  onApplyPreset: (channelIdx: number, effects: string[]) => void
+  /** Number of channels for target info */
+  channelCount: number
+}
+
+export default memo(function PresetRack({ selectedChannel, onApplyPreset, channelCount }: PresetRackProps) {
+  const [activeCategory, setActiveCategory] = useState<FxPresetCategory>('synth')
+  const [search, setSearch] = useState('')
+  const [expandedPreset, setExpandedPreset] = useState<string | null>(null)
+  const [collapsedCategories, setCollapsedCategories] = useState(false)
+  const listRef = useRef<HTMLDivElement>(null)
+
+  // Current category info
+  const currentCatInfo = useMemo(
+    () => FX_PRESET_CATEGORIES.find(c => c.key === activeCategory) || FX_PRESET_CATEGORIES[0],
     [activeCategory]
   )
 
-  const categoryPresets = useMemo(
-    () => currentCategory.presetIds
-      .map(id => GENRE_TEMPLATES.find(t => t.id === id))
-      .filter(Boolean) as GenreTemplate[],
-    [currentCategory]
-  )
+  // Filtered presets
+  const filteredPresets = useMemo(() => {
+    const q = search.toLowerCase().trim()
+    return FX_PRESETS.filter(p =>
+      p.category === activeCategory &&
+      (!q || p.name.toLowerCase().includes(q) || p.tags.some(t => t.includes(q)) || p.desc.toLowerCase().includes(q))
+    )
+  }, [activeCategory, search])
 
-  // Info display — show hovered or active preset
-  const displayPreset = useMemo(() => {
-    const id = hoveredPreset || activeGenre
-    return GENRE_TEMPLATES.find(t => t.id === id) || null
-  }, [hoveredPreset, activeGenre])
+  const handleApply = useCallback((preset: FxPreset) => {
+    if (selectedChannel >= 0) {
+      onApplyPreset(selectedChannel, preset.effects)
+    }
+  }, [selectedChannel, onApplyPreset])
 
-  const displayInfo = displayPreset ? PRESET_INFO[displayPreset.id] : null
-
-  const handleSelect = useCallback((id: string) => {
-    onSelect(id)
-  }, [onSelect])
+  const toggleCategory = useCallback((key: FxPresetCategory) => {
+    setActiveCategory(key)
+    setSearch('')
+    setExpandedPreset(null)
+    listRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [])
 
   return (
-    <div className="flex h-full w-full overflow-hidden relative" style={{ background: '#0c0d10' }}>
-      {/* ── Rack screws ── */}
-      <RackScrew x="4px" y="4px" />
-      <RackScrew x="calc(100% - 12px)" y="4px" />
-      <RackScrew x="4px" y="calc(100% - 12px)" />
-      <RackScrew x="calc(100% - 12px)" y="calc(100% - 12px)" />
+    <div className="flex flex-col h-full w-full relative overflow-hidden select-none"
+      style={{
+        background: 'linear-gradient(180deg, #0e1014 0%, #0b0c0f 50%, #0e1014 100%)',
+        borderLeft: '1px solid rgba(255,255,255,0.04)',
+      }}
+    >
+      {/* Rack screws */}
+      <RackScrew x="3px" y="3px" />
+      <RackScrew x="calc(100% - 10px)" y="3px" />
+      <RackScrew x="3px" y="calc(100% - 10px)" />
+      <RackScrew x="calc(100% - 10px)" y="calc(100% - 10px)" />
 
-      {/* ══ LEFT: Category selector strip (vertical) ══ */}
+      {/* ══ HEADER — Machined title strip ══ */}
       <div
-        className="shrink-0 flex flex-col py-3 px-1 overflow-y-auto"
+        className="shrink-0 flex items-center gap-1.5 px-3 py-1.5"
         style={{
-          width: 52,
-          background: 'linear-gradient(180deg, #111318 0%, #0e1014 50%, #111318 100%)',
-          borderRight: '1px solid rgba(255,255,255,0.04)',
-          boxShadow: 'inset -1px 0 3px rgba(0,0,0,0.3)',
+          background: 'linear-gradient(180deg, #18191f 0%, #111318 100%)',
+          borderBottom: '1px solid rgba(255,255,255,0.04)',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03), 0 2px 6px #050607',
         }}
       >
-        {PRESET_CATEGORIES.map(cat => {
-          const isActive = cat.id === activeCategory
-          const hasSelected = cat.presetIds.includes(activeGenre)
-          return (
-            <button
-              key={cat.id}
-              onClick={() => setActiveCategory(cat.id)}
-              className="flex flex-col items-center gap-0.5 py-2 px-1 rounded-md cursor-pointer transition-all duration-150 relative"
-              style={{
-                background: isActive
-                  ? `linear-gradient(180deg, ${cat.color}12 0%, ${cat.color}06 100%)`
-                  : 'transparent',
-                border: isActive ? `1px solid ${cat.color}25` : '1px solid transparent',
-                boxShadow: isActive
-                  ? `inset 0 1px 0 rgba(255,255,255,0.04), 0 0 8px ${cat.color}10`
-                  : 'none',
-              }}
-              title={cat.label}
-            >
-              <span className="text-sm">{cat.icon}</span>
-              <span className="text-[5px] font-black tracking-[.1em] uppercase text-center leading-tight"
-                style={{ color: isActive ? cat.color : '#4a4e56' }}>
-                {cat.label.split(' ')[0]}
-              </span>
-              {/* Active preset indicator dot */}
-              {hasSelected && (
-                <div className="absolute top-1 right-1 w-1 h-1 rounded-full"
-                  style={{ background: cat.color, boxShadow: `0 0 3px ${cat.color}80` }} />
-              )}
-            </button>
-          )
-        })}
+        <StatusLED color="#7fa998" active />
+        <span className="text-[7px] font-black tracking-[.18em] uppercase" style={{ color: '#7fa998' }}>
+          FX PRESETS
+        </span>
+        <div className="flex-1" />
+        <span className="text-[6px] font-mono font-bold" style={{ color: '#3a3d44' }}>
+          {FX_PRESETS.length}
+        </span>
+
+        {/* Channel target indicator */}
+        {selectedChannel >= 0 ? (
+          <span className="text-[6px] font-black px-1.5 py-0.5 rounded-md"
+            style={{
+              background: '#7fa99812',
+              color: '#7fa998',
+              border: '0.5px solid #7fa99820',
+            }}>
+            CH{selectedChannel + 1}
+          </span>
+        ) : (
+          <span className="text-[6px] font-black px-1.5 py-0.5 rounded-md"
+            style={{ color: '#ef4444', background: '#ef444412', border: '0.5px solid #ef444420' }}>
+            NO CH
+          </span>
+        )}
       </div>
 
-      {/* ══ CENTER: Preset list (vertical scrollable) ══ */}
-      <div
-        className="flex-1 flex flex-col overflow-hidden"
-        style={{ minWidth: 0 }}
-      >
-        {/* Category header — machined strip */}
-        <div
-          className="shrink-0 flex items-center gap-2 px-3 py-1.5"
-          style={{
-            background: 'linear-gradient(180deg, #16181e 0%, #111318 100%)',
-            borderBottom: `1px solid ${currentCategory.color}15`,
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
-          }}
-        >
-          <span className="text-sm">{currentCategory.icon}</span>
-          <span className="text-[8px] font-black tracking-[.15em] uppercase" style={{ color: currentCategory.color }}>
-            {currentCategory.label}
-          </span>
-          <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${currentCategory.color}15 0%, transparent 100%)` }} />
-          <span className="text-[7px] font-bold" style={{ color: '#3a3d44' }}>
-            {categoryPresets.length} PRESETS
-          </span>
-        </div>
-
-        {/* Preset list */}
-        <div className="flex-1 overflow-y-auto py-1 px-1.5" style={{ scrollbarWidth: 'thin', scrollbarColor: '#2a2d35 transparent' }}>
-          {categoryPresets.map(preset => {
-            const isActive = preset.id === activeGenre
-            const isHovered = preset.id === hoveredPreset
-            const info = PRESET_INFO[preset.id]
-
-            return (
-              <button
-                key={preset.id}
-                onClick={() => handleSelect(preset.id)}
-                onMouseEnter={() => setHoveredPreset(preset.id)}
-                onMouseLeave={() => setHoveredPreset(null)}
-                className="w-full text-left mb-0.5 rounded-md cursor-pointer transition-all duration-150 group relative overflow-hidden"
-                style={{
-                  background: isActive
-                    ? `linear-gradient(135deg, ${currentCategory.color}12 0%, ${currentCategory.color}06 100%)`
-                    : isHovered
-                      ? 'rgba(255,255,255,0.02)'
-                      : 'transparent',
-                  border: isActive
-                    ? `1px solid ${currentCategory.color}30`
-                    : '1px solid transparent',
-                  padding: '6px 8px',
-                }}
-              >
-                {/* Preset row */}
-                <div className="flex items-center gap-2">
-                  {/* LED indicator */}
-                  <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{
-                    background: isActive ? currentCategory.color : '#2a2d35',
-                    boxShadow: isActive ? `0 0 6px ${currentCategory.color}60` : 'none',
-                  }} />
-
-                  {/* Icon + name */}
-                  <span className="text-xs">{preset.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <span className="text-[8px] font-black tracking-[.1em] uppercase block truncate"
-                      style={{ color: isActive ? currentCategory.color : isHovered ? '#c0c4cc' : '#6b7280' }}>
-                      {preset.label}
-                    </span>
-                    <span className="text-[6px] font-semibold block truncate"
-                      style={{ color: '#4a4e56' }}>
-                      {preset.desc}
-                    </span>
-                  </div>
-
-                  {/* BPM badge */}
-                  <div className="shrink-0 px-1.5 py-0.5 rounded"
-                    style={{
-                      background: isActive ? `${currentCategory.color}10` : 'rgba(255,255,255,0.02)',
-                      border: `1px solid ${isActive ? currentCategory.color + '20' : 'rgba(255,255,255,0.04)'}`,
-                    }}>
-                    <span className="text-[7px] font-black font-mono"
-                      style={{ color: isActive ? currentCategory.color : '#4a4e56' }}>
-                      {preset.bpm}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Mini waveform bar under active/hovered preset */}
-                {(isActive || isHovered) && info && (
-                  <div className="mt-1 flex items-center gap-1 overflow-hidden">
-                    {info.instruments.slice(0, 5).map((inst, i) => (
-                      <span key={i} className="text-[5px] font-bold px-1 py-0.5 rounded shrink-0"
-                        style={{
-                          background: isActive ? `${currentCategory.color}10` : 'rgba(255,255,255,0.02)',
-                          color: isActive ? `${currentCategory.color}90` : '#5a616b',
-                          border: `0.5px solid ${isActive ? currentCategory.color + '15' : 'rgba(255,255,255,0.04)'}`,
-                        }}>
-                        {inst}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {/* Active glow edge */}
-                {isActive && (
-                  <div className="absolute left-0 top-0 bottom-0 w-0.5"
-                    style={{ background: currentCategory.color, boxShadow: `0 0 6px ${currentCategory.color}40` }} />
-                )}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* ── INFO DISPLAY — Shows details for selected/hovered preset ── */}
-        {displayPreset && displayInfo && (
-          <div
-            className="shrink-0 relative overflow-hidden"
+      {/* ══ SEARCH BAR — recessed input ══ */}
+      <div className="shrink-0 px-2 py-1.5" style={{ background: '#0c0d10' }}>
+        <div className="relative">
+          <Search size={8} className="absolute left-2 top-1/2 -translate-y-1/2" style={{ color: '#3a3d44' }} />
+          <input
+            type="text"
+            placeholder="Search presets..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full pl-6 pr-7 py-1 text-[8px] font-mono rounded-lg outline-none"
             style={{
-              background: 'linear-gradient(180deg, #111318 0%, #0c0d10 100%)',
-              borderTop: '1px solid rgba(255,255,255,0.04)',
-              boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.3)',
+              background: '#080910',
+              color: '#9aa7b3',
+              border: '1px solid rgba(255,255,255,0.04)',
+              boxShadow: 'inset 2px 2px 4px #050607, inset -1px -1px 3px #1a1d22',
             }}
-          >
-            {/* Waveform display */}
-            <PresetWaveDisplay
-              preset={displayPreset}
-              color={currentCategory.color}
-              isActive={displayPreset.id === activeGenre}
-            />
+          />
+          {search && (
+            <button onClick={() => setSearch('')}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 cursor-pointer hover:opacity-80"
+              style={{ background: 'none', border: 'none', color: '#5a616b' }}>
+              <X size={8} />
+            </button>
+          )}
+        </div>
+      </div>
 
-            {/* Info overlay */}
-            <div className="absolute inset-0 flex flex-col justify-end px-3 pb-1.5 pointer-events-none">
-              {/* Preset name */}
-              <div className="flex items-center gap-2 mb-0.5">
-                <span className="text-[9px] font-black tracking-[.12em] uppercase"
-                  style={{ color: currentCategory.color, textShadow: `0 0 8px ${currentCategory.color}30` }}>
-                  {displayPreset.icon} {displayPreset.label}
-                </span>
-                <span className="text-[7px] font-mono font-bold" style={{ color: '#4a4e56' }}>
-                  {displayPreset.bpm} BPM
-                </span>
-              </div>
+      {/* ══ CATEGORY SELECTOR — compact pill grid ══ */}
+      <div className="shrink-0 px-1.5 py-1"
+        style={{
+          background: 'linear-gradient(180deg, #111318 0%, #0e1014 100%)',
+          borderBottom: '1px solid rgba(255,255,255,0.03)',
+        }}
+      >
+        {/* Collapse/expand toggle */}
+        <button
+          onClick={() => setCollapsedCategories(!collapsedCategories)}
+          className="flex items-center gap-1 w-full px-1 py-0.5 cursor-pointer mb-0.5"
+          style={{ background: 'none', border: 'none', color: '#4a4e56' }}
+        >
+          {collapsedCategories ? <ChevronDown size={7} /> : <ChevronUp size={7} />}
+          <span className="text-[5px] font-black tracking-[.15em] uppercase">CATEGORIES</span>
+          <div className="flex-1 h-px ml-1" style={{ background: 'rgba(255,255,255,0.04)' }} />
+        </button>
 
-              {/* Mood */}
-              <span className="text-[6px] font-semibold" style={{ color: '#6b7280' }}>
-                {displayInfo.mood}
-              </span>
-
-              {/* Techniques */}
-              <div className="flex flex-wrap gap-0.5 mt-0.5">
-                {displayInfo.techniques.map((t, i) => (
-                  <span key={i} className="text-[5px] font-bold px-1 py-0.5 rounded"
-                    style={{
-                      background: `${currentCategory.color}08`,
-                      color: `${currentCategory.color}70`,
-                      border: `0.5px solid ${currentCategory.color}12`,
-                    }}>
-                    {t}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Scan line effect */}
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px)',
-              }}
-            />
+        {!collapsedCategories && (
+          <div className="flex flex-wrap gap-[3px]">
+            {FX_PRESET_CATEGORIES.map(cat => {
+              const isActive = cat.key === activeCategory
+              const count = FX_PRESETS.filter(p => p.category === cat.key).length
+              return (
+                <button
+                  key={cat.key}
+                  onClick={() => toggleCategory(cat.key)}
+                  className="cursor-pointer transition-all duration-[120ms] active:scale-95"
+                  style={{
+                    padding: '2px 5px',
+                    fontSize: '6px', fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase',
+                    borderRadius: '6px',
+                    color: isActive ? cat.color : '#4a4e56',
+                    background: isActive
+                      ? `linear-gradient(135deg, ${cat.color}12 0%, ${cat.color}06 100%)`
+                      : 'transparent',
+                    border: isActive ? `1px solid ${cat.color}20` : '1px solid transparent',
+                    boxShadow: isActive
+                      ? `inset 0 1px 0 rgba(255,255,255,0.03), 0 0 6px ${cat.color}08`
+                      : 'none',
+                    lineHeight: 1.2,
+                  }}
+                  title={`${cat.label} (${count})`}
+                >
+                  <span className="mr-0.5">{cat.icon}</span>
+                  {cat.label}
+                </button>
+              )
+            })}
           </div>
         )}
+      </div>
+
+      {/* ══ CATEGORY HEADER — current section label ══ */}
+      <div
+        className="shrink-0 flex items-center gap-1.5 px-2.5 py-1"
+        style={{
+          background: `linear-gradient(90deg, ${currentCatInfo.color}08 0%, transparent 100%)`,
+          borderBottom: `1px solid ${currentCatInfo.color}10`,
+        }}
+      >
+        <span className="text-sm">{currentCatInfo.icon}</span>
+        <span className="text-[7px] font-black tracking-[.12em] uppercase" style={{ color: currentCatInfo.color }}>
+          {currentCatInfo.label}
+        </span>
+        <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${currentCatInfo.color}12 0%, transparent 100%)` }} />
+        <span className="text-[6px] font-bold font-mono" style={{ color: '#3a3d44' }}>
+          {filteredPresets.length}
+        </span>
+      </div>
+
+      {/* ══ PRESET LIST — scrollable vertical list ══ */}
+      <div
+        ref={listRef}
+        className="flex-1 overflow-y-auto py-1 px-1.5"
+        style={{ scrollbarWidth: 'thin', scrollbarColor: '#2a2d35 transparent' }}
+      >
+        {filteredPresets.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-6 gap-1">
+            <span className="text-[8px] font-bold" style={{ color: '#3a3d44' }}>No presets found</span>
+            <span className="text-[6px]" style={{ color: '#2a2d35' }}>Try a different search or category</span>
+          </div>
+        ) : (
+          filteredPresets.map(preset => {
+            const isExpanded = expandedPreset === preset.id
+            const catInfo = FX_PRESET_CATEGORIES.find(c => c.key === preset.category) || currentCatInfo
+            const canApply = selectedChannel >= 0
+
+            return (
+              <div
+                key={preset.id}
+                className="mb-1 rounded-lg overflow-hidden transition-all duration-[120ms]"
+                style={{
+                  background: isExpanded
+                    ? `linear-gradient(135deg, ${catInfo.color}08 0%, #12141a 100%)`
+                    : '#12141a',
+                  border: isExpanded
+                    ? `1px solid ${catInfo.color}18`
+                    : '1px solid rgba(255,255,255,0.03)',
+                  boxShadow: '2px 2px 5px #050607, -1px -1px 3px #1a1d22',
+                }}
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('application/x-strudel-preset', JSON.stringify(preset))
+                  e.dataTransfer.setData('application/x-strudel-fx', JSON.stringify({
+                    ...preset,
+                    code: preset.effects[0],
+                    label: preset.name,
+                    icon: catInfo.icon,
+                  }))
+                  e.dataTransfer.effectAllowed = 'copyMove'
+                }}
+              >
+                {/* Preset header row */}
+                <div
+                  className="flex items-center gap-1.5 px-2 py-1.5 cursor-pointer hover:brightness-110 transition-all"
+                  onClick={() => setExpandedPreset(isExpanded ? null : preset.id)}
+                >
+                  {/* LED */}
+                  <StatusLED color={catInfo.color} active={isExpanded} />
+
+                  {/* Name */}
+                  <span className="text-[7px] font-black tracking-[.08em] uppercase flex-1 min-w-0 truncate"
+                    style={{ color: isExpanded ? catInfo.color : '#8a8f9a' }}>
+                    {preset.name}
+                  </span>
+
+                  {/* Target + FX count */}
+                  <TargetBadge target={preset.target} />
+                  <span className="text-[5px] font-mono font-bold" style={{ color: '#3a3d44' }}>
+                    {preset.effects.length}fx
+                  </span>
+
+                  {/* Expand arrow */}
+                  {isExpanded ? <ChevronUp size={7} style={{ color: '#4a4e56' }} /> : <ChevronDown size={7} style={{ color: '#2a2d35' }} />}
+                </div>
+
+                {/* Expanded detail panel */}
+                {isExpanded && (
+                  <div className="px-2 pb-2 space-y-1.5" style={{ borderTop: `1px solid ${catInfo.color}0a` }}>
+                    {/* Description */}
+                    <p className="text-[6px] leading-relaxed pt-1" style={{ color: '#6b7280' }}>
+                      {preset.desc}
+                    </p>
+
+                    {/* Effect chain display */}
+                    <div className="flex flex-wrap gap-[3px]">
+                      {preset.effects.map((fx, i) => (
+                        <span key={i} className="text-[5.5px] font-mono px-1 py-0.5 rounded"
+                          style={{
+                            background: '#080910',
+                            color: catInfo.color,
+                            border: `0.5px solid ${catInfo.color}15`,
+                            boxShadow: 'inset 1px 1px 2px #050607',
+                          }}>
+                          {fx}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Tags */}
+                    <div className="flex flex-wrap gap-1">
+                      {preset.tags.map((tag, i) => (
+                        <span key={i} className="text-[5px] font-bold px-1 py-0.5 rounded"
+                          style={{ background: '#0a0b0d', color: '#4a4e56', border: '0.5px solid rgba(255,255,255,0.04)' }}>
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Apply button */}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleApply(preset) }}
+                      disabled={!canApply}
+                      className="w-full py-1.5 rounded-lg cursor-pointer transition-all duration-[150ms] active:scale-[0.98]"
+                      style={{
+                        background: canApply
+                          ? `linear-gradient(135deg, ${catInfo.color}18 0%, ${catInfo.color}08 100%)`
+                          : '#0a0b0d',
+                        border: canApply
+                          ? `1px solid ${catInfo.color}25`
+                          : '1px solid rgba(255,255,255,0.04)',
+                        color: canApply ? catInfo.color : '#3a3d44',
+                        fontSize: '7px', fontWeight: 900, letterSpacing: '.12em', textTransform: 'uppercase',
+                        boxShadow: canApply
+                          ? `0 0 8px ${catInfo.color}10, 2px 2px 4px #050607, -1px -1px 3px #1a1d22`
+                          : 'inset 1px 1px 3px #050607',
+                        cursor: canApply ? 'pointer' : 'not-allowed',
+                        opacity: canApply ? 1 : 0.5,
+                      }}
+                    >
+                      {canApply ? `⚡ Apply to CH${selectedChannel + 1}` : '— Select a channel —'}
+                    </button>
+
+                    {/* Drag hint */}
+                    <div className="text-center">
+                      <span className="text-[5px] font-mono" style={{ color: '#2a2d35' }}>
+                        or drag → channel strip
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })
+        )}
+      </div>
+
+      {/* ══ FOOTER — status strip ══ */}
+      <div
+        className="shrink-0 flex items-center gap-1.5 px-2.5 py-1"
+        style={{
+          background: 'linear-gradient(180deg, #111318 0%, #0e1014 100%)',
+          borderTop: '1px solid rgba(255,255,255,0.03)',
+          boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.2)',
+        }}
+      >
+        <StatusLED color="#22d3ee" active={selectedChannel >= 0} />
+        <span className="text-[5px] font-bold tracking-[.1em] uppercase" style={{ color: '#3a3d44' }}>
+          {channelCount} CH · {filteredPresets.length} PRESETS · DRAG OR CLICK TO APPLY
+        </span>
       </div>
 
       {/* ── Brushed metal texture overlay ── */}

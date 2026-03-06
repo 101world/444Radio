@@ -18,7 +18,6 @@ import WaveformViewer from './WaveformViewer'
 import EffectsDocModal from './EffectsDocModal'
 import TrackView from './TrackView'
 import PresetRack from './PresetRack'
-import DockablePanel from './DockablePanel'
 import { detectPitch, semitonesBetweenRoots, semitonesToSpeed } from '@/lib/pitch-detection'
 import { FX_PRESETS, FX_PRESET_CATEGORIES, type FxPresetCategory } from '@/lib/fx-presets'
 import {
@@ -1600,13 +1599,9 @@ interface StudioMixerRackProps {
   getCyclePosition?: () => number | null
   /** Project BPM for playhead speed calculation */
   projectBpm?: number
-  /** Active genre preset id */
-  activeGenre?: string
-  /** Genre preset selection handler */
-  onSelectGenre?: (id: string) => void
 }
 
-export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, onMixerStateChange, metronomeEnabled = false, onMetronomeToggle, onOpenPianoRoll, onOpenDrumSequencer, onOpenPadSampler, onAddVocalChannel, userSamples = [], isPlaying: isPlayingProp = false, onPreview, getCyclePosition, projectBpm = 120, activeGenre = 'acid', onSelectGenre }: StudioMixerRackProps) {
+export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, onMixerStateChange, metronomeEnabled = false, onMetronomeToggle, onOpenPianoRoll, onOpenDrumSequencer, onOpenPadSampler, onAddVocalChannel, userSamples = [], isPlaying: isPlayingProp = false, onPreview, getCyclePosition, projectBpm = 120 }: StudioMixerRackProps) {
   const channels = useMemo(() => parseStrudelCode(code), [code])
   const [expandedChannels, setExpandedChannels] = useState<Set<string>>(new Set())
   const [mutedChannels, setMutedChannels] = useState<Set<number>>(new Set())
@@ -2398,8 +2393,16 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     [liveUpdate],
   )
 
+  // Derive first selected channel for preset rack target
+  const firstSelectedChannel = useMemo(() => {
+    if (selectedChannels.size === 0) return -1
+    return Math.min(...Array.from(selectedChannels))
+  }, [selectedChannels])
+
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div className="h-full flex flex-row overflow-hidden">
+      {/* ══ MAIN CONTENT (header + channels) ══ */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
       {/* ── Header bar — hardware control strip ── */}
       <div
         className="shrink-0 flex items-center gap-2 px-3 py-1.5"
@@ -2873,10 +2876,10 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
               fontWeight: 800,
               letterSpacing: '0.08em',
             }}
-            title="Preset Rack"
+            title="FX Preset Rack"
           >
             <Sparkles size={9} />
-            <span className="uppercase">Presets</span>
+            <span className="uppercase">FX Presets</span>
           </button>
         </div>
 
@@ -3418,21 +3421,25 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
         }}
       />
 
-      {/* ═══ PRESET RACK PLUGIN (dockable) ═══ */}
-      <DockablePanel
-        id="preset-rack"
-        title="PRESET RACK"
-        brand="444RADIO"
-        accentColor="#22d3ee"
-        isOpen={showPresetRack}
-        onClose={() => setShowPresetRack(false)}
-        defaultWidth={520}
-      >
-        <PresetRack
-          activeGenre={activeGenre}
-          onSelect={(id) => onSelectGenre?.(id)}
-        />
-      </DockablePanel>
+      </div>{/* end main content column */}
+
+      {/* ═══ FX PRESET RACK — right sidebar ═══ */}
+      {showPresetRack && (
+        <div
+          className="shrink-0 h-full overflow-hidden"
+          style={{
+            width: 220,
+            borderLeft: '1px solid rgba(255,255,255,0.04)',
+            boxShadow: '-2px 0 8px rgba(0,0,0,0.3)',
+          }}
+        >
+          <PresetRack
+            selectedChannel={firstSelectedChannel}
+            onApplyPreset={applyPreset}
+            channelCount={channels.length}
+          />
+        </div>
+      )}
     </div>
   )
 }

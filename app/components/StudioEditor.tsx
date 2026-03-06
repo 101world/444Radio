@@ -755,8 +755,6 @@ export default function StudioEditor() {
               } catch { return null }
             }}
             projectBpm={parseBPM(code) ?? 120}
-            activeGenre={activeGenre}
-            onSelectGenre={loadTemplate}
           />
 
           {/* Piano Roll — docks at bottom */}
