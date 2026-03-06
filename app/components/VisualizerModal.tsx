@@ -35,6 +35,8 @@ interface VisualizerModalProps {
   onSuccess?: (videoUrl: string, prompt: string, mediaId: string | null) => void
   onGenerationStart?: (prompt: string, generationId: string) => void
   initialPrompt?: string
+  /** Pre-load an image URL (e.g. from cover art generation) */
+  initialImageUrl?: string | null
   /** Plugin Bearer token — when provided, all API calls include Authorization header */
   authToken?: string
 }
@@ -82,6 +84,7 @@ export default function VisualizerModal({
   onSuccess,
   onGenerationStart,
   initialPrompt = '',
+  initialImageUrl,
   authToken,
 }: VisualizerModalProps) {
   const { addGeneration, updateGeneration } = useGenerationQueue()
@@ -104,6 +107,25 @@ export default function VisualizerModal({
   useEffect(() => {
     if (initialPrompt) setPrompt(initialPrompt)
   }, [initialPrompt])
+
+  // Auto-load initial image URL when provided (e.g. from cover art)
+  useEffect(() => {
+    if (!initialImageUrl || !isOpen) return
+    if (imageFile) return // don't overwrite if user already picked one
+    ;(async () => {
+      try {
+        const res = await fetch(initialImageUrl)
+        const blob = await res.blob()
+        const ext = initialImageUrl.split('.').pop()?.split('?')[0] || 'jpg'
+        const file = new File([blob], `cover-art.${ext}`, { type: blob.type || 'image/jpeg' })
+        setImageFile(file)
+        setImagePreview(URL.createObjectURL(file))
+      } catch {
+        // silent — user can still pick manually
+      }
+    })()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialImageUrl, isOpen])
 
   // ── Image handling ──
   const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {

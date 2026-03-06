@@ -125,6 +125,7 @@ function CreatePageContent() {
   const [showAutotuneModal, setShowAutotuneModal] = useState(false)
   const [showVisualizerModal, setShowVisualizerModal] = useState(false)
   const [showLipSyncModal, setShowLipSyncModal] = useState(false)
+  const [coverArtForModal, setCoverArtForModal] = useState<string | null>(null)
   const [boostAudioUrl, setBoostAudioUrl] = useState('')
   const [boostTrackTitle, setBoostTrackTitle] = useState('')
   const [preselectedMusicId, setPreselectedMusicId] = useState<string | undefined>()
@@ -3215,16 +3216,40 @@ function CreatePageContent() {
                           </div>
                         </div>
                       </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleOpenRelease(undefined, message.id)
-                        }}
-                        className="absolute top-2 right-2 p-2.5 bg-black/70 hover:bg-cyan-500/50 backdrop-blur-xl border border-cyan-500/40 rounded-lg transition-all md:opacity-0 md:group-hover:opacity-100 hover:scale-110"
-                        title="Release"
-                      >
-                        <Rocket size={18} className="text-cyan-400" />
-                      </button>
+                      <div className="absolute top-2 right-2 flex gap-1.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setCoverArtForModal(message.result!.imageUrl!)
+                            setShowVisualizerModal(true)
+                          }}
+                          className="p-2.5 bg-black/70 hover:bg-purple-500/50 backdrop-blur-xl border border-purple-500/40 rounded-lg transition-all hover:scale-110"
+                          title="Create Visualizer Video"
+                        >
+                          <Video size={18} className="text-purple-400" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setCoverArtForModal(message.result!.imageUrl!)
+                            setShowLipSyncModal(true)
+                          }}
+                          className="p-2.5 bg-black/70 hover:bg-pink-500/50 backdrop-blur-xl border border-pink-500/40 rounded-lg transition-all hover:scale-110"
+                          title="Create Lip-Sync Video"
+                        >
+                          <Mic size={18} className="text-pink-400" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleOpenRelease(undefined, message.id)
+                          }}
+                          className="p-2.5 bg-black/70 hover:bg-cyan-500/50 backdrop-blur-xl border border-cyan-500/40 rounded-lg transition-all hover:scale-110"
+                          title="Release"
+                        >
+                          <Rocket size={18} className="text-cyan-400" />
+                        </button>
+                      </div>
                     </div>
 
                     {/* Info - Compact */}
@@ -5022,9 +5047,10 @@ function CreatePageContent() {
       <Suspense fallback={null}>
         <VisualizerModal
           isOpen={showVisualizerModal}
-          onClose={() => setShowVisualizerModal(false)}
+          onClose={() => { setShowVisualizerModal(false); setCoverArtForModal(null) }}
           userCredits={userCredits || 0}
           initialPrompt={input}
+          initialImageUrl={coverArtForModal}
           onGenerationStart={(prompt: string, generationId: string) => {
             const userMsgId = Date.now().toString()
             const genMsgId = (Date.now() + 1).toString()
@@ -5081,8 +5107,9 @@ function CreatePageContent() {
       <Suspense fallback={null}>
         <LipSyncModal
           isOpen={showLipSyncModal}
-          onClose={() => setShowLipSyncModal(false)}
+          onClose={() => { setShowLipSyncModal(false); setCoverArtForModal(null) }}
           userCredits={userCredits || 0}
+          initialImageUrl={coverArtForModal}
           onGenerationStart={(prompt: string, generationId: string) => {
             const userMsgId = Date.now().toString()
             const genMsgId = (Date.now() + 1).toString()
