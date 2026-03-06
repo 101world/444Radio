@@ -17,16 +17,9 @@
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-/** Short timeout for quest tracking fetches — fail fast, never block generation */
-const QUEST_TIMEOUT_MS = 12000
-
 /** In-memory cache to prevent spamming quest checks for the same user+action */
 const recentlyTracked = new Map<string, number>()
 const DEDUP_WINDOW_MS = 30_000 // Don't re-check same user+action within 30s
-
-function questSignal(): AbortSignal {
-  return AbortSignal.timeout(QUEST_TIMEOUT_MS)
-}
 
 function headers() {
   return {
@@ -36,9 +29,19 @@ function headers() {
   }
 }
 
-/** Wrapper around fetch that auto-attaches a 5s timeout signal */
+/** Check if an error is a timeout / abort (expected on Vercel serverless) */
+function isTimeoutOrAbort(err: unknown): boolean {
+  if (err instanceof Error) {
+    return err.name === 'TimeoutError' || err.name === 'AbortError' ||
+           err.message.includes('aborted') || err.message.includes('timeout')
+  }
+  return false
+}
+
+/** Wrapper around fetch — no AbortSignal since quest tracking is fire-and-forget.
+ *  Vercel kills the Lambda naturally; adding a timeout just creates noisy errors. */
 function qfetch(url: string, init?: RequestInit): Promise<Response> {
-  return fetch(url, { ...init, signal: questSignal() })
+  return fetch(url, init)
 }
 
 /**
@@ -70,28 +73,29 @@ export async function trackQuestProgress(
       }
     }
 
-    // 1. Check user has an active quest pass
-    const passRes = await qfetch(
-      `${supabaseUrl}/rest/v1/quest_passes?user_id=eq.${userId}&is_active=eq.true&expires_at=gt.${new Date().toISOString()}&limit=1`,
-      { headers: headers() }
-    )
+    // 1-3. Fetch quest pass, active quests, and user quests IN PARALLEL
+    const [passRes, allQRes, uqRes] = await Promise.all([
+      qfetch(
+        `${supabaseUrl}/rest/v1/quest_passes?user_id=eq.${userId}&is_active=eq.true&expires_at=gt.${new Date().toISOString()}&limit=1`,
+        { headers: headers() }
+      ),
+      qfetch(
+        `${supabaseUrl}/rest/v1/quests?is_active=eq.true&select=id,requirement,quest_level`,
+        { headers: headers() }
+      ),
+      qfetch(
+        `${supabaseUrl}/rest/v1/user_quests?user_id=eq.${userId}&select=id,quest_id,progress,target,status`,
+        { headers: headers() }
+      ),
+    ])
+
     const passes = await passRes.json()
     if (!passes?.length) return // no pass → skip silently
 
-    // 2. Fetch ALL active quests matching this action so we can auto-start any missing ones
-    const allQRes = await qfetch(
-      `${supabaseUrl}/rest/v1/quests?is_active=eq.true&select=id,requirement,quest_level`,
-      { headers: headers() }
-    )
     const allQuests: Array<{ id: string; requirement: { action: string; target: number }; quest_level: number }> = await allQRes.json()
     const matchingQuests = (allQuests || []).filter(q => q.requirement?.action === action)
     if (!matchingQuests.length) return
 
-    // 3. Fetch existing user_quests for this user
-    const uqRes = await qfetch(
-      `${supabaseUrl}/rest/v1/user_quests?user_id=eq.${userId}&select=id,quest_id,progress,target,status`,
-      { headers: headers() }
-    )
     const uqRaw = await uqRes.json().catch(() => [])
     const existingUQ: Array<{ id: string; quest_id: string; progress: number; target: number; status: string }> = 
       Array.isArray(uqRaw) ? uqRaw : []
@@ -165,7 +169,10 @@ export async function trackQuestProgress(
     }
   } catch (err) {
     // Fire-and-forget — never let quest tracking break a generation route
-    console.error('Quest progress tracking error (non-critical):', err)
+    // Timeout/abort errors are expected on Vercel (Lambda killed after response sent)
+    if (!isTimeoutOrAbort(err)) {
+      console.error('Quest progress tracking error (non-critical):', err)
+    }
   }
 }
 
@@ -218,7 +225,9 @@ export async function trackModelUsage(
       trackQuestProgress(userId, 'use_all_models').catch(() => {})
     }
   } catch (err) {
-    console.error('Model usage tracking error (non-critical):', err)
+    if (!isTimeoutOrAbort(err)) {
+      console.error('Model usage tracking error (non-critical):', err)
+    }
   }
 }
 
@@ -302,7 +311,9 @@ export async function trackGenerationStreak(userId: string): Promise<void> {
       }
     }
   } catch (err) {
-    console.error('Generation streak tracking error (non-critical):', err)
+    if (!isTimeoutOrAbort(err)) {
+      console.error('Generation streak tracking error (non-critical):', err)
+    }
   }
 }
 
@@ -333,6 +344,8 @@ export async function trackReleaseStreak(userId: string): Promise<void> {
     // Trigger streak calculation (same as generation)
     trackGenerationStreak(userId).catch(() => {})
   } catch (err) {
-    console.error('Release streak tracking error (non-critical):', err)
+    if (!isTimeoutOrAbort(err)) {
+      console.error('Release streak tracking error (non-critical):', err)
+    }
   }
 }
