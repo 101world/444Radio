@@ -107,8 +107,8 @@ export default function VoiceMelodyModal({ isOpen, onClose, userCredits, onGener
     if (!file) return
 
     const ext = file.name.split('.').pop()?.toLowerCase()
-    if (!['wav', 'mp3', 'webm', 'ogg'].includes(ext || '')) {
-      setUploadError('File must be .wav, .mp3, .webm or .ogg')
+    if (!['wav', 'mp3', 'webm', 'ogg', 'm4a', 'mp4', 'aac'].includes(ext || '')) {
+      setUploadError('File must be .wav, .mp3, .m4a, .mp4, .webm or .ogg')
       return
     }
     if (file.size > 20 * 1024 * 1024) {
@@ -171,6 +171,50 @@ export default function VoiceMelodyModal({ isOpen, onClose, userCredits, onGener
     }
   }
 
+  // Convert an AudioBuffer to a WAV Blob (PCM 16-bit)
+  const audioBufferToWav = useCallback((buffer: AudioBuffer): Blob => {
+    const numChannels = buffer.numberOfChannels
+    const sampleRate = buffer.sampleRate
+    const format = 1 // PCM
+    const bitsPerSample = 16
+    const byteRate = sampleRate * numChannels * (bitsPerSample / 8)
+    const blockAlign = numChannels * (bitsPerSample / 8)
+    const dataLength = buffer.length * numChannels * (bitsPerSample / 8)
+    const headerLength = 44
+    const arrayBuffer = new ArrayBuffer(headerLength + dataLength)
+    const view = new DataView(arrayBuffer)
+
+    // WAV header
+    const writeStr = (offset: number, str: string) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)) }
+    writeStr(0, 'RIFF')
+    view.setUint32(4, 36 + dataLength, true)
+    writeStr(8, 'WAVE')
+    writeStr(12, 'fmt ')
+    view.setUint32(16, 16, true)
+    view.setUint16(20, format, true)
+    view.setUint16(22, numChannels, true)
+    view.setUint32(24, sampleRate, true)
+    view.setUint32(28, byteRate, true)
+    view.setUint16(32, blockAlign, true)
+    view.setUint16(34, bitsPerSample, true)
+    writeStr(36, 'data')
+    view.setUint32(40, dataLength, true)
+
+    // Interleave channels and write PCM samples
+    let offset = 44
+    const channels = []
+    for (let ch = 0; ch < numChannels; ch++) channels.push(buffer.getChannelData(ch))
+    for (let i = 0; i < buffer.length; i++) {
+      for (let ch = 0; ch < numChannels; ch++) {
+        const sample = Math.max(-1, Math.min(1, channels[ch][i]))
+        view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true)
+        offset += 2
+      }
+    }
+
+    return new Blob([arrayBuffer], { type: 'audio/wav' })
+  }, [])
+
   // Start recording from mic
   const startRecording = async () => {
     try {
@@ -197,25 +241,32 @@ export default function VoiceMelodyModal({ isOpen, onClose, userCredits, onGener
         stream.getTracks().forEach(t => t.stop())
         streamRef.current = null
 
-        const blob = new Blob(recordedChunksRef.current, { type: mimeType })
-        if (blob.size < 1000) {
+        const rawBlob = new Blob(recordedChunksRef.current, { type: mimeType })
+        if (rawBlob.size < 1000) {
           setUploadError('Recording too short — try again')
           return
         }
-        const ext = mimeType.includes('webm') ? 'webm' : 'ogg'
-        const file = new File([blob], `recording-${Date.now()}.${ext}`, { type: mimeType })
-        setInputAudioFile(file)
-        detectAudioDuration(file)
 
-        // Upload the recorded file
+        // Convert recorded webm/ogg → WAV so fal.ai can process it
         setIsUploading(true)
         try {
+          const audioCtx = new AudioContext()
+          const arrayBuf = await rawBlob.arrayBuffer()
+          const audioBuffer = await audioCtx.decodeAudioData(arrayBuf)
+          await audioCtx.close()
+
+          const wavBlob = audioBufferToWav(audioBuffer)
+          const file = new File([wavBlob], `recording-${Date.now()}.wav`, { type: 'audio/wav' })
+          setInputAudioFile(file)
+          detectAudioDuration(file)
+
+          // Upload WAV
           const presignRes = await fetch('/api/generate/upload-reference', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               fileName: file.name,
-              fileType: file.type,
+              fileType: 'audio/wav',
               fileSize: file.size,
               type: 'song',
             }),
@@ -226,16 +277,16 @@ export default function VoiceMelodyModal({ isOpen, onClose, userCredits, onGener
 
           const uploadRes = await fetch(presignData.uploadUrl, {
             method: 'PUT',
-            headers: { 'Content-Type': file.type },
+            headers: { 'Content-Type': 'audio/wav' },
             body: file,
           })
           if (!uploadRes.ok) throw new Error('Upload to storage failed')
 
           setInputAudioUrl(presignData.publicUrl)
-          console.log('✅ Recorded audio uploaded for Voice Melody:', presignData.publicUrl)
+          console.log('✅ Recorded audio converted to WAV & uploaded:', presignData.publicUrl)
         } catch (err: any) {
-          console.error('Upload error:', err)
-          setUploadError(err.message || 'Upload failed')
+          console.error('Recording conversion/upload error:', err)
+          setUploadError(err.message || 'Failed to process recording')
           setInputAudioFile(null)
         } finally {
           setIsUploading(false)
@@ -380,7 +431,7 @@ export default function VoiceMelodyModal({ isOpen, onClose, userCredits, onGener
               <Mic size={14} className="text-purple-400 flex-shrink-0" />
               <p className="text-[11px] text-purple-300/80">Upload your <strong>voice melody, humming, or existing track</strong> — ACE-Step will transform it into a new style/instrument arrangement.</p>
             </div>
-            <input ref={fileInputRef} type="file" accept=".wav,.mp3,.webm,.ogg,audio/*" className="hidden" onChange={handleFileSelect} />
+            <input ref={fileInputRef} type="file" accept=".wav,.mp3,.m4a,.mp4,.aac,.webm,.ogg,audio/*" className="hidden" onChange={handleFileSelect} />
             {isRecording ? (
               /* ── Recording in progress ── */
               <div className="flex items-center justify-between px-4 py-4 bg-red-500/[0.1] border border-red-500/30 rounded-xl animate-pulse">
@@ -449,7 +500,7 @@ export default function VoiceMelodyModal({ isOpen, onClose, userCredits, onGener
                     <div className="text-sm font-medium text-white/80 group-hover:text-purple-200 transition-colors">
                       {isUploading ? 'Uploading…' : 'Upload'}
                     </div>
-                    <div className="text-[11px] text-white/30">.wav / .mp3 — max 20 MB</div>
+                    <div className="text-[11px] text-white/30">.wav / .mp3 / .m4a — max 20 MB</div>
                   </div>
                 </button>
               </div>

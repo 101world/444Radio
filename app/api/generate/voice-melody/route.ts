@@ -12,6 +12,9 @@ const FAL_MODEL = 'fal-ai/ace-step/audio-to-audio'
 /** Call fal.ai synchronously (blocks until generation complete) */
 async function runFalAi(falKey: string, input: Record<string, unknown>): Promise<{ data: any }> {
   console.log('🎤 Calling fal.ai ACE-Step audio-to-audio...')
+  console.log('🎤 Input audio_url:', input.audio_url)
+  console.log('🎤 Input params:', JSON.stringify({ ...input, audio_url: '(omitted)' }))
+  
   const res = await fetch(`https://fal.run/${FAL_MODEL}`, {
     method: 'POST',
     headers: { Authorization: `Key ${falKey}`, 'Content-Type': 'application/json' },
@@ -19,6 +22,32 @@ async function runFalAi(falKey: string, input: Record<string, unknown>): Promise
   })
   if (!res.ok) {
     const body = await res.text()
+    console.error(`❌ fal.ai returned ${res.status}:`, body.substring(0, 500))
+    
+    // On 500, retry once with minimal params (audio might need simpler config)
+    if (res.status === 500) {
+      console.log('🔄 Retrying fal.ai with minimal parameters...')
+      const minimalInput: Record<string, unknown> = {
+        audio_url: input.audio_url,
+        original_tags: input.original_tags,
+        tags: input.tags,
+        edit_mode: input.edit_mode || 'remix',
+      }
+      const retryRes = await fetch(`https://fal.run/${FAL_MODEL}`, {
+        method: 'POST',
+        headers: { Authorization: `Key ${falKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(minimalInput),
+      })
+      if (retryRes.ok) {
+        const data = await retryRes.json()
+        console.log('🎤 fal.ai retry succeeded')
+        return { data }
+      }
+      const retryBody = await retryRes.text()
+      console.error(`❌ fal.ai retry also failed (${retryRes.status}):`, retryBody.substring(0, 500))
+      throw new Error(`fal.ai request failed (${retryRes.status}): ${retryBody}`)
+    }
+    
     throw new Error(`fal.ai request failed (${res.status}): ${body}`)
   }
   const data = await res.json()
@@ -94,6 +123,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Original genre tags are required' }, { status: 400 })
 
     console.log('🎤 Voice Melody →', title, '|', tags, '| mode:', edit_mode)
+
+    // ---------- Verify audio URL is accessible ----------
+    try {
+      const headRes = await fetch(audio_url, { method: 'HEAD' })
+      if (!headRes.ok) {
+        console.error('❌ Input audio URL not accessible:', audio_url, 'status:', headRes.status)
+        return NextResponse.json({ error: 'Input audio file is not accessible. Please re-upload.' }, { status: 400 })
+      }
+      const contentType = headRes.headers.get('content-type') || ''
+      console.log('🎤 Input audio verified — content-type:', contentType, 'size:', headRes.headers.get('content-length'))
+    } catch (headErr) {
+      console.error('❌ Could not reach input audio URL:', audio_url, headErr)
+      return NextResponse.json({ error: 'Input audio file is not reachable. Please re-upload.' }, { status: 400 })
+    }
 
     // ---------- Credits ----------
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
