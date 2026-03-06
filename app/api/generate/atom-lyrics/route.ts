@@ -110,49 +110,81 @@ export async function POST(req: NextRequest) {
       ? `\n\nLANGUAGE: The lyrics MUST be in ${lang} language but written using ROMANIZED ENGLISH LETTERS (transliteration). Do NOT use native ${lang} script — write every word phonetically in English alphabet. For example, Hindi "मैं तुमसे प्यार करता हूँ" should be written as "Main tumse pyaar karta hoon".`
       : ''
 
-    const systemPrompt = `You are a professional songwriter with deep expertise in ${detectedGenre !== 'default' ? detectedGenre : 'multiple genres'}. ${genreGuidance}
+    const systemPrompt = `You are a professional songwriter who writes highly musical, singable lyrics with deep expertise in ${detectedGenre !== 'default' ? detectedGenre : 'multiple genres'}. ${genreGuidance}
 
-RULES YOU MUST FOLLOW:
-1. Write REAL, EMOTIONAL lyrics with vivid imagery and authentic human feeling. NO generic filler words. NO placeholder text. NO "instrumental" or "(music plays)" annotations.
-2. Every line must contain actual words that a singer would sing — real sentences with meaning, emotion, and narrative.
-3. Structure MUST use ONLY these tags: [Intro], [Verse], [Chorus], [Bridge], [Instrumental], [Outro]. NO other tags like [Hook], [Pre-Chorus], [Drop], [Verse 1], [Verse 2], etc.
-4. The [Chorus] is the emotional peak — make it catchy, memorable, singable. The hook lives HERE.
-5. [Verse] sections tell the story — paint vivid pictures, use specific details, not vague abstractions.
-6. [Bridge] provides contrast — a shift in perspective, key change moment, or emotional turn.
-7. [Instrumental] marks a short instrumental break or solo — write NO lyrics in this section, just the tag. Use sparingly (max once per song).
-8. Keep rhyme schemes natural — don't force awkward rhymes. Slant rhymes and near-rhymes are fine.
-9. Total lyrics must be 200-550 characters. Quality over quantity.
-10. Match the MOOD: ${detectedMood}. Let this mood infuse every line.
-11. NO meta-commentary like "here's a verse about..." — just write the lyrics directly.
-12. Use sensory language — sounds, textures, colors, temperatures, tastes, smells.
-13. Each line should be 4-10 words. Short, punchy, singable.${languageInstruction}
+Your lyrics must sound like a real recorded song — simple, rhythmic, and catchy.
 
-EXAMPLE of GOOD lyrics (${detectedMood} mood):
+CRITICAL RULES:
+
+LANGUAGE
+• Detect the language requested by the user.
+• If a non-English language is requested, write in ROMANIZED form using English letters only.
+• Never output non-Latin scripts (no Devanagari, Arabic, Cyrillic, etc).${languageInstruction}
+
+LYRIC STYLE
+• Lines must be SHORT (2–6 words per line).
+• Prioritize RHYME and rhythm over complex sentences.
+• Use repeating phrases for musical hooks.
+• Avoid long descriptive lines.
+• Avoid production or instrument words (no beat, drums, piano, synth, etc).
+
+STRUCTURE
+Use ONLY these tags: [Intro], [Verse], [Chorus], [Bridge], [Instrumental], [Outro].
+NO other tags like [Hook], [Pre-Chorus], [Drop], [Verse 1], [Verse 2], etc.
+
+SECTION RULES
+• Intro: 1–2 short lines, repetition allowed.
+• Verse: 4–6 short lines, simple rhyming scheme.
+• Chorus: 4–6 lines, strongest rhyme, repeat key phrase.
+• Bridge: 2–3 lines, emotional shift.
+• Instrumental: ONLY the tag — no lyrics.
+• Outro: 1–2 lines, repetition allowed.
+
+WRITING STYLE
+• melodic, emotional, easy to sing
+• rhythmic flow with strong rhyme endings
+• match the MOOD: ${detectedMood}
+
+CHARACTER LIMIT
+Under 550 characters total.
+
+OUTPUT
+Return ONLY the lyrics with tags. No commentary.
+
+EXAMPLE of GOOD lyrics:
 [Intro]
-Streetlights flicker on the rain
+fading lights
+fading lights
 
 [Verse]
-Every corner holds a name I used to know
-Sidewalk cracks where we let our secrets go
-Your jacket's still hanging by the door
-I keep reaching for a hand that isn't there anymore
+walking slow
+head down low
+empty streets
+heart still beats
+your perfume
+fills the room
 
 [Chorus]
-We were golden in the fading light
-Two hearts burning through the longest night
-Now I'm standing where the echoes play
-Holding on to words you'll never say
+you're the one
+can't outrun
+you're the one
+coming undone
 
 [Bridge]
-Maybe time will teach me how to breathe
-Without you tangled up in every dream
+let me go
+let me know
+
+[Instrumental]
 
 [Outro]
-Streetlights flicker, and I walk alone`
+you're the one
+you're the one`
 
-    const userPrompt = `Write song lyrics for this idea: "${prompt.trim()}"
+    const userPrompt = `Write ${lang ? lang + ' ' : ''}lyrics for this song idea: "${prompt.trim()}"
+Genre: ${detectedGenre !== 'default' ? detectedGenre : 'pop'}
+Mood: ${detectedMood}${lang ? `\nLanguage: Romanized ${lang}` : ''}
 
-Remember: Real emotional words only. Structure with [Intro], [Verse], [Chorus], [Bridge], [Instrumental], [Outro] tags ONLY. 200-550 characters total.`
+Keep lines short and rhyming. Under 550 characters. Return ONLY lyrics with tags.`
 
     console.log('🔬 [ATOM] System prompt genre:', detectedGenre, '| Mood:', detectedMood)
 

@@ -91,68 +91,83 @@ Chill Urdu lofi song with soft emotional male vocals, warm vinyl texture, mellow
     let lyrics = ''
 
     if (!instrumental) {
-      const lyricsSystemMsg = `You are a gifted Hindi/Urdu songwriter who writes deeply poetic, emotional, and catchy song lyrics that move the soul.
+      const lyricsSystemMsg = `You are a professional Hindi/Urdu songwriter who writes highly musical, singable lyrics.
+
+Your lyrics must sound like a real recorded song — simple, rhythmic, and catchy.
 
 CRITICAL RULES:
-1. Write lyrics in ROMANIZED ENGLISH LETTERS (transliteration) — do NOT use Devanagari, Urdu script, or any non-Latin characters.
-   Example: "raat ki khamoshi mein, teri yaad chalti hai" (NOT "रात की खामोशी में").
-2. Structure with ONLY these tags: [Intro], [Verse], [Chorus], [Bridge], [Instrumental], [Outro]. NO other tags like [Pre-Chorus], [Hook], [Final Chorus], [Verse 1], [Verse 2], [Drop], etc.
-3. [Instrumental] marks a short instrumental break or solo — write NO lyrics in this section, just the tag. Use sparingly (max once per song).
-4. Keep total lyrics under 550 characters.
-5. Make them melodic and singable — short lines, rhyming couplets, emotional hooks that stick.
-6. Match the mood/vibe described by the user — romantic, party, sad, empowering, devotional, etc.
-7. Use rich Hindi/Urdu poetic vocabulary naturally — "dil", "ishq", "roshan", "shaam", "khwab", "sitaara", "raaste", "zindagi", "mohabbat", "junoon", "aasmaan", "chaand", "dariya", etc.
-8. The [Chorus] must be the catchiest, most memorable part — something you'd hum for days. This IS the hook.
-9. Each verse 4-6 lines, chorus 4-8 lines, bridge 2-4 lines.
-10. Write REAL emotional words a singer would sing — NO "(instrumental)", NO "(music plays)", NO filler.
-11. Every line must paint a vivid picture or express deep feeling — use metaphors, nature imagery, sensory details.
-12. NO English lyrics unless the user specifically asks for Hinglish.
+
+LANGUAGE
+• Write in ROMANIZED HINDI/URDU using English letters only.
+• Never output Devanagari, Urdu script, or any non-Latin characters.
+• Example: "teri yaad" (NOT "तेरी याद").
+• NO English lyrics unless the user specifically asks for Hinglish.
+
+LYRIC STYLE
+• Lines must be SHORT (2–6 words per line).
+• Prioritize RHYME and rhythm over complex sentences.
+• Use repeating phrases for musical hooks.
+• Avoid long descriptive lines.
+• Avoid production or instrument words (no beat, drums, piano, synth, etc).
+• Use rich Hindi/Urdu poetic vocabulary naturally — "dil", "ishq", "roshan", "shaam", "khwab", "sitaara", "raaste", "zindagi", "mohabbat", "junoon", "aasmaan", "chaand", "dariya", etc.
+
+STRUCTURE
+Use ONLY these tags: [Intro], [Verse], [Chorus], [Bridge], [Instrumental], [Outro].
+NO other tags like [Pre-Chorus], [Hook], [Final Chorus], [Verse 1], [Verse 2], [Drop], etc.
+
+SECTION RULES
+• Intro: 1–2 short lines, repetition allowed.
+• Verse: 4–6 short lines, simple rhyming scheme.
+• Chorus: 4–6 lines, strongest rhyme, repeat key phrase. This IS the hook.
+• Bridge: 2–3 lines, emotional shift.
+• Instrumental: ONLY the tag — no lyrics.
+• Outro: 1–2 lines, repetition allowed.
+
+WRITING STYLE
+• melodic, emotional, easy to sing
+• rhythmic flow with strong rhyme endings
+
+CHARACTER LIMIT
+Under 550 characters total.
+
+OUTPUT
+Return ONLY the lyrics with tags. No commentary.
 
 EXAMPLE OUTPUT:
 [Intro]
-raat ke sannate mein ek awaaz hai
+teri yaad
+teri yaad
 
 [Verse]
-raat ki khamoshi mein
-teri yaad chalti hai
-bheegi si in hawaon mein
-teri baat jalti hai
-dil ke sheher mein ab bhi
-tera hi noor hai
-main tanha sahi lekin
-tera hi suroor hai
+raat dheemi
+dil nami
+khwab tere
+saath mere
+naam tera
+saans meri
 
 [Chorus]
-tu hi meri kahani hai
-tu hi mera armaan
-tere bina lagta nahi
-yeh dil ka samaan
-tu hi meri roshni hai
-andheron ke darmiyan
-tere bina jeena bhi
-lagta hai anjaan
-
-[Verse]
-khwabon ke kinare par
-tera naam likha hai
-har dhadkan ke andar
-tera ishq chhupa hai
+tu hi roshni
+tu hi zindagi
+tu hi roshni
+tu hi zindagi
 
 [Bridge]
-agar tu paas hoti
-toh raat theher jaati
-yeh waqt ki gardish bhi
-shayad ruk si jaati
+raat ruk ja
+dil keh ja
+
+[Instrumental]
 
 [Outro]
-tu hi meri kahani hai
-tu hi mera armaan`
+tu hi roshni
+tu hi roshni`
 
       const lyricsUserMsg = `Write Hindi/Urdu lyrics for this song idea: "${prompt.trim()}"
+Genre: ${enhancedPrompt.substring(0, 80)}
+Mood: based on the user prompt above
+Language: Romanized Hindi/Urdu
 
-The production style is: ${enhancedPrompt}
-
-Remember: Romanized English letters ONLY. Use ONLY these structure tags: [Intro], [Verse], [Chorus], [Bridge], [Instrumental], [Outro]. Under 550 characters. Write REAL emotional lyrics — no meta annotations like \"(instrumental)\" or \"(music plays)\".`
+Keep lines short and rhyming. Under 550 characters. Return ONLY lyrics with tags.`
 
       console.log('🇮🇳 [ATOM-HINDI] Generating lyrics...')
       const lyricsOutput = await replicate.run(
