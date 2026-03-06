@@ -748,6 +748,14 @@ export default function StudioEditor() {
             onOpenPadSampler={(idx) => { setPianoRollChannel(null); setDrumSequencerChannel(null); setPadSamplerChannel(prev => prev === idx ? null : idx) }}
             onAddVocalChannel={handleAddVocalChannel}
             userSamples={userSamples}
+            getCyclePosition={() => {
+              try {
+                const engine = engineRef.current
+                if (!engine?.scheduler?.now) return null
+                return engine.scheduler.now()
+              } catch { return null }
+            }}
+            projectBpm={parseBPM(code) ?? 120}
           />
 
           {/* Master Scope — bottom-docked, click to cycle types */}
