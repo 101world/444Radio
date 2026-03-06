@@ -298,7 +298,9 @@ export async function POST(req: NextRequest) {
     const isHindiFamily = hindiLanguages.includes(langLower)
     // Also detect Devanagari/South Asian scripts in lyrics as Hindi-family
     const hasIndicScript = /[\u0900-\u097F\u0980-\u09FF\u0A00-\u0A7F\u0A80-\u0AFF\u0B00-\u0B7F\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F]/.test(formattedLyrics)
-    const useHindiModel = isHindiFamily || hasIndicScript
+    // Also detect Hindi-family keywords in prompt (catches romanized Hindi that bypassed client-side detection)
+    const hindiKeywordsInPrompt = /\b(hindi|urdu|punjabi|tamil|telugu|bengali|marathi|gujarati|kannada|malayalam|bollywood|desi|bhangra|ghazal|qawwali|filmi|sufi|carnatic|raga|raaga)\b/i.test(prompt)
+    const useHindiModel = isHindiFamily || hasIndicScript || hindiKeywordsInPrompt
 
     if (useHindiModel) {
       // ============ FAL.AI MINIMAX 2.0 PATH ============
@@ -311,7 +313,8 @@ export async function POST(req: NextRequest) {
       }
 
       const reason = isHindiFamily ? `language: ${language}` :
-                     `Indic script in lyrics`
+                     hasIndicScript ? `Indic script in lyrics` :
+                     `Hindi keyword in prompt`
       console.log(`🎵 Hindi-family detected (${reason}) → routing to MiniMax 2.0 via fal.ai`)
 
       const chosenFormat = (audio_format === 'wav' || audio_format === 'flac') ? 'flac' : 'mp3'
