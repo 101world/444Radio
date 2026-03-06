@@ -903,6 +903,15 @@ export default function StudioEditor() {
                   if (newCode !== latest) handleLiveCodeChange(newCode)
                 }}
                 onClose={() => setDrumSequencerChannel(null)}
+                isPlaying={isPlaying}
+                projectBpm={parseBPM(code) ?? 120}
+                getCyclePosition={() => {
+                  try {
+                    const engine = engineRef.current
+                    if (!engine?.scheduler?.now) return null
+                    return engine.scheduler.now()
+                  } catch { return null }
+                }}
                 onPreviewDrum={async (instrument: string, bank?: string) => {
                   const engine = engineRef.current
                   if (!engine) { playDrumPreviewFallback(instrument); return }

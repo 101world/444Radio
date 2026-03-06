@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //  STUDIO DRUM SEQUENCER â€” Visual step sequencer for drum channels
@@ -659,6 +659,12 @@ interface StudioDrumSequencerProps {
   onClose: () => void
   /** Preview a drum sound via superdough (real sample playback) */
   onPreviewDrum?: (instrument: string, bank?: string) => void
+  /** Whether transport is currently playing */
+  isPlaying?: boolean
+  /** Project BPM for fallback playhead timing */
+  projectBpm?: number
+  /** Get current cycle position from Strudel scheduler */
+  getCyclePosition?: () => number | null
 }
 
 const CELL_W_BASE = 32
@@ -675,6 +681,9 @@ export default function StudioDrumSequencer({
   onPatternChange,
   onClose,
   onPreviewDrum,
+  isPlaying: transportPlaying = false,
+  projectBpm = 120,
+  getCyclePosition,
 }: StudioDrumSequencerProps) {
   const [bars, setBars] = useState(1)
   // Grid state: Map<instrumentId, Set<step>>
@@ -704,7 +713,63 @@ export default function StudioDrumSequencer({
   rowGainsRef.current = rowGains
   const rowBanksRef = useRef<Map<string, string>>(new Map())
   rowBanksRef.current = rowBanks
-  const fullInstrumentMapRef = useRef<Map<string, string>>(new Map()) // instrument â†’ fullInstrument (e.g. "bd" â†’ "bd:3")
+  const fullInstrumentMapRef = useRef<Map<string, string>>(new Map())
+
+  // -- Slow/Fast factor: how many cycles this channel pattern spans --
+  const slowFactor = useMemo(() => {
+    const slowMatch = channelRawCode.match(/\.slow\(\s*([\d.]+)\s*\)/)
+    const fastMatch = channelRawCode.match(/\.fast\(\s*([\d.]+)\s*\)/)
+    let factor = 1
+    if (slowMatch) factor *= parseFloat(slowMatch[1]) || 1
+    if (fastMatch) factor /= parseFloat(fastMatch[1]) || 1
+    return factor
+  }, [channelRawCode])
+
+  // -- Transport Playhead --
+  const [playheadStep, setPlayheadStep] = useState(-1)
+  const playheadRAF = useRef<number | null>(null)
+  const playheadStartTime = useRef(0)
+
+  useEffect(() => {
+    if (!transportPlaying) {
+      setPlayheadStep(-1)
+      if (playheadRAF.current) { cancelAnimationFrame(playheadRAF.current); playheadRAF.current = null }
+      return
+    }
+    playheadStartTime.current = performance.now()
+    const animate = () => {
+      let cyclePos: number | null = null
+      if (getCyclePosition) {
+        try { cyclePos = getCyclePosition() } catch { /* ignore */ }
+      }
+      const totalCycleSpan = bars * slowFactor
+      const totalGridSteps = bars * stepsPerBar
+      if (cyclePos !== null && cyclePos >= 0) {
+        const posInPattern = ((cyclePos % totalCycleSpan) + totalCycleSpan) % totalCycleSpan
+        const fractionalStep = (posInPattern / totalCycleSpan) * totalGridSteps
+        setPlayheadStep(prev => Math.abs(prev - fractionalStep) > 0.15 ? fractionalStep : prev)
+      } else {
+        const barDurationMs = (4 * 60000 * slowFactor) / projectBpm
+        const elapsed = performance.now() - playheadStartTime.current
+        const totalPatternMs = bars * barDurationMs
+        const posInPattern = ((elapsed % totalPatternMs) + totalPatternMs) % totalPatternMs
+        const fractionalStep = (posInPattern / totalPatternMs) * totalGridSteps
+        setPlayheadStep(prev => Math.abs(prev - fractionalStep) > 0.15 ? fractionalStep : prev)
+      }
+      playheadRAF.current = requestAnimationFrame(animate)
+    }
+    playheadRAF.current = requestAnimationFrame(animate)
+    return () => {
+      if (playheadRAF.current) { cancelAnimationFrame(playheadRAF.current); playheadRAF.current = null }
+    }
+  }, [transportPlaying, projectBpm, bars, stepsPerBar, getCyclePosition, slowFactor])
+
+  // Cleanup playhead on unmount
+  useEffect(() => {
+    return () => {
+      if (playheadRAF.current) cancelAnimationFrame(playheadRAF.current)
+    }
+  }, [])
   // â”€â”€ Parse channel on mount / prop change â”€â”€
   useEffect(() => {
     const drumRows = parseChannelDrumRows(channelRawCode)
@@ -1463,6 +1528,34 @@ export default function StudioDrumSequencer({
               </div>
             )
           })}
+
+          {/* Transport playhead line */}
+          {transportPlaying && playheadStep >= 0 && (
+            <div
+              className="absolute pointer-events-none"
+              style={{
+                left: LABEL_W + playheadStep * cellW,
+                top: 18,
+                bottom: 0,
+                width: 2,
+                background: color,
+                opacity: 0.85,
+                boxShadow: `0 0 8px ${color}80, 0 0 2px ${color}`,
+                zIndex: 30,
+              }}
+            >
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: -4,
+                width: 0,
+                height: 0,
+                borderLeft: '5px solid transparent',
+                borderRight: '5px solid transparent',
+                borderTop: `6px solid ${color}`,
+              }} />
+            </div>
+          )}
 
           {/* Add row button */}
           {availableInstruments.length > 0 && (

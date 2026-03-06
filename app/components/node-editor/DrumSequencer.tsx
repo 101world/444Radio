@@ -380,37 +380,40 @@ export default function DrumSequencer({
 
   // How many bars the current step count represents
   const barCount = numSteps / 16
-  // Steps per Strudel cycle: if pattern uses .slow(2) → 1 cycle = 16 steps over 2 bars
-  // But scheduler reports fractional cycles, so 1 cycle always = 16 grid positions at base rate
-  const stepsPerCycle = 16 // Strudel's 1 cycle = 1 bar = 16 sixteenth notes
 
   // ── Playhead — synced to Strudel scheduler clock ──
   useEffect(() => {
     if (!isPlaying || !isOpen) { setPlayheadStep(0); return }
     let raf: number
+    // effectiveCycles: how many Strudel cycles this pattern spans (includes .slow/.fast)
+    const effectiveCycles = patternBars || Math.max(1, barCount)
     if (getCyclePosition) {
       const tick = () => {
         const cycle = getCyclePosition()
-        // For multi-bar patterns (.slow(N)), the scheduler still counts in cycles.
-        // barCount bars = barCount cycles worth of steps.
-        // At 32 steps / 2 bars: position = (cycle * 16) % 32 → wraps correctly.
-        setPlayheadStep((cycle * stepsPerCycle) % numSteps)
+        // Map global cycle into pattern's cycle span, then proportionally to grid steps
+        const posInPattern = ((cycle % effectiveCycles) + effectiveCycles) % effectiveCycles
+        const stepPos = (posInPattern / effectiveCycles) * numSteps
+        setPlayheadStep(prev => Math.abs(prev - stepPos) > 0.15 ? stepPos : prev)
         raf = requestAnimationFrame(tick)
       }
       raf = requestAnimationFrame(tick)
     } else {
-      // Fallback: independent clock
-      const cps = bpm > 0 ? bpm / 60 / 4 : 0.5
-      const msPerStep = 1000 / (cps * stepsPerCycle)
+      // Fallback: independent clock based on BPM
+      const bpmVal = bpm > 0 ? bpm : 120
+      const barDurationMs = (4 * 60000) / bpmVal
+      const totalPatternMs = effectiveCycles * barDurationMs
       const t0 = performance.now()
       const tick = () => {
-        setPlayheadStep(((performance.now() - t0) / msPerStep) % numSteps)
+        const elapsed = performance.now() - t0
+        const posInPattern = ((elapsed % totalPatternMs) + totalPatternMs) % totalPatternMs
+        const stepPos = (posInPattern / totalPatternMs) * numSteps
+        setPlayheadStep(prev => Math.abs(prev - stepPos) > 0.15 ? stepPos : prev)
         raf = requestAnimationFrame(tick)
       }
       raf = requestAnimationFrame(tick)
     }
     return () => cancelAnimationFrame(raf)
-  }, [isPlaying, bpm, numSteps, isOpen, getCyclePosition, stepsPerCycle])
+  }, [isPlaying, bpm, numSteps, isOpen, getCyclePosition, patternBars, barCount])
 
   // ── Toggle step cell ──
   const toggleStep = useCallback((ri: number, si: number) => {

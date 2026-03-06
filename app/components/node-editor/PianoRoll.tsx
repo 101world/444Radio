@@ -480,31 +480,36 @@ export default function PianoRoll({ isOpen, onClose, scale, currentPattern, node
   useEffect(() => {
     if (!prIsPlaying || !isOpen) { setPlayheadStep(0); return }
     let raf: number
+    // effectiveCycles: how many Strudel cycles the pattern spans (includes .slow/.fast)
+    const effectiveCycles = patternBars || Math.max(1, totalSteps / 16)
     if (getCyclePosition) {
       // Synced mode: derive step position from Strudel's actual cycle
       const tick = () => {
         const cycle = getCyclePosition()
-        // Each cycle = 1 bar = 16 sixteenth-note steps. Pattern may span multiple bars.
-        const stepPos = (cycle * 16) % totalSteps
-        setPlayheadStep(stepPos)
+        // Map the global cycle into the pattern's cycle span, then to grid steps
+        const posInPattern = ((cycle % effectiveCycles) + effectiveCycles) % effectiveCycles
+        const stepPos = (posInPattern / effectiveCycles) * totalSteps
+        setPlayheadStep(prev => Math.abs(prev - stepPos) > 0.15 ? stepPos : prev)
         raf = requestAnimationFrame(tick)
       }
       raf = requestAnimationFrame(tick)
     } else {
-      // Fallback: independent clock
-      const cps = prBpm > 0 ? prBpm / 60 / 4 : 120 / 60 / 4
-      const msPerStep = 1000 / (cps * 16)
+      // Fallback: independent clock based on BPM
+      const bpmVal = prBpm > 0 ? prBpm : 120
+      const barDurationMs = (4 * 60000) / bpmVal
+      const totalPatternMs = effectiveCycles * barDurationMs
       const startTime = performance.now()
       const tick = () => {
         const elapsed = performance.now() - startTime
-        const stepPos = (elapsed / msPerStep) % totalSteps
-        setPlayheadStep(stepPos)
+        const posInPattern = ((elapsed % totalPatternMs) + totalPatternMs) % totalPatternMs
+        const stepPos = (posInPattern / totalPatternMs) * totalSteps
+        setPlayheadStep(prev => Math.abs(prev - stepPos) > 0.15 ? stepPos : prev)
         raf = requestAnimationFrame(tick)
       }
       raf = requestAnimationFrame(tick)
     }
     return () => cancelAnimationFrame(raf)
-  }, [prIsPlaying, prBpm, totalSteps, isOpen, getCyclePosition])
+  }, [prIsPlaying, prBpm, totalSteps, isOpen, getCyclePosition, patternBars])
 
   const nid = (midi: number, step: number) => `${midi}:${step}`
 
