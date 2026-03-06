@@ -115,16 +115,17 @@ export async function POST(req: NextRequest) {
 RULES YOU MUST FOLLOW:
 1. Write REAL, EMOTIONAL lyrics with vivid imagery and authentic human feeling. NO generic filler words. NO placeholder text. NO "instrumental" or "(music plays)" annotations.
 2. Every line must contain actual words that a singer would sing — real sentences with meaning, emotion, and narrative.
-3. Structure MUST use ONLY these tags: [Intro], [Verse], [Chorus], [Bridge], [Outro]. NO other tags like [Hook], [Pre-Chorus], [Drop], [Verse 1], [Verse 2], etc.
+3. Structure MUST use ONLY these tags: [Intro], [Verse], [Chorus], [Bridge], [Instrumental], [Outro]. NO other tags like [Hook], [Pre-Chorus], [Drop], [Verse 1], [Verse 2], etc.
 4. The [Chorus] is the emotional peak — make it catchy, memorable, singable. The hook lives HERE.
 5. [Verse] sections tell the story — paint vivid pictures, use specific details, not vague abstractions.
 6. [Bridge] provides contrast — a shift in perspective, key change moment, or emotional turn.
-7. Keep rhyme schemes natural — don't force awkward rhymes. Slant rhymes and near-rhymes are fine.
-8. Total lyrics must be 200-550 characters. Quality over quantity.
-9. Match the MOOD: ${detectedMood}. Let this mood infuse every line.
-10. NO meta-commentary like "here's a verse about..." — just write the lyrics directly.
-11. Use sensory language — sounds, textures, colors, temperatures, tastes, smells.
-12. Each line should be 4-10 words. Short, punchy, singable.${languageInstruction}
+7. [Instrumental] marks a short instrumental break or solo — write NO lyrics in this section, just the tag. Use sparingly (max once per song).
+8. Keep rhyme schemes natural — don't force awkward rhymes. Slant rhymes and near-rhymes are fine.
+9. Total lyrics must be 200-550 characters. Quality over quantity.
+10. Match the MOOD: ${detectedMood}. Let this mood infuse every line.
+11. NO meta-commentary like "here's a verse about..." — just write the lyrics directly.
+12. Use sensory language — sounds, textures, colors, temperatures, tastes, smells.
+13. Each line should be 4-10 words. Short, punchy, singable.${languageInstruction}
 
 EXAMPLE of GOOD lyrics (${detectedMood} mood):
 [Intro]
@@ -151,7 +152,7 @@ Streetlights flicker, and I walk alone`
 
     const userPrompt = `Write song lyrics for this idea: "${prompt.trim()}"
 
-Remember: Real emotional words only. Structure with [Intro], [Verse], [Chorus], [Bridge], [Outro] tags ONLY. 200-550 characters total.`
+Remember: Real emotional words only. Structure with [Intro], [Verse], [Chorus], [Bridge], [Instrumental], [Outro] tags ONLY. 200-550 characters total.`
 
     console.log('🔬 [ATOM] System prompt genre:', detectedGenre, '| Mood:', detectedMood)
 
@@ -192,7 +193,7 @@ Remember: Real emotional words only. Structure with [Intro], [Verse], [Chorus], 
     lyrics = lyrics.replace(/\[drop\]/gi, '[Chorus]')
     lyrics = lyrics.replace(/\[breakdown\]/gi, '[Bridge]')
     // Remove any other unsupported tags
-    lyrics = lyrics.replace(/\[(?!Intro\]|Verse\]|Chorus\]|Bridge\]|Outro\])([^\]]*)\]/gi, '')
+    lyrics = lyrics.replace(/\[(?!Intro\]|Verse\]|Chorus\]|Bridge\]|Instrumental\]|Outro\])([^\]]*)\ ]/gi, '')
     // Clean up double newlines from removed tags
     lyrics = lyrics.replace(/\n{3,}/g, '\n\n').trim()
 

@@ -96,16 +96,17 @@ Chill Urdu lofi song with soft emotional male vocals, warm vinyl texture, mellow
 CRITICAL RULES:
 1. Write lyrics in ROMANIZED ENGLISH LETTERS (transliteration) — do NOT use Devanagari, Urdu script, or any non-Latin characters.
    Example: "raat ki khamoshi mein, teri yaad chalti hai" (NOT "रात की खामोशी में").
-2. Structure with ONLY these tags: [Intro], [Verse], [Chorus], [Bridge], [Outro]. NO other tags like [Pre-Chorus], [Hook], [Final Chorus], [Verse 1], [Verse 2], [Drop], etc.
-3. Keep total lyrics under 550 characters.
-4. Make them melodic and singable — short lines, rhyming couplets, emotional hooks that stick.
-5. Match the mood/vibe described by the user — romantic, party, sad, empowering, devotional, etc.
-6. Use rich Hindi/Urdu poetic vocabulary naturally — "dil", "ishq", "roshan", "shaam", "khwab", "sitaara", "raaste", "zindagi", "mohabbat", "junoon", "aasmaan", "chaand", "dariya", etc.
-7. The [Chorus] must be the catchiest, most memorable part — something you'd hum for days. This IS the hook.
-8. Each verse 4-6 lines, chorus 4-8 lines, bridge 2-4 lines.
-9. Write REAL emotional words a singer would sing — NO "(instrumental)", NO "(music plays)", NO filler.
-10. Every line must paint a vivid picture or express deep feeling — use metaphors, nature imagery, sensory details.
-11. NO English lyrics unless the user specifically asks for Hinglish.
+2. Structure with ONLY these tags: [Intro], [Verse], [Chorus], [Bridge], [Instrumental], [Outro]. NO other tags like [Pre-Chorus], [Hook], [Final Chorus], [Verse 1], [Verse 2], [Drop], etc.
+3. [Instrumental] marks a short instrumental break or solo — write NO lyrics in this section, just the tag. Use sparingly (max once per song).
+4. Keep total lyrics under 550 characters.
+5. Make them melodic and singable — short lines, rhyming couplets, emotional hooks that stick.
+6. Match the mood/vibe described by the user — romantic, party, sad, empowering, devotional, etc.
+7. Use rich Hindi/Urdu poetic vocabulary naturally — "dil", "ishq", "roshan", "shaam", "khwab", "sitaara", "raaste", "zindagi", "mohabbat", "junoon", "aasmaan", "chaand", "dariya", etc.
+8. The [Chorus] must be the catchiest, most memorable part — something you'd hum for days. This IS the hook.
+9. Each verse 4-6 lines, chorus 4-8 lines, bridge 2-4 lines.
+10. Write REAL emotional words a singer would sing — NO "(instrumental)", NO "(music plays)", NO filler.
+11. Every line must paint a vivid picture or express deep feeling — use metaphors, nature imagery, sensory details.
+12. NO English lyrics unless the user specifically asks for Hinglish.
 
 EXAMPLE OUTPUT:
 [Intro]
@@ -151,7 +152,7 @@ tu hi mera armaan`
 
 The production style is: ${enhancedPrompt}
 
-Remember: Romanized English letters ONLY. Use ONLY these structure tags: [Intro], [Verse], [Chorus], [Bridge], [Outro]. Under 550 characters. Write REAL emotional lyrics — no instrumental placeholders.`
+Remember: Romanized English letters ONLY. Use ONLY these structure tags: [Intro], [Verse], [Chorus], [Bridge], [Instrumental], [Outro]. Under 550 characters. Write REAL emotional lyrics — no meta annotations like \"(instrumental)\" or \"(music plays)\".`
 
       console.log('🇮🇳 [ATOM-HINDI] Generating lyrics...')
       const lyricsOutput = await replicate.run(
@@ -185,7 +186,7 @@ Remember: Romanized English letters ONLY. Use ONLY these structure tags: [Intro]
       lyrics = lyrics.replace(/\[interlude\]/gi, '[Bridge]')
       lyrics = lyrics.replace(/\[drop\]/gi, '[Chorus]')
       // Remove any other unsupported tags
-      lyrics = lyrics.replace(/\[(?!Intro\]|Verse\]|Chorus\]|Bridge\]|Outro\])([^\]]*)\]/gi, '')
+      lyrics = lyrics.replace(/\[(?!Intro\]|Verse\]|Chorus\]|Bridge\]|Instrumental\]|Outro\])([^\]]*)\ ]/gi, '')
       lyrics = lyrics.replace(/\n{3,}/g, '\n\n').trim()
 
       // Remove any "(instrumental)" or meta annotations
