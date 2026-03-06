@@ -1751,16 +1751,28 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
             liveUpdate(inserted)
           }
         }
-      } else if (paramKey === 'speed') {
-        // Auto-insert .speed() if not present (for pitch knob)
+      } else {
+        // Auto-insert any effect if not present in the channel
         const channels = parseStrudelCode(currentCode)
         const ch = channels[channelIdx]
-        if (ch && !ch.rawCode.includes('.speed(')) {
-          const inserted = insertEffectInChannel(currentCode, channelIdx, `.speed(${value})`)
+        if (ch && !ch.rawCode.includes(`.${paramKey}(`)) {
+          const inserted = insertEffectInChannel(currentCode, channelIdx, `.${paramKey}(${value})`)
           if (inserted !== currentCode) {
             liveUpdate(inserted)
           }
         }
+      }
+    },
+    [liveUpdate],
+  )
+
+  // ── Effect insert handler (for TrackView effects panel) ──
+  const handleEffectInsert = useCallback(
+    (channelIdx: number, effectCode: string) => {
+      const currentCode = codeRef.current
+      const inserted = insertEffectInChannel(currentCode, channelIdx, effectCode)
+      if (inserted !== currentCode) {
+        liveUpdate(inserted)
       }
     },
     [liveUpdate],
@@ -2914,15 +2926,16 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                 dragOverChannel={dragOverChannel}
                 getCyclePosition={getCyclePosition}
                 projectBpm={projectBpm}
-                onToggleCollapse={(idx) => setTrackCollapsed(prev => {
+                onToggleCollapse={(idx: number) => setTrackCollapsed(prev => {
                   const next = new Set(prev)
                   next.has(idx) ? next.delete(idx) : next.add(idx)
                   return next
                 })}
-                onSolo={(idx) => handleSolo(idx, true)}
+                onSolo={(idx: number) => handleSolo(idx, true)}
                 onMute={handleMute}
                 onToggleChannel={toggleChannel}
                 onParamChange={handleParamChange}
+                onEffectInsert={handleEffectInsert}
                 onOpenPianoRoll={onOpenPianoRoll}
                 onOpenDrumSequencer={onOpenDrumSequencer}
                 onOpenPadSampler={onOpenPadSampler}
