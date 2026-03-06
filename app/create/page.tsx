@@ -187,7 +187,7 @@ function CreatePageContent() {
   const instrumentalRefInputRef = useRef<HTMLInputElement>(null)
   const hasVoiceOrInstrumentalRef = !!(voiceRefUrl || voiceRefFile || recordedVoiceBlob || selectedVoiceId || instrumentalRefUrl || instrumentalRefFile)
   
-  // ACE-Step parameters (for non-English)
+  // Voice Melody parameters (for non-English)
   const [audioLengthInSeconds, setAudioLengthInSeconds] = useState(45)
   const [numInferenceSteps, setNumInferenceSteps] = useState(50)
   const [guidanceScale, setGuidanceScale] = useState(7.0)
@@ -1826,7 +1826,7 @@ function CreatePageContent() {
 
     console.log('🔍 [TITLE DEBUG] Request body being sent to music-only API:', JSON.stringify(requestBody, null, 2))
 
-    // Add ACE-Step parameters for non-English languages
+    // Add Voice Melody parameters for non-English languages
     if (selectedLanguage.toLowerCase() !== 'english') {
       requestBody.audio_length_in_s = audioLengthInSeconds
       requestBody.num_inference_steps = numInferenceSteps
@@ -2339,7 +2339,7 @@ function CreatePageContent() {
     }
   }
 
-  // ── Voice Melody to Instrument (ACE-Step audio-to-audio) ──
+  // ── Voice Melody to Instrument ──
   const generateVoiceMelody = async (
     params: {
       title: string
@@ -4113,7 +4113,7 @@ function CreatePageContent() {
                   <Music2 size={18} className={`transition-colors duration-500 ${isProMode ? 'text-red-400' : 'text-cyan-400'}`} />
                 </button>
 
-                {/* Voice Melody → Instrument (ACE-Step audio-to-audio) */}
+                {/* Voice Melody → Instrument */}
                 <button
                   onClick={() => setShowVoiceMelodyModal(true)}
                   className={`flex-shrink-0 w-9 h-9 sm:w-9 sm:h-9 rounded-lg transition-all duration-500 flex items-center justify-center ${

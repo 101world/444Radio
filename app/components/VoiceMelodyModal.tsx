@@ -70,7 +70,7 @@ export default function VoiceMelodyModal({ isOpen, onClose, userCredits, onGener
   // Detected duration
   const [detectedDuration, setDetectedDuration] = useState<number | null>(null)
 
-  // ACE-Step parameters
+  // Voice Melody parameters
   const [numberOfSteps, setNumberOfSteps] = useState(27)
   const [seed, setSeed] = useState<number | null>(null)
   const [scheduler, setScheduler] = useState<'euler' | 'heun'>('euler')
@@ -429,7 +429,7 @@ export default function VoiceMelodyModal({ isOpen, onClose, userCredits, onGener
             <label className="block text-[11px] font-medium text-white/50 uppercase tracking-wider mb-1.5">Input Audio <span className="text-red-400">*</span></label>
             <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-purple-500/[0.08] border border-purple-500/20 rounded-lg">
               <Mic size={14} className="text-purple-400 flex-shrink-0" />
-              <p className="text-[11px] text-purple-300/80">Upload your <strong>voice melody, humming, or existing track</strong> — ACE-Step will transform it into a new style/instrument arrangement.</p>
+              <p className="text-[11px] text-purple-300/80">Upload your <strong>voice melody, humming, or existing track</strong> — it will be transformed into a new style/instrument arrangement.</p>
             </div>
             <input ref={fileInputRef} type="file" accept=".wav,.mp3,.m4a,.mp4,.aac,.webm,.ogg,audio/*" className="hidden" onChange={handleFileSelect} />
             {isRecording ? (
@@ -760,7 +760,7 @@ export default function VoiceMelodyModal({ isOpen, onClose, userCredits, onGener
                 `Voice Melody — 2 credits`
               )}
             </button>
-            <p className="text-[10px] text-white/20 text-center mt-2">ACE-Step Audio-to-Audio • Hum → Instrument • WAV output</p>
+            <p className="text-[10px] text-white/20 text-center mt-2">Voice Melody • Hum → Instrument • WAV output</p>
           </div>
         </div>
       </div>

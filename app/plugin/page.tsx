@@ -265,7 +265,7 @@ function PluginPageInner() {
   const [generateCoverArt, setGenerateCoverArt] = useState(false)
   const [isInstrumental, setIsInstrumental] = useState(false)
 
-  // ── ACE-Step params ──
+  // ── Voice Melody params ──
   const [audioLengthInSeconds, setAudioLengthInSeconds] = useState(45)
   const [numInferenceSteps, setNumInferenceSteps] = useState(50)
   const [guidanceScale, setGuidanceScale] = useState(7.0)
@@ -1900,7 +1900,7 @@ function PluginPageInner() {
     }
   }
 
-  // ═══ VOICE MELODY (ACE-Step Audio-to-Audio) — Hum/sing → instruments via fal.ai ═══
+  // ═══ VOICE MELODY — Hum/sing → instruments via fal.ai ═══
   const generateVoiceMelody = async (
     params: {
       title: string; audio_url: string; original_tags: string; tags: string;
@@ -4192,7 +4192,7 @@ function PluginPageInner() {
         />
       </Suspense>
 
-      {/* ── Voice Melody Modal — ACE-Step Audio-to-Audio ── */}
+      {/* ── Voice Melody Modal ── */}
       <Suspense fallback={null}>
         <VoiceMelodyModal
           isOpen={showVoiceMelodyModal}

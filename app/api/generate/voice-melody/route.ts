@@ -8,11 +8,12 @@ import { fal } from '@fal-ai/client'
 // Allow up to 5 minutes for fal.ai generation
 export const maxDuration = 300
 
+// fal.ai model endpoint (internal — not shown to users)
 const FAL_MODEL = 'fal-ai/ace-step/audio-to-audio'
 
 /** Call fal.ai via the official client (handles queue, retries, cold starts) */
 async function runFalAi(falKey: string, input: Record<string, unknown>): Promise<{ data: any }> {
-  console.log('🎤 Calling fal.ai ACE-Step audio-to-audio via client...')
+  console.log('🎤 Calling Voice Melody generation via fal.ai...')
   console.log('🎤 Input audio_url:', input.audio_url)
   console.log('🎤 Input params:', JSON.stringify({ ...input, audio_url: '(omitted)' }))
 
@@ -29,7 +30,7 @@ async function runFalAi(falKey: string, input: Record<string, unknown>): Promise
         }
       },
     })
-    console.log('🎤 fal.ai ACE-Step response received via client')
+    console.log('🎤 Voice Melody generation complete')
     return { data: result.data }
   } catch (err: any) {
     console.error(`❌ fal.ai client error:`, err?.message || err)
@@ -73,7 +74,7 @@ function sanitizeError(error: any): string {
 /**
  * POST /api/generate/voice-melody
  *
- * Uses fal-ai/ace-step/audio-to-audio to transform voice melody / humming
+ * Uses fal.ai to transform voice melody / humming
  * into a full instrumental or re-styled track. Costs 2 credits.
  *
  * edit_mode: "remix" — transforms audio style/genre
@@ -166,14 +167,14 @@ export async function POST(req: NextRequest) {
     if (deductRes.ok) { const raw = await deductRes.json(); deductResult = Array.isArray(raw) ? raw[0] ?? null : raw }
     if (!deductRes.ok || !deductResult?.success) {
       const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
-      await logCreditTransaction({ userId, amount: -2, type: 'generation_music', status: 'failed', description: `Voice Melody: ${title}`, metadata: { tags, model: 'ace-step-audio-to-audio' } })
+      await logCreditTransaction({ userId, amount: -2, type: 'generation_music', status: 'failed', description: `Voice Melody: ${title}`, metadata: { tags, model: 'voice-melody' } })
       return NextResponse.json({ error: errorMsg }, { status: 402 })
     }
     console.log(`✅ Credits deducted. Remaining: ${deductResult.new_credits}`)
-    await logCreditTransaction({ userId, amount: -2, balanceAfter: deductResult.new_credits, type: 'generation_music', description: `Voice Melody: ${title}`, metadata: { tags, model: 'ace-step-audio-to-audio' } })
+    await logCreditTransaction({ userId, amount: -2, balanceAfter: deductResult.new_credits, type: 'generation_music', description: `Voice Melody: ${title}`, metadata: { tags, model: 'voice-melody' } })
 
-    // ---------- fal.ai ACE-Step audio-to-audio ----------
-    addLine({ type: 'started', model: 'ace-step-audio-to-audio' })
+    // ---------- Voice Melody generation ----------
+    addLine({ type: 'started', model: 'voice-melody' })
 
     try {
       const falInput: Record<string, unknown> = {
@@ -197,22 +198,22 @@ export async function POST(req: NextRequest) {
       if (typeof tag_guidance_scale === 'number') falInput.tag_guidance_scale = tag_guidance_scale
       if (typeof lyric_guidance_scale === 'number') falInput.lyric_guidance_scale = lyric_guidance_scale
 
-      console.log('🎤 fal.ai ACE-Step input:', JSON.stringify(falInput))
+      console.log('🎤 Voice Melody input:', JSON.stringify(falInput))
 
       const result = await runFalAi(falKey, falInput)
-      console.log('🎤 fal.ai ACE-Step done')
+      console.log('🎤 Voice Melody generation done')
 
       // Extract audio URL from response: { audio: { url: "..." }, seed, tags, lyrics }
       const audioData = result.data?.audio
       let audioUrl: string
       if (typeof audioData === 'string') audioUrl = audioData
       else if (audioData?.url) audioUrl = audioData.url
-      else throw new Error('No audio URL in fal.ai ACE-Step output')
+      else throw new Error('No audio URL in Voice Melody output')
 
       const resultSeed = result.data?.seed
       const resultTags = result.data?.tags
       const resultLyrics = result.data?.lyrics
-      console.log('🎤 ACE-Step audio:', audioUrl, 'seed:', resultSeed, 'tags:', resultTags)
+      console.log('🎤 Voice Melody audio:', audioUrl, 'seed:', resultSeed, 'tags:', resultTags)
 
       // Upload to R2
       const fileName = `voice-melody-${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.wav`
@@ -229,7 +230,7 @@ export async function POST(req: NextRequest) {
         audio_url: audioUrl,
         genre: 'voice-melody',
         metadata: {
-          model: 'fal-ai/ace-step/audio-to-audio',
+          model: 'voice-melody',
           edit_mode,
           original_tags: original_tags.trim(),
           tags: tags.trim(),
@@ -252,10 +253,10 @@ export async function POST(req: NextRequest) {
       // Quest / transaction tracking (fire & forget)
       import('@/lib/quest-progress').then(({ trackQuestProgress, trackModelUsage, trackGenerationStreak }) => {
         trackQuestProgress(userId, 'generate_songs').catch(() => {})
-        trackModelUsage(userId, 'ace-step-audio-to-audio').catch(() => {})
+        trackModelUsage(userId, 'voice-melody').catch(() => {})
         trackGenerationStreak(userId).catch(() => {})
       }).catch(() => {})
-      updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: audioUrl, mediaType: 'audio', title, extraMeta: { model: 'ace-step-audio-to-audio' } }).catch(() => {})
+      updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: audioUrl, mediaType: 'audio', title, extraMeta: { model: 'voice-melody' } }).catch(() => {})
 
       addLine({
         type: 'result',
@@ -271,7 +272,7 @@ export async function POST(req: NextRequest) {
       })
     } catch (genErr: any) {
       console.error('❌ Voice Melody error:', genErr?.message || genErr, genErr?.stack?.substring(0, 300))
-      await refundCredits({ userId, amount: 2, type: 'generation_music', reason: `Voice Melody error: ${title}`, metadata: { tags, model: 'ace-step-audio-to-audio', error: String(genErr).substring(0, 200) } })
+      await refundCredits({ userId, amount: 2, type: 'generation_music', reason: `Voice Melody error: ${title}`, metadata: { tags, model: 'voice-melody', error: String(genErr).substring(0, 200) } })
       addLine({ type: 'result', success: false, error: sanitizeError(genErr), creditsRemaining: deductResult.new_credits })
     }
 
