@@ -61,7 +61,11 @@ export default function StudioEditor() {
   const [pianoRollChannel, setPianoRollChannel] = useState<number | null>(null)
   const [drumSequencerChannel, setDrumSequencerChannel] = useState<number | null>(null)
   const [padSamplerChannel, setPadSamplerChannel] = useState<number | null>(null)
-  const [userSamples, setUserSamples] = useState<{ id: string; name: string; url: string; duration_ms?: number | null; original_bpm?: number | null }[]>([])
+  const [isRecording, setIsRecording] = useState(false)
+
+  // Recording: capture drum hits with cycle position for converting to Strudel code
+  const recordedHitsRef = useRef<{ sound: string; bank?: string; cycleTime: number }[]>([])
+  const recordStartCycleRef = useRef<number>(0)
 
   // Undo/Redo
   const undoStack = useRef<string[]>([])
@@ -79,7 +83,6 @@ export default function StudioEditor() {
   const isPlayingRef = useRef(false)
   const lastEvaluatedRef = useRef('')
   const masterGainRef = useRef<GainNode | null>(null)
-  const padPreviewCacheRef = useRef<Map<string, AudioBuffer>>(new Map())
   const sliderValuesRef = useRef<Record<string, number>>({})
   const sliderDefsRef = useRef<Record<string, { min: number; max: number; value: number }>>({})
   const drawStateRef = useRef({ counter: 0 })
@@ -187,17 +190,16 @@ export default function StudioEditor() {
 
         setStatus('ready')
 
-        // Auto-register user samples so s("name") works without opening the modal
+        // Auto-register user samples so s("name") works in existing patterns
         try {
           const res = await fetch('/api/studio/samples')
           const data = await res.json()
           if (data.samples && engine.webaudio) {
-            const samplesList = data.samples as { id: string; name: string; url: string; duration_ms?: number | null }[]
+            const samplesList = data.samples as { id: string; name: string; url: string }[]
             for (const s of samplesList) {
               try { await engine.webaudio.samples({ [s.name]: [s.url] }) }
               catch { /* individual sample registration failure is non-fatal */ }
             }
-            if (!cancelled) setUserSamples(samplesList)
             if (samplesList.length > 0) {
               console.log(`[444 STUDIO] Auto-registered ${samplesList.length} custom sample(s)`)
             }
@@ -592,41 +594,94 @@ export default function StudioEditor() {
     }
   }, [handleLiveCodeChange])
 
-    const handleAddVocalChannel = useCallback((name: string, loopAt: number, sampleBpm?: number) => {
-    const currentCode = codeRef.current
-    const projectBpm = parseBPM(currentCode) ?? 120
-    const newCode = addChannel(currentCode, name, 'vocal', loopAt, sampleBpm, projectBpm)
-    if (newCode !== currentCode) {
-      handleLiveCodeChange(newCode)
-    }
+  // ── Recording: capture drum hits and convert to Strudel code ──
+  const handleRecordToggle = useCallback(() => {
+    setIsRecording(prev => {
+      if (!prev) {
+        // Start recording
+        recordedHitsRef.current = []
+        // Capture current cycle position as start reference
+        try {
+          const engine = engineRef.current
+          if (engine?.scheduler?.now) {
+            recordStartCycleRef.current = engine.scheduler.now()
+          } else {
+            recordStartCycleRef.current = 0
+          }
+        } catch { recordStartCycleRef.current = 0 }
+        console.log('[444 STUDIO] Recording started')
+        return true
+      } else {
+        // Stop recording and convert hits to code
+        const hits = recordedHitsRef.current
+        if (hits.length === 0) {
+          console.log('[444 STUDIO] Recording stopped — no hits captured')
+          return false
+        }
+        // Convert recorded hits to a drum pattern
+        const startCycle = recordStartCycleRef.current
+        // Normalize all hit times relative to start
+        const normalizedHits = hits.map(h => ({
+          ...h,
+          pos: h.cycleTime - startCycle,
+        }))
+        // Determine how many bars were recorded (round up to nearest integer)
+        const maxPos = Math.max(...normalizedHits.map(h => h.pos))
+        const recordedBars = Math.max(1, Math.ceil(maxPos))
+        const stepsPerBar = 16
+        const totalSteps = recordedBars * stepsPerBar
+
+        // Group hits by sound and quantize to step grid
+        const soundSteps = new Map<string, Set<number>>()
+        for (const hit of normalizedHits) {
+          if (hit.pos < 0) continue
+          const step = Math.round((hit.pos / recordedBars) * totalSteps) % totalSteps
+          const key = hit.sound
+          if (!soundSteps.has(key)) soundSteps.set(key, new Set())
+          soundSteps.get(key)!.add(step)
+        }
+
+        // Build mini-notation for each sound row
+        const rows: string[] = []
+        for (const [sound, steps] of soundSteps) {
+          // Create pattern string: e.g., "bd ~ ~ ~ bd ~ ~ ~ bd ~ ~ ~ bd ~ ~ ~"
+          const cells: string[] = []
+          for (let i = 0; i < totalSteps; i++) {
+            cells.push(steps.has(i) ? sound : '~')
+          }
+          // Compress consecutive tildes into sub-groups for readability
+          rows.push(`s("${cells.join(' ')}")`)
+        }
+
+        // Build the channel code
+        const bank = normalizedHits[0]?.bank
+        const bankSuffix = bank ? `.bank("${bank}")` : ''
+        const channelCode = rows.length === 1
+          ? `${rows[0]}${bankSuffix}`
+          : `stack(\n  ${rows.join(',\n  ')}\n)${bankSuffix}`
+
+        // Add as a new channel
+        const currentCode = codeRef.current
+        const newCode = currentCode.trimEnd() + '\n\n// Recorded drum pattern\n$: ' + channelCode + '\n'
+        handleLiveCodeChange(newCode)
+
+        console.log(`[444 STUDIO] Recording stopped — ${hits.length} hits → ${soundSteps.size} sounds, ${recordedBars} bars`)
+        recordedHitsRef.current = []
+        return false
+      }
+    })
   }, [handleLiveCodeChange])
 
-  const handleAddInstrumentChannel = useCallback((name: string, begin: number, end: number) => {
-    const currentCode = codeRef.current
-    const newCode = addChannel(currentCode, name, 'instrument', undefined, undefined, undefined, begin, end)
-    if (newCode !== currentCode) {
-      handleLiveCodeChange(newCode)
+  const handleRecordHit = useCallback((sound: string, bank?: string) => {
+    if (!isRecording) return
+    try {
+      const engine = engineRef.current
+      const cycleTime = engine?.scheduler?.now?.() ?? 0
+      recordedHitsRef.current.push({ sound, bank, cycleTime })
+    } catch {
+      recordedHitsRef.current.push({ sound, bank, cycleTime: Date.now() / 1000 })
     }
-  }, [handleLiveCodeChange])
-
-  const handleAddDrumPadChannel = useCallback((name: string, chopCount: number, loopAt: number) => {
-    const currentCode = codeRef.current
-    const projectBpm = parseBPM(currentCode) ?? 120
-    const newCode = addChannel(currentCode, name, 'drumpad', loopAt, undefined, projectBpm, undefined, undefined, chopCount)
-    if (newCode !== currentCode) {
-      handleLiveCodeChange(newCode)
-    }
-  }, [handleLiveCodeChange])
-
-  const handleAddSoundKitChannel = useCallback((name: string, begin: number, end: number, loopAt: number) => {
-    const currentCode = codeRef.current
-    const projectBpm = parseBPM(currentCode) ?? 120
-    const newCode = addChannel(currentCode, name, 'soundkit', loopAt, undefined, projectBpm, begin, end)
-    if (newCode !== currentCode) {
-      handleLiveCodeChange(newCode)
-    }
-  }, [handleLiveCodeChange])
-
+  }, [isRecording])
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   //  RENDER
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -646,6 +701,8 @@ export default function StudioEditor() {
         onUpdate={handleUpdate}
         onVolumeChange={updateMasterVolume}
         onToggleCode={() => setCodeVisible(v => !v)}
+        isRecording={isRecording}
+        onRecord={handleRecordToggle}
       />
 
       {/* Hidden canvas for visualizations â€” now positioned inside mixer */}
@@ -703,7 +760,6 @@ export default function StudioEditor() {
                 <StudioBrowserPanel
                   onAddChannel={handleBrowserAddChannel}
                   onPreview={handlePreviewSound}
-                  userSamples={userSamples}
                   projectBpm={parseBPM(code) ?? 120}
                 />
               ) : (
@@ -745,8 +801,7 @@ export default function StudioEditor() {
             onOpenPianoRoll={(idx) => { setDrumSequencerChannel(null); setPadSamplerChannel(null); setPianoRollChannel(prev => prev === idx ? null : idx) }}
             onOpenDrumSequencer={(idx) => { setPianoRollChannel(null); setPadSamplerChannel(null); setDrumSequencerChannel(prev => prev === idx ? null : idx) }}
             onOpenPadSampler={(idx) => { setPianoRollChannel(null); setDrumSequencerChannel(null); setPadSamplerChannel(prev => prev === idx ? null : idx) }}
-            onAddVocalChannel={handleAddVocalChannel}
-            userSamples={userSamples}
+
             getCyclePosition={() => {
               try {
                 const engine = engineRef.current
@@ -877,7 +932,6 @@ export default function StudioEditor() {
                 onClose={() => setPianoRollChannel(null)}
                 isPlaying={isPlaying}
                 projectBpm={parseBPM(code) ?? 120}
-                userSamples={userSamples}
                 getCyclePosition={() => {
                   try {
                     const engine = engineRef.current
@@ -909,6 +963,8 @@ export default function StudioEditor() {
                 onClose={() => setDrumSequencerChannel(null)}
                 isPlaying={isPlaying}
                 projectBpm={parseBPM(code) ?? 120}
+                isRecording={isRecording}
+                onRecordHit={handleRecordHit}
                 getCyclePosition={() => {
                   try {
                     const engine = engineRef.current
@@ -1020,32 +1076,8 @@ export default function StudioEditor() {
                     }
                   }
 
-                  // ── Fallback: Direct Web Audio API using cached buffer ──
-                  const sampleUrl = userSamples.find(s => s.name === sampleName)?.url
-                  if (!sampleUrl) { console.warn('[444 STUDIO] pad preview: no URL for sample', sampleName); return }
-                  try {
-                    const actx = new AudioContext()
-                    await actx.resume()
-                    let buffer = padPreviewCacheRef.current.get(sampleName)
-                    if (!buffer) {
-                      const response = await fetch(sampleUrl)
-                      const arrayBuffer = await response.arrayBuffer()
-                      buffer = await actx.decodeAudioData(arrayBuffer)
-                      padPreviewCacheRef.current.set(sampleName, buffer)
-                    }
-                    const source = actx.createBufferSource()
-                    source.buffer = buffer
-                    if (speed !== undefined && speed !== 1) source.playbackRate.value = speed
-                    const gainNode = actx.createGain()
-                    gainNode.gain.value = 0.7
-                    source.connect(gainNode)
-                    gainNode.connect(actx.destination)
-                    const startOffset = begin * buffer.duration
-                    const dur = (end - begin) * buffer.duration
-                    source.start(0, startOffset, Math.min(dur, 8))
-                  } catch (err2) {
-                    console.error('[444 STUDIO] direct pad playback also failed:', err2)
-                  }
+                  // Fallback: superdough is the primary path; if it failed, log and return
+                  console.warn('[444 STUDIO] pad preview: superdough path unavailable for', sampleName)
                 }}
                 onPreviewDrum={async (sound: string, gain?: number) => {
                   const engine = engineRef.current

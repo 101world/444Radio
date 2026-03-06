@@ -12,11 +12,11 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { useRef, useEffect, useCallback, useState, useMemo, memo } from 'react'
-import { ChevronDown, ChevronRight, Plus, Piano, Grid3X3 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus, Piano, Grid3X3, MoreVertical, Copy, RotateCcw, Trash2 } from 'lucide-react'
 import StudioKnob from './StudioKnob'
 import HardwareKnob from './HardwareKnob'
 import { getOrbitAnalyser } from '@/lib/studio-analysers'
-import { PARAM_DEFS, type ParsedChannel, type ParamDef } from '@/lib/strudel-code-parser'
+import { PARAM_DEFS, getParamDef, getTranspose, getArpInfo, ARP_MODES, type ParsedChannel, type ParamDef, type StackRow } from '@/lib/strudel-code-parser'
 
 // ─── Scope types for per-track visualization ───
 const TRACK_SCOPE_TYPES = [
@@ -46,6 +46,40 @@ const TYPE_RELEVANT_GROUPS: Record<string, Set<string>> = {
   sample: new Set(['FILTER', 'DRIVE', 'SPACE', 'MOD', 'PITCH', 'ENV', 'SAMPLE', 'CHAIN']),
   stack:  new Set(['FILTER', 'DRIVE', 'SPACE', 'MOD', 'ENV', 'CHAIN']),
 }
+
+// Type-specific effect key filtering
+const INSTRUMENT_ONLY_KEYS = new Set(['detune'])
+const SAMPLE_ONLY_KEYS = new Set(['speed', 'loopAt', 'loop', 'begin', 'end', 'chop', 'stretch', 'slice', 'splice', 'striate', 'fit', 'scrub', 'loopBegin', 'loopEnd', 'cut', 'n', 'hurry', 'unit'])
+
+// Sound/Bank dropdown data — shared with StudioMixerRack
+const INSTRUMENT_GROUPS = new Set(['Synth', 'Keys', 'Organ', 'Guitar & Bass', 'Strings', 'Brass & Sax', 'Flute & Pipe', 'Voice', 'Synth Leads', 'Synth Pads', 'SFX & Ethnic'])
+const SOUND_GROUPS = new Set(['Drums', 'Samples', 'SFX & Ethnic'])
+
+const SOUND_OPTIONS: { group: string; sounds: [string, string][] }[] = [
+  { group: 'Synth', sounds: [['sawtooth', 'Sawtooth'], ['supersaw', 'Supersaw'], ['sine', 'Sine'], ['square', 'Square'], ['triangle', 'Triangle']] },
+  { group: 'Drums', sounds: [['bd', 'Kick'], ['sd', 'Snare'], ['cp', 'Clap'], ['hh', 'Hi-hat'], ['oh', 'Open HH'], ['rim', 'Rim'], ['tom', 'Tom'], ['ride', 'Ride'], ['crash', 'Crash'], ['perc', 'Perc']] },
+  { group: 'Keys', sounds: [['gm_piano', 'Piano'], ['gm_epiano1', 'E.Piano (Rhodes)'], ['gm_epiano2', 'E.Piano (DX7)'], ['gm_music_box', 'Music Box'], ['gm_vibraphone', 'Vibes'], ['gm_marimba', 'Marimba']] },
+  { group: 'Organ', sounds: [['gm_drawbar_organ', 'Drawbar Organ'], ['gm_percussive_organ', 'Perc. Organ'], ['gm_rock_organ', 'Rock Organ']] },
+  { group: 'Guitar & Bass', sounds: [['gm_acoustic_guitar_nylon', 'Nylon Gtr'], ['gm_electric_guitar_jazz', 'Jazz Gtr'], ['gm_acoustic_bass', 'Acoustic Bass'], ['gm_synth_bass_1', 'Synth Bass 1'], ['gm_synth_bass_2', 'Synth Bass 2']] },
+  { group: 'Strings', sounds: [['gm_violin', 'Violin'], ['gm_cello', 'Cello'], ['gm_string_ensemble_1', 'String Ens.'], ['gm_orchestral_harp', 'Harp']] },
+  { group: 'Brass & Sax', sounds: [['gm_trumpet', 'Trumpet'], ['gm_trombone', 'Trombone'], ['gm_alto_sax', 'Alto Sax'], ['gm_tenor_sax', 'Tenor Sax']] },
+  { group: 'Flute & Pipe', sounds: [['gm_flute', 'Flute'], ['gm_piccolo', 'Piccolo'], ['gm_pan_flute', 'Pan Flute']] },
+  { group: 'Voice', sounds: [['gm_choir_aahs', 'Choir Aahs'], ['gm_voice_oohs', 'Voice Oohs'], ['gm_synth_choir', 'Synth Choir']] },
+  { group: 'Synth Leads', sounds: [['gm_lead_1_square', 'Lead Square'], ['gm_lead_2_sawtooth', 'Lead Saw'], ['gm_lead_8_bass_lead', 'Bass+Lead']] },
+  { group: 'Synth Pads', sounds: [['gm_pad_new_age', 'New Age'], ['gm_pad_warm', 'Warm'], ['gm_pad_poly', 'Polysynth']] },
+  { group: 'SFX & Ethnic', sounds: [['gm_kalimba', 'Kalimba'], ['gm_sitar', 'Sitar'], ['gm_steel_drums', 'Steel Drums']] },
+  { group: 'Samples', sounds: [['casio', 'Casio'], ['jazz', 'Jazz Kit'], ['metal', 'Metal'], ['mouth', 'Mouth'], ['gabba', 'Gabba']] },
+]
+
+const BANK_OPTIONS: [string, string][] = [
+  ['RolandTR808', 'TR-808'], ['RolandTR909', 'TR-909'], ['RolandTR707', 'TR-707'],
+  ['RolandTR606', 'TR-606'], ['RolandTR626', 'TR-626'], ['RolandTR505', 'TR-505'],
+  ['KorgDDM110', 'KorgDDM-110'], ['KorgMinipops', 'Minipops'],
+  ['AkaiLinn', 'Akai/Linn'], ['AkaiMPC60', 'MPC60'], ['LinnDrum', 'LinnDrum'],
+  ['BossDR110', 'DR-110'], ['BossDR220', 'DR-220'], ['BossDR55', 'DR-55'],
+  ['EmuDrumulator', 'Drumulator'], ['OberheimDMX', 'DMX'],
+  ['AlesisHR16', 'HR-16'], ['AlesisSR16', 'SR-16'],
+]
 
 // ─── FX Descriptions — what each effect does to the sound ───
 const FX_DESCRIPTIONS: Record<string, string> = {
@@ -843,44 +877,315 @@ function EffectsPanel({
 }
 
 // ─────────────────────────────────────────────────────────────
-//  Inline knobs row — shown on expanded tracks for active effects
+//  Track Expansion Panel — full controls matching grid ChannelStrip
+//  Sound/Bank selectors, effect tags, grouped FX knobs, stack rows,
+//  pitch/transpose, action row with overflow menu
 // ─────────────────────────────────────────────────────────────
-function InlineKnobs({ channel, channelIdx, onParamChange }: {
+function TrackExpansionPanel({
+  channel, channelIdx,
+  onParamChange, onRemoveEffect,
+  onSoundChange, onBankChange,
+  onRename, onDuplicate, onDelete, onReset,
+  onTranspose, onAddSound, onPreview,
+  onStackRowSoundChange, onStackRowGainChange, onStackRowBankChange, onRemoveStackRow,
+  stackRows, scaleRoot, onAutoPitchMatch,
+}: {
   channel: ParsedChannel; channelIdx: number
   onParamChange: (channelIdx: number, key: string, value: number) => void
+  onRemoveEffect?: (channelIdx: number, effectKey: string) => void
+  onSoundChange?: (idx: number, sound: string) => void
+  onBankChange?: (idx: number, bank: string) => void
+  onRename?: (channelIdx: number, newName: string) => void
+  onDuplicate?: (channelIdx: number) => void
+  onDelete?: (channelIdx: number) => void
+  onReset?: (channelIdx: number) => void
+  onTranspose?: (channelIdx: number, semitones: number) => void
+  onAddSound?: (channelIdx: number, sound: string) => void
+  onPreview?: (soundCode: string) => void
+  onStackRowSoundChange?: (channelIdx: number, rowIdx: number, newSound: string) => void
+  onStackRowGainChange?: (channelIdx: number, rowIdx: number, newGain: number) => void
+  onStackRowBankChange?: (channelIdx: number, rowIdx: number, newBank: string) => void
+  onRemoveStackRow?: (channelIdx: number, rowIdx: number) => void
+  stackRows: StackRow[]
+  scaleRoot?: string | null
+  onAutoPitchMatch?: (channelIdx: number) => void
 }) {
-  // Show active params (excluding gain/orbit)
-  const knobs = useMemo(() => {
-    return channel.params.filter(p => !['gain', 'orbit'].includes(p.key))
-  }, [channel.params])
+  const [showMoreMenu, setShowMoreMenu] = useState(false)
+  const moreMenuRef = useRef<HTMLDivElement>(null)
 
-  if (knobs.length === 0) return null
+  const isMelodic = channel.sourceType === 'synth' || channel.sourceType === 'note'
+  const isSample = channel.sourceType === 'sample' || channel.sourceType === 'stack'
+
+  // Filtered effect knobs (same logic as ChannelStrip)
+  const effectKnobs = useMemo(() => {
+    const skipKeys = new Set(['gain', 'orbit', 'duck'])
+    if (channel.sourceType === 'sample') skipKeys.add('speed')
+    if (isMelodic) SAMPLE_ONLY_KEYS.forEach(k => skipKeys.add(k))
+    if (isSample) INSTRUMENT_ONLY_KEYS.forEach(k => skipKeys.add(k))
+    return channel.params.filter(p => !skipKeys.has(p.key))
+  }, [channel, isMelodic, isSample])
+
+  // FX groups with active state
+  const fxGroups = useMemo(() => {
+    const relevantGroups = TYPE_RELEVANT_GROUPS[channel.sourceType] || TYPE_RELEVANT_GROUPS.sample
+    return FX_GROUPS.map(group => ({
+      ...group,
+      params: channel.params.filter(p => group.keys.includes(p.key)),
+      active: group.keys.some(k => channel.effects.includes(k)),
+      isRelevant: relevantGroups.has(group.label),
+    })).filter(g => g.active || g.params.length > 0)
+  }, [channel])
+
+  // Close more menu on outside click
+  useEffect(() => {
+    if (!showMoreMenu) return
+    const handler = (e: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) setShowMoreMenu(false)
+    }
+    document.addEventListener('pointerdown', handler)
+    return () => document.removeEventListener('pointerdown', handler)
+  }, [showMoreMenu])
 
   return (
-    <div className="flex items-center gap-0.5 overflow-x-auto py-0.5 px-1" onClick={(e) => e.stopPropagation()}>
-      {knobs.slice(0, 8).map(p => {
-        const paramDef = PARAM_DEFS.find((d: ParamDef) => d.key === p.key)
-        if (!paramDef) return null
+    <div className="flex flex-col gap-0.5 py-1 overflow-y-auto max-h-[260px]" onClick={(e) => e.stopPropagation()}
+      style={{ scrollbarWidth: 'thin', scrollbarColor: `${channel.color}30 transparent` }}>
+
+      {/* ── Pitch (sample channels) ── */}
+      {channel.sourceType === 'sample' && (() => {
+        const speedParam = channel.params.find(p => p.key === 'speed')
+        const currentSpeed = speedParam ? speedParam.value : 1
+        const currentSemitones = Math.round(12 * Math.log2(currentSpeed))
         return (
-          <StudioKnob
-            key={p.key}
-            label={paramDef.label}
-            value={p.value}
-            min={paramDef.min}
-            max={paramDef.max}
-            step={paramDef.step}
-            size={18}
-            color={channel.color}
-            isComplex={p.isComplex}
-            onChange={(v: number) => onParamChange(channelIdx, p.key, v)}
-          />
+          <div className="flex items-center gap-1 px-1.5 py-0.5">
+            <StudioKnob label="PITCH" value={currentSemitones} min={-24} max={24} step={1} size={20} color="#c4a87a"
+              formatValue={(v: number) => (v > 0 ? `+${v}` : `${v}`)}
+              onChange={(v: number) => { const newSpeed = Math.pow(2, v / 12); onParamChange(channelIdx, 'speed', parseFloat(newSpeed.toFixed(4))) }} />
+            {scaleRoot && onAutoPitchMatch && (
+              <button onClick={() => onAutoPitchMatch(channelIdx)}
+                className="cursor-pointer transition-all duration-100 active:scale-90"
+                style={{ width: 14, height: 14, borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '6px', color: '#c4a87a', background: '#0a0b0d', border: 'none',
+                  boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22' }}
+                title={`Auto-match pitch to ${scaleRoot}`}>🎯</button>
+            )}
+          </div>
         )
-      })}
-      {knobs.length > 8 && (
-        <span className="text-[5px] font-bold shrink-0 px-0.5" style={{ color: `${channel.color}50` }}>
-          +{knobs.length - 8}
-        </span>
+      })()}
+
+      {/* ── Transpose (synth/note channels) ── */}
+      {(channel.sourceType === 'synth' || channel.sourceType === 'note') && (() => {
+        const currentTranspose = getTranspose(channel.rawCode)
+        return (
+          <div className="flex items-center gap-0.5 px-1.5 py-0.5">
+            <button onClick={() => onTranspose?.(channelIdx, currentTranspose - 12)}
+              className="cursor-pointer transition-all duration-100 active:scale-90"
+              style={{ width: 14, height: 12, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '5px', fontWeight: 900, color: '#6f8fb3', background: '#0a0b0d', border: 'none',
+                boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22' }}
+              title="-1 octave">−12</button>
+            <StudioKnob label="TRANS" value={currentTranspose} min={-24} max={24} step={1} size={20} color="#6f8fb3"
+              formatValue={(v: number) => (v > 0 ? `+${v}` : `${v}`)}
+              onChange={(v: number) => onTranspose?.(channelIdx, v)} />
+            <button onClick={() => onTranspose?.(channelIdx, currentTranspose + 12)}
+              className="cursor-pointer transition-all duration-100 active:scale-90"
+              style={{ width: 14, height: 12, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '5px', fontWeight: 900, color: '#6f8fb3', background: '#0a0b0d', border: 'none',
+                boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22' }}
+              title="+1 octave">+12</button>
+          </div>
+        )
+      })()}
+
+      {/* ── Sound / Bank selectors (non-stack) ── */}
+      {channel.sourceType !== 'stack' && onSoundChange && (channel.isSimpleSource || channel.bank || channel.sourceType === 'sample' || channel.sourceType === 'synth') && (
+        <div className="flex flex-col gap-0.5 px-1.5 py-0.5" style={{ borderTop: '1px solid rgba(255,255,255,0.03)' }}>
+          <div className="flex items-center justify-between">
+            <span className="text-[5px] font-black uppercase tracking-[.12em]" style={{ color: '#5a616b' }}>
+              {isMelodic ? 'INSTRUMENT' : 'SOUND'}
+            </span>
+            {channel.sourceType === 'sample' && channel.isSimpleSource && onAddSound && (
+              <select value="" onChange={(e) => { if (e.target.value) onAddSound(channelIdx, e.target.value) }}
+                className="text-[5px] font-mono rounded px-0.5 py-0 outline-none cursor-pointer"
+                style={{ color: '#7fa998', background: '#0a0b0d', border: '1px solid rgba(127,169,152,0.2)', borderRadius: '4px', maxWidth: '50px' }}>
+                <option value="">+ ADD</option>
+                {SOUND_OPTIONS.filter(g => SOUND_GROUPS.has(g.group)).map(g => (
+                  <optgroup key={g.group} label={g.group}>
+                    {g.sounds.map(([val, label]) => (<option key={val} value={val}>{label}</option>))}
+                  </optgroup>
+                ))}
+              </select>
+            )}
+          </div>
+          {channel.isSimpleSource ? (
+            <div className="flex items-center gap-0.5">
+              <select value={channel.source} onChange={(e) => onSoundChange(channelIdx, e.target.value)}
+                className="text-[6px] font-mono rounded px-0.5 py-0.5 outline-none cursor-pointer flex-1 min-w-0"
+                style={{ color: '#e8ecf0', background: '#111318', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '6px' }}>
+                <option value={channel.source}>{channel.source}</option>
+                {SOUND_OPTIONS.filter(g => isMelodic ? INSTRUMENT_GROUPS.has(g.group) : SOUND_GROUPS.has(g.group)).map(g => (
+                  <optgroup key={g.group} label={g.group}>
+                    {g.sounds.filter(([val]) => val !== channel.source).map(([val, label]) => (<option key={val} value={val}>{label}</option>))}
+                  </optgroup>
+                ))}
+              </select>
+              {onPreview && (
+                <button onClick={() => onPreview(`s("${channel.source}")`)}
+                  className="shrink-0 rounded-md p-0.5 transition-all cursor-pointer hover:opacity-100"
+                  style={{ color: '#7fa998', opacity: 0.5 }} title={`Preview ${channel.source}`}>
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                </button>
+              )}
+            </div>
+          ) : (
+            <span className="text-[5px] text-white/20 font-mono truncate">{channel.source}</span>
+          )}
+          {/* Bank selector */}
+          {channel.sourceType !== 'synth' && channel.sourceType !== 'note' && onBankChange && (
+            <select value={channel.bank || ''} onChange={(e) => onBankChange(channelIdx, e.target.value)}
+              className="text-[6px] font-mono rounded px-0.5 py-0.5 outline-none cursor-pointer"
+              style={{ color: '#b8a47f', background: '#111318', border: '1px solid rgba(184,164,127,0.12)', borderRadius: '6px' }}>
+              <option value="">{channel.bank || 'No Bank'}</option>
+              {BANK_OPTIONS.filter(([val]) => val !== channel.bank).map(([val, label]) => (<option key={val} value={val}>{label}</option>))}
+            </select>
+          )}
+        </div>
       )}
+
+      {/* ── Stack rows (drum machine per-row controls) ── */}
+      {channel.sourceType === 'stack' && stackRows.length > 0 && (
+        <div className="px-1.5 py-0.5" style={{ borderTop: '1px solid rgba(255,255,255,0.03)' }}>
+          <div className="flex items-center justify-between mb-0.5">
+            <span className="text-[5px] font-black uppercase tracking-[.12em]" style={{ color: '#5a616b' }}>STACK SOUNDS</span>
+            {onAddSound && (
+              <select value="" onChange={(e) => { if (e.target.value) onAddSound(channelIdx, e.target.value) }}
+                className="text-[5px] font-mono rounded px-0.5 py-0 outline-none cursor-pointer"
+                style={{ color: '#7fa998', background: '#0a0b0d', border: '1px solid rgba(127,169,152,0.2)', borderRadius: '4px', maxWidth: '50px' }}>
+                <option value="">+ ADD</option>
+                {SOUND_OPTIONS.filter(g => SOUND_GROUPS.has(g.group)).map(g => (
+                  <optgroup key={g.group} label={g.group}>
+                    {g.sounds.map(([val, label]) => (<option key={val} value={val}>{label}</option>))}
+                  </optgroup>
+                ))}
+              </select>
+            )}
+          </div>
+          {stackRows.map((row, ri) => (
+            <div key={ri} className="flex items-center gap-0.5 py-0.5" style={{ borderBottom: ri < stackRows.length - 1 ? '1px solid rgba(255,255,255,0.02)' : 'none' }}>
+              <select value={row.instrument} onChange={(e) => onStackRowSoundChange?.(channelIdx, ri, e.target.value)}
+                className="text-[6px] font-mono rounded px-0.5 py-0.5 outline-none cursor-pointer flex-1 min-w-0"
+                style={{ color: '#e8ecf0', background: '#111318', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '6px' }}>
+                <option value={row.instrument}>{row.instrument}</option>
+                {SOUND_OPTIONS.filter(g => SOUND_GROUPS.has(g.group)).map(g => (
+                  <optgroup key={g.group} label={g.group}>
+                    {g.sounds.filter(([val]) => val !== row.instrument).map(([val, label]) => (<option key={val} value={val}>{label}</option>))}
+                  </optgroup>
+                ))}
+              </select>
+              <StudioKnob label="G" value={row.gain} min={0} max={1.5} step={0.01} size={16} color={channel.color}
+                onChange={(v: number) => onStackRowGainChange?.(channelIdx, ri, v)} />
+              {stackRows.length > 1 && onRemoveStackRow && (
+                <button onClick={() => onRemoveStackRow(channelIdx, ri)}
+                  className="cursor-pointer transition-all hover:text-red-400" style={{ color: '#5a616b', fontSize: '7px', background: 'none', border: 'none' }}>×</button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Active effect tags (removable) ── */}
+      {channel.effects.length > 0 && (
+        <div className="flex flex-wrap gap-[2px] px-1.5 py-0.5" style={{ borderTop: '1px solid rgba(255,255,255,0.03)' }}>
+          {channel.effects
+            .filter(fx => !['scope', 'pianoroll', 'orbit', 'gain'].includes(fx))
+            .map(fx => {
+              const isOffType = (isMelodic && SAMPLE_ONLY_KEYS.has(fx)) || (isSample && INSTRUMENT_ONLY_KEYS.has(fx))
+              const tagColor = (fx === 'arp' || fx === 'arpeggiate') ? '#b8a47f' : isOffType ? '#6b5a5a' : channel.color
+              return (
+                <span key={fx} className="inline-flex items-center gap-[1px] rounded-full transition-all group/tag"
+                  style={{ padding: '0px 3px 0px 4px', fontSize: '5px', fontWeight: 800, letterSpacing: '.06em',
+                    textTransform: 'uppercase', color: tagColor, background: `${tagColor}12`, border: `1px solid ${tagColor}25` }}>
+                  {fx}
+                  {onRemoveEffect && (
+                    <button onClick={() => onRemoveEffect(channelIdx, fx)}
+                      className="cursor-pointer opacity-0 group-hover/tag:opacity-100 transition-opacity hover:text-red-400"
+                      style={{ fontSize: '6px', padding: '0 1px', background: 'none', border: 'none', color: 'inherit' }}
+                      title={`Remove .${fx}()`}>×</button>
+                  )}
+                </span>
+              )
+            })}
+        </div>
+      )}
+
+      {/* ── Effect knobs — grouped by FX category ── */}
+      {fxGroups.length > 0 && (
+        <div className="px-1 py-0.5" style={{ borderTop: '1px solid rgba(255,255,255,0.03)' }}>
+          {fxGroups.map((group) => (
+            <div key={group.label} className="mb-0.5">
+              <div className="flex items-center gap-0.5 px-0.5 py-0.5">
+                <span className="text-[6px]">{group.icon}</span>
+                <span className="text-[5px] font-bold uppercase tracking-[.08em]" style={{ color: group.isRelevant ? '#5a616b' : '#3a3f46' }}>{group.label}</span>
+                {!group.isRelevant && <span className="text-[4px] opacity-30">⚠</span>}
+                <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.03)' }} />
+              </div>
+              <div className="flex flex-wrap gap-px px-0.5 justify-start">
+                {group.params.map((param) => {
+                  const def = getParamDef(param.key)
+                  if (!def) return null
+                  return (
+                    <StudioKnob key={param.key} label={def.label} value={param.value} min={def.min} max={def.max} step={def.step}
+                      size={20} color={channel.color} unit={def.unit} isComplex={param.isComplex}
+                      onChange={(v: number) => onParamChange(channelIdx, param.key, v)}
+                      onRemove={onRemoveEffect ? () => onRemoveEffect(channelIdx, param.key) : undefined} />
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Overflow menu (Duplicate/Reset/Delete) ── */}
+      <div className="flex items-center justify-end px-1.5 py-0.5" style={{ borderTop: '1px solid rgba(255,255,255,0.03)' }}>
+        <div className="flex items-center gap-0.5">
+          {effectKnobs.length > 0 && (
+            <span className="text-[5px] font-bold font-mono px-0.5" style={{ color: `${channel.color}50` }}>{effectKnobs.length}fx</span>
+          )}
+          <div ref={moreMenuRef} className="relative">
+            <button onClick={() => setShowMoreMenu(v => !v)}
+              className="p-0.5 rounded transition-all cursor-pointer hover:opacity-80"
+              style={{ color: '#5a616b', opacity: 0.5 }} title="More actions">
+              <MoreVertical size={9} />
+            </button>
+            {showMoreMenu && (
+              <div className="absolute bottom-full right-0 mb-1 rounded-lg overflow-hidden z-50"
+                style={{ background: '#16181d', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 8px 24px rgba(0,0,0,0.6)', minWidth: '80px' }}>
+                {onDuplicate && (
+                  <button onClick={() => { setShowMoreMenu(false); onDuplicate(channelIdx) }}
+                    className="flex items-center gap-1 w-full px-2 py-1 text-left transition-colors cursor-pointer hover:bg-white/5"
+                    style={{ color: '#7fa998', fontSize: '7px', fontWeight: 700 }}>
+                    <Copy size={8} /> Duplicate
+                  </button>
+                )}
+                {onReset && (
+                  <button onClick={() => { setShowMoreMenu(false); if (confirm('Reset channel?')) onReset(channelIdx) }}
+                    className="flex items-center gap-1 w-full px-2 py-1 text-left transition-colors cursor-pointer hover:bg-white/5"
+                    style={{ color: '#b8a47f', fontSize: '7px', fontWeight: 700 }}>
+                    <RotateCcw size={8} /> Reset
+                  </button>
+                )}
+                {onDelete && (
+                  <button onClick={() => { setShowMoreMenu(false); if (confirm('Delete this channel?')) onDelete(channelIdx) }}
+                    className="flex items-center gap-1 w-full px-2 py-1 text-left transition-colors cursor-pointer hover:bg-white/5"
+                    style={{ color: '#b86f6f', fontSize: '7px', fontWeight: 700 }}>
+                    <Trash2 size={8} /> Delete
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -913,6 +1218,23 @@ interface TrackViewProps {
   onDrop: (idx: number, e: React.DragEvent) => void
   onShowAddMenu: () => void
   getSourceIcon: (source: string, sourceType: string) => string
+  // ── New: match grid ChannelStrip feature parity ──
+  onSoundChange?: (idx: number, sound: string) => void
+  onBankChange?: (idx: number, bank: string) => void
+  onRename?: (channelIdx: number, newName: string) => void
+  onDuplicate?: (channelIdx: number) => void
+  onDelete?: (channelIdx: number) => void
+  onReset?: (channelIdx: number) => void
+  onTranspose?: (channelIdx: number, semitones: number) => void
+  onAddSound?: (channelIdx: number, sound: string) => void
+  onPreview?: (soundCode: string) => void
+  onAutoPitchMatch?: (channelIdx: number) => void
+  scaleRoot?: string | null
+  stackRowsMap: Map<number, StackRow[]>
+  onStackRowSoundChange?: (channelIdx: number, rowIdx: number, newSound: string) => void
+  onStackRowGainChange?: (channelIdx: number, rowIdx: number, newGain: number) => void
+  onStackRowBankChange?: (channelIdx: number, rowIdx: number, newBank: string) => void
+  onRemoveStackRow?: (channelIdx: number, rowIdx: number) => void
 }
 
 const TrackView = memo(function TrackView({
@@ -937,6 +1259,23 @@ const TrackView = memo(function TrackView({
   onDrop,
   onShowAddMenu,
   getSourceIcon,
+  // New props
+  onSoundChange,
+  onBankChange,
+  onRename,
+  onDuplicate,
+  onDelete,
+  onReset,
+  onTranspose,
+  onAddSound,
+  onPreview,
+  onAutoPitchMatch,
+  scaleRoot,
+  stackRowsMap,
+  onStackRowSoundChange,
+  onStackRowGainChange,
+  onStackRowBankChange,
+  onRemoveStackRow,
 }: TrackViewProps) {
   // Selected track: always one is selected (default 0)
   const [selectedTrack, setSelectedTrack] = useState(0)
@@ -1059,7 +1398,7 @@ const TrackView = memo(function TrackView({
                     </span>
                   </div>
 
-                  {/* Expanded: gain knob + editor + inline knobs */}
+                  {/* Expanded: gain knob + editor + full expansion panel */}
                   {!collapsed && (
                     <div className="flex flex-col gap-0.5 px-2 pb-1">
                       <div className="flex items-center gap-1">
@@ -1089,8 +1428,29 @@ const TrackView = memo(function TrackView({
                           </button>
                         )}
                       </div>
-                      {/* Inline effect knobs */}
-                      <InlineKnobs channel={ch} channelIdx={idx} onParamChange={onParamChange} />
+                      {/* Full expansion panel — sound/bank, effect tags, grouped FX knobs, stack rows, actions */}
+                      <TrackExpansionPanel
+                        channel={ch}
+                        channelIdx={idx}
+                        onParamChange={onParamChange}
+                        onRemoveEffect={onRemoveEffect}
+                        onSoundChange={onSoundChange}
+                        onBankChange={onBankChange}
+                        onRename={onRename}
+                        onDuplicate={onDuplicate}
+                        onDelete={onDelete}
+                        onReset={onReset}
+                        onTranspose={onTranspose}
+                        onAddSound={onAddSound}
+                        onPreview={onPreview}
+                        onStackRowSoundChange={onStackRowSoundChange}
+                        onStackRowGainChange={onStackRowGainChange}
+                        onStackRowBankChange={onStackRowBankChange}
+                        onRemoveStackRow={onRemoveStackRow}
+                        stackRows={stackRowsMap.get(idx) || []}
+                        scaleRoot={scaleRoot}
+                        onAutoPitchMatch={onAutoPitchMatch}
+                      />
                     </div>
                   )}
                 </div>

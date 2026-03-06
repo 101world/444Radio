@@ -2,7 +2,7 @@
 
 // ═══════════════════════════════════════════════════════════
 //  STUDIO BROWSER PANEL — Left sidebar instrument/sample/bank browser
-//  Tabbed: Instruments · Sounds · Banks · Uploaded
+//  Tabbed: Instruments · Sounds · Banks
 //  Each item has a unique icon, preview, and drag-to-add support
 // ═══════════════════════════════════════════════════════════
 
@@ -228,29 +228,17 @@ const BANK_SECTIONS: BankSection[] = [
 
 type Tab = 'instruments' | 'sounds' | 'banks'
 
-// ── UserSample type (matches what StudioEditor passes) ──
-
-interface UserSample {
-  id: string | number
-  name: string
-  url: string
-  duration_ms?: number | null
-  original_bpm?: number | null
-}
-
 // ── Props ──
 
 interface StudioBrowserPanelProps {
   onAddChannel: (soundId: string, type: 'synth' | 'sample' | 'vocal' | 'instrument' | 'drumpad', loopAt?: number) => void
   onPreview?: (code: string) => void
-  userSamples?: UserSample[]
   projectBpm?: number
 }
 
 export default function StudioBrowserPanel({
   onAddChannel,
   onPreview,
-  userSamples = [],
   projectBpm = 120,
 }: StudioBrowserPanelProps) {
   const [activeTab, setActiveTab] = useState<Tab>('instruments')
@@ -278,16 +266,6 @@ export default function StudioBrowserPanel({
     { id: 'sounds', label: 'SNDS', icon: '🥁' },
     { id: 'banks', label: 'BANKS', icon: '📦' },
   ]
-
-  // Flatten user samples into browsable items
-  const uploadedItems: BrowserItem[] = useMemo(() =>
-    userSamples.map(s => ({
-      id: s.name,
-      label: s.name,
-      icon: '🎤',
-      type: 'vocal' as const,
-    }))
-  , [userSamples])
 
   return (
     <div className="flex flex-col h-full">
@@ -431,142 +409,6 @@ export default function StudioBrowserPanel({
                 </div>
               )
             })}
-
-            {/* ── Upload: Instrument Sample (short, piano roll) ── */}
-            {uploadedItems.length > 0 && (
-              <div>
-                <button
-                  onClick={() => toggleSection('Upload-Instrument')}
-                  className="w-full flex items-center gap-1.5 px-2 py-1.5 text-[7px] font-black uppercase tracking-[.12em] cursor-pointer hover:bg-white/[0.02] transition-colors"
-                  style={{ color: '#6f8fb3' }}
-                >
-                  <span className="text-[5px]">{expandedSections.has('Upload-Instrument') || search ? '▼' : '▶'}</span>
-                  🎹 Instrument Sample
-                  <span className="ml-auto text-[6px] opacity-40">{uploadedItems.length}</span>
-                </button>
-                {(expandedSections.has('Upload-Instrument') || search) && (
-                  <div className="px-2 pb-0.5">
-                    <span className="text-[5px] leading-tight block mb-1" style={{ color: '#5a616b' }}>Short sounds · Piano roll · Pitched playback</span>
-                  </div>
-                )}
-                {(expandedSections.has('Upload-Instrument') || search) && (
-                  <div className="grid grid-cols-3 gap-1 px-1 pb-1.5">
-                    {filterItems(uploadedItems).map(item => (
-                      <button
-                        key={item.id}
-                        onClick={() => onAddChannel(item.id, 'instrument')}
-                        className="flex flex-col items-center gap-0.5 py-1.5 px-1 rounded-lg cursor-pointer transition-all duration-150 hover:scale-[1.04] active:scale-95 group"
-                        style={{
-                          background: '#0a0b0d',
-                          border: '1px solid rgba(111,143,179,0.12)',
-                          boxShadow: '2px 2px 4px #050607, -1px -1px 3px #1a1d22',
-                        }}
-                        title={`Add ${item.label} as instrument (piano roll)`}
-                      >
-                        <span className="text-[12px] leading-none opacity-60 group-hover:opacity-100 transition-opacity">🎹</span>
-                        <span className="text-[5px] font-bold truncate w-full text-center transition-colors" style={{ color: 'rgba(111,143,179,0.6)' }}>{item.label}</span>
-                        <span className="text-[5px] font-black uppercase tracking-wider" style={{ color: '#6f8fb380' }}>PIANO ROLL</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ── Upload: Drum Pad Sample (up to 4min, pad sampler) ── */}
-            {uploadedItems.length > 0 && (
-              <div>
-                <button
-                  onClick={() => toggleSection('Upload-DrumPad')}
-                  className="w-full flex items-center gap-1.5 px-2 py-1.5 text-[7px] font-black uppercase tracking-[.12em] cursor-pointer hover:bg-white/[0.02] transition-colors"
-                  style={{ color: '#b8a47f' }}
-                >
-                  <span className="text-[5px]">{expandedSections.has('Upload-DrumPad') || search ? '▼' : '▶'}</span>
-                  🥁 Drum Pad Sample
-                  <span className="ml-auto text-[6px] opacity-40">{uploadedItems.length}</span>
-                </button>
-                {(expandedSections.has('Upload-DrumPad') || search) && (
-                  <div className="px-2 pb-0.5">
-                    <span className="text-[5px] leading-tight block mb-1" style={{ color: '#5a616b' }}>Up to 4 min · Pad sampler · Chop & sequence</span>
-                  </div>
-                )}
-                {(expandedSections.has('Upload-DrumPad') || search) && (
-                  <div className="grid grid-cols-3 gap-1 px-1 pb-1.5">
-                    {filterItems(uploadedItems).map(item => {
-                      const sample = userSamples.find(s => s.name === item.id)
-                      const dur = sample?.duration_ms ? sample.duration_ms / 1000 : null
-                      const calcBpm = sample?.original_bpm || projectBpm
-                      const loopAt = dur ? Math.max(1, Math.round(dur * calcBpm / 240)) : 8
-                      const chopCount = dur ? Math.min(32, Math.max(4, Math.round(dur * 2))) : 8
-                      return (
-                        <button
-                          key={item.id}
-                          onClick={() => onAddChannel(item.id, 'drumpad', loopAt)}
-                          className="flex flex-col items-center gap-0.5 py-1.5 px-1 rounded-lg cursor-pointer transition-all duration-150 hover:scale-[1.04] active:scale-95 group"
-                          style={{
-                            background: '#0a0b0d',
-                            border: '1px solid rgba(184,164,127,0.12)',
-                            boxShadow: '2px 2px 4px #050607, -1px -1px 3px #1a1d22',
-                          }}
-                          title={`Add ${item.label} as drum pad (chop & sequence)${dur ? ` · ${Math.floor(dur / 60)}:${String(Math.floor(dur % 60)).padStart(2, '0')}` : ''}`}
-                        >
-                          <span className="text-[12px] leading-none opacity-60 group-hover:opacity-100 transition-opacity">🥁</span>
-                          <span className="text-[5px] font-bold truncate w-full text-center transition-colors" style={{ color: 'rgba(184,164,127,0.6)' }}>{item.label}</span>
-                          <span className="text-[5px] font-black uppercase tracking-wider" style={{ color: '#b8a47f80' }}>DRUM PAD</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ── Upload: Vocal Stem (BPM-synced loop) ── */}
-            {uploadedItems.length > 0 && (
-              <div>
-                <button
-                  onClick={() => toggleSection('Upload-Vocal')}
-                  className="w-full flex items-center gap-1.5 px-2 py-1.5 text-[7px] font-black uppercase tracking-[.12em] cursor-pointer hover:bg-white/[0.02] transition-colors"
-                  style={{ color: '#22d3ee' }}
-                >
-                  <span className="text-[5px]">{expandedSections.has('Upload-Vocal') || search ? '▼' : '▶'}</span>
-                  🎤 Vocal Stem
-                  <span className="ml-auto text-[6px] opacity-40">{uploadedItems.length}</span>
-                </button>
-                {(expandedSections.has('Upload-Vocal') || search) && (
-                  <div className="px-2 pb-0.5">
-                    <span className="text-[5px] leading-tight block mb-1" style={{ color: '#5a616b' }}>Full vocal · BPM-synced loop · Auto tempo match</span>
-                  </div>
-                )}
-                {(expandedSections.has('Upload-Vocal') || search) && (
-                  <div className="grid grid-cols-3 gap-1 px-1 pb-1.5">
-                    {filterItems(uploadedItems).map(item => {
-                      const sample = userSamples.find(s => s.name === item.id)
-                      const dur = sample?.duration_ms ? sample.duration_ms / 1000 : null
-                      const calcBpm = sample?.original_bpm || projectBpm
-                      const loopAt = dur ? Math.max(1, Math.round(dur * calcBpm / 240)) : 8
-                      return (
-                        <button
-                          key={item.id}
-                          onClick={() => onAddChannel(item.id, 'vocal', loopAt)}
-                          className="flex flex-col items-center gap-0.5 py-1.5 px-1 rounded-lg cursor-pointer transition-all duration-150 hover:scale-[1.04] active:scale-95 group"
-                          style={{
-                            background: '#0a0b0d',
-                            border: '1px solid rgba(34,211,238,0.12)',
-                            boxShadow: '2px 2px 4px #050607, -1px -1px 3px #1a1d22',
-                          }}
-                          title={`Add ${item.label} as vocal stem (BPM-synced loop)${dur ? ` · ${Math.floor(dur / 60)}:${String(Math.floor(dur % 60)).padStart(2, '0')}` : ''}`}
-                        >
-                          <span className="text-[12px] leading-none opacity-60 group-hover:opacity-100 transition-opacity">🎤</span>
-                          <span className="text-[5px] font-bold truncate w-full text-center transition-colors" style={{ color: 'rgba(34,211,238,0.6)' }}>{item.label}</span>
-                          <span className="text-[5px] font-black uppercase tracking-wider" style={{ color: '#22d3ee80' }}>VOCAL STEM</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         )}
 

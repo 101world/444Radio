@@ -665,6 +665,10 @@ interface StudioDrumSequencerProps {
   projectBpm?: number
   /** Get current cycle position from Strudel scheduler */
   getCyclePosition?: () => number | null
+  /** Whether we're currently recording drum input */
+  isRecording?: boolean
+  /** Called when a pad is hit during recording — captures sound + timing */
+  onRecordHit?: (sound: string, bank?: string) => void
 }
 
 const CELL_W_BASE = 32
@@ -684,6 +688,8 @@ export default function StudioDrumSequencer({
   isPlaying: transportPlaying = false,
   projectBpm = 120,
   getCyclePosition,
+  isRecording = false,
+  onRecordHit,
 }: StudioDrumSequencerProps) {
   const [bars, setBars] = useState(1)
   // Grid state: Map<instrumentId, Set<step>>
@@ -864,10 +870,14 @@ export default function StudioDrumSequencer({
     } else {
       playDrumPreview(fullId)
     }
+    // If recording, emit the hit for capture
+    if (isRecording && onRecordHit) {
+      onRecordHit(fullId, rowBank || bank)
+    }
     // Flash the pad
     setPadFlash(instrumentId)
     setTimeout(() => setPadFlash(null), 150)
-  }, [onPreviewDrum, rowBanks, bank])
+  }, [onPreviewDrum, rowBanks, bank, isRecording, onRecordHit])
 
   // â”€â”€ Toggle hit â”€â”€
   const toggleHit = useCallback((instrument: string, step: number, forceMode?: 'add' | 'remove') => {
@@ -1101,6 +1111,11 @@ export default function StudioDrumSequencer({
           <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color }}>
             ðŸ¥ {channelName}
           </span>
+          {isRecording && (
+            <span className="text-[7px] font-black uppercase tracking-wider flex items-center gap-1" style={{ color: '#ff4444', animation: 'pulse 1.5s ease-in-out infinite' }}>
+              ● REC
+            </span>
+          )}
           {bank && (
             <span className="text-[7px] font-mono" style={{ color: '#b8a47f', opacity: 0.5 }}>{bank}</span>
           )}

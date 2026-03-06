@@ -14,11 +14,9 @@ import { useMemo, useCallback, useState, useEffect, useRef } from 'react'
 import { ChevronDown, ChevronRight, Plus, Volume2, VolumeX, Headphones, GripVertical, Link, Unlink, X, Music, Clock, Piano, Grid3X3, Copy, Trash2, RotateCcw, Mic, ZoomIn, ZoomOut, Maximize2, MoreVertical, BookOpen, Sparkles, Search, Rows3, ChevronUp } from 'lucide-react'
 import StudioKnob from './StudioKnob'
 import ChannelLCD from './ChannelLCD'
-import WaveformViewer from './WaveformViewer'
 import EffectsDocModal from './EffectsDocModal'
 import TrackView from './TrackView'
 import PresetRack from './PresetRack'
-import { detectPitch, semitonesBetweenRoots, semitonesToSpeed } from '@/lib/pitch-detection'
 import { FX_PRESETS, FX_PRESET_CATEGORIES, type FxPresetCategory } from '@/lib/fx-presets'
 import {
   parseStrudelCode, updateParamInCode, insertEffectInChannel,
@@ -521,7 +519,6 @@ function ChannelStrip({
   onOpenPianoRoll,
   onOpenDrumSequencer,
   onOpenPadSampler,
-  onOpenWaveform,
   onRename,
   onDuplicate,
   onDelete,
@@ -575,7 +572,6 @@ function ChannelStrip({
   onOpenPianoRoll?: () => void
   onOpenDrumSequencer?: () => void
   onOpenPadSampler?: () => void
-  onOpenWaveform?: () => void
   onRename: (channelIdx: number, newName: string) => void
   onDuplicate?: (channelIdx: number) => void
   onDelete?: (channelIdx: number) => void
@@ -937,7 +933,7 @@ function ChannelStrip({
         channel={channel}
         isPlaying={isPlaying}
         isMuted={isMuted}
-        onDoubleClick={channel.sourceType === 'sample' && channel.effects.includes('loopAt') ? onOpenWaveform : undefined}
+        onDoubleClick={undefined}
       />
 
       {/* ── Mini pattern preview (clickable → opens editor) ── */}
@@ -1573,14 +1569,6 @@ function ChannelStrip({
 
 // ─── Mixer Rack (right sidebar) ───
 
-interface UserSample {
-  id: string
-  name: string
-  url: string
-  duration_ms?: number | null
-  original_bpm?: number | null
-}
-
 interface StudioMixerRackProps {
   code: string
   onCodeChange: (code: string) => void
@@ -1591,8 +1579,6 @@ interface StudioMixerRackProps {
   onOpenPianoRoll?: (channelIdx: number) => void
   onOpenDrumSequencer?: (channelIdx: number) => void
   onOpenPadSampler?: (channelIdx: number) => void
-  onAddVocalChannel?: (name: string, loopAt: number, sampleBpm?: number) => void
-  userSamples?: UserSample[]
   isPlaying?: boolean
   onPreview?: (soundCode: string) => void
   /** Returns current Strudel cycle position (fractional) for playhead sync */
@@ -1601,7 +1587,7 @@ interface StudioMixerRackProps {
   projectBpm?: number
 }
 
-export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, onMixerStateChange, metronomeEnabled = false, onMetronomeToggle, onOpenPianoRoll, onOpenDrumSequencer, onOpenPadSampler, onAddVocalChannel, userSamples = [], isPlaying: isPlayingProp = false, onPreview, getCyclePosition, projectBpm = 120 }: StudioMixerRackProps) {
+export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, onMixerStateChange, metronomeEnabled = false, onMetronomeToggle, onOpenPianoRoll, onOpenDrumSequencer, onOpenPadSampler, isPlaying: isPlayingProp = false, onPreview, getCyclePosition, projectBpm = 120 }: StudioMixerRackProps) {
   const channels = useMemo(() => parseStrudelCode(code), [code])
   const [expandedChannels, setExpandedChannels] = useState<Set<string>>(new Set())
   const [mutedChannels, setMutedChannels] = useState<Set<number>>(new Set())
@@ -1613,9 +1599,6 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   const [presetCategory, setPresetCategory] = useState<FxPresetCategory>('synth')
   const [presetSearch, setPresetSearch] = useState('')
   const [showDocsModal, setShowDocsModal] = useState(false)
-  const [waveformModalOpen, setWaveformModalOpen] = useState(false)
-  const [selectedWaveformUrl, setSelectedWaveformUrl] = useState<string>('')
-  const [selectedWaveformChannel, setSelectedWaveformChannel] = useState<number>(-1)
   const [reorderDragIdx, setReorderDragIdx] = useState<number | null>(null)
   const [reorderOverIdx, setReorderOverIdx] = useState<number | null>(null)
   const [selectedChannels, setSelectedChannels] = useState<Set<number>>(new Set())
@@ -1806,54 +1789,11 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
       const scale = parseScale(currentCode)
       if (!scale?.root) return
 
-      // Find sample URL from userSamples
-      const sample = userSamples.find(s => s.name === ch.source)
-      if (!sample?.url) return
-
-      try {
-        // Fetch and decode audio
-        const response = await fetch(sample.url)
-        const arrayBuffer = await response.arrayBuffer()
-        const audioCtx = new AudioContext()
-        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer)
-
-        // Detect pitch
-        const pitchResult = detectPitch(audioBuffer)
-        audioCtx.close()
-
-        if (!pitchResult || pitchResult.confidence < 0.3) {
-          console.warn('[AutoPitch] Could not detect pitch (low confidence)')
-          return
-        }
-
-        const sampleRoot = pitchResult.noteName
-        const targetRoot = scale.root
-
-        // Calculate semitones and speed
-        const semitones = semitonesBetweenRoots(sampleRoot, targetRoot)
-        if (semitones === 0) return // Already matched
-
-        // Factor in any existing speed value
-        const speedParam = ch.params.find(p => p.key === 'speed')
-        const existingSpeed = speedParam ? speedParam.value : 1
-        const pitchSpeed = semitonesToSpeed(semitones)
-        const finalSpeed = parseFloat((existingSpeed * pitchSpeed).toFixed(4))
-
-        // Write .speed() to code
-        if (speedParam) {
-          const newCode2 = updateParamInCode(currentCode, channelIdx, 'speed', finalSpeed)
-          if (newCode2 !== currentCode) liveUpdate(newCode2)
-        } else {
-          const inserted = insertEffectInChannel(currentCode, channelIdx, `.speed(${finalSpeed})`)
-          if (inserted !== currentCode) liveUpdate(inserted)
-        }
-
-        console.log(`[AutoPitch] ${sampleRoot} → ${targetRoot} (${semitones > 0 ? '+' : ''}${semitones}st) speed=${finalSpeed}`)
-      } catch (err) {
-        console.error('[AutoPitch] Failed:', err)
-      }
+      // Auto-pitch matching requires sample audio analysis
+      // which is not available without upload infrastructure
+      console.warn('[AutoPitch] Sample URL lookup not available — skipping auto-pitch match for', ch.source)
     },
-    [userSamples, liveUpdate],
+    [liveUpdate],
   )
 
   // ── Arp rate change handler ──
@@ -2975,6 +2915,22 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                 onDrop={handleDrop}
                 onShowAddMenu={() => setShowAddMenu(v => !v)}
                 getSourceIcon={getSourceIcon}
+                onSoundChange={handleSoundChange}
+                onBankChange={handleBankChange}
+                onRename={handleRename}
+                onDuplicate={handleDuplicate}
+                onDelete={handleDelete}
+                onReset={handleReset}
+                onTranspose={handleTranspose}
+                onAddSound={handleAddSound}
+                onPreview={onPreview}
+                onAutoPitchMatch={handleAutoPitchMatch}
+                scaleRoot={currentScale?.root ?? null}
+                stackRowsMap={stackRowsMap}
+                onStackRowSoundChange={handleStackRowSoundChange}
+                onStackRowGainChange={handleStackRowGainChange}
+                onStackRowBankChange={handleStackRowBankChange}
+                onRemoveStackRow={handleRemoveStackRow}
               />
             )}
 
@@ -3073,7 +3029,6 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                     onOpenPianoRoll={onOpenPianoRoll ? () => onOpenPianoRoll(idx) : undefined}
                     onOpenDrumSequencer={onOpenDrumSequencer ? () => onOpenDrumSequencer(idx) : undefined}
                     onOpenPadSampler={onOpenPadSampler ? () => onOpenPadSampler(idx) : undefined}
-                    onOpenWaveform={() => { const sample = userSamples.find(s => s.name === ch.source); if (sample) { setSelectedWaveformUrl(sample.url); setSelectedWaveformChannel(idx); setWaveformModalOpen(true); } }}
                     onRename={handleRename}
                     onDuplicate={handleDuplicate}
                     onDelete={handleDelete}
@@ -3359,68 +3314,6 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
           </div>
         </div>
       )}
-      <WaveformViewer
-        url={selectedWaveformUrl}
-        isOpen={waveformModalOpen}
-        onClose={() => setWaveformModalOpen(false)}
-        beginValue={selectedWaveformChannel >= 0 ? (channels[selectedWaveformChannel]?.params.find(p => p.key === 'begin')?.value ?? 0) : 0}
-        endValue={selectedWaveformChannel >= 0 ? (channels[selectedWaveformChannel]?.params.find(p => p.key === 'end')?.value ?? 1) : 1}
-        speedValue={selectedWaveformChannel >= 0 ? (channels[selectedWaveformChannel]?.params.find(p => p.key === 'speed')?.value ?? 1) : 1}
-        sampleBpm={selectedWaveformChannel >= 0 ? (userSamples.find(s => s.name === channels[selectedWaveformChannel]?.source)?.original_bpm ?? undefined) : undefined}
-        projectBpm={currentBPM ?? 120}
-        color={selectedWaveformChannel >= 0 ? channels[selectedWaveformChannel]?.color : undefined}
-        sampleName={selectedWaveformChannel >= 0 ? channels[selectedWaveformChannel]?.source : undefined}
-        scaleRoot={currentScale?.root ?? null}
-        onApply={({ begin: b, end: e, speed: spd }) => {
-          if (selectedWaveformChannel < 0) return
-          let c = codeRef.current
-          const idx = selectedWaveformChannel
-
-          // Format speed to 4 decimal places max
-          const spdStr = Math.round(spd * 10000) / 10000
-
-          // ── begin ──
-          const ch1 = parseStrudelCode(c)[idx]
-          if (!ch1) return
-          if (ch1.effects.includes('begin')) {
-            if (Math.abs(b) < 0.005) {
-              c = removeEffectFromChannel(c, idx, 'begin')  // 0 = default, remove
-            } else {
-              c = updateParamInCode(c, idx, 'begin', b)
-            }
-          } else if (b > 0.005) {
-            c = insertEffectInChannel(c, idx, `.begin(${b.toFixed(2)})`)
-          }
-
-          // ── end (re-parse after begin change) ──
-          const ch2 = parseStrudelCode(c)[idx]
-          if (ch2 && ch2.effects.includes('end')) {
-            if (Math.abs(e - 1) < 0.005) {
-              c = removeEffectFromChannel(c, idx, 'end')  // 1 = default, remove
-            } else {
-              c = updateParamInCode(c, idx, 'end', e)
-            }
-          } else if (e < 0.995) {
-            c = insertEffectInChannel(c, idx, `.end(${e.toFixed(2)})`)
-          }
-
-          // ── speed (re-parse after trim changes) ──
-          const ch3 = parseStrudelCode(c)[idx]
-          if (ch3 && ch3.effects.includes('speed')) {
-            if (Math.abs(spdStr - 1) < 0.001) {
-              c = removeEffectFromChannel(c, idx, 'speed')  // 1.0 = default, remove
-            } else {
-              c = updateParamInCode(c, idx, 'speed', spdStr)
-            }
-          } else if (Math.abs(spdStr - 1) >= 0.001) {
-            c = insertEffectInChannel(c, idx, `.speed(${spdStr})`)
-          }
-
-          if (onLiveCodeChange) onLiveCodeChange(c)
-          else onCodeChange(c)
-        }}
-      />
-
       </div>{/* end main content column */}
 
       {/* ═══ FX PRESET RACK — right sidebar ═══ */}

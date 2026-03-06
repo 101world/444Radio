@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useEffect, useCallback, useState } from 'react'
-import { Play, Square, Volume2, VolumeX, Zap, Code2 } from 'lucide-react'
+import { Play, Square, Volume2, VolumeX, Zap, Code2, Circle } from 'lucide-react'
 
 // â”€â”€â”€ Visualization modes â”€â”€â”€
 const VIZ_MODES = [
@@ -29,6 +29,8 @@ interface StudioTopBarProps {
   onUpdate: () => void
   onVolumeChange: (v: number) => void
   onToggleCode?: () => void
+  isRecording?: boolean
+  onRecord?: () => void
 }
 
 export default function StudioTopBar({
@@ -43,6 +45,8 @@ export default function StudioTopBar({
   onUpdate,
   onVolumeChange,
   onToggleCode,
+  isRecording = false,
+  onRecord,
 }: StudioTopBarProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rafRef = useRef<number>(0)
@@ -323,6 +327,29 @@ export default function StudioTopBar({
 
       {/* Center: Transport */}
       <div className="flex items-center gap-2 relative z-10">
+        {/* Record button */}
+        {onRecord && (
+          <button
+            onClick={onRecord}
+            className="cursor-pointer transition-all duration-[180ms] ease-in-out active:translate-y-[1px]"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 32, height: 32,
+              borderRadius: '50%',
+              color: isRecording ? '#ff4444' : '#5a616b',
+              background: isRecording ? '#1a0808' : '#111318',
+              border: 'none',
+              boxShadow: isRecording
+                ? 'inset 2px 2px 4px #0a0404, inset -2px -2px 4px #2a1010, 0 0 12px rgba(255,68,68,0.25)'
+                : '3px 3px 6px #050607, -3px -3px 6px #1a1d22',
+              animation: isRecording ? 'pulse 1.5s ease-in-out infinite' : 'none',
+            }}
+            title={isRecording ? 'Stop recording drum input' : 'Record drum input (captures pad hits → Strudel code)'}
+          >
+            <Circle size={12} className={isRecording ? 'fill-current' : ''} />
+          </button>
+        )}
+
         <button
           onClick={onPlay}
           disabled={status === 'loading'}
