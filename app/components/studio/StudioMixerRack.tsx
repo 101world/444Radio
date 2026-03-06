@@ -11,7 +11,7 @@
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react'
-import { ChevronDown, ChevronRight, Plus, Volume2, VolumeX, Headphones, GripVertical, Link, Unlink, X, Music, Clock, Piano, Grid3X3, Copy, Trash2, RotateCcw, Mic, ZoomIn, ZoomOut, Maximize2, MoreVertical, BookOpen, Sparkles, Search } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus, Volume2, VolumeX, Headphones, GripVertical, Link, Unlink, X, Music, Clock, Piano, Grid3X3, Copy, Trash2, RotateCcw, Mic, ZoomIn, ZoomOut, Maximize2, MoreVertical, BookOpen, Sparkles, Search, Rows3, ChevronUp } from 'lucide-react'
 import StudioKnob from './StudioKnob'
 import ChannelLCD from './ChannelLCD'
 import WaveformViewer from './WaveformViewer'
@@ -1616,6 +1616,8 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; channelIdx: number } | null>(null)
   // Channel groups: each group has a name, color accent, and set of channel indices
   const [channelGroups, setChannelGroups] = useState<{ id: string; name: string; color: string; channels: Set<number> }[]>([])
+  const [viewMode, setViewMode] = useState<'grid' | 'tracks'>('grid')
+  const [trackCollapsed, setTrackCollapsed] = useState<Set<number>>(new Set())
   const groupCounter = useRef(0)
   const fxDropdownRef = useRef<HTMLDivElement>(null)
   const addMenuRef = useRef<HTMLDivElement>(null)
@@ -2806,6 +2808,34 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
           )}
         </div>
 
+        {/* View mode toggle */}
+        <div className="flex items-center gap-0.5 ml-1">
+          <button
+            onClick={() => setViewMode('grid')}
+            className="p-1 rounded transition-all cursor-pointer"
+            style={{
+              color: viewMode === 'grid' ? '#7fa998' : '#5a616b',
+              background: viewMode === 'grid' ? 'rgba(127,169,152,0.1)' : 'transparent',
+              border: 'none',
+            }}
+            title="Grid view"
+          >
+            <Grid3X3 size={11} />
+          </button>
+          <button
+            onClick={() => setViewMode('tracks')}
+            className="p-1 rounded transition-all cursor-pointer"
+            style={{
+              color: viewMode === 'tracks' ? '#7fa998' : '#5a616b',
+              background: viewMode === 'tracks' ? 'rgba(127,169,152,0.1)' : 'transparent',
+              border: 'none',
+            }}
+            title="Track view"
+          >
+            <Rows3 size={11} />
+          </button>
+        </div>
+
         {/* Spacer */}
         <div className="flex-1" />
 
@@ -2868,6 +2898,226 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
           </div>
         ) : (
           <>
+            {/* ═══ TRACK VIEW — horizontal DAW-style lanes ═══ */}
+            {viewMode === 'tracks' && (
+              <div className="flex flex-col gap-px">
+                {channels.map((ch, idx) => {
+                  const isMuted = mutedChannels.has(idx)
+                  const isSoloed = soloedChannels.has(idx)
+                  const isActive = isPlayingProp && !isMuted
+                  const collapsed = trackCollapsed.has(idx)
+                  const gainParam = ch.params.find(p => p.key === 'gain')
+
+                  // Determine primary editor for this channel type
+                  const isVocal = ch.sourceType === 'sample' && ch.effects.includes('loopAt')
+                  const isMelodic = ch.sourceType === 'synth' || ch.sourceType === 'note'
+                  const isDrum = (ch.sourceType === 'sample' && !ch.effects.includes('loopAt')) || ch.sourceType === 'stack'
+                  const primaryEditor = isVocal ? 'sampler' : isMelodic ? 'piano' : isDrum ? 'drum' : 'piano'
+
+                  return (
+                    <div
+                      key={ch.id}
+                      className={`flex transition-all duration-150 ${isMuted ? 'opacity-40' : ''}`}
+                      style={{
+                        background: '#111318',
+                        borderBottom: '1px solid rgba(255,255,255,0.03)',
+                        minHeight: collapsed ? 28 : 56,
+                      }}
+                    >
+                      {/* ── LEFT STRIP: channel controls ── */}
+                      <div
+                        className="shrink-0 flex flex-col justify-center border-r"
+                        style={{
+                          width: 140,
+                          borderColor: `${ch.color}15`,
+                          background: '#0d0e11',
+                        }}
+                      >
+                        {/* Color bar */}
+                        <div
+                          className="h-[2px]"
+                          style={{
+                            background: ch.color,
+                            opacity: isMuted ? 0.15 : isActive ? 0.8 : 0.4,
+                            boxShadow: isActive ? `0 0 6px ${ch.color}60` : 'none',
+                          }}
+                        />
+                        {/* Controls row */}
+                        <div className="flex items-center gap-1 px-1.5 py-1">
+                          {/* Collapse toggle */}
+                          <button
+                            onClick={() => setTrackCollapsed(prev => {
+                              const next = new Set(prev)
+                              next.has(idx) ? next.delete(idx) : next.add(idx)
+                              return next
+                            })}
+                            className="cursor-pointer transition-colors"
+                            style={{ color: '#5a616b', background: 'none', border: 'none', padding: 0 }}
+                            title={collapsed ? 'Expand track' : 'Collapse track'}
+                          >
+                            {collapsed ? <ChevronRight size={9} /> : <ChevronDown size={9} />}
+                          </button>
+                          {/* Solo */}
+                          <button
+                            onClick={() => handleSolo(idx, true)}
+                            className="cursor-pointer transition-all duration-100 active:scale-90"
+                            style={{
+                              width: 14, height: 14, borderRadius: 7,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: '6px', fontWeight: 900, lineHeight: 1,
+                              color: isSoloed ? '#b8a47f' : '#5a616b',
+                              background: isSoloed ? '#16181d' : '#0a0b0d',
+                              border: 'none',
+                              boxShadow: isSoloed
+                                ? 'inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22'
+                                : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+                            }}
+                            title="Solo"
+                          >S</button>
+                          {/* Mute */}
+                          <button
+                            onClick={() => handleMute(idx)}
+                            className="cursor-pointer transition-all duration-100 active:scale-90"
+                            style={{
+                              width: 14, height: 14, borderRadius: 7,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: '6px', fontWeight: 900, lineHeight: 1,
+                              color: isMuted ? '#b86f6f' : '#5a616b',
+                              background: isMuted ? '#16181d' : '#0a0b0d',
+                              border: 'none',
+                              boxShadow: isMuted
+                                ? 'inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22'
+                                : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+                            }}
+                            title="Mute"
+                          >M</button>
+                          {/* Channel name */}
+                          <span
+                            className="flex-1 min-w-0 truncate text-[7px] font-extrabold uppercase tracking-[.1em] font-mono cursor-pointer"
+                            onClick={() => toggleChannel(ch.id)}
+                            style={{ color: ch.color }}
+                            title={ch.name}
+                          >
+                            <span className="text-[8px] mr-0.5 opacity-50">{getSourceIcon(ch.source, ch.sourceType)}</span>
+                            {ch.name}
+                          </span>
+                        </div>
+                        {/* Gain + editor buttons — only when expanded */}
+                        {!collapsed && (
+                          <div className="flex items-center gap-1 px-1.5 pb-1">
+                            <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                              <StudioKnob
+                                label=""
+                                value={gainParam?.value ?? 0.8}
+                                min={0} max={2} step={0.01} size={20}
+                                color={ch.color}
+                                isComplex={gainParam?.isComplex}
+                                onChange={(v) => handleParamChange(idx, 'gain', v)}
+                              />
+                            </div>
+                            {/* Editor buttons */}
+                            {primaryEditor === 'piano' && onOpenPianoRoll && (
+                              <button
+                                onClick={() => onOpenPianoRoll(idx)}
+                                className="flex items-center gap-0.5 px-1 py-0.5 rounded cursor-pointer hover:opacity-100 active:scale-95"
+                                style={{ color: '#6f8fb3', opacity: 0.7, background: 'rgba(111,143,179,0.08)', border: '1px solid rgba(111,143,179,0.1)', fontSize: 0 }}
+                                title="Piano Roll"
+                              >
+                                <Piano size={9} />
+                                <span className="text-[5px] font-bold leading-none">NOTES</span>
+                              </button>
+                            )}
+                            {primaryEditor === 'drum' && onOpenDrumSequencer && (
+                              <button
+                                onClick={() => onOpenDrumSequencer(idx)}
+                                className="flex items-center gap-0.5 px-1 py-0.5 rounded cursor-pointer hover:opacity-100 active:scale-95"
+                                style={{ color: '#b8a47f', opacity: 0.7, background: 'rgba(184,164,127,0.08)', border: '1px solid rgba(184,164,127,0.1)', fontSize: 0 }}
+                                title="Drum Sequencer"
+                              >
+                                <Grid3X3 size={9} />
+                                <span className="text-[5px] font-bold leading-none">STEPS</span>
+                              </button>
+                            )}
+                            {primaryEditor === 'sampler' && onOpenPadSampler && (
+                              <button
+                                onClick={() => onOpenPadSampler(idx)}
+                                className="flex items-center gap-0.5 px-1 py-0.5 rounded cursor-pointer hover:opacity-100 active:scale-95"
+                                style={{ color: '#22d3ee', opacity: 0.7, background: 'rgba(34,211,238,0.08)', border: '1px solid rgba(34,211,238,0.1)', fontSize: 0 }}
+                                title="Pad Sampler"
+                              >
+                                <span className="text-[8px]">🎹</span>
+                                <span className="text-[5px] font-bold leading-none">PAD</span>
+                              </button>
+                            )}
+                            {/* Effect count */}
+                            {ch.params.filter(p => !['gain', 'orbit'].includes(p.key)).length > 0 && (
+                              <span className="text-[5px] font-bold font-mono px-0.5" style={{ color: `${ch.color}50` }}>
+                                {ch.params.filter(p => !['gain', 'orbit'].includes(p.key)).length}fx
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* ── RIGHT SCOPE: full-width waveform / pattern scope ── */}
+                      <div
+                        className="flex-1 min-w-0 relative overflow-hidden"
+                        style={{
+                          background: '#0a0b0d',
+                          borderLeft: isActive ? `1px solid ${ch.color}30` : '1px solid rgba(255,255,255,0.02)',
+                        }}
+                        onDragOver={(e) => { e.preventDefault(); handleDragOver(idx) }}
+                        onDragLeave={handleDragLeave}
+                        onDrop={(e) => handleDrop(idx, e)}
+                        onClick={() => toggleChannel(ch.id)}
+                      >
+                        {/* Waveform scope — occupies full track height */}
+                        <div className="absolute inset-0" style={{ margin: 0 }}>
+                          <ChannelLCD
+                            channel={ch}
+                            isPlaying={isPlayingProp}
+                            isMuted={isMuted}
+                            height="100%"
+                            canvasWidth={800}
+                            canvasHeight={collapsed ? 24 : 48}
+                          />
+                        </div>
+                        {/* Pattern overlay — semi-transparent mini pattern on top of scope */}
+                        {!collapsed && (
+                          <div className="absolute bottom-0 left-0 right-0 pointer-events-none" style={{ opacity: 0.7 }}>
+                            <MiniPatternPreview channel={ch} color={ch.color} />
+                          </div>
+                        )}
+                        {/* Drop indicator */}
+                        {dragOverChannel === idx && (
+                          <div className="absolute inset-0 flex items-center justify-center z-10"
+                            style={{ background: 'rgba(127,169,152,0.08)', border: '1px solid rgba(127,169,152,0.3)' }}>
+                            <span className="text-[8px] font-bold" style={{ color: '#7fa998' }}>⬇ DROP FX</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+                {/* Add Channel button */}
+                <button
+                  onClick={() => setShowAddMenu(v => !v)}
+                  className="flex items-center justify-center gap-1.5 py-2 cursor-pointer transition-all duration-150 hover:bg-white/[0.02]"
+                  style={{
+                    background: '#0a0b0d',
+                    borderBottom: '1px solid rgba(255,255,255,0.03)',
+                    color: '#5a616b',
+                    border: 'none',
+                  }}
+                >
+                  <Plus size={12} style={{ color: '#7fa998', opacity: 0.5 }} />
+                  <span className="text-[8px] font-bold">Add Channel</span>
+                </button>
+              </div>
+            )}
+
+            {/* ═══ GRID VIEW — card-based grid layout ═══ */}
+            {viewMode === 'grid' && (
             <div
               className="grid gap-2"
               style={{
@@ -3002,6 +3252,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                 <span className="text-[8px] font-bold" style={{ color: '#5a616b' }}>Add Channel</span>
               </button>
             </div>
+            )}
 
             {/* ── Context Menu (right-click) ── */}
             {contextMenu && (
@@ -3122,8 +3373,8 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
           </>
         )}
 
-        {/* ── Grid Zoom Controls (bottom-right) ── */}
-        {channels.length > 0 && (
+        {/* ── Grid Zoom Controls (bottom-right) — only in grid view ── */}
+        {channels.length > 0 && viewMode === 'grid' && (
           <div className="absolute bottom-2 right-4 z-30 flex items-center gap-1 px-1.5 py-1 rounded-xl"
             style={{
               background: '#0a0b0d',

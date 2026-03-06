@@ -9,6 +9,12 @@ interface ChannelLCDProps {
   isPlaying: boolean
   isMuted: boolean
   onDoubleClick?: () => void
+  /** Override height (default 28). Use '100%' for track view fill mode */
+  height?: number | string
+  /** Canvas resolution width (default 200). Use larger for wide track scopes */
+  canvasWidth?: number
+  /** Canvas resolution height (default 24) */
+  canvasHeight?: number
 }
 
 /** Extract orbit number from channel params.
@@ -24,7 +30,7 @@ function getChannelOrbit(channel: ParsedChannel): number {
   return 1 // superdough defaults to orbit 1 when no .orbit() is specified
 }
 
-export default function ChannelLCD({ channel, isPlaying, isMuted, onDoubleClick }: ChannelLCDProps) {
+export default function ChannelLCD({ channel, isPlaying, isMuted, onDoubleClick, height = 28, canvasWidth = 200, canvasHeight = 24 }: ChannelLCDProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rafRef = useRef<number>(0)
   const orbit = getChannelOrbit(channel)
@@ -160,11 +166,13 @@ export default function ChannelLCD({ channel, isPlaying, isMuted, onDoubleClick 
     }
   }, [isPlaying, isMuted, draw])
 
+  const isFillMode = height === '100%'
+
   return (
     <div
-      className="mx-1 mb-1 rounded-lg overflow-hidden relative transition-all duration-300"
+      className={`${isFillMode ? '' : 'mx-1 mb-1'} rounded-lg overflow-hidden relative transition-all duration-300`}
       style={{
-        height: 28,
+        height,
         background: '#0a0b0d',
         border: isPlaying && !isMuted
           ? `1px solid ${channel.color}20`
@@ -183,8 +191,8 @@ export default function ChannelLCD({ channel, isPlaying, isMuted, onDoubleClick 
       />
       <canvas
         ref={canvasRef}
-        width={200}
-        height={24}
+        width={canvasWidth}
+        height={canvasHeight}
         className={`w-full h-full ${onDoubleClick ? 'cursor-pointer' : ''}`}
         onDoubleClick={onDoubleClick}
       />
