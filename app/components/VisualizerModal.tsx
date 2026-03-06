@@ -103,15 +103,38 @@ export default function VisualizerModal({
   const [statusMsg, setStatusMsg] = useState('')
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  // Track which initialImageUrl was already loaded to avoid duplicate fetches
+  const loadedImageUrlRef = useRef<string | null>(null)
+  // Track if user manually picked an image (should not be overwritten)
+  const userPickedImageRef = useRef(false)
 
   useEffect(() => {
     if (initialPrompt) setPrompt(initialPrompt)
   }, [initialPrompt])
 
+  // Reset state when modal closes so fresh state is ready on next open
+  useEffect(() => {
+    if (!isOpen) {
+      // Only reset image state if not currently generating
+      if (!isGenerating) {
+        setImageFile(null)
+        if (imagePreview) URL.revokeObjectURL(imagePreview)
+        setImagePreview(null)
+        setStatusMsg('')
+        loadedImageUrlRef.current = null
+        userPickedImageRef.current = false
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen])
+
   // Auto-load initial image URL when provided (e.g. from cover art)
   useEffect(() => {
     if (!initialImageUrl || !isOpen) return
-    if (imageFile) return // don't overwrite if user already picked one
+    // Don't overwrite if user manually picked an image
+    if (userPickedImageRef.current) return
+    // Don't re-fetch the same URL
+    if (loadedImageUrlRef.current === initialImageUrl) return
     ;(async () => {
       try {
         const res = await fetch(initialImageUrl)
@@ -120,6 +143,7 @@ export default function VisualizerModal({
         const file = new File([blob], `cover-art.${ext}`, { type: blob.type || 'image/jpeg' })
         setImageFile(file)
         setImagePreview(URL.createObjectURL(file))
+        loadedImageUrlRef.current = initialImageUrl
       } catch {
         // silent — user can still pick manually
       }
@@ -136,6 +160,7 @@ export default function VisualizerModal({
       alert('Image must be under 10 MB')
       return
     }
+    userPickedImageRef.current = true
     setImageFile(file)
     setImagePreview(URL.createObjectURL(file))
   }, [])

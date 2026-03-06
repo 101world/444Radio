@@ -71,11 +71,36 @@ export default function LipSyncModal({
   const [audioPreview, setAudioPreview] = useState<string | null>(null)
   const [resolution, setResolution] = useState<'720p' | '1080p'>('720p')
   const [duration, setDuration] = useState<DurationOption>(5)
+  // Track which initialImageUrl was already loaded to avoid duplicate fetches
+  const loadedImageUrlRef = useRef<string | null>(null)
+  // Track if user manually picked an image (should not be overwritten)
+  const userPickedImageRef = useRef(false)
+
+  // Reset state when modal closes so fresh state is ready on next open
+  useEffect(() => {
+    if (!isOpen) {
+      if (!isGenerating) {
+        setImageFile(null)
+        if (imagePreview) URL.revokeObjectURL(imagePreview)
+        setImagePreview(null)
+        setAudioFile(null)
+        if (audioPreview) URL.revokeObjectURL(audioPreview)
+        setAudioPreview(null)
+        setStatusMsg('')
+        loadedImageUrlRef.current = null
+        userPickedImageRef.current = false
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen])
 
   // Auto-load initial image URL when provided
   useEffect(() => {
     if (!initialImageUrl || !isOpen) return
-    if (imageFile) return // don't overwrite if user already picked one
+    // Don't overwrite if user manually picked an image
+    if (userPickedImageRef.current) return
+    // Don't re-fetch the same URL
+    if (loadedImageUrlRef.current === initialImageUrl) return
     ;(async () => {
       try {
         const res = await fetch(initialImageUrl)
@@ -84,6 +109,7 @@ export default function LipSyncModal({
         const file = new File([blob], `cover-art.${ext}`, { type: blob.type || 'image/jpeg' })
         setImageFile(file)
         setImagePreview(URL.createObjectURL(file))
+        loadedImageUrlRef.current = initialImageUrl
       } catch {
         // silent — user can still pick manually
       }
@@ -125,6 +151,7 @@ export default function LipSyncModal({
       return
     }
 
+    userPickedImageRef.current = true
     setImageFile(file)
     setImagePreview(URL.createObjectURL(file))
   }
