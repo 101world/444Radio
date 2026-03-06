@@ -23,7 +23,6 @@ import StudioMethodsPanel from './studio/StudioMethodsPanel'
 import StudioCodeEditor, { type StudioCodeEditorHandle } from './studio/StudioCodeEditor'
 import StudioMixerRack from './studio/StudioMixerRack'
 import StudioBrowserPanel from './studio/StudioBrowserPanel'
-import MasterScope from './studio/MasterScope'
 
 // Simple WebAudio fallback for drum preview when engine isn't available
 let _prevCtx: AudioContext | null = null
@@ -756,10 +755,9 @@ export default function StudioEditor() {
               } catch { return null }
             }}
             projectBpm={parseBPM(code) ?? 120}
+            activeGenre={activeGenre}
+            onSelectGenre={loadTemplate}
           />
-
-          {/* Master Scope — bottom-docked, click to cycle types */}
-          <MasterScope analyserNode={analyserNode} isPlaying={isPlaying} />
 
           {/* Piano Roll — docks at bottom */}
           {pianoRollChannel !== null && (() => {

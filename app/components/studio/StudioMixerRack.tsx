@@ -17,6 +17,8 @@ import ChannelLCD from './ChannelLCD'
 import WaveformViewer from './WaveformViewer'
 import EffectsDocModal from './EffectsDocModal'
 import TrackView from './TrackView'
+import PresetRack from './PresetRack'
+import DockablePanel from './DockablePanel'
 import { detectPitch, semitonesBetweenRoots, semitonesToSpeed } from '@/lib/pitch-detection'
 import { FX_PRESETS, FX_PRESET_CATEGORIES, type FxPresetCategory } from '@/lib/fx-presets'
 import {
@@ -1598,9 +1600,13 @@ interface StudioMixerRackProps {
   getCyclePosition?: () => number | null
   /** Project BPM for playhead speed calculation */
   projectBpm?: number
+  /** Active genre preset id */
+  activeGenre?: string
+  /** Genre preset selection handler */
+  onSelectGenre?: (id: string) => void
 }
 
-export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, onMixerStateChange, metronomeEnabled = false, onMetronomeToggle, onOpenPianoRoll, onOpenDrumSequencer, onOpenPadSampler, onAddVocalChannel, userSamples = [], isPlaying: isPlayingProp = false, onPreview, getCyclePosition, projectBpm = 120 }: StudioMixerRackProps) {
+export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, onMixerStateChange, metronomeEnabled = false, onMetronomeToggle, onOpenPianoRoll, onOpenDrumSequencer, onOpenPadSampler, onAddVocalChannel, userSamples = [], isPlaying: isPlayingProp = false, onPreview, getCyclePosition, projectBpm = 120, activeGenre = 'acid', onSelectGenre }: StudioMixerRackProps) {
   const channels = useMemo(() => parseStrudelCode(code), [code])
   const [expandedChannels, setExpandedChannels] = useState<Set<string>>(new Set())
   const [mutedChannels, setMutedChannels] = useState<Set<number>>(new Set())
@@ -1623,6 +1629,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   const [channelGroups, setChannelGroups] = useState<{ id: string; name: string; color: string; channels: Set<number> }[]>([])
   const [viewMode, setViewMode] = useState<'grid' | 'tracks'>('tracks')
   const [trackCollapsed, setTrackCollapsed] = useState<Set<number>>(new Set())
+  const [showPresetRack, setShowPresetRack] = useState(false)
   const groupCounter = useRef(0)
   const fxDropdownRef = useRef<HTMLDivElement>(null)
   const addMenuRef = useRef<HTMLDivElement>(null)
@@ -2853,6 +2860,26 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
           </button>
         </div>
 
+        {/* Rack plugin toggles */}
+        <div className="flex items-center gap-0.5 ml-2 pl-2" style={{ borderLeft: '1px solid rgba(255,255,255,0.04)' }}>
+          <button
+            onClick={() => setShowPresetRack(v => !v)}
+            className="flex items-center gap-1 px-1.5 py-1 rounded transition-all cursor-pointer"
+            style={{
+              color: showPresetRack ? '#22d3ee' : '#5a616b',
+              background: showPresetRack ? 'rgba(34,211,238,0.08)' : 'transparent',
+              border: showPresetRack ? '1px solid rgba(34,211,238,0.2)' : '1px solid transparent',
+              fontSize: '7px',
+              fontWeight: 800,
+              letterSpacing: '0.08em',
+            }}
+            title="Preset Rack"
+          >
+            <Sparkles size={9} />
+            <span className="uppercase">Presets</span>
+          </button>
+        </div>
+
         {/* Spacer */}
         <div className="flex-1" />
 
@@ -3390,6 +3417,22 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
           else onCodeChange(c)
         }}
       />
+
+      {/* ═══ PRESET RACK PLUGIN (dockable) ═══ */}
+      <DockablePanel
+        id="preset-rack"
+        title="PRESET RACK"
+        brand="444RADIO"
+        accentColor="#22d3ee"
+        isOpen={showPresetRack}
+        onClose={() => setShowPresetRack(false)}
+        defaultWidth={520}
+      >
+        <PresetRack
+          activeGenre={activeGenre}
+          onSelect={(id) => onSelectGenre?.(id)}
+        />
+      </DockablePanel>
     </div>
   )
 }
