@@ -1444,6 +1444,7 @@ function CreatePageContent() {
       instrumentalRefUrl?: string
       selectedVoiceId?: string
       recordedVoiceBlob?: Blob | null
+      imageParams?: { width: number; height: number; output_format: string; output_quality: number; guidance_scale: number; num_inference_steps: number; go_fast: boolean }
     }
   ) => {
     console.log('[Generation] Starting generation:', { messageId, type, params })
@@ -1561,8 +1562,8 @@ function CreatePageContent() {
         }
         console.log('[Generation] Music generation result:', result)
       } else {
-        console.log('[Generation] Calling generateImage with:', params.prompt)
-        result = await generateImage(params.prompt, abortController.signal)
+        console.log('[Generation] Calling generateImage with:', params.prompt, 'imageParams:', params.imageParams)
+        result = await generateImage(params.prompt, abortController.signal, params.imageParams)
         console.log('[Generation] Image generation result:', result)
       }
 
@@ -2537,15 +2538,15 @@ function CreatePageContent() {
     setGenerationQueue(prev => [...prev, generatingMessage.id])
     setInput('')
 
-    // Process queue asynchronously
-    processQueue(generatingMessage.id, 'image', { prompt })
+    // Process queue asynchronously — pass image params for aspect ratio, quality, etc.
+    processQueue(generatingMessage.id, 'image', { prompt, imageParams: coverParams.params })
   }
 
-  const generateImage = async (prompt: string, signal?: AbortSignal) => {
+  const generateImage = async (prompt: string, signal?: AbortSignal, imageParams?: { width: number; height: number; output_format: string; output_quality: number; guidance_scale: number; num_inference_steps: number; go_fast: boolean }) => {
     const res = await fetch('/api/generate/image-only', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify({ prompt, params: imageParams }),
       signal
     })
 
