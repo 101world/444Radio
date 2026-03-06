@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //  STUDIO PIANO ROLL â€” Strudel-native note editor
@@ -1059,12 +1059,6 @@ export default function StudioPianoRoll({
   const waveformPreviewSrc = useRef<AudioBufferSourceNode | null>(null)
   const [isWaveformPreviewing, setIsWaveformPreviewing] = useState(false)
 
-  // ── Loop Recording state ──
-  const [isLoopRecording, setIsLoopRecording] = useState(false)
-  const loopRecordStart = useRef(0)
-  const loopStepTimer = useRef<ReturnType<typeof setInterval> | null>(null)
-  const [loopCurrentStep, setLoopCurrentStep] = useState(0)
-
   // ── Slow/Fast factor — how many cycles this channel's pattern spans ──
   // .slow(2) means the pattern takes 2 cycles; .fast(2) means it takes 0.5 cycles
   const slowFactor = useMemo(() => {
@@ -1132,10 +1126,9 @@ export default function StudioPianoRoll({
     }
   }, [transportPlaying, projectBpm, bars, stepsPerBar, getCyclePosition, slowFactor])
 
-  // Cleanup loop recording timer on unmount
+  // Cleanup playhead on unmount
   useEffect(() => {
     return () => {
-      if (loopStepTimer.current) clearInterval(loopStepTimer.current)
       if (playheadRAF.current) cancelAnimationFrame(playheadRAF.current)
     }
   }, [])
@@ -1670,10 +1663,7 @@ export default function StudioPianoRoll({
     // Block out-of-scale notes only when strict scale is enabled
     if (strictScale && !scaleMidiSet.has(midi)) return
 
-    // In loop recording mode, override step to current playhead position
-    const effectiveStep = isLoopRecording ? loopCurrentStep : step
-
-    const key = `${midi}:${effectiveStep}`
+    const key = `${midi}:${step}`
     setNoteMap(prev => {
       const next = new Map(prev)
       const mode = forceMode || (prev.has(key) ? 'remove' : 'add')
@@ -1690,7 +1680,7 @@ export default function StudioPianoRoll({
                 const [mStr, sStr] = k.split(':')
                 if (parseInt(mStr) === m) {
                   const s = parseInt(sStr)
-                  if (effectiveStep >= s && effectiveStep < s + data.length) {
+                  if (step >= s && step < s + data.length) {
                     next.delete(k)
                   }
                 }
@@ -1722,9 +1712,9 @@ export default function StudioPianoRoll({
           if (deg !== null) {
             const third = degreeToMidi(deg + 2, scale)
             const fifth = degreeToMidi(deg + 4, scale)
-            next.set(`${midi}:${effectiveStep}`, { length: 1 })
-            if (scaleMidiSet.has(third)) next.set(`${third}:${effectiveStep}`, { length: 1 })
-            if (scaleMidiSet.has(fifth)) next.set(`${fifth}:${effectiveStep}`, { length: 1 })
+            next.set(`${midi}:${step}`, { length: 1 })
+            if (scaleMidiSet.has(third)) next.set(`${third}:${step}`, { length: 1 })
+            if (scaleMidiSet.has(fifth)) next.set(`${fifth}:${step}`, { length: 1 })
           } else {
             // Clicked note isn't a scale degree — place single note only
             next.set(key, { length: 1 })
@@ -1742,41 +1732,7 @@ export default function StudioPianoRoll({
       return next
     })
     setHasUserEdited(true)
-  }, [soundSource, scaleMidiSet, isNoteMode, onNotePreview, isLoopRecording, loopCurrentStep, inputMode, scale, strictScale])
-
-  // ── Loop Recording: start/stop functions ──
-  const startLoopRecording = useCallback(() => {
-    loopRecordStart.current = Date.now()
-    setIsLoopRecording(true)
-    setLoopCurrentStep(0)
-
-    const totalSteps = bars * stepsPerBar
-    const stepMs = (60000 / 120) / (stepsPerBar / 4) // ~125ms at 120bpm, 16 steps
-    const loopMs = totalSteps * stepMs
-
-    // Step indicator update
-    if (loopStepTimer.current) clearInterval(loopStepTimer.current)
-
-    const wrapTimer = setInterval(() => {
-      loopRecordStart.current = Date.now()
-    }, loopMs)
-
-    loopStepTimer.current = setInterval(() => {
-      const elapsed = Date.now() - loopRecordStart.current
-      setLoopCurrentStep(Math.floor(elapsed / stepMs) % totalSteps)
-    }, stepMs / 2)
-
-    // Store wrap timer for cleanup
-    ;(loopRecordStart as unknown as { _wrap?: ReturnType<typeof setInterval> })._wrap = wrapTimer
-  }, [bars, stepsPerBar])
-
-  const stopLoopRecording = useCallback(() => {
-    setIsLoopRecording(false)
-    setLoopCurrentStep(0)
-    if (loopStepTimer.current) { clearInterval(loopStepTimer.current); loopStepTimer.current = null }
-    const w = (loopRecordStart as unknown as { _wrap?: ReturnType<typeof setInterval> })._wrap
-    if (w) { clearInterval(w); delete (loopRecordStart as unknown as { _wrap?: ReturnType<typeof setInterval> })._wrap }
-  }, [])
+  }, [soundSource, scaleMidiSet, isNoteMode, onNotePreview, inputMode, scale, strictScale])
 
   // â”€â”€ Resize note (drag right edge) â”€â”€
   const handleResizeStart = useCallback((key: string, e: React.MouseEvent) => {
@@ -2007,14 +1963,6 @@ export default function StudioPianoRoll({
   // â”€â”€ Keyboard: Escape, Ctrl+C/V/D/A, Delete â”€â”€
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      // Space = toggle loop recording
-      if (e.key === ' ') {
-        e.preventDefault()
-        if (isLoopRecording) stopLoopRecording()
-        else startLoopRecording()
-        return
-      }
-
       // Tool shortcuts: C = split/scissors, V = pointer
       if (e.key === 'c' && !e.ctrlKey && !e.metaKey && !e.altKey) {
         setActiveTool('split')
@@ -2193,7 +2141,7 @@ export default function StudioPianoRoll({
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [onClose, selectedNotes, bars, stepsPerBar, isLoopRecording, startLoopRecording, stopLoopRecording, scaleMidiSet])
+  }, [onClose, selectedNotes, bars, stepsPerBar, scaleMidiSet])
 
   // â”€â”€ Clear all â”€â”€
   const clearAll = useCallback(() => {
@@ -2394,32 +2342,8 @@ export default function StudioPianoRoll({
 
           <div className="w-px h-3.5 bg-white/[0.08]" />
 
-          {/* Loop Record toggle */}
-          <button
-            onClick={isLoopRecording ? stopLoopRecording : startLoopRecording}
-            className="px-2.5 py-0.5 text-[8px] font-bold cursor-pointer transition-all rounded-lg flex items-center gap-1"
-            style={{
-              background: isLoopRecording ? '#7f1d1d' : '#0a0b0d',
-              color: isLoopRecording ? '#fca5a5' : '#ef4444',
-              border: 'none',
-              borderRadius: '8px',
-              boxShadow: isLoopRecording
-                ? 'inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22'
-                : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
-              ...(isLoopRecording ? { animation: 'pulse 1s ease-in-out infinite' } : {}),
-            }}
-            title="Loop record — play notes in real-time, quantized to grid (Space)"
-          >
-            ⏺ {isLoopRecording ? 'STOP' : 'REC'}
-          </button>
-          {isLoopRecording && (
-            <span className="text-[7px] font-mono" style={{ color: '#fca5a5' }}>
-              step {loopCurrentStep + 1}/{bars * stepsPerBar}
-            </span>
-          )}
-
           {/* Transport position indicator */}
-          {transportPlaying && !isLoopRecording && playheadStep >= 0 && (
+          {transportPlaying && playheadStep >= 0 && (
             <span className="text-[7px] font-mono px-1.5 py-0.5 rounded flex items-center gap-1"
               style={{ background: `${color}15`, color, border: `1px solid ${color}25` }}>
               <span style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: color, animation: 'pulse 1s ease-in-out infinite' }} />
@@ -3179,25 +3103,8 @@ export default function StudioPianoRoll({
           </div>
         )}
 
-        {/* Loop recording playhead */}
-        {isLoopRecording && (
-          <div
-            className="absolute z-50 pointer-events-none"
-            style={{
-              left: PIANO_W + loopCurrentStep * cellW,
-              top: 0,
-              width: 2,
-              height: rows.length * cellH,
-              background: '#ef4444',
-              opacity: 0.8,
-              boxShadow: '0 0 6px #ef4444',
-              transition: 'left 50ms linear',
-            }}
-          />
-        )}
-
         {/* Transport playhead (marquee) — shows current playback position */}
-        {transportPlaying && playheadStep >= 0 && !isLoopRecording && (
+        {transportPlaying && playheadStep >= 0 && (
           <div
             className="absolute z-40 pointer-events-none"
             style={{
