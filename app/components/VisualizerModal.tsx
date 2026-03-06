@@ -118,7 +118,7 @@ export default function VisualizerModal({
       // Only reset image state if not currently generating
       if (!isGenerating) {
         setImageFile(null)
-        if (imagePreview) URL.revokeObjectURL(imagePreview)
+        if (imagePreview && imagePreview.startsWith('blob:')) URL.revokeObjectURL(imagePreview)
         setImagePreview(null)
         setStatusMsg('')
         loadedImageUrlRef.current = null
@@ -129,25 +129,16 @@ export default function VisualizerModal({
   }, [isOpen])
 
   // Auto-load initial image URL when provided (e.g. from cover art)
+  // Uses the URL directly for preview (no fetch — avoids CORS issues with R2)
   useEffect(() => {
     if (!initialImageUrl || !isOpen) return
     // Don't overwrite if user manually picked an image
     if (userPickedImageRef.current) return
-    // Don't re-fetch the same URL
+    // Don't re-set the same URL
     if (loadedImageUrlRef.current === initialImageUrl) return
-    ;(async () => {
-      try {
-        const res = await fetch(initialImageUrl)
-        const blob = await res.blob()
-        const ext = initialImageUrl.split('.').pop()?.split('?')[0] || 'jpg'
-        const file = new File([blob], `cover-art.${ext}`, { type: blob.type || 'image/jpeg' })
-        setImageFile(file)
-        setImagePreview(URL.createObjectURL(file))
-        loadedImageUrlRef.current = initialImageUrl
-      } catch {
-        // silent — user can still pick manually
-      }
-    })()
+    // Use URL directly as preview — no need to fetch & convert to File
+    setImagePreview(initialImageUrl)
+    loadedImageUrlRef.current = initialImageUrl
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialImageUrl, isOpen])
 
@@ -167,8 +158,10 @@ export default function VisualizerModal({
 
   const clearImage = useCallback(() => {
     setImageFile(null)
-    if (imagePreview) URL.revokeObjectURL(imagePreview)
+    // Only revoke if it's a blob URL we created (not an external CDN URL)
+    if (imagePreview && imagePreview.startsWith('blob:')) URL.revokeObjectURL(imagePreview)
     setImagePreview(null)
+    loadedImageUrlRef.current = null
   }, [imagePreview])
 
   // ── Suggested Prompts ──
@@ -224,9 +217,10 @@ export default function VisualizerModal({
     }
 
     try {
-      // If user uploaded an image, we need to first upload it to get a URL
+      // Resolve image URL: use existing URL directly, or upload a user-picked file
       let imageUrl: string | undefined
       if (imageFile) {
+        // User picked a local file — upload it
         setStatusMsg('Uploading reference image...')
         const formData = new FormData()
         formData.append('file', imageFile)
@@ -241,6 +235,10 @@ export default function VisualizerModal({
           console.error('❌ Image upload failed:', uploadRes.status)
           throw new Error('Failed to upload reference image')
         }
+      } else if (loadedImageUrlRef.current) {
+        // Cover art URL passed in — already on CDN, use directly (no re-upload)
+        imageUrl = loadedImageUrlRef.current
+        console.log('✅ Using existing cover art URL:', imageUrl)
       }
 
       // Start generation via NDJSON stream
@@ -334,7 +332,8 @@ export default function VisualizerModal({
 
   if (!isOpen) return null
 
-  const mode = imageFile ? 'IMG → VID' : 'TXT → VID'
+  const hasImage = !!(imageFile || loadedImageUrlRef.current)
+  const mode = hasImage ? 'IMG → VID' : 'TXT → VID'
   const promptLen = prompt.length
   const promptColor = promptLen > 900 ? 'text-red-400' : promptLen > 700 ? 'text-amber-400' : 'text-cyan-500/60'
   const hasEnoughCredits = userCredits === undefined || userCredits >= creditCost

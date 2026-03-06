@@ -17,12 +17,24 @@
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
+/** Short timeout for quest tracking fetches — fail fast, never block generation */
+const QUEST_TIMEOUT_MS = 5000
+
+function questSignal(): AbortSignal {
+  return AbortSignal.timeout(QUEST_TIMEOUT_MS)
+}
+
 function headers() {
   return {
     apikey: supabaseKey,
     Authorization: `Bearer ${supabaseKey}`,
     'Content-Type': 'application/json',
   }
+}
+
+/** Wrapper around fetch that auto-attaches a 5s timeout signal */
+function qfetch(url: string, init?: RequestInit): Promise<Response> {
+  return fetch(url, { ...init, signal: questSignal() })
 }
 
 /**
@@ -41,7 +53,7 @@ export async function trackQuestProgress(
     if (!supabaseUrl || !supabaseKey) return
 
     // 1. Check user has an active quest pass
-    const passRes = await fetch(
+    const passRes = await qfetch(
       `${supabaseUrl}/rest/v1/quest_passes?user_id=eq.${userId}&is_active=eq.true&expires_at=gt.${new Date().toISOString()}&limit=1`,
       { headers: headers() }
     )
@@ -49,7 +61,7 @@ export async function trackQuestProgress(
     if (!passes?.length) return // no pass → skip silently
 
     // 2. Fetch ALL active quests matching this action so we can auto-start any missing ones
-    const allQRes = await fetch(
+    const allQRes = await qfetch(
       `${supabaseUrl}/rest/v1/quests?is_active=eq.true&select=id,requirement,quest_level`,
       { headers: headers() }
     )
@@ -58,7 +70,7 @@ export async function trackQuestProgress(
     if (!matchingQuests.length) return
 
     // 3. Fetch existing user_quests for this user
-    const uqRes = await fetch(
+    const uqRes = await qfetch(
       `${supabaseUrl}/rest/v1/user_quests?user_id=eq.${userId}&select=id,quest_id,progress,target,status`,
       { headers: headers() }
     )
@@ -72,7 +84,7 @@ export async function trackQuestProgress(
     for (const quest of matchingQuests) {
       if (existingQuestIds.has(quest.id)) continue
       const target = quest.requirement?.target || 1
-      const startRes = await fetch(
+      const startRes = await qfetch(
         `${supabaseUrl}/rest/v1/user_quests?on_conflict=user_id,quest_id`,
         {
           method: 'POST',
@@ -120,7 +132,7 @@ export async function trackQuestProgress(
         patchBody.completed_at = new Date().toISOString()
       }
 
-      await fetch(
+      await qfetch(
         `${supabaseUrl}/rest/v1/user_quests?id=eq.${uq.id}`,
         {
           method: 'PATCH',
@@ -151,7 +163,7 @@ export async function trackModelUsage(
     if (!supabaseUrl || !supabaseKey || !modelName) return
 
     // Upsert model usage
-    await fetch(
+    await qfetch(
       `${supabaseUrl}/rest/v1/user_model_usage?on_conflict=user_id,model_name`,
       {
         method: 'POST',
@@ -165,7 +177,7 @@ export async function trackModelUsage(
     )
 
     // Check if user has used all available models
-    const usageRes = await fetch(
+    const usageRes = await qfetch(
       `${supabaseUrl}/rest/v1/user_model_usage?user_id=eq.${userId}&select=model_name`,
       { headers: headers() }
     )
@@ -203,7 +215,7 @@ export async function trackGenerationStreak(userId: string): Promise<void> {
     const today = new Date().toISOString().split('T')[0]
 
     // Upsert today's streak record
-    await fetch(
+    await qfetch(
       `${supabaseUrl}/rest/v1/generation_streaks?on_conflict=user_id,streak_date`,
       {
         method: 'POST',
@@ -217,7 +229,7 @@ export async function trackGenerationStreak(userId: string): Promise<void> {
     )
 
     // Check if both generated AND released today
-    const todayRes = await fetch(
+    const todayRes = await qfetch(
       `${supabaseUrl}/rest/v1/generation_streaks?user_id=eq.${userId}&streak_date=eq.${today}&select=generated,released`,
       { headers: headers() }
     )
@@ -225,7 +237,7 @@ export async function trackGenerationStreak(userId: string): Promise<void> {
     
     if (todayData?.[0]?.generated && todayData?.[0]?.released) {
       // Calculate current streak
-      const streakRes = await fetch(
+      const streakRes = await qfetch(
         `${supabaseUrl}/rpc/get_user_streak`,
         {
           method: 'POST',
@@ -240,7 +252,7 @@ export async function trackGenerationStreak(userId: string): Promise<void> {
       await trackQuestProgress(userId, 'streak_lord', 0)
 
       // Set absolute progress = current streak count on all streak_lord user_quests
-      const streakQuestRes = await fetch(
+      const streakQuestRes = await qfetch(
         `${supabaseUrl}/rest/v1/quests?requirement->>action=eq.streak_lord&is_active=eq.true&select=id,requirement`,
         { headers: headers() }
       )
@@ -258,7 +270,7 @@ export async function trackGenerationStreak(userId: string): Promise<void> {
           patchBody.status = 'completed'
           patchBody.completed_at = new Date().toISOString()
         }
-        await fetch(
+        await qfetch(
           `${supabaseUrl}/rest/v1/user_quests?user_id=eq.${userId}&quest_id=eq.${quest.id}&status=eq.active`,
           {
             method: 'PATCH',
@@ -287,7 +299,7 @@ export async function trackReleaseStreak(userId: string): Promise<void> {
     const today = new Date().toISOString().split('T')[0]
 
     // Upsert today's streak record - mark released
-    await fetch(
+    await qfetch(
       `${supabaseUrl}/rest/v1/generation_streaks?on_conflict=user_id,streak_date`,
       {
         method: 'POST',

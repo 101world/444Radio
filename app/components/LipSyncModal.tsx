@@ -81,10 +81,10 @@ export default function LipSyncModal({
     if (!isOpen) {
       if (!isGenerating) {
         setImageFile(null)
-        if (imagePreview) URL.revokeObjectURL(imagePreview)
+        if (imagePreview && imagePreview.startsWith('blob:')) URL.revokeObjectURL(imagePreview)
         setImagePreview(null)
         setAudioFile(null)
-        if (audioPreview) URL.revokeObjectURL(audioPreview)
+        if (audioPreview && audioPreview.startsWith('blob:')) URL.revokeObjectURL(audioPreview)
         setAudioPreview(null)
         setStatusMsg('')
         loadedImageUrlRef.current = null
@@ -95,25 +95,16 @@ export default function LipSyncModal({
   }, [isOpen])
 
   // Auto-load initial image URL when provided
+  // Uses the URL directly for preview (no fetch — avoids CORS issues with R2)
   useEffect(() => {
     if (!initialImageUrl || !isOpen) return
     // Don't overwrite if user manually picked an image
     if (userPickedImageRef.current) return
-    // Don't re-fetch the same URL
+    // Don't re-set the same URL
     if (loadedImageUrlRef.current === initialImageUrl) return
-    ;(async () => {
-      try {
-        const res = await fetch(initialImageUrl)
-        const blob = await res.blob()
-        const ext = initialImageUrl.split('.').pop()?.split('?')[0] || 'jpg'
-        const file = new File([blob], `cover-art.${ext}`, { type: blob.type || 'image/jpeg' })
-        setImageFile(file)
-        setImagePreview(URL.createObjectURL(file))
-        loadedImageUrlRef.current = initialImageUrl
-      } catch {
-        // silent — user can still pick manually
-      }
-    })()
+    // Use URL directly as preview — no need to fetch & convert to File
+    setImagePreview(initialImageUrl)
+    loadedImageUrlRef.current = initialImageUrl
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialImageUrl, isOpen])
 
@@ -194,8 +185,13 @@ export default function LipSyncModal({
 
   // Upload media files via API
   const uploadMediaFiles = async () => {
-    if (!imageFile || !audioFile) {
-      throw new Error('Both image and audio files are required')
+    if (!audioFile) {
+      throw new Error('Audio file is required')
+    }
+    // Need either a File or a pre-existing CDN URL for the image
+    const hasExistingImageUrl = !imageFile && loadedImageUrlRef.current
+    if (!imageFile && !hasExistingImageUrl) {
+      throw new Error('Image file or image URL is required')
     }
 
     console.log('📤 Starting upload process...')
@@ -218,10 +214,38 @@ export default function LipSyncModal({
       }
     }
 
-    // Upload via API
+    // If we already have an image URL from cover art, skip image upload
+    if (hasExistingImageUrl) {
+      console.log('✅ Using existing cover art URL:', loadedImageUrlRef.current)
+      // Only upload the audio
+      const formData = new FormData()
+      formData.append('audio', audioToUpload)
+
+      const headers: Record<string, string> = {}
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`
+
+      const response = await fetch('/api/upload/lipsync', {
+        method: 'POST',
+        headers,
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Audio upload failed')
+      }
+
+      const data = await response.json()
+      return {
+        imageUrl: loadedImageUrlRef.current!,
+        audioUrl: data.audioUrl,
+      }
+    }
+
+    // Upload both files via API
     console.log('📤 Uploading to /api/upload/lipsync...')
     const formData = new FormData()
-    formData.append('image', imageFile)
+    formData.append('image', imageFile!)
     formData.append('audio', audioToUpload)
 
     const headers: Record<string, string> = {}
@@ -259,8 +283,9 @@ export default function LipSyncModal({
   const handleGenerate = async () => {
     console.log('🎬 Generate button clicked')
     
-    if (!imageFile || !audioFile) {
-      console.error('❌ Missing files:', { imageFile: !!imageFile, audioFile: !!audioFile })
+    const hasImage = !!(imageFile || loadedImageUrlRef.current)
+    if (!hasImage || !audioFile) {
+      console.error('❌ Missing files:', { imageFile: !!imageFile, imageUrl: !!loadedImageUrlRef.current, audioFile: !!audioFile })
       alert('Please upload both an image and audio file')
       return
     }
@@ -289,7 +314,7 @@ export default function LipSyncModal({
     const generationId = addGeneration({
       type: 'lipsync',
       prompt: `Lip-sync video (${duration}s ${resolution})`,
-      title: `Lip-sync: ${imageFile.name}`,
+      title: `Lip-sync: ${imageFile?.name || 'cover-art'}`,
     })
     console.log('📝 Generation ID:', generationId)
     updateGeneration(generationId, { status: 'generating', progress: 5 })
@@ -438,7 +463,7 @@ export default function LipSyncModal({
 
   // Calculate current credit cost (use fixed duration, not trim duration)
   const creditCost = calcCredits(duration, resolution)
-  const canGenerate = imageFile && audioFile && !isGenerating
+  const canGenerate = (imageFile || loadedImageUrlRef.current) && audioFile && !isGenerating
 
   if (!isOpen) return null
 
