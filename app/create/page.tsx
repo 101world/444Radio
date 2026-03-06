@@ -1262,7 +1262,7 @@ function CreatePageContent() {
             const lyricsResponse = await fetch('/api/generate/atom-lyrics', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ prompt: originalPrompt, language: selectedLanguage })
+              body: JSON.stringify({ prompt: originalPrompt, language: selectedLanguage, mode: isProMode ? 'pro' : 'standard', genre })
             })
             const lyricsData = await lyricsResponse.json()
             if (lyricsData.success && lyricsData.lyrics) {
@@ -1283,7 +1283,7 @@ function CreatePageContent() {
           const lyricsResponse = await fetch('/api/generate/atom-lyrics', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: originalPrompt, language: selectedLanguage })
+            body: JSON.stringify({ prompt: originalPrompt, language: selectedLanguage, mode: isProMode ? 'pro' : 'standard', genre })
           })
           const lyricsData = await lyricsResponse.json()
           if (lyricsData.success && lyricsData.lyrics) {
@@ -4266,7 +4266,7 @@ function CreatePageContent() {
                         const endpoint = isHindiLang ? '/api/generate/atom-hindi' : '/api/generate/atom-lyrics'
                         const body = isHindiLang
                           ? { prompt: input, instrumental: false }
-                          : { prompt: input, language: selectedLanguage }
+                          : { prompt: input, language: selectedLanguage, mode: isProMode ? 'pro' : 'standard', genre }
 
                         const response = await fetch(endpoint, {
                           method: 'POST',

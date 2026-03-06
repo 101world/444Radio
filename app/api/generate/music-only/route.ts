@@ -41,7 +41,9 @@ function sanitizeError(error: any): string {
 }
 
 /**
- * Expand lyrics to reach target length based on duration
+ * Expand lyrics to reach target length based on duration.
+ * Instead of blindly duplicating, this extracts structural sections (chorus, verse)
+ * and intelligently repeats the chorus to build a proper song form.
  * Short: 200-300 chars, Medium: 350-500 chars, Long: 500-600 chars
  */
 function expandLyricsForDuration(baseLyrics: string, duration: 'short' | 'medium' | 'long' = 'medium'): string {
@@ -58,30 +60,52 @@ function expandLyricsForDuration(baseLyrics: string, duration: 'short' | 'medium
     return baseLyrics.length > 600 ? baseLyrics.substring(0, 597) + '...' : baseLyrics
   }
   
-  // Add song structure to expand lyrics
-  let expandedLyrics = baseLyrics
+  // Parse the lyrics into sections to intelligently expand
+  const sections: { tag: string, content: string }[] = []
+  const sectionRegex = /\[(Intro|Verse|Chorus|Bridge|Instrumental|Outro)\]\n?([\s\S]*?)(?=\n\[|$)/gi
+  let match
+  while ((match = sectionRegex.exec(baseLyrics)) !== null) {
+    const tag = match[1]
+    const content = match[2].trim()
+    if (tag || content) {
+      sections.push({ tag, content })
+    }
+  }
   
-  // Add verse 2 if needed
+  // If no sections found, wrap in basic structure
+  if (sections.length === 0) {
+    const lines = baseLyrics.trim().split('\n').filter(l => l.trim())
+    if (lines.length <= 2) {
+      return `[Verse]\n${baseLyrics.trim()}\n\n[Chorus]\n${baseLyrics.trim()}`
+    }
+    const half = Math.ceil(lines.length / 2)
+    const verse = lines.slice(0, half).join('\n')
+    const chorus = lines.slice(half).join('\n')
+    let expanded = `[Verse]\n${verse}\n\n[Chorus]\n${chorus}`
+    if (expanded.length < target.min) {
+      expanded += `\n\n[Chorus]\n${chorus}`
+    }
+    return expanded.length > 600 ? expanded.substring(0, 597) + '...' : expanded
+  }
+  
+  // Find the chorus section for repeating
+  const chorusSection = sections.find(s => s.tag.toLowerCase() === 'chorus')
+  const verseSection = sections.find(s => s.tag.toLowerCase() === 'verse')
+  
+  let expandedLyrics = baseLyrics.trim()
+  
+  // Add a second chorus after existing content if needed
+  if (expandedLyrics.length < target.min && chorusSection && chorusSection.content) {
+    expandedLyrics += `\n\n[Chorus]\n${chorusSection.content}`
+  }
+  
+  // Add an outro using first 2 lines of chorus or verse
   if (expandedLyrics.length < target.min) {
-    expandedLyrics += `\n\n[Verse 2]\n${baseLyrics}`
-  }
-  
-  // Add chorus if still needed
-  if (expandedLyrics.length < target.min) {
-    const chorusLines = baseLyrics.split('\n').slice(0, 2).join('\n')
-    expandedLyrics += `\n\n[Chorus]\n${chorusLines}`
-  }
-  
-  // Add bridge for long songs
-  if (duration === 'long' && expandedLyrics.length < target.min) {
-    const bridgeLines = baseLyrics.split('\n').slice(0, 2).join('\n')
-    expandedLyrics += `\n\n[Bridge]\n${bridgeLines}`
-  }
-  
-  // Add outro for long songs
-  if (duration === 'long' && expandedLyrics.length < target.max) {
-    const outroLines = baseLyrics.split('\n').slice(0, 1).join('\n')
-    expandedLyrics += `\n\n[Outro]\n${outroLines}`
+    const outroSource = chorusSection?.content || verseSection?.content || ''
+    const outroLines = outroSource.split('\n').filter(l => l.trim()).slice(0, 2).join('\n')
+    if (outroLines) {
+      expandedLyrics += `\n\n[Outro]\n${outroLines}`
+    }
   }
   
   // Trim if too long
