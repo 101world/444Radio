@@ -143,7 +143,7 @@ export default async function RootLayout({
                 </PlayerAwareMain>
                 {isAssistant && <><DockedSidebar /><FloatingNavButton /></>}
                 {isCreate && <><DockedSidebar /><FloatingNavButton /></>}
-                {!isCreatorV2 && <ConditionalGlobalPlayer />}
+                {(!isCreatorV2 || isAssistant || isCreate) && <ConditionalGlobalPlayer />}
                 <GenerationMonitor />
                 <GenerationRecovery />
                 <Suspense fallback={null}><PluginBackButton /></Suspense>
