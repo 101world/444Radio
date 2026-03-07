@@ -52,7 +52,8 @@ export default async function RootLayout({
   const headersList = await headers()
   const pathname = headersList.get('x-pathname') || ''
   const isPluginPage = pathname === '/plugin' || pathname.startsWith('/plugin/')
-  const isCreatorV2 = pathname === '/creator-v2' || pathname.startsWith('/creator-v2/') || pathname === '/input' || pathname.startsWith('/input/') || pathname === '/voice-labs' || pathname.startsWith('/voice-labs/') || pathname === '/studio' || pathname.startsWith('/studio/')
+  const isAssistant = pathname === '/assistant' || pathname.startsWith('/assistant/')
+  const isCreatorV2 = pathname === '/creator-v2' || pathname.startsWith('/creator-v2/') || pathname === '/input' || pathname.startsWith('/input/') || pathname === '/voice-labs' || pathname.startsWith('/voice-labs/') || pathname === '/studio' || pathname.startsWith('/studio/') || isAssistant
 
   if (isPluginPage) {
     return (
@@ -139,6 +140,7 @@ export default async function RootLayout({
                 <PlayerAwareMain>
                   {children}
                 </PlayerAwareMain>
+                {isAssistant && <><DockedSidebar /><FloatingNavButton /></>}
                 {!isCreatorV2 && <ConditionalGlobalPlayer />}
                 <GenerationMonitor />
                 <GenerationRecovery />
