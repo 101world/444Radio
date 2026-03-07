@@ -50,6 +50,7 @@ interface FeaturesSidebarProps {
 type Tile = {
   icon: any
   label: string
+  desc: string
   gradient: string
   glowColor: string
   activeGradient: string
@@ -107,13 +108,13 @@ export default function FeaturesSidebar({
 
   if (!isOpen) return null
 
-  // ═══ TILE DEFINITIONS (icon-forward, gradient cards) ═══
+  // ═══ TILE DEFINITIONS — vibrant gradients + descriptions ═══
   const proGradient = (base: string) => isProMode
-    ? 'from-red-500/20 via-red-600/10 to-red-900/20'
+    ? 'from-red-500/30 via-red-600/15 to-red-900/25'
     : base
-  const proGlow = (base: string) => isProMode ? 'shadow-red-500/20' : base
+  const proGlow = (base: string) => isProMode ? 'shadow-red-500/30' : base
   const proActiveGrad = (base: string) => isProMode
-    ? 'from-red-500/30 via-red-600/20 to-red-900/30 ring-red-400/60'
+    ? 'from-red-500/45 via-red-600/30 to-red-900/40 ring-red-400/70'
     : base
 
   const sections: Record<string, { label: string; emoji: string; tiles: Tile[] }> = {
@@ -122,59 +123,59 @@ export default function FeaturesSidebar({
       emoji: '🎵',
       tiles: [
         {
-          icon: Music, label: 'Music',
-          gradient: proGradient('from-cyan-500/25 via-blue-500/15 to-indigo-600/20'),
-          glowColor: proGlow('shadow-cyan-500/20'),
-          activeGradient: proActiveGrad('from-cyan-500/35 via-blue-500/25 to-indigo-600/30 ring-cyan-400/60'),
+          icon: Music, label: 'Music', desc: 'AI song generation',
+          gradient: proGradient('from-cyan-400/35 via-blue-500/25 to-indigo-500/30'),
+          glowColor: proGlow('shadow-cyan-400/30'),
+          activeGradient: proActiveGrad('from-cyan-400/50 via-blue-500/40 to-indigo-500/45 ring-cyan-400/70'),
           active: selectedType === 'music' && !isInstrumental, cost: 2,
           onClick: () => { onSelectType('music'); if (isInstrumental) onToggleInstrumental() },
         },
         {
-          icon: AudioLines, label: 'Beats',
-          gradient: proGradient('from-violet-500/25 via-purple-500/15 to-fuchsia-600/20'),
-          glowColor: proGlow('shadow-violet-500/20'),
-          activeGradient: proActiveGrad('from-violet-500/35 via-purple-500/25 to-fuchsia-600/30 ring-violet-400/60'),
+          icon: AudioLines, label: 'Beats', desc: 'AI drums & samples',
+          gradient: proGradient('from-violet-400/35 via-purple-500/25 to-fuchsia-500/30'),
+          glowColor: proGlow('shadow-violet-400/30'),
+          activeGradient: proActiveGrad('from-violet-400/50 via-purple-500/40 to-fuchsia-500/45 ring-violet-400/70'),
           active: false, cost: 2,
           onClick: onShowBeatMaker,
         },
         {
-          icon: Music, label: 'Inst.',
-          gradient: proGradient('from-purple-500/25 via-indigo-500/15 to-blue-600/20'),
-          glowColor: proGlow('shadow-purple-500/20'),
-          activeGradient: proActiveGrad('from-purple-500/35 via-indigo-500/25 to-blue-600/30 ring-purple-400/60'),
+          icon: Music, label: 'Inst.', desc: 'No vocals, pure sound',
+          gradient: proGradient('from-purple-400/35 via-indigo-400/25 to-blue-500/30'),
+          glowColor: proGlow('shadow-purple-400/30'),
+          activeGradient: proActiveGrad('from-purple-400/50 via-indigo-400/40 to-blue-500/45 ring-purple-400/70'),
           active: selectedType === 'music' && isInstrumental, cost: 2,
           onClick: () => { onSelectType('music'); if (!isInstrumental) onToggleInstrumental() },
         },
         {
-          icon: ImageIcon, label: 'Art',
-          gradient: proGradient('from-pink-500/25 via-rose-500/15 to-orange-500/20'),
-          glowColor: proGlow('shadow-pink-500/20'),
-          activeGradient: proActiveGrad('from-pink-500/35 via-rose-500/25 to-orange-500/30 ring-pink-400/60'),
+          icon: ImageIcon, label: 'Art', desc: 'AI album artwork',
+          gradient: proGradient('from-pink-400/35 via-rose-500/25 to-orange-400/30'),
+          glowColor: proGlow('shadow-pink-400/30'),
+          activeGradient: proActiveGrad('from-pink-400/50 via-rose-500/40 to-orange-400/45 ring-pink-400/70'),
           active: selectedType === 'image', cost: 1,
           onClick: () => onSelectType('image'),
         },
         {
-          icon: Repeat, label: 'Remix',
-          gradient: proGradient('from-amber-500/25 via-orange-500/15 to-red-500/20'),
-          glowColor: proGlow('shadow-amber-500/20'),
-          activeGradient: proActiveGrad('from-amber-500/35 via-orange-500/25 to-red-500/30 ring-amber-400/60'),
+          icon: Repeat, label: 'Remix', desc: 'Audio-to-audio remix',
+          gradient: proGradient('from-amber-400/35 via-orange-500/25 to-red-400/30'),
+          glowColor: proGlow('shadow-amber-400/30'),
+          activeGradient: proActiveGrad('from-amber-400/50 via-orange-500/40 to-red-400/45 ring-amber-400/70'),
           active: false, cost: 10,
           onClick: onShowRemix,
         },
         {
-          icon: Edit3, label: 'Lyrics',
-          gradient: proGradient('from-emerald-500/25 via-teal-500/15 to-cyan-600/20'),
-          glowColor: proGlow('shadow-emerald-500/20'),
-          activeGradient: proActiveGrad('from-emerald-500/35 via-teal-500/25 to-cyan-600/30 ring-emerald-400/60'),
+          icon: Edit3, label: 'Lyrics', desc: 'Write & edit words',
+          gradient: proGradient('from-emerald-400/35 via-teal-500/25 to-cyan-500/30'),
+          glowColor: proGlow('shadow-emerald-400/30'),
+          activeGradient: proActiveGrad('from-emerald-400/50 via-teal-500/40 to-cyan-500/45 ring-emerald-400/70'),
           active: !!(customTitle || genre || customLyrics || bpm),
           onClick: onShowLyrics,
           hidden: selectedType !== 'music' || isInstrumental,
         },
         {
-          icon: RefreshCw, label: 'Remake',
-          gradient: proGradient('from-sky-500/25 via-blue-500/15 to-indigo-500/20'),
-          glowColor: proGlow('shadow-sky-500/20'),
-          activeGradient: proActiveGrad('from-sky-500/35 via-blue-500/25 to-indigo-500/30 ring-sky-400/60'),
+          icon: RefreshCw, label: 'Remake', desc: 'Reimagine tracks',
+          gradient: proGradient('from-sky-400/35 via-blue-400/25 to-indigo-400/30'),
+          glowColor: proGlow('shadow-sky-400/30'),
+          activeGradient: proActiveGrad('from-sky-400/50 via-blue-400/40 to-indigo-400/45 ring-sky-400/70'),
           active: false,
           onClick: onShowLyrics,
         },
@@ -185,34 +186,34 @@ export default function FeaturesSidebar({
       emoji: '✨',
       tiles: [
         {
-          icon: Sparkles, label: 'SFX',
-          gradient: proGradient('from-fuchsia-500/25 via-pink-500/15 to-purple-600/20'),
-          glowColor: proGlow('shadow-fuchsia-500/20'),
-          activeGradient: proActiveGrad('from-fuchsia-500/35 via-pink-500/25 to-purple-600/30 ring-fuchsia-400/60'),
+          icon: Sparkles, label: 'SFX', desc: 'Sound effects',
+          gradient: proGradient('from-fuchsia-400/35 via-pink-500/25 to-purple-500/30'),
+          glowColor: proGlow('shadow-fuchsia-400/30'),
+          activeGradient: proActiveGrad('from-fuchsia-400/50 via-pink-500/40 to-purple-500/45 ring-fuchsia-400/70'),
           active: false, cost: 2,
           onClick: onShowEffects,
         },
         {
-          icon: Repeat, label: 'Loops',
-          gradient: proGradient('from-cyan-500/25 via-teal-500/15 to-emerald-600/20'),
-          glowColor: proGlow('shadow-cyan-500/20'),
-          activeGradient: proActiveGrad('from-cyan-500/35 via-teal-500/25 to-emerald-600/30 ring-cyan-400/60'),
+          icon: Repeat, label: 'Loops', desc: 'Fixed BPM loops',
+          gradient: proGradient('from-cyan-400/35 via-teal-400/25 to-emerald-500/30'),
+          glowColor: proGlow('shadow-cyan-400/30'),
+          activeGradient: proActiveGrad('from-cyan-400/50 via-teal-400/40 to-emerald-500/45 ring-cyan-400/70'),
           active: false, cost: 6,
           onClick: onShowLoopers,
         },
         {
-          icon: Music, label: 'Chords',
-          gradient: proGradient('from-violet-500/25 via-indigo-500/15 to-blue-600/20'),
-          glowColor: proGlow('shadow-violet-500/20'),
-          activeGradient: proActiveGrad('from-violet-500/35 via-indigo-500/25 to-blue-600/30 ring-violet-400/60'),
+          icon: Music, label: 'Chords', desc: 'Chord & rhythm control',
+          gradient: proGradient('from-violet-400/35 via-indigo-400/25 to-blue-500/30'),
+          glowColor: proGlow('shadow-violet-400/30'),
+          activeGradient: proActiveGrad('from-violet-400/50 via-indigo-400/40 to-blue-500/45 ring-violet-400/70'),
           active: false, cost: 4,
           onClick: onShowMusiConGen,
         },
         {
-          icon: Volume2, label: 'Boost',
-          gradient: proGradient('from-amber-500/25 via-yellow-500/15 to-orange-500/20'),
-          glowColor: proGlow('shadow-amber-500/20'),
-          activeGradient: proActiveGrad('from-amber-500/35 via-yellow-500/25 to-orange-500/30 ring-amber-400/60'),
+          icon: Volume2, label: 'Boost', desc: 'Mix & master audio',
+          gradient: proGradient('from-amber-400/35 via-yellow-400/25 to-orange-400/30'),
+          glowColor: proGlow('shadow-amber-400/30'),
+          activeGradient: proActiveGrad('from-amber-400/50 via-yellow-400/40 to-orange-400/45 ring-amber-400/70'),
           active: false, cost: 1,
           onClick: onShowAudioBoost,
         },
@@ -223,50 +224,50 @@ export default function FeaturesSidebar({
       emoji: '🔧',
       tiles: [
         {
-          icon: Scissors, label: 'Stems',
-          gradient: proGradient('from-teal-500/25 via-emerald-500/15 to-green-600/20'),
-          glowColor: proGlow('shadow-teal-500/20'),
-          activeGradient: proActiveGrad('from-teal-500/35 via-emerald-500/25 to-green-600/30 ring-teal-400/60'),
+          icon: Scissors, label: 'Stems', desc: 'Vocals, drums, bass',
+          gradient: proGradient('from-teal-400/35 via-emerald-400/25 to-green-500/30'),
+          glowColor: proGlow('shadow-teal-400/30'),
+          activeGradient: proActiveGrad('from-teal-400/50 via-emerald-400/40 to-green-500/45 ring-teal-400/70'),
           active: false, cost: 0,
           onClick: onShowStemSplit,
         },
         {
-          icon: Layers, label: 'Extract',
-          gradient: proGradient('from-blue-500/25 via-sky-500/15 to-cyan-600/20'),
-          glowColor: proGlow('shadow-blue-500/20'),
-          activeGradient: proActiveGrad('from-blue-500/35 via-sky-500/25 to-cyan-600/30 ring-blue-400/60'),
+          icon: Layers, label: 'Extract', desc: 'Pull audio from media',
+          gradient: proGradient('from-blue-400/35 via-sky-400/25 to-cyan-500/30'),
+          glowColor: proGlow('shadow-blue-400/30'),
+          activeGradient: proActiveGrad('from-blue-400/50 via-sky-400/40 to-cyan-500/45 ring-blue-400/70'),
           active: false, cost: 1,
           onClick: onShowExtract,
         },
         {
-          icon: Mic, label: 'Tune',
-          gradient: proGradient('from-rose-500/25 via-pink-500/15 to-fuchsia-600/20'),
-          glowColor: proGlow('shadow-rose-500/20'),
-          activeGradient: proActiveGrad('from-rose-500/35 via-pink-500/25 to-fuchsia-600/30 ring-rose-400/60'),
+          icon: Mic, label: 'Tune', desc: 'Pitch correct vocals',
+          gradient: proGradient('from-rose-400/35 via-pink-400/25 to-fuchsia-500/30'),
+          glowColor: proGlow('shadow-rose-400/30'),
+          activeGradient: proActiveGrad('from-rose-400/50 via-pink-400/40 to-fuchsia-500/45 ring-rose-400/70'),
           active: false, cost: 1,
           onClick: onShowAutotune,
         },
         {
-          icon: Film, label: 'Visual',
-          gradient: proGradient('from-indigo-500/25 via-violet-500/15 to-purple-600/20'),
-          glowColor: proGlow('shadow-indigo-500/20'),
-          activeGradient: proActiveGrad('from-indigo-500/35 via-violet-500/25 to-purple-600/30 ring-indigo-400/60'),
+          icon: Film, label: 'Visual', desc: 'Text/Image to video',
+          gradient: proGradient('from-indigo-400/35 via-violet-400/25 to-purple-500/30'),
+          glowColor: proGlow('shadow-indigo-400/30'),
+          activeGradient: proActiveGrad('from-indigo-400/50 via-violet-400/40 to-purple-500/45 ring-indigo-400/70'),
           active: false,
           onClick: onShowVisualizer,
         },
         {
-          icon: Mic, label: 'Lip Sync',
-          gradient: proGradient('from-pink-500/25 via-rose-500/15 to-red-500/20'),
-          glowColor: proGlow('shadow-pink-500/20'),
-          activeGradient: proActiveGrad('from-pink-500/35 via-rose-500/25 to-red-500/30 ring-pink-400/60'),
+          icon: Mic, label: 'Lip Sync', desc: 'Image + audio to video',
+          gradient: proGradient('from-pink-400/35 via-rose-400/25 to-red-400/30'),
+          glowColor: proGlow('shadow-pink-400/30'),
+          activeGradient: proActiveGrad('from-pink-400/50 via-rose-400/40 to-red-400/45 ring-pink-400/70'),
           active: false,
           onClick: onShowLipSync,
         },
         {
-          icon: Film, label: 'Vid→Aud',
-          gradient: proGradient('from-orange-500/25 via-amber-500/15 to-yellow-600/20'),
-          glowColor: proGlow('shadow-orange-500/20'),
-          activeGradient: proActiveGrad('from-orange-500/35 via-amber-500/25 to-yellow-600/30 ring-orange-400/60'),
+          icon: Film, label: 'Vid→Aud', desc: 'Synced SFX from video',
+          gradient: proGradient('from-orange-400/35 via-amber-400/25 to-yellow-500/30'),
+          glowColor: proGlow('shadow-orange-400/30'),
+          activeGradient: proActiveGrad('from-orange-400/50 via-amber-400/40 to-yellow-500/45 ring-orange-400/70'),
           active: false, cost: 4,
           onClick: onShowVideoToAudio,
         },
@@ -277,18 +278,18 @@ export default function FeaturesSidebar({
       emoji: '🚀',
       tiles: [
         {
-          icon: Upload, label: 'Upload',
-          gradient: proGradient('from-emerald-500/25 via-green-500/15 to-teal-600/20'),
-          glowColor: proGlow('shadow-emerald-500/20'),
-          activeGradient: proActiveGrad('from-emerald-500/35 via-green-500/25 to-teal-600/30 ring-emerald-400/60'),
+          icon: Upload, label: 'Upload', desc: 'Upload audio & video',
+          gradient: proGradient('from-emerald-400/35 via-green-400/25 to-teal-500/30'),
+          glowColor: proGlow('shadow-emerald-400/30'),
+          activeGradient: proActiveGrad('from-emerald-400/50 via-green-400/40 to-teal-500/45 ring-emerald-400/70'),
           active: false,
           onClick: onShowUpload, size: 'wide',
         },
         {
-          icon: Rocket, label: 'Release',
-          gradient: proGradient('from-cyan-500/25 via-blue-500/15 to-violet-600/20'),
-          glowColor: proGlow('shadow-cyan-500/20'),
-          activeGradient: proActiveGrad('from-cyan-500/35 via-blue-500/25 to-violet-600/30 ring-cyan-400/60'),
+          icon: Rocket, label: 'Release', desc: 'Publish to feed',
+          gradient: proGradient('from-cyan-400/35 via-blue-400/25 to-violet-500/30'),
+          glowColor: proGlow('shadow-cyan-400/30'),
+          activeGradient: proActiveGrad('from-cyan-400/50 via-blue-400/40 to-violet-500/45 ring-cyan-400/70'),
           active: false,
           onClick: onOpenRelease, size: 'wide',
         },
@@ -617,21 +618,28 @@ export default function FeaturesSidebar({
                   }`} />
 
                   {/* Icon */}
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-2.5 transition-all ${
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-2 transition-all ${
                     tile.active
-                      ? 'bg-white/15 shadow-inner'
-                      : 'bg-white/[0.06] group-hover:bg-white/[0.1]'
+                      ? 'bg-white/20 shadow-inner shadow-white/10'
+                      : 'bg-white/[0.08] group-hover:bg-white/[0.14]'
                   }`}>
                     <Icon size={18} className={`transition-all ${
-                      tile.active ? 'text-white' : 'text-white/50 group-hover:text-white/70'
+                      tile.active ? 'text-white drop-shadow-sm' : 'text-white/60 group-hover:text-white/80'
                     }`} />
                   </div>
 
                   {/* Label */}
-                  <div className={`text-[11px] font-semibold transition-colors ${
-                    tile.active ? 'text-white' : 'text-white/60 group-hover:text-white/80'
+                  <div className={`text-[11px] font-semibold transition-colors leading-tight ${
+                    tile.active ? 'text-white' : 'text-white/70 group-hover:text-white/90'
                   }`}>
                     {tile.label}
+                  </div>
+
+                  {/* Description */}
+                  <div className={`text-[9px] mt-0.5 leading-tight transition-colors ${
+                    tile.active ? 'text-white/50' : 'text-white/25 group-hover:text-white/40'
+                  }`}>
+                    {tile.desc}
                   </div>
 
                   {/* Credit cost badge */}
@@ -647,44 +655,46 @@ export default function FeaturesSidebar({
           </div>
         </div>
 
-        {/* ── Bottom bar ── */}
-        <div className={`px-3 py-2.5 shrink-0 ${
-          isProMode ? 'bg-red-500/[0.03] border-t border-red-500/10' : 'bg-white/[0.01] border-t border-white/[0.06]'
+        {/* ── Bottom bar — Neo-clay 3D morphism ── */}
+        <div className={`px-3 py-3 shrink-0 ${
+          isProMode ? 'bg-red-950/30 border-t border-red-500/10' : 'bg-[#0a0e18] border-t border-white/[0.06]'
         }`}>
-          <div className="flex items-center gap-2">
-            {/* Mode toggle */}
-            <div className={`flex gap-0.5 p-0.5 rounded-xl flex-1 ${
-              isProMode ? 'bg-red-500/10' : 'bg-white/[0.04]'
-            }`}>
-              <button
-                onClick={() => { if (isInstrumental) onToggleInstrumental() }}
-                className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${
-                  !isInstrumental
-                    ? isProMode ? 'bg-red-500 text-white shadow-lg shadow-red-500/30' : 'bg-white/[0.15] text-white shadow-sm'
-                    : 'text-white/30 hover:text-white/50'
-                }`}
-              >
-                <Mic size={10} /> Vocal
-              </button>
-              <button
-                onClick={() => { if (!isInstrumental) onToggleInstrumental() }}
-                className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${
-                  isInstrumental
-                    ? isProMode ? 'bg-red-500 text-white shadow-lg shadow-red-500/30' : 'bg-purple-500/80 text-white shadow-sm shadow-purple-500/20'
-                    : 'text-white/30 hover:text-white/50'
-                }`}
-              >
-                <Music size={10} /> Inst
-              </button>
-            </div>
+          <div className="flex items-center gap-2.5">
+            {/* Neo-clay Vocal button */}
+            <button
+              onClick={() => { if (isInstrumental) onToggleInstrumental() }}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-2xl text-[11px] font-bold transition-all duration-300 ${
+                !isInstrumental
+                  ? isProMode
+                    ? 'bg-gradient-to-b from-red-400 via-red-500 to-red-600 text-white shadow-[0_4px_12px_rgba(239,68,68,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-2px_4px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(239,68,68,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-2px_4px_rgba(0,0,0,0.2)] active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.3)] active:translate-y-[1px]'
+                    : 'bg-gradient-to-b from-cyan-300 via-cyan-400 to-cyan-600 text-white shadow-[0_4px_12px_rgba(34,211,238,0.4),inset_0_1px_1px_rgba(255,255,255,0.3),inset_0_-2px_4px_rgba(0,0,0,0.15)] hover:shadow-[0_6px_20px_rgba(34,211,238,0.5),inset_0_1px_1px_rgba(255,255,255,0.35),inset_0_-2px_4px_rgba(0,0,0,0.15)] active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.25)] active:translate-y-[1px]'
+                  : 'bg-gradient-to-b from-white/[0.08] via-white/[0.05] to-white/[0.02] text-white/35 shadow-[0_2px_6px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.05)] hover:text-white/55 hover:from-white/[0.12] hover:via-white/[0.07] hover:to-white/[0.03]'
+              }`}
+            >
+              <Mic size={13} /> Vocal
+            </button>
 
-            {/* Clear button */}
+            {/* Neo-clay Inst button */}
+            <button
+              onClick={() => { if (!isInstrumental) onToggleInstrumental() }}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-2xl text-[11px] font-bold transition-all duration-300 ${
+                isInstrumental
+                  ? isProMode
+                    ? 'bg-gradient-to-b from-red-400 via-red-500 to-red-600 text-white shadow-[0_4px_12px_rgba(239,68,68,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-2px_4px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(239,68,68,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-2px_4px_rgba(0,0,0,0.2)] active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.3)] active:translate-y-[1px]'
+                    : 'bg-gradient-to-b from-violet-400 via-purple-500 to-purple-700 text-white shadow-[0_4px_12px_rgba(139,92,246,0.4),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-2px_4px_rgba(0,0,0,0.15)] hover:shadow-[0_6px_20px_rgba(139,92,246,0.5),inset_0_1px_1px_rgba(255,255,255,0.3),inset_0_-2px_4px_rgba(0,0,0,0.15)] active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.25)] active:translate-y-[1px]'
+                  : 'bg-gradient-to-b from-white/[0.08] via-white/[0.05] to-white/[0.02] text-white/35 shadow-[0_2px_6px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.05)] hover:text-white/55 hover:from-white/[0.12] hover:via-white/[0.07] hover:to-white/[0.03]'
+              }`}
+            >
+              <Music size={13} /> Inst
+            </button>
+
+            {/* Neo-clay Clear button */}
             <button
               onClick={onClearChat}
-              className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/[0.04] border border-white/[0.06] text-white/20 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 transition-all"
+              className="w-10 h-10 rounded-2xl flex items-center justify-center bg-gradient-to-b from-white/[0.08] via-white/[0.04] to-white/[0.02] text-white/25 shadow-[0_2px_6px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.05)] hover:text-red-400 hover:from-red-500/20 hover:via-red-500/10 hover:to-red-600/5 hover:shadow-[0_4px_12px_rgba(239,68,68,0.2),inset_0_1px_1px_rgba(255,255,255,0.1)] active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.3)] active:translate-y-[1px] transition-all duration-200"
               title="Clear Chat"
             >
-              <X size={13} />
+              <X size={14} />
             </button>
           </div>
         </div>
