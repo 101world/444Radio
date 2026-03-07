@@ -272,7 +272,7 @@ export async function POST(req: NextRequest) {
       headers: {
         'Authorization': `Bearer ${replicateToken}`,
         'Content-Type': 'application/json',
-        'Prefer': 'wait=120',
+        'Prefer': 'wait=60',
       },
       body: JSON.stringify({
         input: replicateInput,
