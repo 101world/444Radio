@@ -1331,24 +1331,7 @@ function CreatePageContent() {
         return
       }
 
-      // Auto-detect BPM from prompt if not provided
-      if (!finalBpm.trim()) {
-        const promptLower = originalPrompt.toLowerCase()
-        if (promptLower.includes('fast') || promptLower.includes('energetic') || promptLower.includes('upbeat')) finalBpm = '140'
-        else if (promptLower.includes('slow') || promptLower.includes('chill') || promptLower.includes('relaxing')) finalBpm = '80'
-        else if (promptLower.includes('medium') || promptLower.includes('moderate')) finalBpm = '110'
-        else {
-          // BPM based on genre
-          if (finalGenre.includes('electronic') || finalGenre.includes('edm')) finalBpm = '128'
-          else if (finalGenre.includes('hip-hop') || finalGenre.includes('rap')) finalBpm = '90'
-          else if (finalGenre.includes('rock')) finalBpm = '120'
-          else if (finalGenre.includes('lofi') || finalGenre.includes('chill')) finalBpm = '85'
-          else finalBpm = '110' // Default moderate BPM
-        }
-        setBpm(finalBpm)
-        wasAutoFilled = true
-        console.log('🥁 Auto-detected BPM:', finalBpm)
-      }
+      // BPM removed — MiniMax 1.5 and 2.0 APIs do not accept BPM input
 
       // Show user what was auto-filled
       if (wasAutoFilled) {
@@ -1357,7 +1340,7 @@ function CreatePageContent() {
         if (!customLyrics.trim() && !isInstrumental) autoFilledFields.push('Lyrics')
         if (isInstrumental) autoFilledFields.push('Instrumental Mode')
         if (!genre.trim()) autoFilledFields.push(`Genre (${finalGenre})`)
-        if (!bpm.trim()) autoFilledFields.push(`BPM (${finalBpm})`)
+        // BPM removed — not used by generation APIs
         
         const autoFillMessage: Message = {
           id: (Date.now() + 2).toString(),
@@ -1394,7 +1377,6 @@ function CreatePageContent() {
       processQueue(generatingMessage.id, 'music', {
         prompt: originalPrompt,
         genre: finalGenre,
-        bpm: finalBpm,
         customTitle: finalTitle,
         customLyrics: finalLyrics,
         songDuration,
@@ -1410,7 +1392,6 @@ function CreatePageContent() {
       setCustomTitle('')
       setCustomLyrics('')
       setGenre('')
-      setBpm('')
       setSongDuration('long')
       setIsInstrumental(false)
       clearAllRefs()
@@ -1437,7 +1418,6 @@ function CreatePageContent() {
     params: {
       prompt: string
       genre?: string
-      bpm?: string
       customTitle?: string
       customLyrics?: string
       songDuration?: 'short' | 'medium' | 'long'
@@ -1507,7 +1487,26 @@ function CreatePageContent() {
         const lyricsToUse = params.customLyrics || undefined
         const durationToUse = params.songDuration || 'long'
         const genreToUse = params.genre || undefined
-        const bpmToUse = params.bpm || undefined
+
+        // Add language accent to prompt for non-English languages
+        const langAccentMap: Record<string, string> = {
+          'hindi': 'Indian Accent',
+          'urdu': 'Indian Accent',
+          'punjabi': 'Indian Accent',
+          'tamil': 'Indian Accent',
+          'telugu': 'Indian Accent',
+          'chinese': 'Chinese Accent',
+          'japanese': 'Japanese Accent',
+          'korean': 'Korean Accent',
+          'spanish': 'Spanish Accent',
+          'french': 'French Accent',
+          'german': 'German Accent',
+          'portuguese': 'Portuguese Accent',
+          'arabic': 'Arabic Accent',
+          'italian': 'Italian Accent',
+        }
+        const accent = langAccentMap[selectedLanguage.toLowerCase()]
+        const promptWithAccent = accent ? `${accent}, ${params.prompt}` : params.prompt
 
         // Check if voice/instrumental references are provided → use music-01
         const hasRefs = !!(params.voiceRefFile || params.voiceRefUrl || params.recordedVoiceBlob || params.selectedVoiceId || params.instrumentalRefFile || params.instrumentalRefUrl)
@@ -1548,22 +1547,21 @@ function CreatePageContent() {
           if (isHindiFamily || hasIndicScript || hindiKeywordsInPrompt) {
             const reason = isHindiFamily ? `language: ${selectedLanguage}` : hasIndicScript ? 'Indic script in lyrics' : 'Hindi keyword in prompt'
             console.log(`[Generation] Using MiniMax 2.0 via fal.ai (${reason})`)
-            result = await generateHindiMusic(params.prompt, titleToUse, lyricsToUse, genreToUse, bpmToUse, abortController.signal, messageId)
+            result = await generateHindiMusic(promptWithAccent, titleToUse, lyricsToUse, genreToUse, abortController.signal, messageId)
           } else if (isProMode) {
             // PRO MODE: Route all MiniMax 1.5 generations through MiniMax 2.0 (fal.ai)
             console.log('[Generation] 🔴 PRO MODE — Using premium engine via fal.ai')
-            result = await generateHindiMusic(params.prompt, titleToUse, lyricsToUse, genreToUse, bpmToUse, abortController.signal, messageId, 'pro')
+            result = await generateHindiMusic(promptWithAccent, titleToUse, lyricsToUse, genreToUse, abortController.signal, messageId, 'pro')
           } else {
             console.log('[Generation] Calling generateMusic with:', { 
-              prompt: params.prompt, 
+              prompt: promptWithAccent, 
               titleToUse, 
               lyricsToUse, 
               durationToUse,
-              genreToUse,
-              bpmToUse
+              genreToUse
             })
             console.log('🔍 [TITLE DEBUG] Title being sent to generateMusic:', titleToUse)
-            result = await generateMusic(params.prompt, titleToUse, lyricsToUse, durationToUse, genreToUse, bpmToUse, abortController.signal, messageId)
+            result = await generateMusic(promptWithAccent, titleToUse, lyricsToUse, durationToUse, genreToUse, undefined, abortController.signal, messageId)
           }
         }
         console.log('[Generation] Music generation result:', result)
@@ -2024,7 +2022,6 @@ function CreatePageContent() {
     title?: string,
     lyrics?: string,
     genre?: string,
-    bpm?: string,
     signal?: AbortSignal,
     messageId?: string,
     source?: string
@@ -2034,7 +2031,6 @@ function CreatePageContent() {
       title,
       lyrics,
       genre: genre || undefined,
-      bpm: bpm ? parseInt(bpm) : undefined,
       generateCoverArt,
       ...(source && { source }),
     }
@@ -4655,51 +4651,10 @@ function CreatePageContent() {
                 </select>
               </div>
 
-              {/* Prompt Suggestion Tags */}
+              {/* Title - Moved up since it's required */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">💡 Quick Tags</label>
-                <div className="p-2.5 bg-white/5 border border-white/10 rounded-lg">
-                  <div className="flex flex-wrap gap-1.5">
-                    {[
-                      'upbeat', 'chill', 'energetic', 'melancholic', 'ambient',
-                      'electronic', 'acoustic', 'jazz', 'rock', 'hip-hop',
-                      'heavy bass', 'soft piano', 'guitar solo', 'synthwave',
-                      'lo-fi beats', 'orchestral', 'dreamy', 'aggressive',
-                      'trailer', 'ad', 'commercial', 'music video',
-                      'hollywood', 'bollywood', 'male & female duet',
-                    ].map((tag) => (
-                      <button
-                        key={tag}
-                        type="button"
-                        onClick={() => {
-                          const newInput = input ? `${input}, ${tag}` : tag
-                          setInput(newInput.slice(0, 300))
-                        }}
-                        className="px-2 py-0.5 bg-white/10 hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-500/30 rounded text-xs text-white/80 hover:text-cyan-300 transition-all"
-                      >
-                        {tag}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Genre */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Genre</label>
-                <input
-                  type="text"
-                  value={genre}
-                  onChange={(e) => setGenre(e.target.value)}
-                  placeholder="e.g., Hip-hop, Jazz, Rock"
-                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-all"
-                />
-              </div>
-
-              {/* Title */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                  Title <span className="text-red-500">*</span>
+                <label className="text-xs font-semibold text-red-400 uppercase tracking-wide">
+                  ✏️ Title <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -4724,9 +4679,43 @@ function CreatePageContent() {
                 )}
               </div>
 
+              {/* Genre with Quick Tags */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">🎵 Genre</label>
+                <input
+                  type="text"
+                  value={genre}
+                  onChange={(e) => setGenre(e.target.value)}
+                  placeholder="Select or type a genre..."
+                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-all"
+                />
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {[
+                    'Pop', 'Hip-Hop', 'R&B', 'Jazz', 'Rock', 'Lo-Fi',
+                    'Electronic', 'EDM', 'House', 'Techno', 'Synthwave',
+                    'Acoustic', 'Folk', 'Country', 'Classical', 'Orchestral',
+                    'Reggaeton', 'Afrobeats', 'Bollywood', 'K-Pop', 'J-Pop',
+                    'Drill', 'Trap', 'Ambient', 'Soul', 'Funk',
+                  ].map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => setGenre(tag)}
+                      className={`px-2 py-0.5 rounded text-xs transition-all border ${
+                        genre.toLowerCase() === tag.toLowerCase()
+                          ? 'bg-cyan-500/30 border-cyan-500 text-cyan-300'
+                          : 'bg-white/10 hover:bg-cyan-500/20 border-white/10 hover:border-cyan-500/30 text-white/80 hover:text-cyan-300'
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Song Duration */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Song Length</label>
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">⏱️ Song Length</label>
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     onClick={() => setSongDuration('short')}
