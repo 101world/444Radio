@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, Suspense, lazy } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices, Upload, RotateCcw, Repeat, Plus, Square, Guitar, AudioLines, Drum, ChevronDown, Crown, Trash2 } from 'lucide-react'
+import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices, Upload, RotateCcw, Repeat, Plus, Square, Guitar, AudioLines, Drum, ChevronDown, Crown, Trash2, Search, ChevronUp } from 'lucide-react'
 
 // Lazy load heavy modals for better performance
 const MusicGenerationModal = lazy(() => import('../components/MusicGenerationModal'))
@@ -238,6 +238,13 @@ function CreatePageContent() {
   // Pro Mode state (red neon theme + MiniMax 2.0)
   const [isProMode, setIsProMode] = useState(false)
 
+  // Chat Search state
+  const [showChatSearch, setShowChatSearch] = useState(false)
+  const [chatSearchQuery, setChatSearchQuery] = useState('')
+  const [chatSearchMatches, setChatSearchMatches] = useState<string[]>([])
+  const [chatSearchIndex, setChatSearchIndex] = useState(0)
+  const chatSearchInputRef = useRef<HTMLInputElement>(null)
+
   // Sync Pro Mode class to <html> so layout-level components (CreditBadge, NotificationBell) also turn red
   useEffect(() => {
     if (isProMode) {
@@ -247,6 +254,62 @@ function CreatePageContent() {
     }
     return () => document.documentElement.classList.remove('pro-mode-active')
   }, [isProMode])
+
+  // Chat search: find matching message IDs when query changes
+  useEffect(() => {
+    if (!chatSearchQuery.trim()) {
+      setChatSearchMatches([])
+      setChatSearchIndex(0)
+      return
+    }
+    const q = chatSearchQuery.toLowerCase()
+    const matched: string[] = []
+    for (const msg of messages) {
+      // Search in message text content
+      if (msg.content?.toLowerCase().includes(q)) { matched.push(msg.id); continue }
+      // Search in result title, prompt, lyrics
+      if (msg.result?.title?.toLowerCase().includes(q)) { matched.push(msg.id); continue }
+      if (msg.result?.prompt?.toLowerCase().includes(q)) { matched.push(msg.id); continue }
+      if (msg.result?.lyrics?.toLowerCase().includes(q)) { matched.push(msg.id); continue }
+    }
+    setChatSearchMatches(matched)
+    setChatSearchIndex(0)
+    // Scroll to first match
+    if (matched.length > 0) {
+      const el = document.getElementById(`msg-${matched[0]}`)
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [chatSearchQuery, messages])
+
+  // Navigate to current search match
+  const navigateChatSearch = (dir: 'prev' | 'next') => {
+    if (chatSearchMatches.length === 0) return
+    const newIndex = dir === 'next'
+      ? (chatSearchIndex + 1) % chatSearchMatches.length
+      : (chatSearchIndex - 1 + chatSearchMatches.length) % chatSearchMatches.length
+    setChatSearchIndex(newIndex)
+    const el = document.getElementById(`msg-${chatSearchMatches[newIndex]}`)
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
+  // Toggle search with Ctrl+F
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault()
+        setShowChatSearch(prev => {
+          if (!prev) setTimeout(() => chatSearchInputRef.current?.focus(), 50)
+          return !prev
+        })
+      }
+      if (e.key === 'Escape' && showChatSearch) {
+        setShowChatSearch(false)
+        setChatSearchQuery('')
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [showChatSearch])
   
   // Title validation state
   const [showTitleError, setShowTitleError] = useState(false)
@@ -3079,6 +3142,80 @@ function CreatePageContent() {
         )}
       </div>
 
+      {/* Search Button — Top Right, positioned LEFT of Pro Mode */}
+      <div className="fixed top-4 right-[13.5rem] z-50">
+        <button
+          onClick={() => {
+            setShowChatSearch(prev => {
+              if (!prev) setTimeout(() => chatSearchInputRef.current?.focus(), 50)
+              else setChatSearchQuery('')
+              return !prev
+            })
+          }}
+          className={`group flex items-center justify-center w-9 h-9 backdrop-blur-xl rounded-full transition-all duration-300 pointer-events-auto ${
+            showChatSearch
+              ? 'bg-cyan-950/80 border-2 border-cyan-500/60 shadow-[0_0_15px_rgba(34,211,238,0.3)]'
+              : 'bg-black/60 hover:bg-black/80 border border-white/20 hover:border-white/40 shadow-lg shadow-black/20'
+          }`}
+          title="Search Chat (Ctrl+F)"
+        >
+          <Search size={14} className={`transition-all duration-300 ${
+            showChatSearch ? 'text-cyan-400' : 'text-white/50 group-hover:text-white/80'
+          }`} />
+        </button>
+      </div>
+
+      {/* Chat Search Bar — slides down from top */}
+      {showChatSearch && (
+        <div className="fixed top-14 right-4 z-50 animate-fadeIn">
+          <div className="flex items-center gap-2 bg-black/90 backdrop-blur-2xl border border-cyan-500/30 rounded-xl px-3 py-2 shadow-2xl shadow-cyan-500/10 w-80">
+            <Search size={14} className="text-cyan-400 flex-shrink-0" />
+            <input
+              ref={chatSearchInputRef}
+              type="text"
+              value={chatSearchQuery}
+              onChange={(e) => setChatSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') navigateChatSearch(e.shiftKey ? 'prev' : 'next')
+                if (e.key === 'Escape') { setShowChatSearch(false); setChatSearchQuery('') }
+              }}
+              placeholder="Search messages, titles, lyrics..."
+              className="flex-1 bg-transparent text-white text-sm placeholder-gray-500 focus:outline-none"
+              autoFocus
+            />
+            {chatSearchQuery && (
+              <span className="text-xs text-gray-400 flex-shrink-0 tabular-nums">
+                {chatSearchMatches.length > 0 ? `${chatSearchIndex + 1}/${chatSearchMatches.length}` : '0/0'}
+              </span>
+            )}
+            <div className="flex items-center gap-0.5 flex-shrink-0">
+              <button
+                onClick={() => navigateChatSearch('prev')}
+                disabled={chatSearchMatches.length === 0}
+                className="p-1 rounded hover:bg-white/10 disabled:opacity-30 transition-colors"
+                title="Previous match (Shift+Enter)"
+              >
+                <ChevronUp size={14} className="text-gray-400" />
+              </button>
+              <button
+                onClick={() => navigateChatSearch('next')}
+                disabled={chatSearchMatches.length === 0}
+                className="p-1 rounded hover:bg-white/10 disabled:opacity-30 transition-colors"
+                title="Next match (Enter)"
+              >
+                <ChevronDown size={14} className="text-gray-400" />
+              </button>
+            </div>
+            <button
+              onClick={() => { setShowChatSearch(false); setChatSearchQuery('') }}
+              className="p-1 rounded hover:bg-white/10 transition-colors"
+            >
+              <X size={14} className="text-gray-400" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Pro Mode Toggle — Top Right, positioned LEFT of bell+credits — always visible */}
       <div className="fixed top-4 right-[9rem] z-50">
         <button
@@ -3232,7 +3369,14 @@ function CreatePageContent() {
           {messages.map((message) => (
             <div
               key={message.id}
-              className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+              id={`msg-${message.id}`}
+              className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} ${
+                chatSearchMatches.includes(message.id)
+                  ? chatSearchMatches[chatSearchIndex] === message.id
+                    ? 'ring-2 ring-cyan-400/60 rounded-2xl'
+                    : 'ring-1 ring-cyan-500/20 rounded-2xl'
+                  : ''
+              } transition-all duration-300`}
             >
               {/* Message Content - Compact & Aligned */}
               <div className={`max-w-[75%] md:max-w-2xl ${message.type === 'user' ? 'items-end' : 'items-start'} space-y-2`}>
@@ -3250,7 +3394,27 @@ function CreatePageContent() {
                     }`}>
                       <p className={`text-sm leading-relaxed break-words font-light ${
                         message.type === 'user' ? 'text-cyan-100' : 'text-gray-200'
-                      }`}>{message.content}</p>
+                      }`}>{(() => {
+                        // Highlight search matches in message text
+                        if (!chatSearchQuery.trim() || !message.content) return message.content
+                        const q = chatSearchQuery.toLowerCase()
+                        const text = message.content
+                        if (!text.toLowerCase().includes(q)) return text
+                        const parts: React.ReactNode[] = []
+                        let lastIndex = 0
+                        const lowerText = text.toLowerCase()
+                        let searchFrom = 0
+                        while (searchFrom < lowerText.length) {
+                          const idx = lowerText.indexOf(q, searchFrom)
+                          if (idx === -1) break
+                          if (idx > lastIndex) parts.push(text.slice(lastIndex, idx))
+                          parts.push(<mark key={idx} className="bg-cyan-500/40 text-white rounded-sm px-0.5">{text.slice(idx, idx + q.length)}</mark>)
+                          lastIndex = idx + q.length
+                          searchFrom = idx + q.length
+                        }
+                        if (lastIndex < text.length) parts.push(text.slice(lastIndex))
+                        return parts
+                      })()}</p>
                     </div>
                     <p className="text-[10px] text-gray-500/80 mt-1.5 font-mono" title={hasMounted ? message.timestamp.toLocaleTimeString() : ''}>{hasMounted ? timeAgo(message.timestamp) : '\u00A0'}</p>
                   </div>
