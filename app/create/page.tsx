@@ -4113,17 +4113,21 @@ function CreatePageContent() {
                   <Music2 size={18} className={`transition-colors duration-500 ${isProMode ? 'text-red-400' : 'text-cyan-400'}`} />
                 </button>
 
-                {/* Voice Melody → Instrument */}
+                {/* Lyrics Editor */}
                 <button
-                  onClick={() => setShowVoiceMelodyModal(true)}
+                  onClick={() => setShowLyricsModal(true)}
                   className={`flex-shrink-0 w-9 h-9 sm:w-9 sm:h-9 rounded-lg transition-all duration-500 flex items-center justify-center ${
-                    isProMode
-                      ? 'hover:bg-red-500/20 border border-red-500/20 hover:border-red-400/40 bg-red-500/10'
-                      : 'hover:bg-emerald-500/20 border border-emerald-500/20 hover:border-emerald-400/40 bg-emerald-500/10'
+                    customTitle || genre || customLyrics || bpm
+                      ? isProMode
+                        ? 'bg-red-500/20 border border-red-400/40'
+                        : 'bg-cyan-500/20 border border-cyan-400/40'
+                      : isProMode
+                        ? 'hover:bg-red-500/20 border border-red-500/20 hover:border-red-400/40 bg-red-500/10'
+                        : 'hover:bg-cyan-500/20 border border-cyan-500/20 hover:border-cyan-400/40 bg-cyan-500/10'
                   }`}
-                  title="Voice Melody — Hum or sing, transform into instruments"
+                  title="Lyrics — Write & edit lyrics, title, genre, BPM"
                 >
-                  <Mic size={18} className={`transition-colors duration-500 ${isProMode ? 'text-red-400' : 'text-emerald-400'}`} />
+                  <Edit3 size={18} className={`transition-colors duration-500 ${customTitle || genre || customLyrics || bpm ? (isProMode ? 'text-red-400' : 'text-cyan-400') : (isProMode ? 'text-red-400' : 'text-cyan-400/60')}`} />
                 </button>
 
                 {/* Instrumental Toggle */}
