@@ -1,6 +1,6 @@
 'use client'
 
-import { Music, Sparkles, Repeat, Image as ImageIcon, Edit3, Rocket, Upload, X, Mic, Zap, Film, Scissors, Lightbulb, ChevronLeft, Volume2, Layers, AudioLines, RefreshCw, AudioWaveform } from 'lucide-react'
+import { Music, Sparkles, Repeat, Image as ImageIcon, Edit3, Rocket, Upload, X, Mic, Zap, Film, Scissors, Lightbulb, ChevronLeft, Volume2, Layers, AudioLines, RefreshCw, AudioWaveform, Wand2 } from 'lucide-react'
 import { useState } from 'react'
 
 interface FeaturesSidebarProps {
@@ -146,15 +146,6 @@ export default function FeaturesSidebar({
           onClick: onShowRemix,
         },
         {
-          icon: Edit3,
-          label: 'Lyrics',
-          description: 'Write & edit lyrics',
-          color: 'cyan',
-          active: !!(customTitle || genre || customLyrics || bpm),
-          cost: 0,
-          onClick: onShowLyrics,
-        },
-        {
           icon: RefreshCw,
           label: 'Remake',
           description: 'Reimagine existing tracks',
@@ -251,6 +242,15 @@ export default function FeaturesSidebar({
           color: 'purple',
           active: false,
           onClick: onShowVisualizer,
+        },
+        {
+          icon: Wand2,
+          label: 'Voice to Melody',
+          description: 'Hum/sing → AI melody',
+          color: 'purple',
+          active: false,
+          cost: 2,
+          onClick: onShowVoiceMelody,
         },
         {
           icon: Mic,
@@ -562,8 +562,9 @@ export default function FeaturesSidebar({
                   <div className="flex-1 h-px bg-white/5" />
                 </div>
                 <div className="space-y-0.5">
-                  {visibleFeatures.map((feature: Feature) => {
+                  {visibleFeatures.map((feature: Feature, featureIdx: number) => {
                     const Icon = feature.icon
+                    const featureKey = `${section.label}-${featureIdx}`
                     const colorMap: Record<string, string> = isProMode ? {
                       cyan: feature.active
                         ? 'bg-red-500/15 border-red-400/50 text-red-300'
@@ -594,7 +595,7 @@ export default function FeaturesSidebar({
 
                     return (
                       <button
-                        key={feature.label}
+                        key={featureKey}
                         onClick={feature.onClick}
                         className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg border transition-all group ${colorMap[feature.color]}`}
                       >

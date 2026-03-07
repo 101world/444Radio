@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { use } from 'react'
-import { Play, Pause, Heart, MessageCircle, Radio, Grid, List as ListIcon, Upload, Edit2, Users, MapPin, Calendar, ExternalLink, Video, Mic, Send, Smile, Settings, Music, Circle, Plus, Trash2, Zap, Award, BarChart3, Clock, Disc3, Camera, ImageIcon, X as XIcon } from 'lucide-react'
+import { Play, Pause, Heart, MessageCircle, Radio, Grid, List as ListIcon, Upload, Edit2, Users, MapPin, Calendar, ExternalLink, Video, Mic, Send, Smile, Settings, Music, Circle, Plus, Trash2, Zap, Award, BarChart3, Clock, Disc3, Camera, ImageIcon, X as XIcon, Crown } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAudioPlayer, computeUrl } from '../../contexts/AudioPlayerContext'
 import FloatingMenu from '../../components/FloatingMenu'
@@ -916,6 +916,13 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                       title="Go to Station"
                     >
                       <Radio size={12} className="text-gray-500 hover:text-purple-400" />
+                    </button>
+                    <button
+                      onClick={() => router.push(`/assistant?chess=1&opponent=${profile?.username || ''}`)}
+                      className="px-3 py-2.5 bg-white/[0.03] border border-white/[0.06] hover:border-amber-500/25 rounded-lg transition-all"
+                      title="Challenge to Chess"
+                    >
+                      <Crown size={12} className="text-gray-500 hover:text-amber-400" />
                     </button>
                   </div>
                 )}

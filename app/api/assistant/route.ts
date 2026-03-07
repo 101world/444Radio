@@ -149,22 +149,25 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { messages, settings } = body as {
+    const { messages, settings, audio, images, videos } = body as {
       messages: { role: 'user' | 'assistant'; content: string }[]
       settings?: {
         temperature?: number
         top_p?: number
-        top_k?: number
-        max_tokens?: number
-        thinking?: boolean
+        max_output_tokens?: number
+        thinking_level?: 'low' | 'medium' | 'high'
       }
+      audio?: string | null
+      images?: string[]
+      videos?: string[]
     }
 
     if (!messages || messages.length === 0) {
       return corsResponse(NextResponse.json({ error: 'No messages provided' }, { status: 400 }))
     }
 
-    // ─── Credit check & deduction (0.1 credit per message = 10% margin) ───
+    // ─── Credit check & deduction (1 credit per message) ───
+    const COST = 1
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
@@ -186,14 +189,14 @@ export async function POST(req: NextRequest) {
     const user = userData?.[0]
     const totalCredits = (user?.credits ?? 0) + (user?.free_credits ?? 0)
 
-    if (totalCredits < 0.1) {
+    if (totalCredits < COST) {
       return corsResponse(NextResponse.json({
-        error: 'Insufficient credits. You need at least 0.1 credits to use 444 Assistant. Visit /decrypt for free credits or /pricing to purchase more.',
+        error: 'Insufficient credits. You need at least 1 credit to use 444 Assistant. Visit /decrypt for free credits or /pricing to purchase more.',
         code: 'INSUFFICIENT_CREDITS'
       }, { status: 402 }))
     }
 
-    // Deduct 0.1 credit atomically
+    // Deduct credits atomically
     const deductRes = await fetch(
       `${supabaseUrl}/rest/v1/rpc/deduct_credits`,
       {
@@ -203,7 +206,7 @@ export async function POST(req: NextRequest) {
           'Authorization': `Bearer ${supabaseKey}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ p_clerk_user_id: userId, p_amount: 0.1 })
+        body: JSON.stringify({ p_clerk_user_id: userId, p_amount: COST, p_type: 'assistant', p_description: '444 Assistant chat message' })
       }
     )
 
@@ -223,7 +226,7 @@ export async function POST(req: NextRequest) {
     // Log transaction
     logCreditTransaction({
       userId,
-      amount: -0.1,
+      amount: -COST,
       balanceAfter: deductResult.new_credits,
       type: 'other',
       description: '444 Assistant chat message',
@@ -243,31 +246,36 @@ export async function POST(req: NextRequest) {
     // Format messages for Gemini — prepend system prompt as first user context
     const formattedPrompt = buildGeminiPrompt(messages)
 
-    const temperature = settings?.temperature ?? 0.7
+    const temperature = settings?.temperature ?? 1
     const top_p = settings?.top_p ?? 0.95
-    const top_k = settings?.top_k ?? 64
-    const max_tokens = settings?.max_tokens ?? 4096
-    const thinking = settings?.thinking ?? false
+    const max_output_tokens = settings?.max_output_tokens ?? 16384
+    const thinking_level = settings?.thinking_level ?? 'high'
 
-    // Call Replicate's Gemini 3.1 Pro
-    const predictionRes = await fetch('https://api.replicate.com/v1/predictions', {
+    // Build input object
+    const replicateInput: Record<string, any> = {
+      prompt: formattedPrompt,
+      system_instruction: SYSTEM_PROMPT,
+      temperature,
+      top_p,
+      max_output_tokens,
+      thinking_level,
+    }
+
+    // Add media if provided
+    if (audio) replicateInput.audio = audio
+    if (images && images.length > 0) replicateInput.images = images
+    if (videos && videos.length > 0) replicateInput.videos = videos
+
+    // Call Replicate's Gemini 3.1 Pro (official model)
+    const predictionRes = await fetch('https://api.replicate.com/v1/models/google/gemini-3.1-pro/predictions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${replicateToken}`,
         'Content-Type': 'application/json',
+        'Prefer': 'wait=120',
       },
       body: JSON.stringify({
-        version: 'google/gemini-3.1-pro',
-        input: {
-          prompt: formattedPrompt,
-          system_prompt: SYSTEM_PROMPT,
-          temperature,
-          top_p,
-          top_k,
-          max_tokens,
-          thinking,
-        },
-        stream: false,
+        input: replicateInput,
       })
     })
 
@@ -275,44 +283,47 @@ export async function POST(req: NextRequest) {
       const errText = await predictionRes.text().catch(() => 'Unknown error')
       console.error('[444 Assistant] Replicate prediction creation failed:', predictionRes.status, errText)
       // Refund the credit on API failure
-      await refundCredit(supabaseUrl, supabaseKey, userId, 0.1)
+      await refundCredit(supabaseUrl, supabaseKey, userId, COST)
       return corsResponse(NextResponse.json({ error: SAFE_ERROR_MESSAGE }, { status: 500 }))
     }
 
     const prediction = await predictionRes.json()
 
-    // Poll for completion
+    // With Prefer: wait header, the response may already be completed
     let finalPrediction = prediction
-    let attempts = 0
-    const maxAttempts = 60 // Up to 120 seconds
 
-    while (
-      finalPrediction.status !== 'succeeded' &&
-      finalPrediction.status !== 'failed' &&
-      finalPrediction.status !== 'canceled' &&
-      attempts < maxAttempts
-    ) {
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      const pollRes = await fetch(`https://api.replicate.com/v1/predictions/${finalPrediction.id}`, {
-        headers: { 'Authorization': `Bearer ${replicateToken}` }
-      })
-      if (pollRes.ok) {
-        finalPrediction = await pollRes.json()
+    // If not yet completed, poll for completion
+    if (finalPrediction.status && finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed' && finalPrediction.status !== 'canceled') {
+      let attempts = 0
+      const maxAttempts = 60
+
+      while (
+        finalPrediction.status !== 'succeeded' &&
+        finalPrediction.status !== 'failed' &&
+        finalPrediction.status !== 'canceled' &&
+        attempts < maxAttempts
+      ) {
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        const pollRes = await fetch(`https://api.replicate.com/v1/predictions/${finalPrediction.id}`, {
+          headers: { 'Authorization': `Bearer ${replicateToken}` }
+        })
+        if (pollRes.ok) {
+          finalPrediction = await pollRes.json()
+        }
+        attempts++
       }
-      attempts++
+
+      if (attempts >= maxAttempts) {
+        console.error('[444 Assistant] Prediction timed out')
+        await refundCredit(supabaseUrl, supabaseKey, userId, COST)
+        return corsResponse(NextResponse.json({ error: '444 Assistant is thinking too hard. Please try a shorter message.' }, { status: 504 }))
+      }
     }
 
     if (finalPrediction.status === 'failed' || finalPrediction.status === 'canceled') {
       console.error('[444 Assistant] Prediction failed:', finalPrediction.error)
-      // Refund on failure
-      await refundCredit(supabaseUrl, supabaseKey, userId, 0.1)
+      await refundCredit(supabaseUrl, supabaseKey, userId, COST)
       return corsResponse(NextResponse.json({ error: SAFE_ERROR_MESSAGE }, { status: 500 }))
-    }
-
-    if (attempts >= maxAttempts) {
-      console.error('[444 Assistant] Prediction timed out')
-      await refundCredit(supabaseUrl, supabaseKey, userId, 0.1)
-      return corsResponse(NextResponse.json({ error: '444 Assistant is thinking too hard. Please try a shorter message.' }, { status: 504 }))
     }
 
     // Extract output
@@ -328,7 +339,7 @@ export async function POST(req: NextRequest) {
       success: true,
       message: output,
       creditsRemaining: deductResult.new_credits,
-      creditCost: 0.1,
+      creditCost: COST,
     }))
 
   } catch (error: any) {
@@ -340,12 +351,13 @@ export async function POST(req: NextRequest) {
 // ─── Helpers ────────────────────────────────────────────────────
 
 function buildGeminiPrompt(messages: { role: string; content: string }[]): string {
-  // Build a multi-turn conversation prompt
-  return messages.map(m => {
-    if (m.role === 'user') return `User: ${m.content}`
-    if (m.role === 'assistant') return `Assistant: ${m.content}`
-    return m.content
-  }).join('\n\n')
+  // Build conversational prompt — Gemini expects multi-turn format
+  const parts: string[] = []
+  for (const m of messages) {
+    if (m.role === 'user') parts.push(`User: ${m.content}`)
+    else if (m.role === 'assistant') parts.push(`444: ${m.content}`)
+  }
+  return parts.join('\n\n')
 }
 
 function sanitizeAssistantOutput(text: string): string {
@@ -384,9 +396,9 @@ function sanitizeAssistantOutput(text: string): string {
 
 async function refundCredit(supabaseUrl: string, supabaseKey: string, userId: string, amount: number) {
   try {
-    // Add credits back
+    // Award credits back (use award_credits for proper refund)
     await fetch(
-      `${supabaseUrl}/rest/v1/rpc/deduct_credits`,
+      `${supabaseUrl}/rest/v1/rpc/award_credits`,
       {
         method: 'POST',
         headers: {
@@ -394,8 +406,7 @@ async function refundCredit(supabaseUrl: string, supabaseKey: string, userId: st
           'Authorization': `Bearer ${supabaseKey}`,
           'Content-Type': 'application/json'
         },
-        // Negative deduction = refund
-        body: JSON.stringify({ p_clerk_user_id: userId, p_amount: -amount })
+        body: JSON.stringify({ p_clerk_user_id: userId, p_amount: amount, p_type: 'credit_refund', p_description: '444 Assistant failed — credit refunded' })
       }
     )
     // Log refund
