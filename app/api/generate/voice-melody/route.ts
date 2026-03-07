@@ -10,119 +10,210 @@ export const maxDuration = 300
 
 // fal.ai model endpoint (internal — not shown to users)
 const FAL_MODEL = 'fal-ai/ace-step/audio-to-audio'
+const QUEUE_URL = `https://queue.fal.run/${FAL_MODEL}`
 
 /** Helper to sleep for a given number of milliseconds */
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
-/** Extract detailed error info from fal.ai error objects */
-function extractFalError(err: any): string {
-  const parts: string[] = []
-  if (err?.status) parts.push(`status=${err.status}`)
-  if (err?.message) parts.push(err.message)
-  if (err?.body) {
-    try {
-      const bodyStr = typeof err.body === 'string' ? err.body : JSON.stringify(err.body)
-      parts.push(`body=${bodyStr.substring(0, 500)}`)
-    } catch { /* ignore */ }
-  }
-  if (err?.statusText) parts.push(`statusText=${err.statusText}`)
-  return parts.length > 0 ? parts.join(' | ') : String(err)
-}
+/*──────────────────────────────────────────────────────────────────────────────
+ * STEP 1 — Upload audio to fal.ai's own storage (guarantees accessibility)
+ *────────────────────────────────────────────────────────────────────────────*/
+async function uploadToFalStorage(falKey: string, audioUrl: string): Promise<string> {
+  console.log('🎤 [fal-storage] Downloading audio from:', audioUrl)
 
-/**
- * Re-upload audio to fal.ai's own storage so the model can always access it.
- * This avoids issues where fal.ai can't reach external URLs (R2, etc.).
- */
-async function uploadToFalStorage(audioUrl: string): Promise<string> {
-  console.log('🎤 Downloading audio to re-upload to fal.ai storage...')
   const res = await fetch(audioUrl)
-  if (!res.ok) throw new Error(`Failed to fetch audio from ${audioUrl}: ${res.status}`)
-  const blob = await res.blob()
+  if (!res.ok) throw new Error(`Download failed: ${res.status} ${res.statusText}`)
+
+  const buffer = Buffer.from(await res.arrayBuffer())
   const contentType = res.headers.get('content-type') || 'audio/wav'
+  console.log(`🎤 [fal-storage] Downloaded: ${(buffer.length / 1024 / 1024).toFixed(2)} MB, type: ${contentType}`)
+
+  fal.config({ credentials: falKey })
+
   const ext = contentType.includes('mp3') || contentType.includes('mpeg') ? 'mp3'
     : contentType.includes('ogg') ? 'ogg'
     : contentType.includes('webm') ? 'webm'
     : 'wav'
-  const file = new File([blob], `voice-melody-input.${ext}`, { type: contentType })
+  const blob = new Blob([buffer], { type: contentType })
+  const file = new File([blob], `voice-melody-input-${Date.now()}.${ext}`, { type: contentType })
+
   const falUrl = await fal.storage.upload(file)
-  console.log('🎤 Audio re-uploaded to fal.ai storage:', falUrl)
+  console.log('🎤 [fal-storage] Uploaded to fal.ai:', falUrl)
   return falUrl
 }
 
-/** Call fal.ai via the official client (handles queue, retries, cold starts) */
-async function runFalAi(falKey: string, input: Record<string, unknown>): Promise<{ data: any }> {
-  console.log('🎤 Calling Voice Melody generation via fal.ai...')
-  console.log('🎤 Input audio_url:', input.audio_url)
-  console.log('🎤 Input params:', JSON.stringify({ ...input, audio_url: '(omitted)' }))
+/*──────────────────────────────────────────────────────────────────────────────
+ * STEP 2 — Submit to fal.ai queue and poll (direct HTTP, full logging)
+ *────────────────────────────────────────────────────────────────────────────*/
+async function callFalQueue(falKey: string, input: Record<string, unknown>): Promise<any> {
+  console.log('🎤 [queue] Submitting to:', QUEUE_URL)
+  console.log('🎤 [queue] Payload:', JSON.stringify(input))
 
-  // Configure the fal client with our key
-  fal.config({ credentials: falKey })
+  const submitRes = await fetch(QUEUE_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Key ${falKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  })
 
-  // --- Attempt 1: use fal.ai storage URL for guaranteed accessibility ---
-  let falAudioUrl: string
-  try {
-    falAudioUrl = await uploadToFalStorage(input.audio_url as string)
-  } catch (uploadErr: any) {
-    console.warn('⚠️ fal.ai storage upload failed, falling back to original URL:', uploadErr?.message)
-    falAudioUrl = input.audio_url as string
+  const submitBody = await submitRes.text()
+  console.log(`🎤 [queue] Submit → ${submitRes.status}: ${submitBody.substring(0, 600)}`)
+
+  if (!submitRes.ok) {
+    throw new Error(`Queue submit failed: status=${submitRes.status} body=${submitBody.substring(0, 600)}`)
   }
 
-  const inputWithFalUrl = { ...input, audio_url: falAudioUrl }
+  const submitData = JSON.parse(submitBody)
+  const { request_id, response_url, status_url } = submitData
+  if (!request_id) throw new Error(`No request_id in response: ${submitBody.substring(0, 300)}`)
+
+  console.log('🎤 [queue] request_id:', request_id)
+  console.log('🎤 [queue] status_url:', status_url)
+  console.log('🎤 [queue] response_url:', response_url)
+
+  // Poll for up to 4 minutes
+  const maxPoll = 240_000
+  const start = Date.now()
+  let lastStatus = ''
+
+  while (Date.now() - start < maxPoll) {
+    await sleep(4000)
+
+    try {
+      const sRes = await fetch(status_url, {
+        headers: { 'Authorization': `Key ${falKey}` },
+      })
+      if (!sRes.ok) {
+        console.warn(`🎤 [queue] Status poll → ${sRes.status}`)
+        continue
+      }
+
+      const sData = await sRes.json()
+      const status = sData.status
+
+      if (status !== lastStatus) {
+        console.log(`🎤 [queue] Status changed: ${lastStatus || '(initial)'} → ${status}`)
+        lastStatus = status
+      }
+
+      if (sData.logs?.length) {
+        for (const l of sData.logs.slice(-3)) {
+          console.log('🎤 [queue] Log:', l.message)
+        }
+      }
+
+      if (status === 'COMPLETED') {
+        console.log('🎤 [queue] Fetching result from:', response_url)
+        const rRes = await fetch(response_url, {
+          headers: { 'Authorization': `Key ${falKey}` },
+        })
+        const rBody = await rRes.text()
+        console.log(`🎤 [queue] Result → ${rRes.status}: ${rBody.substring(0, 600)}`)
+        if (!rRes.ok) throw new Error(`Result fetch failed: ${rRes.status} ${rBody.substring(0, 600)}`)
+        return JSON.parse(rBody)
+      }
+
+      if (status === 'FAILED') {
+        // Extract as much error info as possible
+        const errParts = [
+          sData.error && `error=${JSON.stringify(sData.error).substring(0, 300)}`,
+          sData.detail && `detail=${sData.detail}`,
+          sData.logs?.length && `lastLog=${sData.logs[sData.logs.length - 1]?.message}`,
+        ].filter(Boolean).join(' | ')
+        throw new Error(`Generation FAILED in queue: ${errParts || JSON.stringify(sData).substring(0, 500)}`)
+      }
+    } catch (pollErr: any) {
+      if (pollErr.message.includes('FAILED') || pollErr.message.includes('Result fetch')) throw pollErr
+      console.warn('🎤 [queue] Poll error (will retry):', pollErr?.message)
+    }
+  }
+
+  throw new Error('Generation timed out after 4 minutes')
+}
+
+/*──────────────────────────────────────────────────────────────────────────────
+ * Orchestrator — attempts queue with fal-storage URL, then with original URL
+ *────────────────────────────────────────────────────────────────────────────*/
+async function runFalAi(falKey: string, input: Record<string, unknown>): Promise<{ data: any }> {
+  console.log('🎤 ═══════ Voice Melody generation start ═══════')
+  console.log('🎤 Original audio_url:', input.audio_url)
+
+  const originalUrl = input.audio_url as string
+
+  // --- Attempt 1: Upload to fal storage → queue API ---
+  let falStorageUrl: string | null = null
+  try {
+    falStorageUrl = await uploadToFalStorage(falKey, originalUrl)
+  } catch (uploadErr: any) {
+    console.warn('⚠️ [fal-storage] Upload failed:', uploadErr?.message)
+  }
+
+  const attempt1Url = falStorageUrl || originalUrl
+  try {
+    console.log('🎤 [attempt-1] Using audio URL:', attempt1Url)
+    const data = await callFalQueue(falKey, { ...input, audio_url: attempt1Url })
+    console.log('🎤 ═══════ Voice Melody generation success (attempt 1) ═══════')
+    return { data }
+  } catch (err1: any) {
+    console.error('❌ [attempt-1] Failed:', err1?.message)
+  }
+
+  // --- Attempt 2: Try original R2 URL with minimal params (5s cooldown) ---
+  console.log('🔄 Waiting 5s before retry...')
+  await sleep(5000)
 
   try {
-    const result = await fal.subscribe(FAL_MODEL as string, {
-      input: inputWithFalUrl as any,
-      logs: true,
-      onQueueUpdate: (update) => {
-        if (update.status === 'IN_PROGRESS' && update.logs) {
-          update.logs.map((log: any) => log.message).forEach((msg: string) => console.log('🎤 fal.ai log:', msg))
-        }
-      },
-    })
-    console.log('🎤 Voice Melody generation complete')
-    return { data: result.data }
-  } catch (err: any) {
-    console.error(`❌ fal.ai client error [detail]:`, extractFalError(err))
-
-    // Wait before retrying — cold-start or transient server error
-    console.log('🔄 Waiting 3s before retry with minimal parameters...')
-    await sleep(3000)
-
-    // Retry with only the required fields (no optional params that may trigger edge-case bugs)
-    try {
-      const minimalInput: Record<string, unknown> = {
-        audio_url: falAudioUrl,
-        original_tags: input.original_tags,
-        tags: input.tags,
-      }
-      const retryResult = await fal.subscribe(FAL_MODEL as string, {
-        input: minimalInput as any,
-        logs: true,
-        onQueueUpdate: (update) => {
-          if (update.status === 'IN_PROGRESS' && update.logs) {
-            update.logs.map((log: any) => log.message).forEach((msg: string) => console.log('🎤 fal.ai retry log:', msg))
-          }
-        },
-      })
-      console.log('🎤 fal.ai retry succeeded via client')
-      return { data: retryResult.data }
-    } catch (retryErr: any) {
-      console.error(`❌ fal.ai retry also failed [detail]:`, extractFalError(retryErr))
-      const detail = extractFalError(retryErr)
-      throw new Error(`fal.ai generation failed: ${detail}`)
+    const minimalInput = {
+      audio_url: originalUrl,
+      original_tags: input.original_tags,
+      tags: input.tags,
+      edit_mode: input.edit_mode || 'remix',
     }
+    console.log('🎤 [attempt-2] Using original URL with minimal params')
+    const data = await callFalQueue(falKey, minimalInput)
+    console.log('🎤 ═══════ Voice Melody generation success (attempt 2) ═══════')
+    return { data }
+  } catch (err2: any) {
+    console.error('❌ [attempt-2] Also failed:', err2?.message)
+
+    // --- Attempt 3: Try fal-storage URL if available, with minimal params ---
+    if (falStorageUrl && falStorageUrl !== originalUrl) {
+      console.log('🔄 [attempt-3] Trying fal-storage URL with minimal params...')
+      await sleep(3000)
+      try {
+        const data = await callFalQueue(falKey, {
+          audio_url: falStorageUrl,
+          original_tags: input.original_tags,
+          tags: input.tags,
+          edit_mode: input.edit_mode || 'remix',
+        })
+        console.log('🎤 ═══════ Voice Melody generation success (attempt 3) ═══════')
+        return { data }
+      } catch (err3: any) {
+        console.error('❌ [attempt-3] Also failed:', err3?.message)
+      }
+    }
+
+    throw new Error(`Voice Melody generation failed after all attempts. Last error: ${err2?.message}`)
   }
 }
 
 function sanitizeError(error: any): string {
   const errorStr = error instanceof Error ? error.message : String(error)
-  // Log the real error for debugging while returning a user-friendly message
   console.error('🔍 sanitizeError raw:', errorStr)
   if (errorStr.includes('audio') && (errorStr.includes('format') || errorStr.includes('decode') || errorStr.includes('codec'))) {
     return 'Audio format not supported. Please try uploading a WAV file instead.'
   }
   if (errorStr.includes('too short') || errorStr.includes('duration')) {
     return 'Audio is too short. Please record or upload at least 15 seconds.'
+  }
+  if (errorStr.includes('timed out')) {
+    return 'Generation took too long. Please try a shorter audio clip.'
+  }
+  if (errorStr.includes('Queue submit failed') || errorStr.includes('FAILED in queue')) {
+    return 'Voice Melody model is currently busy. Please try again in a few minutes.'
   }
   return '444 radio is locking in, please try again in a few minutes'
 }
