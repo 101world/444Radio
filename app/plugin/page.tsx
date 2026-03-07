@@ -190,6 +190,7 @@ const FEATURES = [
   { key: 'audio-boost', icon: Volume2, label: 'Audio Boost', desc: 'Mix & master your track', color: 'orange', cost: 1 },
   { key: 'extract', icon: Layers, label: 'Extract', desc: 'Extract audio from video/audio', color: 'cyan', cost: 1 },
   { key: 'autotune', icon: Zap, label: 'Autotune', desc: 'Pitch correct to any key', color: 'purple', cost: 1 },
+  { key: 'voice-melody', icon: Mic, label: 'Voice to Melody', desc: 'Hum or sing → AI melody', color: 'purple', cost: 2 },
   { key: 'visualizer', icon: Film, label: 'Visualizer', desc: 'Text/Image to video', color: 'purple', cost: -1 },
   { key: 'upload', icon: Upload, label: 'Upload', desc: 'Upload audio/video', color: 'purple', cost: 0 },
   { key: 'release', icon: Rocket, label: 'Release', desc: 'Publish to feed', color: 'cyan', cost: 0 },
@@ -2594,7 +2595,7 @@ function PluginPageInner() {
                   return true
                 }).map(f => {
                   const Icon = f.icon
-                  const isActive = f.key === selectedType || (f.key === 'lyrics' && !!(customTitle || genre || customLyrics || bpm)) || (f.key === 'input' && showInputEditor) || (f.key === 'lipsync' && showLipSyncModal) || (f.key === 'remix' && showResoundModal) || (f.key === 'image' && showCoverArtGenModal)
+                  const isActive = f.key === selectedType || (f.key === 'lyrics' && !!(customTitle || genre || customLyrics || bpm)) || (f.key === 'input' && showInputEditor) || (f.key === 'lipsync' && showLipSyncModal) || (f.key === 'remix' && showResoundModal) || (f.key === 'image' && showCoverArtGenModal) || (f.key === 'voice-melody' && showVoiceMelodyModal)
                   const colorMap: Record<string, { active: React.CSSProperties; inactive: React.CSSProperties }> = {
                     cyan: {
                       active: {background:'linear-gradient(135deg, rgba(6,182,212,0.18), rgba(20,184,166,0.12))',border:'1px solid rgba(200,200,220,0.45)',color:'rgba(220,240,245,1)',boxShadow:'0 0 24px rgba(6,182,212,0.2), inset 0 1px 0 rgba(6,182,212,0.25)'},
@@ -2628,6 +2629,9 @@ function PluginPageInner() {
                         setShowFeaturesSidebar(false)
                       } else if (f.key === 'remix') {
                         setShowResoundModal(true)
+                        setShowFeaturesSidebar(false)
+                      } else if (f.key === 'voice-melody') {
+                        setShowVoiceMelodyModal(true)
                         setShowFeaturesSidebar(false)
                       } else if (f.key === 'input') {
                         setShowInputEditor(true)
