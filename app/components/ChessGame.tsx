@@ -77,6 +77,7 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded }: 
 
   const boardRef = useRef<HTMLDivElement>(null)
   const moveListRef = useRef<HTMLDivElement>(null)
+  const cpuThinkingRef = useRef(false)
 
   // ── Auto-scroll move list ──
   useEffect(() => {
@@ -201,17 +202,23 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded }: 
 
   // ── CPU move ──
   useEffect(() => {
-    if (gameMode !== 'cpu' || gameState.turn === playerColor || gameResult || isThinking) return
+    if (gameMode !== 'cpu' || gameState.turn === playerColor || gameResult || cpuThinkingRef.current) return
 
+    cpuThinkingRef.current = true
     setIsThinking(true)
+
     const timer = setTimeout(() => {
       const move = getBestMove(gameState.board, gameState.turn, difficulty, gameState.enPassantTarget, gameState.castling)
       if (move) executeMove(move)
+      cpuThinkingRef.current = false
       setIsThinking(false)
     }, 300 + Math.random() * 500) // Small delay for natural feel
 
-    return () => clearTimeout(timer)
-  }, [gameState.turn, gameMode, playerColor, gameResult, isThinking, difficulty, gameState, executeMove])
+    return () => {
+      clearTimeout(timer)
+      cpuThinkingRef.current = false
+    }
+  }, [gameState.turn, gameMode, playerColor, gameResult, difficulty, gameState, executeMove])
 
   // ── Resign ──
   const handleResign = () => {
