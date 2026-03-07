@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, Suspense, lazy } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices, Upload, RotateCcw, Repeat, Plus, Square, Guitar, AudioLines, Drum, ChevronDown, Crown, Trash2, Search, ChevronUp } from 'lucide-react'
+import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices, Upload, RotateCcw, Repeat, Plus, Square, Guitar, AudioLines, Drum, ChevronDown, Crown, Trash2, Search, ChevronUp, Bell } from 'lucide-react'
 
 // Lazy load heavy modals for better performance
 const MusicGenerationModal = lazy(() => import('../components/MusicGenerationModal'))
@@ -141,6 +141,7 @@ function CreatePageContent() {
   const [showTopNav, setShowTopNav] = useState(true)
   const [hasInteracted, setHasInteracted] = useState(false)
   const [lastScrollY, setLastScrollY] = useState(0)
+  const [notificationCount, setNotificationCount] = useState(0)
   
   // Generation queue system
   const [generationQueue, setGenerationQueue] = useState<string[]>([])
@@ -914,6 +915,21 @@ function CreatePageContent() {
       setIsLoadingCredits(false)
     }
   }, [contextCredits])
+
+  // Fetch notification count for top-right bell
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const res = await fetch('/api/notifications')
+        if (res.ok) {
+          const data = await res.json()
+          const items = Array.isArray(data) ? data : data?.notifications || []
+          setNotificationCount(items.filter((n: any) => n.unread).length)
+        }
+      } catch {}
+    }
+    fetchNotifications()
+  }, [])
 
   // Auto-hide top nav after 2 seconds or on interaction
   useEffect(() => {
@@ -2896,13 +2912,9 @@ function CreatePageContent() {
         )}
       </div>
 
-      {/* Top-Right Controls — Search + Pro Mode (unified for all screen sizes) */}
-      <div 
-        className={`fixed top-4 right-3 sm:right-4 z-50 flex items-center gap-1.5 sm:gap-2 transition-opacity duration-500 ${
-          showTopNav ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
-        style={{ pointerEvents: showTopNav ? 'auto' : 'none' }}
-      >
+      {/* Top-Right Controls — Search + PRO + Bell + Credits (always visible) */}
+      <div className="fixed top-4 right-3 sm:right-4 z-50 flex items-center gap-1.5 sm:gap-2">
+        {/* Search Chat */}
         <button
           onClick={() => {
             setShowChatSearch(prev => {
@@ -2925,6 +2937,8 @@ function CreatePageContent() {
             showChatSearch ? 'text-cyan-400' : 'text-white/50 group-hover:text-white/80'
           }`} />
         </button>
+
+        {/* PRO Mode Toggle */}
         <button
           onClick={() => setIsProMode(!isProMode)}
           className={`group flex items-center gap-1 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 backdrop-blur-xl rounded-full transition-all duration-500 pointer-events-auto ${
@@ -2963,6 +2977,33 @@ function CreatePageContent() {
               <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.8)]"></span>
             </span>
           )}
+        </button>
+
+        {/* Notification Bell */}
+        <button
+          onClick={() => router.push('/settings?tab=notifications')}
+          className="group relative flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 backdrop-blur-xl rounded-full bg-black/60 hover:bg-black/80 border border-white/20 hover:border-white/40 shadow-lg shadow-black/20 transition-all duration-300 pointer-events-auto"
+          title="Notifications"
+        >
+          <Bell size={13} className="sm:hidden text-white/50 group-hover:text-white/80 transition-colors" />
+          <Bell size={14} className="hidden sm:block text-white/50 group-hover:text-white/80 transition-colors" />
+          {notificationCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[16px] h-4 px-1 bg-red-500 text-white text-[9px] font-bold rounded-full shadow-lg shadow-red-500/30">
+              {notificationCount > 9 ? '9+' : notificationCount}
+            </span>
+          )}
+        </button>
+
+        {/* Credits Badge */}
+        <button
+          onClick={() => router.push('/settings?tab=wallet')}
+          className="group flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 backdrop-blur-xl rounded-full bg-black/60 hover:bg-black/80 border border-white/20 hover:border-white/40 shadow-lg shadow-black/20 transition-all duration-300 pointer-events-auto"
+          title="View credits"
+        >
+          <Zap size={12} className="text-cyan-400 group-hover:text-cyan-300 transition-colors" />
+          <span className="text-cyan-300 font-bold text-[11px] sm:text-xs tabular-nums group-hover:text-cyan-200 transition-colors">
+            {userCredits ?? '...'}
+          </span>
         </button>
       </div>
 

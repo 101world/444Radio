@@ -53,7 +53,8 @@ export default async function RootLayout({
   const pathname = headersList.get('x-pathname') || ''
   const isPluginPage = pathname === '/plugin' || pathname.startsWith('/plugin/')
   const isAssistant = pathname === '/assistant' || pathname.startsWith('/assistant/')
-  const isCreatorV2 = pathname === '/creator-v2' || pathname.startsWith('/creator-v2/') || pathname === '/input' || pathname.startsWith('/input/') || pathname === '/voice-labs' || pathname.startsWith('/voice-labs/') || pathname === '/studio' || pathname.startsWith('/studio/') || isAssistant
+  const isCreate = pathname === '/create' || pathname.startsWith('/create/')
+  const isCreatorV2 = pathname === '/creator-v2' || pathname.startsWith('/creator-v2/') || pathname === '/input' || pathname.startsWith('/input/') || pathname === '/voice-labs' || pathname.startsWith('/voice-labs/') || pathname === '/studio' || pathname.startsWith('/studio/') || isAssistant || isCreate
 
   if (isPluginPage) {
     return (
@@ -141,6 +142,7 @@ export default async function RootLayout({
                   {children}
                 </PlayerAwareMain>
                 {isAssistant && <><DockedSidebar /><FloatingNavButton /></>}
+                {isCreate && <><DockedSidebar /><FloatingNavButton /></>}
                 {!isCreatorV2 && <ConditionalGlobalPlayer />}
                 <GenerationMonitor />
                 <GenerationRecovery />
