@@ -2896,8 +2896,13 @@ function CreatePageContent() {
         )}
       </div>
 
-      {/* Search Button — Top Right, positioned LEFT of Pro Mode (hidden on mobile) */}
-      <div className="hidden md:block fixed top-4 right-[13.5rem] z-50">
+      {/* Top-Right Controls — Search + Pro Mode (unified for all screen sizes) */}
+      <div 
+        className={`fixed top-4 right-3 sm:right-4 z-50 flex items-center gap-1.5 sm:gap-2 transition-opacity duration-500 ${
+          showTopNav ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        style={{ pointerEvents: showTopNav ? 'auto' : 'none' }}
+      >
         <button
           onClick={() => {
             setShowChatSearch(prev => {
@@ -2906,16 +2911,58 @@ function CreatePageContent() {
               return !prev
             })
           }}
-          className={`group flex items-center justify-center w-9 h-9 backdrop-blur-xl rounded-full transition-all duration-300 pointer-events-auto ${
+          className={`group flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 backdrop-blur-xl rounded-full transition-all duration-300 pointer-events-auto ${
             showChatSearch
               ? 'bg-cyan-950/80 border-2 border-cyan-500/60 shadow-[0_0_15px_rgba(34,211,238,0.3)]'
               : 'bg-black/60 hover:bg-black/80 border border-white/20 hover:border-white/40 shadow-lg shadow-black/20'
           }`}
           title="Search Chat (Ctrl+F)"
         >
-          <Search size={14} className={`transition-all duration-300 ${
+          <Search size={13} className={`sm:hidden transition-all duration-300 ${
             showChatSearch ? 'text-cyan-400' : 'text-white/50 group-hover:text-white/80'
           }`} />
+          <Search size={14} className={`hidden sm:block transition-all duration-300 ${
+            showChatSearch ? 'text-cyan-400' : 'text-white/50 group-hover:text-white/80'
+          }`} />
+        </button>
+        <button
+          onClick={() => setIsProMode(!isProMode)}
+          className={`group flex items-center gap-1 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 backdrop-blur-xl rounded-full transition-all duration-500 pointer-events-auto ${
+            isProMode
+              ? 'bg-red-950/80 hover:bg-red-900/80 border-2 border-red-500/80 hover:border-red-400 shadow-[0_0_20px_rgba(239,68,68,0.4),0_0_60px_rgba(239,68,68,0.15)] hover:shadow-[0_0_30px_rgba(239,68,68,0.6),0_0_80px_rgba(239,68,68,0.2)]'
+              : 'bg-black/60 hover:bg-black/80 border border-white/20 hover:border-white/40 shadow-lg shadow-black/20'
+          }`}
+          title={isProMode ? 'Switch to Standard Mode' : 'Activate Pro Mode'}
+        >
+          <Crown 
+            size={13} 
+            className={`sm:hidden transition-all duration-500 ${
+              isProMode 
+                ? 'text-red-400 drop-shadow-[0_0_12px_rgba(239,68,68,1)]' 
+                : 'text-white/50 group-hover:text-white/80'
+            }`} 
+          />
+          <Crown 
+            size={15} 
+            className={`hidden sm:block transition-all duration-500 ${
+              isProMode 
+                ? 'text-red-400 drop-shadow-[0_0_12px_rgba(239,68,68,1)]' 
+                : 'text-white/50 group-hover:text-white/80'
+            }`} 
+          />
+          <span className={`text-[10px] sm:text-xs font-black tracking-widest uppercase transition-all duration-500 ${
+            isProMode
+              ? 'text-red-300 drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]'
+              : 'text-white/50 group-hover:text-white/80'
+          }`}>
+            PRO
+          </span>
+          {isProMode && (
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.8)]"></span>
+            </span>
+          )}
         </button>
       </div>
 
@@ -2970,40 +3017,7 @@ function CreatePageContent() {
         </div>
       )}
 
-      {/* Pro Mode Toggle — Top Right, positioned LEFT of bell+credits — hidden on small mobile */}
-      <div className="hidden sm:block fixed top-4 right-[9rem] z-50">
-        <button
-          onClick={() => setIsProMode(!isProMode)}
-          className={`group flex items-center gap-2 px-3.5 py-1.5 backdrop-blur-xl rounded-full transition-all duration-500 pointer-events-auto ${
-            isProMode
-              ? 'bg-red-950/80 hover:bg-red-900/80 border-2 border-red-500/80 hover:border-red-400 shadow-[0_0_20px_rgba(239,68,68,0.4),0_0_60px_rgba(239,68,68,0.15)] hover:shadow-[0_0_30px_rgba(239,68,68,0.6),0_0_80px_rgba(239,68,68,0.2)]'
-              : 'bg-black/60 hover:bg-black/80 border border-white/20 hover:border-white/40 shadow-lg shadow-black/20'
-          }`}
-          title={isProMode ? 'Switch to Standard Mode' : 'Activate Pro Mode'}
-        >
-          <Crown 
-            size={15} 
-            className={`transition-all duration-500 ${
-              isProMode 
-                ? 'text-red-400 drop-shadow-[0_0_12px_rgba(239,68,68,1)]' 
-                : 'text-white/50 group-hover:text-white/80'
-            }`} 
-          />
-          <span className={`text-xs font-black tracking-widest uppercase transition-all duration-500 ${
-            isProMode
-              ? 'text-red-300 drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]'
-              : 'text-white/50 group-hover:text-white/80'
-          }`}>
-            PRO
-          </span>
-          {isProMode && (
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.8)]"></span>
-            </span>
-          )}
-        </button>
-      </div>
+      {/* Pro Mode Toggle is now part of unified top-right controls above */}
       {/* Features Sidebar */}
       <Suspense fallback={null}>
         <FeaturesSidebar
@@ -3102,41 +3116,7 @@ function CreatePageContent() {
         </Link>
       </div>
 
-      {/* Mobile Top-Right Controls (Search + Pro) — only on small screens */}
-      <div 
-        className={`sm:hidden fixed top-4 right-3 z-50 flex items-center gap-1.5 transition-opacity duration-500 ${
-          showTopNav ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
-        style={{ pointerEvents: showTopNav ? 'auto' : 'none' }}
-      >
-        <button
-          onClick={() => {
-            setShowChatSearch(prev => {
-              if (!prev) setTimeout(() => chatSearchInputRef.current?.focus(), 50)
-              else setChatSearchQuery('')
-              return !prev
-            })
-          }}
-          className={`w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-xl transition-all ${
-            showChatSearch
-              ? 'bg-cyan-950/80 border border-cyan-500/60'
-              : 'bg-black/50 border border-white/15'
-          }`}
-        >
-          <Search size={13} className={showChatSearch ? 'text-cyan-400' : 'text-white/50'} />
-        </button>
-        <button
-          onClick={() => setIsProMode(!isProMode)}
-          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full backdrop-blur-xl transition-all ${
-            isProMode
-              ? 'bg-red-950/80 border border-red-500/60'
-              : 'bg-black/50 border border-white/15'
-          }`}
-        >
-          <Crown size={12} className={isProMode ? 'text-red-400' : 'text-white/50'} />
-          <span className={`text-[10px] font-bold tracking-wider ${isProMode ? 'text-red-300' : 'text-white/50'}`}>PRO</span>
-        </button>
-      </div>
+      {/* Mobile Top-Right Controls are now part of unified top-right controls above */}
 
       {/* Chat Area - Glassmorphism Effect */}
       <div className="chat-scroll-container flex-1 overflow-y-auto px-2 sm:px-4 md:px-8 lg:px-16 xl:px-24 pt-4 pb-44 md:pt-6 md:pb-40 w-full scrollbar-thin scroll-smooth">
