@@ -1075,7 +1075,7 @@ export default function StudioPianoRoll({
 
   useEffect(() => {
     if (!transportPlaying) {
-      setPlayheadStep(-1)
+      // Keep playheadStep at its last position so the marquee stays visible (frozen) when paused
       if (playheadRAF.current) { cancelAnimationFrame(playheadRAF.current); playheadRAF.current = null }
       return
     }
@@ -3094,7 +3094,7 @@ export default function StudioPianoRoll({
         )}
 
         {/* Transport playhead (marquee) — shows current playback position */}
-        {transportPlaying && playheadStep >= 0 && (
+        {playheadStep >= 0 && (
           <div
             className="absolute z-40 pointer-events-none"
             style={{
@@ -3103,8 +3103,11 @@ export default function StudioPianoRoll({
               width: 2,
               height: rows.length * cellH,
               background: color,
-              opacity: 0.9,
-              boxShadow: `0 0 8px ${color}80, 0 0 2px ${color}`,
+              opacity: transportPlaying ? 0.9 : 0.45,
+              boxShadow: transportPlaying
+                ? `0 0 8px ${color}80, 0 0 2px ${color}`
+                : `0 0 4px ${color}40`,
+              transition: transportPlaying ? 'none' : 'opacity 0.3s',
             }}
           >
             {/* Playhead triangle marker at top */}

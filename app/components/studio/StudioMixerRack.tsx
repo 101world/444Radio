@@ -1608,6 +1608,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   const [channelGroups, setChannelGroups] = useState<{ id: string; name: string; color: string; channels: Set<number> }[]>([])
   const [viewMode, setViewMode] = useState<'grid' | 'tracks'>('tracks')
   const [trackCollapsed, setTrackCollapsed] = useState<Set<number>>(new Set())
+  const trackCollapseInitialized = useRef(false)
   const [showPresetRack, setShowPresetRack] = useState(false)
   const [showFxPanel, setShowFxPanel] = useState(false)
   const [fxSelectedTrack, setFxSelectedTrack] = useState(0)
@@ -1666,6 +1667,11 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
       prevChannelCount.current = channels.length
       setMutedChannels(new Set())
       setSoloedChannels(new Set())
+    }
+    // Collapse all tracks by default on first load
+    if (!trackCollapseInitialized.current && channels.length > 0) {
+      trackCollapseInitialized.current = true
+      setTrackCollapsed(new Set(channels.map((_, i) => i)))
     }
   }, [channels.length])
 
@@ -2343,7 +2349,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   }, [selectedChannels])
 
   return (
-    <div className="h-full flex flex-row overflow-hidden">
+    <div className="h-full flex flex-row" style={{ overflow: 'visible' }}>
       {/* ══ MAIN CONTENT (header + channels) ══ */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
       {/* ── Header bar — hardware control strip ── */}
@@ -3342,34 +3348,48 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
       )}
       </div>{/* end main content column */}
 
-      {/* ═══ 444 FX PANEL — right sidebar (left of PresetRack) ═══ */}
-      {showFxPanel && channels[fxSelectedTrack] && (
-        <StudioEffectsPanel
-          channel={channels[fxSelectedTrack]}
-          channelIdx={fxSelectedTrack}
-          onParamChange={handleParamChange}
-          onEffectInsert={handleEffectInsert}
-          onRemoveEffect={handleRemoveEffect}
-          layout="sidebar"
-          onClose={() => setShowFxPanel(false)}
-        />
-      )}
-
-      {/* ═══ FX PRESET RACK — right sidebar (rightmost) ═══ */}
-      {showPresetRack && (
+      {/* ═══ RIGHT SIDEBARS — absolutely positioned to overlay piano roll below ═══ */}
+      {(showFxPanel || showPresetRack) && (
         <div
-          className="shrink-0 h-full overflow-hidden"
+          className="absolute right-0 top-0 bottom-0 flex flex-row"
           style={{
-            width: 220,
-            borderLeft: '1px solid rgba(255,255,255,0.04)',
-            boxShadow: '-2px 0 8px rgba(0,0,0,0.3)',
+            zIndex: 55,
+            pointerEvents: 'none',
           }}
         >
-          <PresetRack
-            selectedChannel={firstSelectedChannel}
-            onApplyPreset={applyPreset}
-            channelCount={channels.length}
-          />
+          {/* ═══ 444 FX PANEL ═══ */}
+          {showFxPanel && channels[fxSelectedTrack] && (
+            <div className="h-full" style={{ pointerEvents: 'auto' }}>
+              <StudioEffectsPanel
+                channel={channels[fxSelectedTrack]}
+                channelIdx={fxSelectedTrack}
+                onParamChange={handleParamChange}
+                onEffectInsert={handleEffectInsert}
+                onRemoveEffect={handleRemoveEffect}
+                layout="sidebar"
+                onClose={() => setShowFxPanel(false)}
+              />
+            </div>
+          )}
+
+          {/* ═══ FX PRESET RACK ═══ */}
+          {showPresetRack && (
+            <div
+              className="h-full overflow-hidden"
+              style={{
+                width: 220,
+                borderLeft: '1px solid rgba(255,255,255,0.04)',
+                boxShadow: '-2px 0 8px rgba(0,0,0,0.3)',
+                pointerEvents: 'auto',
+              }}
+            >
+              <PresetRack
+                selectedChannel={firstSelectedChannel}
+                onApplyPreset={applyPreset}
+                channelCount={channels.length}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -967,9 +967,12 @@ export default function StudioEditor() {
                       params.note = noteName
                     } else {
                       // Sample-based: use note for pitched playback (Strudel way)
-                      // Pitch = playbackRate derived from note relative to base C3
                       params.note = noteName
-                      params.n = 0
+                      // For GM soundfonts, don't set n — superdough resolves the correct
+                      // sample from the note name alone. Setting n=0 can override instrument selection.
+                      if (!source.startsWith('gm_')) {
+                        params.n = 0
+                      }
                       if (ch.bank) params.bank = ch.bank
                       // Pass begin/end if channel has trim so preview matches
                       const beginP = ch.params.find(p => p.key === 'begin')
