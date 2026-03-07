@@ -1447,6 +1447,7 @@ function CreatePageContent() {
       setGenre('')
       setSongDuration('long')
       setIsInstrumental(false)
+      setSelectedLanguage('English')
       clearAllRefs()
       return
     }
@@ -1597,6 +1598,16 @@ function CreatePageContent() {
           // Also detect Hindi-family keywords in the prompt (catches romanized Hindi)
           const hindiKeywordsInPrompt = /\b(hindi|urdu|punjabi|tamil|telugu|bengali|marathi|gujarati|kannada|malayalam|bollywood|desi|bhangra|ghazal|qawwali|filmi|sufi|carnatic|raga|raaga)\b/i.test(params.prompt)
 
+          // Log all routing conditions for debugging model selection
+          console.log('[Model Routing]', {
+            selectedLanguage,
+            isHindiFamily,
+            hasIndicScript,
+            hindiKeywordsInPrompt,
+            isProMode,
+            willUse: (isHindiFamily || hasIndicScript || hindiKeywordsInPrompt) ? 'MiniMax 2.0 (Hindi)' : isProMode ? 'MiniMax 2.0 (Pro)' : 'MiniMax 1.5 (Standard)'
+          })
+
           if (isHindiFamily || hasIndicScript || hindiKeywordsInPrompt) {
             const reason = isHindiFamily ? `language: ${selectedLanguage}` : hasIndicScript ? 'Indic script in lyrics' : 'Hindi keyword in prompt'
             console.log(`[Generation] Using MiniMax 2.0 via fal.ai (${reason})`)
@@ -1606,14 +1617,7 @@ function CreatePageContent() {
             console.log('[Generation] 🔴 PRO MODE — Using premium engine via fal.ai')
             result = await generateHindiMusic(promptWithAccent, titleToUse, lyricsToUse, genreToUse, abortController.signal, messageId, 'pro')
           } else {
-            console.log('[Generation] Calling generateMusic with:', { 
-              prompt: promptWithAccent, 
-              titleToUse, 
-              lyricsToUse, 
-              durationToUse,
-              genreToUse
-            })
-            console.log('🔍 [TITLE DEBUG] Title being sent to generateMusic:', titleToUse)
+            console.log('[Generation] Using MiniMax 1.5 via Replicate (Standard mode)')
             result = await generateMusic(promptWithAccent, titleToUse, lyricsToUse, durationToUse, genreToUse, undefined, abortController.signal, messageId)
           }
         }
