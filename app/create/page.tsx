@@ -2879,7 +2879,7 @@ function CreatePageContent() {
   }
 
   return (
-    <div className={`min-h-screen bg-black text-white flex flex-col transition-all duration-700 ease-out ${showFeaturesSidebar ? 'md:pl-[312px]' : 'md:pl-14'} md:pr-28 ${isProMode ? 'pro-mode' : ''}`}>
+    <div className={`min-h-screen bg-black text-white flex flex-col transition-all duration-700 ease-out ${showFeaturesSidebar ? 'md:pl-[312px]' : 'md:pl-14'} md:pr-28 ${isProMode ? 'pro-mode' : ''}`} style={{ WebkitOverflowScrolling: 'touch' }}>
       {/* Ambient Glow Overlays — Cyan default, PUNCHY Red in Pro Mode */}
       <div className="fixed inset-0 pointer-events-none z-0" aria-hidden="true">
         <div className={`absolute top-0 left-1/4 w-[600px] h-[600px] rounded-full blur-[120px] transition-colors duration-1000 ${isProMode ? 'bg-red-500/[0.08]' : 'bg-cyan-500/[0.03]'}`} />
@@ -2896,8 +2896,8 @@ function CreatePageContent() {
         )}
       </div>
 
-      {/* Search Button — Top Right, positioned LEFT of Pro Mode */}
-      <div className="fixed top-4 right-[13.5rem] z-50">
+      {/* Search Button — Top Right, positioned LEFT of Pro Mode (hidden on mobile) */}
+      <div className="hidden md:block fixed top-4 right-[13.5rem] z-50">
         <button
           onClick={() => {
             setShowChatSearch(prev => {
@@ -2921,8 +2921,8 @@ function CreatePageContent() {
 
       {/* Chat Search Bar — slides down from top */}
       {showChatSearch && (
-        <div className="fixed top-14 right-4 z-50 animate-fadeIn">
-          <div className="flex items-center gap-2 bg-black/90 backdrop-blur-2xl border border-cyan-500/30 rounded-xl px-3 py-2 shadow-2xl shadow-cyan-500/10 w-80">
+        <div className="fixed top-14 left-4 right-4 md:left-auto md:right-4 z-50 animate-fadeIn">
+          <div className="flex items-center gap-2 bg-black/90 backdrop-blur-2xl border border-cyan-500/30 rounded-xl px-3 py-2 shadow-2xl shadow-cyan-500/10 w-full md:w-80">
             <Search size={14} className="text-cyan-400 flex-shrink-0" />
             <input
               ref={chatSearchInputRef}
@@ -2970,8 +2970,8 @@ function CreatePageContent() {
         </div>
       )}
 
-      {/* Pro Mode Toggle — Top Right, positioned LEFT of bell+credits — always visible */}
-      <div className="fixed top-4 right-[9rem] z-50">
+      {/* Pro Mode Toggle — Top Right, positioned LEFT of bell+credits — hidden on small mobile */}
+      <div className="hidden sm:block fixed top-4 right-[9rem] z-50">
         <button
           onClick={() => setIsProMode(!isProMode)}
           className={`group flex items-center gap-2 px-3.5 py-1.5 backdrop-blur-xl rounded-full transition-all duration-500 pointer-events-auto ${
@@ -3077,19 +3077,19 @@ function CreatePageContent() {
 
       {/* Back to Home Button - Mobile optimized with fade transition */}
       <div 
-        className={`fixed top-6 left-4 md:left-6 z-50 transition-opacity duration-500 ${
+        className={`fixed top-4 sm:top-6 left-3 sm:left-4 md:left-6 z-50 transition-opacity duration-500 ${
           showTopNav ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`} 
         style={{ pointerEvents: showTopNav ? 'auto' : 'none' }}
       >
         <Link href="/" className="block">
-          <button className={`group flex items-center gap-2 px-3 md:px-4 py-2 backdrop-blur-xl rounded-full transition-all duration-500 shadow-lg pointer-events-auto ${
+          <button className={`group flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 backdrop-blur-xl rounded-full transition-all duration-500 shadow-lg pointer-events-auto ${
             isProMode
               ? 'bg-black/40 hover:bg-red-500/10 border border-red-500/30 hover:border-red-400/60 shadow-red-500/5 hover:shadow-red-500/20 hover:shadow-xl'
               : 'bg-black/40 hover:bg-cyan-500/10 border border-cyan-500/30 hover:border-cyan-400/60 shadow-cyan-500/5 hover:shadow-cyan-500/20 hover:shadow-xl'
           }`}>
             <svg 
-              className={`w-4 h-4 transition-all duration-500 group-hover:-translate-x-1 ${isProMode ? 'text-red-400' : 'text-cyan-400'}`}
+              className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-all duration-500 group-hover:-translate-x-1 ${isProMode ? 'text-red-400' : 'text-cyan-400'}`}
               fill="none" 
               stroke="currentColor" 
               viewBox="0 0 24 24"
@@ -3102,10 +3102,46 @@ function CreatePageContent() {
         </Link>
       </div>
 
+      {/* Mobile Top-Right Controls (Search + Pro) — only on small screens */}
+      <div 
+        className={`sm:hidden fixed top-4 right-3 z-50 flex items-center gap-1.5 transition-opacity duration-500 ${
+          showTopNav ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        style={{ pointerEvents: showTopNav ? 'auto' : 'none' }}
+      >
+        <button
+          onClick={() => {
+            setShowChatSearch(prev => {
+              if (!prev) setTimeout(() => chatSearchInputRef.current?.focus(), 50)
+              else setChatSearchQuery('')
+              return !prev
+            })
+          }}
+          className={`w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-xl transition-all ${
+            showChatSearch
+              ? 'bg-cyan-950/80 border border-cyan-500/60'
+              : 'bg-black/50 border border-white/15'
+          }`}
+        >
+          <Search size={13} className={showChatSearch ? 'text-cyan-400' : 'text-white/50'} />
+        </button>
+        <button
+          onClick={() => setIsProMode(!isProMode)}
+          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full backdrop-blur-xl transition-all ${
+            isProMode
+              ? 'bg-red-950/80 border border-red-500/60'
+              : 'bg-black/50 border border-white/15'
+          }`}
+        >
+          <Crown size={12} className={isProMode ? 'text-red-400' : 'text-white/50'} />
+          <span className={`text-[10px] font-bold tracking-wider ${isProMode ? 'text-red-300' : 'text-white/50'}`}>PRO</span>
+        </button>
+      </div>
+
       {/* Chat Area - Glassmorphism Effect */}
-      <div className="chat-scroll-container flex-1 overflow-y-auto px-3 sm:px-4 md:px-8 lg:px-16 xl:px-24 py-6 pb-40 w-full scrollbar-thin scroll-smooth">
+      <div className="chat-scroll-container flex-1 overflow-y-auto px-2 sm:px-4 md:px-8 lg:px-16 xl:px-24 pt-4 pb-44 md:pt-6 md:pb-40 w-full scrollbar-thin scroll-smooth">
         {/* Single Glassmorphism Container - Full Width */}
-        <div className={`relative p-4 sm:p-6 md:p-8 rounded-3xl backdrop-blur-sm transition-all duration-700 ${
+        <div className={`relative p-3 sm:p-5 md:p-8 rounded-2xl sm:rounded-3xl backdrop-blur-sm transition-all duration-700 ${
           isProMode
             ? 'bg-white/[0.01] border border-red-500/15 shadow-2xl shadow-red-500/[0.05]'
             : 'bg-white/[0.01] border border-cyan-500/10 shadow-2xl shadow-cyan-500/[0.03]'
@@ -3132,7 +3168,7 @@ function CreatePageContent() {
               } transition-all duration-300`}
             >
               {/* Message Content - Compact & Aligned */}
-              <div className={`max-w-[75%] md:max-w-2xl ${message.type === 'user' ? 'items-end' : 'items-start'} space-y-2`}>
+              <div className={`max-w-[92%] sm:max-w-[80%] md:max-w-2xl ${message.type === 'user' ? 'items-end' : 'items-start'} space-y-2`}>
                 {/* Text Message - Sleeker Bubble */}
                 {message.content && (
                   <div className={`${message.type === 'user' ? 'text-right' : 'text-left'}`}>
@@ -3175,21 +3211,22 @@ function CreatePageContent() {
 
                 {/* Music Result - Bigger and Cooler */}
                 {message.result?.audioUrl && message.generationType !== 'video' && (
-                  <div className="backdrop-blur-sm md:backdrop-blur-xl bg-gradient-to-br from-black/60 via-black/50 to-black/60 border-2 border-cyan-500/30 rounded-3xl overflow-hidden group hover:border-cyan-400/50 transition-all">
+                  <div className="backdrop-blur-sm md:backdrop-blur-xl bg-gradient-to-br from-black/60 via-black/50 to-black/60 border border-cyan-500/30 sm:border-2 rounded-2xl sm:rounded-3xl overflow-hidden group hover:border-cyan-400/50 transition-all">
                     {/* Header with Smaller Play Button */}
-                    <div className="flex items-center gap-3 p-4 border-b border-white/10">
+                    <div className="flex items-center gap-2.5 sm:gap-3 p-3 sm:p-4 border-b border-white/10">
                       <button
                         onClick={() => handlePlayPause(message.id, message.result!.audioUrl!, message.result!.title || 'Generated Track')}
-                        className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all active:scale-95 hover:scale-105 ${
+                        className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all active:scale-95 hover:scale-105 ${
                           isProMode
                             ? 'bg-red-600 hover:bg-red-700 shadow-lg shadow-red-500/40 ring-1 ring-red-400/30'
                             : 'bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 hover:from-cyan-700 hover:via-cyan-600 hover:to-cyan-500 shadow-lg shadow-cyan-500/30'
                         }`}
                       >
-                        {currentTrack?.id === message.id && isPlaying ? <Pause size={20} className="text-black" /> : <Play size={20} className="text-black ml-0.5" />}
+                        {currentTrack?.id === message.id && isPlaying ? <Pause size={18} className="text-black sm:hidden" /> : <Play size={18} className="text-black ml-0.5 sm:hidden" />}
+                        {currentTrack?.id === message.id && isPlaying ? <Pause size={20} className="text-black hidden sm:block" /> : <Play size={20} className="text-black ml-0.5 hidden sm:block" />}
                       </button>
                       <div className="flex-1 min-w-0">
-                        <h4 className="text-lg font-bold text-white truncate">{message.result.title}</h4>
+                        <h4 className="text-base sm:text-lg font-bold text-white truncate">{message.result.title}</h4>
                       </div>
                       <button
                         onClick={() => {
@@ -3198,17 +3235,19 @@ function CreatePageContent() {
                             (detailsModal as HTMLDialogElement).showModal()
                           }
                         }}
-                        className="p-2.5 hover:bg-cyan-500/20 rounded-xl transition-colors"
+                        className="p-2 sm:p-2.5 hover:bg-cyan-500/20 rounded-xl transition-colors"
                         title="View Details"
                       >
-                        <FileText size={20} className="text-cyan-400" />
+                        <FileText size={16} className="text-cyan-400 sm:hidden" />
+                        <FileText size={20} className="text-cyan-400 hidden sm:block" />
                       </button>
                       <button
                         onClick={() => handleOpenRelease(message.id, undefined)}
-                        className="p-2.5 hover:bg-cyan-500/20 rounded-xl transition-colors md:opacity-0 md:group-hover:opacity-100"
+                        className="p-2 sm:p-2.5 hover:bg-cyan-500/20 rounded-xl transition-colors md:opacity-0 md:group-hover:opacity-100"
                         title="Release"
                       >
-                        <Rocket size={20} className="text-cyan-400" />
+                        <Rocket size={16} className="text-cyan-400 sm:hidden" />
+                        <Rocket size={20} className="text-cyan-400 hidden sm:block" />
                       </button>
                     </div>
 
@@ -3265,39 +3304,42 @@ function CreatePageContent() {
                         <div className="flex-1 flex border-r border-white/10">
                           <button
                             onClick={() => handleDownload(message.result!.audioUrl!, `${message.result!.title}.mp3`, 'mp3')}
-                            className="flex-1 px-4 py-4 hover:bg-white/10 text-sm font-medium text-cyan-400 flex items-center justify-center gap-2 transition-colors border-r border-white/5"
+                            className="flex-1 px-3 sm:px-4 py-3 sm:py-4 hover:bg-white/10 text-xs sm:text-sm font-medium text-cyan-400 flex items-center justify-center gap-1.5 sm:gap-2 transition-colors border-r border-white/5"
                             title="Download MP3"
                           >
-                            <Download size={18} />
+                            <Download size={16} className="sm:hidden" />
+                            <Download size={18} className="hidden sm:block" />
                             MP3
                           </button>
                           <button
                             onClick={() => handleDownload(message.result!.audioUrl!, `${message.result!.title}.mp3`, 'wav')}
-                            className="flex-1 px-4 py-4 hover:bg-white/10 text-sm font-medium text-cyan-300 flex items-center justify-center gap-2 transition-colors"
+                            className="flex-1 px-3 sm:px-4 py-3 sm:py-4 hover:bg-white/10 text-xs sm:text-sm font-medium text-cyan-300 flex items-center justify-center gap-1.5 sm:gap-2 transition-colors"
                             title="Download WAV (High Quality)"
                           >
-                            <Download size={18} />
+                            <Download size={16} className="sm:hidden" />
+                            <Download size={18} className="hidden sm:block" />
                             WAV
                           </button>
                         </div>
                         <Link
                           href="/library"
-                          className="flex-1 px-6 py-4 hover:bg-white/10 text-sm font-medium text-cyan-400 flex items-center justify-center gap-2 transition-colors"
+                          className="flex-1 px-4 sm:px-6 py-3 sm:py-4 hover:bg-white/10 text-xs sm:text-sm font-medium text-cyan-400 flex items-center justify-center gap-1.5 sm:gap-2 transition-colors"
                         >
-                          <Layers size={18} />
+                          <Layers size={16} className="sm:hidden" />
+                          <Layers size={18} className="hidden sm:block" />
                           Library
                         </Link>
                       </div>
                       {/* More Actions — collapsed by default */}
                       <details className="border-t border-white/10 group/more">
-                        <summary className="px-6 py-3 text-sm text-gray-400 cursor-pointer hover:bg-white/5 transition-colors font-medium flex items-center justify-center gap-2 select-none">
+                        <summary className="px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm text-gray-400 cursor-pointer hover:bg-white/5 transition-colors font-medium flex items-center justify-center gap-2 select-none">
                           <ChevronDown size={14} className="transition-transform group-open/more:rotate-180" />
                           More Actions
                         </summary>
                         <div className="flex flex-col">
                           <button
                             onClick={() => handleSplitStems(message.result!.audioUrl!, message.id)}
-                            className="w-full px-6 py-3.5 hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-pink-500/10 border-t border-white/10 text-sm font-medium text-purple-400 flex items-center justify-center gap-2 transition-all"
+                            className="w-full px-4 sm:px-6 py-3 sm:py-3.5 hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-pink-500/10 border-t border-white/10 text-xs sm:text-sm font-medium text-purple-400 flex items-center justify-center gap-2 transition-all"
                             title="Split audio into individual stems (vocals, drums, bass, etc.)"
                           >
                             <Sparkles size={18} />
@@ -3630,21 +3672,21 @@ function CreatePageContent() {
 
       {/* Fixed Bottom Dock - Home Page Style (hidden when Features Sidebar is open) */}
       {showBottomDock && !showFeaturesSidebar && (
-      <div className="fixed bottom-0 left-0 right-0 px-4 sm:px-6 lg:px-8 pb-4 md:pb-8 z-20 bg-gradient-to-t from-black via-black/80 to-transparent pt-8 transition-all duration-300 ease-out">
+      <div className="fixed bottom-0 left-0 right-0 px-2 sm:px-4 lg:px-8 pb-2 sm:pb-4 md:pb-8 z-20 bg-gradient-to-t from-black via-black/90 to-transparent pt-6 sm:pt-8 transition-all duration-300 ease-out">
         <div className="w-full md:max-w-xl lg:max-w-3xl mx-auto">
           
           {/* Advanced Options Dropdown Panel */}
           {showAdvancedButtons && (
-            <div className="mb-3 mx-auto max-w-4xl animate-in slide-in-from-top-2 duration-200">
-              <div className="bg-black/30 backdrop-blur-2xl border border-white/10 rounded-2xl p-4 shadow-2xl shadow-black/40">
+            <div className="mb-2 sm:mb-3 mx-auto max-w-4xl animate-in slide-in-from-top-2 duration-200">
+              <div className="bg-black/30 backdrop-blur-2xl border border-white/10 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-2xl shadow-black/40">
                 
                 {/* Generation Types */}
                 <div className="mb-4">
                   <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2 px-1">Generate</h3>
-                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 sm:gap-2">
                     <button
                       onClick={() => setSelectedType('music')}
-                      className={`group relative p-3 rounded-xl transition-all duration-200 ${
+                      className={`group relative p-2 sm:p-3 rounded-lg sm:rounded-xl transition-all duration-200 ${
                         selectedType === 'music'
                           ? 'bg-cyan-500/20 border border-cyan-400/50 shadow-lg shadow-cyan-500/20'
                           : 'bg-white/5 border border-white/10 hover:bg-white/10 hover:border-cyan-400/30'
@@ -3858,7 +3900,7 @@ function CreatePageContent() {
             }`} style={{ touchAction: 'manipulation' }}>
 
               {/* ── Row 1: Textarea ── */}
-              <div className="flex items-end gap-2 sm:gap-3 px-3 sm:px-4 md:px-5 pt-3 sm:pt-4 pb-2">
+              <div className="flex items-end gap-2 sm:gap-3 px-2.5 sm:px-4 md:px-5 pt-2.5 sm:pt-4 pb-1.5 sm:pb-2">
                 <div className="flex-1 min-w-0">
                   <textarea
                     ref={(el) => {
@@ -3929,12 +3971,12 @@ function CreatePageContent() {
               </div>
 
               {/* ── Row 2: Toolbar — spaced buttons + credits ── */}
-              <div className="flex items-center gap-1.5 sm:gap-1.5 md:gap-1.5 px-2 sm:px-3 md:px-4 pb-3 pt-1 border-t border-white/[0.04]">
+              <div className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 md:px-4 pb-2 sm:pb-3 pt-1 border-t border-white/[0.04] overflow-x-auto scrollbar-none">
 
                 {/* Plus / Advanced */}
                 <button
                   onClick={() => setShowAdvancedButtons(!showAdvancedButtons)}
-                  className={`flex-shrink-0 w-9 h-9 sm:w-9 sm:h-9 rounded-lg transition-all duration-300 flex items-center justify-center ${
+                  className={`flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-lg transition-all duration-300 flex items-center justify-center ${
                     showAdvancedButtons
                       ? 'bg-cyan-500/20 border border-cyan-400/40'
                       : 'hover:bg-white/[0.06] border border-transparent hover:border-white/10'
@@ -3947,7 +3989,7 @@ function CreatePageContent() {
                 {/* Speech-to-text */}
                 <button
                   onClick={isRecording ? stopRecording : startRecording}
-                  className={`flex-shrink-0 w-9 h-9 sm:w-9 sm:h-9 rounded-lg transition-all duration-300 flex items-center justify-center ${
+                  className={`flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-lg transition-all duration-300 flex items-center justify-center ${
                     isRecording
                       ? 'bg-red-500/20 border border-red-400/40 animate-pulse'
                       : 'hover:bg-white/[0.06] border border-transparent hover:border-white/10'
@@ -3967,7 +4009,7 @@ function CreatePageContent() {
                     if (isAudioRecording) { stopAudioRecording(); return }
                     setShowRemakeModal(true)
                   }}
-                  className={`relative flex-shrink-0 w-9 h-9 sm:w-9 sm:h-9 rounded-lg transition-all duration-300 flex items-center justify-center ${
+                  className={`relative flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-lg transition-all duration-300 flex items-center justify-center ${
                     isAudioRecording
                       ? 'bg-purple-500/20 border border-purple-400/40 animate-pulse'
                       : hasVoiceOrInstrumentalRef
@@ -3989,7 +4031,7 @@ function CreatePageContent() {
                 {/* Remix — upload beat + prompt with 444 Radio */}
                 <button
                   onClick={() => setShowResoundModal(true)}
-                  className={`flex-shrink-0 w-9 h-9 sm:w-9 sm:h-9 rounded-lg transition-all duration-500 flex items-center justify-center ${
+                  className={`flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-lg transition-all duration-500 flex items-center justify-center ${
                     isProMode
                       ? 'hover:bg-red-500/20 border border-red-500/20 hover:border-red-400/40 bg-red-500/10'
                       : 'hover:bg-cyan-500/20 border border-cyan-500/20 hover:border-cyan-400/40 bg-cyan-500/10'
@@ -4002,7 +4044,7 @@ function CreatePageContent() {
                 {/* Lyrics Editor */}
                 <button
                   onClick={() => setShowLyricsModal(true)}
-                  className={`flex-shrink-0 w-9 h-9 sm:w-9 sm:h-9 rounded-lg transition-all duration-500 flex items-center justify-center ${
+                  className={`flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-lg transition-all duration-500 flex items-center justify-center ${
                     customTitle || genre || customLyrics || bpm
                       ? isProMode
                         ? 'bg-red-500/20 border border-red-400/40'
@@ -4022,7 +4064,7 @@ function CreatePageContent() {
                     if (selectedType !== 'music') setSelectedType('music')
                     setIsInstrumental(!isInstrumental)
                   }}
-                  className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wider transition-all duration-300 ${
+                  className={`flex-shrink-0 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-bold tracking-wider transition-all duration-300 ${
                     isInstrumental
                       ? 'bg-purple-500/20 border border-purple-400/40 text-purple-300'
                       : 'hover:bg-white/[0.06] border border-transparent hover:border-white/10 text-white/40'
@@ -4055,7 +4097,7 @@ function CreatePageContent() {
                     }
                     setShowPromptSuggestions(!showPromptSuggestions)
                   }}
-                  className={`w-9 h-9 sm:w-9 sm:h-9 rounded-lg transition-all duration-300 flex items-center justify-center ${
+                  className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg transition-all duration-300 flex items-center justify-center ${
                     showPromptSuggestions
                       ? 'bg-gradient-to-br from-yellow-400 to-orange-500 shadow-lg shadow-yellow-500/50'
                       : 'bg-white/5 hover:bg-white/10 border border-yellow-400/30 hover:border-yellow-400/60'
@@ -4299,7 +4341,7 @@ function CreatePageContent() {
                 </div>
 
                 {/* Credits Badge — integrated */}
-                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-500 ${
+                <div className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border transition-all duration-500 ${
                   isProMode
                     ? 'bg-red-500/[0.06] border-red-500/[0.12]'
                     : 'bg-white/[0.04] border-white/[0.06]'
@@ -4318,7 +4360,7 @@ function CreatePageContent() {
           </div>
           
           {/* Slim Info Label */}
-          <div className="flex items-center justify-center gap-2 mt-2.5 text-xs md:text-sm">
+          <div className="flex items-center justify-center gap-2 mt-1.5 sm:mt-2.5 text-[10px] sm:text-xs md:text-sm">
             <span className={`px-3 py-1 rounded-full bg-black/20 backdrop-blur-sm border border-white/5 font-medium tracking-wide transition-colors duration-500 ${isProMode ? 'text-red-300/70' : 'text-cyan-300/70'}`}>
               {activeGenerations.size > 0 ? (
                 <span className="flex items-center gap-2">
