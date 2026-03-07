@@ -465,7 +465,7 @@ export default function AssistantPage() {
 
   // ─── RENDER ───────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white flex">
+    <div className="min-h-screen bg-[#0a0a0f] text-white flex md:pl-14">
       {/* ══ Sessions Sidebar (DESKTOP) ══ */}
       <div className="hidden lg:flex flex-col w-60 border-r border-white/[0.06] bg-[#0c0c14]">
         <div className="p-3 border-b border-white/[0.06]">
