@@ -378,7 +378,7 @@ export default function FloatingAudioPlayer() {
     togglePlayPause, setVolume, seekTo, playNext, playPrevious,
     playlist, playTrack, removeFromPlaylist, addToPlaylist,
     isLooping, isShuffled, toggleLoop, toggleShuffle,
-    getAudioElement, setPlaylist,
+    getAudioElement, setPlaylist, stopPlayback,
   } = useAudioPlayer()
 
   const [isMobile, setIsMobile] = useState(false)
@@ -628,6 +628,9 @@ export default function FloatingAudioPlayer() {
             <button onClick={() => setCollapsed(!collapsed)} className={`text-gray-500 p-1 ${proMode ? 'hover:text-red-400' : 'hover:text-teal-400'}`}>
               {collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
             </button>
+            <button onClick={stopPlayback} className="text-gray-500 p-1 hover:text-red-400" title="Close player">
+              <X size={16} />
+            </button>
           </div>
           {!collapsed && (
             <div className="mt-2 flex items-center gap-2">
@@ -783,6 +786,11 @@ export default function FloatingAudioPlayer() {
           </div>
           <span className="text-[8px] text-gray-600 font-mono">{Math.round(volume * 100)}</span>
         </div>
+
+        {/* Close player */}
+        <button onClick={stopPlayback} className="p-2 rounded-xl text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all mt-1" title="Close player">
+          <X size={14} />
+        </button>
       </div>
     )
   }
@@ -819,6 +827,9 @@ export default function FloatingAudioPlayer() {
         </div>
         <button onClick={() => setExpanded(false)} className={`p-2 text-gray-600 hover:bg-white/[0.04] rounded-xl transition-all group/collapse ${proMode ? 'hover:text-red-400' : 'hover:text-teal-400'}`} title="Collapse">
           <ChevronRight size={16} className="group-hover/collapse:translate-x-0.5 transition-transform" />
+        </button>
+        <button onClick={stopPlayback} className="p-2 text-gray-600 hover:bg-red-500/10 hover:text-red-400 rounded-xl transition-all" title="Close player">
+          <X size={16} />
         </button>
       </div>
 

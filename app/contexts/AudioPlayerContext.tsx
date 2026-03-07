@@ -44,6 +44,7 @@ interface AudioPlayerContextType {
   reorderQueue: (startIndex: number, endIndex: number) => void
   clearQueue: () => void
   playFromQueue: (track: Track) => void
+  stopPlayback: () => void
   toggleLoop: () => void
   toggleShuffle: () => void
   skipBackward: (seconds?: number) => void
@@ -563,6 +564,19 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     console.log('[Queue] Cleared all tracks')
   }
 
+  const stopPlayback = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.currentTime = 0
+    }
+    setIsPlaying(false)
+    setCurrentTrack(null)
+    setPlaylist([])
+    setQueue([])
+    setCurrentIndex(0)
+    console.log('[Player] Playback stopped and player dismissed')
+  }, [])
+
   const playFromQueue = (track: Track) => {
     // Find the track index in queue
     const trackIndex = queue.findIndex(t => t.id === track.id)
@@ -633,6 +647,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     reorderQueue,
     clearQueue,
     playFromQueue,
+    stopPlayback,
     toggleLoop,
     toggleShuffle,
     skipBackward,
@@ -665,6 +680,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     reorderQueue,
     clearQueue,
     playFromQueue,
+    stopPlayback,
     toggleLoop,
     toggleShuffle,
     skipBackward,
