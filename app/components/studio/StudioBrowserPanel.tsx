@@ -224,10 +224,6 @@ const BANK_SECTIONS: BankSection[] = [
   ]},
 ]
 
-// ── Tab types ──
-
-type Tab = 'instruments' | 'sounds' | 'banks'
-
 // ── Props ──
 
 interface StudioBrowserPanelProps {
@@ -241,7 +237,6 @@ export default function StudioBrowserPanel({
   onPreview,
   projectBpm = 120,
 }: StudioBrowserPanelProps) {
-  const [activeTab, setActiveTab] = useState<Tab>('instruments')
   const [search, setSearch] = useState('')
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set())
 
@@ -261,33 +256,8 @@ export default function StudioBrowserPanel({
     return items.filter(item => item.label.toLowerCase().includes(q))
   }, [search])
 
-  const tabs: { id: Tab; label: string; icon: string }[] = [
-    { id: 'instruments', label: 'INST', icon: '🎹' },
-    { id: 'sounds', label: 'SNDS', icon: '🥁' },
-    { id: 'banks', label: 'BANKS', icon: '📦' },
-  ]
-
   return (
-    <div className="flex flex-col h-full">
-      {/* ── Tab bar ── */}
-      <div className="flex shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => { setActiveTab(tab.id); setSearch('') }}
-            className="flex-1 flex items-center justify-center gap-1 py-2 text-[7px] font-black uppercase tracking-[.15em] cursor-pointer transition-all duration-150"
-            style={{
-              color: activeTab === tab.id ? '#e8ecf0' : '#5a616b',
-              background: activeTab === tab.id ? '#16181d' : 'transparent',
-              borderBottom: activeTab === tab.id ? '2px solid #7fa998' : '2px solid transparent',
-            }}
-          >
-            <span className="text-[10px]">{tab.icon}</span>
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
+    <div className="flex flex-col">
       {/* ── Search ── */}
       <div className="px-2 py-1.5 shrink-0">
         <div
@@ -302,173 +272,202 @@ export default function StudioBrowserPanel({
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search..."
+            placeholder="Search sounds..."
             className="flex-1 bg-transparent text-[9px] text-white/80 outline-none placeholder:text-white/20"
             spellCheck={false}
           />
         </div>
       </div>
 
-      {/* ── Content ── */}
-      <div className="flex-1 overflow-y-auto px-1" style={{ scrollbarWidth: 'thin', scrollbarColor: '#1a1d22 transparent' }}>
+      {/* ── All sections inline (no tabs) ── */}
+      <div className="px-1" style={{ scrollbarWidth: 'thin', scrollbarColor: '#1a1d22 transparent' }}>
 
-        {/* Instruments tab */}
-        {activeTab === 'instruments' && (
-          <div className="pb-2">
-            {INSTRUMENT_SECTIONS.map(section => {
-              const items = filterItems(section.items)
-              if (items.length === 0) return null
-              const isOpen = expandedSections.has(section.label) || search.length > 0
-              return (
-                <div key={section.label}>
-                  <button
-                    onClick={() => toggleSection(section.label)}
-                    className="w-full flex items-center gap-1.5 px-2 py-1.5 text-[7px] font-black uppercase tracking-[.12em] cursor-pointer hover:bg-white/[0.02] transition-colors"
-                    style={{ color: '#5a616b' }}
-                  >
-                    <span className="text-[5px]" style={{ color: '#7fa998' }}>{isOpen ? '▼' : '▶'}</span>
-                    {section.label}
-                    <span className="ml-auto text-[6px] opacity-40">{items.length}</span>
-                  </button>
-                  {isOpen && (
-                    <div className="grid grid-cols-3 gap-1 px-1 pb-1.5">
-                      {items.map(item => (
-                        <button
-                          key={item.id}
-                          onClick={() => onAddChannel(item.id, item.type)}
-                          className="flex flex-col items-center gap-0.5 py-2 px-1 rounded-lg cursor-pointer transition-all duration-150 hover:scale-[1.04] active:scale-95 group"
-                          style={{
-                            background: '#0a0b0d',
-                            border: '1px solid rgba(255,255,255,0.03)',
-                            boxShadow: '2px 2px 4px #050607, -1px -1px 3px #1a1d22',
-                          }}
-                          title={`Add ${item.label} channel`}
-                        >
-                          <span className="text-[16px] leading-none opacity-60 group-hover:opacity-100 transition-opacity">{item.icon}</span>
-                          <span className="text-[6px] font-bold text-white/40 group-hover:text-white/70 truncate w-full text-center transition-colors">{item.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        {/* Sounds tab */}
-        {activeTab === 'sounds' && (
-          <div className="pb-2">
-            {SOUND_SECTIONS.map(section => {
-              const items = filterItems(section.items)
-              if (items.length === 0) return null
-              const isOpen = expandedSections.has(section.label) || search.length > 0
-              return (
-                <div key={section.label}>
-                  <button
-                    onClick={() => toggleSection(section.label)}
-                    className="w-full flex items-center gap-1.5 px-2 py-1.5 text-[7px] font-black uppercase tracking-[.12em] cursor-pointer hover:bg-white/[0.02] transition-colors"
-                    style={{ color: '#5a616b' }}
-                  >
-                    <span className="text-[5px]" style={{ color: '#b8a47f' }}>{isOpen ? '▼' : '▶'}</span>
-                    {section.label}
-                    <span className="ml-auto text-[6px] opacity-40">{items.length}</span>
-                  </button>
-                  {isOpen && (
-                    <div className="grid grid-cols-3 gap-1 px-1 pb-1.5">
-                      {items.map(item => (
-                        <button
-                          key={item.id}
-                          onClick={() => onAddChannel(item.id, item.type)}
-                          onContextMenu={(e) => { e.preventDefault(); onPreview?.(`s("${item.id}")`) }}
-                          className="flex flex-col items-center gap-0.5 py-2 px-1 rounded-lg cursor-pointer transition-all duration-150 hover:scale-[1.04] active:scale-95 group relative"
-                          style={{
-                            background: '#0a0b0d',
-                            border: '1px solid rgba(255,255,255,0.03)',
-                            boxShadow: '2px 2px 4px #050607, -1px -1px 3px #1a1d22',
-                          }}
-                          title={`Add ${item.label} · Right-click to preview`}
-                        >
-                          <span className="text-[16px] leading-none opacity-60 group-hover:opacity-100 transition-opacity">{item.icon}</span>
-                          <span className="text-[6px] font-bold text-white/40 group-hover:text-white/70 truncate w-full text-center transition-colors">{item.label}</span>
-                          {/* Preview icon on hover */}
-                          {onPreview && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); onPreview(`s("${item.id}")`) }}
-                              className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-60 hover:!opacity-100 p-0.5 rounded transition-opacity cursor-pointer"
-                              style={{ background: 'rgba(127,169,152,0.15)' }}
-                              title="Preview sound"
-                            >
-                              <Volume2 size={7} style={{ color: '#7fa998' }} />
-                            </button>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        {/* Banks tab */}
-        {activeTab === 'banks' && (
-          <div className="pb-2">
-            <div className="px-2 py-1 mb-1">
-              <span className="text-[6px] text-white/25">Select a drum bank to apply to a channel</span>
+        {/* ═══ INSTRUMENTS ═══ */}
+        <div style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+          <button
+            onClick={() => toggleSection('__instruments__')}
+            className="w-full flex items-center gap-1.5 px-2 py-1.5 text-[7px] font-black uppercase tracking-[.15em] cursor-pointer hover:bg-white/[0.02] transition-colors"
+            style={{ color: '#7fa998' }}
+          >
+            <span className="text-[5px]">{expandedSections.has('__instruments__') || search.length > 0 ? '▼' : '▶'}</span>
+            <span className="text-[9px]">🎹</span>
+            INSTRUMENTS
+          </button>
+          {(expandedSections.has('__instruments__') || search.length > 0) && (
+            <div className="pb-2">
+              {INSTRUMENT_SECTIONS.map(section => {
+                const items = filterItems(section.items)
+                if (items.length === 0) return null
+                const isOpen = expandedSections.has(section.label) || search.length > 0
+                return (
+                  <div key={section.label}>
+                    <button
+                      onClick={() => toggleSection(section.label)}
+                      className="w-full flex items-center gap-1.5 px-2 py-1.5 text-[7px] font-black uppercase tracking-[.12em] cursor-pointer hover:bg-white/[0.02] transition-colors"
+                      style={{ color: '#5a616b' }}
+                    >
+                      <span className="text-[5px]" style={{ color: '#7fa998' }}>{isOpen ? '▼' : '▶'}</span>
+                      {section.label}
+                      <span className="ml-auto text-[6px] opacity-40">{items.length}</span>
+                    </button>
+                    {isOpen && (
+                      <div className="grid grid-cols-3 gap-1 px-1 pb-1.5">
+                        {items.map(item => (
+                          <button
+                            key={item.id}
+                            onClick={() => onAddChannel(item.id, item.type)}
+                            className="flex flex-col items-center gap-0.5 py-2 px-1 rounded-lg cursor-pointer transition-all duration-150 hover:scale-[1.04] active:scale-95 group"
+                            style={{
+                              background: '#0a0b0d',
+                              border: '1px solid rgba(255,255,255,0.03)',
+                              boxShadow: '2px 2px 4px #050607, -1px -1px 3px #1a1d22',
+                            }}
+                            title={`Add ${item.label} channel`}
+                          >
+                            <span className="text-[16px] leading-none opacity-60 group-hover:opacity-100 transition-opacity">{item.icon}</span>
+                            <span className="text-[6px] font-bold text-white/40 group-hover:text-white/70 truncate w-full text-center transition-colors">{item.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
-            {BANK_SECTIONS.map(section => {
-              const items = filterItems(section.items)
-              if (items.length === 0) return null
-              const isOpen = expandedSections.has(section.label) || search.length > 0
-              return (
-                <div key={section.label}>
-                  <button
-                    onClick={() => toggleSection(section.label)}
-                    className="w-full flex items-center gap-1.5 px-2 py-1.5 text-[7px] font-black uppercase tracking-[.12em] cursor-pointer hover:bg-white/[0.02] transition-colors"
-                    style={{ color: '#5a616b' }}
-                  >
-                    <span className="text-[5px]" style={{ color: '#6f8fb3' }}>{isOpen ? '▼' : '▶'}</span>
-                    {section.label}
-                    <span className="ml-auto text-[6px] opacity-40">{items.length}</span>
-                  </button>
-                  {isOpen && (
-                    <div className="grid grid-cols-2 gap-1 px-1 pb-1.5">
-                      {items.map(item => (
-                        <button
-                          key={item.id}
-                          onClick={() => onAddChannel('bd', 'sample')}
-                          onContextMenu={(e) => { e.preventDefault(); onPreview?.(`s("bd").bank("${item.id}")`) }}
-                          className="flex items-center gap-1.5 py-1.5 px-2 rounded-lg cursor-pointer transition-all duration-150 hover:scale-[1.02] active:scale-95 group"
-                          style={{
-                            background: '#0a0b0d',
-                            border: '1px solid rgba(255,255,255,0.03)',
-                            boxShadow: '2px 2px 4px #050607, -1px -1px 3px #1a1d22',
-                          }}
-                          title={`Add kit with ${item.label} bank · Right-click to preview`}
-                        >
-                          <span className="text-[12px] leading-none opacity-50 group-hover:opacity-90 transition-opacity">{item.icon}</span>
-                          <span className="text-[7px] font-bold text-white/40 group-hover:text-white/70 truncate transition-colors">{item.label}</span>
-                          {onPreview && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); onPreview(`s("bd").bank("${item.id}")`) }}
-                              className="ml-auto opacity-0 group-hover:opacity-60 hover:!opacity-100 p-0.5 rounded transition-opacity cursor-pointer shrink-0"
-                              style={{ background: 'rgba(111,143,179,0.15)' }}
-                              title="Preview bank kick"
-                            >
-                              <Volume2 size={7} style={{ color: '#6f8fb3' }} />
-                            </button>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
+          )}
+        </div>
+
+        {/* ═══ SOUNDS ═══ */}
+        <div style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+          <button
+            onClick={() => toggleSection('__sounds__')}
+            className="w-full flex items-center gap-1.5 px-2 py-1.5 text-[7px] font-black uppercase tracking-[.15em] cursor-pointer hover:bg-white/[0.02] transition-colors"
+            style={{ color: '#b8a47f' }}
+          >
+            <span className="text-[5px]">{expandedSections.has('__sounds__') || search.length > 0 ? '▼' : '▶'}</span>
+            <span className="text-[9px]">🥁</span>
+            SOUNDS
+          </button>
+          {(expandedSections.has('__sounds__') || search.length > 0) && (
+            <div className="pb-2">
+              {SOUND_SECTIONS.map(section => {
+                const items = filterItems(section.items)
+                if (items.length === 0) return null
+                const isOpen = expandedSections.has(section.label) || search.length > 0
+                return (
+                  <div key={section.label}>
+                    <button
+                      onClick={() => toggleSection(section.label)}
+                      className="w-full flex items-center gap-1.5 px-2 py-1.5 text-[7px] font-black uppercase tracking-[.12em] cursor-pointer hover:bg-white/[0.02] transition-colors"
+                      style={{ color: '#5a616b' }}
+                    >
+                      <span className="text-[5px]" style={{ color: '#b8a47f' }}>{isOpen ? '▼' : '▶'}</span>
+                      {section.label}
+                      <span className="ml-auto text-[6px] opacity-40">{items.length}</span>
+                    </button>
+                    {isOpen && (
+                      <div className="grid grid-cols-3 gap-1 px-1 pb-1.5">
+                        {items.map(item => (
+                          <button
+                            key={item.id}
+                            onClick={() => onAddChannel(item.id, item.type)}
+                            onContextMenu={(e) => { e.preventDefault(); onPreview?.(`s("${item.id}")`) }}
+                            className="flex flex-col items-center gap-0.5 py-2 px-1 rounded-lg cursor-pointer transition-all duration-150 hover:scale-[1.04] active:scale-95 group relative"
+                            style={{
+                              background: '#0a0b0d',
+                              border: '1px solid rgba(255,255,255,0.03)',
+                              boxShadow: '2px 2px 4px #050607, -1px -1px 3px #1a1d22',
+                            }}
+                            title={`Add ${item.label} · Right-click to preview`}
+                          >
+                            <span className="text-[16px] leading-none opacity-60 group-hover:opacity-100 transition-opacity">{item.icon}</span>
+                            <span className="text-[6px] font-bold text-white/40 group-hover:text-white/70 truncate w-full text-center transition-colors">{item.label}</span>
+                            {onPreview && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); onPreview(`s("${item.id}")`) }}
+                                className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-60 hover:!opacity-100 p-0.5 rounded transition-opacity cursor-pointer"
+                                style={{ background: 'rgba(127,169,152,0.15)' }}
+                                title="Preview sound"
+                              >
+                                <Volume2 size={7} style={{ color: '#7fa998' }} />
+                              </button>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ═══ BANKS ═══ */}
+        <div style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+          <button
+            onClick={() => toggleSection('__banks__')}
+            className="w-full flex items-center gap-1.5 px-2 py-1.5 text-[7px] font-black uppercase tracking-[.15em] cursor-pointer hover:bg-white/[0.02] transition-colors"
+            style={{ color: '#6f8fb3' }}
+          >
+            <span className="text-[5px]">{expandedSections.has('__banks__') || search.length > 0 ? '▼' : '▶'}</span>
+            <span className="text-[9px]">📦</span>
+            BANKS
+          </button>
+          {(expandedSections.has('__banks__') || search.length > 0) && (
+            <div className="pb-2">
+              {BANK_SECTIONS.map(section => {
+                const items = filterItems(section.items)
+                if (items.length === 0) return null
+                const isOpen = expandedSections.has(section.label) || search.length > 0
+                return (
+                  <div key={section.label}>
+                    <button
+                      onClick={() => toggleSection(section.label)}
+                      className="w-full flex items-center gap-1.5 px-2 py-1.5 text-[7px] font-black uppercase tracking-[.12em] cursor-pointer hover:bg-white/[0.02] transition-colors"
+                      style={{ color: '#5a616b' }}
+                    >
+                      <span className="text-[5px]" style={{ color: '#6f8fb3' }}>{isOpen ? '▼' : '▶'}</span>
+                      {section.label}
+                      <span className="ml-auto text-[6px] opacity-40">{items.length}</span>
+                    </button>
+                    {isOpen && (
+                      <div className="grid grid-cols-2 gap-1 px-1 pb-1.5">
+                        {items.map(item => (
+                          <button
+                            key={item.id}
+                            onClick={() => onAddChannel('bd', 'sample')}
+                            onContextMenu={(e) => { e.preventDefault(); onPreview?.(`s("bd").bank("${item.id}")`) }}
+                            className="flex items-center gap-1.5 py-1.5 px-2 rounded-lg cursor-pointer transition-all duration-150 hover:scale-[1.02] active:scale-95 group"
+                            style={{
+                              background: '#0a0b0d',
+                              border: '1px solid rgba(255,255,255,0.03)',
+                              boxShadow: '2px 2px 4px #050607, -1px -1px 3px #1a1d22',
+                            }}
+                            title={`Add kit with ${item.label} bank · Right-click to preview`}
+                          >
+                            <span className="text-[12px] leading-none opacity-50 group-hover:opacity-90 transition-opacity">{item.icon}</span>
+                            <span className="text-[7px] font-bold text-white/40 group-hover:text-white/70 truncate transition-colors">{item.label}</span>
+                            {onPreview && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); onPreview(`s("bd").bank("${item.id}")`) }}
+                                className="ml-auto opacity-0 group-hover:opacity-60 hover:!opacity-100 p-0.5 rounded transition-opacity cursor-pointer shrink-0"
+                                style={{ background: 'rgba(111,143,179,0.15)' }}
+                                title="Preview bank kick"
+                              >
+                                <Volume2 size={7} style={{ color: '#6f8fb3' }} />
+                              </button>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

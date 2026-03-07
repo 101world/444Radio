@@ -24,6 +24,26 @@ import StudioCodeEditor, { type StudioCodeEditorHandle } from './studio/StudioCo
 import StudioMixerRack from './studio/StudioMixerRack'
 import StudioBrowserPanel from './studio/StudioBrowserPanel'
 
+// ── Collapsible sidebar section wrapper ──
+function SidebarSection({ title, icon, color, isOpen, onToggle, children }: {
+  title: string; icon: string; color: string; isOpen: boolean; onToggle: () => void; children: React.ReactNode
+}) {
+  return (
+    <div style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center gap-1.5 px-2 py-1.5 text-[7px] font-black uppercase tracking-[.15em] cursor-pointer hover:bg-white/[0.02] transition-colors"
+        style={{ color }}
+      >
+        <span className="text-[5px]">{isOpen ? '▼' : '▶'}</span>
+        <span className="text-[9px]">{icon}</span>
+        {title}
+      </button>
+      {isOpen && <div>{children}</div>}
+    </div>
+  )
+}
+
 // Simple WebAudio fallback for drum preview when engine isn't available
 let _prevCtx: AudioContext | null = null
 function playDrumPreviewFallback(instrument: string) {
@@ -55,7 +75,7 @@ export default function StudioEditor() {
   const [leftPanelOpen, setLeftPanelOpen] = useState(false)
   const [leftPanelPinned, setLeftPanelPinned] = useState(false)
   const leftPanelHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [leftPanelTab, setLeftPanelTab] = useState<'browser' | 'tools'>('browser')
+  const [leftCollapsed, setLeftCollapsed] = useState<Set<string>>(new Set(['genres', 'knobs', 'methods']))
   const [codeVisible, setCodeVisible] = useState(false)
   const [metronomeEnabled, setMetronomeEnabled] = useState(false)
   const [pianoRollChannel, setPianoRollChannel] = useState<number | null>(null)
@@ -732,23 +752,13 @@ export default function StudioEditor() {
         >
           {(leftPanelOpen || leftPanelPinned) && (
             <div className="flex-1 flex flex-col overflow-hidden w-60" style={{ background: '#111318', borderRight: '1px solid rgba(255,255,255,0.05)' }}>
-              {/* Tab switcher + Pin */}
-              <div className="flex shrink-0 border-b border-white/5">
-                <button
-                  onClick={() => setLeftPanelTab('browser')}
-                  className={`flex-1 py-1.5 text-[8px] font-bold uppercase tracking-widest transition-colors ${leftPanelTab === 'browser' ? 'text-white/90 bg-white/[0.06]' : 'text-white/30 hover:text-white/50'}`}
-                >
-                  BROWSE
-                </button>
-                <button
-                  onClick={() => setLeftPanelTab('tools')}
-                  className={`flex-1 py-1.5 text-[8px] font-bold uppercase tracking-widest transition-colors ${leftPanelTab === 'tools' ? 'text-white/90 bg-white/[0.06]' : 'text-white/30 hover:text-white/50'}`}
-                >
-                  TOOLS
-                </button>
+              {/* Header + Pin */}
+              <div className="flex items-center shrink-0 px-2 py-1.5 border-b border-white/5">
+                <span className="text-[7px] font-black uppercase tracking-[.2em] text-white/40">BROWSER</span>
+                <div className="flex-1" />
                 <button
                   onClick={() => setLeftPanelPinned(p => !p)}
-                  className="px-1.5 py-1.5 text-[8px] transition-colors cursor-pointer"
+                  className="px-1.5 py-1 text-[8px] transition-colors cursor-pointer"
                   style={{ color: leftPanelPinned ? '#e8ecf0' : '#5a616b' }}
                   title={leftPanelPinned ? 'Unpin sidebar' : 'Pin sidebar open'}
                 >
@@ -756,21 +766,64 @@ export default function StudioEditor() {
                 </button>
               </div>
 
-              {leftPanelTab === 'browser' ? (
+              {/* Unified scrollable sidebar with collapsible sections */}
+              <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: '#1a1d22 transparent' }}>
+
+                {/* ── GENRE PRESETS (collapsible) ── */}
+                <SidebarSection
+                  title="GENRE PRESETS"
+                  icon="🎵"
+                  color="#b8a47f"
+                  isOpen={!leftCollapsed.has('genres')}
+                  onToggle={() => setLeftCollapsed(prev => {
+                    const next = new Set(prev)
+                    next.has('genres') ? next.delete('genres') : next.add('genres')
+                    return next
+                  })}
+                >
+                  <StudioGenreSelector activeGenre={activeGenre} onSelect={loadTemplate} />
+                </SidebarSection>
+
+                {/* ── LIVE KNOBS (collapsible) ── */}
+                {Object.keys(sliderDefs).length > 0 && (
+                  <SidebarSection
+                    title="LIVE KNOBS"
+                    icon="🎛️"
+                    color="#7fa998"
+                    isOpen={!leftCollapsed.has('knobs')}
+                    onToggle={() => setLeftCollapsed(prev => {
+                      const next = new Set(prev)
+                      next.has('knobs') ? next.delete('knobs') : next.add('knobs')
+                      return next
+                    })}
+                  >
+                    <StudioSliderPanel sliderDefs={sliderDefs} sliderValues={sliderValuesRef} onChange={handleSliderChange} />
+                  </SidebarSection>
+                )}
+
+                {/* ── INSTRUMENTS / SOUNDS / BANKS (from BrowserPanel) ── */}
                 <StudioBrowserPanel
                   onAddChannel={handleBrowserAddChannel}
                   onPreview={handlePreviewSound}
                   projectBpm={parseBPM(code) ?? 120}
                 />
-              ) : (
-                <>
-                  <div className="shrink-0">
-                    <StudioGenreSelector activeGenre={activeGenre} onSelect={loadTemplate} />
-                    <StudioSliderPanel sliderDefs={sliderDefs} sliderValues={sliderValuesRef} onChange={handleSliderChange} />
-                  </div>
-                  <StudioMethodsPanel onInsert={insertAtCursor} onPreview={handlePreviewSound} />
-                </>
-              )}
+
+                {/* ── METHODS (collapsible) ── */}
+                <SidebarSection
+                  title="METHODS"
+                  icon="🔧"
+                  color="#6f8fb3"
+                  isOpen={!leftCollapsed.has('methods')}
+                  onToggle={() => setLeftCollapsed(prev => {
+                    const next = new Set(prev)
+                    next.has('methods') ? next.delete('methods') : next.add('methods')
+                    return next
+                  })}
+                >
+                  <StudioMethodsPanel onInsert={insertAtCursor} onPreview={handlePreviewSound} methodsOnly />
+                </SidebarSection>
+
+              </div>
             </div>
           )}
         </div>

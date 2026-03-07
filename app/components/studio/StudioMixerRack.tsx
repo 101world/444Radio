@@ -17,6 +17,7 @@ import ChannelLCD from './ChannelLCD'
 import EffectsDocModal from './EffectsDocModal'
 import TrackView from './TrackView'
 import PresetRack from './PresetRack'
+import StudioEffectsPanel from './StudioEffectsPanel'
 import { FX_PRESETS, FX_PRESET_CATEGORIES, type FxPresetCategory } from '@/lib/fx-presets'
 import {
   parseStrudelCode, updateParamInCode, insertEffectInChannel,
@@ -1608,6 +1609,8 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   const [viewMode, setViewMode] = useState<'grid' | 'tracks'>('tracks')
   const [trackCollapsed, setTrackCollapsed] = useState<Set<number>>(new Set())
   const [showPresetRack, setShowPresetRack] = useState(false)
+  const [showFxPanel, setShowFxPanel] = useState(false)
+  const [fxSelectedTrack, setFxSelectedTrack] = useState(0)
   const groupCounter = useRef(0)
   const fxDropdownRef = useRef<HTMLDivElement>(null)
   const addMenuRef = useRef<HTMLDivElement>(null)
@@ -2806,6 +2809,22 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
         {/* Rack plugin toggles */}
         <div className="flex items-center gap-0.5 ml-2 pl-2" style={{ borderLeft: '1px solid rgba(255,255,255,0.04)' }}>
           <button
+            onClick={() => setShowFxPanel(v => !v)}
+            className="flex items-center gap-1 px-1.5 py-1 rounded transition-all cursor-pointer"
+            style={{
+              color: showFxPanel ? '#7fa998' : '#5a616b',
+              background: showFxPanel ? 'rgba(127,169,152,0.08)' : 'transparent',
+              border: showFxPanel ? '1px solid rgba(127,169,152,0.2)' : '1px solid transparent',
+              fontSize: '7px',
+              fontWeight: 800,
+              letterSpacing: '0.08em',
+            }}
+            title="444 FX Panel"
+          >
+            <Music size={9} />
+            <span className="uppercase">444 FX</span>
+          </button>
+          <button
             onClick={() => setShowPresetRack(v => !v)}
             className="flex items-center gap-1 px-1.5 py-1 rounded transition-all cursor-pointer"
             style={{
@@ -2937,6 +2956,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                 onAddSidechainTarget={handleAddSidechainTarget}
                 onRemoveSidechainTarget={handleRemoveSidechainTarget}
                 onDisconnectSidechain={handleDisconnectSidechain}
+                onSelectedTrackChange={setFxSelectedTrack}
               />
             )}
 
@@ -3322,7 +3342,20 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
       )}
       </div>{/* end main content column */}
 
-      {/* ═══ FX PRESET RACK — right sidebar ═══ */}
+      {/* ═══ 444 FX PANEL — right sidebar (left of PresetRack) ═══ */}
+      {showFxPanel && channels[fxSelectedTrack] && (
+        <StudioEffectsPanel
+          channel={channels[fxSelectedTrack]}
+          channelIdx={fxSelectedTrack}
+          onParamChange={handleParamChange}
+          onEffectInsert={handleEffectInsert}
+          onRemoveEffect={handleRemoveEffect}
+          layout="sidebar"
+          onClose={() => setShowFxPanel(false)}
+        />
+      )}
+
+      {/* ═══ FX PRESET RACK — right sidebar (rightmost) ═══ */}
       {showPresetRack && (
         <div
           className="shrink-0 h-full overflow-hidden"

@@ -790,13 +790,15 @@ export const ORGANIZED_METHODS: MethodSection[] = [
 interface StudioMethodsPanelProps {
   onInsert: (snippet: string) => void
   onPreview?: (soundCode: string) => void
+  /** When true, only show methods (knobs/buttons) content — no sounds tab or tab UI */
+  methodsOnly?: boolean
 }
 
 // Force emoji font so iPadOS doesn't render emoji glyphs through monospace
 const emojiFont = '"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji",sans-serif'
 
-export default function StudioMethodsPanel({ onInsert, onPreview }: StudioMethodsPanelProps) {
-  const [activeTab, setActiveTab] = useState<'sounds' | 'methods'>('sounds')
+export default function StudioMethodsPanel({ onInsert, onPreview, methodsOnly = false }: StudioMethodsPanelProps) {
+  const [activeTab, setActiveTab] = useState<'sounds' | 'methods'>(methodsOnly ? 'methods' : 'sounds')
   const [expandedCat, setExpandedCat] = useState<string | null>(null)
   const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -865,7 +867,8 @@ export default function StudioMethodsPanel({ onInsert, onPreview }: StudioMethod
 
   return (
     <div className="flex-1 overflow-y-auto">
-      {/* Tab switcher — clay pills */}
+      {/* Tab switcher — clay pills (hidden in methodsOnly mode) */}
+      {!methodsOnly && (
       <div className="flex items-center gap-1.5 px-2 pt-2 pb-1">
         <button
           onClick={() => { setActiveTab('sounds'); setExpandedCat(null); setSearch('') }}
@@ -896,6 +899,7 @@ export default function StudioMethodsPanel({ onInsert, onPreview }: StudioMethod
           <span style={{ fontFamily: emojiFont }}>🔧</span> METHODS
         </button>
       </div>
+      )}
 
       {/* Search — clay inset input */}
       <div className="px-2 py-1">
@@ -905,7 +909,7 @@ export default function StudioMethodsPanel({ onInsert, onPreview }: StudioMethod
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={activeTab === 'sounds' ? 'Search instruments...' : 'Search methods...'}
+            placeholder={methodsOnly ? 'Search methods...' : (activeTab === 'sounds' ? 'Search instruments...' : 'Search methods...')}
             className="w-full rounded-xl text-[9px] pl-6 pr-2 py-1.5 outline-none font-mono"
             style={{
               color: '#e8ecf0',
@@ -918,7 +922,7 @@ export default function StudioMethodsPanel({ onInsert, onPreview }: StudioMethod
       </div>
 
       {/* â•â•â• SOUNDS tab — accordion categories grouped by type â•â•â• */}
-      {activeTab === 'sounds' && (
+      {activeTab === 'sounds' && !methodsOnly && (
         <div className="px-1 pb-3 space-y-0.5">
           {filteredSounds.length === 0 && (
             <div className="text-center py-4 text-[9px]" style={{ color: '#5a616b' }}>No results for &quot;{search}&quot;</div>
