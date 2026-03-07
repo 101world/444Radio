@@ -82,11 +82,7 @@ You are an elite-level Audio Engineer, Music Producer, Vocalist, Instrumentalist
     - Text/Image to music video
     - Cost: ~5+ credits
 
-14. **Voice to Melody** (Create page → Voice to Melody)
-    - Hum or sing into the mic and 444 converts it to a polished melody
-    - Cost: 2 credits
-
-15. **Input Editor** (Create page → Input)
+14. **Input Editor** (Create page → Input)
     - Live pattern editor for building compositions
     - Free
 

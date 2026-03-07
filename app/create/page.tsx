@@ -19,7 +19,6 @@ const SplitStemsModal = lazy(() => import('../components/SplitStemsModal'))
 const VisualizerModal = lazy(() => import('../components/VisualizerModal'))
 const LipSyncModal = lazy(() => import('../components/LipSyncModal'))
 const ResoundModal = lazy(() => import('../components/ResoundModal'))
-const VoiceMelodyModal = lazy(() => import('../components/VoiceMelodyModal'))
 const BeatMakerModal = lazy(() => import('../components/BeatMakerModal'))
 const FeaturesSidebar = lazy(() => import('../components/FeaturesSidebar'))
 import CoverArtGenModal from '../components/CoverArtGenModal'
@@ -172,7 +171,6 @@ function CreatePageContent() {
   const [isUploadingRef, setIsUploadingRef] = useState(false)
   const [showRemakeModal, setShowRemakeModal] = useState(false)
   const [showResoundModal, setShowResoundModal] = useState(false)
-  const [showVoiceMelodyModal, setShowVoiceMelodyModal] = useState(false)
   const [showBeatMakerModal, setShowBeatMakerModal] = useState(false)
   const [showCoverArtGenModal, setShowCoverArtGenModal] = useState(false)
   // Audio recording for voice reference (actual mic capture, not speech-to-text)
@@ -185,12 +183,6 @@ function CreatePageContent() {
   const voiceRefInputRef = useRef<HTMLInputElement>(null)
   const instrumentalRefInputRef = useRef<HTMLInputElement>(null)
   const hasVoiceOrInstrumentalRef = !!(voiceRefUrl || voiceRefFile || recordedVoiceBlob || selectedVoiceId || instrumentalRefUrl || instrumentalRefFile)
-  
-  // Voice Melody parameters (for non-English)
-  const [audioLengthInSeconds, setAudioLengthInSeconds] = useState(45)
-  const [numInferenceSteps, setNumInferenceSteps] = useState(50)
-  const [guidanceScale, setGuidanceScale] = useState(7.0)
-  const [denoisingStrength, setDenoisingStrength] = useState(0.8)
   
   // Modal states for parameters
   const [showTitleModal, setShowTitleModal] = useState(false)
@@ -1869,14 +1861,6 @@ function CreatePageContent() {
 
     console.log('🔍 [TITLE DEBUG] Request body being sent to music-only API:', JSON.stringify(requestBody, null, 2))
 
-    // Add Voice Melody parameters for non-English languages
-    if (selectedLanguage.toLowerCase() !== 'english') {
-      requestBody.audio_length_in_s = audioLengthInSeconds
-      requestBody.num_inference_steps = numInferenceSteps
-      requestBody.guidance_scale = guidanceScale
-      requestBody.denoising_strength = denoisingStrength
-    }
-
     const res = await fetch('/api/generate/music-only', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2363,236 +2347,6 @@ function CreatePageContent() {
           prev.map(msg =>
             msg.id === generatingMessage.id || msg.generationId === genId
               ? { ...msg, isGenerating: false, content: '❌ Remix generation failed. Please try again.' }
-              : msg
-          )
-        )
-      }
-      refreshCredits()
-      window.dispatchEvent(new Event('credits:refresh'))
-    } finally {
-      abortControllersRef.current.delete(generatingMessage.id)
-      setGenerationQueue(prev => prev.filter(id => id !== generatingMessage.id))
-      setActiveGenerations(prev => {
-        const newSet = new Set(prev)
-        newSet.delete(generatingMessage.id)
-        return newSet
-      })
-    }
-  }
-
-  // ── Voice Melody to Instrument ──
-  const generateVoiceMelody = async (
-    params: {
-      title: string
-      audio_url: string
-      original_tags: string
-      tags: string
-      edit_mode: 'remix' | 'lyrics'
-      lyrics: string
-      original_lyrics: string
-      number_of_steps: number
-      seed: number | null
-      scheduler: 'euler' | 'heun'
-      guidance_type: 'apg' | 'cfg' | 'cfg_star'
-      guidance_scale: number
-      minimum_guidance_scale: number
-      tag_guidance_scale: number
-      lyric_guidance_scale: number
-      granularity_scale: number
-      guidance_interval: number
-      guidance_interval_decay: number
-    },
-    signal?: AbortSignal,
-    messageId?: string
-  ) => {
-    const res = await fetch('/api/generate/voice-melody', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(params),
-      signal,
-    })
-
-    if (!res.ok && res.headers.get('content-type')?.includes('application/json')) {
-      const errJson = await res.json().catch(() => ({}))
-      return { error: errJson.error || `Server error (${res.status})` }
-    }
-
-    const reader = res.body?.getReader()
-    if (!reader) return { error: 'No response stream' }
-
-    const decoder = new TextDecoder()
-    let buffer = ''
-    let resultData: any = null
-
-    try {
-      while (true) {
-        if (signal?.aborted) throw new DOMException('The operation was aborted.', 'AbortError')
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || ''
-        for (const line of lines) {
-          if (!line.trim()) continue
-          try {
-            const parsed = JSON.parse(line)
-            if (parsed.type === 'started' && parsed.predictionId && messageId) {
-              predictionIdsRef.current.set(messageId, parsed.predictionId)
-              if (pendingCancelsRef.current.has(messageId)) {
-                pendingCancelsRef.current.delete(messageId)
-                fetch('/api/generate/cancel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ predictionId: parsed.predictionId }) }).catch(() => {})
-                predictionIdsRef.current.delete(messageId)
-              }
-            } else if (parsed.type === 'result') {
-              resultData = parsed
-            }
-          } catch { /* skip */ }
-        }
-      }
-      if (buffer.trim()) {
-        try {
-          const parsed = JSON.parse(buffer)
-          if (parsed.type === 'result') resultData = parsed
-          else if (parsed.type === 'started' && parsed.predictionId && messageId) {
-            predictionIdsRef.current.set(messageId, parsed.predictionId)
-          }
-        } catch { /* ignore */ }
-      }
-    } finally {
-      reader.releaseLock()
-      if (messageId) predictionIdsRef.current.delete(messageId)
-    }
-
-    if (!resultData) return { error: 'No result received from generation' }
-
-    if (resultData.success) {
-      return {
-        audioUrl: resultData.audioUrl,
-        title: resultData.title || params.title,
-        prompt: params.tags,
-        creditsRemaining: resultData.creditsRemaining,
-      }
-    }
-    return { error: resultData.error || 'Failed to generate Voice Melody' }
-  }
-
-  // Handler called from the VoiceMelodyModal onGenerate callback
-  const handleVoiceMelodyGenerate = async (voiceMelodyParams: {
-    title: string
-    audio_url: string
-    original_tags: string
-    tags: string
-    edit_mode: 'remix' | 'lyrics'
-    lyrics: string
-    original_lyrics: string
-    number_of_steps: number
-    seed: number | null
-    scheduler: 'euler' | 'heun'
-    guidance_type: 'apg' | 'cfg' | 'cfg_star'
-    guidance_scale: number
-    minimum_guidance_scale: number
-    tag_guidance_scale: number
-    lyric_guidance_scale: number
-    granularity_scale: number
-    guidance_interval: number
-    guidance_interval_decay: number
-  }) => {
-    setShowVoiceMelodyModal(false)
-
-    const mySession = chatSessionRef.current
-    const isStale = () => chatSessionRef.current !== mySession
-
-    const generationId = Date.now().toString()
-    const modeLabel = voiceMelodyParams.edit_mode === 'lyrics' ? 'Re-Lyric' : 'Voice → Instrument'
-    const userMessage: Message = {
-      id: generationId,
-      type: 'user',
-      content: `🎤 ${modeLabel}: "${voiceMelodyParams.title}" — ${voiceMelodyParams.tags}`,
-      timestamp: new Date(),
-    }
-    const generatingMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      type: 'generation',
-      content: activeGenerations.size > 0 ? '🎤 Queued — will start soon…' : '🎤 Transforming your melody…',
-      generationType: 'music',
-      isGenerating: true,
-      timestamp: new Date(),
-    }
-
-    setMessages(prev => [...prev, userMessage, generatingMessage])
-    setGenerationQueue(prev => [...prev, generatingMessage.id])
-    setActiveGenerations(prev => new Set(prev).add(generatingMessage.id))
-
-    const abortController = new AbortController()
-    abortControllersRef.current.set(generatingMessage.id, abortController)
-
-    const genId = addGeneration({
-      type: 'music',
-      prompt: voiceMelodyParams.tags,
-      title: voiceMelodyParams.title,
-    })
-    genSessionMap.current.set(genId, mySession)
-    setMessages(prev => prev.map(msg =>
-      msg.id === generatingMessage.id ? { ...msg, generationId: genId } : msg
-    ))
-    updateGeneration(genId, { status: 'generating', progress: 10 })
-
-    try {
-      const result = await generateVoiceMelody(voiceMelodyParams, abortController.signal, generatingMessage.id)
-
-      if (!result.error && result.creditsRemaining !== undefined) {
-        setUserCredits(result.creditsRemaining)
-      }
-      refreshCredits()
-      window.dispatchEvent(new Event('credits:refresh'))
-
-      processedGenIdsRef.current.add(genId)
-      if (result.error) {
-        updateGeneration(genId, { status: 'failed', error: result.error })
-      } else {
-        updateGeneration(genId, {
-          status: 'completed',
-          result: {
-            audioUrl: 'audioUrl' in result ? result.audioUrl : undefined,
-            title: result.title,
-          },
-        })
-      }
-
-      if (!isStale()) {
-        setMessages(prev =>
-          prev.map(msg =>
-            msg.id === generatingMessage.id || msg.generationId === genId
-              ? {
-                  ...msg,
-                  isGenerating: false,
-                  content: result.error ? '❌ 444 Radio locking in. Please try again.' : `✅ ${result.title || 'Voice melody track'} is ready!`,
-                  result: result.error ? undefined : result,
-                }
-              : msg
-          )
-        )
-      }
-
-      if (!result.error && !isStale()) {
-        const assistantMessage: Message = {
-          id: (Date.now() + Math.random()).toString(),
-          type: 'assistant',
-          content: `${result.title || 'Your track'} is ready! Hum transformed into a full track. Want to try another?`,
-          timestamp: new Date(),
-        }
-        setMessages(prev => [...prev, assistantMessage])
-      }
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') return
-      console.error('Voice Melody generation error:', error)
-      processedGenIdsRef.current.add(genId)
-      updateGeneration(genId, { status: 'failed', error: error instanceof Error ? error.message : 'Unknown error' })
-      if (!isStale()) {
-        setMessages(prev =>
-          prev.map(msg =>
-            msg.id === generatingMessage.id || msg.generationId === genId
-              ? { ...msg, isGenerating: false, content: '❌ Voice Melody generation failed. Please try again.' }
               : msg
           )
         )
@@ -3280,7 +3034,6 @@ function CreatePageContent() {
           onShowVisualizer={() => setShowVisualizerModal(true)}
           onShowLipSync={() => setShowLipSyncModal(true)}
           onShowRemix={() => setShowResoundModal(true)}
-          onShowVoiceMelody={() => setShowVoiceMelodyModal(true)}
           onShowBeatMaker={() => setShowBeatMakerModal(true)}
           onOpenRelease={() => handleOpenRelease()}
           onTagClick={(tag: string) => {
@@ -5783,16 +5536,6 @@ function CreatePageContent() {
           onClose={() => setShowResoundModal(false)}
           userCredits={userCredits ?? undefined}
           onGenerate={handleResoundGenerate}
-        />
-      </Suspense>
-
-      {/* Voice Melody to Instrument Modal */}
-      <Suspense fallback={null}>
-        <VoiceMelodyModal
-          isOpen={showVoiceMelodyModal}
-          onClose={() => setShowVoiceMelodyModal(false)}
-          userCredits={userCredits ?? undefined}
-          onGenerate={handleVoiceMelodyGenerate}
         />
       </Suspense>
 
