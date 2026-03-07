@@ -2931,6 +2931,12 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                 onStackRowGainChange={handleStackRowGainChange}
                 onStackRowBankChange={handleStackRowBankChange}
                 onRemoveStackRow={handleRemoveStackRow}
+                getSidechainInfo={getSidechainInfo}
+                onEnableSidechain={handleEnableSidechain}
+                onDisableSidechain={handleDisableSidechain}
+                onAddSidechainTarget={handleAddSidechainTarget}
+                onRemoveSidechainTarget={handleRemoveSidechainTarget}
+                onDisconnectSidechain={handleDisconnectSidechain}
               />
             )}
 

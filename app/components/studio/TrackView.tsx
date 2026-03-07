@@ -12,11 +12,23 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { useRef, useEffect, useCallback, useState, useMemo, memo } from 'react'
-import { ChevronDown, ChevronRight, Plus, Piano, Grid3X3, MoreVertical, Copy, RotateCcw, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus, Piano, Grid3X3, MoreVertical, Copy, RotateCcw, Trash2, Link, Unlink, X, Pencil } from 'lucide-react'
 import StudioKnob from './StudioKnob'
 import HardwareKnob from './HardwareKnob'
 import { getOrbitAnalyser } from '@/lib/studio-analysers'
 import { PARAM_DEFS, getParamDef, getTranspose, getArpInfo, ARP_MODES, type ParsedChannel, type ParamDef, type StackRow } from '@/lib/strudel-code-parser'
+
+// Sidechain routing info (mirrors ChannelStrip's sidechainInfo prop)
+type SidechainInfo = {
+  isSource: boolean
+  duckTargetOrbit: number | null
+  targetChannels: { idx: number; name: string; color: string; icon: string }[]
+  isDucked: boolean
+  duckedBySource: { name: string; color: string; orbit: number } | null
+  isKickLike: boolean
+  availableTargets: { idx: number; name: string }[]
+  hasDuckParams: boolean
+}
 
 // ─── Scope types for per-track visualization ───
 const TRACK_SCOPE_TYPES = [
@@ -889,6 +901,8 @@ function TrackExpansionPanel({
   onTranspose, onAddSound, onPreview,
   onStackRowSoundChange, onStackRowGainChange, onStackRowBankChange, onRemoveStackRow,
   stackRows, scaleRoot, onAutoPitchMatch,
+  // Sidechain routing
+  sidechainInfo, onEnableSidechain, onDisableSidechain, onAddSidechainTarget, onRemoveSidechainTarget, onDisconnectSidechain,
 }: {
   channel: ParsedChannel; channelIdx: number
   onParamChange: (channelIdx: number, key: string, value: number) => void
@@ -909,6 +923,13 @@ function TrackExpansionPanel({
   stackRows: StackRow[]
   scaleRoot?: string | null
   onAutoPitchMatch?: (channelIdx: number) => void
+  // Sidechain routing
+  sidechainInfo?: SidechainInfo
+  onEnableSidechain?: () => void
+  onDisableSidechain?: () => void
+  onAddSidechainTarget?: (targetIdx: number) => void
+  onRemoveSidechainTarget?: (targetIdx: number) => void
+  onDisconnectSidechain?: () => void
 }) {
   const [showMoreMenu, setShowMoreMenu] = useState(false)
   const moreMenuRef = useRef<HTMLDivElement>(null)
@@ -1145,6 +1166,100 @@ function TrackExpansionPanel({
         </div>
       )}
 
+      {/* ── Sidechain section ── */}
+      {sidechainInfo && (sidechainInfo.isSource || sidechainInfo.isKickLike || sidechainInfo.hasDuckParams || sidechainInfo.isDucked) && (
+        <div className="px-1.5 py-0.5" style={{ borderTop: '1px solid rgba(255,255,255,0.03)' }}>
+          <div className="flex items-center gap-1 py-0.5">
+            <Link size={7} style={{ color: '#7fa998', opacity: 0.5 }} />
+            <span className="text-[5px] font-bold uppercase tracking-[.12em]" style={{ color: '#7fa998', opacity: 0.5 }}>SIDECHAIN</span>
+            <div className="flex-1 h-px" style={{ background: 'rgba(127,169,152,0.08)' }} />
+          </div>
+
+          {/* Enable button (kick-like channel without sidechain yet) */}
+          {!sidechainInfo.isSource && !sidechainInfo.hasDuckParams && sidechainInfo.isKickLike && onEnableSidechain && (
+            <button
+              onClick={onEnableSidechain}
+              className="w-full flex items-center justify-center gap-1 px-1.5 py-1 rounded-lg transition-all text-[6px] font-bold uppercase tracking-wider cursor-pointer"
+              style={{ background: '#111318', color: '#7fa998', boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22' }}
+            >
+              <Link size={6} /> Enable
+            </button>
+          )}
+
+          {/* Source: target list + add dropdown + duck knobs + remove */}
+          {sidechainInfo.isSource && (
+            <div className="space-y-1">
+              {sidechainInfo.targetChannels.length > 0 ? (
+                <div className="space-y-0.5">
+                  {sidechainInfo.targetChannels.map((t) => (
+                    <div key={t.idx} className="flex items-center gap-1 px-1 py-0.5 rounded text-[6px] bg-white/[0.02] border border-white/[0.04]">
+                      <span style={{ color: t.color }} className="font-bold uppercase truncate flex-1">{t.name}</span>
+                      {onRemoveSidechainTarget && (
+                        <button onClick={() => onRemoveSidechainTarget(t.idx)} className="text-white/15 hover:text-red-400/60 cursor-pointer"><X size={7} /></button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-[6px] text-white/15 italic px-1">No targets</div>
+              )}
+              {sidechainInfo.availableTargets.length > 0 && onAddSidechainTarget && (
+                <select value="" onChange={(e) => { if (e.target.value) onAddSidechainTarget(parseInt(e.target.value)) }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-full text-[6px] font-mono rounded-lg px-1 py-0.5 outline-none cursor-pointer"
+                  style={{ background: '#111318', color: '#7fa998', border: '1px solid rgba(127,169,152,0.12)' }}>
+                  <option value="">+ Target…</option>
+                  {sidechainInfo.availableTargets.map((t) => <option key={t.idx} value={t.idx}>{t.name}</option>)}
+                </select>
+              )}
+              {/* Duck depth / attack knobs */}
+              {channel.params.some(p => p.key === 'duckdepth' || p.key === 'duckattack') && (
+                <div className="flex flex-wrap gap-0.5 justify-center pt-0.5">
+                  {channel.params.filter(p => p.key === 'duckdepth' || p.key === 'duckattack').map((param) => {
+                    const def = getParamDef(param.key); if (!def) return null
+                    return <StudioKnob key={param.key} label={def.label} value={param.value} min={def.min} max={def.max} step={def.step}
+                      size={20} color="#fb923c" unit={def.unit} isComplex={param.isComplex}
+                      onChange={(v: number) => onParamChange(channelIdx, param.key, v)}
+                      onRemove={onRemoveEffect ? () => onRemoveEffect(channelIdx, param.key) : undefined} />
+                  })}
+                </div>
+              )}
+              {onDisableSidechain && (
+                <button onClick={onDisableSidechain}
+                  className="w-full flex items-center justify-center gap-1 px-1 py-0.5 rounded-lg transition-all text-[6px] font-bold uppercase cursor-pointer"
+                  style={{ background: '#111318', color: '#b86f6f', boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22' }}>
+                  <Unlink size={6} /> Remove
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Non-source with duck params (target side knobs) */}
+          {!sidechainInfo.isSource && sidechainInfo.hasDuckParams && (
+            <div className="flex flex-wrap gap-0.5 justify-center">
+              {channel.params.filter(p => p.key === 'duckdepth' || p.key === 'duckattack').map((param) => {
+                const def = getParamDef(param.key); if (!def) return null
+                return <StudioKnob key={param.key} label={def.label} value={param.value} min={def.min} max={def.max} step={def.step}
+                  size={20} color="#fb923c" unit={def.unit} isComplex={param.isComplex}
+                  onChange={(v: number) => onParamChange(channelIdx, param.key, v)}
+                  onRemove={onRemoveEffect ? () => onRemoveEffect(channelIdx, param.key) : undefined} />
+              })}
+            </div>
+          )}
+
+          {/* Ducked-by indicator */}
+          {sidechainInfo.isDucked && sidechainInfo.duckedBySource && (
+            <div className="flex items-center gap-1 py-0.5">
+              <span className="text-[6px]">🦆</span>
+              <span className="text-[6px] font-bold uppercase" style={{ color: sidechainInfo.duckedBySource.color }}>{sidechainInfo.duckedBySource.name}</span>
+              {onDisconnectSidechain && (
+                <button onClick={onDisconnectSidechain} className="ml-auto text-white/15 hover:text-red-400/60 cursor-pointer"><X size={7} /></button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── Overflow menu (Duplicate/Reset/Delete) ── */}
       <div className="flex items-center justify-end px-1.5 py-0.5" style={{ borderTop: '1px solid rgba(255,255,255,0.03)' }}>
         <div className="flex items-center gap-0.5">
@@ -1235,6 +1350,13 @@ interface TrackViewProps {
   onStackRowGainChange?: (channelIdx: number, rowIdx: number, newGain: number) => void
   onStackRowBankChange?: (channelIdx: number, rowIdx: number, newBank: string) => void
   onRemoveStackRow?: (channelIdx: number, rowIdx: number) => void
+  // ── Sidechain routing ──
+  getSidechainInfo?: (idx: number) => SidechainInfo
+  onEnableSidechain?: (sourceIdx: number) => void
+  onDisableSidechain?: (sourceIdx: number) => void
+  onAddSidechainTarget?: (sourceIdx: number, targetIdx: number) => void
+  onRemoveSidechainTarget?: (sourceIdx: number, targetIdx: number) => void
+  onDisconnectSidechain?: (targetIdx: number) => void
 }
 
 const TrackView = memo(function TrackView({
@@ -1276,13 +1398,22 @@ const TrackView = memo(function TrackView({
   onStackRowGainChange,
   onStackRowBankChange,
   onRemoveStackRow,
+  // Sidechain routing
+  getSidechainInfo,
+  onEnableSidechain,
+  onDisableSidechain,
+  onAddSidechainTarget,
+  onRemoveSidechainTarget,
+  onDisconnectSidechain,
 }: TrackViewProps) {
   // Selected track: always one is selected (default 0)
   const [selectedTrack, setSelectedTrack] = useState(0)
   // Per-track scope type
   const [trackScopes, setTrackScopes] = useState<Record<number, TrackScopeType>>({})
-
-  // Ensure selected track is valid
+  // Inline rename state
+  const [renamingTrack, setRenamingTrack] = useState<number | null>(null)
+  const [renameValue, setRenameValue] = useState('')
+  const renameInputRef = useRef<HTMLInputElement>(null)
   useEffect(() => {
     if (channels.length > 0 && selectedTrack >= channels.length) {
       setSelectedTrack(0)
@@ -1389,13 +1520,56 @@ const TrackView = memo(function TrackView({
                         boxShadow: isMuted ? `inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22, 0 0 4px #b86f6f30` : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
                       }}>M</button>
 
-                    <PeakMeter channel={ch} isPlaying={isPlaying} isMuted={isMuted} />
+                    {/* Peak meter — only expanded */}
+                    {!collapsed && <PeakMeter channel={ch} isPlaying={isPlaying} isMuted={isMuted} />}
 
-                    <span className="flex-1 min-w-0 truncate text-[8px] font-extrabold uppercase tracking-[.12em] font-mono"
-                      style={{ color: ch.color }} title={ch.name}>
-                      <span className="text-[9px] mr-0.5 opacity-60">{getSourceIcon(ch.source, ch.sourceType)}</span>
-                      {ch.name}
-                    </span>
+                    {/* Track name — inline rename on pencil click */}
+                    {renamingTrack === idx ? (
+                      <input
+                        ref={renameInputRef}
+                        autoFocus
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value.replace(/[^\w]/g, '').toLowerCase().slice(0, 12))}
+                        onBlur={() => {
+                          if (renameValue.trim() && renameValue !== ch.name && onRename) {
+                            onRename(idx, renameValue)
+                          }
+                          setRenamingTrack(null)
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') e.currentTarget.blur()
+                          else if (e.key === 'Escape') { setRenameValue(ch.name); setRenamingTrack(null) }
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-1 min-w-0 text-[8px] font-extrabold uppercase tracking-[.1em] outline-none font-mono"
+                        style={{
+                          color: `${ch.color}cc`, background: 'rgba(255,255,255,0.06)',
+                          border: `1px solid ${ch.color}40`, borderRadius: 3, padding: '1px 4px',
+                          caretColor: ch.color, maxWidth: '70px',
+                        }}
+                        maxLength={12} spellCheck={false}
+                      />
+                    ) : (
+                      <span className="flex-1 min-w-0 truncate text-[8px] font-extrabold uppercase tracking-[.12em] font-mono"
+                        style={{ color: ch.color }} title={`${ch.name} · Double-click to rename`}
+                        onDoubleClick={(e) => {
+                          e.stopPropagation()
+                          if (onRename) { setRenameValue(ch.name); setRenamingTrack(idx) }
+                        }}>
+                        <span className="text-[9px] mr-0.5 opacity-60">{getSourceIcon(ch.source, ch.sourceType)}</span>
+                        {ch.name}
+                      </span>
+                    )}
+
+                    {/* Pencil rename button — only expanded */}
+                    {!collapsed && onRename && renamingTrack !== idx && (
+                      <button onClick={(e) => { e.stopPropagation(); setRenameValue(ch.name); setRenamingTrack(idx) }}
+                        className="cursor-pointer opacity-30 hover:opacity-70 transition-opacity"
+                        style={{ background: 'none', border: 'none', padding: 0, color: ch.color }}
+                        title="Rename track">
+                        <Pencil size={8} />
+                      </button>
+                    )}
                   </div>
 
                   {/* Expanded: gain knob + editor + full expansion panel */}
@@ -1450,6 +1624,12 @@ const TrackView = memo(function TrackView({
                         stackRows={stackRowsMap.get(idx) || []}
                         scaleRoot={scaleRoot}
                         onAutoPitchMatch={onAutoPitchMatch}
+                        sidechainInfo={getSidechainInfo ? getSidechainInfo(idx) : undefined}
+                        onEnableSidechain={onEnableSidechain ? () => onEnableSidechain(idx) : undefined}
+                        onDisableSidechain={onDisableSidechain ? () => onDisableSidechain(idx) : undefined}
+                        onAddSidechainTarget={onAddSidechainTarget ? (targetIdx: number) => onAddSidechainTarget(idx, targetIdx) : undefined}
+                        onRemoveSidechainTarget={onRemoveSidechainTarget ? (targetIdx: number) => onRemoveSidechainTarget(idx, targetIdx) : undefined}
+                        onDisconnectSidechain={onDisconnectSidechain ? () => onDisconnectSidechain(idx) : undefined}
                       />
                     </div>
                   )}
