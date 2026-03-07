@@ -1,6 +1,6 @@
 'use client'
 
-import { Music, Sparkles, Repeat, Image as ImageIcon, Edit3, Rocket, Upload, X, RotateCcw, Mic, Zap, Film, Scissors, Lightbulb, ChevronLeft, Plus, Volume2, Layers, AudioLines, RefreshCw, AudioWaveform } from 'lucide-react'
+import { Music, Sparkles, Repeat, Image as ImageIcon, Edit3, Rocket, Upload, X, Mic, Zap, Film, Scissors, Lightbulb, ChevronLeft, Volume2, Layers, AudioLines, RefreshCw, AudioWaveform } from 'lucide-react'
 import { useState } from 'react'
 
 interface FeaturesSidebarProps {
@@ -34,7 +34,6 @@ interface FeaturesSidebarProps {
   onShowBeatMaker: () => void
   onOpenRelease: () => void
   onClearChat: () => void
-  onShowDeletedChats: () => void
   onToggleInstrumental: () => void
   onToggleRecording: () => void
   onSubmitPrompt: () => void
@@ -78,7 +77,6 @@ export default function FeaturesSidebar({
   onShowBeatMaker,
   onOpenRelease,
   onClearChat,
-  onShowDeletedChats,
   onToggleInstrumental,
   onToggleRecording,
   onSubmitPrompt,
@@ -619,18 +617,12 @@ export default function FeaturesSidebar({
           {/* Utilities */}
           <div className="mt-3 pt-2 border-t border-white/10 flex items-center gap-1.5">
             <button
-              onClick={onShowDeletedChats}
-              className="p-2 rounded-lg border border-white/10 text-green-400 hover:bg-green-500/10 transition-all"
-              title="Chat History"
-            >
-              <RotateCcw size={14} />
-            </button>
-            <button
               onClick={onClearChat}
-              className="p-2 rounded-lg border border-white/10 text-green-400 hover:bg-green-500/10 transition-all"
-              title="New Chat"
+              className="p-2 rounded-lg border border-white/10 text-red-400 hover:bg-red-500/10 transition-all flex items-center gap-1.5"
+              title="Clear Chat"
             >
-              <Plus size={14} />
+              <X size={14} />
+              <span className="text-xs">Clear</span>
             </button>
           </div>
         </div>

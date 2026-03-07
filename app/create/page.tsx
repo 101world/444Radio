@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, Suspense, lazy } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices, Upload, RotateCcw, Repeat, Plus, Square, Guitar, AudioLines, Drum, ChevronDown, Crown } from 'lucide-react'
+import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices, Upload, RotateCcw, Repeat, Plus, Square, Guitar, AudioLines, Drum, ChevronDown, Crown, Trash2 } from 'lucide-react'
 
 // Lazy load heavy modals for better performance
 const MusicGenerationModal = lazy(() => import('../components/MusicGenerationModal'))
@@ -15,7 +15,6 @@ const TwoStepReleaseModal = lazy(() => import('../components/TwoStepReleaseModal
 const MediaUploadModal = lazy(() => import('../components/MediaUploadModal'))
 const AudioBoostModal = lazy(() => import('../components/AudioBoostModal'))
 const AutotuneModal = lazy(() => import('../components/AutotuneModal'))
-const DeletedChatsModal = lazy(() => import('../components/DeletedChatsModal'))
 const SplitStemsModal = lazy(() => import('../components/SplitStemsModal'))
 const VisualizerModal = lazy(() => import('../components/VisualizerModal'))
 const LipSyncModal = lazy(() => import('../components/LipSyncModal'))
@@ -200,7 +199,7 @@ function CreatePageContent() {
   const [showBpmModal, setShowBpmModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showAdvancedButtons, setShowAdvancedButtons] = useState(false)
-  const [showDeletedChatsModal, setShowDeletedChatsModal] = useState(false)
+  const [showClearChatConfirm, setShowClearChatConfirm] = useState(false)
   const [showOutOfCreditsModal, setShowOutOfCreditsModal] = useState(false)
   const [outOfCreditsError, setOutOfCreditsError] = useState('')
   const [selectedLanguage, setSelectedLanguage] = useState('English')
@@ -647,9 +646,9 @@ function CreatePageContent() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [messages])
 
-  // Centralized clear-chat handler: archive → reset messages → purge completed generations
+  // Centralized clear-chat handler: clears chat permanently (no archive)
   const handleClearChat = async () => {
-    if (!confirm('Start a new chat? Your current session will be saved to Chat History.')) return
+    setShowClearChatConfirm(false)
 
     // ── 0. Kill any pending debounced PUT timer (it captured old messages via closure) ──
     if (dirtySyncTimerRef.current) {
@@ -659,7 +658,7 @@ function CreatePageContent() {
 
     // ── 1. Bump session so in-flight generation callbacks become stale ──
     chatSessionRef.current += 1
-    console.log('[NewChat] Session bumped to', chatSessionRef.current)
+    console.log('[ClearChat] Session bumped to', chatSessionRef.current)
 
     // ── 2. Abort every in-progress generation (network + Replicate) ──
     abortControllersRef.current.forEach((controller, msgId) => {
@@ -678,27 +677,16 @@ function CreatePageContent() {
     predictionIdsRef.current.clear()
     pendingCancelsRef.current.clear()
 
-    // ── 3. Archive current messages to localStorage history ──
+    // ── 3. Clear local storage chat data ──
     try {
-      const archives = localStorage.getItem('444radio-chat-archives')
-      const archiveList = archives ? JSON.parse(archives) : []
-      const newArchive = {
-        id: `chat-${Date.now()}`,
-        messages,
-        archivedAt: new Date(),
-        messageCount: messages.length
-      }
-      archiveList.unshift(newArchive)
-      localStorage.setItem('444radio-chat-archives', JSON.stringify(archiveList.slice(0, 50)))
       localStorage.removeItem('444radio-chat-backup')
-    } catch (error) {
-      console.error('Failed to archive chat:', error)
-    }
+      localStorage.removeItem('444radio-chat-archives')
+    } catch { /* ignore */ }
 
-    // ── 4. Clear server-side messages (await to ensure clean state before new messages are POSTed) ──
+    // ── 4. Clear server-side messages ──
     try {
       await fetch('/api/chat/messages', { method: 'DELETE' })
-    } catch { /* offline — localStorage already archived */ }
+    } catch { /* offline */ }
 
     // ── 5. Reset ALL generation tracking state ──
     setActiveGenerations(new Set())
@@ -707,20 +695,14 @@ function CreatePageContent() {
     prevMessageCountRef.current = 1
 
     // ── 6. Purge ALL generations (including in-progress) so sync effect can't restore ──
-    // Mark every existing generation as processed so the sync useEffect never touches them again.
-    // Do NOT clear processedGenIdsRef — keeping old IDs prevents stale gens from leaking
-    // into the new chat if React hasn't flushed state updates yet.
     generations.forEach(gen => {
       processedGenIdsRef.current.add(gen.id)
       if (gen.status === 'queued' || gen.status === 'generating') {
-        updateGeneration(gen.id, { status: 'failed', error: 'New chat started' })
+        updateGeneration(gen.id, { status: 'failed', error: 'Chat cleared' })
       }
     })
-    // Remove completed/failed items from the queue
     clearCompleted()
-    // Flush generation queue from localStorage immediately (don't wait for React render)
     try { localStorage.removeItem('444radio_generation_queue') } catch { /* noop */ }
-    // Clear genSessionMap — the bumped session ID already guards new gens
     genSessionMap.current.clear()
 
     // ── 7. Reset messages to fresh welcome ──
@@ -3177,8 +3159,7 @@ function CreatePageContent() {
             handleGeneratePromptIdea(genre)
           }}
           isGeneratingIdea={generatingIdea}
-          onClearChat={handleClearChat}
-          onShowDeletedChats={() => setShowDeletedChatsModal(true)}
+          onClearChat={() => setShowClearChatConfirm(true)}
           onToggleInstrumental={() => setIsInstrumental(!isInstrumental)}
           onToggleRecording={isRecording ? stopRecording : startRecording}
           onSubmitPrompt={handleGenerate}
@@ -3865,21 +3846,13 @@ function CreatePageContent() {
                 {/* Actions */}
                 <div>
                   <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2 px-1">Actions</h3>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2">
                     <button
-                      onClick={handleClearChat}
-                      className="group relative p-3 rounded-xl transition-all duration-200 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-green-400/30 flex items-center gap-2"
+                      onClick={() => setShowClearChatConfirm(true)}
+                      className="group relative p-3 rounded-xl transition-all duration-200 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-red-400/30 flex items-center gap-2"
                     >
-                      <Plus size={18} className="text-white/60 group-hover:text-green-400" />
-                      <span className="text-sm text-white/70">New Chat</span>
-                    </button>
-                    
-                    <button
-                      onClick={() => setShowDeletedChatsModal(true)}
-                      className="group relative p-3 rounded-xl transition-all duration-200 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-green-400/30 flex items-center gap-2"
-                    >
-                      <RotateCcw size={18} className="text-white/60 group-hover:text-green-400" />
-                      <span className="text-sm text-white/70">Chat History</span>
+                      <Trash2 size={18} className="text-white/60 group-hover:text-red-400" />
+                      <span className="text-sm text-white/70">Clear Chat</span>
                     </button>
                   </div>
                 </div>
@@ -5411,62 +5384,42 @@ function CreatePageContent() {
         />
       </Suspense>
 
-      {/* Chat History Modal */}
-      <Suspense fallback={null}>
-        <DeletedChatsModal
-          isOpen={showDeletedChatsModal}
-          onClose={() => setShowDeletedChatsModal(false)}
-          onRestore={(chat) => {
-            // Archive current chat if it has real content
-            try {
-              if (messages.length > 1) {
-                const archives = localStorage.getItem('444radio-chat-archives')
-                const archiveList = archives ? JSON.parse(archives) : []
-                archiveList.unshift({
-                  id: `chat-${Date.now()}`,
-                  messages,
-                  archivedAt: new Date(),
-                  messageCount: messages.length
-                })
-                localStorage.setItem('444radio-chat-archives', JSON.stringify(archiveList.slice(0, 50)))
-              }
-            } catch (error) {
-              console.error('Failed to archive current chat:', error)
-            }
-            // Kill pending debounced PUT timer (it captured old messages)
-            if (dirtySyncTimerRef.current) {
-              clearTimeout(dirtySyncTimerRef.current)
-              dirtySyncTimerRef.current = null
-            }
-            // Load the selected history chat and clear stale generations
-            chatSessionRef.current += 1 // Bump session so in-flight gens don't write into restored chat
-            // Mark restored messages as already-synced so sync effect doesn't re-POST them
-            syncedIdsRef.current = new Set()
-            chat.messages.forEach((m: Message) => syncedIdsRef.current.add(m.id))
-            prevMessageCountRef.current = chat.messages.length
-            setMessages(chat.messages)
-            // Replace server-side chat with restored messages
-            const syncPayload = chat.messages.map((m: Message) => ({
-              type: m.type,
-              content: m.content,
-              generationType: m.generationType || null,
-              generationId: m.generationId || null,
-              result: m.result || null,
-              timestamp: m.timestamp instanceof Date ? m.timestamp.toISOString() : m.timestamp
-            }))
-            fetch('/api/chat/messages', {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ messages: syncPayload })
-            }).catch(() => {})
-            clearCompleted()
-            setShowDeletedChatsModal(false)
-          }}
-          onDelete={(chatId) => {
-            console.log('Chat deleted from history:', chatId)
-          }}
-        />
-      </Suspense>
+      {/* Clear Chat Confirmation Modal */}
+      {showClearChatConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div
+            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            onClick={() => setShowClearChatConfirm(false)}
+          />
+          <div className="relative w-full max-w-sm bg-black/90 backdrop-blur-2xl border border-red-500/30 rounded-2xl shadow-2xl overflow-hidden">
+            <div className="p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/20">
+                  <Trash2 size={20} className="text-red-400" />
+                </div>
+                <h3 className="text-lg font-bold text-white">Clear Chat?</h3>
+              </div>
+              <p className="text-sm text-gray-400">
+                This will permanently delete all messages in this chat. This action cannot be undone.
+              </p>
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setShowClearChatConfirm(false)}
+                  className="flex-1 px-4 py-2.5 bg-white/5 border border-white/10 hover:bg-white/10 rounded-lg text-sm font-medium text-white transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleClearChat}
+                  className="flex-1 px-4 py-2.5 bg-red-500/20 border border-red-500/30 hover:bg-red-500/30 rounded-lg text-sm font-medium text-red-400 transition-all"
+                >
+                  Clear Chat
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Remake Modal — unified song + voice reference flow */}
       {showRemakeModal && (
