@@ -120,16 +120,38 @@ export default function VoiceMelodyModal({ isOpen, onClose, userCredits, onGener
     setInputAudioFile(file)
     detectAudioDuration(file)
 
-    // Upload via presigned URL
+    // Convert non-WAV files to WAV for best compatibility with fal.ai
     setIsUploading(true)
     try {
+      let uploadFile = file
+      let uploadType = file.type || 'audio/wav'
+      let uploadName = file.name
+
+      if (ext !== 'wav') {
+        console.log('🔄 Converting', ext, 'to WAV for fal.ai compatibility...')
+        try {
+          const audioCtx = new AudioContext()
+          const arrayBuf = await file.arrayBuffer()
+          const audioBuffer = await audioCtx.decodeAudioData(arrayBuf)
+          await audioCtx.close()
+          const wavBlob = audioBufferToWav(audioBuffer)
+          uploadFile = new File([wavBlob], file.name.replace(/\.[^.]+$/, '.wav'), { type: 'audio/wav' })
+          uploadType = 'audio/wav'
+          uploadName = uploadFile.name
+          console.log('✅ Converted to WAV:', (uploadFile.size / 1024 / 1024).toFixed(2), 'MB')
+        } catch (convErr) {
+          console.warn('⚠️ WAV conversion failed, uploading original format:', convErr)
+          // Fall back to original file if conversion fails
+        }
+      }
+
       const presignRes = await fetch('/api/generate/upload-reference', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          fileName: file.name,
-          fileType: file.type || 'audio/wav',
-          fileSize: file.size,
+          fileName: uploadName,
+          fileType: uploadType,
+          fileSize: uploadFile.size,
           type: 'song',
         }),
       })
@@ -139,8 +161,8 @@ export default function VoiceMelodyModal({ isOpen, onClose, userCredits, onGener
 
       const uploadRes = await fetch(presignData.uploadUrl, {
         method: 'PUT',
-        headers: { 'Content-Type': file.type || 'audio/wav' },
-        body: file,
+        headers: { 'Content-Type': uploadType },
+        body: uploadFile,
       })
       if (!uploadRes.ok) throw new Error('Upload to storage failed')
 

@@ -11,6 +11,44 @@ export const maxDuration = 300
 // fal.ai model endpoint (internal — not shown to users)
 const FAL_MODEL = 'fal-ai/ace-step/audio-to-audio'
 
+/** Helper to sleep for a given number of milliseconds */
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+/** Extract detailed error info from fal.ai error objects */
+function extractFalError(err: any): string {
+  const parts: string[] = []
+  if (err?.status) parts.push(`status=${err.status}`)
+  if (err?.message) parts.push(err.message)
+  if (err?.body) {
+    try {
+      const bodyStr = typeof err.body === 'string' ? err.body : JSON.stringify(err.body)
+      parts.push(`body=${bodyStr.substring(0, 500)}`)
+    } catch { /* ignore */ }
+  }
+  if (err?.statusText) parts.push(`statusText=${err.statusText}`)
+  return parts.length > 0 ? parts.join(' | ') : String(err)
+}
+
+/**
+ * Re-upload audio to fal.ai's own storage so the model can always access it.
+ * This avoids issues where fal.ai can't reach external URLs (R2, etc.).
+ */
+async function uploadToFalStorage(audioUrl: string): Promise<string> {
+  console.log('🎤 Downloading audio to re-upload to fal.ai storage...')
+  const res = await fetch(audioUrl)
+  if (!res.ok) throw new Error(`Failed to fetch audio from ${audioUrl}: ${res.status}`)
+  const blob = await res.blob()
+  const contentType = res.headers.get('content-type') || 'audio/wav'
+  const ext = contentType.includes('mp3') || contentType.includes('mpeg') ? 'mp3'
+    : contentType.includes('ogg') ? 'ogg'
+    : contentType.includes('webm') ? 'webm'
+    : 'wav'
+  const file = new File([blob], `voice-melody-input.${ext}`, { type: contentType })
+  const falUrl = await fal.storage.upload(file)
+  console.log('🎤 Audio re-uploaded to fal.ai storage:', falUrl)
+  return falUrl
+}
+
 /** Call fal.ai via the official client (handles queue, retries, cold starts) */
 async function runFalAi(falKey: string, input: Record<string, unknown>): Promise<{ data: any }> {
   console.log('🎤 Calling Voice Melody generation via fal.ai...')
@@ -20,9 +58,20 @@ async function runFalAi(falKey: string, input: Record<string, unknown>): Promise
   // Configure the fal client with our key
   fal.config({ credentials: falKey })
 
+  // --- Attempt 1: use fal.ai storage URL for guaranteed accessibility ---
+  let falAudioUrl: string
+  try {
+    falAudioUrl = await uploadToFalStorage(input.audio_url as string)
+  } catch (uploadErr: any) {
+    console.warn('⚠️ fal.ai storage upload failed, falling back to original URL:', uploadErr?.message)
+    falAudioUrl = input.audio_url as string
+  }
+
+  const inputWithFalUrl = { ...input, audio_url: falAudioUrl }
+
   try {
     const result = await fal.subscribe(FAL_MODEL as string, {
-      input: input as any,
+      input: inputWithFalUrl as any,
       logs: true,
       onQueueUpdate: (update) => {
         if (update.status === 'IN_PROGRESS' && update.logs) {
@@ -33,16 +82,18 @@ async function runFalAi(falKey: string, input: Record<string, unknown>): Promise
     console.log('🎤 Voice Melody generation complete')
     return { data: result.data }
   } catch (err: any) {
-    console.error(`❌ fal.ai client error:`, err?.message || err)
+    console.error(`❌ fal.ai client error [detail]:`, extractFalError(err))
 
-    // On failure, retry once with minimal params
-    console.log('🔄 Retrying fal.ai with minimal parameters...')
+    // Wait before retrying — cold-start or transient server error
+    console.log('🔄 Waiting 3s before retry with minimal parameters...')
+    await sleep(3000)
+
+    // Retry with only the required fields (no optional params that may trigger edge-case bugs)
     try {
       const minimalInput: Record<string, unknown> = {
-        audio_url: input.audio_url,
+        audio_url: falAudioUrl,
         original_tags: input.original_tags,
         tags: input.tags,
-        edit_mode: input.edit_mode || 'remix',
       }
       const retryResult = await fal.subscribe(FAL_MODEL as string, {
         input: minimalInput as any,
@@ -56,17 +107,22 @@ async function runFalAi(falKey: string, input: Record<string, unknown>): Promise
       console.log('🎤 fal.ai retry succeeded via client')
       return { data: retryResult.data }
     } catch (retryErr: any) {
-      console.error(`❌ fal.ai retry also failed:`, retryErr?.message || retryErr)
-      throw new Error(`fal.ai generation failed: ${retryErr?.message || 'Internal Server Error'}`)
+      console.error(`❌ fal.ai retry also failed [detail]:`, extractFalError(retryErr))
+      const detail = extractFalError(retryErr)
+      throw new Error(`fal.ai generation failed: ${detail}`)
     }
   }
 }
 
 function sanitizeError(error: any): string {
   const errorStr = error instanceof Error ? error.message : String(error)
-  if (errorStr.includes('429') || errorStr.includes('rate limit') || errorStr.includes('fal') ||
-      errorStr.includes('supabase') || errorStr.includes('API') || errorStr.includes('failed with')) {
-    return '444 radio is locking in, please try again in a few minutes'
+  // Log the real error for debugging while returning a user-friendly message
+  console.error('🔍 sanitizeError raw:', errorStr)
+  if (errorStr.includes('audio') && (errorStr.includes('format') || errorStr.includes('decode') || errorStr.includes('codec'))) {
+    return 'Audio format not supported. Please try uploading a WAV file instead.'
+  }
+  if (errorStr.includes('too short') || errorStr.includes('duration')) {
+    return 'Audio is too short. Please record or upload at least 15 seconds.'
   }
   return '444 radio is locking in, please try again in a few minutes'
 }
