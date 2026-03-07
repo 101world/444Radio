@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useUser, UserButton } from '@clerk/nextjs'
 import { usePathname } from 'next/navigation'
-import { Home, Zap, Library, Compass, User, Unlock, CreditCard, Settings, LogIn, UserPlus, LayoutGrid, DollarSign, Swords, Terminal, AudioLines } from 'lucide-react'
+import { Home, Zap, Library, Compass, User, Unlock, CreditCard, Settings, LogIn, UserPlus, LayoutGrid, DollarSign, Swords, Terminal, AudioLines, Bot } from 'lucide-react'
 import { useCredits } from '@/app/contexts/CreditsContext'
 
 interface MenuItem {
@@ -115,6 +115,7 @@ export default function DockedSidebar() {
   const menuItems: MenuItem[] = user ? [
     { icon: Home, label: 'Home', href: '/', highlight: false },
     { icon: Zap, label: 'Create', href: '/create', highlight: true, badge: 'Suggested' },
+    { icon: Bot, label: '444 Assistant', href: '/assistant', highlight: 'cyan', badge: 'AI' },
     { icon: Compass, label: 'Radio', href: '/radio', highlight: false },
     { icon: Terminal, label: 'Input', href: '/input', highlight: 'cyan', badge: 'Live' },
     { icon: Library, label: 'Library', href: '/library', highlight: false },
@@ -128,6 +129,7 @@ export default function DockedSidebar() {
   ] : [
     { icon: Home, label: 'Home', href: '/', highlight: false },
     { icon: Zap, label: 'Create', href: '/create', highlight: true, badge: 'Suggested' },
+    { icon: Bot, label: '444 Assistant', href: '/assistant', highlight: 'cyan', badge: 'AI' },
     { icon: Compass, label: 'Radio', href: '/radio', highlight: false },
     { icon: Terminal, label: 'Input', href: '/input', highlight: 'cyan', badge: 'Live' },
     { icon: Library, label: 'Library', href: '/library', highlight: false },

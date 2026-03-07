@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useUser, UserButton } from '@clerk/nextjs'
-import { Menu, X, Home, Zap, Library, Compass, BarChart3, User, LogIn, UserPlus, Unlock, CreditCard, Settings, DollarSign, Mic } from 'lucide-react'
+import { Menu, X, Home, Zap, Library, Compass, BarChart3, User, LogIn, UserPlus, Unlock, CreditCard, Settings, DollarSign, Mic, Bot } from 'lucide-react'
 import ProfileSettingsModal from './ProfileSettingsModal'
 import { useCredits } from '@/app/contexts/CreditsContext'
 
@@ -140,6 +140,15 @@ export default function FloatingMenu() {
                       <span className="ml-auto text-xs bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded-full">Suggested</span>
                     </Link>
                     <Link
+                      href="/assistant"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-cyan-600/20 to-cyan-800/20 border border-cyan-500/30 text-cyan-400 hover:from-cyan-600/30 hover:to-cyan-800/30 rounded-xl transition-all"
+                    >
+                      <Bot size={20} />
+                      <span className="font-semibold">444 Assistant</span>
+                      <span className="ml-auto text-xs bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded-full">AI</span>
+                    </Link>
+                    <Link
                       href="/radio"
                       onClick={() => setIsOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 rounded-xl transition-colors"
@@ -231,6 +240,15 @@ export default function FloatingMenu() {
                       <Zap size={20} />
                       <span className="font-semibold">Create</span>
                       <span className="ml-auto text-xs bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded-full">Suggested</span>
+                    </Link>
+                    <Link
+                      href="/assistant"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-cyan-600/20 to-cyan-800/20 border border-cyan-500/30 text-cyan-400 hover:from-cyan-600/30 hover:to-cyan-800/30 rounded-xl transition-all"
+                    >
+                      <Bot size={20} />
+                      <span className="font-semibold">444 Assistant</span>
+                      <span className="ml-auto text-xs bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded-full">AI</span>
                     </Link>
                     <Link
                       href="/radio"
