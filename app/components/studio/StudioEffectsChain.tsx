@@ -292,14 +292,14 @@ interface StudioEffectsChainProps {
 
 // â”€â”€â”€ Clay palette accent mapping â”€â”€â”€
 const CLAY_ACCENT: Record<string, string> = {
-  cyan: '#7fa998', blue: '#6f8fb3', lime: '#7fa998', orange: '#b8a47f',
+  cyan: '#00e5c7', blue: '#6f8fb3', lime: '#00e5c7', orange: '#06b6d4',
   red: '#b86f6f', pink: '#b86f6f', purple: '#6f8fb3', indigo: '#6f8fb3',
-  teal: '#7fa998', amber: '#b8a47f', yellow: '#b8a47f', emerald: '#7fa998',
+  teal: '#00e5c7', amber: '#06b6d4', yellow: '#06b6d4', emerald: '#00e5c7',
   sky: '#6f8fb3', violet: '#6f8fb3',
 }
 
 function getAccent(colorName: string): string {
-  return CLAY_ACCENT[colorName] || '#7fa998'
+  return CLAY_ACCENT[colorName] || '#00e5c7'
 }
 
 // â”€â”€â”€ Component â”€â”€â”€
@@ -392,14 +392,14 @@ export default function StudioEffectsChain({ onChainChange, onInsertSnippet }: S
         className="w-full flex items-center justify-between px-3 py-2 transition-colors duration-[180ms] ease-in-out cursor-pointer"
       >
         <div className="flex items-center gap-2">
-          <Zap size={11} style={{ color: '#b8a47f', opacity: 0.6 }} />
+          <Zap size={11} style={{ color: '#06b6d4', opacity: 0.6 }} />
           <span className="text-[9px] font-bold uppercase tracking-[.15em]" style={{ color: '#5a616b' }}>
             FX CHAIN
           </span>
           {enabledCount > 0 && (
             <span
               className="text-[8px] font-mono px-1.5 py-0.5 rounded-full"
-              style={{ color: '#7fa998', backgroundColor: '#111318', border: '1px solid #16181d',
+              style={{ color: '#00e5c7', backgroundColor: '#111318', border: '1px solid #16181d',
                 boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22' }}
             >
               {enabledCount} active
@@ -447,7 +447,7 @@ export default function StudioEffectsChain({ onChainChange, onInsertSnippet }: S
             <ArrowRight size={8} className="shrink-0" style={{ color: '#5a616b', opacity: 0.4 }} />
             <div
               className="shrink-0 text-[7px] font-bold uppercase tracking-wider px-1.5 py-1"
-              style={{ color: '#7fa998', opacity: 0.6, backgroundColor: '#111318', borderRadius: 6, border: '1px solid #16181d' }}
+              style={{ color: '#00e5c7', opacity: 0.6, backgroundColor: '#111318', borderRadius: 6, border: '1px solid #16181d' }}
             >
               OUT
             </div>
@@ -564,7 +564,7 @@ export default function StudioEffectsChain({ onChainChange, onInsertSnippet }: S
                                       value={st.params[param.id] ?? param.default}
                                       onChange={(e) => changeParam(fx.id, param.id, parseFloat(e.target.value))}
                                       className="flex-1 h-1 cursor-pointer"
-                                      style={{ accentColor: st.enabled ? '#7fa998' : '#5a616b' }}
+                                      style={{ accentColor: st.enabled ? '#00e5c7' : '#5a616b' }}
                                     />
                                     <span
                                       className="text-[8px] font-mono w-12 text-right"
@@ -606,7 +606,7 @@ export default function StudioEffectsChain({ onChainChange, onInsertSnippet }: S
                 style={{ backgroundColor: '#0a0b0d', borderRadius: 10, border: '1px solid #16181d',
                   boxShadow: 'inset 2px 2px 5px #050607, inset -2px -2px 5px #1a1d22' }}
               >
-                <code className="text-[9px] font-mono whitespace-pre-wrap block" style={{ color: '#7fa998', opacity: 0.5 }}>
+                <code className="text-[9px] font-mono whitespace-pre-wrap block" style={{ color: '#00e5c7', opacity: 0.5 }}>
                   {activeEffects.map((fx) => fx.toCode(effects[fx.id].params, true)).join('\n')}
                 </code>
               </div>
@@ -616,7 +616,7 @@ export default function StudioEffectsChain({ onChainChange, onInsertSnippet }: S
                   onInsertSnippet(code)
                 }}
                 className="mt-1.5 w-full text-[8px] font-bold py-1.5 transition-all duration-[180ms] ease-in-out cursor-pointer"
-                style={{ color: '#7fa998', backgroundColor: '#111318', borderRadius: 10, border: '1px solid #16181d',
+                style={{ color: '#00e5c7', backgroundColor: '#111318', borderRadius: 10, border: '1px solid #16181d',
                   boxShadow: '2px 2px 5px #050607, -2px -2px 5px #1a1d22' }}
               >
                 INSERT FULL CHAIN AT CURSOR

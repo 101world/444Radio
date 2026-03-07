@@ -414,12 +414,12 @@ function PlayheadOverlay({ getCyclePosition, isPlaying, trackCount }: {
       className="absolute top-0 bottom-0 z-20 pointer-events-none"
       style={{
         width: 2, opacity: 0,
-        background: 'linear-gradient(180deg, #7fa998 0%, #7fa99880 50%, #7fa998 100%)',
-        boxShadow: '0 0 8px #7fa99860, 0 0 16px #7fa99830',
+        background: 'linear-gradient(180deg, #00e5c7 0%, #00e5c780 50%, #00e5c7 100%)',
+        boxShadow: '0 0 8px #00e5c760, 0 0 16px #00e5c730',
       }}
     >
       <div className="absolute -top-1 -translate-x-1/2 left-1/2"
-        style={{ width: 0, height: 0, borderLeft: '4px solid transparent', borderRight: '4px solid transparent', borderTop: '5px solid #7fa998' }} />
+        style={{ width: 0, height: 0, borderLeft: '4px solid transparent', borderRight: '4px solid transparent', borderTop: '5px solid #00e5c7' }} />
     </div>
   )
 }
@@ -527,14 +527,14 @@ function TrackExpansionPanel({
         const currentSemitones = Math.round(12 * Math.log2(currentSpeed))
         return (
           <div className="flex items-center gap-1 px-1.5 py-0.5">
-            <StudioKnob label="PITCH" value={currentSemitones} min={-24} max={24} step={1} size={20} color="#c4a87a"
+            <StudioKnob label="PITCH" value={currentSemitones} min={-24} max={24} step={1} size={20} color="#2dd4bf"
               formatValue={(v: number) => (v > 0 ? `+${v}` : `${v}`)}
               onChange={(v: number) => { const newSpeed = Math.pow(2, v / 12); onParamChange(channelIdx, 'speed', parseFloat(newSpeed.toFixed(4))) }} />
             {scaleRoot && onAutoPitchMatch && (
               <button onClick={() => onAutoPitchMatch(channelIdx)}
                 className="cursor-pointer transition-all duration-100 active:scale-90"
                 style={{ width: 14, height: 14, borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '6px', color: '#c4a87a', background: '#0a0b0d', border: 'none',
+                  fontSize: '6px', color: '#2dd4bf', background: '#0a0b0d', border: 'none',
                   boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22' }}
                 title={`Auto-match pitch to ${scaleRoot}`}>🎯</button>
             )}
@@ -576,7 +576,7 @@ function TrackExpansionPanel({
             {channel.sourceType === 'sample' && channel.isSimpleSource && onAddSound && (
               <select value="" onChange={(e) => { if (e.target.value) onAddSound(channelIdx, e.target.value) }}
                 className="text-[5px] font-mono rounded px-0.5 py-0 outline-none cursor-pointer"
-                style={{ color: '#7fa998', background: '#0a0b0d', border: '1px solid rgba(127,169,152,0.2)', borderRadius: '4px', maxWidth: '50px' }}>
+                style={{ color: '#00e5c7', background: '#0a0b0d', border: '1px solid rgba(0,229,199,0.2)', borderRadius: '4px', maxWidth: '50px' }}>
                 <option value="">+ ADD</option>
                 {SOUND_OPTIONS.filter(g => SOUND_GROUPS.has(g.group)).map(g => (
                   <optgroup key={g.group} label={g.group}>
@@ -601,7 +601,7 @@ function TrackExpansionPanel({
               {onPreview && (
                 <button onClick={() => onPreview(`s("${channel.source}")`)}
                   className="shrink-0 rounded-md p-0.5 transition-all cursor-pointer hover:opacity-100"
-                  style={{ color: '#7fa998', opacity: 0.5 }} title={`Preview ${channel.source}`}>
+                  style={{ color: '#00e5c7', opacity: 0.5 }} title={`Preview ${channel.source}`}>
                   <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
                 </button>
               )}
@@ -613,7 +613,7 @@ function TrackExpansionPanel({
           {channel.sourceType !== 'synth' && channel.sourceType !== 'note' && onBankChange && (
             <select value={channel.bank || ''} onChange={(e) => onBankChange(channelIdx, e.target.value)}
               className="text-[6px] font-mono rounded px-0.5 py-0.5 outline-none cursor-pointer"
-              style={{ color: '#b8a47f', background: '#111318', border: '1px solid rgba(184,164,127,0.12)', borderRadius: '6px' }}>
+              style={{ color: '#06b6d4', background: '#111318', border: '1px solid rgba(6,182,212,0.12)', borderRadius: '6px' }}>
               <option value="">{channel.bank || 'No Bank'}</option>
               {BANK_OPTIONS.filter(([val]) => val !== channel.bank).map(([val, label]) => (<option key={val} value={val}>{label}</option>))}
             </select>
@@ -629,7 +629,7 @@ function TrackExpansionPanel({
             {onAddSound && (
               <select value="" onChange={(e) => { if (e.target.value) onAddSound(channelIdx, e.target.value) }}
                 className="text-[5px] font-mono rounded px-0.5 py-0 outline-none cursor-pointer"
-                style={{ color: '#7fa998', background: '#0a0b0d', border: '1px solid rgba(127,169,152,0.2)', borderRadius: '4px', maxWidth: '50px' }}>
+                style={{ color: '#00e5c7', background: '#0a0b0d', border: '1px solid rgba(0,229,199,0.2)', borderRadius: '4px', maxWidth: '50px' }}>
                 <option value="">+ ADD</option>
                 {SOUND_OPTIONS.filter(g => SOUND_GROUPS.has(g.group)).map(g => (
                   <optgroup key={g.group} label={g.group}>
@@ -669,7 +669,7 @@ function TrackExpansionPanel({
             .filter(fx => !['scope', 'pianoroll', 'orbit', 'gain'].includes(fx))
             .map(fx => {
               const isOffType = (isMelodic && SAMPLE_ONLY_KEYS.has(fx)) || (isSample && INSTRUMENT_ONLY_KEYS.has(fx))
-              const tagColor = (fx === 'arp' || fx === 'arpeggiate') ? '#b8a47f' : isOffType ? '#6b5a5a' : channel.color
+              const tagColor = (fx === 'arp' || fx === 'arpeggiate') ? '#06b6d4' : isOffType ? '#4a6068' : channel.color
               return (
                 <span key={fx} className="inline-flex items-center gap-[1px] rounded-full transition-all group/tag"
                   style={{ padding: '0px 3px 0px 4px', fontSize: '5px', fontWeight: 800, letterSpacing: '.06em',
@@ -719,9 +719,9 @@ function TrackExpansionPanel({
       {sidechainInfo && (sidechainInfo.isSource || sidechainInfo.isKickLike || sidechainInfo.hasDuckParams || sidechainInfo.isDucked) && (
         <div className="px-1.5 py-0.5" style={{ borderTop: '1px solid rgba(255,255,255,0.03)' }}>
           <div className="flex items-center gap-1 py-0.5">
-            <Link size={7} style={{ color: '#7fa998', opacity: 0.5 }} />
-            <span className="text-[5px] font-bold uppercase tracking-[.12em]" style={{ color: '#7fa998', opacity: 0.5 }}>SIDECHAIN</span>
-            <div className="flex-1 h-px" style={{ background: 'rgba(127,169,152,0.08)' }} />
+            <Link size={7} style={{ color: '#00e5c7', opacity: 0.5 }} />
+            <span className="text-[5px] font-bold uppercase tracking-[.12em]" style={{ color: '#00e5c7', opacity: 0.5 }}>SIDECHAIN</span>
+            <div className="flex-1 h-px" style={{ background: 'rgba(0,229,199,0.08)' }} />
           </div>
 
           {/* Enable button (kick-like channel without sidechain yet) */}
@@ -729,7 +729,7 @@ function TrackExpansionPanel({
             <button
               onClick={onEnableSidechain}
               className="w-full flex items-center justify-center gap-1 px-1.5 py-1 rounded-lg transition-all text-[6px] font-bold uppercase tracking-wider cursor-pointer"
-              style={{ background: '#111318', color: '#7fa998', boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22' }}
+              style={{ background: '#111318', color: '#00e5c7', boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22' }}
             >
               <Link size={6} /> Enable
             </button>
@@ -756,7 +756,7 @@ function TrackExpansionPanel({
                 <select value="" onChange={(e) => { if (e.target.value) onAddSidechainTarget(parseInt(e.target.value)) }}
                   onClick={(e) => e.stopPropagation()}
                   className="w-full text-[6px] font-mono rounded-lg px-1 py-0.5 outline-none cursor-pointer"
-                  style={{ background: '#111318', color: '#7fa998', border: '1px solid rgba(127,169,152,0.12)' }}>
+                  style={{ background: '#111318', color: '#00e5c7', border: '1px solid rgba(0,229,199,0.12)' }}>
                   <option value="">+ Target…</option>
                   {sidechainInfo.availableTargets.map((t) => <option key={t.idx} value={t.idx}>{t.name}</option>)}
                 </select>
@@ -827,14 +827,14 @@ function TrackExpansionPanel({
                 {onDuplicate && (
                   <button onClick={() => { setShowMoreMenu(false); onDuplicate(channelIdx) }}
                     className="flex items-center gap-1 w-full px-2 py-1 text-left transition-colors cursor-pointer hover:bg-white/5"
-                    style={{ color: '#7fa998', fontSize: '7px', fontWeight: 700 }}>
+                    style={{ color: '#00e5c7', fontSize: '7px', fontWeight: 700 }}>
                     <Copy size={8} /> Duplicate
                   </button>
                 )}
                 {onReset && (
                   <button onClick={() => { setShowMoreMenu(false); if (confirm('Reset channel?')) onReset(channelIdx) }}
                     className="flex items-center gap-1 w-full px-2 py-1 text-left transition-colors cursor-pointer hover:bg-white/5"
-                    style={{ color: '#b8a47f', fontSize: '7px', fontWeight: 700 }}>
+                    style={{ color: '#06b6d4', fontSize: '7px', fontWeight: 700 }}>
                     <RotateCcw size={8} /> Reset
                   </button>
                 )}
@@ -1064,8 +1064,8 @@ const TrackView = memo(function TrackView({
                       style={{
                         width: 16, height: 16, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: '7px', fontWeight: 900, lineHeight: 1,
-                        color: isSoloed ? '#b8a47f' : '#5a616b', background: isSoloed ? '#1a1a16' : '#0a0b0d', border: 'none',
-                        boxShadow: isSoloed ? `inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22, 0 0 4px #b8a47f30` : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+                        color: isSoloed ? '#06b6d4' : '#5a616b', background: isSoloed ? '#1a1a16' : '#0a0b0d', border: 'none',
+                        boxShadow: isSoloed ? `inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22, 0 0 4px #06b6d430` : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
                       }}>S</button>
 
                     <button onClick={(e) => { e.stopPropagation(); onMute(idx) }}
@@ -1147,7 +1147,7 @@ const TrackView = memo(function TrackView({
                         {primaryEditor === 'drum' && onOpenDrumSequencer && (
                           <button onClick={(e) => { e.stopPropagation(); onOpenDrumSequencer(idx) }}
                             className="flex items-center gap-0.5 px-1.5 py-1 rounded cursor-pointer transition-all hover:opacity-100 active:scale-95"
-                            style={{ color: '#b8a47f', opacity: 0.8, background: 'rgba(184,164,127,0.08)', border: '1px solid rgba(184,164,127,0.12)', fontSize: 0 }}>
+                            style={{ color: '#06b6d4', opacity: 0.8, background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.12)', fontSize: 0 }}>
                             <Grid3X3 size={10} /><span className="text-[6px] font-bold leading-none">STEPS</span>
                           </button>
                         )}
@@ -1250,8 +1250,8 @@ const TrackView = memo(function TrackView({
                   {/* Drop FX indicator */}
                   {dragOverChannel === idx && (
                     <div className="absolute inset-0 flex items-center justify-center z-10"
-                      style={{ background: 'rgba(127,169,152,0.1)', border: '2px solid rgba(127,169,152,0.4)', borderRadius: 4 }}>
-                      <span className="text-[10px] font-bold" style={{ color: '#7fa998' }}>⬇ DROP FX</span>
+                      style={{ background: 'rgba(0,229,199,0.1)', border: '2px solid rgba(0,229,199,0.4)', borderRadius: 4 }}>
+                      <span className="text-[10px] font-bold" style={{ color: '#00e5c7' }}>⬇ DROP FX</span>
                     </div>
                   )}
                 </div>
@@ -1265,7 +1265,7 @@ const TrackView = memo(function TrackView({
             style={{ background: '#0d0e11', color: '#5a616b', border: 'none' }}>
             <div className="w-5 h-5 rounded-full flex items-center justify-center transition-all group-hover:scale-110"
               style={{ background: '#111318', boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22' }}>
-              <Plus size={11} style={{ color: '#7fa998' }} />
+              <Plus size={11} style={{ color: '#00e5c7' }} />
             </div>
             <span className="text-[9px] font-bold tracking-wide group-hover:text-white/50 transition-colors">Add Track</span>
           </button>

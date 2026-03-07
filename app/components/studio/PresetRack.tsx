@@ -51,7 +51,7 @@ function TargetBadge({ target }: { target: string }) {
     ? { label: 'INST', bg: '#8b5cf610', color: '#8b5cf6', border: '#8b5cf615' }
     : target === 'sound'
       ? { label: 'SND', bg: '#f9731610', color: '#f97316', border: '#f9731615' }
-      : { label: 'ALL', bg: '#7fa99810', color: '#7fa998', border: '#7fa99815' }
+      : { label: 'ALL', bg: '#00e5c710', color: '#00e5c7', border: '#00e5c715' }
 
   return (
     <span className="text-[5px] font-black tracking-[.1em] px-1 py-0.5 rounded"
@@ -127,8 +127,8 @@ export default memo(function PresetRack({ selectedChannel, onApplyPreset, channe
           boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03), 0 2px 6px #050607',
         }}
       >
-        <StatusLED color="#7fa998" active />
-        <span className="text-[7px] font-black tracking-[.18em] uppercase" style={{ color: '#7fa998' }}>
+        <StatusLED color="#00e5c7" active />
+        <span className="text-[7px] font-black tracking-[.18em] uppercase" style={{ color: '#00e5c7' }}>
           FX PRESETS
         </span>
         <div className="flex-1" />
@@ -140,9 +140,9 @@ export default memo(function PresetRack({ selectedChannel, onApplyPreset, channe
         {selectedChannel >= 0 ? (
           <span className="text-[6px] font-black px-1.5 py-0.5 rounded-md"
             style={{
-              background: '#7fa99812',
-              color: '#7fa998',
-              border: '0.5px solid #7fa99820',
+              background: '#00e5c712',
+              color: '#00e5c7',
+              border: '0.5px solid #00e5c720',
             }}>
             CH{selectedChannel + 1}
           </span>

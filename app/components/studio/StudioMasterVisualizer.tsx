@@ -25,7 +25,7 @@ export default function StudioMasterVisualizer({ isPlaying, analyserNode }: Stud
 
     if (!isPlaying || !analyserNode) {
       // Idle state â€” flat line
-      ctx.strokeStyle = 'rgba(127,169,152,0.15)'
+      ctx.strokeStyle = 'rgba(0,229,199,0.15)'
       ctx.lineWidth = 1
       ctx.beginPath()
       ctx.moveTo(0, h / 2)
@@ -39,7 +39,7 @@ export default function StudioMasterVisualizer({ isPlaying, analyserNode }: Stud
     analyserNode.getByteTimeDomainData(dataArray)
 
     // Waveform
-    ctx.strokeStyle = '#7fa998'
+    ctx.strokeStyle = '#00e5c7'
     ctx.lineWidth = 1.5
     ctx.beginPath()
     const sliceWidth = w / bufferLength
@@ -62,7 +62,7 @@ export default function StudioMasterVisualizer({ isPlaying, analyserNode }: Stud
       const idx = Math.floor((i / barCount) * freqData.length * 0.5)
       const val = freqData[idx] / 255
       const barH = val * h * 0.6
-      ctx.fillStyle = `rgba(127,169,152,${val * 0.08})`
+      ctx.fillStyle = `rgba(0,229,199,${val * 0.08})`
       ctx.fillRect(i * barW, h - barH, barW - 1, barH)
     }
 

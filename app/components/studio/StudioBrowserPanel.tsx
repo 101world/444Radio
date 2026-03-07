@@ -287,7 +287,7 @@ export default function StudioBrowserPanel({
           <button
             onClick={() => toggleSection('__instruments__')}
             className="w-full flex items-center gap-1.5 px-2 py-1.5 text-[7px] font-black uppercase tracking-[.15em] cursor-pointer hover:bg-white/[0.02] transition-colors"
-            style={{ color: '#7fa998' }}
+            style={{ color: '#00e5c7' }}
           >
             <span className="text-[5px]">{expandedSections.has('__instruments__') || search.length > 0 ? '▼' : '▶'}</span>
             <span className="text-[9px]">🎹</span>
@@ -306,7 +306,7 @@ export default function StudioBrowserPanel({
                       className="w-full flex items-center gap-1.5 px-2 py-1.5 text-[7px] font-black uppercase tracking-[.12em] cursor-pointer hover:bg-white/[0.02] transition-colors"
                       style={{ color: '#5a616b' }}
                     >
-                      <span className="text-[5px]" style={{ color: '#7fa998' }}>{isOpen ? '▼' : '▶'}</span>
+                      <span className="text-[5px]" style={{ color: '#00e5c7' }}>{isOpen ? '▼' : '▶'}</span>
                       {section.label}
                       <span className="ml-auto text-[6px] opacity-40">{items.length}</span>
                     </button>
@@ -342,7 +342,7 @@ export default function StudioBrowserPanel({
           <button
             onClick={() => toggleSection('__sounds__')}
             className="w-full flex items-center gap-1.5 px-2 py-1.5 text-[7px] font-black uppercase tracking-[.15em] cursor-pointer hover:bg-white/[0.02] transition-colors"
-            style={{ color: '#b8a47f' }}
+            style={{ color: '#06b6d4' }}
           >
             <span className="text-[5px]">{expandedSections.has('__sounds__') || search.length > 0 ? '▼' : '▶'}</span>
             <span className="text-[9px]">🥁</span>
@@ -361,7 +361,7 @@ export default function StudioBrowserPanel({
                       className="w-full flex items-center gap-1.5 px-2 py-1.5 text-[7px] font-black uppercase tracking-[.12em] cursor-pointer hover:bg-white/[0.02] transition-colors"
                       style={{ color: '#5a616b' }}
                     >
-                      <span className="text-[5px]" style={{ color: '#b8a47f' }}>{isOpen ? '▼' : '▶'}</span>
+                      <span className="text-[5px]" style={{ color: '#06b6d4' }}>{isOpen ? '▼' : '▶'}</span>
                       {section.label}
                       <span className="ml-auto text-[6px] opacity-40">{items.length}</span>
                     </button>
@@ -386,10 +386,10 @@ export default function StudioBrowserPanel({
                               <button
                                 onClick={(e) => { e.stopPropagation(); onPreview(`s("${item.id}")`) }}
                                 className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-60 hover:!opacity-100 p-0.5 rounded transition-opacity cursor-pointer"
-                                style={{ background: 'rgba(127,169,152,0.15)' }}
+                                style={{ background: 'rgba(0,229,199,0.15)' }}
                                 title="Preview sound"
                               >
-                                <Volume2 size={7} style={{ color: '#7fa998' }} />
+                                <Volume2 size={7} style={{ color: '#00e5c7' }} />
                               </button>
                             )}
                           </button>

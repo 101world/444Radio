@@ -673,9 +673,9 @@ export const ORGANIZED_METHODS: MethodSection[] = [
     icon: '📊',
     category: 'universal',
     methods: [
-      { type: 'knob', label: 'GAIN', desc: 'Volume level', codeTemplate: '.gain({v})', min: 0, max: 2, default: 0.8, step: 0.01, color: '#7fa998' },
+      { type: 'knob', label: 'GAIN', desc: 'Volume level', codeTemplate: '.gain({v})', min: 0, max: 2, default: 0.8, step: 0.01, color: '#00e5c7' },
       { type: 'knob', label: 'PAN', desc: 'Stereo position', codeTemplate: '.pan({v})', min: 0, max: 1, default: 0.5, step: 0.01, color: '#6f8fb3' },
-      { type: 'knob', label: 'ORBIT', desc: 'FX bus routing', codeTemplate: '.orbit({v})', min: 0, max: 8, default: 0, step: 1, color: '#b8a47f' },
+      { type: 'knob', label: 'ORBIT', desc: 'FX bus routing', codeTemplate: '.orbit({v})', min: 0, max: 8, default: 0, step: 1, color: '#06b6d4' },
     ],
   },
   {
@@ -695,9 +695,9 @@ export const ORGANIZED_METHODS: MethodSection[] = [
     icon: 'â±ï¸',
     category: 'universal',
     methods: [
-      { type: 'knob', label: 'FAST', desc: 'Speed multiplier', codeTemplate: '.fast({v})', min: 0.25, max: 8, default: 2, step: 0.25, color: '#b8a47f' },
-      { type: 'knob', label: 'SLOW', desc: 'Slow factor', codeTemplate: '.slow({v})', min: 0.25, max: 8, default: 2, step: 0.25, color: '#b8a47f' },
-      { type: 'knob', label: 'SPEED', desc: 'Playback speed', codeTemplate: '.speed({v})', min: -4, max: 4, default: 1, step: 0.1, color: '#b8a47f' },
+      { type: 'knob', label: 'FAST', desc: 'Speed multiplier', codeTemplate: '.fast({v})', min: 0.25, max: 8, default: 2, step: 0.25, color: '#06b6d4' },
+      { type: 'knob', label: 'SLOW', desc: 'Slow factor', codeTemplate: '.slow({v})', min: 0.25, max: 8, default: 2, step: 0.25, color: '#06b6d4' },
+      { type: 'knob', label: 'SPEED', desc: 'Playback speed', codeTemplate: '.speed({v})', min: -4, max: 4, default: 1, step: 0.1, color: '#06b6d4' },
     ],
   },
   {
@@ -718,9 +718,9 @@ export const ORGANIZED_METHODS: MethodSection[] = [
     icon: '🦆',
     category: 'universal',
     methods: [
-      { type: 'knob', label: 'DUCK', desc: 'Sidechain trigger', codeTemplate: '.duck("{v}")', min: 0, max: 4, default: 1, step: 1, color: '#7fa998' },
-      { type: 'knob', label: 'DEPTH', desc: 'Duck depth', codeTemplate: '.duckdepth({v})', min: 0, max: 1, default: 0.8, step: 0.01, color: '#7fa998' },
-      { type: 'knob', label: 'ATK', desc: 'Duck attack', codeTemplate: '.duckattack({v})', min: 0, max: 1, default: 0.2, step: 0.01, color: '#7fa998' },
+      { type: 'knob', label: 'DUCK', desc: 'Sidechain trigger', codeTemplate: '.duck("{v}")', min: 0, max: 4, default: 1, step: 1, color: '#00e5c7' },
+      { type: 'knob', label: 'DEPTH', desc: 'Duck depth', codeTemplate: '.duckdepth({v})', min: 0, max: 1, default: 0.8, step: 0.01, color: '#00e5c7' },
+      { type: 'knob', label: 'ATK', desc: 'Duck attack', codeTemplate: '.duckattack({v})', min: 0, max: 1, default: 0.2, step: 0.01, color: '#00e5c7' },
     ],
   },
   // â•â•â•â•â•â• SOUND-SPECIFIC — affects tone & pitch â•â•â•â•â•â•
@@ -750,8 +750,8 @@ export const ORGANIZED_METHODS: MethodSection[] = [
     icon: '🎵',
     category: 'sound',
     methods: [
-      { type: 'knob', label: 'TRANS', desc: 'Transpose semitones', codeTemplate: '.trans({v})', min: -24, max: 24, default: -12, step: 1, color: '#b8a47f' },
-      { type: 'knob', label: 'DETUNE', desc: 'Detune amount', codeTemplate: '.detune({v})', min: 0, max: 10, default: 1, step: 0.1, color: '#b8a47f' },
+      { type: 'knob', label: 'TRANS', desc: 'Transpose semitones', codeTemplate: '.trans({v})', min: -24, max: 24, default: -12, step: 1, color: '#06b6d4' },
+      { type: 'knob', label: 'DETUNE', desc: 'Detune amount', codeTemplate: '.detune({v})', min: 0, max: 10, default: 1, step: 0.1, color: '#06b6d4' },
       { type: 'button', code: '.scale("c:minor")', desc: 'Scale quantize' },
       { type: 'button', code: '.voicing()', desc: 'Auto voice lead' },
       { type: 'button', code: '.chord("Em")', desc: 'Chord shape' },
@@ -764,7 +764,7 @@ export const ORGANIZED_METHODS: MethodSection[] = [
     icon: '〰ï¸',
     category: 'sound',
     methods: [
-      { type: 'knob', label: 'VIB', desc: 'Vibrato rate', codeTemplate: '.vib("{v}:.25")', min: 1, max: 16, default: 8, step: 1, color: '#b8a47f' },
+      { type: 'knob', label: 'VIB', desc: 'Vibrato rate', codeTemplate: '.vib("{v}:.25")', min: 1, max: 16, default: 8, step: 1, color: '#06b6d4' },
       { type: 'button', code: '.pan(sine.range(.2,.8).slow(8))', desc: 'Auto-panning LFO' },
       { type: 'button', code: 'perlin.range(300,800).slow(4)', desc: 'Perlin noise LFO' },
       { type: 'button', code: 'sine.range(0,1).slow(8)', desc: 'Sine LFO' },
@@ -876,7 +876,7 @@ export default function StudioMethodsPanel({ onInsert, onPreview, methodsOnly = 
           style={{
             background: activeTab === 'sounds' ? '#16181d' : '#111318',
             border: 'none',
-            color: activeTab === 'sounds' ? '#7fa998' : '#5a616b',
+            color: activeTab === 'sounds' ? '#00e5c7' : '#5a616b',
             boxShadow: activeTab === 'sounds'
               ? 'inset 3px 3px 6px #050607, inset -3px -3px 6px #1a1d22'
               : '3px 3px 6px #050607, -3px -3px 6px #1a1d22',
@@ -890,7 +890,7 @@ export default function StudioMethodsPanel({ onInsert, onPreview, methodsOnly = 
           style={{
             background: activeTab === 'methods' ? '#16181d' : '#111318',
             border: 'none',
-            color: activeTab === 'methods' ? '#b8a47f' : '#5a616b',
+            color: activeTab === 'methods' ? '#06b6d4' : '#5a616b',
             boxShadow: activeTab === 'methods'
               ? 'inset 3px 3px 6px #050607, inset -3px -3px 6px #1a1d22'
               : '3px 3px 6px #050607, -3px -3px 6px #1a1d22',
@@ -929,7 +929,7 @@ export default function StudioMethodsPanel({ onInsert, onPreview, methodsOnly = 
           )}
           {([
             { key: 'instrument' as const, label: 'INSTRUMENTS', icon: '🎹', color: '#6f8fb3', desc: 'Pitched / note-based' },
-            { key: 'sound' as const, label: 'SOUNDS', icon: 'ðŸ¥', color: '#b8a47f', desc: 'Drums, samples & FX' },
+            { key: 'sound' as const, label: 'SOUNDS', icon: 'ðŸ¥', color: '#06b6d4', desc: 'Drums, samples & FX' },
             { key: 'bank' as const, label: 'BANKS', icon: '🎛ï¸', color: '#b86f6f', desc: 'Drum machine presets' },
           ] as const).map(sectionDef => {
             const sectionCats = filteredSounds.filter(c => c.section === sectionDef.key)
@@ -990,7 +990,7 @@ export default function StudioMethodsPanel({ onInsert, onPreview, methodsOnly = 
                         onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
                       >
                         <div className="flex-1 min-w-0">
-                          <code className="text-[9px] font-mono truncate block" style={{ color: '#7fa998', opacity: 0.7 }}>{m.code}</code>
+                          <code className="text-[9px] font-mono truncate block" style={{ color: '#00e5c7', opacity: 0.7 }}>{m.code}</code>
                           <span className="text-[7px] truncate block" style={{ color: '#5a616b' }}>{m.desc}</span>
                         </div>
                         {/* Preview button */}
@@ -999,9 +999,9 @@ export default function StudioMethodsPanel({ onInsert, onPreview, methodsOnly = 
                             onClick={(e) => { e.stopPropagation(); handlePreview(m.code) }}
                             className="shrink-0 transition-all cursor-pointer rounded-md p-0.5"
                             style={{
-                              color: previewingCode === m.code ? '#7fa998' : '#5a616b',
+                              color: previewingCode === m.code ? '#00e5c7' : '#5a616b',
                               opacity: previewingCode === m.code ? 1 : 0.4,
-                              background: previewingCode === m.code ? 'rgba(127,169,152,0.15)' : 'transparent',
+                              background: previewingCode === m.code ? 'rgba(0,229,199,0.15)' : 'transparent',
                             }}
                             title="Preview sound"
                             onMouseEnter={(e) => { if (previewingCode !== m.code) e.currentTarget.style.opacity = '0.8' }}
@@ -1040,7 +1040,7 @@ export default function StudioMethodsPanel({ onInsert, onPreview, methodsOnly = 
           )}
 
           {[
-            { label: 'UNIVERSAL', icon: '⚡', sections: universalMethods, color: '#7fa998' },
+            { label: 'UNIVERSAL', icon: '⚡', sections: universalMethods, color: '#00e5c7' },
             { label: 'SOUND', icon: '🎵', sections: soundMethods, color: '#b86f6f' },
             { label: 'VISUAL', icon: '📊', sections: visualMethods, color: '#6f8fb3' },
           ].map(group => group.sections.length > 0 && (
@@ -1087,7 +1087,7 @@ export default function StudioMethodsPanel({ onInsert, onPreview, methodsOnly = 
                                   max={m.max}
                                   step={m.step}
                                   size={30}
-                                  color={m.color || '#7fa998'}
+                                  color={m.color || '#00e5c7'}
                                   unit={m.unit}
                                   onChange={(v) => setKnobValues(prev => ({ ...prev, [m.label]: v }))}
                                 />
@@ -1097,7 +1097,7 @@ export default function StudioMethodsPanel({ onInsert, onPreview, methodsOnly = 
                                 className="mt-0.5 px-1.5 py-0.5 rounded-md cursor-pointer opacity-50 group-hover:opacity-100 transition-all text-center"
                                 style={{
                                   background: 'rgba(255,255,255,0.02)',
-                                  color: m.color || '#7fa998',
+                                  color: m.color || '#00e5c7',
                                 }}
                                 onClick={() => onInsert(code)}
                                 draggable
@@ -1133,7 +1133,7 @@ export default function StudioMethodsPanel({ onInsert, onPreview, methodsOnly = 
                             className="text-[7px] font-mono px-1.5 py-1 rounded-lg transition-all duration-[180ms] cursor-pointer group/btn"
                             style={{
                               background: '#0a0b0d',
-                              color: '#7fa998',
+                              color: '#00e5c7',
                               border: 'none',
                               boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
                             }}

@@ -320,6 +320,102 @@ $pad: note("<[d3,a3,f4] [g3,d4,b4] [c3,g3,e4] [a2,e3,c4]>")
   `,
   },
   {
+    id: 'lofimelody',
+    label: 'LOFI MELODY',
+    icon: '\uD83C\uDFB5',
+    bpm: 92,
+    desc: 'Warm boom bap with layered keys, piano melodies & LinnDrum',
+    code: `setCps(92/60/4)
+
+// LOFI MELODY
+
+$: s("bd ~ ~ bd ~ ~ bd ~ ~ ~ bd ~ ~ ~ ~ ~").bank("RolandTR606")
+  .shape(.4).gain(1.14).duck(1).duckdepth(0.90).orbit(0)
+
+$: s("bd ~ ~ bd ~ ~ bd ~ bd ~ ~ ~ ~ ~ ~ ~").bank("RolandTR626")
+  .shape(.4).gain(0.06).duck(1).duckdepth(0.62).orbit(0)
+  .lpf(8000)
+  .hpf(40)
+  .compressor("-12:20:10:.002:.05")
+  .room(0.22)
+  .roomsize(5.7)
+  .attack(0.15)
+
+$bass: note("<c2 [~ c2] f1 g1>").scale("C4:major")
+  .s("sine").gain(.5)
+  .lpf(180).shape(.15)
+  .lp(4270)
+
+$keys: note("<[[c2,d3,f3,a3]@16] [[b1,g2,b2,d3]@16] [[a1,c3,e3,g3]@16] [[c2,a2,c3,e3]@16]>")
+  .s("gm_epiano1").gain(0.52)
+  .lpf(3900).room(.5).delay(.12)
+  .slow(2)
+  .attack(0.18)
+  .legato(1)
+
+$keys2: note("<[c4@3 d4@2 ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~] [c4@3 d4@2 ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~] [c4@3 d4@2 ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~] [c4@3 d4@2 ~ ~ ~ ~ ~ g4@2 ~ ~ e4@2 d4 ~ b3@2]>")
+  .s("gm_epiano1").gain(0.52)
+  .lpf(1400).room(.5).delay(.12)
+  .slow(2)
+  .legato(1)
+  .attack(0.11)
+  .decay(0.49)
+  .sustain(0.05)
+  .release(1.0)
+  .rel(0.5)
+
+$gmaltosa: note("<[g4@8 ~ ~ ~ ~ ~ ~ ~ ~] [~ ~ ~ ~ ~ ~ ~ ~ ~ ~ b3@2 g4@4] [g4@8 ~ ~ ~ ~ g3@4] [d4@6 b4@3 ~ b3@2 g4@4]>")
+  .s("gm_piano")
+  .gain(0.21)
+  .lpf(1180).lpq(2)
+  .room(0.3).delay(0.15).delaytime(0.125).delayfeedback(0.3)
+  .shape(0.09)
+  .legato(1)
+  .rel(2.7)
+  .release(1.3)
+  .fm(6.3)
+  .roomsize(2.1)
+  .hpf(80)
+  .attack(0.04)
+  .decay(3.85)
+
+$cp: s("~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ cp ~ ~ ~").bank("LinnDrum")
+  .gain(0.18)
+  .lpf(550).lpq(1.0)
+  .room(0.81).delay(0.00).delaytime(0.01).delayfeedback(0.00)
+  .shape(0.00)
+  .roomsize(4.5)
+  .orbit(1)
+  .lp(770)
+  .hpf(250)
+  .lpenv(1.0)
+  .hpenv(1.2)
+
+$oh: s("~ ~ ~ ~ ~ ~ oh ~ ~ oh ~ ~ ~ ~ ~ ~")
+  .gain(0.15)
+  .lpf(1920).lpq(1)
+  .room(0.2).delay(0.1).delaytime(0.11).delayfeedback(0.15)
+  .shape(0)
+  .orbit(1)
+
+$hh: s("hh ~ ~ ~ ~ hh ~ ~ ~ ~ hh ~ ~ ~ ~ ~")
+  .gain(0.8)
+  .lpf(6000).lpq(1)
+  .room(0.2).delay(0.1).delaytime(0.125).delayfeedback(0.2)
+  .shape(0)
+  .orbit(1)
+
+$sd: s("~ ~ ~ ~ sd ~ ~ ~ ~ ~ ~ ~ sd ~ ~ ~")
+  .gain(0.11)
+  .lpf(6000).lpq(1)
+  .room(0.2).delay(0.1).delaytime(0.125).delayfeedback(0.2)
+  .shape(0)
+  .roomsize(10)
+  .hpf(40)
+  .compressor("-20:25:6:.001:.1")
+`,
+  },
+  {
     id: 'rave',
     label: 'RAVE',
     icon: '\uD83C\uDF08',
@@ -360,7 +456,7 @@ $bass: note("f1*4")
   {
     id: 'birdsofafeather',
     label: 'BIRDS OF A FEATHER',
-    icon: 'ðŸ¦',
+    icon: '\uD83D\uDC26',
     bpm: 105,
     desc: 'Billie-style kalimba + guitar with arranged sections',
     code: `setcps(105/60/4)
@@ -444,7 +540,7 @@ $:arrange(
   {
     id: 'gospel',
     label: 'GOSPEL CHOIR',
-    icon: '?',
+    icon: '\uD83D\uDE4F',
     bpm: 88,
     desc: 'Soulful choir harmonies with organ and claps',
     code: `setCps(88/60/4)
@@ -486,7 +582,7 @@ $bass: note("<c2 f1 g1 c2>")
   {
     id: 'synthwave',
     label: 'SYNTHWAVE',
-    icon: '??',
+    icon: '\uD83C\uDF03',
     bpm: 118,
     desc: '80s retro synths with gated reverb and arps',
     code: `setCps(118/60/4)
@@ -533,7 +629,7 @@ $bass: n("<0 0 -3 -5>*4").scale("A1:minor")
   {
     id: 'trap',
     label: 'TRAP',
-    icon: '??',
+    icon: '\uD83C\uDFAF',
     bpm: 145,
     desc: 'Hard 808s, rolling hats, dark melodies',
     code: `setCps(145/60/4)
@@ -578,7 +674,7 @@ $vox: note("<[a3,c4,e4] ~ ~ ~ [g3,b3,d4] ~ ~ ~>")
   {
     id: 'jazz',
     label: 'JAZZY KEYS',
-    icon: '??',
+    icon: '\uD83C\uDFB7',
     bpm: 96,
     desc: 'Walking bass, Rhodes, sax with swing feel',
     code: `setCps(96/60/4)
@@ -619,7 +715,7 @@ $brush: s("~ [sd:3 ~] ~ [~ sd:3]").bank("RolandTR808")
   {
     id: 'reggaeton',
     label: 'REGGAETON',
-    icon: '??',
+    icon: '\uD83D\uDD25',
     bpm: 95,
     desc: 'Dembow rhythm with brass and vocal chops',
     code: `setCps(95/60/4)
@@ -664,7 +760,7 @@ $bass: note("<g1 ~ ~ g1 f1 ~ ~ f1>")
   {
     id: 'edm',
     label: 'EDM / BIG ROOM',
-    icon: '??',
+    icon: '\uD83D\uDCA5',
     bpm: 128,
     desc: 'Festival drops with supersaw builds and vocal stabs',
     code: `setCps(128/60/4)
@@ -713,7 +809,7 @@ $riser: note("e3")
   {
     id: 'afrobeat',
     label: 'AFROBEATS',
-    icon: '??',
+    icon: '\uD83E\uDD41',
     bpm: 108,
     desc: 'Afrobeat grooves with kalimba and percussion',
     code: `setCps(108/60/4)
@@ -759,7 +855,7 @@ $guitar: n("<0 4 7 4>*4").scale("G3:major")
   {
     id: 'cinematic',
     label: 'CINEMATIC',
-    icon: '??',
+    icon: '\uD83C\uDFAC',
     bpm: 65,
     desc: 'Epic strings, choir, and thunderous percussion',
     code: `setCps(65/60/4)
@@ -807,7 +903,7 @@ $cello: note("<d2 c2 bb1 a1>")
   {
     id: 'phonk',
     label: 'PHONK',
-    icon: '??',
+    icon: '\uD83D\uDC80',
     bpm: 140,
     desc: 'Dark Memphis beats with cowbell and distorted choir',
     code: `setCps(140/60/4)
@@ -853,7 +949,7 @@ $melody: n("<0 3 5 7 8 7 5 3>").scale("A3:phrygian")
   {
     id: 'rnb',
     label: 'R&B',
-    icon: '??',
+    icon: '\uD83D\uDC9C',
     bpm: 80,
     desc: 'Smooth R&B with vocal pads and neo-soul keys',
     code: `setCps(80/60/4)
@@ -900,7 +996,7 @@ $bass: note("<e1 a1 d2 g1>")
   {
     id: 'pop',
     label: 'POP',
-    icon: '??',
+    icon: '\u2B50',
     bpm: 118,
     desc: 'Modern pop with vocal chops, clean keys & four-on-the-floor',
     code: `setCps(118/60/4)
@@ -954,7 +1050,7 @@ $pad: note("<[e3,b3,g4] [a2,e3,c4] [d3,a3,f4] [g2,d3,b3]>")
   {
     id: 'darkhouse',
     label: 'DARK HOUSE',
-    icon: '??',
+    icon: '\uD83C\uDF11',
     bpm: 111,
     desc: 'Deep, dark, hypnotic house � 111 BPM with eerie vocals',
     code: `setCps(111/60/4)
@@ -1012,7 +1108,7 @@ $texture: s("noise").gain(sine.range(0,.015).slow(16))
   {
     id: 'garage',
     label: 'UK GARAGE',
-    icon: '????',
+    icon: '\uD83D\uDD27',
     bpm: 130,
     desc: '2-step garage with choppy vocals and shuffled beats',
     code: `setCps(130/60/4)
@@ -1061,7 +1157,7 @@ $chords: note("<[c3,eb3,g3] [c3,eb3,g3] [bb2,d3,f3] [ab2,c3,eb3]>")
   {
     id: 'disco',
     label: 'DISCO FUNK',
-    icon: '??',
+    icon: '\uD83D\uDD7A',
     bpm: 115,
     desc: 'Groovy disco with funky bass, strings & vocal hooks',
     code: `setCps(115/60/4)
@@ -1118,7 +1214,7 @@ $brass: note("<[c4,e4] ~ ~ ~ [f3,a3] ~ ~ ~>")
   {
     id: 'proghouse',
     label: 'PROG HOUSE',
-    icon: '??',
+    icon: '\u2728',
     bpm: 124,
     desc: 'Progressive house with building layers and euphoric breakdown',
     code: `setCps(124/60/4)
@@ -1173,7 +1269,7 @@ $vox: note("<a3 ~ c4 ~ e4 ~ c4 ~>")
   {
     id: 'minimal',
     label: 'MINIMAL',
-    icon: '??',
+    icon: '\u2B1B',
     bpm: 126,
     desc: 'Stripped-back minimal with micro-edits and hypnotic loops',
     code: `setCps(126/60/4)
@@ -1223,7 +1319,7 @@ $texture: s("noise").gain(sine.range(0,.008).slow(20))
   {
     id: 'electropop',
     label: 'ELECTRO POP',
-    icon: '?',
+    icon: '\uD83C\uDFB9',
     bpm: 120,
     desc: 'Catchy electro pop with arpeggios, vocal layers & danceable groove',
     code: `setCps(120/60/4)
@@ -1278,7 +1374,7 @@ $vox: note("<[e4 g4 ~ c5] [~ b4 g4 ~] [a4 c5 ~ a4] [~ g4 e4 ~]>")
   {
     id: 'futurebass',
     label: 'FUTURE BASS',
-    icon: '??',
+    icon: '\uD83C\uDF1F',
     bpm: 150,
     desc: 'Lush supersaws, vocal chops and sidechained chords',
     code: `setCps(150/60/4)
@@ -1337,7 +1433,7 @@ $pad: note("<[ab2,eb3,c4] [ab2,eb3,c4] [f2,c3,ab3] [eb2,bb2,g3]>")
   {
     id: 'dancehall',
     label: 'DANCEHALL',
-    icon: '???',
+    icon: '\uD83D\uDC83',
     bpm: 100,
     desc: 'Caribbean riddim with bouncy bass and vocal hooks',
     code: `setCps(100/60/4)
@@ -1387,7 +1483,7 @@ $brass: note("<[c4,eb4] ~ ~ ~ [f3,ab3] ~ [g3,bb3] ~>")
   {
     id: 'melotechno',
     label: 'MELODIC TECHNO',
-    icon: '??',
+    icon: '\uD83C\uDFB6',
     bpm: 128,
     desc: 'Melodic techno � driving beats with emotional synth layers',
     code: `setCps(128/60/4)
@@ -1475,7 +1571,7 @@ export default function StudioGenreSelector({ activeGenre, onSelect }: StudioGen
               style={{
                 background: isActive ? '#16181d' : 'transparent',
                 border: 'none',
-                color: isActive ? '#7fa998' : '#5a616b',
+                color: isActive ? '#00e5c7' : '#5a616b',
                 boxShadow: isActive ? 'inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22' : 'none',
               }}
               title={`${t.label} â€” ${t.desc}`}

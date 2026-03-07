@@ -2198,7 +2198,7 @@ export default function StudioPianoRoll({
             </span>
           )}
           {isNoteMode ? (
-            <span className="text-[7px] font-bold font-mono px-1 py-0.5" style={{ color: '#b8a47f', background: '#0a0b0d', borderRadius: '8px', boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22' }}>
+            <span className="text-[7px] font-bold font-mono px-1 py-0.5" style={{ color: '#06b6d4', background: '#0a0b0d', borderRadius: '8px', boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22' }}>
               NOTE â™¯â™­
             </span>
           ) : (
@@ -2214,7 +2214,7 @@ export default function StudioPianoRoll({
           {arpInfo.mode !== 'off' && (
             <>
               <span className="text-[7px] font-bold px-1.5 py-0.5 rounded-lg flex items-center gap-1"
-                style={{ color: '#b8a47f', background: '#0a0b0d', boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22' }}>
+                style={{ color: '#06b6d4', background: '#0a0b0d', boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22' }}>
                 ðŸŽ¹ ARP {arpInfo.mode.toUpperCase()} Ã—{arpInfo.rate}
               </span>
               <div className="w-px h-3.5 bg-white/[0.08]" />
@@ -2363,7 +2363,7 @@ export default function StudioPianoRoll({
               className="px-2 py-0.5 text-[7px] font-bold cursor-pointer transition-all rounded-r-lg"
               style={{
                 background: inputMode === 'chord' ? '#16181d' : 'transparent',
-                color: inputMode === 'chord' ? '#b8a47f' : '#5a616b',
+                color: inputMode === 'chord' ? '#06b6d4' : '#5a616b',
                 border: 'none',
                 boxShadow: inputMode === 'chord' ? 'inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22' : 'none',
               }}
@@ -2379,7 +2379,7 @@ export default function StudioPianoRoll({
             className="px-2 py-0.5 text-[7px] font-bold cursor-pointer transition-all rounded-lg flex items-center gap-1"
             style={{
               background: strictScale ? '#16181d' : '#0a0b0d',
-              color: strictScale ? '#7fa998' : '#5a616b',
+              color: strictScale ? '#00e5c7' : '#5a616b',
               border: 'none',
               borderRadius: '8px',
               boxShadow: strictScale
@@ -2485,7 +2485,7 @@ export default function StudioPianoRoll({
               className="px-2 py-0.5 text-[7px] font-bold cursor-pointer transition-all uppercase tracking-wider flex items-center gap-1"
               style={{
                 background: showChordPalette ? '#16181d' : '#0a0b0d',
-                color: showChordPalette ? '#b8a47f' : '#5a616b',
+                color: showChordPalette ? '#06b6d4' : '#5a616b',
                 border: 'none',
                 borderRadius: '8px',
                 boxShadow: showChordPalette
@@ -2508,7 +2508,7 @@ export default function StudioPianoRoll({
                 }}
               >
                 <div className="px-2 py-1.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                  <span className="text-[7px] font-bold uppercase tracking-wider" style={{ color: '#b8a47f' }}>
+                  <span className="text-[7px] font-bold uppercase tracking-wider" style={{ color: '#06b6d4' }}>
                     Diatonic Chords in {scale.replace(/\d+:/, ':')}
                   </span>
                   <div className="text-[6px] font-mono mt-0.5" style={{ color: '#5a616b' }}>
@@ -2555,7 +2555,7 @@ export default function StudioPianoRoll({
                         minWidth: '36px',
                       }}
                     >
-                      <div className="text-[9px] font-bold" style={{ color: '#b8a47f' }}>{chord.roman}</div>
+                      <div className="text-[9px] font-bold" style={{ color: '#06b6d4' }}>{chord.roman}</div>
                       <div className="text-[6px] font-mono mt-0.5" style={{ color: '#5a616b' }}>
                         {NOTE_NAMES[chord.notes[0] % 12]}{chord.quality}
                       </div>
@@ -2574,7 +2574,7 @@ export default function StudioPianoRoll({
           {/* Detected chord name */}
           {detectedChord && (
             <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-lg" style={{
-              color: '#b8a47f',
+              color: '#06b6d4',
               background: '#0a0b0d',
               boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22',
             }}>
@@ -2585,7 +2585,7 @@ export default function StudioPianoRoll({
           {isGenerative && !hasUserEdited && (
             <>
               <div className="w-px h-3.5 bg-white/[0.08]" />
-              <span className="text-[7px] font-mono font-bold" style={{ color: '#b8a47f' }}>
+              <span className="text-[7px] font-mono font-bold" style={{ color: '#06b6d4' }}>
                 âš¡ generative â€” click grid to compose
               </span>
             </>
@@ -2596,7 +2596,7 @@ export default function StudioPianoRoll({
         <div className="flex items-center gap-1.5">
           {hasUserEdited && (
             <span className="text-[7px] font-black px-1.5 py-0.5 rounded-lg"
-              style={{ color: '#7fa998', background: '#0a0b0d', boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22' }}>
+              style={{ color: '#00e5c7', background: '#0a0b0d', boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22' }}>
               â— LIVE
             </span>
           )}
@@ -2624,7 +2624,7 @@ export default function StudioPianoRoll({
                 setHasUserEdited(true)
               }}
                 className="px-1.5 py-0.5 text-[7px] cursor-pointer transition-all duration-[180ms] font-bold rounded-lg"
-                style={{ background: '#0a0b0d', color: '#b8a47f', boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22' }}
+                style={{ background: '#0a0b0d', color: '#06b6d4', boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22' }}
                 title="Duplicate (Ctrl+D)">Dup</button>
               <button onClick={() => {
                 setNoteMap(prev => { const next = new Map(prev); selectedNotes.forEach(key => next.delete(key)); return next })
@@ -2645,7 +2645,7 @@ export default function StudioPianoRoll({
               setHasUserEdited(true)
             }}
               className="px-1.5 py-0.5 text-[7px] cursor-pointer transition-all duration-[180ms] font-bold rounded-lg"
-              style={{ background: '#0a0b0d', color: '#7fa998', boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22' }}
+              style={{ background: '#0a0b0d', color: '#00e5c7', boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22' }}
               title="Paste (Ctrl+V)">Paste</button>
           )}
           <button onClick={clearAll}
@@ -2934,9 +2934,9 @@ export default function StudioPianoRoll({
             {/* â”€â”€ ARP â”€â”€ */}
             <div className="px-2 py-1.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
               <div className="flex items-center gap-1 mb-1">
-                <span className="text-[6px] font-bold uppercase tracking-wider" style={{ color: arpInfo.mode !== 'off' ? '#b8a47f' : '#5a616b' }}>ðŸŽ¹ Arp</span>
+                <span className="text-[6px] font-bold uppercase tracking-wider" style={{ color: arpInfo.mode !== 'off' ? '#06b6d4' : '#5a616b' }}>ðŸŽ¹ Arp</span>
                 {arpInfo.mode !== 'off' && (
-                  <span className="text-[5px] font-bold ml-auto" style={{ color: '#b8a47f' }}>{arpInfo.mode.toUpperCase()} Ã—{arpInfo.rate}</span>
+                  <span className="text-[5px] font-bold ml-auto" style={{ color: '#06b6d4' }}>{arpInfo.mode.toUpperCase()} Ã—{arpInfo.rate}</span>
                 )}
               </div>
               <div className="flex flex-wrap gap-0.5 justify-center">
@@ -2955,7 +2955,7 @@ export default function StudioPianoRoll({
                       width: 22, height: 16, borderRadius: 6,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: '8px', fontWeight: 900,
-                      color: arpInfo.mode === mode.id ? '#b8a47f' : '#5a616b',
+                      color: arpInfo.mode === mode.id ? '#06b6d4' : '#5a616b',
                       background: arpInfo.mode === mode.id ? '#16181d' : '#111318',
                       border: 'none',
                       boxShadow: arpInfo.mode === mode.id
@@ -2977,7 +2977,7 @@ export default function StudioPianoRoll({
                     max={8}
                     step={1}
                     size={24}
-                    color="#b8a47f"
+                    color="#06b6d4"
                     formatValue={(v) => `Ã—${v}`}
                     onChange={(v) => onArpRateChange?.(v)}
                   />
@@ -3040,7 +3040,7 @@ export default function StudioPianoRoll({
                       className="px-1.5 py-0.5 text-[6px] font-bold cursor-pointer transition-all duration-100 active:scale-95 rounded-lg"
                       style={{
                         background: '#111318',
-                        color: '#7fa998',
+                        color: '#00e5c7',
                         boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
                         border: 'none',
                       }}
@@ -3085,9 +3085,9 @@ export default function StudioPianoRoll({
         {isGenerative && !hasUserEdited && (
           <div className="absolute inset-0 z-30 flex flex-col items-center justify-center pointer-events-none"
             style={{ background: 'rgba(28,30,34,0.85)' }}>
-            <div className="text-sm font-bold mb-1" style={{ color: '#b8a47f' }}>âš¡ Generative Pattern</div>
+            <div className="text-sm font-bold mb-1" style={{ color: '#06b6d4' }}>âš¡ Generative Pattern</div>
             <div className="text-xs text-center max-w-[280px]" style={{ color: '#5a616b' }}>
-              This channel uses a random/algorithmic pattern (<span className="font-mono" style={{ color: '#b8a47f', opacity: 0.7 }}>irand, perlin</span> etc.)
+              This channel uses a random/algorithmic pattern (<span className="font-mono" style={{ color: '#06b6d4', opacity: 0.7 }}>irand, perlin</span> etc.)
             </div>
             <div className="text-[10px] mt-2" style={{ color: '#5a616b' }}>Click any cell to start composing a static pattern</div>
           </div>

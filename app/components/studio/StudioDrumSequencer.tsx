@@ -1117,7 +1117,7 @@ export default function StudioDrumSequencer({
             </span>
           )}
           {bank && (
-            <span className="text-[7px] font-mono" style={{ color: '#b8a47f', opacity: 0.5 }}>{bank}</span>
+            <span className="text-[7px] font-mono" style={{ color: '#06b6d4', opacity: 0.5 }}>{bank}</span>
           )}
 
           <div className="w-px h-3.5 bg-white/[0.08]" />
@@ -1250,7 +1250,7 @@ export default function StudioDrumSequencer({
           <button
             onClick={randomize}
             className="px-2 py-0.5 rounded-xl text-[7px] font-bold uppercase tracking-wider cursor-pointer transition-all duration-[180ms]"
-            style={{ background: '#16181d', color: '#b8a47f', boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22' }}
+            style={{ background: '#16181d', color: '#06b6d4', boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22' }}
             title="Generate random pattern"
           >
             🎲 Dice
@@ -1260,7 +1260,7 @@ export default function StudioDrumSequencer({
         <div className="flex items-center gap-1.5">
           {hasUserEdited && (
             <span className="text-[7px] font-bold px-1.5 py-0.5 rounded-lg"
-              style={{ color: '#7fa998', background: '#0a0b0d', boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22' }}>
+              style={{ color: '#00e5c7', background: '#0a0b0d', boxShadow: 'inset 1px 1px 3px #050607, inset -1px -1px 3px #1a1d22' }}>
               â— LIVE
             </span>
           )}

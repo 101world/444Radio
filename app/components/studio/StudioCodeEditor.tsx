@@ -75,7 +75,7 @@ const StudioCodeEditor = forwardRef<StudioCodeEditorHandle, StudioCodeEditorProp
                 overflowWrap: 'normal',
                 wordBreak: 'keep-all',
                 color: '#e8ecf0',
-                caretColor: '#7fa998',
+                caretColor: '#00e5c7',
               }}
             />
           </div>

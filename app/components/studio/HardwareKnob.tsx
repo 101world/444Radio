@@ -40,7 +40,7 @@ export default function HardwareKnob({
   max,
   step = 0.01,
   size = 52,
-  color = '#e8872a',
+  color = '#06b6d4',
   unit = '',
   onChange,
   onRemove,
@@ -237,7 +237,7 @@ export default function HardwareKnob({
         style={{ color: active ? '#c8cdd4' : '#5a616b', fontFamily: 'system-ui, sans-serif' }}
       >
         {label}
-        {isComplex && <span style={{ color: '#b8a47f', opacity: 0.6 }} className="ml-0.5" title="Modulated">~</span>}
+        {isComplex && <span style={{ color: '#06b6d4', opacity: 0.6 }} className="ml-0.5" title="Modulated">~</span>}
       </span>
 
       {/* SVG Knob */}

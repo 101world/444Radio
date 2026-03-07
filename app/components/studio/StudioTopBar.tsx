@@ -74,7 +74,7 @@ export default function StudioTopBar({
 
     if (!isPlaying || !analyserNode) {
       // Idle â€” dim flat line
-      ctx.strokeStyle = 'rgba(127,169,152,0.12)'
+      ctx.strokeStyle = 'rgba(0,229,199,0.12)'
       ctx.lineWidth = 1
       ctx.beginPath()
       ctx.moveTo(0, h / 2)
@@ -91,7 +91,7 @@ export default function StudioTopBar({
 
     switch (vizMode) {
       case 'waveform': {
-        ctx.strokeStyle = '#7fa998'
+        ctx.strokeStyle = '#00e5c7'
         ctx.lineWidth = 1.5
         ctx.beginPath()
         const sw = w / bufLen
@@ -119,7 +119,7 @@ export default function StudioTopBar({
       }
 
       case 'mirror': {
-        ctx.strokeStyle = '#7fa998'
+        ctx.strokeStyle = '#00e5c7'
         ctx.lineWidth = 1.2
         const sw2 = w / bufLen
         ctx.beginPath()
@@ -129,7 +129,7 @@ export default function StudioTopBar({
           if (i === 0) ctx.moveTo(i * sw2, y); else ctx.lineTo(i * sw2, y)
         }
         ctx.stroke()
-        ctx.strokeStyle = 'rgba(127,169,152,0.3)'
+        ctx.strokeStyle = 'rgba(0,229,199,0.3)'
         ctx.beginPath()
         for (let i = 0; i < bufLen; i++) {
           const v = (timeData[i] - 128) / 128
@@ -144,7 +144,7 @@ export default function StudioTopBar({
         const cx = w / 2, cy = h / 2
         const r = Math.min(cx, cy) * 0.7
         const slices = 128
-        ctx.strokeStyle = '#7fa998'
+        ctx.strokeStyle = '#00e5c7'
         ctx.lineWidth = 1.2
         ctx.beginPath()
         for (let i = 0; i <= slices; i++) {
@@ -171,7 +171,7 @@ export default function StudioTopBar({
           const size = 1 + val * 3
           ctx.beginPath()
           ctx.arc(x, y, size, 0, Math.PI * 2)
-          ctx.fillStyle = `rgba(127,169,152,${0.2 + val * 0.6})`
+          ctx.fillStyle = `rgba(0,229,199,${0.2 + val * 0.6})`
           ctx.fill()
         }
         break
@@ -189,11 +189,11 @@ export default function StudioTopBar({
         ctx.lineTo(w, h)
         ctx.closePath()
         const grad = ctx.createLinearGradient(0, 0, 0, h)
-        grad.addColorStop(0, 'rgba(127,169,152,0.25)')
-        grad.addColorStop(1, 'rgba(127,169,152,0.02)')
+        grad.addColorStop(0, 'rgba(0,229,199,0.25)')
+        grad.addColorStop(1, 'rgba(0,229,199,0.02)')
         ctx.fillStyle = grad
         ctx.fill()
-        ctx.strokeStyle = '#7fa998'
+        ctx.strokeStyle = '#00e5c7'
         ctx.lineWidth = 1
         ctx.beginPath()
         for (let i = 0; i < bufLen; i++) {
@@ -214,7 +214,7 @@ export default function StudioTopBar({
           const barH = val * h
           const grad = ctx.createLinearGradient(0, h - barH, 0, h)
           grad.addColorStop(0, `rgba(111,143,179,${val * 0.6})`)
-          grad.addColorStop(1, `rgba(127,169,152,${val * 0.3})`)
+          grad.addColorStop(1, `rgba(0,229,199,${val * 0.3})`)
           ctx.fillStyle = grad
           ctx.fillRect(i * barW2, h - barH, barW2 - 1, barH)
         }
@@ -222,7 +222,7 @@ export default function StudioTopBar({
       }
 
       case 'scope-xy': {
-        ctx.strokeStyle = 'rgba(127,169,152,0.5)'
+        ctx.strokeStyle = 'rgba(0,229,199,0.5)'
         ctx.lineWidth = 1
         const cx2 = w / 2, cy2 = h / 2
         const scale = Math.min(cx2, cy2) * 0.8
@@ -293,9 +293,9 @@ export default function StudioTopBar({
           <div
             className="w-2 h-2 rounded-full"
             style={{
-              background: isPlaying ? '#7fa998' : status === 'error' ? '#b86f6f' : '#3b3f44',
+              background: isPlaying ? '#00e5c7' : status === 'error' ? '#b86f6f' : '#3b3f44',
               boxShadow: isPlaying
-                ? '0 0 4px rgba(127,169,152,0.4)'
+                ? '0 0 4px rgba(0,229,199,0.4)'
                 : 'inset 0 1px 2px rgba(0,0,0,0.5)',
             }}
           />
@@ -307,9 +307,9 @@ export default function StudioTopBar({
           className="text-[7px] font-mono font-bold px-2 py-0.5 rounded-full"
           style={{
             color: status === 'loading'
-              ? '#b8a47f'
+              ? '#06b6d4'
               : status === 'playing'
-                ? '#7fa998'
+                ? '#00e5c7'
                 : status === 'error'
                   ? '#b86f6f'
                   : '#5a616b',
@@ -359,7 +359,7 @@ export default function StudioTopBar({
             padding: '6px 22px',
             fontSize: '11px', fontWeight: 900, letterSpacing: '.15em',
             color: isPlaying ? '#e8ecf0' : '#0a0b0d',
-            background: isPlaying ? '#16181d' : '#7fa998',
+            background: isPlaying ? '#16181d' : '#00e5c7',
             border: 'none',
             borderRadius: '24px',
             boxShadow: '4px 4px 8px #050607, -4px -4px 8px #1a1d22',
@@ -415,7 +415,7 @@ export default function StudioTopBar({
             onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
             className="w-14 h-[3px] cursor-pointer"
           />
-          <span className="text-[7px] font-mono w-5 text-right tabular-nums font-bold" style={{ color: '#7fa998' }}>
+          <span className="text-[7px] font-mono w-5 text-right tabular-nums font-bold" style={{ color: '#00e5c7' }}>
             {Math.round(masterVolume * 100)}
           </span>
         </div>
@@ -429,7 +429,7 @@ export default function StudioTopBar({
               padding: '5px 12px',
               fontSize: '8px', fontWeight: 900, letterSpacing: '.12em', textTransform: 'uppercase' as const,
               borderRadius: '14px',
-              color: codeVisible ? '#7fa998' : '#5a616b',
+              color: codeVisible ? '#00e5c7' : '#5a616b',
               background: codeVisible ? '#16181d' : '#111318',
               border: 'none',
               boxShadow: codeVisible

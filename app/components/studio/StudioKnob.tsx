@@ -147,7 +147,7 @@ export default function StudioKnob({
     >
       {/* Label */}
       <span className="text-[6px] font-bold uppercase tracking-[.12em] truncate w-full text-center leading-none" style={{ color: '#5a616b' }}>
-        {label}{isComplex && <span style={{ color: '#b8a47f', opacity: 0.5 }} className="ml-0.5" title="Modulated">~</span>}
+        {label}{isComplex && <span style={{ color: '#06b6d4', opacity: 0.5 }} className="ml-0.5" title="Modulated">~</span>}
       </span>
 
       {/* SVG Knob */}

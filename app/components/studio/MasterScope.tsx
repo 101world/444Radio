@@ -56,7 +56,7 @@ export default function MasterScope({ analyserNode, isPlaying }: MasterScopeProp
 
     if (!isPlaying || !analyserNode) {
       // Idle state — subtle center line
-      ctx.strokeStyle = 'rgba(127, 169, 152, 0.08)'
+      ctx.strokeStyle = 'rgba(0, 229, 199, 0.08)'
       ctx.lineWidth = 1
       ctx.beginPath()
       ctx.moveTo(0, h / 2)
@@ -155,9 +155,9 @@ export default function MasterScope({ analyserNode, isPlaying }: MasterScopeProp
       >
         <span className="text-[8px] font-black uppercase tracking-[.15em] px-1.5 py-0.5 rounded-full"
           style={{
-            color: '#7fa998',
+            color: '#00e5c7',
             background: 'rgba(10, 11, 13, 0.8)',
-            border: '1px solid rgba(127,169,152,0.15)',
+            border: '1px solid rgba(0,229,199,0.15)',
           }}
         >
           {currentScope.icon} {currentScope.label}
@@ -225,9 +225,9 @@ function drawWaveform(
   ctx.lineTo(0, cy)
   ctx.closePath()
   const grad = ctx.createLinearGradient(0, 0, 0, h)
-  grad.addColorStop(0, 'rgba(127, 169, 152, 0.06)')
-  grad.addColorStop(0.5, 'rgba(127, 169, 152, 0.02)')
-  grad.addColorStop(1, 'rgba(127, 169, 152, 0.06)')
+  grad.addColorStop(0, 'rgba(0, 229, 199, 0.06)')
+  grad.addColorStop(0.5, 'rgba(0, 229, 199, 0.02)')
+  grad.addColorStop(1, 'rgba(0, 229, 199, 0.06)')
   ctx.fillStyle = grad
   ctx.fill()
 }
@@ -348,7 +348,7 @@ function drawLissajous(
   for (let hi = 0; hi < history.length; hi++) {
     const frame = history[hi]
     const alpha = (hi + 1) / (history.length + 1) * 0.4
-    ctx.strokeStyle = `rgba(127, 169, 152, ${alpha})`
+    ctx.strokeStyle = `rgba(0, 229, 199, ${alpha})`
     ctx.lineWidth = 0.5
     ctx.beginPath()
     for (let i = 0; i < halfLen; i++) {
@@ -461,9 +461,9 @@ function drawMirror(
   }
   ctx.closePath()
   const grad = ctx.createLinearGradient(0, 0, 0, h)
-  grad.addColorStop(0, `rgba(127, 169, 152, ${0.05 + intensity * 0.1})`)
-  grad.addColorStop(0.5, 'rgba(127, 169, 152, 0.02)')
-  grad.addColorStop(1, `rgba(127, 169, 152, ${0.05 + intensity * 0.1})`)
+  grad.addColorStop(0, `rgba(0, 229, 199, ${0.05 + intensity * 0.1})`)
+  grad.addColorStop(0.5, 'rgba(0, 229, 199, 0.02)')
+  grad.addColorStop(1, `rgba(0, 229, 199, ${0.05 + intensity * 0.1})`)
   ctx.fillStyle = grad
   ctx.fill()
 
@@ -548,7 +548,7 @@ function drawVU(
 
   // Draw labels
   ctx.font = '7px monospace'
-  ctx.fillStyle = 'rgba(127,169,152,0.5)'
+  ctx.fillStyle = 'rgba(0,229,199,0.5)'
   ctx.textAlign = 'left'
   ctx.fillText('L', 4, barH / 2 + 5)
   ctx.fillText('R', 4, barH + barH / 2 + 7)
@@ -602,7 +602,7 @@ function drawVUBar(
     ctx.fillRect(x, y, fillW, h)
 
     // Glow
-    ctx.fillStyle = `rgba(127, 169, 152, ${0.1 + intensity * 0.15})`
+    ctx.fillStyle = `rgba(0, 229, 199, ${0.1 + intensity * 0.15})`
     ctx.fillRect(x, y, fillW, h)
   }
 

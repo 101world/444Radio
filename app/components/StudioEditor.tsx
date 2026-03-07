@@ -366,7 +366,7 @@ export default function StudioEditor() {
 
       lastEvaluatedRef.current = src
       if (editorDivRef.current) {
-        editorDivRef.current.style.outline = '2px solid rgba(127,169,152,0.4)'
+        editorDivRef.current.style.outline = '2px solid rgba(0,229,199,0.4)'
         setTimeout(() => { if (editorDivRef.current) editorDivRef.current.style.outline = 'none' }, 200)
       }
       sliderDefsRef.current = {}
@@ -773,7 +773,7 @@ export default function StudioEditor() {
                 <SidebarSection
                   title="GENRE PRESETS"
                   icon="🎵"
-                  color="#b8a47f"
+                  color="#06b6d4"
                   isOpen={!leftCollapsed.has('genres')}
                   onToggle={() => setLeftCollapsed(prev => {
                     const next = new Set(prev)
@@ -789,7 +789,7 @@ export default function StudioEditor() {
                   <SidebarSection
                     title="LIVE KNOBS"
                     icon="🎛️"
-                    color="#7fa998"
+                    color="#00e5c7"
                     isOpen={!leftCollapsed.has('knobs')}
                     onToggle={() => setLeftCollapsed(prev => {
                       const next = new Set(prev)
@@ -1172,7 +1172,7 @@ export default function StudioEditor() {
           <div className="h-full flex flex-col">
           <div className="shrink-0 flex items-center justify-between px-4 py-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: '#16181d' }}>
               <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#7fa998' }} />
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#00e5c7' }} />
                 <span className="text-[10px] font-black uppercase tracking-[.2em]" style={{ color: '#9aa7b3' }}>Music Code</span>
               </div>
               <button
@@ -1214,7 +1214,7 @@ export default function StudioEditor() {
         input[type='range']::-webkit-slider-thumb {
           -webkit-appearance: none; width: 12px; height: 12px;
           border-radius: 50%; cursor: pointer;
-          background: #7fa998;
+          background: #00e5c7;
           border: 2px solid #111318;
           box-shadow: 2px 2px 4px #050607, -1px -1px 3px #1a1d22;
         }

@@ -1084,8 +1084,8 @@ export default function StudioVocalPadSampler({
             onClick={() => { setSidechainEnabled(s => !s); setHasEdited(true) }}
             className="flex items-center gap-1 px-2 py-0.5 text-[8px] font-bold cursor-pointer transition-all rounded-lg"
             style={{
-              background: sidechainEnabled ? '#7fa99820' : '#16181d',
-              color: sidechainEnabled ? '#7fa998' : '#5a616b',
+              background: sidechainEnabled ? '#00e5c720' : '#16181d',
+              color: sidechainEnabled ? '#00e5c7' : '#5a616b',
               boxShadow: sidechainEnabled
                 ? 'inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22'
                 : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
@@ -1101,7 +1101,7 @@ export default function StudioVocalPadSampler({
                 value={sidechainOrbit}
                 onChange={e => { setSidechainOrbit(parseInt(e.target.value)); setHasEdited(true) }}
                 className="text-[8px] font-mono px-1 py-0.5 rounded cursor-pointer outline-none"
-                style={{ background: '#16181d', color: '#7fa998', border: '1px solid rgba(255,255,255,0.05)' }}
+                style={{ background: '#16181d', color: '#00e5c7', border: '1px solid rgba(255,255,255,0.05)' }}
               >
                 {[0,1,2,3,4,5].map(o => <option key={o} value={o}>Orbit {o}</option>)}
               </select>
@@ -1115,11 +1115,11 @@ export default function StudioVocalPadSampler({
                 onChange={e => { setSidechainDepth(parseFloat(e.target.value)); setHasEdited(true) }}
                 className="w-12 h-1 rounded-full appearance-none cursor-pointer"
                 style={{
-                  background: `linear-gradient(to right, #7fa998 ${sidechainDepth * 100}%, #16181d ${sidechainDepth * 100}%)`,
-                  accentColor: '#7fa998',
+                  background: `linear-gradient(to right, #00e5c7 ${sidechainDepth * 100}%, #16181d ${sidechainDepth * 100}%)`,
+                  accentColor: '#00e5c7',
                 }}
               />
-              <span className="text-[7px] font-mono" style={{ color: '#7fa998' }}>
+              <span className="text-[7px] font-mono" style={{ color: '#00e5c7' }}>
                 {sidechainDepth.toFixed(2)}
               </span>
             </>

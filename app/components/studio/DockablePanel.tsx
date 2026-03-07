@@ -32,7 +32,7 @@ export default memo(function DockablePanel({
   id,
   title,
   brand = '444RADIO',
-  accentColor = '#7fa998',
+  accentColor = '#00e5c7',
   isOpen,
   onClose,
   defaultWidth = 480,

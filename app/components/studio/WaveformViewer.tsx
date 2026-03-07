@@ -472,9 +472,9 @@ export default function WaveformViewer({
                     onClick={autoPitchToScale}
                     className="text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 rounded cursor-pointer transition-all hover:scale-105"
                     style={{
-                      background: '#7fa99815',
-                      color: '#7fa998',
-                      border: '1px solid #7fa99830',
+                      background: '#00e5c715',
+                      color: '#00e5c7',
+                      border: '1px solid #00e5c730',
                     }}
                     title={`Pitch-shift ${detectedPitch.noteName}→${scaleRoot} (${pitchToScaleOffset > 0 ? '+' : ''}${pitchToScaleOffset}st)`}
                   >
@@ -686,9 +686,9 @@ export default function WaveformViewer({
               onClick={() => setSpeed(compensationSpeed)}
               className="shrink-0 px-2 py-1 rounded-lg text-[8px] font-bold uppercase tracking-wider cursor-pointer transition-all hover:scale-105"
               style={{
-                background: '#7fa99815',
-                color: '#7fa998',
-                border: '1px solid #7fa99830',
+                background: '#00e5c715',
+                color: '#00e5c7',
+                border: '1px solid #00e5c730',
               }}
               title={`Set speed to ${compensationSpeed.toFixed(4)} to cancel BPM pitch shift (${effectiveSampleBpm}\u2192${projectBpm} BPM)`}
             >
