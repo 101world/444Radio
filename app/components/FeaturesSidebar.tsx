@@ -46,6 +46,20 @@ interface FeaturesSidebarProps {
   isProMode?: boolean
 }
 
+// ─── Tile data type ──────────────────────────────────────────
+type Tile = {
+  icon: any
+  label: string
+  gradient: string
+  glowColor: string
+  activeGradient: string
+  active: boolean
+  cost?: number
+  onClick: () => void
+  hidden?: boolean
+  size?: 'normal' | 'wide'
+}
+
 export default function FeaturesSidebar({
   isOpen,
   onClose,
@@ -89,345 +103,371 @@ export default function FeaturesSidebar({
   const [showIdeas, setShowIdeas] = useState(false)
   const [ideasView, setIdeasView] = useState<'tags' | 'type' | 'genre' | 'generating'>('tags')
   const [promptType, setPromptType] = useState<'song' | 'beat'>('song')
+  const [activeSection, setActiveSection] = useState<'create' | 'fx' | 'process' | 'publish'>('create')
 
   if (!isOpen) return null
 
-  type Feature = { icon: any; label: string; description: string; color: string; active: boolean; cost?: number; onClick: () => void; hidden?: boolean }
+  // ═══ TILE DEFINITIONS (icon-forward, gradient cards) ═══
+  const proGradient = (base: string) => isProMode
+    ? 'from-red-500/20 via-red-600/10 to-red-900/20'
+    : base
+  const proGlow = (base: string) => isProMode ? 'shadow-red-500/20' : base
+  const proActiveGrad = (base: string) => isProMode
+    ? 'from-red-500/30 via-red-600/20 to-red-900/30 ring-red-400/60'
+    : base
 
-  const sections: { label: string; features: Feature[] }[] = [
-    {
-      label: 'CREATE',
-      features: [
+  const sections: Record<string, { label: string; emoji: string; tiles: Tile[] }> = {
+    create: {
+      label: 'Create',
+      emoji: '🎵',
+      tiles: [
         {
-          icon: Music,
-          label: 'Music',
-          description: 'Generate AI music',
-          color: 'cyan',
-          active: selectedType === 'music' && !isInstrumental,
-          cost: 2,
+          icon: Music, label: 'Music',
+          gradient: proGradient('from-cyan-500/25 via-blue-500/15 to-indigo-600/20'),
+          glowColor: proGlow('shadow-cyan-500/20'),
+          activeGradient: proActiveGrad('from-cyan-500/35 via-blue-500/25 to-indigo-600/30 ring-cyan-400/60'),
+          active: selectedType === 'music' && !isInstrumental, cost: 2,
           onClick: () => { onSelectType('music'); if (isInstrumental) onToggleInstrumental() },
         },
         {
-          icon: Music,
-          label: 'Instrumental',
-          description: 'AI music without vocals',
-          color: 'purple',
-          active: selectedType === 'music' && isInstrumental,
-          cost: 2,
-          onClick: () => { onSelectType('music'); if (!isInstrumental) onToggleInstrumental() },
-        },
-        {
-          icon: AudioLines,
-          label: 'Beat Maker',
-          description: 'AI instrumentals & samples',
-          color: 'cyan',
-          active: false,
-          cost: 2,
+          icon: AudioLines, label: 'Beats',
+          gradient: proGradient('from-violet-500/25 via-purple-500/15 to-fuchsia-600/20'),
+          glowColor: proGlow('shadow-violet-500/20'),
+          activeGradient: proActiveGrad('from-violet-500/35 via-purple-500/25 to-fuchsia-600/30 ring-violet-400/60'),
+          active: false, cost: 2,
           onClick: onShowBeatMaker,
         },
         {
-          icon: Edit3,
-          label: 'Lyrics',
-          description: 'Write & edit lyrics',
-          color: 'cyan',
+          icon: Music, label: 'Inst.',
+          gradient: proGradient('from-purple-500/25 via-indigo-500/15 to-blue-600/20'),
+          glowColor: proGlow('shadow-purple-500/20'),
+          activeGradient: proActiveGrad('from-purple-500/35 via-indigo-500/25 to-blue-600/30 ring-purple-400/60'),
+          active: selectedType === 'music' && isInstrumental, cost: 2,
+          onClick: () => { onSelectType('music'); if (!isInstrumental) onToggleInstrumental() },
+        },
+        {
+          icon: ImageIcon, label: 'Art',
+          gradient: proGradient('from-pink-500/25 via-rose-500/15 to-orange-500/20'),
+          glowColor: proGlow('shadow-pink-500/20'),
+          activeGradient: proActiveGrad('from-pink-500/35 via-rose-500/25 to-orange-500/30 ring-pink-400/60'),
+          active: selectedType === 'image', cost: 1,
+          onClick: () => onSelectType('image'),
+        },
+        {
+          icon: Repeat, label: 'Remix',
+          gradient: proGradient('from-amber-500/25 via-orange-500/15 to-red-500/20'),
+          glowColor: proGlow('shadow-amber-500/20'),
+          activeGradient: proActiveGrad('from-amber-500/35 via-orange-500/25 to-red-500/30 ring-amber-400/60'),
+          active: false, cost: 10,
+          onClick: onShowRemix,
+        },
+        {
+          icon: Edit3, label: 'Lyrics',
+          gradient: proGradient('from-emerald-500/25 via-teal-500/15 to-cyan-600/20'),
+          glowColor: proGlow('shadow-emerald-500/20'),
+          activeGradient: proActiveGrad('from-emerald-500/35 via-teal-500/25 to-cyan-600/30 ring-emerald-400/60'),
           active: !!(customTitle || genre || customLyrics || bpm),
           onClick: onShowLyrics,
           hidden: selectedType !== 'music' || isInstrumental,
         },
         {
-          icon: Repeat,
-          label: 'Remix Audio',
-          description: 'Audio-to-Audio Remix',
-          color: 'cyan',
-          active: false,
-          cost: 10,
-          onClick: onShowRemix,
-        },
-        {
-          icon: RefreshCw,
-          label: 'Remake',
-          description: 'Reimagine existing tracks',
-          color: 'purple',
+          icon: RefreshCw, label: 'Remake',
+          gradient: proGradient('from-sky-500/25 via-blue-500/15 to-indigo-500/20'),
+          glowColor: proGlow('shadow-sky-500/20'),
+          activeGradient: proActiveGrad('from-sky-500/35 via-blue-500/25 to-indigo-500/30 ring-sky-400/60'),
           active: false,
           onClick: onShowLyrics,
         },
-        {
-          icon: ImageIcon,
-          label: 'Cover Art',
-          description: 'AI album artwork',
-          color: 'cyan',
-          active: selectedType === 'image',
-          cost: 1,
-          onClick: () => onSelectType('image'),
-        },
       ],
     },
-    {
-      label: 'EFFECTS',
-      features: [
+    fx: {
+      label: 'Effects',
+      emoji: '✨',
+      tiles: [
         {
-          icon: Sparkles,
-          label: 'Effects',
-          description: 'Sound effects',
-          color: 'purple',
-          active: false,
-          cost: 2,
+          icon: Sparkles, label: 'SFX',
+          gradient: proGradient('from-fuchsia-500/25 via-pink-500/15 to-purple-600/20'),
+          glowColor: proGlow('shadow-fuchsia-500/20'),
+          activeGradient: proActiveGrad('from-fuchsia-500/35 via-pink-500/25 to-purple-600/30 ring-fuchsia-400/60'),
+          active: false, cost: 2,
           onClick: onShowEffects,
         },
         {
-          icon: Repeat,
-          label: 'Loops',
-          description: 'Fixed BPM loops',
-          color: 'cyan',
-          active: false,
-          cost: 6,
+          icon: Repeat, label: 'Loops',
+          gradient: proGradient('from-cyan-500/25 via-teal-500/15 to-emerald-600/20'),
+          glowColor: proGlow('shadow-cyan-500/20'),
+          activeGradient: proActiveGrad('from-cyan-500/35 via-teal-500/25 to-emerald-600/30 ring-cyan-400/60'),
+          active: false, cost: 6,
           onClick: onShowLoopers,
         },
         {
-          icon: Music,
-          label: 'Chords',
-          description: 'Chord & rhythm control',
-          color: 'purple',
-          active: false,
-          cost: 4,
+          icon: Music, label: 'Chords',
+          gradient: proGradient('from-violet-500/25 via-indigo-500/15 to-blue-600/20'),
+          glowColor: proGlow('shadow-violet-500/20'),
+          activeGradient: proActiveGrad('from-violet-500/35 via-indigo-500/25 to-blue-600/30 ring-violet-400/60'),
+          active: false, cost: 4,
           onClick: onShowMusiConGen,
         },
         {
-          icon: Volume2,
-          label: 'Audio Boost',
-          description: 'Mix & master your track',
-          color: 'orange',
-          active: false,
-          cost: 1,
+          icon: Volume2, label: 'Boost',
+          gradient: proGradient('from-amber-500/25 via-yellow-500/15 to-orange-500/20'),
+          glowColor: proGlow('shadow-amber-500/20'),
+          activeGradient: proActiveGrad('from-amber-500/35 via-yellow-500/25 to-orange-500/30 ring-amber-400/60'),
+          active: false, cost: 1,
           onClick: onShowAudioBoost,
         },
       ],
     },
-    {
-      label: 'PROCESS',
-      features: [
+    process: {
+      label: 'Process',
+      emoji: '🔧',
+      tiles: [
         {
-          icon: Scissors,
-          label: 'Split Stems',
-          description: 'Vocals, drums, bass & more',
-          color: 'purple',
-          active: false,
-          cost: 0,
+          icon: Scissors, label: 'Stems',
+          gradient: proGradient('from-teal-500/25 via-emerald-500/15 to-green-600/20'),
+          glowColor: proGlow('shadow-teal-500/20'),
+          activeGradient: proActiveGrad('from-teal-500/35 via-emerald-500/25 to-green-600/30 ring-teal-400/60'),
+          active: false, cost: 0,
           onClick: onShowStemSplit,
         },
         {
-          icon: Layers,
-          label: 'Extract',
-          description: 'Extract audio from video/audio',
-          color: 'cyan',
-          active: false,
-          cost: 1,
+          icon: Layers, label: 'Extract',
+          gradient: proGradient('from-blue-500/25 via-sky-500/15 to-cyan-600/20'),
+          glowColor: proGlow('shadow-blue-500/20'),
+          activeGradient: proActiveGrad('from-blue-500/35 via-sky-500/25 to-cyan-600/30 ring-blue-400/60'),
+          active: false, cost: 1,
           onClick: onShowExtract,
         },
         {
-          icon: Mic,
-          label: 'Autotune',
-          description: 'Pitch correct vocals',
-          color: 'purple',
-          active: false,
-          cost: 1,
+          icon: Mic, label: 'Tune',
+          gradient: proGradient('from-rose-500/25 via-pink-500/15 to-fuchsia-600/20'),
+          glowColor: proGlow('shadow-rose-500/20'),
+          activeGradient: proActiveGrad('from-rose-500/35 via-pink-500/25 to-fuchsia-600/30 ring-rose-400/60'),
+          active: false, cost: 1,
           onClick: onShowAutotune,
         },
         {
-          icon: Film,
-          label: 'Visualizer',
-          description: 'Text/Image to video',
-          color: 'purple',
+          icon: Film, label: 'Visual',
+          gradient: proGradient('from-indigo-500/25 via-violet-500/15 to-purple-600/20'),
+          glowColor: proGlow('shadow-indigo-500/20'),
+          activeGradient: proActiveGrad('from-indigo-500/35 via-violet-500/25 to-purple-600/30 ring-indigo-400/60'),
           active: false,
           onClick: onShowVisualizer,
         },
         {
-          icon: Mic,
-          label: 'Lip-Sync',
-          description: 'Image + Audio to video',
-          color: 'pink',
+          icon: Mic, label: 'Lip Sync',
+          gradient: proGradient('from-pink-500/25 via-rose-500/15 to-red-500/20'),
+          glowColor: proGlow('shadow-pink-500/20'),
+          activeGradient: proActiveGrad('from-pink-500/35 via-rose-500/25 to-red-500/30 ring-pink-400/60'),
           active: false,
           onClick: onShowLipSync,
         },
         {
-          icon: Film,
-          label: 'Video to Audio',
-          description: 'Synced SFX from video',
-          color: 'cyan',
-          active: false,
-          cost: 4,
+          icon: Film, label: 'Vid→Aud',
+          gradient: proGradient('from-orange-500/25 via-amber-500/15 to-yellow-600/20'),
+          glowColor: proGlow('shadow-orange-500/20'),
+          activeGradient: proActiveGrad('from-orange-500/35 via-amber-500/25 to-yellow-600/30 ring-orange-400/60'),
+          active: false, cost: 4,
           onClick: onShowVideoToAudio,
         },
       ],
     },
-    {
-      label: 'PUBLISH',
-      features: [
+    publish: {
+      label: 'Publish',
+      emoji: '🚀',
+      tiles: [
         {
-          icon: Upload,
-          label: 'Upload',
-          description: 'Upload audio/video',
-          color: 'purple',
+          icon: Upload, label: 'Upload',
+          gradient: proGradient('from-emerald-500/25 via-green-500/15 to-teal-600/20'),
+          glowColor: proGlow('shadow-emerald-500/20'),
+          activeGradient: proActiveGrad('from-emerald-500/35 via-green-500/25 to-teal-600/30 ring-emerald-400/60'),
           active: false,
-          onClick: onShowUpload,
+          onClick: onShowUpload, size: 'wide',
         },
         {
-          icon: Rocket,
-          label: 'Release',
-          description: 'Publish to feed',
-          color: 'cyan',
+          icon: Rocket, label: 'Release',
+          gradient: proGradient('from-cyan-500/25 via-blue-500/15 to-violet-600/20'),
+          glowColor: proGlow('shadow-cyan-500/20'),
+          activeGradient: proActiveGrad('from-cyan-500/35 via-blue-500/25 to-violet-600/30 ring-cyan-400/60'),
           active: false,
-          onClick: onOpenRelease,
+          onClick: onOpenRelease, size: 'wide',
         },
       ],
     },
-  ]
+  }
+
+  const sectionKeys = ['create', 'fx', 'process', 'publish'] as const
+  const currentSection = sections[activeSection]
+  const visibleTiles = currentSection.tiles.filter(t => !t.hidden)
+
+  const tabIcons: Record<string, { icon: any; label: string }> = {
+    create: { icon: Music, label: 'Create' },
+    fx: { icon: Sparkles, label: 'FX' },
+    process: { icon: Scissors, label: 'Process' },
+    publish: { icon: Rocket, label: 'Publish' },
+  }
 
   return (
     <>
-      {/* Mobile backdrop overlay */}
-      <div className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50" onClick={onClose} />
+      {/* Mobile backdrop */}
+      <div className="md:hidden fixed inset-0 bg-black/70 backdrop-blur-md z-50" onClick={onClose} />
 
-      {/* Sidebar panel — fullscreen on mobile, docked sidebar on desktop */}
-      <div className={`fixed inset-0 md:inset-auto md:left-14 md:top-0 md:h-screen md:w-64 bg-black/95 backdrop-blur-2xl md:border-r z-50 md:z-40 flex flex-col animate-slideInLeft ${isProMode ? 'md:border-red-500/20' : 'md:border-white/10'}`}>
+      {/* ═══ Sidebar Panel ═══ */}
+      <div className={`fixed inset-0 md:inset-auto md:left-14 md:top-0 md:h-screen md:w-72 z-50 md:z-40 flex flex-col animate-slideInLeft overflow-hidden ${
+        isProMode
+          ? 'bg-gradient-to-b from-[#0d0608] via-[#0a0506] to-[#080404] md:border-r md:border-red-500/15'
+          : 'bg-gradient-to-b from-[#080c14] via-[#060a12] to-[#040810] md:border-r md:border-white/[0.08]'
+      }`}>
 
-      {/* Header */}
-      <div className={`flex items-center justify-between px-4 h-12 border-b shrink-0 ${isProMode ? 'border-red-500/20' : 'border-white/10'}`}>
-        <div className="flex items-center gap-2">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={isProMode ? 'text-red-500' : 'text-cyan-400'}>
-            <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
-            <rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
-            <rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
-            <rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
-          </svg>
-          <span className="text-white font-bold text-sm">Features</span>
-        </div>
-        <button
-          onClick={onClose}
-          className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
-        >
-          <X size={16} className="text-gray-400" />
-        </button>
-      </div>
-
-      {/* Credits + Mode Toggle */}
-      <div className={`px-3 py-2 border-b flex items-center gap-2 shrink-0 ${isProMode ? 'border-red-500/20' : 'border-white/10'}`}>
-        <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border ${isProMode ? 'bg-red-500/10 border-red-500/30' : 'bg-cyan-500/10 border-cyan-500/30'}`}>
-          <Zap size={12} className={isProMode ? 'text-red-500' : 'text-cyan-400'} />
-          <span className="text-white font-bold text-xs">
-            {isLoadingCredits ? '...' : userCredits}
-          </span>
-        </div>
-        <div className="flex gap-1 flex-1">
-          <button
-            onClick={() => { if (isInstrumental) onToggleInstrumental() }}
-            className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${
-              !isInstrumental
-                ? (isProMode ? 'bg-red-500 text-white' : 'bg-cyan-500 text-black')
-                : 'bg-white/5 text-gray-400 hover:bg-white/10'
-            }`}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-              <line x1="12" x2="12" y1="19" y2="22"/>
-            </svg>
-            Vocal
-          </button>
-          <button
-            onClick={() => { if (!isInstrumental) onToggleInstrumental() }}
-            className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${
-              isInstrumental
-                ? 'bg-purple-500 text-white'
-                : 'bg-white/5 text-gray-400 hover:bg-white/10'
-            }`}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="2" y="4" width="20" height="16" rx="2"/>
-              <line x1="8" x2="8" y1="4" y2="14"/>
-              <line x1="16" x2="16" y1="4" y2="14"/>
-              <line x1="12" x2="12" y1="4" y2="14"/>
-            </svg>
-            Inst
-          </button>
-        </div>
-      </div>
-
-      {/* Prompt Input */}
-      <div className={`px-3 py-2 border-b shrink-0 ${isProMode ? 'border-red-500/20' : 'border-white/10'}`}>
-        <textarea
-          value={promptText}
-          onChange={(e) => onPromptChange(e.target.value)}
-          placeholder="Describe your music..."
-          className={`w-full bg-white/5 border rounded-lg px-3 py-2 text-xs text-white placeholder-gray-500 resize-none focus:outline-none transition-colors ${isProMode ? 'border-red-500/30 focus:border-red-500/60' : 'border-white/10 focus:border-cyan-500/50'}`}
-          rows={3}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault()
-              onSubmitPrompt()
-            }
-          }}
-        />
-        <div className="flex items-center justify-between mt-1.5">
-          <div className="flex items-center gap-1">
-            <button
-              onClick={onToggleRecording}
-              className={`p-1.5 rounded-full transition-all ${
-                isRecording
-                  ? 'bg-red-500 animate-pulse'
-                  : 'bg-white/10 hover:bg-white/20'
-              }`}
-            >
-              <Mic size={12} className={isRecording ? 'text-white' : 'text-gray-400'} />
-            </button>
-            <button
-              onClick={() => { setShowIdeas(!showIdeas); setIdeasView('tags') }}
-              className={`p-1.5 rounded-full transition-all ${
-                showIdeas
-                  ? 'bg-yellow-500/20 text-yellow-300'
-                  : 'bg-white/10 hover:bg-white/20 text-gray-400 hover:text-yellow-400'
-              }`}
-              title="Ideas & Tags"
-            >
-              <Lightbulb size={12} />
+        {/* ── Frosted header ── */}
+        <div className={`flex items-center justify-between px-4 h-14 shrink-0 backdrop-blur-xl ${
+          isProMode ? 'bg-red-500/5 border-b border-red-500/10' : 'bg-white/[0.02] border-b border-white/[0.06]'
+        }`}>
+          <div className="flex items-center gap-3">
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+              isProMode
+                ? 'bg-gradient-to-br from-red-500/30 to-red-600/20 shadow-lg shadow-red-500/20'
+                : 'bg-gradient-to-br from-cyan-500/30 to-blue-600/20 shadow-lg shadow-cyan-500/20'
+            }`}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={isProMode ? 'text-red-400' : 'text-cyan-400'}>
+                <rect x="3" y="3" width="7" height="7" rx="2" stroke="currentColor" strokeWidth="2"/>
+                <rect x="14" y="3" width="7" height="7" rx="2" stroke="currentColor" strokeWidth="2"/>
+                <rect x="3" y="14" width="7" height="7" rx="2" stroke="currentColor" strokeWidth="2"/>
+                <rect x="14" y="14" width="7" height="7" rx="2" stroke="currentColor" strokeWidth="2"/>
+              </svg>
+            </div>
+            <span className="text-white/90 font-semibold text-sm tracking-tight">Features</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Credits pill */}
+            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${
+              isProMode
+                ? 'bg-red-500/15 text-red-300 border border-red-500/20'
+                : 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/20'
+            }`}>
+              <Zap size={10} />
+              {isLoadingCredits ? '…' : userCredits}
+            </div>
+            <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/[0.08] transition-colors">
+              <X size={14} className="text-white/40" />
             </button>
           </div>
-          <button
-            onClick={onSubmitPrompt}
-            disabled={isGenerating || !promptText.trim()}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed ${isProMode ? 'bg-gradient-to-r from-red-600 to-red-500 text-white hover:from-red-500 hover:to-red-400' : 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-black hover:from-cyan-500 hover:to-cyan-300'}`}
-          >
-            <Zap size={10} />
-            Generate
-          </button>
         </div>
-      </div>
+
+        {/* ── Section tabs (pill nav) ── */}
+        <div className="px-3 pt-3 pb-1 shrink-0">
+          <div className={`flex gap-1 p-1 rounded-2xl ${
+            isProMode ? 'bg-red-500/[0.06]' : 'bg-white/[0.03]'
+          }`}>
+            {sectionKeys.map(key => {
+              const tab = tabIcons[key]
+              const Icon = tab.icon
+              const isActive = activeSection === key
+              return (
+                <button
+                  key={key}
+                  onClick={() => setActiveSection(key)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-semibold transition-all duration-200 ${
+                    isActive
+                      ? isProMode
+                        ? 'bg-red-500/20 text-red-300 shadow-sm shadow-red-500/10'
+                        : 'bg-white/[0.1] text-white shadow-sm shadow-white/5'
+                      : 'text-white/30 hover:text-white/50 hover:bg-white/[0.03]'
+                  }`}
+                >
+                  <Icon size={12} />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* ── Prompt input (compact, elegant) ── */}
+        <div className="px-3 py-2 shrink-0">
+          <div className={`rounded-2xl p-0.5 ${
+            isProMode
+              ? 'bg-gradient-to-r from-red-500/20 via-red-600/10 to-red-500/20'
+              : 'bg-gradient-to-r from-cyan-500/20 via-blue-500/10 to-purple-500/20'
+          }`}>
+            <div className="bg-[#0a0c14]/90 rounded-[14px] p-2.5">
+              <textarea
+                value={promptText}
+                onChange={(e) => onPromptChange(e.target.value)}
+                placeholder="Describe your sound…"
+                className="w-full bg-transparent text-xs text-white/90 placeholder-white/20 resize-none focus:outline-none leading-relaxed"
+                rows={2}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSubmitPrompt() } }}
+              />
+              <div className="flex items-center justify-between mt-1.5">
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={onToggleRecording}
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
+                      isRecording
+                        ? 'bg-red-500 shadow-lg shadow-red-500/40 animate-pulse'
+                        : 'bg-white/[0.06] hover:bg-white/[0.1] text-white/30 hover:text-white/50'
+                    }`}
+                  >
+                    <Mic size={12} className={isRecording ? 'text-white' : ''} />
+                  </button>
+                  <button
+                    onClick={() => { setShowIdeas(!showIdeas); setIdeasView('tags') }}
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
+                      showIdeas
+                        ? 'bg-amber-500/20 text-amber-300'
+                        : 'bg-white/[0.06] hover:bg-white/[0.1] text-white/30 hover:text-amber-400'
+                    }`}
+                  >
+                    <Lightbulb size={12} />
+                  </button>
+                </div>
+                <button
+                  onClick={onSubmitPrompt}
+                  disabled={isGenerating || !promptText.trim()}
+                  className={`flex items-center gap-1.5 pl-3 pr-3.5 py-1.5 rounded-xl text-[10px] font-bold transition-all disabled:opacity-25 disabled:cursor-not-allowed ${
+                    isProMode
+                      ? 'bg-gradient-to-r from-red-600 to-red-500 text-white shadow-lg shadow-red-500/30 hover:shadow-red-500/50'
+                      : 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50'
+                  }`}
+                >
+                  <Zap size={10} />
+                  Go
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* ─── Ideas / Tags Panel ─── */}
         {showIdeas && (
-          <div className="px-4 py-4 border-b border-white/10 max-h-[40vh] overflow-y-auto scrollbar-thin">
+          <div className={`px-3 pb-2 max-h-[35vh] overflow-y-auto scrollbar-thin shrink-0 ${
+            isProMode ? 'border-b border-red-500/10' : 'border-b border-white/[0.06]'
+          }`}>
             {ideasView === 'tags' && (
-              <>
-                <div className="flex items-center justify-between mb-3">
+              <div className="pb-3">
+                <div className="flex items-center justify-between mb-2.5">
                   <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
-                    </svg>
-                    <span className="text-sm font-bold text-white">Quick Tags</span>
+                    <Lightbulb size={13} className="text-amber-400" />
+                    <span className="text-xs font-semibold text-white/70">Quick Tags</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => setIdeasView('type')}
-                      className="px-3 py-1.5 bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border border-purple-400/40 rounded-lg text-xs font-bold text-purple-300 hover:text-purple-200 transition-all hover:scale-105 shadow-lg shadow-purple-500/20"
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                        isProMode
+                          ? 'bg-red-500/15 text-red-300 hover:bg-red-500/25 border border-red-500/20'
+                          : 'bg-gradient-to-r from-purple-500/15 to-pink-500/15 text-purple-300 hover:text-purple-200 border border-purple-500/20'
+                      }`}
                     >
                       ✨ IDEAS
                     </button>
-                    <button onClick={() => setShowIdeas(false)} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
-                      <X className="w-4 h-4 text-gray-400" />
+                    <button onClick={() => setShowIdeas(false)} className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-white/[0.08]">
+                      <X size={12} className="text-white/30" />
                     </button>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-1">
                   {[
                     'upbeat', 'chill', 'energetic', 'melancholic', 'ambient',
                     'electronic', 'acoustic', 'jazz', 'rock', 'hip-hop',
@@ -445,58 +485,68 @@ export default function FeaturesSidebar({
                     <button
                       key={tag}
                       onClick={() => onTagClick(tag)}
-                      className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105 border ${isProMode ? 'bg-red-500/10 hover:bg-red-500/25 border-red-500/30 hover:border-red-400/60 text-red-200 hover:text-white' : 'bg-cyan-500/10 hover:bg-cyan-500/25 border-cyan-500/30 hover:border-cyan-400/60 text-cyan-200 hover:text-white'}`}
+                      className={`px-2 py-1 rounded-lg text-[10px] font-medium transition-all hover:scale-[1.04] ${
+                        isProMode
+                          ? 'bg-red-500/10 hover:bg-red-500/20 text-red-200/70 hover:text-white border border-red-500/15 hover:border-red-400/40'
+                          : 'bg-white/[0.04] hover:bg-white/[0.08] text-white/40 hover:text-white/70 border border-white/[0.06] hover:border-white/[0.15]'
+                      }`}
                     >
                       {tag}
                     </button>
                   ))}
                 </div>
-              </>
+              </div>
             )}
 
             {ideasView === 'type' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-lg font-bold text-white">✨ AI Prompt Ideas</h3>
-                  <button onClick={() => setIdeasView('tags')} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
-                    <X className="w-4 h-4 text-gray-400" />
+              <div className="space-y-3 pb-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-white/80">✨ AI Ideas</h3>
+                  <button onClick={() => setIdeasView('tags')} className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-white/[0.08]">
+                    <X size={12} className="text-white/30" />
                   </button>
                 </div>
-                <p className="text-xs text-gray-400 text-center">What would you like to create?</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={() => { setPromptType('song'); setIdeasView('genre') }}
-                    className="group p-5 bg-gradient-to-br from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border-2 border-purple-400/40 hover:border-purple-400/60 rounded-2xl transition-all hover:scale-105 shadow-lg hover:shadow-purple-500/30"
+                    className={`group p-4 rounded-2xl border transition-all hover:scale-[1.03] ${
+                      isProMode
+                        ? 'bg-gradient-to-br from-red-500/15 to-red-800/15 border-red-500/20 hover:border-red-400/40 shadow-lg shadow-red-500/10'
+                        : 'bg-gradient-to-br from-purple-500/15 to-pink-500/15 border-purple-500/20 hover:border-purple-400/40 shadow-lg shadow-purple-500/10'
+                    }`}
                   >
-                    <div className="text-3xl mb-2">🎤</div>
-                    <div className="text-sm font-bold text-white mb-1">Song</div>
-                    <div className="text-[10px] text-gray-400">With vocals & lyrics</div>
+                    <div className="text-2xl mb-1.5">🎤</div>
+                    <div className="text-xs font-bold text-white/90">Song</div>
+                    <div className="text-[9px] text-white/30">Vocals + lyrics</div>
                   </button>
                   <button
                     onClick={() => { setPromptType('beat'); setIdeasView('genre') }}
-                    className="group p-5 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/30 hover:to-blue-500/30 border-2 border-cyan-400/40 hover:border-cyan-400/60 rounded-2xl transition-all hover:scale-105 shadow-lg hover:shadow-cyan-500/30"
+                    className={`group p-4 rounded-2xl border transition-all hover:scale-[1.03] ${
+                      isProMode
+                        ? 'bg-gradient-to-br from-red-600/15 to-red-900/15 border-red-500/20 hover:border-red-400/40 shadow-lg shadow-red-600/10'
+                        : 'bg-gradient-to-br from-cyan-500/15 to-blue-500/15 border-cyan-500/20 hover:border-cyan-400/40 shadow-lg shadow-cyan-500/10'
+                    }`}
                   >
-                    <div className="text-3xl mb-2">🎹</div>
-                    <div className="text-sm font-bold text-white mb-1">Beat</div>
-                    <div className="text-[10px] text-gray-400">Instrumental only</div>
+                    <div className="text-2xl mb-1.5">🎹</div>
+                    <div className="text-xs font-bold text-white/90">Beat</div>
+                    <div className="text-[9px] text-white/30">Instrumental</div>
                   </button>
                 </div>
               </div>
             )}
 
             {ideasView === 'genre' && (
-              <div className="space-y-3">
+              <div className="space-y-2.5 pb-3">
                 <div className="flex items-center justify-between">
-                  <button onClick={() => setIdeasView('type')} className={`text-xs hover:opacity-80 flex items-center gap-1 ${isProMode ? 'text-red-400' : 'text-cyan-400'}`}>
-                    <ChevronLeft size={14} /> Back
+                  <button onClick={() => setIdeasView('type')} className={`text-[10px] hover:opacity-80 flex items-center gap-1 ${isProMode ? 'text-red-400' : 'text-cyan-400'}`}>
+                    <ChevronLeft size={12} /> Back
                   </button>
-                  <h3 className="text-sm font-bold text-white">🎵 Select Genre</h3>
-                  <button onClick={() => setIdeasView('tags')} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
-                    <X className="w-4 h-4 text-gray-400" />
+                  <span className="text-xs font-bold text-white/70">Select Genre</span>
+                  <button onClick={() => setIdeasView('tags')} className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-white/[0.08]">
+                    <X size={12} className="text-white/30" />
                   </button>
                 </div>
-                <p className="text-[10px] text-gray-400 text-center">Choose a style for your {promptType}</p>
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="grid grid-cols-3 gap-1">
                   {[
                     'electronic', 'hip-hop', 'rock', 'jazz', 'ambient',
                     'trap', 'drill', 'phonk', 'house', 'techno',
@@ -506,13 +556,13 @@ export default function FeaturesSidebar({
                   ].map((g) => (
                     <button
                       key={g}
-                      onClick={() => {
-                        setIdeasView('generating')
-                        onGenerateIdea(g, promptType)
-                        setTimeout(() => setIdeasView('tags'), 5000)
-                      }}
+                      onClick={() => { setIdeasView('generating'); onGenerateIdea(g, promptType); setTimeout(() => setIdeasView('tags'), 5000) }}
                       disabled={isGeneratingIdea}
-                      className={`px-2 py-2 rounded-xl text-xs font-medium transition-all hover:scale-105 disabled:opacity-50 border ${isProMode ? 'bg-red-500/10 hover:bg-red-500/25 border-red-500/30 hover:border-red-400/60 text-red-200 hover:text-white' : 'bg-cyan-500/10 hover:bg-cyan-500/25 border-cyan-500/30 hover:border-cyan-400/60 text-cyan-200 hover:text-white'}`}
+                      className={`px-1.5 py-1.5 rounded-xl text-[10px] font-medium transition-all hover:scale-[1.04] disabled:opacity-40 border ${
+                        isProMode
+                          ? 'bg-red-500/10 hover:bg-red-500/20 border-red-500/15 text-red-200/70 hover:text-white'
+                          : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/[0.06] text-white/40 hover:text-white/70'
+                      }`}
                     >
                       {g}
                     </button>
@@ -522,97 +572,119 @@ export default function FeaturesSidebar({
             )}
 
             {ideasView === 'generating' && (
-              <div className="space-y-4 text-center py-6">
+              <div className="space-y-3 text-center py-5">
                 <div className="relative">
-                  <div className={`w-12 h-12 mx-auto border-4 rounded-full animate-spin ${isProMode ? 'border-red-500/20 border-t-red-400' : 'border-cyan-500/20 border-t-cyan-400'}`}></div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-xl">🎨</span>
-                  </div>
+                  <div className={`w-10 h-10 mx-auto border-[3px] rounded-full animate-spin ${isProMode ? 'border-red-500/20 border-t-red-400' : 'border-cyan-500/20 border-t-cyan-400'}`} />
+                  <div className="absolute inset-0 flex items-center justify-center"><span className="text-lg">🎨</span></div>
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-white mb-1">Creating Amazing Prompt...</h3>
-                  <p className="text-xs text-gray-400">AI is crafting the perfect description</p>
+                  <p className="text-xs font-semibold text-white/60">Crafting prompt…</p>
+                  <p className="text-[10px] text-white/25 mt-0.5">AI is thinking</p>
                 </div>
               </div>
             )}
           </div>
         )}
 
-        {/* Feature Buttons — grouped by section */}
-        <div className="flex-1 overflow-y-auto px-3 py-1.5 scrollbar-thin">
-          {sections.map((section, sIdx) => {
-            const visibleFeatures = section.features.filter((f: Feature) => !(f as any).hidden)
-            if (visibleFeatures.length === 0) return null
-            return (
-              <div key={section.label} className={sIdx > 0 ? 'mt-2' : ''}>
-                {/* Section label */}
-                <div className="flex items-center gap-2 px-1 mb-1">
-                  <span className="text-[9px] font-bold tracking-widest text-gray-500 uppercase select-none">{section.label}</span>
-                  <div className="flex-1 h-px bg-white/5" />
-                </div>
-                <div className="space-y-0.5">
-                  {visibleFeatures.map((feature: Feature, featureIdx: number) => {
-                    const Icon = feature.icon
-                    const featureKey = `${section.label}-${featureIdx}`
-                    const colorMap: Record<string, string> = isProMode ? {
-                      cyan: feature.active
-                        ? 'bg-red-500/15 border-red-400/50 text-red-300'
-                        : 'border-transparent text-red-400 hover:bg-red-500/10 hover:border-red-400/30',
-                      purple: feature.active
-                        ? 'bg-red-500/15 border-red-400/50 text-red-300'
-                        : 'border-transparent text-red-400 hover:bg-red-500/10 hover:border-red-400/30',
-                      orange: feature.active
-                        ? 'bg-red-500/15 border-red-400/50 text-red-300'
-                        : 'border-transparent text-red-400 hover:bg-red-500/10 hover:border-red-400/30',
-                      pink: feature.active
-                        ? 'bg-red-500/15 border-red-400/50 text-red-300'
-                        : 'border-transparent text-red-400 hover:bg-red-500/10 hover:border-red-400/30',
-                    } : {
-                      cyan: feature.active
-                        ? 'bg-cyan-500/15 border-cyan-400/50 text-cyan-300'
-                        : 'border-transparent text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-400/30',
-                      purple: feature.active
-                        ? 'bg-purple-500/15 border-purple-400/50 text-purple-300'
-                        : 'border-transparent text-purple-400 hover:bg-purple-500/10 hover:border-purple-400/30',
-                      orange: feature.active
-                        ? 'bg-orange-500/15 border-orange-400/50 text-orange-300'
-                        : 'border-transparent text-orange-400 hover:bg-orange-500/10 hover:border-orange-400/30',
-                      pink: feature.active
-                        ? 'bg-pink-500/15 border-pink-400/50 text-pink-300'
-                        : 'border-transparent text-pink-400 hover:bg-pink-500/10 hover:border-pink-400/30',
-                    }
+        {/* ═══ TILE GRID ═══ */}
+        <div className="flex-1 overflow-y-auto px-3 py-3 scrollbar-thin">
+          {/* Section header */}
+          <div className="flex items-center gap-2 mb-3 px-1">
+            <span className="text-sm">{currentSection.emoji}</span>
+            <span className="text-[11px] font-bold text-white/50 uppercase tracking-wider">{currentSection.label}</span>
+            <div className="flex-1 h-px bg-gradient-to-r from-white/[0.06] to-transparent" />
+          </div>
 
-                    return (
-                      <button
-                        key={featureKey}
-                        onClick={feature.onClick}
-                        className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg border transition-all group ${colorMap[feature.color]}`}
-                      >
-                        <Icon size={14} className="shrink-0 opacity-80" />
-                        <div className="flex-1 text-left min-w-0">
-                          <div className="text-[11px] font-medium leading-tight">{feature.label}</div>
-                          <div className="text-[9px] text-gray-500 leading-none">{feature.description}</div>
-                        </div>
-                        {feature.cost !== undefined && feature.cost > 0 && (
-                          <span className="text-[9px] text-gray-500 tabular-nums shrink-0">-{feature.cost}</span>
-                        )}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )
-          })}
+          {/* Tiles grid */}
+          <div className="grid grid-cols-2 gap-2">
+            {visibleTiles.map((tile, idx) => {
+              const Icon = tile.icon
+              return (
+                <button
+                  key={`${activeSection}-${idx}`}
+                  onClick={tile.onClick}
+                  className={`group relative rounded-2xl p-3.5 border backdrop-blur-sm transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] overflow-hidden ${
+                    tile.size === 'wide' ? 'col-span-2' : ''
+                  } ${
+                    tile.active
+                      ? `bg-gradient-to-br ${tile.activeGradient} ring-1 shadow-lg ${tile.glowColor}`
+                      : `bg-gradient-to-br ${tile.gradient} border-white/[0.06] hover:border-white/[0.12] shadow-md ${tile.glowColor} hover:shadow-lg`
+                  }`}
+                >
+                  {/* Ambient glow dot */}
+                  <div className={`absolute top-2 right-2 w-1.5 h-1.5 rounded-full transition-all ${
+                    tile.active ? 'bg-white/60 shadow-sm shadow-white/40' : 'bg-white/10 group-hover:bg-white/20'
+                  }`} />
 
-          {/* Utilities */}
-          <div className="mt-3 pt-2 border-t border-white/10 flex items-center gap-1.5">
+                  {/* Icon */}
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-2.5 transition-all ${
+                    tile.active
+                      ? 'bg-white/15 shadow-inner'
+                      : 'bg-white/[0.06] group-hover:bg-white/[0.1]'
+                  }`}>
+                    <Icon size={18} className={`transition-all ${
+                      tile.active ? 'text-white' : 'text-white/50 group-hover:text-white/70'
+                    }`} />
+                  </div>
+
+                  {/* Label */}
+                  <div className={`text-[11px] font-semibold transition-colors ${
+                    tile.active ? 'text-white' : 'text-white/60 group-hover:text-white/80'
+                  }`}>
+                    {tile.label}
+                  </div>
+
+                  {/* Credit cost badge */}
+                  {tile.cost !== undefined && tile.cost > 0 && (
+                    <div className="absolute bottom-2.5 right-2.5 flex items-center gap-0.5 text-[9px] text-white/20 font-medium">
+                      <Zap size={7} />
+                      {tile.cost}
+                    </div>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* ── Bottom bar ── */}
+        <div className={`px-3 py-2.5 shrink-0 ${
+          isProMode ? 'bg-red-500/[0.03] border-t border-red-500/10' : 'bg-white/[0.01] border-t border-white/[0.06]'
+        }`}>
+          <div className="flex items-center gap-2">
+            {/* Mode toggle */}
+            <div className={`flex gap-0.5 p-0.5 rounded-xl flex-1 ${
+              isProMode ? 'bg-red-500/10' : 'bg-white/[0.04]'
+            }`}>
+              <button
+                onClick={() => { if (isInstrumental) onToggleInstrumental() }}
+                className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${
+                  !isInstrumental
+                    ? isProMode ? 'bg-red-500 text-white shadow-lg shadow-red-500/30' : 'bg-white/[0.15] text-white shadow-sm'
+                    : 'text-white/30 hover:text-white/50'
+                }`}
+              >
+                <Mic size={10} /> Vocal
+              </button>
+              <button
+                onClick={() => { if (!isInstrumental) onToggleInstrumental() }}
+                className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${
+                  isInstrumental
+                    ? isProMode ? 'bg-red-500 text-white shadow-lg shadow-red-500/30' : 'bg-purple-500/80 text-white shadow-sm shadow-purple-500/20'
+                    : 'text-white/30 hover:text-white/50'
+                }`}
+              >
+                <Music size={10} /> Inst
+              </button>
+            </div>
+
+            {/* Clear button */}
             <button
               onClick={onClearChat}
-              className="p-2 rounded-lg border border-white/10 text-red-400 hover:bg-red-500/10 transition-all flex items-center gap-1.5"
+              className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/[0.04] border border-white/[0.06] text-white/20 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 transition-all"
               title="Clear Chat"
             >
-              <X size={14} />
-              <span className="text-xs">Clear</span>
+              <X size={13} />
             </button>
           </div>
         </div>
@@ -623,7 +695,7 @@ export default function FeaturesSidebar({
             to { transform: translateX(0); opacity: 1; }
           }
           .animate-slideInLeft {
-            animation: slideInLeft 0.15s ease-out;
+            animation: slideInLeft 0.2s cubic-bezier(0.16, 1, 0.3, 1);
           }
         `}</style>
       </div>
