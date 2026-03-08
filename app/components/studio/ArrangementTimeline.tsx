@@ -470,7 +470,7 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
             </button>
           </div>
         ) : (
-          <div className="flex h-full">
+          <div className="flex" style={{ minHeight: '100%' }}>
 
             {/* ── Track labels (left sidebar) ── */}
             <div className="shrink-0 flex flex-col" style={{ width: LABEL_W, background: '#111217' }}>

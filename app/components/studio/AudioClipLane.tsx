@@ -391,6 +391,42 @@ const AudioClipLane = memo(function AudioClipLane({
               )}
             </div>
 
+            {/* Detection info badges (bottom row) */}
+            <div className="absolute bottom-[2px] left-[6px] right-[6px] flex items-center gap-1.5 pointer-events-none z-[2]">
+              {/* Detected BPM */}
+              {clip.detectedBpm != null && (
+                <span
+                  className="text-[7px] font-mono px-[3px] py-[0.5px] rounded-sm"
+                  style={{
+                    color: clip.synced ? '#a78bfa' : '#888',
+                    background: clip.synced ? '#a78bfa18' : '#ffffff08',
+                  }}
+                  title={clip.synced ? `BPM synced: ${clip.detectedBpm} → project tempo` : `Detected BPM: ${clip.detectedBpm}`}
+                >
+                  {clip.detectedBpm}bpm{clip.synced ? ' ✓' : ''}
+                </span>
+              )}
+              {/* Detected note / pitch */}
+              {clip.detectedNote && (
+                <span
+                  className="text-[7px] font-mono px-[3px] py-[0.5px] rounded-sm"
+                  style={{
+                    color: clip.pitched ? '#22d3ee' : '#888',
+                    background: clip.pitched ? '#22d3ee18' : '#ffffff08',
+                  }}
+                  title={clip.pitched ? `Pitch shifted to key: ${clip.detectedNote} → ${clip.detuneCents > 0 ? '+' : ''}${clip.detuneCents.toFixed(0)}¢` : `Detected note: ${clip.detectedNote}`}
+                >
+                  {clip.detectedNote}{clip.pitched ? ' ✓' : ''}
+                </span>
+              )}
+              {/* No detection possible */}
+              {!clip.detectedBpm && !clip.detectedNote && (
+                <span className="text-[7px] font-mono" style={{ color: '#555' }}>
+                  no detection
+                </span>
+              )}
+            </div>
+
             {/* Trim handles */}
             <div
               className="absolute top-0 bottom-0 left-0 w-[5px] cursor-col-resize opacity-0 group-hover:opacity-100 hover:!bg-white/20 transition-all z-10"

@@ -27,7 +27,7 @@ import {
   startRecording, decodeAudioFile,
   ClipPlaybackEngine,
   calcAutoSyncRate, calcAutoPitch, prepareInstrumentFromClip,
-  autoProcessClip,
+  autoProcessClip, detectBPM,
 } from '@/lib/audio-clip-engine'
 import {
   parseStrudelCode, updateParamInCode, insertEffectInChannel,
@@ -2836,9 +2836,17 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   const handleAutoSyncClip = useCallback((clipId: string) => {
     setAudioClips(prev => prev.map(c => {
       if (c.id !== clipId) return c
-      const { durationBars, rate, pitchCompensationCents } = calcAutoSyncRate(c, projectBpm)
-      console.log(`[444 STUDIO] Auto-Sync: "${c.name}" → ${durationBars} bars @ ${rate.toFixed(3)}x speed, pitch comp: ${pitchCompensationCents.toFixed(0)}¢ (was ${c.durationBars.toFixed(2)} bars)`)
-      return { ...c, durationBars, playbackRate: rate, ratePitchCents: pitchCompensationCents }
+      const sync = calcAutoSyncRate(c, projectBpm)
+      const detectedBpm = detectBPM(c.buffer)
+      console.log(`[444 STUDIO] Auto-Sync: "${c.name}" → ${sync.durationBars} bars @ ${sync.rate.toFixed(3)}x speed, pitch comp: ${sync.pitchCompensationCents.toFixed(0)}¢ (was ${c.durationBars.toFixed(2)} bars)`)
+      return {
+        ...c,
+        durationBars: sync.durationBars,
+        playbackRate: sync.rate,
+        ratePitchCents: sync.pitchCompensationCents,
+        synced: Math.abs(sync.rate - 1) > 0.001,
+        detectedBpm: detectedBpm ?? c.detectedBpm,
+      }
     }))
   }, [projectBpm])
 
@@ -2851,14 +2859,19 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     const result = calcAutoPitch(clip, root)
     if (result.detectedHz) {
       console.log(`[444 STUDIO] Auto-Pitch: "${clip.name}" detected ${result.detectedNote} (${result.detectedHz.toFixed(1)}Hz) → shift ${result.detuneCents.toFixed(0)} cents to ${result.targetNote}`)
-      // Store the detune value on the clip so the playback engine applies it
       setAudioClips(prev => prev.map(c =>
-        c.id === clipId ? { ...c, detuneCents: result.detuneCents } : c
+        c.id === clipId ? {
+          ...c,
+          detuneCents: result.detuneCents,
+          detectedNote: result.detectedNote,
+          detectedHz: result.detectedHz,
+          pitched: Math.abs(result.detuneCents) > 0.5,
+        } : c
       ))
     } else {
       console.log(`[444 STUDIO] Auto-Pitch: "${clip.name}" — unable to detect pitch, resetting to 0 cents`)
       setAudioClips(prev => prev.map(c =>
-        c.id === clipId ? { ...c, detuneCents: 0 } : c
+        c.id === clipId ? { ...c, detuneCents: 0, pitched: false } : c
       ))
     }
   }, [audioClips, code])
@@ -2931,8 +2944,13 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
       clip.durationBars = processed.sync.durationBars
       clip.playbackRate = processed.sync.rate
       clip.ratePitchCents = processed.sync.pitchCompensationCents
+      clip.synced = Math.abs(processed.sync.rate - 1) > 0.001
+      clip.detectedBpm = processed.detectedBpm
+      clip.detectedNote = processed.pitch.detectedNote
+      clip.detectedHz = processed.pitch.detectedHz
       if (processed.pitch.detectedHz) {
         clip.detuneCents = processed.pitch.detuneCents
+        clip.pitched = Math.abs(processed.pitch.detuneCents) > 0.5
       }
       setAudioClips(prev => [...prev, clip])
     } catch (err) {
@@ -2971,9 +2989,21 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
       clip.durationBars = processed.sync.durationBars
       clip.playbackRate = processed.sync.rate
       clip.ratePitchCents = processed.sync.pitchCompensationCents
+      clip.synced = Math.abs(processed.sync.rate - 1) > 0.001
+      clip.detectedBpm = processed.detectedBpm
+      clip.detectedNote = processed.pitch.detectedNote
+      clip.detectedHz = processed.pitch.detectedHz
       if (processed.pitch.detectedHz) {
         clip.detuneCents = processed.pitch.detuneCents
+        clip.pitched = Math.abs(processed.pitch.detuneCents) > 0.5
       }
+      console.log(
+        `[444 STUDIO] Clip added: "${clip.name}" ` +
+        `| startBar=${clip.startBar.toFixed(2)} durationBars=${clip.durationBars} ` +
+        `| trackIndex=${clip.trackIndex} ` +
+        `| BPM: ${clip.detectedBpm ?? 'N/A'} | Note: ${clip.detectedNote ?? 'N/A'} ` +
+        `| Rate: ${clip.playbackRate.toFixed(3)}x | Detune: ${clip.detuneCents.toFixed(0)}¢`
+      )
       setAudioClips(prev => [...prev, clip])
     } catch (err) {
       console.error('[AudioClip] Failed to decode uploaded file:', err)

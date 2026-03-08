@@ -48,6 +48,17 @@ export interface AudioClip {
   ratePitchCents: number
   /** Pitch shift in cents for musical key correction. Set by Auto-Pitch. */
   detuneCents: number
+  // ── Detection results (informational) ──
+  /** Detected BPM of the source audio (null if unable to detect) */
+  detectedBpm?: number | null
+  /** Detected musical note of the source audio */
+  detectedNote?: string | null
+  /** Detected fundamental frequency in Hz */
+  detectedHz?: number | null
+  /** Whether auto-sync was applied */
+  synced?: boolean
+  /** Whether auto-pitch was applied */
+  pitched?: boolean
 }
 
 export interface AudioTrack {
@@ -144,6 +155,11 @@ export function createClipFromBuffer(
     playbackRate: 1,
     ratePitchCents: 0,
     detuneCents: 0,
+    detectedBpm: null,
+    detectedNote: null,
+    detectedHz: null,
+    synced: false,
+    pitched: false,
   }
 }
 
