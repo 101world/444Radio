@@ -883,6 +883,17 @@ export default function StudioEditor() {
                 return engine.scheduler.now()
               } catch { return null }
             }}
+            onSeek={(barPosition: number) => {
+              try {
+                const engine = engineRef.current
+                if (engine?.scheduler?.setCycle) {
+                  engine.scheduler.setCycle(barPosition)
+                  console.log(`[444 STUDIO] seeked to bar ${barPosition.toFixed(2)}`)
+                }
+              } catch (err) {
+                console.warn('[444 STUDIO] seek failed:', err)
+              }
+            }}
             projectBpm={parseBPM(code) ?? 120}
           />
 

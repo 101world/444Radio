@@ -934,6 +934,7 @@ interface TrackViewProps {
   onArrangeToggle?: () => void
   onArrangeSectionsChange?: (sections: ArrangementSection[]) => void
   onDuplicateAutomation?: (fromSectionId: string, toSectionId: string) => void
+  onSeek?: (barPosition: number) => void
   // ── Pattern variants ──
   patternVariants?: PatternVariant[]
   onPatternVariantsChange?: (variants: PatternVariant[]) => void
@@ -1007,6 +1008,7 @@ const TrackView = memo(function TrackView({
   onArrangeToggle,
   onArrangeSectionsChange,
   onDuplicateAutomation,
+  onSeek,
   // Pattern variants
   patternVariants,
   onPatternVariantsChange,
@@ -1854,6 +1856,7 @@ const TrackView = memo(function TrackView({
           onToggle={onArrangeToggle}
           onSectionsChange={onArrangeSectionsChange}
           onDuplicateAutomation={onDuplicateAutomation}
+          onSeek={onSeek}
           patternVariants={patternVariants}
           onPatternVariantsChange={onPatternVariantsChange}
           onCreateVariant={onCreateVariant}

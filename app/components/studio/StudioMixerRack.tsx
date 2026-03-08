@@ -1589,11 +1589,13 @@ interface StudioMixerRackProps {
   onPreview?: (soundCode: string) => void
   /** Returns current Strudel cycle position (fractional) for playhead sync */
   getCyclePosition?: () => number | null
+  /** Seek playback to a specific bar position (calls scheduler.setCycle) */
+  onSeek?: (barPosition: number) => void
   /** Project BPM for playhead speed calculation */
   projectBpm?: number
 }
 
-export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, onMixerStateChange, onAutomationDataChange, metronomeEnabled = false, onMetronomeToggle, onOpenPianoRoll, onOpenDrumSequencer, onOpenPadSampler, isPlaying: isPlayingProp = false, onPreview, getCyclePosition, projectBpm = 120 }: StudioMixerRackProps) {
+export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, onMixerStateChange, onAutomationDataChange, metronomeEnabled = false, onMetronomeToggle, onOpenPianoRoll, onOpenDrumSequencer, onOpenPadSampler, isPlaying: isPlayingProp = false, onPreview, getCyclePosition, onSeek, projectBpm = 120 }: StudioMixerRackProps) {
   const channels = useMemo(() => parseStrudelCode(code), [code])
   const [expandedChannels, setExpandedChannels] = useState<Set<string>>(new Set())
   const [mutedChannels, setMutedChannels] = useState<Set<number>>(new Set())
@@ -3377,6 +3379,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                 onArrangeToggle={() => setArrangeOpen(v => !v)}
                 onArrangeSectionsChange={handleArrangeSectionsChange}
                 onDuplicateAutomation={handleDuplicateAutomation}
+                onSeek={onSeek}
                 patternVariants={patternVariants}
                 onPatternVariantsChange={setPatternVariants}
                 onCreateVariant={handleCreateVariant}

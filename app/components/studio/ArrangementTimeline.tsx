@@ -38,6 +38,7 @@ interface ArrangementTimelineProps {
   onToggle: () => void
   onSectionsChange: (sections: ArrangementSection[]) => void
   onDuplicateAutomation?: (fromSectionId: string, toSectionId: string) => void
+  onSeek?: (barPosition: number) => void
   patternVariants?: PatternVariant[]
   onPatternVariantsChange?: (variants: PatternVariant[]) => void
   onCreateVariant?: (channelIdx: number, name: string) => void
@@ -72,9 +73,14 @@ let variantIdCounter = 0
 export function nextVariantId() { return `var-${++variantIdCounter}` }
 
 // ─── Component ───
+// ─── Catmull-Rom spline for smooth mini automation curves ───
+function catmullRom(p0: number, p1: number, p2: number, p3: number, t: number): number {
+  return 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t)
+}
+
 const ArrangementTimeline = memo(function ArrangementTimeline({
   channels, sections, isOpen, isPlaying, currentBar, getCyclePosition,
-  automationData, onDuplicateAutomation,
+  automationData, onDuplicateAutomation, onSeek,
   onToggle, onSectionsChange,
   patternVariants = [], onPatternVariantsChange, onCreateVariant,
 }: ArrangementTimelineProps) {
@@ -225,6 +231,53 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
     document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp)
   }, [sections, onSectionsChange])
 
+  // ── Scrub / seek on bar ruler ──
+  const onSeekRef = useRef(onSeek)
+  onSeekRef.current = onSeek
+  const isScrubbing = useRef(false)
+
+  const barPosFromRulerX = useCallback((clientX: number, rulerEl: HTMLElement) => {
+    const rect = rulerEl.getBoundingClientRect()
+    const x = Math.max(0, clientX - rect.left)
+    // Walk through sections to find bar position accounting for 1px borders
+    const sec = sectionsRef.current
+    let pxAcc = 0
+    let barAcc = 0
+    for (let i = 0; i < sec.length; i++) {
+      const sectionPx = sec[i].bars * PX_PER_BAR + 1 // +1 for border
+      if (x < pxAcc + sectionPx) {
+        const localPx = x - pxAcc
+        const localBar = localPx / PX_PER_BAR
+        return Math.max(0, barAcc + localBar)
+      }
+      pxAcc += sectionPx
+      barAcc += sec[i].bars
+    }
+    return barAcc // at the end
+  }, [])
+
+  const handleRulerMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const rulerEl = e.currentTarget
+    const barPos = barPosFromRulerX(e.clientX, rulerEl)
+    onSeekRef.current?.(barPos)
+    isScrubbing.current = true
+
+    const onMove = (ev: MouseEvent) => {
+      if (!isScrubbing.current) return
+      const bp = barPosFromRulerX(ev.clientX, rulerEl)
+      onSeekRef.current?.(bp)
+    }
+    const onUp = () => {
+      isScrubbing.current = false
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }, [barPosFromRulerX])
+
   const totalBars = sections.reduce((sum, s) => sum + s.bars, 0)
 
   // Playback cursor position (use getCyclePosition-derived trackedBar, fallback to prop)
@@ -358,8 +411,13 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
                 {/* Sections + bar ruler + clips */}
                 <div className="flex flex-col relative">
 
-                  {/* ─── Bar ruler (top row) ─── */}
-                  <div className="flex shrink-0" style={{ height: BAR_RULER_H, background: '#0e0f14', borderBottom: '1px solid #1a1c22' }}>
+                  {/* ─── Bar ruler (top row) — click/drag to scrub ─── */}
+                  <div
+                    className="flex shrink-0 select-none"
+                    style={{ height: BAR_RULER_H, background: '#0e0f14', borderBottom: '1px solid #1a1c22', cursor: onSeek ? 'pointer' : 'default' }}
+                    onMouseDown={onSeek ? handleRulerMouseDown : undefined}
+                    title={onSeek ? 'Click or drag to scrub playback position' : undefined}
+                  >
                     {sections.map((section, sIdx) => {
                       const w = sectionWidths[sIdx]
                       let barOffset = 0
@@ -474,52 +532,77 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
                                 >
                                   {/* Mini automation curve overlay */}
                                   {hasAutomation && automationData && (() => {
-                                    // Build a mini step-curve for all automated params in this cell
+                                    // Build smooth Catmull-Rom mini-curves for automated params
                                     const paramList = Array.from(cellAutoParams!)
-                                    // Get all sections to compute relative value positions
                                     const allSecIds = sections.map(s => s.id)
-                                    // For each param, get this section's value + min/max from all sections
-                                    const curves = paramList.slice(0, 3).map((pk, pIdx) => {
-                                      // Gather all values for this channel+param across sections for min/max
+                                    const clipW = w - 6 // inset-x 3px each side
+                                    const clipH = ROW_H - 6
+
+                                    // For each param, build a smooth curve across sections and extract this section's segment
+                                    const curvePaths = paramList.slice(0, 3).map((pk, pIdx) => {
+                                      // Gather values for this param across all sections
+                                      const sectionValues: { secId: string; val: number }[] = []
                                       let min = Infinity, max = -Infinity
-                                      const allVals: number[] = []
                                       for (const sid of allSecIds) {
                                         const k = `${sid}:${chIdx}:${pk}`
                                         if (automationData.has(k)) {
                                           const v = automationData.get(k)!
-                                          allVals.push(v)
+                                          sectionValues.push({ secId: sid, val: v })
                                           if (v < min) min = v
                                           if (v > max) max = v
                                         }
                                       }
+                                      if (sectionValues.length < 1) return null
                                       if (min === max) { min -= 0.1; max += 0.1 }
-                                      const thisVal = automationData.get(`${section.id}:${chIdx}:${pk}`)
-                                      if (thisVal === undefined) return null
-                                      const norm = (thisVal - min) / (max - min)
-                                      const opacity = 0.5 - pIdx * 0.12
-                                      return { norm, opacity, pk }
-                                    }).filter(Boolean) as { norm: number; opacity: number; pk: string }[]
 
-                                    if (curves.length === 0) return null
-                                    const clipW = w - 6 // inset-x 3px each side
-                                    const clipH = ROW_H - 6
+                                      // Find this section's index in the value array
+                                      const thisSectionValIdx = sectionValues.findIndex(sv => sv.secId === section.id)
+                                      if (thisSectionValIdx === -1) return null
+
+                                      // Build normalized value array and compute smooth curve for this clip
+                                      const normValues = sectionValues.map(sv => (sv.val - min) / (max - min))
+                                      const steps = Math.max(8, Math.round(clipW / 3))
+                                      const points: string[] = []
+
+                                      // Catmull-Rom through the section values; sample the segment for this section
+                                      const n = normValues.length
+                                      for (let step = 0; step <= steps; step++) {
+                                        // t goes from 0 to 1 within this section's segment
+                                        const t = step / steps
+                                        // Map to global position
+                                        const globalT = thisSectionValIdx + t
+                                        const segIdx = Math.min(Math.floor(globalT), n - 1)
+                                        const localT = globalT - segIdx
+                                        const p0 = normValues[Math.max(0, segIdx - 1)]
+                                        const p1 = normValues[segIdx]
+                                        const p2 = normValues[Math.min(n - 1, segIdx + 1)]
+                                        const p3 = normValues[Math.min(n - 1, segIdx + 2)]
+                                        const val = catmullRom(p0, p1, p2, p3, localT)
+                                        const x = (step / steps) * clipW
+                                        const y = clipH * (1 - Math.max(0, Math.min(1, val)))
+                                        points.push(`${x.toFixed(1)},${y.toFixed(1)}`)
+                                      }
+
+                                      const opacity = 0.6 - pIdx * 0.15
+                                      const pathD = `M${points.join(' L')}`
+                                      // Fill area under curve
+                                      const fillD = `${pathD} L${clipW},${clipH} L0,${clipH} Z`
+                                      return { pathD, fillD, opacity }
+                                    }).filter(Boolean) as { pathD: string; fillD: string; opacity: number }[]
+
+                                    if (curvePaths.length === 0) return null
 
                                     return (
                                       <svg className="absolute inset-0 pointer-events-none" width={clipW} height={clipH}
                                         style={{ left: 3, top: 3, opacity: 0.7 }}
                                         viewBox={`0 0 ${clipW} ${clipH}`} preserveAspectRatio="none"
                                       >
-                                        {curves.map((c, ci) => {
-                                          const y = clipH * (1 - c.norm)
-                                          return (
-                                            <g key={ci}>
-                                              <line x1={0} y1={y} x2={clipW} y2={y}
-                                                stroke="#00e5c7" strokeWidth={1.5} opacity={c.opacity} />
-                                              <circle cx={2} cy={y} r={2} fill="#00e5c7" opacity={c.opacity + 0.2} />
-                                              <circle cx={clipW - 2} cy={y} r={2} fill="#00e5c7" opacity={c.opacity + 0.2} />
-                                            </g>
-                                          )
-                                        })}
+                                        {curvePaths.map((c, ci) => (
+                                          <g key={ci}>
+                                            <path d={c.fillD} fill="#00e5c7" opacity={c.opacity * 0.25} />
+                                            <path d={c.pathD} fill="none" stroke="#00e5c7" strokeWidth={1.2} opacity={c.opacity} />
+                                          </g>
+                                        ))}
                                       </svg>
                                     )
                                   })()}
