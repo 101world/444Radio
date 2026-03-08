@@ -57,7 +57,7 @@ async function handleCreate(userId: string, body: { opponent: string; wager: num
     return corsResponse(NextResponse.json({ error: 'Opponent username required' }, { status: 400 }))
   }
 
-  // Look up opponent by username (case-insensitive)
+  // Look up opponent by username (case-insensitive exact match)
   const opponentClean = opponent.toLowerCase().replace('@', '').trim()
 
   const { data: opponentUser, error: lookupError } = await supabase
@@ -67,7 +67,18 @@ async function handleCreate(userId: string, body: { opponent: string; wager: num
     .single()
 
   if (lookupError || !opponentUser) {
-    return corsResponse(NextResponse.json({ error: `User @${opponent} not found. Make sure the username is correct.` }, { status: 404 }))
+    // Try partial match to suggest correct username
+    const { data: suggestions } = await supabase
+      .from('users')
+      .select('username')
+      .ilike('username', `%${opponentClean}%`)
+      .limit(3)
+
+    const suggestionText = suggestions && suggestions.length > 0
+      ? ` Did you mean: ${suggestions.map(s => `@${s.username}`).join(', ')}?`
+      : ''
+
+    return corsResponse(NextResponse.json({ error: `User @${opponentClean} not found.${suggestionText}` }, { status: 404 }))
   }
 
   if (opponentUser.clerk_user_id === userId) {
