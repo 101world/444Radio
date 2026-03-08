@@ -178,7 +178,8 @@ export default function NotificationBell() {
             )}
 
             {items.map(n => {
-              const isChess = n.type === 'chess_challenge';
+              const isChessChallenge = n.type === 'chess_challenge';
+              const isChessAccepted = n.type === 'chess_accepted' && n.data?.gameId;
               const state = actionStates[n.id];
               const resolved = state?.status === 'done';
 
@@ -187,15 +188,17 @@ export default function NotificationBell() {
                   key={n.id}
                   className={`px-4 py-3 transition-colors ${n.unread ? 'bg-cyan-500/[0.03]' : ''} hover:bg-white/[0.02]`}
                   onClick={() => {
-                    if (!isChess) setItems(prev => prev.map(it => it.id === n.id ? { ...it, unread: false } : it));
+                    if (!isChessChallenge && !isChessAccepted) {
+                      setItems(prev => prev.map(it => it.id === n.id ? { ...it, unread: false } : it));
+                    }
                   }}
                 >
                   {/* Title + body */}
                   <p className={`text-sm font-medium ${n.unread ? 'text-white' : 'text-gray-400'}`}>{n.title}</p>
                   {n.body && <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{n.body}</p>}
 
-                  {/* Chess challenge actions */}
-                  {isChess && !resolved && (
+                  {/* Chess challenge → Accept/Decline */}
+                  {isChessChallenge && !resolved && (
                     <div className="flex items-center gap-2 mt-2.5">
                       <button
                         disabled={state?.status === 'loading'}
@@ -226,13 +229,31 @@ export default function NotificationBell() {
                   )}
 
                   {/* Resolved state */}
-                  {isChess && resolved && (
+                  {isChessChallenge && resolved && (
                     <div className={`mt-2 text-xs font-medium flex items-center gap-1.5 ${state.action === 'accept' ? 'text-emerald-400' : 'text-gray-500'}`}>
                       {state.action === 'accept' ? <Swords className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
                       {state.msg}
                       {state.action === 'accept' && (
                         <span className="text-[10px] text-emerald-500/60 ml-1">Joining game...</span>
                       )}
+                    </div>
+                  )}
+
+                  {/* Chess accepted → Join Game button (for the challenger) */}
+                  {isChessAccepted && n.unread && (
+                    <div className="mt-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setItems(prev => prev.map(it => it.id === n.id ? { ...it, unread: false } : it));
+                          setOpen(false);
+                          router.push(`/assistant?chess=${n.data!.gameId}`);
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-xs font-semibold text-white transition-all"
+                      >
+                        <Swords className="w-3 h-3" />
+                        Join Game
+                      </button>
                     </div>
                   )}
 

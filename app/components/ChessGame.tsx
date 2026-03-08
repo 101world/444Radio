@@ -86,10 +86,14 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded, ac
   const [multiplayerGameId, setMultiplayerGameId] = useState<string | null>(null)
   const [opponentName, setOpponentName] = useState<string>('')
   const [multiplayerColor, setMultiplayerColor] = useState<PieceColor>('white')
+  const [serverMoveCount, setServerMoveCount] = useState(0)
+  const [waitingForOpponent, setWaitingForOpponent] = useState(false)
 
   const boardRef = useRef<HTMLDivElement>(null)
   const moveListRef = useRef<HTMLDivElement>(null)
   const cpuThinkingRef = useRef(false)
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const pendingGameIdRef = useRef<string | null>(null) // game waiting to be accepted
 
   // ── Debounced user search ──
   useEffect(() => {
@@ -116,37 +120,6 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded, ac
     return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current) }
   }, [inviteUsername])
 
-  // ── Auto-join multiplayer game from notification ──
-  useEffect(() => {
-    if (!activeGameId || !currentUserId) return
-    // Fetch game details and enter game mode
-    async function loadGame() {
-      try {
-        const res = await fetch(`/api/chess?gameId=${encodeURIComponent(activeGameId!)}`)
-        if (!res.ok) return
-        const data = await res.json()
-        const game = data.game
-        if (!game) return
-
-        // Determine player color
-        const isWhite = game.white_player_id === currentUserId
-        const color: PieceColor = isWhite ? 'white' : 'black'
-
-        setMultiplayerGameId(game.id)
-        setMultiplayerColor(color)
-        setPlayerColor(color)
-        setBoardFlipped(color === 'black')
-        setOpponentName(data.opponentUsername || 'Opponent')
-        setWagerAmount(game.wager || 0)
-        setGameMode('multiplayer')
-        resetGame()
-      } catch (err) {
-        console.error('[chess] Failed to load game:', err)
-      }
-    }
-    loadGame()
-  }, [activeGameId, currentUserId])
-
   // ── Auto-scroll move list ──
   useEffect(() => {
     moveListRef.current?.scrollTo({ top: moveListRef.current.scrollHeight, behavior: 'smooth' })
@@ -167,8 +140,190 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded, ac
     setIsThinking(false)
   }, [])
 
+  // ── Replay moves from server onto local board ──
+  const replayServerMoves = useCallback((serverMoves: any[]) => {
+    // Reset to initial state and replay all moves
+    let state = createInitialState()
+    const notations: string[] = []
+    const capWhite: string[] = []
+    const capBlack: string[] = []
+    let last: { from: [number, number]; to: [number, number] } | null = null
+
+    for (const m of serverMoves) {
+      const move: ChessMove = {
+        from: m.from,
+        to: m.to,
+        piece: m.piece,
+        captured: m.captured,
+        promotion: m.promotion,
+        castle: m.castle,
+        enPassant: m.enPassant,
+      }
+      const allMoves = getLegalMoves(state.board, state.turn, state.enPassantTarget, state.castling)
+      const notation = moveToNotation(state.board, move, allMoves)
+      notations.push(notation)
+
+      if (move.captured) {
+        if (pieceColor(move.captured) === 'white') capWhite.push(move.captured)
+        else capBlack.push(move.captured)
+      }
+
+      const newBoard = applyMove(state.board, move)
+      const newCastling = updateCastling(state.castling, move)
+      const newEp = getEnPassantTarget(move)
+      const nextTurn: PieceColor = state.turn === 'white' ? 'black' : 'white'
+
+      state = {
+        ...state,
+        board: newBoard,
+        turn: nextTurn,
+        castling: newCastling,
+        enPassantTarget: newEp,
+        moveHistory: [...state.moveHistory, move],
+        halfMoves: move.captured || move.piece.toUpperCase() === 'P' ? 0 : state.halfMoves + 1,
+        fullMoves: state.turn === 'black' ? state.fullMoves + 1 : state.fullMoves,
+      }
+      last = { from: move.from, to: move.to }
+    }
+
+    setGameState(state)
+    setMoveNotations(notations)
+    setCapturedWhite(capWhite)
+    setCapturedBlack(capBlack)
+    setLastMove(last)
+    setServerMoveCount(serverMoves.length)
+
+    // Check for game end
+    const enemyMoves = getLegalMoves(state.board, state.turn, state.enPassantTarget, state.castling)
+    if (enemyMoves.length === 0) {
+      const prevTurn: PieceColor = state.turn === 'white' ? 'black' : 'white'
+      if (isInCheck(state.board, state.turn)) {
+        setGameResult(prevTurn)
+        setResultMessage(`${prevTurn === 'white' ? 'White' : 'Black'} wins by checkmate!`)
+      } else {
+        setGameResult('draw')
+        setResultMessage('Draw by stalemate!')
+      }
+    }
+  }, [])
+
+  // ── Auto-join multiplayer game from notification ──
+  useEffect(() => {
+    if (!activeGameId || !currentUserId) return
+    async function loadGame() {
+      try {
+        const res = await fetch(`/api/chess?gameId=${encodeURIComponent(activeGameId!)}`)
+        if (!res.ok) return
+        const data = await res.json()
+        const game = data.game
+        if (!game) return
+
+        const isWhite = game.white_player_id === currentUserId
+        const color: PieceColor = isWhite ? 'white' : 'black'
+
+        setMultiplayerGameId(game.id)
+        setMultiplayerColor(color)
+        setPlayerColor(color)
+        setBoardFlipped(color === 'black')
+        setOpponentName(data.opponentUsername || 'Opponent')
+        setWagerAmount(game.wager || 0)
+        setServerMoveCount((game.moves || []).length)
+        setGameMode('multiplayer')
+        resetGame()
+
+        // If there are already moves, replay them
+        if (game.moves && game.moves.length > 0) {
+          replayServerMoves(game.moves)
+        }
+      } catch (err) {
+        console.error('[chess] Failed to load game:', err)
+      }
+    }
+    loadGame()
+  }, [activeGameId, currentUserId, resetGame, replayServerMoves])
+
+  // ── Multiplayer polling — handles both pending (waiting for accept) and active games ──
+  useEffect(() => {
+    if (!multiplayerGameId || !currentUserId) return
+    // Don't poll if game is done
+    if (gameResult) return
+
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/chess?gameId=${encodeURIComponent(multiplayerGameId)}`)
+        if (!res.ok) return
+        const data = await res.json()
+        const game = data.game
+        if (!game) return
+
+        // Case 1: Challenger waiting for opponent to accept
+        if (waitingForOpponent && game.status === 'active') {
+          setWaitingForOpponent(false)
+          const isWhite = game.white_player_id === currentUserId
+          const color: PieceColor = isWhite ? 'white' : 'black'
+          setMultiplayerColor(color)
+          setPlayerColor(color)
+          setBoardFlipped(color === 'black')
+          setOpponentName(data.opponentUsername || 'Opponent')
+          setGameMode('multiplayer')
+          resetGame()
+          return
+        }
+
+        // Case 1b: Challenger's game was declined or cancelled
+        if (waitingForOpponent && (game.status === 'declined' || game.status === 'cancelled')) {
+          setWaitingForOpponent(false)
+          setInviteStatus('error')
+          setInviteMessage(game.status === 'declined' ? 'Challenge was declined.' : 'Challenge was cancelled.')
+          setMultiplayerGameId(null)
+          return
+        }
+
+        // Case 2: Active game — sync moves
+        if (game.status === 'active' && gameMode === 'multiplayer') {
+          const remoteMoves = game.moves || []
+          if (remoteMoves.length > serverMoveCount) {
+            // Opponent made a new move — replay all from server to stay in sync
+            replayServerMoves(remoteMoves)
+          }
+        }
+
+        // Case 3: Game completed by opponent (resign, etc.)
+        if (game.status === 'completed' && !gameResult) {
+          const remoteMoves = game.moves || []
+          if (remoteMoves.length > serverMoveCount) {
+            replayServerMoves(remoteMoves)
+          }
+          if (game.result) {
+            setGameResult(game.result)
+            setResultMessage(
+              game.result === 'draw'
+                ? 'Game drawn!'
+                : `${game.result === 'white' ? 'White' : 'Black'} wins!`
+            )
+          }
+        }
+      } catch (err) {
+        console.error('[chess] Poll error:', err)
+      }
+    }
+
+    // Poll immediately, then every 2.5s
+    poll()
+    pollIntervalRef.current = setInterval(poll, 2500)
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+    }
+  }, [multiplayerGameId, currentUserId, waitingForOpponent, gameMode, serverMoveCount, gameResult, resetGame, replayServerMoves])
+
   // ── Process a move ──
   const executeMove = useCallback((move: ChessMove) => {
+    // In multiplayer, only allow moves on your turn
+    if (gameMode === 'multiplayer') {
+      const isYourTurn = gameState.turn === multiplayerColor
+      if (!isYourTurn) return
+    }
+
     setGameState(prev => {
       const newBoard = applyMove(prev.board, move)
       const newCastling = updateCastling(prev.castling, move)
@@ -202,6 +357,41 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded, ac
         }
       }
 
+      // In multiplayer, send the move to the server
+      if (gameMode === 'multiplayer' && multiplayerGameId) {
+        const movePayload = {
+          from: move.from,
+          to: move.to,
+          piece: move.piece,
+          captured: move.captured || null,
+          promotion: move.promotion || null,
+          castle: move.castle || null,
+          enPassant: move.enPassant || false,
+        }
+        const moveIdx = prev.moveHistory.length // current index
+        fetch('/api/chess', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'move', gameId: multiplayerGameId, move: movePayload, moveIndex: moveIdx }),
+        }).then(res => res.json()).then(data => {
+          if (data.success) {
+            setServerMoveCount(data.moveCount)
+          } else {
+            console.error('[chess] Move sync failed:', data.error)
+          }
+
+          // Check for game end — settle if checkmate or stalemate
+          if (enemyMoves.length === 0 && multiplayerGameId) {
+            const result = isInCheck(newBoard, nextTurn) ? prev.turn : 'draw'
+            fetch('/api/chess', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'settle', gameId: multiplayerGameId, result }),
+            }).catch(err => console.error('[chess] Settle error:', err))
+          }
+        }).catch(err => console.error('[chess] Move send error:', err))
+      }
+
       return {
         ...prev,
         board: newBoard,
@@ -213,13 +403,14 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded, ac
         fullMoves: prev.turn === 'black' ? prev.fullMoves + 1 : prev.fullMoves,
       }
     })
-  }, [])
+  }, [gameMode, multiplayerGameId, multiplayerColor, gameState.turn])
 
   // ── Handle square click ──
   const handleSquareClick = useCallback((row: number, col: number) => {
     if (gameResult) return
     if (isThinking) return
     if (gameMode === 'cpu' && gameState.turn !== playerColor) return
+    if (gameMode === 'multiplayer' && gameState.turn !== multiplayerColor) return
     if (promotionPending) return
 
     const piece = gameState.board[row][col]
@@ -259,7 +450,7 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded, ac
       const moves = getLegalMoves(gameState.board, gameState.turn, gameState.enPassantTarget, gameState.castling)
       setValidMoves(moves.filter(m => m.from[0] === row && m.from[1] === col).map(m => m.to))
     }
-  }, [gameState, selectedSquare, gameResult, isThinking, gameMode, playerColor, promotionPending, executeMove])
+  }, [gameState, selectedSquare, gameResult, isThinking, gameMode, playerColor, multiplayerColor, promotionPending, executeMove])
 
   // ── Handle promotion choice ──
   const handlePromotion = useCallback((promo: string) => {
@@ -293,6 +484,15 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded, ac
     const winner = gameState.turn === 'white' ? 'black' : 'white'
     setGameResult(winner)
     setResultMessage(`${winner === 'white' ? 'White' : 'Black'} wins by resignation!`)
+
+    // In multiplayer, settle the game on the server
+    if (gameMode === 'multiplayer' && multiplayerGameId) {
+      fetch('/api/chess', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'settle', gameId: multiplayerGameId, result: winner }),
+      }).catch(err => console.error('[chess] Settle error:', err))
+    }
   }
 
   // ── Start CPU game ──
@@ -520,6 +720,12 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded, ac
                           if (data.success) {
                             setInviteStatus('sent')
                             setInviteMessage(data.message || `Challenge sent to @${cleanUsername}!`)
+                            // Save game ID and start polling for acceptance
+                            if (data.gameId) {
+                              pendingGameIdRef.current = data.gameId
+                              setMultiplayerGameId(data.gameId)
+                              setWaitingForOpponent(true)
+                            }
                           } else {
                             setInviteStatus('error')
                             setInviteMessage(data.error || 'Failed to create game')
@@ -545,7 +751,13 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded, ac
                       )}
                     </button>
                     {/* Invite status feedback */}
-                    {inviteStatus === 'sent' && (
+                    {inviteStatus === 'sent' && waitingForOpponent && (
+                      <div className="flex items-center gap-2 px-3 py-2 bg-cyan-500/10 border border-cyan-500/20 rounded-lg animate-pulse">
+                        <div className="w-3 h-3 border-2 border-cyan-400/40 border-t-cyan-400 rounded-full animate-spin" />
+                        <span className="text-[10px] text-cyan-300/80">Waiting for opponent to accept...</span>
+                      </div>
+                    )}
+                    {inviteStatus === 'sent' && !waitingForOpponent && (
                       <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
                         <span className="text-emerald-400 text-[10px]">✓</span>
                         <span className="text-[10px] text-emerald-300/80">{inviteMessage}</span>
@@ -765,6 +977,12 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded, ac
                   {isThinking && (
                     <span className="text-[10px] text-cyan-400/60 flex items-center gap-1">
                       <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" /> CPU thinking...
+                    </span>
+                  )}
+                  {gameMode === 'multiplayer' && !gameResult && (
+                    <span className={`text-[10px] flex items-center gap-1.5 ${gameState.turn === multiplayerColor ? 'text-emerald-400' : 'text-amber-400/60'}`}>
+                      <div className={`w-2 h-2 rounded-full ${gameState.turn === multiplayerColor ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400/40'}`} />
+                      {gameState.turn === multiplayerColor ? 'Your turn' : `Waiting for ${opponentName}...`}
                     </span>
                   )}
                   <div className="flex-1" />

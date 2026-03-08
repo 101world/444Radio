@@ -1,7 +1,8 @@
 /**
  * Chess API — Create and manage multiplayer chess games with credit wagers
  * POST /api/chess
- * Actions: create, accept, decline, settle
+ * Actions: create, accept, decline, settle, move
+ * GET /api/chess?gameId=X — fetch game state (for polling)
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
@@ -31,6 +32,7 @@ export async function POST(req: NextRequest) {
     if (action === 'accept') return await handleAccept(userId, body)
     if (action === 'decline') return await handleDecline(userId, body)
     if (action === 'settle') return await handleSettle(userId, body)
+    if (action === 'move') return await handleMove(userId, body)
 
     return corsResponse(NextResponse.json({ error: 'Unknown action' }, { status: 400 }))
   } catch (error) {
@@ -394,4 +396,62 @@ async function handleSettle(userId: string, body: { gameId: string; result: 'whi
     result,
     creditsAwarded: game.wager > 0 ? (result === 'draw' ? game.wager : totalPool) : 0,
   }))
+}
+
+// ─── MOVE: store a move in the game ───
+async function handleMove(userId: string, body: { gameId: string; move: any; moveIndex: number }) {
+  const { gameId, move, moveIndex } = body
+  if (!gameId || !move) {
+    return corsResponse(NextResponse.json({ error: 'gameId and move required' }, { status: 400 }))
+  }
+
+  const { data: game, error } = await supabase
+    .from('chess_games')
+    .select('*')
+    .eq('id', gameId)
+    .single()
+
+  if (error || !game) {
+    return corsResponse(NextResponse.json({ error: 'Game not found' }, { status: 404 }))
+  }
+
+  if (game.status !== 'active') {
+    return corsResponse(NextResponse.json({ error: 'Game is not active' }, { status: 400 }))
+  }
+
+  // Verify it's this player's game
+  if (game.white_player_id !== userId && game.black_player_id !== userId) {
+    return corsResponse(NextResponse.json({ error: 'Not your game' }, { status: 403 }))
+  }
+
+  // Verify it's this player's turn
+  const currentMoves = game.moves || []
+  const isWhiteTurn = currentMoves.length % 2 === 0
+  const isPlayerWhite = game.white_player_id === userId
+  if (isWhiteTurn !== isPlayerWhite) {
+    return corsResponse(NextResponse.json({ error: 'Not your turn' }, { status: 400 }))
+  }
+
+  // Verify move index matches (prevent duplicates / race conditions)
+  if (typeof moveIndex === 'number' && moveIndex !== currentMoves.length) {
+    return corsResponse(NextResponse.json({ error: 'Move out of sync', currentMoveCount: currentMoves.length }, { status: 409 }))
+  }
+
+  // Append the move
+  const updatedMoves = [...currentMoves, move]
+
+  const { error: updateError } = await supabase
+    .from('chess_games')
+    .update({
+      moves: updatedMoves,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', gameId)
+
+  if (updateError) {
+    console.error('[chess] Move update error:', updateError)
+    return corsResponse(NextResponse.json({ error: 'Failed to save move' }, { status: 500 }))
+  }
+
+  return corsResponse(NextResponse.json({ success: true, moveCount: updatedMoves.length }))
 }
