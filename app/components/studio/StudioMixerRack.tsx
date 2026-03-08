@@ -1664,13 +1664,14 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   const codeRef = useRef(code)
   codeRef.current = code
 
-  // Reset mute/solo when channel count changes (user added/removed blocks)
+  // Reset mute/solo/racks when channel count changes (user added/removed blocks or loaded new template)
   const prevChannelCount = useRef(0)
   useEffect(() => {
     if (channels.length !== prevChannelCount.current) {
       prevChannelCount.current = channels.length
       setMutedChannels(new Set())
       setSoloedChannels(new Set())
+      setRacks([]) // Clear racks — only user-created racks should exist
     }
     // Collapse all tracks by default on first load
     if (!trackCollapseInitialized.current && channels.length > 0) {
