@@ -1598,11 +1598,14 @@ export function addChannel(
     }
     block = `$${name}: s("${soundName}")\n  .loopAt(${loopCycles})${speedCompensation}\n  .cut(${nextOrbit + 1})\n  .gain(0.7)\n  .orbit(${nextOrbit})\n  .room(0.15).delay(0.1).delaytime(0.125).delayfeedback(0.2)`
   } else if (type === 'instrument') {
-    // Trimmed sample → pitched instrument playable on piano roll
+    // Sample → pitched instrument playable on piano roll
+    // Single note so user draws more via piano roll; loopAt for
+    // tempo-sync; cut prevents overlapping copies
+    const loopCycles = vocalLoopAt ?? 4
     const begin = trimBegin ?? 0
     const end = trimEnd ?? 1
     const trimCode = (begin > 0 || end < 1) ? `\n  .begin(${begin.toFixed(2)}).end(${end.toFixed(2)})` : ''
-    block = `$${name}: note("c3 e3 g3 c4")\n  .s("${soundName}")${trimCode}\n  .gain(0.6)\n  .lpf(6000).lpq(1)\n  .room(0.2).delay(0.1).delaytime(0.125).delayfeedback(0.2)`
+    block = `$${name}: note("c3")\n  .s("${soundName}")\n  .loopAt(${loopCycles})${trimCode}\n  .cut(${nextOrbit + 1})\n  .gain(0.6)\n  .orbit(${nextOrbit})\n  .lpf(6000).lpq(1)\n  .room(0.2).delay(0.1).delaytime(0.125).delayfeedback(0.2)`
   } else if (type === 'drumpad') {
     // Auto-chopped sample → drum pad / step sequencer
     const chops = chopCount ?? 8

@@ -2848,13 +2848,12 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     if (onRegisterCustomSound) {
       await onRegisterCustomSound(meta.soundName, meta.sampleUrl)
     }
-    // Create as a vocal/sample channel with loopAt + cut to prevent
-    // overlapping glitches.  Use 'vocal' type which generates
-    // s("name").loopAt(N).cut(X) — safe for long audio.
+    // Create as an 'instrument' channel — note("c3") + loopAt + cut
+    // so it's pitched (piano-roll playable) and tempo-synced without glitch
     if (onAddChannel) {
       const loopAt = Math.max(1, Math.round(meta.loopBars))
-      onAddChannel(meta.soundName, 'vocal', loopAt)
-      console.log(`[444 STUDIO] Created sample channel "${meta.soundName}" from clip "${clip.name}" (loopAt=${loopAt})`)
+      onAddChannel(meta.soundName, 'instrument', loopAt)
+      console.log(`[444 STUDIO] Created instrument "${meta.soundName}" from clip "${clip.name}" (loopAt=${loopAt})`)
     } else {
       console.warn('[444 STUDIO] Cannot create instrument — onAddChannel not wired')
     }
