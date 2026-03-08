@@ -532,6 +532,7 @@ function ChannelStrip({
   onOpenPianoRoll,
   onOpenDrumSequencer,
   onOpenPadSampler,
+  onOpenVocalSlicer,
   onRename,
   onDuplicate,
   onDelete,
@@ -585,6 +586,7 @@ function ChannelStrip({
   onOpenPianoRoll?: () => void
   onOpenDrumSequencer?: () => void
   onOpenPadSampler?: () => void
+  onOpenVocalSlicer?: () => void
   onRename: (channelIdx: number, newName: string) => void
   onDuplicate?: (channelIdx: number) => void
   onDelete?: (channelIdx: number) => void
@@ -1080,6 +1082,23 @@ function ChannelStrip({
             >
               <span className="text-[10px] leading-none">🎹</span>
               <span className="text-[6px] font-bold leading-none">SAMPLER</span>
+            </button>
+          )}
+          {/* ── Vocal Slicer — piano + pad + slicer combo ── */}
+          {primaryEditor === 'sampler' && onOpenVocalSlicer && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onOpenVocalSlicer() }}
+              className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md transition-all cursor-pointer hover:opacity-100 active:scale-95"
+              style={{
+                color: '#f472b6',
+                opacity: 0.8,
+                background: 'rgba(244,114,182,0.08)',
+                border: '1px solid rgba(244,114,182,0.12)',
+              }}
+              title="Vocal Slicer — piano roll + pads + slicer"
+            >
+              <span className="text-[10px] leading-none">✂️</span>
+              <span className="text-[6px] font-bold leading-none">SLICER</span>
             </button>
           )}
           {/* ── Piano Roll — primary for melodic/pitched channels ── */}
@@ -1594,6 +1613,7 @@ interface StudioMixerRackProps {
   onOpenPianoRoll?: (channelIdx: number) => void
   onOpenDrumSequencer?: (channelIdx: number) => void
   onOpenPadSampler?: (channelIdx: number) => void
+  onOpenVocalSlicer?: (channelIdx: number) => void
   isPlaying?: boolean
   onPreview?: (soundCode: string) => void
   /** Returns current Strudel cycle position (fractional) for playhead sync */
@@ -1608,7 +1628,7 @@ interface StudioMixerRackProps {
   onAddChannel?: (soundId: string, type: 'synth' | 'sample' | 'vocal' | 'instrument' | 'drumpad', loopAt?: number) => void
 }
 
-export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, onMixerStateChange, onAutomationDataChange, metronomeEnabled = false, onMetronomeToggle, onOpenPianoRoll, onOpenDrumSequencer, onOpenPadSampler, isPlaying: isPlayingProp = false, onPreview, getCyclePosition, onSeek, projectBpm = 120, onRegisterCustomSound, onAddChannel }: StudioMixerRackProps) {
+export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, onMixerStateChange, onAutomationDataChange, metronomeEnabled = false, onMetronomeToggle, onOpenPianoRoll, onOpenDrumSequencer, onOpenPadSampler, onOpenVocalSlicer, isPlaying: isPlayingProp = false, onPreview, getCyclePosition, onSeek, projectBpm = 120, onRegisterCustomSound, onAddChannel }: StudioMixerRackProps) {
   const channels = useMemo(() => parseStrudelCode(code), [code])
   const [expandedChannels, setExpandedChannels] = useState<Set<string>>(new Set())
   const [mutedChannels, setMutedChannels] = useState<Set<number>>(new Set())
@@ -2426,7 +2446,19 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
       const currentCode = codeRef.current
       const projectBpm = parseBPM(currentCode) ?? 120
       const newCode = addChannel(currentCode, sound, type, vocalLoopAt, undefined, projectBpm)
-      if (newCode !== currentCode) onCodeChange(newCode)
+      if (newCode !== currentCode) {
+        onCodeChange(newCode)
+        // Auto-add new channel to all existing arrange sections
+        if (arrangeSectionsRef.current.length > 0) {
+          const newChannelIdx = parseStrudelCode(newCode).length - 1
+          if (newChannelIdx >= 0) {
+            setArrangeSections(prev => prev.map(sec => ({
+              ...sec,
+              activeChannels: new Set([...sec.activeChannels, newChannelIdx]),
+            })))
+          }
+        }
+      }
       setShowAddMenu(false)
     },
     [onCodeChange],
@@ -2972,9 +3004,33 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     audioFileInputRef.current?.click()
   }, [])
 
+  // ── Ensure audio track + arrangement exist when uploading audio directly ──
+  const ensureAudioTrackAndArrangement = useCallback(() => {
+    // Create audio track if none exist
+    if (audioTracks.length === 0) {
+      setAudioTracks(prev => [...prev, createDefaultTrack(prev.length)])
+      pendingUploadTrackRef.current = 0
+    }
+    // Open arrangement if closed
+    if (!arrangeOpen) setArrangeOpen(true)
+    // Create a default section if none exist
+    if (arrangeSections.length === 0) {
+      const sectionNames = ['Intro', 'Verse', 'Build', 'Chorus', 'Bridge', 'Drop', 'Break', 'Outro']
+      setArrangeSections([{
+        id: `sec-auto-1`,
+        name: sectionNames[0],
+        bars: 4,
+        activeChannels: new Set(channels.map((_: ParsedChannel, i: number) => i)),
+        clipVariants: new Map(),
+      }])
+    }
+  }, [audioTracks.length, arrangeOpen, arrangeSections.length, channels])
+
   const handleAudioFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    // Ensure audio track + arrangement exist before processing
+    ensureAudioTrackAndArrangement()
     try {
       const ctx = new AudioContext()
       const { buffer, blobUrl } = await decodeAudioFile(file, ctx)
@@ -3015,10 +3071,10 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     }
     // Reset the input so the same file can be re-selected
     e.target.value = ''
-  }, [getCyclePosition, projectBpm, code])
+  }, [getCyclePosition, projectBpm, code, ensureAudioTrackAndArrangement])
 
   return (
-    <div className="h-full flex flex-row" style={{ overflow: 'visible' }}>
+    <div className="h-full flex flex-row relative" style={{ overflow: 'visible' }}>
       {/* Hidden file input for audio upload */}
       <input
         ref={audioFileInputRef}
@@ -3028,15 +3084,24 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
         onChange={handleAudioFileChange}
       />
 
-      {/* ═══ LEFT SIDEBAR — FX Panel & Preset Rack (flex, not overlapping) ═══ */}
+      {/* ═══ LEFT OVERLAY — FX Panel & Preset Rack (absolute, pops up from left) ═══ */}
       {(showFxPanel || showPresetRack) && (
-        <div
-          className="shrink-0 flex flex-row h-full"
-          style={{
-            borderRight: '1px solid rgba(255,255,255,0.06)',
-            boxShadow: '2px 0 8px rgba(0,0,0,0.3)',
-          }}
-        >
+        <>
+          {/* Dismiss backdrop — click to close panels */}
+          <div
+            className="absolute inset-0"
+            style={{ zIndex: 39, background: 'rgba(0,0,0,0.15)' }}
+            onClick={() => { setShowFxPanel(false); setShowPresetRack(false) }}
+          />
+          <div
+            className="absolute left-0 top-0 bottom-0 flex flex-row h-full"
+            style={{
+              zIndex: 40,
+              borderRight: '1px solid rgba(255,255,255,0.06)',
+              boxShadow: '4px 0 16px rgba(0,0,0,0.5)',
+              background: '#0d0e12',
+            }}
+          >
           {/* ═══ 444 FX PANEL ═══ */}
           {showFxPanel && channels[fxSelectedTrack] && (
             <div className="h-full overflow-y-auto" style={{ maxHeight: '100%' }}>
@@ -3054,6 +3119,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                 onOpenPianoRoll={onOpenPianoRoll}
                 onOpenDrumSequencer={onOpenDrumSequencer}
                 onOpenPadSampler={onOpenPadSampler}
+                onOpenVocalSlicer={onOpenVocalSlicer}
                 onTranspose={handleTranspose}
                 onPreview={onPreview}
                 sidechainInfo={getSidechainInfo(fxSelectedTrack)}
@@ -3088,6 +3154,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
             </div>
           )}
         </div>
+        </>
       )}
 
       {/* ══ MAIN CONTENT (header + channels) ══ */}
@@ -3703,6 +3770,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                 onOpenPianoRoll={onOpenPianoRoll}
                 onOpenDrumSequencer={onOpenDrumSequencer}
                 onOpenPadSampler={onOpenPadSampler}
+                onOpenVocalSlicer={onOpenVocalSlicer}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
@@ -3871,6 +3939,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                     onOpenPianoRoll={onOpenPianoRoll ? () => onOpenPianoRoll(idx) : undefined}
                     onOpenDrumSequencer={onOpenDrumSequencer ? () => onOpenDrumSequencer(idx) : undefined}
                     onOpenPadSampler={onOpenPadSampler ? () => onOpenPadSampler(idx) : undefined}
+                    onOpenVocalSlicer={onOpenVocalSlicer ? () => onOpenVocalSlicer(idx) : undefined}
                     onRename={handleRename}
                     onDuplicate={handleDuplicate}
                     onDelete={handleDelete}

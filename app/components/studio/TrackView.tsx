@@ -1195,6 +1195,7 @@ interface TrackViewProps {
   onOpenPianoRoll?: (idx: number) => void
   onOpenDrumSequencer?: (idx: number) => void
   onOpenPadSampler?: (idx: number) => void
+  onOpenVocalSlicer?: (idx: number) => void
   onDragOver: (idx: number) => void
   onDragLeave: () => void
   onDrop: (idx: number, e: React.DragEvent) => void
@@ -1290,6 +1291,7 @@ const TrackView = memo(function TrackView({
   onOpenPianoRoll,
   onOpenDrumSequencer,
   onOpenPadSampler,
+  onOpenVocalSlicer,
   onDragOver,
   onDragLeave,
   onDrop,
@@ -1734,6 +1736,13 @@ const TrackView = memo(function TrackView({
                     className="flex items-center gap-0.5 px-1.5 py-1 rounded cursor-pointer transition-all hover:opacity-100 active:scale-95"
                     style={{ color: '#22d3ee', opacity: 0.8, background: 'rgba(34,211,238,0.08)', border: '1px solid rgba(34,211,238,0.12)', fontSize: 0 }}>
                     <span className="text-[9px]">🎹</span><span className="text-[6px] font-bold leading-none">PAD</span>
+                  </button>
+                )}
+                {primaryEditor === 'sampler' && onOpenVocalSlicer && (
+                  <button onClick={(e) => { e.stopPropagation(); onOpenVocalSlicer(idx) }}
+                    className="flex items-center gap-0.5 px-1.5 py-1 rounded cursor-pointer transition-all hover:opacity-100 active:scale-95"
+                    style={{ color: '#f472b6', opacity: 0.8, background: 'rgba(244,114,182,0.08)', border: '1px solid rgba(244,114,182,0.12)', fontSize: 0 }}>
+                    <span className="text-[9px]">✂️</span><span className="text-[6px] font-bold leading-none">SLICE</span>
                   </button>
                 )}
               </div>

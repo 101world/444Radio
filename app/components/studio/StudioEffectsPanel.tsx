@@ -9,7 +9,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { useRef, useEffect, useCallback, useState, useMemo } from 'react'
-import { Piano, Grid3X3, Mic, Link, Unlink, X, Volume2 } from 'lucide-react'
+import { Piano, Grid3X3, Mic, Link, Unlink, X, Volume2, Scissors } from 'lucide-react'
 import HardwareKnob from './HardwareKnob'
 import StudioKnob from './StudioKnob'
 import FxLcdMonitor from './FxLcdMonitor'
@@ -254,7 +254,7 @@ export default function StudioEffectsPanel({
   onClose,
   // Extended props for full channel control
   onSoundChange, onBankChange, onAddSound,
-  onOpenPianoRoll, onOpenDrumSequencer, onOpenPadSampler,
+  onOpenPianoRoll, onOpenDrumSequencer, onOpenPadSampler, onOpenVocalSlicer,
   onTranspose, onPreview,
   // Sidechain
   sidechainInfo, onEnableSidechain, onDisableSidechain,
@@ -275,6 +275,7 @@ export default function StudioEffectsPanel({
   onOpenPianoRoll?: (idx: number) => void
   onOpenDrumSequencer?: (idx: number) => void
   onOpenPadSampler?: (idx: number) => void
+  onOpenVocalSlicer?: (idx: number) => void
   onTranspose?: (channelIdx: number, semitones: number) => void
   onPreview?: (soundCode: string) => void
   sidechainInfo?: SidechainInfo
@@ -809,6 +810,15 @@ export default function StudioEffectsPanel({
                     color: '#c77dba', fontSize: '7px', fontWeight: 800, letterSpacing: '0.1em',
                     boxShadow: '0 1px 3px rgba(0,0,0,0.3)', fontFamily: 'monospace' }}>
                   <Mic size={10} /> PAD SAMPLER
+                </button>
+              )}
+              {primaryEditor === 'sampler' && onOpenVocalSlicer && (
+                <button onClick={() => onOpenVocalSlicer(channelIdx)}
+                  className="flex items-center gap-1 px-2 py-1 rounded transition-all cursor-pointer active:scale-95"
+                  style={{ background: 'linear-gradient(180deg, #111820 0%, #0d1418 100%)', border: '1px solid #1a3535',
+                    color: '#f472b6', fontSize: '7px', fontWeight: 800, letterSpacing: '0.1em',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.3)', fontFamily: 'monospace' }}>
+                  <Scissors size={10} /> SLICER
                 </button>
               )}
               {onPreview && channel.isSimpleSource && (

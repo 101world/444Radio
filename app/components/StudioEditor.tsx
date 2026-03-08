@@ -15,6 +15,7 @@ import { setOrbitAnalyser, clearOrbitAnalysers } from '@/lib/studio-analysers'
 import StudioPianoRoll from './studio/StudioPianoRoll'
 import StudioDrumSequencer from './studio/StudioDrumSequencer'
 import StudioVocalPadSampler from './studio/StudioVocalPadSampler'
+import VocalSlicerPlugin from './studio/VocalSlicerPlugin'
 // Sub-components
 import StudioTopBar from './studio/StudioTopBar'
 import StudioGenreSelector, { GENRE_TEMPLATES } from './studio/StudioGenreSelector'
@@ -81,6 +82,7 @@ export default function StudioEditor() {
   const [pianoRollChannel, setPianoRollChannel] = useState<number | null>(null)
   const [drumSequencerChannel, setDrumSequencerChannel] = useState<number | null>(null)
   const [padSamplerChannel, setPadSamplerChannel] = useState<number | null>(null)
+  const [vocalSlicerChannel, setVocalSlicerChannel] = useState<number | null>(null)
   const [isRecording, setIsRecording] = useState(false)
 
   // Recording: capture drum hits with cycle position for converting to Strudel code
@@ -890,9 +892,10 @@ export default function StudioEditor() {
             onMetronomeToggle={handleMetronomeToggle}
             isPlaying={isPlaying}
             onPreview={handlePreviewSound}
-            onOpenPianoRoll={(idx) => { setDrumSequencerChannel(null); setPadSamplerChannel(null); setPianoRollChannel(prev => prev === idx ? null : idx) }}
-            onOpenDrumSequencer={(idx) => { setPianoRollChannel(null); setPadSamplerChannel(null); setDrumSequencerChannel(prev => prev === idx ? null : idx) }}
-            onOpenPadSampler={(idx) => { setPianoRollChannel(null); setDrumSequencerChannel(null); setPadSamplerChannel(prev => prev === idx ? null : idx) }}
+            onOpenPianoRoll={(idx) => { setDrumSequencerChannel(null); setPadSamplerChannel(null); setVocalSlicerChannel(null); setPianoRollChannel(prev => prev === idx ? null : idx) }}
+            onOpenDrumSequencer={(idx) => { setPianoRollChannel(null); setPadSamplerChannel(null); setVocalSlicerChannel(null); setDrumSequencerChannel(prev => prev === idx ? null : idx) }}
+            onOpenPadSampler={(idx) => { setPianoRollChannel(null); setDrumSequencerChannel(null); setVocalSlicerChannel(null); setPadSamplerChannel(prev => prev === idx ? null : idx) }}
+            onOpenVocalSlicer={(idx) => { setPianoRollChannel(null); setDrumSequencerChannel(null); setPadSamplerChannel(null); setVocalSlicerChannel(prev => prev === idx ? null : idx) }}
             onAutomationDataChange={handleAutomationDataChange}
             getCyclePosition={() => {
               try {
@@ -1212,6 +1215,79 @@ export default function StudioEditor() {
                   } catch {}
                 }}
                 onClose={() => setPadSamplerChannel(null)}
+              />
+            )
+          })()}
+
+          {/* Vocal Slicer Plugin — docks at bottom */}
+          {vocalSlicerChannel !== null && (() => {
+            const channels = parseStrudelCode(code)
+            const ch = channels[vocalSlicerChannel]
+            if (!ch) return null
+            const spliceMatch = ch.rawCode.match(/\.splice\(\s*(\d+)/)
+            const sliceMatch = spliceMatch || ch.rawCode.match(/\.slice\(\s*(\d+)/)
+            const chopMatch = sliceMatch || ch.rawCode.match(/\.chop\(\s*(\d+)\s*\)/)
+            let chopCount = chopMatch ? parseInt(chopMatch[1]) : 16
+            const trimMeta = ch.rawCode.match(/\/\/\s*trim:([\d.]+):([\d.]+):(\d+)/)
+            let trimBegin: number, trimEnd: number
+            if (trimMeta) {
+              trimBegin = parseFloat(trimMeta[1])
+              trimEnd = parseFloat(trimMeta[2])
+              chopCount = parseInt(trimMeta[3])
+            } else {
+              const trimBeginParam = ch.params.find(p => p.key === 'begin')
+              const trimEndParam = ch.params.find(p => p.key === 'end')
+              trimBegin = trimBeginParam?.value ?? 0
+              trimEnd = trimEndParam?.value ?? 1
+            }
+            return (
+              <VocalSlicerPlugin
+                key={vocalSlicerChannel}
+                sampleName={ch.source}
+                sampleBuffer={null}
+                color={ch.color}
+                channelName={ch.name}
+                channelRawCode={ch.rawCode}
+                chopCount={chopCount}
+                trimBegin={trimBegin}
+                trimEnd={trimEnd}
+                projectBpm={parseBPM(code) ?? 120}
+                isTransportPlaying={isPlaying}
+                onToggleTransport={handlePlay}
+                onPatternChange={(newRawCode: string) => {
+                  const latest = codeRef.current
+                  const newCode = replaceChannelBlock(latest, vocalSlicerChannel, newRawCode)
+                  if (newCode !== latest) handleLiveCodeChange(newCode)
+                }}
+                onPreviewSlice={async (sampleName: string, begin: number, end: number, speed?: number) => {
+                  const engine = engineRef.current
+                  if (!engine) return
+                  try {
+                    const actx = engine.webaudio.getAudioContext()
+                    await actx.resume()
+                    let sd = engine.superdough || engine.webaudio.superdough
+                    if (!sd) {
+                      const sdMod = await import('superdough')
+                      sd = sdMod.superdough
+                    }
+                    if (!sd) return
+                    const now = actx.currentTime + 0.05
+                    const params: Record<string, unknown> = {
+                      s: sampleName,
+                      begin,
+                      end,
+                      gain: 0.7,
+                      cut: 2,
+                    }
+                    if (speed !== undefined && speed !== 1) params.speed = speed
+                    if (ch.bank) params.bank = ch.bank
+                    const sliceDur = Math.max(0.25, (end - begin) * 60)
+                    await sd(params, now, Math.min(sliceDur, 8))
+                  } catch (err) {
+                    console.warn('[444 STUDIO] slicer preview failed:', err)
+                  }
+                }}
+                onClose={() => setVocalSlicerChannel(null)}
               />
             )
           })()}
