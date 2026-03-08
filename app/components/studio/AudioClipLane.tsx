@@ -86,9 +86,25 @@ const MiniWaveform = memo(function MiniWaveform({
     return parts.join(' ')
   }, [peaks, width, height])
 
+  // Build fill path (closed shape for waveform body)
+  const fillPath = useMemo(() => {
+    if (peaks.length === 0) return ''
+    const mid = height / 2
+    const topParts: string[] = []
+    const bottomParts: string[] = []
+    for (let i = 0; i < peaks.length; i++) {
+      const x = (i / peaks.length) * width
+      const amp = peaks[i] * mid * 0.85
+      topParts.push(`${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${(mid - amp).toFixed(1)}`)
+      bottomParts.unshift(`L${x.toFixed(1)},${(mid + amp).toFixed(1)}`)
+    }
+    return topParts.join(' ') + ' ' + bottomParts.join(' ') + ' Z'
+  }, [peaks, width, height])
+
   return (
     <svg width={width} height={height} className="absolute inset-0 pointer-events-none">
-      <path d={path} stroke={color} strokeWidth={1} fill="none" opacity={0.6} />
+      <path d={fillPath} fill={color} opacity={0.15} />
+      <path d={path} stroke={color} strokeWidth={1.5} fill="none" opacity={0.85} />
     </svg>
   )
 })

@@ -253,21 +253,35 @@ export default function StudioEditor() {
     return code
   }, [])
 
-  // Automation data change: store + re-evaluate
+  // Automation data change: store + re-evaluate (throttled to prevent audio glitches)
+  const autoEvalThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const handleAutomationDataChange = useCallback((data: Map<string, number>, sections: { id: string; bars: number }[]) => {
     automationStateRef.current = { data, sections }
-    console.log(`[444 STUDIO] automation data updated: ${data.size} keyframes, ${sections.length} sections`)
     if (isPlayingRef.current && engineRef.current?.evaluate) {
-      const src = codeRef.current.trim()
-      if (!src) return
-      const { muted, soloed } = mixerStateRef.current
-      const finalCode = buildEvalCode(src, muted, soloed)
-      console.log('[444 STUDIO] re-evaluating with automation overrides applied')
-      engineRef.current.evaluate(finalCode).catch(err => {
-        console.error('[444 STUDIO] automation update error:', err)
-      })
-    } else if (!isPlayingRef.current) {
-      console.log('[444 STUDIO] automation stored (will apply on next play)')
+      // Throttle: only evaluate once per 150ms to prevent rapid-fire audio glitches
+      if (!autoEvalThrottleRef.current) {
+        // Leading edge: evaluate immediately
+        const src = codeRef.current.trim()
+        if (src) {
+          const { muted, soloed } = mixerStateRef.current
+          const finalCode = buildEvalCode(src, muted, soloed)
+          engineRef.current.evaluate(finalCode).catch(err => {
+            console.error('[444 STUDIO] automation update error:', err)
+          })
+        }
+        autoEvalThrottleRef.current = setTimeout(() => {
+          autoEvalThrottleRef.current = null
+          // Trailing edge: re-evaluate if data changed during throttle window
+          if (isPlayingRef.current && engineRef.current?.evaluate) {
+            const src = codeRef.current.trim()
+            if (src) {
+              const { muted, soloed } = mixerStateRef.current
+              const finalCode = buildEvalCode(src, muted, soloed)
+              engineRef.current.evaluate(finalCode).catch(() => {})
+            }
+          }
+        }, 150)
+      }
     }
   }, [buildEvalCode])
 

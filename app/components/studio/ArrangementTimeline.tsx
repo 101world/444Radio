@@ -206,12 +206,13 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
   }, [variantPicker])
 
   // ── Panel height resize ──
+  // Docked at TOP: dragging DOWN = increase height
   const onResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     dragRef.current = { startY: e.clientY, startH: height }
     const onMove = (ev: MouseEvent) => {
       if (!dragRef.current) return
-      setHeight(Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, dragRef.current.startH + (dragRef.current.startY - ev.clientY))))
+      setHeight(Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, dragRef.current.startH + (ev.clientY - dragRef.current.startY))))
     }
     const onUp = () => { dragRef.current = null; document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp) }
     document.addEventListener('mousemove', onMove)
@@ -405,9 +406,9 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
       <button
         onClick={onToggle}
         className="flex items-center gap-2.5 w-full py-1.5 px-3 cursor-pointer transition-colors hover:bg-white/[0.03] group"
-        style={{ background: '#111217', borderTop: '1px solid #1e2028' }}
+        style={{ background: '#111217', borderBottom: '1px solid #1e2028' }}
       >
-        <ChevronUp size={12} className="text-white/25 group-hover:text-white/50 transition-colors" />
+        <ChevronDown size={12} className="text-white/25 group-hover:text-white/50 transition-colors" />
         <span className="text-[11px] font-semibold text-white/35 uppercase tracking-wider group-hover:text-white/60 transition-colors">
           Arrangement
         </span>
@@ -425,17 +426,12 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
   const sectionWidths = sections.map(s => s.bars * PX_PER_BAR)
 
   return (
-    <div className="flex flex-col select-none" style={{ height, borderTop: '1px solid #1e2028' }}>
-
-      {/* ── Resize grip ── */}
-      <div className="h-[5px] cursor-ns-resize flex items-center justify-center hover:bg-white/[0.04] transition-colors" style={{ background: '#0e0f14' }} onMouseDown={onResizeStart}>
-        <div className="w-10 h-[2px] rounded-full bg-white/[0.06]" />
-      </div>
+    <div className="flex flex-col select-none" style={{ height, borderBottom: '1px solid #1e2028' }}>
 
       {/* ── Toolbar ── */}
       <div className="flex items-center gap-2 px-3 py-1 shrink-0" style={{ background: '#111217', borderBottom: '1px solid #1a1c22' }}>
         <button onClick={onToggle} className="text-white/25 hover:text-white/50 transition-colors" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-          <ChevronDown size={12} />
+          <ChevronUp size={12} />
         </button>
         <span className="text-[11px] font-semibold text-white/50 uppercase tracking-wider">Arrangement</span>
         <span className="text-[10px] text-white/20 font-mono">{totalBars} bars</span>
@@ -888,6 +884,11 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
             </div>
           </div>
         )}
+      </div>
+
+      {/* ── Resize grip (at bottom since panel is top-docked) ── */}
+      <div className="h-[5px] cursor-ns-resize flex items-center justify-center hover:bg-white/[0.04] transition-colors shrink-0" style={{ background: '#0e0f14' }} onMouseDown={onResizeStart}>
+        <div className="w-10 h-[2px] rounded-full bg-white/[0.06]" />
       </div>
     </div>
   )
