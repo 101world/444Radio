@@ -1466,6 +1466,8 @@ const TrackView = memo(function TrackView({
               sections={arrangeSections}
               automationData={automationData}
               isRecording={isRecording ?? false}
+              isPlaying={isPlaying}
+              getCyclePosition={getCyclePosition}
               onSetAutomation={onSetAutomation}
               onClearParamAutomation={onClearParamAutomation}
             />

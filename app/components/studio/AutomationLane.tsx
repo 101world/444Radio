@@ -1,15 +1,16 @@
 'use client'
 
 // ═══════════════════════════════════════════════════════════════
-//  AUTOMATION LANE — Per-channel automation curve display
+//  AUTOMATION LANE — Arrangement-aware smooth automation curves
 //
-//  Shows breakpoints for a single param across arrangement
-//  sections. Click to add/edit points, drag to adjust values.
-//  Re-recording a section replaces its automation.
+//  Renders per-channel automation as smooth Catmull-Rom splines
+//  mapped to arrangement sections. Includes a live playhead that
+//  tracks the arrangement position, section labels, draggable
+//  breakpoints, and a real-time value readout.
 // ═══════════════════════════════════════════════════════════════
 
 import { memo, useCallback, useRef, useState, useEffect } from 'react'
-import { Trash2, Circle } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import type { ArrangementSection } from './ArrangementTimeline'
 
 // ─── Types ───
@@ -22,92 +23,202 @@ interface AutomationLaneProps {
   paramMax: number
   currentValue: number
   sections: ArrangementSection[]
-  automationData: Map<string, number>  // key: sectionId:channelIdx:paramKey
+  automationData: Map<string, number>
   isRecording: boolean
+  isPlaying?: boolean
+  getCyclePosition?: () => number | null
   height?: number
   onSetAutomation: (sectionId: string, channelIdx: number, paramKey: string, value: number) => void
   onClearParamAutomation: (channelIdx: number, paramKey: string) => void
 }
 
+const PX_PER_BAR = 48
+
+// ─── Catmull-Rom spline ───
+function catmullRom(p0: number, p1: number, p2: number, p3: number, t: number): number {
+  const t2 = t * t
+  const t3 = t2 * t
+  return 0.5 * (
+    (2 * p1) +
+    (-p0 + p2) * t +
+    (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
+    (-p0 + 3 * p1 - 3 * p2 + p3) * t3
+  )
+}
+
 const AutomationLane = memo(function AutomationLane({
-  channelIdx,
-  channelColor,
-  paramKey,
-  paramLabel,
-  paramMin,
-  paramMax,
-  currentValue,
-  sections,
-  automationData,
-  isRecording,
-  height = 48,
-  onSetAutomation,
-  onClearParamAutomation,
+  channelIdx, channelColor, paramKey, paramLabel,
+  paramMin, paramMax, currentValue,
+  sections, automationData, isRecording,
+  isPlaying = false, getCyclePosition,
+  height = 64,
+  onSetAutomation, onClearParamAutomation,
 }: AutomationLaneProps) {
   const svgRef = useRef<SVGSVGElement>(null)
+  const playheadRef = useRef<SVGLineElement>(null)
+  const valueDotRef = useRef<SVGCircleElement>(null)
+  const valueTextRef = useRef<SVGTextElement>(null)
+  const rafRef = useRef<number>(0)
+  const getCyclePosRef = useRef(getCyclePosition)
+  getCyclePosRef.current = getCyclePosition
+  const sectionsRef = useRef(sections)
+  sectionsRef.current = sections
+  const autoDataRef = useRef(automationData)
+  autoDataRef.current = automationData
+
   const [hoveredSection, setHoveredSection] = useState<number | null>(null)
   const [dragging, setDragging] = useState<{ sectionIdx: number } | null>(null)
 
-  // Get total bars
   const totalBars = sections.reduce((sum, s) => sum + s.bars, 0)
+  const totalWidth = totalBars * PX_PER_BAR
   if (totalBars === 0) return null
 
-  // Get automation value for a section (or fall back to current param value)
+  // Section layout
+  const sectionStartPx: number[] = []
+  const sectionWidthsPx: number[] = []
+  let pxAcc = 0
+  for (const sec of sections) {
+    sectionStartPx.push(pxAcc)
+    const w = sec.bars * PX_PER_BAR
+    sectionWidthsPx.push(w)
+    pxAcc += w
+  }
+
+  const normalize = (v: number) => Math.max(0, Math.min(1, (v - paramMin) / (paramMax - paramMin || 1)))
+  const denormalize = (n: number) => paramMin + n * (paramMax - paramMin)
+
   const getAutoValue = (sectionId: string): number => {
     const key = `${sectionId}:${channelIdx}:${paramKey}`
     return automationData.has(key) ? automationData.get(key)! : currentValue
   }
 
-  // Normalize value to 0-1 range
-  const normalize = (v: number) => Math.max(0, Math.min(1, (v - paramMin) / (paramMax - paramMin || 1)))
-  const denormalize = (n: number) => paramMin + n * (paramMax - paramMin)
-
-  // Check if any section has automation for this param
   const hasAnyAutomation = sections.some(s => automationData.has(`${s.id}:${channelIdx}:${paramKey}`))
+  const normValues = sections.map(s => normalize(getAutoValue(s.id)))
 
-  // Build points for the automation line
-  const points: { x: number; y: number; sectionIdx: number; value: number; hasAuto: boolean }[] = []
-  let barAcc = 0
-  for (let i = 0; i < sections.length; i++) {
-    const sec = sections[i]
-    const key = `${sec.id}:${channelIdx}:${paramKey}`
-    const hasAuto = automationData.has(key)
-    const value = hasAuto ? automationData.get(key)! : currentValue
-    const midBar = barAcc + sec.bars / 2
-    points.push({
-      x: midBar / totalBars,
-      y: 1 - normalize(value),
-      sectionIdx: i,
-      value,
-      hasAuto,
+  // ─── Interpolated value at fractional bar position ───
+  const getInterpValue = useCallback((barPos: number): number => {
+    const sec = sectionsRef.current
+    const ad = autoDataRef.current
+    const tb = sec.reduce((sum, s) => sum + s.bars, 0)
+    if (tb === 0 || sec.length === 0) return currentValue
+
+    const nv = sec.map(s => {
+      const key = `${s.id}:${channelIdx}:${paramKey}`
+      const val = ad.has(key) ? ad.get(key)! : currentValue
+      return Math.max(0, Math.min(1, (val - paramMin) / (paramMax - paramMin || 1)))
     })
-    barAcc += sec.bars
+
+    let bAcc = 0, secIdx = 0
+    for (let i = 0; i < sec.length; i++) {
+      if (barPos < bAcc + sec[i].bars) { secIdx = i; break }
+      bAcc += sec[i].bars
+      if (i === sec.length - 1) secIdx = i
+    }
+    const localT = Math.max(0, Math.min(1, (barPos - bAcc) / (sec[secIdx].bars || 1)))
+
+    const p0 = nv[Math.max(secIdx - 1, 0)]
+    const p1 = nv[secIdx]
+    const p2 = nv[Math.min(secIdx + 1, nv.length - 1)]
+    const p3 = nv[Math.min(secIdx + 2, nv.length - 1)]
+
+    const interpNorm = catmullRom(p0, p1, p2, p3, localT)
+    return paramMin + Math.max(0, Math.min(1, interpNorm)) * (paramMax - paramMin)
+  }, [channelIdx, paramKey, paramMin, paramMax, currentValue])
+
+  // ─── Build smooth SVG path ───
+  const buildCurvePath = (): string => {
+    if (sections.length === 0) return ''
+    const steps = Math.max(Math.round(totalWidth / 2), 60)
+    const pts: string[] = []
+    for (let i = 0; i <= steps; i++) {
+      const barPos = (i / steps) * totalBars
+      const val = getInterpValue(barPos)
+      const x = (i / steps) * totalWidth
+      const y = (1 - normalize(val)) * height
+      pts.push(i === 0 ? `M ${x} ${y}` : `L ${x} ${y}`)
+    }
+    return pts.join(' ')
   }
 
-  // Handle click on SVG to set automation at a section
-  const handleClick = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
-    if (!svgRef.current) return
-    const rect = svgRef.current.getBoundingClientRect()
-    const xRatio = (e.clientX - rect.left) / rect.width
-    const yRatio = (e.clientY - rect.top) / rect.height
-    const normalizedValue = 1 - yRatio
-    const value = denormalize(Math.max(0, Math.min(1, normalizedValue)))
+  const curvePath = buildCurvePath()
+  const fillPath = curvePath ? curvePath + ` L ${totalWidth} ${height} L 0 ${height} Z` : ''
 
-    // Find which section was clicked
+  // ─── Playhead rAF loop ───
+  useEffect(() => {
+    if (!isPlaying) {
+      if (playheadRef.current) playheadRef.current.style.opacity = '0'
+      if (valueDotRef.current) valueDotRef.current.style.opacity = '0'
+      if (valueTextRef.current) valueTextRef.current.style.opacity = '0'
+      return
+    }
+    const tick = () => {
+      const getPos = getCyclePosRef.current
+      const sec = sectionsRef.current
+      if (!getPos || !sec.length) {
+        rafRef.current = requestAnimationFrame(tick)
+        return
+      }
+      const pos = getPos()
+      if (pos === null) {
+        if (playheadRef.current) playheadRef.current.style.opacity = '0'
+        if (valueDotRef.current) valueDotRef.current.style.opacity = '0'
+        if (valueTextRef.current) valueTextRef.current.style.opacity = '0'
+        rafRef.current = requestAnimationFrame(tick)
+        return
+      }
+      const tb = sec.reduce((sum, s) => sum + s.bars, 0)
+      if (tb <= 0) { rafRef.current = requestAnimationFrame(tick); return }
+      const barPos = pos % tb
+      const x = barPos * PX_PER_BAR
+      const w = tb * PX_PER_BAR
+
+      if (playheadRef.current) {
+        playheadRef.current.setAttribute('x1', String(x))
+        playheadRef.current.setAttribute('x2', String(x))
+        playheadRef.current.style.opacity = '1'
+      }
+
+      const interpVal = getInterpValue(barPos)
+      const normY = (1 - normalize(interpVal)) * height
+
+      if (valueDotRef.current) {
+        valueDotRef.current.setAttribute('cx', String(x))
+        valueDotRef.current.setAttribute('cy', String(normY))
+        valueDotRef.current.style.opacity = '1'
+      }
+      if (valueTextRef.current) {
+        valueTextRef.current.setAttribute('x', String(Math.min(x + 8, w - 35)))
+        valueTextRef.current.setAttribute('y', String(Math.max(12, normY - 5)))
+        valueTextRef.current.textContent = interpVal.toFixed(2)
+        valueTextRef.current.style.opacity = '1'
+      }
+
+      rafRef.current = requestAnimationFrame(tick)
+    }
+    rafRef.current = requestAnimationFrame(tick)
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
+  }, [isPlaying, height, getInterpValue])
+
+  // ─── Click to set automation ───
+  const handleClick = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+    if (!svgRef.current || dragging) return
+    const rect = svgRef.current.getBoundingClientRect()
+    const xPx = e.clientX - rect.left
+    const yRatio = (e.clientY - rect.top) / rect.height
+    const value = denormalize(1 - Math.max(0, Math.min(1, yRatio)))
+
     let barAcc = 0
     for (let i = 0; i < sections.length; i++) {
-      const sec = sections[i]
-      const secStart = barAcc / totalBars
-      const secEnd = (barAcc + sec.bars) / totalBars
-      if (xRatio >= secStart && xRatio < secEnd) {
-        onSetAutomation(sec.id, channelIdx, paramKey, Math.round(value * 1000) / 1000)
+      const secEndPx = (barAcc + sections[i].bars) * PX_PER_BAR
+      if (xPx < secEndPx) {
+        onSetAutomation(sections[i].id, channelIdx, paramKey, Math.round(value * 1000) / 1000)
         break
       }
-      barAcc += sec.bars
+      barAcc += sections[i].bars
     }
-  }, [sections, totalBars, channelIdx, paramKey, paramMin, paramMax, onSetAutomation])
+  }, [sections, channelIdx, paramKey, paramMin, paramMax, onSetAutomation, dragging])
 
-  // Handle drag for smooth value editing
+  // ─── Drag breakpoint ───
   const handleMouseDown = useCallback((e: React.MouseEvent, sectionIdx: number) => {
     e.stopPropagation()
     e.preventDefault()
@@ -117,8 +228,7 @@ const AutomationLane = memo(function AutomationLane({
       if (!svgRef.current) return
       const rect = svgRef.current.getBoundingClientRect()
       const yRatio = (ev.clientY - rect.top) / rect.height
-      const normalizedValue = 1 - Math.max(0, Math.min(1, yRatio))
-      const value = denormalize(normalizedValue)
+      const value = denormalize(1 - Math.max(0, Math.min(1, yRatio)))
       onSetAutomation(sections[sectionIdx].id, channelIdx, paramKey, Math.round(value * 1000) / 1000)
     }
     const onUp = () => {
@@ -130,13 +240,7 @@ const AutomationLane = memo(function AutomationLane({
     document.addEventListener('mouseup', onUp)
   }, [sections, channelIdx, paramKey, paramMin, paramMax, onSetAutomation])
 
-  // Section divider positions
-  const dividers: number[] = []
-  barAcc = 0
-  for (let i = 0; i < sections.length - 1; i++) {
-    barAcc += sections[i].bars
-    dividers.push(barAcc / totalBars)
-  }
+  const sectionCenterX = sections.map((_, i) => sectionStartPx[i] + sectionWidthsPx[i] / 2)
 
   return (
     <div className="flex items-stretch relative" style={{ height }}>
@@ -165,9 +269,9 @@ const AutomationLane = memo(function AutomationLane({
         )}
       </div>
 
-      {/* SVG automation curve */}
-      <div className="flex-1 relative">
-        {/* Guidance overlay when no automation exists */}
+      {/* SVG automation */}
+      <div className="flex-1 relative overflow-x-auto">
+        {/* Guidance overlays */}
         {!hasAnyAutomation && !isRecording && (
           <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none"
             style={{ background: 'rgba(8,9,12,0.5)' }}>
@@ -186,103 +290,153 @@ const AutomationLane = memo(function AutomationLane({
             </span>
           </div>
         )}
+
         <svg
           ref={svgRef}
-          className="w-full h-full cursor-crosshair"
+          className="cursor-crosshair"
+          width={totalWidth}
+          height={height}
           style={{
             background: isRecording ? '#0c0708' : '#08090c',
             borderBottom: '1px solid rgba(255,255,255,0.04)',
             transition: 'background 0.3s',
+            minWidth: totalWidth,
           }}
-          viewBox={`0 0 1000 ${height}`}
-          preserveAspectRatio="none"
+          viewBox={`0 0 ${totalWidth} ${height}`}
           onClick={handleClick}
         >
-        {/* Section dividers */}
-        {dividers.map((x, i) => (
-          <line key={i} x1={x * 1000} y1={0} x2={x * 1000} y2={height}
-            stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
-        ))}
+          {/* Section dividers + labels + bar grid */}
+          {sections.map((sec, i) => {
+            const xStart = sectionStartPx[i]
+            const w = sectionWidthsPx[i]
+            return (
+              <g key={sec.id}>
+                {i % 2 === 1 && (
+                  <rect x={xStart} y={0} width={w} height={height}
+                    fill="rgba(255,255,255,0.012)" />
+                )}
+                {i > 0 && (
+                  <line x1={xStart} y1={0} x2={xStart} y2={height}
+                    stroke="rgba(255,255,255,0.08)" strokeWidth={1} />
+                )}
+                <text x={xStart + 4} y={9}
+                  fill="rgba(255,255,255,0.12)" fontSize={7}
+                  fontFamily="monospace" fontWeight="600"
+                >{sec.name}</text>
+                {Array.from({ length: sec.bars - 1 }).map((_, b) => (
+                  <line key={b}
+                    x1={xStart + (b + 1) * PX_PER_BAR} y1={0}
+                    x2={xStart + (b + 1) * PX_PER_BAR} y2={height}
+                    stroke="rgba(255,255,255,0.025)" strokeWidth={1}
+                  />
+                ))}
+              </g>
+            )
+          })}
 
-        {/* Baseline (current value without automation) */}
-        <line
-          x1={0} y1={(1 - normalize(currentValue)) * height}
-          x2={1000} y2={(1 - normalize(currentValue)) * height}
-          stroke={`${channelColor}15`} strokeWidth={1} strokeDasharray="4 4"
-        />
+          {/* Horizontal 25/50/75 grid */}
+          {[0.25, 0.5, 0.75].map(frac => (
+            <line key={frac}
+              x1={0} y1={frac * height} x2={totalWidth} y2={frac * height}
+              stroke="rgba(255,255,255,0.03)" strokeWidth={1}
+            />
+          ))}
 
-        {/* Automation curve (step interpolation — holds value until next breakpoint) */}
-        {points.length > 0 && (() => {
-          // Step path: horizontal line at each section's value, then step up/down at boundary
-          let barAcc = 0
-          const pathParts: string[] = []
-          for (let i = 0; i < sections.length; i++) {
-            const sec = sections[i]
-            const xStart = (barAcc / totalBars) * 1000
-            const xEnd = ((barAcc + sec.bars) / totalBars) * 1000
-            const yVal = (1 - normalize(getAutoValue(sec.id))) * height
-            if (i === 0) {
-              pathParts.push(`M ${xStart} ${yVal}`)
-            } else {
-              pathParts.push(`L ${xStart} ${yVal}`)
-            }
-            pathParts.push(`L ${xEnd} ${yVal}`)
-            barAcc += sec.bars
-          }
-          const d = pathParts.join(' ')
-          return (
-            <>
-              {/* Fill under curve */}
-              <path d={d + ` L 1000 ${height} L 0 ${height} Z`}
-                fill={`${channelColor}08`} />
-              {/* Line */}
-              <path d={d}
-                fill="none" stroke={channelColor} strokeWidth={1.5}
-                opacity={hasAnyAutomation ? 0.7 : 0.2} />
-            </>
-          )
-        })()}
-
-        {/* Breakpoint dots */}
-        {points.map((pt, i) => (
-          <circle
-            key={i}
-            cx={pt.x * 1000}
-            cy={pt.y * height}
-            r={pt.hasAuto ? 5 : 3}
-            fill={pt.hasAuto ? channelColor : `${channelColor}30`}
-            stroke={pt.hasAuto ? '#fff' : 'transparent'}
-            strokeWidth={pt.hasAuto ? 1 : 0}
-            opacity={pt.hasAuto ? 0.9 : 0.3}
-            className="cursor-ns-resize"
-            onMouseDown={(e) => handleMouseDown(e as unknown as React.MouseEvent, i)}
-            onMouseEnter={() => setHoveredSection(i)}
-            onMouseLeave={() => setHoveredSection(null)}
+          {/* Baseline */}
+          <line
+            x1={0} y1={(1 - normalize(currentValue)) * height}
+            x2={totalWidth} y2={(1 - normalize(currentValue)) * height}
+            stroke={`${channelColor}12`} strokeWidth={1} strokeDasharray="4 4"
           />
-        ))}
 
-        {/* Hovered value label */}
-        {hoveredSection !== null && points[hoveredSection] && (
-          <text
-            x={points[hoveredSection].x * 1000}
-            y={Math.max(10, points[hoveredSection].y * height - 6)}
-            textAnchor="middle"
-            fill="white"
-            fontSize={9}
-            fontWeight="bold"
-            fontFamily="monospace"
-          >
-            {points[hoveredSection].value.toFixed(2)}
-          </text>
-        )}
+          {/* ─── Smooth curve ─── */}
+          {curvePath && (
+            <>
+              <defs>
+                <linearGradient id={`autoGrad-${channelIdx}-${paramKey}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={channelColor} stopOpacity={0.15} />
+                  <stop offset="100%" stopColor={channelColor} stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <path d={fillPath} fill={`url(#autoGrad-${channelIdx}-${paramKey})`} />
+              <path d={curvePath}
+                fill="none" stroke={channelColor} strokeWidth={2}
+                opacity={hasAnyAutomation ? 0.8 : 0.2}
+                strokeLinejoin="round" strokeLinecap="round"
+              />
+              {hasAnyAutomation && (
+                <path d={curvePath}
+                  fill="none" stroke={channelColor} strokeWidth={5}
+                  opacity={0.12} strokeLinejoin="round" strokeLinecap="round"
+                />
+              )}
+            </>
+          )}
 
-        {/* Recording indicator */}
-        {isRecording && (
-          <circle cx={990} cy={8} r={4} fill="#ef4444" opacity={0.8}>
-            <animate attributeName="opacity" values="0.4;1;0.4" dur="1s" repeatCount="indefinite" />
-          </circle>
-        )}
-      </svg>
+          {/* ─── Breakpoint dots ─── */}
+          {sections.map((sec, i) => {
+            const key = `${sec.id}:${channelIdx}:${paramKey}`
+            const hasAuto = automationData.has(key)
+            const val = getAutoValue(sec.id)
+            const cx = sectionCenterX[i]
+            const cy = (1 - normValues[i]) * height
+            const isHovered = hoveredSection === i
+
+            return (
+              <g key={sec.id}>
+                {(hasAuto || isHovered) && (
+                  <line x1={cx} y1={cy} x2={cx} y2={height}
+                    stroke={channelColor} strokeWidth={1} opacity={0.1}
+                    strokeDasharray="2 2" />
+                )}
+                {hasAuto && (
+                  <circle cx={cx} cy={cy} r={isHovered ? 10 : 7}
+                    fill="none" stroke={channelColor} strokeWidth={1}
+                    opacity={isHovered ? 0.3 : 0.1} />
+                )}
+                <circle
+                  cx={cx} cy={cy}
+                  r={hasAuto ? (isHovered ? 6 : 4.5) : 3}
+                  fill={hasAuto ? channelColor : `${channelColor}30`}
+                  stroke={hasAuto ? '#fff' : 'transparent'}
+                  strokeWidth={hasAuto ? 1.5 : 0}
+                  opacity={hasAuto ? 1 : 0.3}
+                  className="cursor-ns-resize"
+                  onMouseDown={(e) => handleMouseDown(e as unknown as React.MouseEvent, i)}
+                  onMouseEnter={() => setHoveredSection(i)}
+                  onMouseLeave={() => setHoveredSection(null)}
+                />
+                {isHovered && (
+                  <text x={cx} y={Math.max(10, cy - 10)}
+                    textAnchor="middle" fill="white" fontSize={9}
+                    fontWeight="bold" fontFamily="monospace"
+                  >{val.toFixed(2)}</text>
+                )}
+              </g>
+            )
+          })}
+
+          {/* ─── Live playhead ─── */}
+          <line ref={playheadRef}
+            x1={0} y1={0} x2={0} y2={height}
+            stroke="#00e5c7" strokeWidth={1.5} opacity={0}
+          />
+          <circle ref={valueDotRef}
+            cx={0} cy={0} r={4}
+            fill="#00e5c7" stroke="#fff" strokeWidth={1.5} opacity={0}
+          />
+          <text ref={valueTextRef}
+            x={0} y={0}
+            fill="#00e5c7" fontSize={9} fontWeight="bold" fontFamily="monospace" opacity={0}
+          />
+
+          {/* Recording indicator */}
+          {isRecording && (
+            <circle cx={totalWidth - 10} cy={10} r={4} fill="#ef4444" opacity={0.8}>
+              <animate attributeName="opacity" values="0.4;1;0.4" dur="1s" repeatCount="indefinite" />
+            </circle>
+          )}
+        </svg>
       </div>
     </div>
   )

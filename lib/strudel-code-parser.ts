@@ -2481,13 +2481,25 @@ export function updateArrangeInCode(code: string, arrangeCode: string): string {
 //
 //  Takes clean editor code + per-section param overrides and
 //  replaces static param values with time-varying mini-notation
-//  patterns that align with the arrangement sections.
+//  patterns using smooth Catmull-Rom interpolation between sections.
 //
-//  e.g. .gain(0.5) → .gain("[0.5@4 0.8@4 0.3@8]")
-//        (gain 0.5 for 4 bars, 0.8 for 4 bars, 0.3 for 8 bars)
+//  e.g. .gain(0.5) → .gain("[0.5@1 0.55@1 0.65@1 0.8@1 ...]")
+//        (one value per bar, smoothly interpolated across sections)
 //
 //  This is eval-only — the editor always shows clean code.
 // ═══════════════════════════════════════════════════════════════
+
+// Catmull-Rom spline for smooth interpolation
+function catmullRomInterp(p0: number, p1: number, p2: number, p3: number, t: number): number {
+  const t2 = t * t
+  const t3 = t2 * t
+  return 0.5 * (
+    (2 * p1) +
+    (-p0 + p2) * t +
+    (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
+    (-p0 + 3 * p1 - 3 * p2 + p3) * t3
+  )
+}
 
 export function applyAutomationOverrides(
   code: string,
@@ -2497,6 +2509,8 @@ export function applyAutomationOverrides(
   if (automationData.size === 0 || sections.length === 0) return code
 
   const channels = parseStrudelCode(code)
+  const totalBars = sections.reduce((sum, s) => sum + s.bars, 0)
+  if (totalBars === 0) return code
 
   // Group automation: channelIdx → paramKey → Map<sectionId, value>
   const grouped = new Map<number, Map<string, Map<string, number>>>()
@@ -2526,21 +2540,41 @@ export function applyAutomationOverrides(
       const param = ch.params.find(p => p.key === paramKey)
       if (!param) continue
 
-      // Build mini-notation: value@bars for each section in order
-      const parts: string[] = []
-      let allSame = true
-      let firstVal: number | null = null
-      for (const sec of sections) {
-        const val = sectionValues.has(sec.id) ? sectionValues.get(sec.id)! : param.value
-        const rounded = Math.round(val * 1000) / 1000
-        if (firstVal === null) firstVal = rounded
-        else if (rounded !== firstVal) allSame = false
-        parts.push(`${rounded}@${sec.bars}`)
-      }
+      // Build per-section normalized values array
+      const sectionVals: number[] = sections.map(sec => {
+        return sectionValues.has(sec.id) ? sectionValues.get(sec.id)! : param.value
+      })
 
-      // Skip if all sections have the same value (no actual automation)
+      // Check if all same — skip if no actual variation
+      const allSame = sectionVals.every(v => Math.round(v * 1000) === Math.round(sectionVals[0] * 1000))
       if (allSame) continue
 
+      // Generate one value per bar using Catmull-Rom interpolation
+      const barValues: number[] = []
+      let barAcc = 0
+      for (let si = 0; si < sections.length; si++) {
+        const sec = sections[si]
+        const p0 = sectionVals[Math.max(si - 1, 0)]
+        const p1 = sectionVals[si]
+        const p2 = sectionVals[Math.min(si + 1, sections.length - 1)]
+        const p3 = sectionVals[Math.min(si + 2, sections.length - 1)]
+
+        for (let b = 0; b < sec.bars; b++) {
+          // Smooth ramp between section keyframes using Catmull-Rom
+          const tSmooth = sec.bars === 1 ? 0.5 : b / sec.bars
+          const interp = catmullRomInterp(p0, p1, p2, p3, tSmooth)
+          // Clamp to param range using PARAM_DEFS
+          const pdef = PARAM_DEFS.find(pd => pd.key === paramKey)
+          const pMin = pdef?.min ?? 0
+          const pMax = pdef?.max ?? 1
+          const clamped = Math.max(pMin, Math.min(pMax, interp))
+          barValues.push(Math.round(clamped * 1000) / 1000)
+        }
+        barAcc += sec.bars
+      }
+
+      // Build mini-notation with 1 value per bar
+      const parts = barValues.map(v => `${v}@1`)
       const pattern = `"[${parts.join(' ')}]"`
       replacements.push({ start: param.argStart, end: param.argEnd, newText: pattern })
     }
