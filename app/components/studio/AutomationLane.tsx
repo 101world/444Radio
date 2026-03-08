@@ -166,17 +166,38 @@ const AutomationLane = memo(function AutomationLane({
       </div>
 
       {/* SVG automation curve */}
-      <svg
-        ref={svgRef}
-        className="flex-1 cursor-crosshair"
-        style={{
-          background: '#08090c',
-          borderBottom: '1px solid rgba(255,255,255,0.04)',
-        }}
-        viewBox={`0 0 1000 ${height}`}
-        preserveAspectRatio="none"
-        onClick={handleClick}
-      >
+      <div className="flex-1 relative">
+        {/* Guidance overlay when no automation exists */}
+        {!hasAnyAutomation && !isRecording && (
+          <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none"
+            style={{ background: 'rgba(8,9,12,0.5)' }}>
+            <span className="text-[8px] font-medium px-2 py-0.5 rounded pointer-events-auto"
+              style={{ color: '#5a616b', background: '#0e1014', border: '1px solid #1a1c22' }}>
+              Click to draw keyframes · or press REC + Play + tweak knob
+            </span>
+          </div>
+        )}
+        {isRecording && !hasAnyAutomation && (
+          <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none"
+            style={{ background: 'rgba(239,68,68,0.03)' }}>
+            <span className="text-[8px] font-medium px-2 py-0.5 rounded"
+              style={{ color: '#ef4444', background: '#1a0808', border: '1px solid #3a1515' }}>
+              ● REC armed — Play and tweak the {paramLabel} knob
+            </span>
+          </div>
+        )}
+        <svg
+          ref={svgRef}
+          className="w-full h-full cursor-crosshair"
+          style={{
+            background: isRecording ? '#0c0708' : '#08090c',
+            borderBottom: '1px solid rgba(255,255,255,0.04)',
+            transition: 'background 0.3s',
+          }}
+          viewBox={`0 0 1000 ${height}`}
+          preserveAspectRatio="none"
+          onClick={handleClick}
+        >
         {/* Section dividers */}
         {dividers.map((x, i) => (
           <line key={i} x1={x * 1000} y1={0} x2={x * 1000} y2={height}
@@ -262,6 +283,7 @@ const AutomationLane = memo(function AutomationLane({
           </circle>
         )}
       </svg>
+      </div>
     </div>
   )
 })

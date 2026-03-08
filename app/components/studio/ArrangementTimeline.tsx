@@ -7,7 +7,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { useState, useRef, useEffect, useCallback, memo, useMemo } from 'react'
-import { Plus, X, ChevronUp, ChevronDown, Copy, Music } from 'lucide-react'
+import { Plus, Minus, X, ChevronUp, ChevronDown, Copy, Music, Activity } from 'lucide-react'
 import type { ParsedChannel } from '@/lib/strudel-code-parser'
 
 // ─── Types ───
@@ -33,8 +33,11 @@ interface ArrangementTimelineProps {
   isOpen: boolean
   isPlaying: boolean
   currentBar?: number
+  getCyclePosition?: () => number | null
+  automationData?: Map<string, number>
   onToggle: () => void
   onSectionsChange: (sections: ArrangementSection[]) => void
+  onDuplicateAutomation?: (fromSectionId: string, toSectionId: string) => void
   patternVariants?: PatternVariant[]
   onPatternVariantsChange?: (variants: PatternVariant[]) => void
   onCreateVariant?: (channelIdx: number, name: string) => void
@@ -70,7 +73,8 @@ export function nextVariantId() { return `var-${++variantIdCounter}` }
 
 // ─── Component ───
 const ArrangementTimeline = memo(function ArrangementTimeline({
-  channels, sections, isOpen, isPlaying, currentBar,
+  channels, sections, isOpen, isPlaying, currentBar, getCyclePosition,
+  automationData, onDuplicateAutomation,
   onToggle, onSectionsChange,
   patternVariants = [], onPatternVariantsChange, onCreateVariant,
 }: ArrangementTimelineProps) {
@@ -82,6 +86,58 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
   const containerRef = useRef<HTMLDivElement>(null)
   const resizeDragRef = useRef<{ sectionIdx: number; startX: number; startBars: number } | null>(null)
   const [variantPicker, setVariantPicker] = useState<{ sectionId: string; channelIdx: number } | null>(null)
+  const playheadRef = useRef<HTMLDivElement>(null)
+  const animRafRef = useRef<number>(0)
+  const sectionsRef = useRef(sections)
+  sectionsRef.current = sections
+  const [trackedBar, setTrackedBar] = useState<number>(-1)
+
+  // ── Smooth playhead animation via requestAnimationFrame ──
+  useEffect(() => {
+    if (!isPlaying || !getCyclePosition) {
+      if (playheadRef.current) playheadRef.current.style.opacity = '0'
+      setTrackedBar(-1)
+      return
+    }
+    let lastStateUpdate = 0
+    const tick = () => {
+      const sec = sectionsRef.current
+      if (!sec.length || !playheadRef.current) {
+        if (playheadRef.current) playheadRef.current.style.opacity = '0'
+        animRafRef.current = requestAnimationFrame(tick)
+        return
+      }
+      const pos = getCyclePosition()
+      if (pos === null) {
+        playheadRef.current.style.opacity = '0'
+        animRafRef.current = requestAnimationFrame(tick)
+        return
+      }
+      const tb = sec.reduce((sum, s) => sum + s.bars, 0)
+      if (tb <= 0) { animRafRef.current = requestAnimationFrame(tick); return }
+      const barPos = pos % tb
+      // Compute pixel offset accounting for section border widths (1px each)
+      let pxOffset = barPos * PX_PER_BAR
+      let barAcc = 0
+      for (let i = 0; i < sec.length; i++) {
+        if (barPos >= barAcc + sec[i].bars) {
+          barAcc += sec[i].bars
+          pxOffset += 1 // 1px border-right per section
+        } else break
+      }
+      playheadRef.current.style.left = `${pxOffset}px`
+      playheadRef.current.style.opacity = '1'
+      // Throttled state update for section highlight (~5 fps)
+      const now = performance.now()
+      if (now - lastStateUpdate > 200) {
+        lastStateUpdate = now
+        setTrackedBar(Math.floor(barPos))
+      }
+      animRafRef.current = requestAnimationFrame(tick)
+    }
+    animRafRef.current = requestAnimationFrame(tick)
+    return () => { if (animRafRef.current) cancelAnimationFrame(animRafRef.current) }
+  }, [isPlaying, getCyclePosition])
 
   useEffect(() => { if (renamingId && renameRef.current) renameRef.current.focus() }, [renamingId])
   useEffect(() => {
@@ -114,9 +170,12 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
     const src = sections.find(s => s.id === id)
     if (!src) return
     const idx = sections.indexOf(src)
-    const copy: ArrangementSection = { id: nextSectionId(), name: `${src.name}`, bars: src.bars, activeChannels: new Set(src.activeChannels), clipVariants: new Map(src.clipVariants) }
+    const newId = nextSectionId()
+    const copy: ArrangementSection = { id: newId, name: `${src.name}`, bars: src.bars, activeChannels: new Set(src.activeChannels), clipVariants: new Map(src.clipVariants) }
     const next = [...sections]; next.splice(idx + 1, 0, copy); onSectionsChange(next)
-  }, [sections, onSectionsChange])
+    // Copy automation from source section to new section
+    onDuplicateAutomation?.(id, newId)
+  }, [sections, onSectionsChange, onDuplicateAutomation])
 
   const removeSection = useCallback((id: string) => { onSectionsChange(sections.filter(s => s.id !== id)) }, [sections, onSectionsChange])
 
@@ -164,12 +223,13 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
 
   const totalBars = sections.reduce((sum, s) => sum + s.bars, 0)
 
-  // Playback cursor position
+  // Playback cursor position (use getCyclePosition-derived trackedBar, fallback to prop)
   let cursorSectionIdx = -1, cursorBarInSection = 0
-  if (currentBar !== undefined && currentBar >= 0) {
+  const effectiveBar = trackedBar >= 0 ? trackedBar : (currentBar ?? -1)
+  if (effectiveBar >= 0) {
     let acc = 0
     for (let i = 0; i < sections.length; i++) {
-      if (currentBar < acc + sections[i].bars) { cursorSectionIdx = i; cursorBarInSection = currentBar - acc; break }
+      if (effectiveBar < acc + sections[i].bars) { cursorSectionIdx = i; cursorBarInSection = effectiveBar - acc; break }
       acc += sections[i].bars
     }
   }
@@ -179,6 +239,26 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
     for (const v of patternVariants) { const list = map.get(v.channelIdx) || []; list.push(v); map.set(v.channelIdx, list) }
     return map
   }, [patternVariants])
+
+  // ── Precompute which section+channel cells have automation ──
+  // Key: "sectionId:channelIdx" → Set of param keys with automation
+  const automationCells = useMemo(() => {
+    const cells = new Map<string, Set<string>>()
+    if (!automationData || automationData.size === 0) return cells
+    for (const key of automationData.keys()) {
+      // key format: sectionId:channelIdx:paramKey
+      const first = key.indexOf(':')
+      const second = key.indexOf(':', first + 1)
+      if (first === -1 || second === -1) continue
+      const secId = key.substring(0, first)
+      const chIdx = key.substring(first + 1, second)
+      const paramKey = key.substring(second + 1)
+      const cellKey = `${secId}:${chIdx}`
+      if (!cells.has(cellKey)) cells.set(cellKey, new Set())
+      cells.get(cellKey)!.add(paramKey)
+    }
+    return cells
+  }, [automationData])
 
   // ═══════════════════ COLLAPSED STATE ═══════════════════
   if (!isOpen) {
@@ -272,7 +352,7 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
               <div className="flex" style={{ minWidth: 'fit-content' }}>
 
                 {/* Sections + bar ruler + clips */}
-                <div className="flex flex-col">
+                <div className="flex flex-col relative">
 
                   {/* ─── Bar ruler (top row) ─── */}
                   <div className="flex shrink-0" style={{ height: BAR_RULER_H, background: '#0e0f14', borderBottom: '1px solid #1a1c22' }}>
@@ -317,7 +397,21 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
                               title="Click to rename"
                             >{section.name}</button>
                           )}
-                          <span className="text-[9px] font-mono" style={{ color: '#4a5060' }}>{section.bars} bars</span>
+                          <div className="flex items-center gap-0">
+                    <button
+                      className="w-4 h-4 flex items-center justify-center rounded cursor-pointer opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-all hover:bg-white/[0.06]"
+                      style={{ color: '#6b7280', background: 'none', border: 'none' }}
+                      onClick={(e) => { e.stopPropagation(); updateSection(section.id, { bars: Math.max(MIN_SECTION_BARS, section.bars - 1) }) }}
+                      title="Decrease bars"
+                    ><Minus size={8} /></button>
+                    <span className="text-[9px] font-mono px-0.5 select-none" style={{ color: '#4a5060' }}>{section.bars} bars</span>
+                    <button
+                      className="w-4 h-4 flex items-center justify-center rounded cursor-pointer opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-all hover:bg-white/[0.06]"
+                      style={{ color: '#6b7280', background: 'none', border: 'none' }}
+                      onClick={(e) => { e.stopPropagation(); updateSection(section.id, { bars: Math.min(MAX_SECTION_BARS, section.bars + 1) }) }}
+                      title="Increase bars"
+                    ><Plus size={8} /></button>
+                  </div>
 
                           {/* Hover actions */}
                           <div className="flex items-center gap-0.5 ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
@@ -349,6 +443,8 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
                         const clipVariant = clipVariantId ? patternVariants.find(v => v.id === clipVariantId) : null
                         const channelVariants = variantsByChannel.get(chIdx) || []
                         const isPickerOpen = variantPicker?.sectionId === section.id && variantPicker?.channelIdx === chIdx
+                        const cellAutoParams = automationCells.get(`${section.id}:${chIdx}`)
+                        const hasAutomation = cellAutoParams && cellAutoParams.size > 0
 
                         return (
                           <div key={section.id} className="shrink-0 relative" style={{ width: w, borderRight: '1px solid #1a1c22' }}>
@@ -372,11 +468,72 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
                                     boxShadow: `inset 0 1px 0 ${ch.color}15`,
                                   }}
                                 >
+                                  {/* Mini automation curve overlay */}
+                                  {hasAutomation && automationData && (() => {
+                                    // Build a mini step-curve for all automated params in this cell
+                                    const paramList = Array.from(cellAutoParams!)
+                                    // Get all sections to compute relative value positions
+                                    const allSecIds = sections.map(s => s.id)
+                                    // For each param, get this section's value + min/max from all sections
+                                    const curves = paramList.slice(0, 3).map((pk, pIdx) => {
+                                      // Gather all values for this channel+param across sections for min/max
+                                      let min = Infinity, max = -Infinity
+                                      const allVals: number[] = []
+                                      for (const sid of allSecIds) {
+                                        const k = `${sid}:${chIdx}:${pk}`
+                                        if (automationData.has(k)) {
+                                          const v = automationData.get(k)!
+                                          allVals.push(v)
+                                          if (v < min) min = v
+                                          if (v > max) max = v
+                                        }
+                                      }
+                                      if (min === max) { min -= 0.1; max += 0.1 }
+                                      const thisVal = automationData.get(`${section.id}:${chIdx}:${pk}`)
+                                      if (thisVal === undefined) return null
+                                      const norm = (thisVal - min) / (max - min)
+                                      const opacity = 0.5 - pIdx * 0.12
+                                      return { norm, opacity, pk }
+                                    }).filter(Boolean) as { norm: number; opacity: number; pk: string }[]
+
+                                    if (curves.length === 0) return null
+                                    const clipW = w - 6 // inset-x 3px each side
+                                    const clipH = ROW_H - 6
+
+                                    return (
+                                      <svg className="absolute inset-0 pointer-events-none" width={clipW} height={clipH}
+                                        style={{ left: 3, top: 3, opacity: 0.7 }}
+                                        viewBox={`0 0 ${clipW} ${clipH}`} preserveAspectRatio="none"
+                                      >
+                                        {curves.map((c, ci) => {
+                                          const y = clipH * (1 - c.norm)
+                                          return (
+                                            <g key={ci}>
+                                              <line x1={0} y1={y} x2={clipW} y2={y}
+                                                stroke="#00e5c7" strokeWidth={1.5} opacity={c.opacity} />
+                                              <circle cx={2} cy={y} r={2} fill="#00e5c7" opacity={c.opacity + 0.2} />
+                                              <circle cx={clipW - 2} cy={y} r={2} fill="#00e5c7" opacity={c.opacity + 0.2} />
+                                            </g>
+                                          )
+                                        })}
+                                      </svg>
+                                    )
+                                  })()}
                                   {/* Clip label */}
-                                  <span className="text-[9px] font-medium truncate pointer-events-none" style={{ color: `${ch.color}dd` }}>
+                                  <span className="text-[9px] font-medium truncate pointer-events-none relative z-[1]" style={{ color: `${ch.color}dd` }}>
                                     {clipVariant ? clipVariant.name : ch.name}
                                   </span>
-                                  {clipVariant && <Music size={8} className="shrink-0 pointer-events-none" style={{ color: `${ch.color}88` }} />}
+                                  {clipVariant && <Music size={8} className="shrink-0 pointer-events-none relative z-[1]" style={{ color: `${ch.color}88` }} />}
+                                  {/* Automation badge */}
+                                  {hasAutomation && (
+                                    <div className="ml-auto flex items-center gap-[2px] shrink-0 pointer-events-none relative z-[1]"
+                                      title={`Automation: ${Array.from(cellAutoParams!).join(', ')}`}>
+                                      <Activity size={8} style={{ color: '#00e5c7', opacity: 0.8 }} />
+                                      <span className="text-[7px] font-mono" style={{ color: '#00e5c7aa' }}>
+                                        {cellAutoParams!.size}
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
                               )}
 
@@ -430,22 +587,34 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
                     </div>
                   ))}
 
+                  {/* ── Smooth playhead line ── */}
+                  <div
+                    ref={playheadRef}
+                    className="absolute top-0 bottom-0 pointer-events-none z-30"
+                    style={{
+                      width: 2,
+                      opacity: 0,
+                      background: '#00e5c7',
+                      boxShadow: '0 0 8px #00e5c740',
+                      transition: 'opacity 0.15s',
+                    }}
+                  >
+                    {/* Playhead head marker */}
+                    <div style={{
+                      position: 'absolute', top: -1, left: -4,
+                      width: 0, height: 0,
+                      borderLeft: '5px solid transparent',
+                      borderRight: '5px solid transparent',
+                      borderTop: '6px solid #00e5c7',
+                    }} />
+                  </div>
+
                 </div>
               </div>
             </div>
           </div>
         )}
       </div>
-
-      {/* ── Playhead line (absolute, full-height) ── */}
-      {isPlaying && cursorSectionIdx >= 0 && sections.length > 0 && (
-        <div className="pointer-events-none absolute" style={{
-          left: LABEL_W + sections.slice(0, cursorSectionIdx).reduce((s, sec) => s + sec.bars * PX_PER_BAR, 0) + cursorBarInSection * PX_PER_BAR,
-          top: 0, bottom: 0, width: 1,
-          background: '#ffffff40',
-          zIndex: 20,
-        }} />
-      )}
     </div>
   )
 })

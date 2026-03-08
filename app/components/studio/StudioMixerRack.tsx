@@ -11,7 +11,7 @@
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react'
-import { ChevronDown, ChevronRight, Plus, Volume2, VolumeX, Headphones, GripVertical, Link, Unlink, X, Music, Clock, Piano, Grid3X3, Copy, Trash2, RotateCcw, Mic, ZoomIn, ZoomOut, Maximize2, MoreVertical, BookOpen, Sparkles, Search, Rows3, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus, Volume2, VolumeX, Headphones, GripVertical, Link, Unlink, X, Music, Clock, Piano, Grid3X3, Copy, Trash2, RotateCcw, Mic, ZoomIn, ZoomOut, Maximize2, MoreVertical, BookOpen, Sparkles, Search, Rows3, ChevronUp, Circle } from 'lucide-react'
 import StudioKnob from './StudioKnob'
 import ChannelLCD from './ChannelLCD'
 import EffectsDocModal from './EffectsDocModal'
@@ -1632,6 +1632,15 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   const [automationData, setAutomationData] = useState<Map<string, number>>(new Map())
   const [isRecordingAutomation, setIsRecordingAutomation] = useState(false)
   const automationRef = useRef<Map<string, number>>(new Map())
+  // Refs to avoid stale closures in handleParamChange
+  const isRecordingRef = useRef(isRecordingAutomation)
+  isRecordingRef.current = isRecordingAutomation
+  const isPlayingRef = useRef(isPlayingProp)
+  isPlayingRef.current = isPlayingProp
+  const arrangeSectionsRef = useRef(arrangeSections)
+  arrangeSectionsRef.current = arrangeSections
+  const onAutomationDataChangeRef = useRef(onAutomationDataChange)
+  onAutomationDataChangeRef.current = onAutomationDataChange
   const fxDropdownRef = useRef<HTMLDivElement>(null)
   const addMenuRef = useRef<HTMLDivElement>(null)
 
@@ -1992,19 +2001,21 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   const handleParamChange = useCallback(
     (channelIdx: number, paramKey: string, value: number) => {
       // ── Automation recording: capture keyframe instead of (or in addition to) code change ──
-      if (isRecordingAutomation && isPlayingProp && getCyclePosition && arrangeSections.length > 0) {
+      // Uses refs (not closure values) to avoid stale captures
+      const recSections = arrangeSectionsRef.current
+      if (isRecordingRef.current && isPlayingRef.current && getCyclePosition && recSections.length > 0) {
         const cyclePos = getCyclePosition()
         if (cyclePos !== null) {
-          const totalBars = arrangeSections.reduce((sum, s) => sum + s.bars, 0)
+          const totalBars = recSections.reduce((sum, s) => sum + s.bars, 0)
           const currentBar = cyclePos % totalBars
           let barAcc = 0
           let currentSecIdx = 0
-          for (let i = 0; i < arrangeSections.length; i++) {
-            if (currentBar < barAcc + arrangeSections[i].bars) { currentSecIdx = i; break }
-            barAcc += arrangeSections[i].bars
+          for (let i = 0; i < recSections.length; i++) {
+            if (currentBar < barAcc + recSections[i].bars) { currentSecIdx = i; break }
+            barAcc += recSections[i].bars
           }
 
-          const currentSection = arrangeSections[currentSecIdx]
+          const currentSection = recSections[currentSecIdx]
           if (currentSection) {
             const newAuto = new Map(automationRef.current)
 
@@ -2018,7 +2029,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
               const ch = channels[channelIdx]
               const staticParam = ch?.params.find(p => p.key === paramKey)
               const baseVal = staticParam?.value ?? value
-              for (const sec of arrangeSections) {
+              for (const sec of recSections) {
                 const seedKey = `${sec.id}:${channelIdx}:${paramKey}`
                 newAuto.set(seedKey, baseVal)
               }
@@ -2030,8 +2041,8 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
 
             automationRef.current = newAuto
             setAutomationData(newAuto)
-            const sectionLayout = arrangeSections.map(s => ({ id: s.id, bars: s.bars }))
-            onAutomationDataChange?.(newAuto, sectionLayout)
+            const sectionLayout = recSections.map(s => ({ id: s.id, bars: s.bars }))
+            onAutomationDataChangeRef.current?.(newAuto, sectionLayout)
           }
         }
       }
@@ -2091,6 +2102,27 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
       onAutomationDataChange?.(newAuto, arrangeSections.map(s => ({ id: s.id, bars: s.bars })))
     },
     [arrangeSections, onAutomationDataChange],
+  )
+
+  // ── Duplicate automation from one section to another (when duplicating arrangement sections) ──
+  const handleDuplicateAutomation = useCallback(
+    (fromSectionId: string, toSectionId: string) => {
+      const newAuto = new Map(automationRef.current)
+      let changed = false
+      for (const [key, value] of automationRef.current) {
+        if (key.startsWith(fromSectionId + ':')) {
+          const suffix = key.substring(fromSectionId.length) // :channelIdx:paramKey
+          newAuto.set(toSectionId + suffix, value)
+          changed = true
+        }
+      }
+      if (changed) {
+        automationRef.current = newAuto
+        setAutomationData(newAuto)
+        onAutomationDataChange?.(newAuto, arrangeSectionsRef.current.map(s => ({ id: s.id, bars: s.bars })))
+      }
+    },
+    [onAutomationDataChange],
   )
 
   // ── Automation lane: clear all automation for a specific channel+param ──
@@ -3163,6 +3195,28 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
 
         {/* Rack plugin toggles */}
         <div className="flex items-center gap-0.5 ml-2 pl-2" style={{ borderLeft: '1px solid rgba(255,255,255,0.04)' }}>
+          {/* Global automation record toggle */}
+          {arrangeSections.length > 0 && (
+            <button
+              onClick={() => setIsRecordingAutomation(v => !v)}
+              className="flex items-center gap-1 px-1.5 py-1 rounded transition-all cursor-pointer"
+              style={{
+                color: isRecordingAutomation ? '#ef4444' : '#5a616b',
+                background: isRecordingAutomation ? 'rgba(239,68,68,0.12)' : 'transparent',
+                border: isRecordingAutomation ? '1px solid rgba(239,68,68,0.3)' : '1px solid transparent',
+                fontSize: '7px',
+                fontWeight: 800,
+                letterSpacing: '0.08em',
+                animation: isRecordingAutomation ? 'recpulse 1.5s infinite' : 'none',
+              }}
+              title={isRecordingAutomation
+                ? 'Stop recording automation (tweak knobs while playing to capture per-section keyframes)'
+                : 'Record automation — press Play, then tweak any knob to record per-section keyframes'}
+            >
+              <Circle size={8} fill={isRecordingAutomation ? '#ef4444' : 'none'} />
+              <span className="uppercase">REC</span>
+            </button>
+          )}
           <button
             onClick={() => setShowFxPanel(v => !v)}
             className="flex items-center gap-1 px-1.5 py-1 rounded transition-all cursor-pointer"
@@ -3322,6 +3376,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                 arrangeOpen={arrangeOpen}
                 onArrangeToggle={() => setArrangeOpen(v => !v)}
                 onArrangeSectionsChange={handleArrangeSectionsChange}
+                onDuplicateAutomation={handleDuplicateAutomation}
                 patternVariants={patternVariants}
                 onPatternVariantsChange={setPatternVariants}
                 onCreateVariant={handleCreateVariant}

@@ -875,7 +875,7 @@ export default function StudioEditor() {
             onOpenPianoRoll={(idx) => { setDrumSequencerChannel(null); setPadSamplerChannel(null); setPianoRollChannel(prev => prev === idx ? null : idx) }}
             onOpenDrumSequencer={(idx) => { setPianoRollChannel(null); setPadSamplerChannel(null); setDrumSequencerChannel(prev => prev === idx ? null : idx) }}
             onOpenPadSampler={(idx) => { setPianoRollChannel(null); setDrumSequencerChannel(null); setPadSamplerChannel(prev => prev === idx ? null : idx) }}
-
+            onAutomationDataChange={handleAutomationDataChange}
             getCyclePosition={() => {
               try {
                 const engine = engineRef.current
