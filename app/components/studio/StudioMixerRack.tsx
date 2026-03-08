@@ -2995,6 +2995,21 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
         clip.detuneCents = processed.pitch.detuneCents
         clip.pitched = Math.abs(processed.pitch.detuneCents) > 0.5
       }
+      // Auto-expand arrangement to fit the recording's full duration
+      const clipEnd = clip.startBar + clip.durationBars
+      setArrangeSections(prev => {
+        const totalBars = prev.reduce((sum, s) => sum + s.bars, 0)
+        if (clipEnd > totalBars && prev.length > 0) {
+          const deficit = Math.ceil(clipEnd - totalBars)
+          const updated = [...prev]
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            bars: updated[updated.length - 1].bars + deficit,
+          }
+          return updated
+        }
+        return prev
+      })
       setAudioClips(prev => [...prev, clip])
     } catch (err) {
       console.error('[AudioClip] Failed to stop recording:', err)
@@ -3042,12 +3057,14 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     try {
       const ctx = new AudioContext()
       const { buffer, blobUrl } = await decodeAudioFile(file, ctx)
-      const currentBar = getCyclePosition?.() ?? 0
+      // Always place uploaded clips at bar 0 — users can drag to reposition.
+      // Using getCyclePosition() would place tracks at e.g. bar 12.5 which is
+      // past the arrangement boundary and invisible.
       const clip = createClipFromBuffer(
         buffer,
         blobUrl,
         file.name.replace(/\.[^.]+$/, ''),
-        currentBar,
+        0,
         pendingUploadTrackRef.current,
         projectBpm,
       )
@@ -3073,13 +3090,30 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
         `| BPM: ${clip.detectedBpm ?? 'N/A'} | Note: ${clip.detectedNote ?? 'N/A'} ` +
         `| Rate: ${clip.playbackRate.toFixed(3)}x | Detune: ${clip.detuneCents.toFixed(0)}¢`
       )
+      // Auto-expand arrangement to fit the clip's full duration
+      const clipEnd = clip.startBar + clip.durationBars
+      setArrangeSections(prev => {
+        const totalBars = prev.reduce((sum, s) => sum + s.bars, 0)
+        if (clipEnd > totalBars && prev.length > 0) {
+          // Expand the last section so total bars covers the clip
+          const deficit = Math.ceil(clipEnd - totalBars)
+          const updated = [...prev]
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            bars: updated[updated.length - 1].bars + deficit,
+          }
+          console.log(`[444 STUDIO] Auto-expanded arrangement to ${totalBars + deficit} bars to fit clip`)
+          return updated
+        }
+        return prev
+      })
       setAudioClips(prev => [...prev, clip])
     } catch (err) {
       console.error('[AudioClip] Failed to decode uploaded file:', err)
     }
     // Reset the input so the same file can be re-selected
     e.target.value = ''
-  }, [getCyclePosition, projectBpm, code, ensureAudioTrackAndArrangement])
+  }, [projectBpm, code, ensureAudioTrackAndArrangement])
 
   return (
     <div className="h-full flex flex-row relative" style={{ overflow: 'visible' }}>
