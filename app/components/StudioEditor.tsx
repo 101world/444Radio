@@ -1082,6 +1082,11 @@ export default function StudioEditor() {
                   setPianoRollChannel(null)
                   setVocalSlicerChannel(pianoRollChannel)
                 } : undefined}
+                onSliceChannel={ch.sourceType === 'sample' ? (newRawCode: string) => {
+                  const latest = codeRef.current
+                  const newCode = replaceChannelBlock(latest, pianoRollChannel, newRawCode)
+                  if (newCode !== latest) handleLiveCodeChange(newCode)
+                } : undefined}
                 isPlaying={isPlaying}
                 projectBpm={parseBPM(code) ?? 120}
                 getCyclePosition={() => {

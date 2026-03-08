@@ -962,6 +962,8 @@ interface StudioPianoRollProps {
   onOpenPadSampler?: () => void
   /** Open vocal slicer for this channel */
   onOpenVocalSlicer?: () => void
+  /** Slice the current sample using trim region — receives full new channel code */
+  onSliceChannel?: (newRawCode: string) => void
   /** Close the piano roll */
   onClose: () => void
   /** Whether the transport is currently playing */
@@ -1002,6 +1004,7 @@ export default function StudioPianoRoll({
   onNotePreview,
   onOpenPadSampler,
   onOpenVocalSlicer,
+  onSliceChannel,
   onClose,
   isPlaying: transportPlaying = false,
   projectBpm = 120,
@@ -1079,6 +1082,8 @@ export default function StudioPianoRoll({
   const [waveformDragging, setWaveformDragging] = useState<'begin' | 'end' | null>(null)
   const waveformPreviewSrc = useRef<AudioBufferSourceNode | null>(null)
   const [isWaveformPreviewing, setIsWaveformPreviewing] = useState(false)
+  const [sliceCount, setSliceCount] = useState(8)
+  const SLICE_OPTIONS = [4, 8, 16, 32] as const
 
   // ── Slow/Fast factor — how many cycles this channel's pattern spans ──
   // .slow(2) means the pattern takes 2 cycles; .fast(2) means it takes 0.5 cycles
@@ -1500,6 +1505,68 @@ export default function StudioPianoRoll({
   useEffect(() => {
     return () => { if (waveformPreviewSrc.current) { try { waveformPreviewSrc.current.stop() } catch { /* noop */ } } }
   }, [])
+
+  // ── Slice from trim region ──
+  const handleSliceChannel = useCallback(() => {
+    if (!onSliceChannel || !channelData) return
+    const rawCode = channelData.rawCode
+    // Extract channel name
+    const nameMatch = rawCode.match(/^\s*\$(\w+):/)
+    const name = nameMatch ? nameMatch[1] : channelName
+    // Extract sample source URL
+    const srcMatch = rawCode.match(/\.?s\(\s*"([^"]+)"/)
+    if (!srcMatch) return
+    const sampleName = srcMatch[1]
+
+    // Calculate slice indices — if trimmed, scale up and offset
+    const isTrimmed = sampleBegin > 0.001 || sampleEnd < 0.999
+    let spliceCount = sliceCount
+    let indices = Array.from({ length: sliceCount }, (_, i) => i)
+
+    if (isTrimmed) {
+      const range = sampleEnd - sampleBegin
+      spliceCount = Math.round(sliceCount / range)
+      const offset = Math.round(sampleBegin * spliceCount)
+      indices = indices.map(i => i + offset)
+    }
+
+    // Build sequential pattern: "0 1 2 3 ..."
+    const pattern = indices.join(' ')
+
+    // Trim metadata comment for round-trip
+    let trimComment = ''
+    if (isTrimmed) {
+      trimComment = ` // trim:${sampleBegin.toFixed(4)}:${sampleEnd.toFixed(4)}:${sliceCount}`
+    }
+
+    // Preserve existing effects (gain, room, delay, lpf, etc.)
+    // but strip .begin(), .end(), .n(), .note(), .loopAt() — we rebuild those
+    const STRIP_EFFECTS = new Set(['begin', 'end', 'n', 'note', 'loopAt', 'slice', 'splice', 'chop', 'speed'])
+    const effectsToKeep: string[] = []
+    if (channelData.effects) {
+      for (const fx of channelData.effects) {
+        if (STRIP_EFFECTS.has(fx)) continue
+        // Find the effect call in rawCode
+        const fxRe = new RegExp(`\\.${fx}\\([^)]*\\)`)
+        const fxMatch = rawCode.match(fxRe)
+        if (fxMatch) effectsToKeep.push(fxMatch[0])
+      }
+    }
+
+    // Extract orbit
+    const orbitMatch = rawCode.match(/\.orbit\(\s*(\d+)\s*\)/)
+    const orbit = orbitMatch ? parseInt(orbitMatch[1]) : 0
+
+    // Extract loopAt (default 4 bars)
+    const loopMatch = rawCode.match(/\.loopAt\(\s*(\d+)\s*\)/)
+    const loopBars = loopMatch ? parseInt(loopMatch[1]) : 4
+
+    const effectsStr = effectsToKeep.length > 0 ? '\n  ' + effectsToKeep.join('\n  ') : ''
+
+    const newCode = `$${name}: s("${sampleName}")\n  .slice(${spliceCount}, "${pattern}")${trimComment}${effectsStr}\n  .loopAt(${loopBars}).orbit(${orbit}).scope()`
+
+    onSliceChannel(newCode)
+  }, [onSliceChannel, channelData, channelName, sampleBegin, sampleEnd, sliceCount])
 
 
   // Chord detection: identify chord from selected notes
@@ -2824,6 +2891,41 @@ export default function StudioPianoRoll({
                 >
                   RESET
                 </button>
+              )}
+              {/* SLICE IT — slice the sample (or trimmed region) into pads */}
+              {!isSlicedChannel && onSliceChannel && (
+                <>
+                  <div className="w-px h-3 bg-white/[0.06]" />
+                  <select
+                    value={sliceCount}
+                    onChange={(e) => setSliceCount(parseInt(e.target.value))}
+                    className="text-[7px] font-bold rounded-md cursor-pointer"
+                    style={{
+                      background: '#111318', color: '#f472b6',
+                      border: '1px solid #f472b620',
+                      padding: '1px 2px',
+                      outline: 'none',
+                    }}
+                    title="Number of slices"
+                  >
+                    {SLICE_OPTIONS.map(n => (
+                      <option key={n} value={n}>{n} slices</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={handleSliceChannel}
+                    className="px-2 py-0.5 text-[7px] font-bold cursor-pointer transition-all rounded-md"
+                    style={{
+                      background: '#f472b620',
+                      color: '#f472b6',
+                      border: '1px solid #f472b640',
+                      boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+                    }}
+                    title="Slice the sample into pads on the grid"
+                  >
+                    ✂️ SLICE IT
+                  </button>
+                </>
               )}
             </div>
           </div>
