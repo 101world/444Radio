@@ -1677,21 +1677,106 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   const codeRef = useRef(code)
   codeRef.current = code
 
-  // Reset mute/solo/racks when channel count changes (user added/removed blocks or loaded new template)
+  // Adjust mute/solo/racks when channel count changes
+  // - Template switch (big count change): full reset
+  // - Add/remove single channel: preserve racks with adjusted indices
   const prevChannelCount = useRef(0)
+  const prevChannelIds = useRef<string[]>([])
   useEffect(() => {
-    if (channels.length !== prevChannelCount.current) {
+    const prevCount = prevChannelCount.current
+    const prevIds = prevChannelIds.current
+    const currIds = channels.map(ch => ch.id)
+
+    if (channels.length !== prevCount) {
+      const diff = channels.length - prevCount
+
+      // Template switch: big jump (more than ±2 channels at once) → full reset
+      if (prevCount === 0 || Math.abs(diff) > 2) {
+        setMutedChannels(new Set())
+        setSoloedChannels(new Set())
+        setRacks([])
+      } else if (diff > 0) {
+        // Channel(s) added — figure out where. New ids not in prevIds.
+        // Find insertion point: first index whose id is not in prevIds
+        let insertIdx = channels.length - 1
+        for (let i = 0; i < channels.length; i++) {
+          if (!prevIds.includes(currIds[i])) {
+            insertIdx = i
+            break
+          }
+        }
+        // Shift rack indices >= insertIdx up by `diff`
+        setRacks(prev => prev.map(r => ({
+          ...r,
+          channelIndices: r.channelIndices.map(i => i >= insertIdx ? i + diff : i),
+        })))
+        // Shift muted/soloed indices too
+        setMutedChannels(prev => {
+          const next = new Set<number>()
+          prev.forEach(i => next.add(i >= insertIdx ? i + diff : i))
+          return next
+        })
+        setSoloedChannels(prev => {
+          const next = new Set<number>()
+          prev.forEach(i => next.add(i >= insertIdx ? i + diff : i))
+          return next
+        })
+      } else if (diff < 0) {
+        // Channel(s) removed — find which indices disappeared
+        const removedIndices: number[] = []
+        for (let i = 0; i < prevIds.length; i++) {
+          if (!currIds.includes(prevIds[i])) removedIndices.push(i)
+        }
+        // Adjust rack indices: remove deleted indices, shift down those above
+        setRacks(prev => prev
+          .map(r => ({
+            ...r,
+            channelIndices: r.channelIndices
+              .filter(i => !removedIndices.includes(i))
+              .map(i => {
+                let shifted = i
+                for (const ri of removedIndices) {
+                  if (i > ri) shifted--
+                }
+                return shifted
+              }),
+          }))
+          .filter(r => r.channelIndices.length >= 2) // dissolve racks with < 2 remaining
+        )
+        // Adjust muted/soloed
+        setMutedChannels(prev => {
+          const next = new Set<number>()
+          prev.forEach(i => {
+            if (removedIndices.includes(i)) return
+            let shifted = i
+            for (const ri of removedIndices) { if (i > ri) shifted-- }
+            next.add(shifted)
+          })
+          return next
+        })
+        setSoloedChannels(prev => {
+          const next = new Set<number>()
+          prev.forEach(i => {
+            if (removedIndices.includes(i)) return
+            let shifted = i
+            for (const ri of removedIndices) { if (i > ri) shifted-- }
+            next.add(shifted)
+          })
+          return next
+        })
+      }
+
       prevChannelCount.current = channels.length
-      setMutedChannels(new Set())
-      setSoloedChannels(new Set())
-      setRacks([]) // Clear racks — only user-created racks should exist
     }
+
+    prevChannelIds.current = currIds
+
     // Collapse all tracks by default on first load
     if (!trackCollapseInitialized.current && channels.length > 0) {
       trackCollapseInitialized.current = true
       setTrackCollapsed(new Set(channels.map((_, i) => i)))
     }
-  }, [channels.length])
+  }, [channels])
 
   // Notify parent when mute/solo state changes
   useEffect(() => {
@@ -3598,6 +3683,25 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                 onRemoveEffect={handleRemoveEffect}
                 layout="sidebar"
                 onClose={() => setShowFxPanel(false)}
+                onSoundChange={handleSoundChange}
+                onBankChange={handleBankChange}
+                onAddSound={handleAddSound}
+                onOpenPianoRoll={onOpenPianoRoll}
+                onOpenDrumSequencer={onOpenDrumSequencer}
+                onOpenPadSampler={onOpenPadSampler}
+                onTranspose={handleTranspose}
+                onPreview={onPreview}
+                sidechainInfo={getSidechainInfo(fxSelectedTrack)}
+                onEnableSidechain={handleEnableSidechain}
+                onDisableSidechain={handleDisableSidechain}
+                onAddSidechainTarget={handleAddSidechainTarget}
+                onRemoveSidechainTarget={handleRemoveSidechainTarget}
+                onDisconnectSidechain={handleDisconnectSidechain}
+                stackRows={stackRowsMap.get(fxSelectedTrack) || []}
+                onStackRowSoundChange={handleStackRowSoundChange}
+                onStackRowGainChange={handleStackRowGainChange}
+                onStackRowBankChange={handleStackRowBankChange}
+                onRemoveStackRow={handleRemoveStackRow}
               />
             </div>
           )}
