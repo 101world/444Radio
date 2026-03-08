@@ -946,6 +946,7 @@ interface TrackViewProps {
   onClearAutomation?: (sectionId: string) => void
   onSetAutomation?: (sectionId: string, channelIdx: number, paramKey: string, value: number) => void
   onClearParamAutomation?: (channelIdx: number, paramKey: string) => void
+  onDeleteKeyframe?: (sectionId: string, channelIdx: number, paramKey: string) => void
 }
 
 const TrackView = memo(function TrackView({
@@ -1020,6 +1021,7 @@ const TrackView = memo(function TrackView({
   onClearAutomation,
   onSetAutomation,
   onClearParamAutomation,
+  onDeleteKeyframe,
 }: TrackViewProps) {
   // Selected track: always one is selected (default 0)
   const [selectedTrack, setSelectedTrack] = useState(0)
@@ -1472,6 +1474,7 @@ const TrackView = memo(function TrackView({
               getCyclePosition={getCyclePosition}
               onSetAutomation={onSetAutomation}
               onClearParamAutomation={onClearParamAutomation}
+              onDeleteKeyframe={onDeleteKeyframe}
             />
           </div>
         )

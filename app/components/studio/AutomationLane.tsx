@@ -30,6 +30,7 @@ interface AutomationLaneProps {
   height?: number
   onSetAutomation: (sectionId: string, channelIdx: number, paramKey: string, value: number) => void
   onClearParamAutomation: (channelIdx: number, paramKey: string) => void
+  onDeleteKeyframe?: (sectionId: string, channelIdx: number, paramKey: string) => void
 }
 
 const PX_PER_BAR = 48
@@ -52,12 +53,15 @@ const AutomationLane = memo(function AutomationLane({
   sections, automationData, isRecording,
   isPlaying = false, getCyclePosition,
   height = 64,
-  onSetAutomation, onClearParamAutomation,
+  onSetAutomation, onClearParamAutomation, onDeleteKeyframe,
 }: AutomationLaneProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const playheadRef = useRef<SVGLineElement>(null)
   const valueDotRef = useRef<SVGCircleElement>(null)
   const valueTextRef = useRef<SVGTextElement>(null)
+  const ghostDotRef = useRef<SVGCircleElement>(null)
+  const ghostLineRef = useRef<SVGLineElement>(null)
+  const ghostTextRef = useRef<SVGTextElement>(null)
   const rafRef = useRef<number>(0)
   const getCyclePosRef = useRef(getCyclePosition)
   getCyclePosRef.current = getCyclePosition
@@ -68,6 +72,7 @@ const AutomationLane = memo(function AutomationLane({
 
   const [hoveredSection, setHoveredSection] = useState<number | null>(null)
   const [dragging, setDragging] = useState<{ sectionIdx: number } | null>(null)
+  const [lastClickedSection, setLastClickedSection] = useState<number | null>(null)
 
   const totalBars = sections.reduce((sum, s) => sum + s.bars, 0)
   const totalWidth = totalBars * PX_PER_BAR
@@ -199,7 +204,49 @@ const AutomationLane = memo(function AutomationLane({
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
   }, [isPlaying, height, getInterpValue])
 
-  // ─── Click to set automation ───
+  // ─── Mouse tracking for ghost preview dot ───
+  const handleMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+    if (dragging || !svgRef.current) return
+    const rect = svgRef.current.getBoundingClientRect()
+    const xPx = e.clientX - rect.left
+    const yPx = e.clientY - rect.top
+    const yRatio = yPx / rect.height
+    const val = denormalize(1 - Math.max(0, Math.min(1, yRatio)))
+
+    // Find which section we're over
+    let barAcc = 0
+    let secIdx = -1
+    for (let i = 0; i < sections.length; i++) {
+      const secEndPx = (barAcc + sections[i].bars) * PX_PER_BAR
+      if (xPx < secEndPx) { secIdx = i; break }
+      barAcc += sections[i].bars
+    }
+
+    if (ghostDotRef.current) {
+      ghostDotRef.current.setAttribute('cx', String(xPx))
+      ghostDotRef.current.setAttribute('cy', String(Math.max(2, Math.min(height - 2, yPx))))
+      ghostDotRef.current.style.opacity = secIdx >= 0 ? '0.5' : '0'
+    }
+    if (ghostLineRef.current) {
+      ghostLineRef.current.setAttribute('x1', String(xPx))
+      ghostLineRef.current.setAttribute('x2', String(xPx))
+      ghostLineRef.current.style.opacity = secIdx >= 0 ? '0.15' : '0'
+    }
+    if (ghostTextRef.current) {
+      ghostTextRef.current.setAttribute('x', String(Math.min(xPx + 8, totalWidth - 40)))
+      ghostTextRef.current.setAttribute('y', String(Math.max(12, yPx - 6)))
+      ghostTextRef.current.textContent = val.toFixed(2)
+      ghostTextRef.current.style.opacity = secIdx >= 0 ? '0.5' : '0'
+    }
+  }, [sections, height, totalWidth, dragging, paramMin, paramMax])
+
+  const handleMouseLeave = useCallback(() => {
+    if (ghostDotRef.current) ghostDotRef.current.style.opacity = '0'
+    if (ghostLineRef.current) ghostLineRef.current.style.opacity = '0'
+    if (ghostTextRef.current) ghostTextRef.current.style.opacity = '0'
+  }, [])
+
+  // ─── Click to add/update keyframe ───
   const handleClick = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     if (!svgRef.current || dragging) return
     const rect = svgRef.current.getBoundingClientRect()
@@ -212,24 +259,65 @@ const AutomationLane = memo(function AutomationLane({
       const secEndPx = (barAcc + sections[i].bars) * PX_PER_BAR
       if (xPx < secEndPx) {
         onSetAutomation(sections[i].id, channelIdx, paramKey, Math.round(value * 1000) / 1000)
+        setLastClickedSection(i)
+        // Clear the pulse after animation completes
+        setTimeout(() => setLastClickedSection(null), 600)
         break
       }
       barAcc += sections[i].bars
     }
   }, [sections, channelIdx, paramKey, paramMin, paramMax, onSetAutomation, dragging])
 
-  // ─── Drag breakpoint ───
+  // ─── Right-click to delete keyframe ───
+  const handleContextMenu = useCallback((e: React.MouseEvent, sectionIdx: number) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const sec = sections[sectionIdx]
+    if (!sec) return
+    const key = `${sec.id}:${channelIdx}:${paramKey}`
+    if (automationData.has(key)) {
+      if (onDeleteKeyframe) {
+        onDeleteKeyframe(sec.id, channelIdx, paramKey)
+      } else {
+        // Fallback: set to current value effectively removing the override
+        onSetAutomation(sec.id, channelIdx, paramKey, currentValue)
+      }
+    }
+  }, [sections, channelIdx, paramKey, automationData, onDeleteKeyframe, onSetAutomation, currentValue])
+
+  // ─── Drag breakpoint (X + Y) ───
   const handleMouseDown = useCallback((e: React.MouseEvent, sectionIdx: number) => {
     e.stopPropagation()
     e.preventDefault()
     setDragging({ sectionIdx })
+    const startSectionIdx = sectionIdx
 
     const onMove = (ev: MouseEvent) => {
       if (!svgRef.current) return
       const rect = svgRef.current.getBoundingClientRect()
+      const xPx = ev.clientX - rect.left
       const yRatio = (ev.clientY - rect.top) / rect.height
       const value = denormalize(1 - Math.max(0, Math.min(1, yRatio)))
-      onSetAutomation(sections[sectionIdx].id, channelIdx, paramKey, Math.round(value * 1000) / 1000)
+
+      // Find which section the cursor is now over (for X-axis movement)
+      let barAcc = 0
+      let targetSecIdx = startSectionIdx
+      for (let i = 0; i < sections.length; i++) {
+        const secEndPx = (barAcc + sections[i].bars) * PX_PER_BAR
+        if (xPx < secEndPx) { targetSecIdx = i; break }
+        barAcc += sections[i].bars
+      }
+
+      // If moved to a different section, delete from old and set on new
+      if (targetSecIdx !== startSectionIdx) {
+        const oldKey = `${sections[startSectionIdx].id}:${channelIdx}:${paramKey}`
+        if (automationData.has(oldKey) && onDeleteKeyframe) {
+          onDeleteKeyframe(sections[startSectionIdx].id, channelIdx, paramKey)
+        }
+      }
+
+      onSetAutomation(sections[targetSecIdx].id, channelIdx, paramKey, Math.round(value * 1000) / 1000)
+      setDragging({ sectionIdx: targetSecIdx })
     }
     const onUp = () => {
       setDragging(null)
@@ -238,7 +326,7 @@ const AutomationLane = memo(function AutomationLane({
     }
     document.addEventListener('mousemove', onMove)
     document.addEventListener('mouseup', onUp)
-  }, [sections, channelIdx, paramKey, paramMin, paramMax, onSetAutomation])
+  }, [sections, channelIdx, paramKey, paramMin, paramMax, onSetAutomation, automationData, onDeleteKeyframe])
 
   const sectionCenterX = sections.map((_, i) => sectionStartPx[i] + sectionWidthsPx[i] / 2)
 
@@ -304,6 +392,8 @@ const AutomationLane = memo(function AutomationLane({
           }}
           viewBox={`0 0 ${totalWidth} ${height}`}
           onClick={handleClick}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
         >
           {/* Section dividers + labels + bar grid */}
           {sections.map((sec, i) => {
@@ -373,7 +463,7 @@ const AutomationLane = memo(function AutomationLane({
             </>
           )}
 
-          {/* ─── Breakpoint dots ─── */}
+          {/* ─── Breakpoint dots (enhanced: larger, draggable X+Y, right-click delete) ─── */}
           {sections.map((sec, i) => {
             const key = `${sec.id}:${channelIdx}:${paramKey}`
             const hasAuto = automationData.has(key)
@@ -381,40 +471,95 @@ const AutomationLane = memo(function AutomationLane({
             const cx = sectionCenterX[i]
             const cy = (1 - normValues[i]) * height
             const isHovered = hoveredSection === i
+            const isDragging = dragging?.sectionIdx === i
+            const justClicked = lastClickedSection === i
 
             return (
               <g key={sec.id}>
+                {/* Vertical stem line */}
                 {(hasAuto || isHovered) && (
                   <line x1={cx} y1={cy} x2={cx} y2={height}
-                    stroke={channelColor} strokeWidth={1} opacity={0.1}
+                    stroke={channelColor} strokeWidth={1} opacity={0.12}
                     strokeDasharray="2 2" />
                 )}
+                {/* Outer ring (visible on hover/drag) */}
                 {hasAuto && (
-                  <circle cx={cx} cy={cy} r={isHovered ? 10 : 7}
-                    fill="none" stroke={channelColor} strokeWidth={1}
-                    opacity={isHovered ? 0.3 : 0.1} />
+                  <circle cx={cx} cy={cy}
+                    r={isDragging ? 14 : isHovered ? 11 : 8}
+                    fill="none" stroke={channelColor}
+                    strokeWidth={isDragging ? 2 : 1}
+                    opacity={isDragging ? 0.5 : isHovered ? 0.3 : 0.08}
+                    style={{ transition: 'r 0.15s, opacity 0.15s' }}
+                  />
                 )}
+                {/* Pulse ring on click */}
+                {justClicked && hasAuto && (
+                  <circle cx={cx} cy={cy} r={6}
+                    fill="none" stroke={channelColor}
+                    strokeWidth={2} opacity={0}
+                  >
+                    <animate attributeName="r" from="6" to="20" dur="0.5s" fill="freeze" />
+                    <animate attributeName="opacity" from="0.7" to="0" dur="0.5s" fill="freeze" />
+                  </circle>
+                )}
+                {/* Main keyframe dot */}
                 <circle
                   cx={cx} cy={cy}
-                  r={hasAuto ? (isHovered ? 6 : 4.5) : 3}
+                  r={hasAuto ? (isDragging ? 7 : isHovered ? 6 : 5) : 3.5}
                   fill={hasAuto ? channelColor : `${channelColor}30`}
-                  stroke={hasAuto ? '#fff' : 'transparent'}
-                  strokeWidth={hasAuto ? 1.5 : 0}
-                  opacity={hasAuto ? 1 : 0.3}
-                  className="cursor-ns-resize"
+                  stroke={hasAuto ? '#fff' : `${channelColor}50`}
+                  strokeWidth={hasAuto ? (isDragging ? 2.5 : 1.5) : 1}
+                  opacity={hasAuto ? 1 : 0.4}
+                  className="cursor-grab active:cursor-grabbing"
+                  style={{ transition: isDragging ? 'none' : 'r 0.12s, stroke-width 0.12s', filter: isDragging ? `drop-shadow(0 0 6px ${channelColor})` : 'none' }}
                   onMouseDown={(e) => handleMouseDown(e as unknown as React.MouseEvent, i)}
+                  onContextMenu={(e) => handleContextMenu(e as unknown as React.MouseEvent, i)}
                   onMouseEnter={() => setHoveredSection(i)}
                   onMouseLeave={() => setHoveredSection(null)}
                 />
-                {isHovered && (
+                {/* Value label on hover/drag */}
+                {(isHovered || isDragging) && (
+                  <>
+                    <rect
+                      x={cx - 22} y={Math.max(1, cy - 23)}
+                      width={44} height={14}
+                      rx={3} fill="#111317" stroke={channelColor}
+                      strokeWidth={0.5} opacity={0.9}
+                    />
+                    <text x={cx} y={Math.max(11, cy - 12)}
+                      textAnchor="middle" fill="white" fontSize={9}
+                      fontWeight="bold" fontFamily="monospace"
+                    >{val.toFixed(2)}</text>
+                  </>
+                )}
+                {/* "Click to add" hint for empty (no keyframe) sections */}
+                {!hasAuto && isHovered && (
                   <text x={cx} y={Math.max(10, cy - 10)}
-                    textAnchor="middle" fill="white" fontSize={9}
-                    fontWeight="bold" fontFamily="monospace"
-                  >{val.toFixed(2)}</text>
+                    textAnchor="middle" fill={channelColor} fontSize={7}
+                    fontFamily="monospace" opacity={0.5}
+                  >click to add</text>
                 )}
               </g>
             )
           })}
+
+          {/* ─── Ghost preview dot (follows mouse) ─── */}
+          <line ref={ghostLineRef}
+            x1={0} y1={0} x2={0} y2={height}
+            stroke={channelColor} strokeWidth={1} opacity={0}
+            strokeDasharray="3 3" pointerEvents="none"
+          />
+          <circle ref={ghostDotRef}
+            cx={0} cy={0} r={4}
+            fill={channelColor} stroke="#fff" strokeWidth={1} opacity={0}
+            pointerEvents="none"
+            style={{ filter: `drop-shadow(0 0 3px ${channelColor})` }}
+          />
+          <text ref={ghostTextRef}
+            x={0} y={0}
+            fill={channelColor} fontSize={8} fontWeight="600" fontFamily="monospace" opacity={0}
+            pointerEvents="none"
+          />
 
           {/* ─── Live playhead ─── */}
           <line ref={playheadRef}

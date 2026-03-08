@@ -886,10 +886,19 @@ export default function StudioEditor() {
             onSeek={(barPosition: number) => {
               try {
                 const engine = engineRef.current
-                if (engine?.scheduler?.setCycle) {
-                  engine.scheduler.setCycle(barPosition)
-                  console.log(`[444 STUDIO] seeked to bar ${barPosition.toFixed(2)}`)
+                if (!engine?.scheduler) return
+                const sched = engine.scheduler as any
+                // Immediately set main-thread state so now() returns new position
+                // (setCycle only messages the worker; this.cycle doesn't update until next tick)
+                if (typeof sched.getTime === 'function') {
+                  sched.cycle = barPosition
+                  sched.time_at_last_tick_message = sched.getTime()
                 }
+                // Tell the clock worker to reset to this cycle
+                if (typeof sched.setCycle === 'function') {
+                  sched.setCycle(barPosition)
+                }
+                console.log(`[444 STUDIO] seeked to bar ${barPosition.toFixed(2)}`)
               } catch (err) {
                 console.warn('[444 STUDIO] seek failed:', err)
               }

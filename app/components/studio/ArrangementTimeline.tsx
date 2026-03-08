@@ -99,15 +99,43 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
   const getCyclePositionRef = useRef(getCyclePosition)
   getCyclePositionRef.current = getCyclePosition
   const [trackedBar, setTrackedBar] = useState<number>(-1)
+  // Track seek position for showing playhead when stopped
+  const seekBarRef = useRef<number | null>(null)
+
+  // Helper: compute pixel offset from a bar position accounting for 1px section borders
+  const barToPixelOffset = useCallback((barPos: number, sec: ArrangementSection[]): number => {
+    let pxOffset = barPos * PX_PER_BAR
+    let barAcc = 0
+    for (let i = 0; i < sec.length; i++) {
+      if (barPos >= barAcc + sec[i].bars) {
+        barAcc += sec[i].bars
+        pxOffset += 1 // 1px border-right per section
+      } else break
+    }
+    return pxOffset
+  }, [])
 
   // ── Smooth playhead animation via requestAnimationFrame ──
   // Uses getCyclePositionRef (not closure) to avoid effect churn from inline fn prop
   useEffect(() => {
     if (!isPlaying) {
-      if (playheadRef.current) playheadRef.current.style.opacity = '0'
+      // When stopped, show playhead at seek position if one was set
+      if (playheadRef.current && seekBarRef.current !== null) {
+        const sec = sectionsRef.current
+        const tb = sec.reduce((sum, s) => sum + s.bars, 0)
+        if (tb > 0) {
+          const barPos = seekBarRef.current % tb
+          playheadRef.current.style.left = `${barToPixelOffset(barPos, sec)}px`
+          playheadRef.current.style.opacity = '0.6'
+        }
+      } else if (playheadRef.current) {
+        playheadRef.current.style.opacity = '0'
+      }
       setTrackedBar(-1)
       return
     }
+    // Clear seek marker once playing starts
+    seekBarRef.current = null
     let lastStateUpdate = 0
     const tick = () => {
       const sec = sectionsRef.current
@@ -126,16 +154,7 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
       const tb = sec.reduce((sum, s) => sum + s.bars, 0)
       if (tb <= 0) { animRafRef.current = requestAnimationFrame(tick); return }
       const barPos = pos % tb
-      // Compute pixel offset accounting for section border widths (1px each)
-      let pxOffset = barPos * PX_PER_BAR
-      let barAcc = 0
-      for (let i = 0; i < sec.length; i++) {
-        if (barPos >= barAcc + sec[i].bars) {
-          barAcc += sec[i].bars
-          pxOffset += 1 // 1px border-right per section
-        } else break
-      }
-      playheadRef.current.style.left = `${pxOffset}px`
+      playheadRef.current.style.left = `${barToPixelOffset(barPos, sec)}px`
       playheadRef.current.style.opacity = '1'
       // Throttled state update for section highlight (~5 fps)
       const now = performance.now()
@@ -147,7 +166,7 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
     }
     animRafRef.current = requestAnimationFrame(tick)
     return () => { if (animRafRef.current) cancelAnimationFrame(animRafRef.current) }
-  }, [isPlaying])
+  }, [isPlaying, barToPixelOffset])
 
   useEffect(() => { if (renamingId && renameRef.current) renameRef.current.focus() }, [renamingId])
   useEffect(() => {
@@ -262,12 +281,32 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
     const rulerEl = e.currentTarget
     const barPos = barPosFromRulerX(e.clientX, rulerEl)
     onSeekRef.current?.(barPos)
+    // Immediately position playhead for visual feedback
+    seekBarRef.current = barPos
+    if (playheadRef.current) {
+      const sec = sectionsRef.current
+      const tb = sec.reduce((sum, s) => sum + s.bars, 0)
+      if (tb > 0) {
+        playheadRef.current.style.left = `${barToPixelOffset(barPos % tb, sec)}px`
+        playheadRef.current.style.opacity = '1'
+      }
+    }
     isScrubbing.current = true
 
     const onMove = (ev: MouseEvent) => {
       if (!isScrubbing.current) return
       const bp = barPosFromRulerX(ev.clientX, rulerEl)
       onSeekRef.current?.(bp)
+      // Live scrub: position playhead immediately
+      seekBarRef.current = bp
+      if (playheadRef.current) {
+        const sec = sectionsRef.current
+        const tb = sec.reduce((sum, s) => sum + s.bars, 0)
+        if (tb > 0) {
+          playheadRef.current.style.left = `${barToPixelOffset(bp % tb, sec)}px`
+          playheadRef.current.style.opacity = '1'
+        }
+      }
     }
     const onUp = () => {
       isScrubbing.current = false
@@ -276,7 +315,7 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
     }
     document.addEventListener('mousemove', onMove)
     document.addEventListener('mouseup', onUp)
-  }, [barPosFromRulerX])
+  }, [barPosFromRulerX, barToPixelOffset])
 
   const totalBars = sections.reduce((sum, s) => sum + s.bars, 0)
 

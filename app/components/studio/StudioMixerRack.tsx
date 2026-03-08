@@ -2143,6 +2143,20 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     [arrangeSections, onAutomationDataChange],
   )
 
+  // ── Automation lane: delete a single keyframe (sectionId + channel + param) ──
+  const handleDeleteKeyframe = useCallback(
+    (sectionId: string, channelIdx: number, paramKey: string) => {
+      const key = `${sectionId}:${channelIdx}:${paramKey}`
+      if (!automationRef.current.has(key)) return
+      const newAuto = new Map(automationRef.current)
+      newAuto.delete(key)
+      automationRef.current = newAuto
+      setAutomationData(newAuto)
+      onAutomationDataChange?.(newAuto, arrangeSections.map(s => ({ id: s.id, bars: s.bars })))
+    },
+    [arrangeSections, onAutomationDataChange],
+  )
+
   // ── Effect insert handler (for TrackView effects panel) ──
   const handleEffectInsert = useCallback(
     (channelIdx: number, effectCode: string) => {
@@ -3397,6 +3411,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                 }}
                 onSetAutomation={handleSetAutomation}
                 onClearParamAutomation={handleClearParamAutomation}
+                onDeleteKeyframe={handleDeleteKeyframe}
               />
             )}
 
