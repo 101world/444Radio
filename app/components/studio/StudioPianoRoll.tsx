@@ -958,6 +958,10 @@ interface StudioPianoRollProps {
   onTransposeChange?: (semitones: number) => void
   /** Preview a note via superdough (real instrument sound) */
   onNotePreview?: (midi: number) => void
+  /** Open pad sampler for this channel */
+  onOpenPadSampler?: () => void
+  /** Open vocal slicer for this channel */
+  onOpenVocalSlicer?: () => void
   /** Close the piano roll */
   onClose: () => void
   /** Whether the transport is currently playing */
@@ -996,6 +1000,8 @@ export default function StudioPianoRoll({
   onArpRateChange,
   onTransposeChange,
   onNotePreview,
+  onOpenPadSampler,
+  onOpenVocalSlicer,
   onClose,
   isPlaying: transportPlaying = false,
   projectBpm = 120,
@@ -2698,6 +2704,23 @@ export default function StudioPianoRoll({
               }}
               title="Toggle Waveform / Sample Trim">
               WAVE
+            </button>
+          )}
+          {/* ── Pad Sampler / Slicer shortcuts (for vocal/sample channels) ── */}
+          {onOpenPadSampler && (
+            <button onClick={onOpenPadSampler}
+              className="px-1.5 py-0.5 text-[7px] cursor-pointer transition-all duration-[180ms] font-bold rounded-lg flex items-center gap-0.5"
+              style={{ background: '#0a0b0d', color: '#22d3ee', boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22' }}
+              title="Open Pad Sampler">
+              🎹 PAD
+            </button>
+          )}
+          {onOpenVocalSlicer && (
+            <button onClick={onOpenVocalSlicer}
+              className="px-1.5 py-0.5 text-[7px] cursor-pointer transition-all duration-[180ms] font-bold rounded-lg flex items-center gap-0.5"
+              style={{ background: '#0a0b0d', color: '#f472b6', boxShadow: '2px 2px 4px #050607, -2px -2px 4px #1a1d22' }}
+              title="Open Vocal Slicer">
+              ✂️ SLICER
             </button>
           )}
           <button onClick={onClose}

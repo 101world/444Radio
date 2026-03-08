@@ -41,6 +41,7 @@ import {
   setBankInStackRow, removeSoundFromStack,
   getArpInfo, setArpMode, setArpRate, ARP_MODES,
   getTranspose, setTranspose,
+  getMaxPatternBars, estimatePatternBars,
   STRUDEL_SCALES, SCALE_ROOTS,
   DRAGGABLE_EFFECTS, type ParsedChannel, type StackRow,
   parseArrangement, generateArrangeCode, updateArrangeInCode, convertBlocksToLet, convertLetToBlocks,
@@ -2450,10 +2451,15 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
         onCodeChange(newCode)
         // Auto-add new channel to all existing arrange sections
         if (arrangeSectionsRef.current.length > 0) {
-          const newChannelIdx = parseStrudelCode(newCode).length - 1
+          const newChannels = parseStrudelCode(newCode)
+          const newChannelIdx = newChannels.length - 1
           if (newChannelIdx >= 0) {
+            // Detect if the new channel is longer than current sections
+            const newChBarCount = estimatePatternBars(newChannels[newChannelIdx].rawCode)
             setArrangeSections(prev => prev.map(sec => ({
               ...sec,
+              // Expand section bars if new channel is longer
+              bars: Math.max(sec.bars, newChBarCount),
               activeChannels: new Set([...sec.activeChannels, newChannelIdx]),
             })))
           }
@@ -3016,10 +3022,12 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     // Create a default section if none exist
     if (arrangeSections.length === 0) {
       const sectionNames = ['Intro', 'Verse', 'Build', 'Chorus', 'Bridge', 'Drop', 'Break', 'Outro']
+      // Auto-detect longest channel bar count
+      const maxBars = getMaxPatternBars(channels)
       setArrangeSections([{
         id: `sec-auto-1`,
         name: sectionNames[0],
-        bars: 4,
+        bars: Math.max(4, maxBars),
         activeChannels: new Set(channels.map((_: ParsedChannel, i: number) => i)),
         clipVariants: new Map(),
       }])

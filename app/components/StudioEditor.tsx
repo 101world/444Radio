@@ -1074,6 +1074,14 @@ export default function StudioEditor() {
                   }
                 }}
                 onClose={() => setPianoRollChannel(null)}
+                onOpenPadSampler={ch.effects.includes('loopAt') ? () => {
+                  setPianoRollChannel(null)
+                  setPadSamplerChannel(pianoRollChannel)
+                } : undefined}
+                onOpenVocalSlicer={ch.effects.includes('loopAt') ? () => {
+                  setPianoRollChannel(null)
+                  setVocalSlicerChannel(pianoRollChannel)
+                } : undefined}
                 isPlaying={isPlaying}
                 projectBpm={parseBPM(code) ?? 120}
                 getCyclePosition={() => {
