@@ -698,17 +698,39 @@ export function applyMixerOverrides(
   const channels = parseStrudelCode(code)
   if (channels.length === 0) return code
 
+  // Detect which channels are real playable tracks vs the arrange() orchestrator.
+  // The $:arrange(...) block must never be silenced — it's the master player.
+  // Mute/solo of individual channels works by setting their `let` vars to silence,
+  // which propagates through stack() inside the arrange block automatically.
+  const arrangeIndices = new Set<number>()
+  for (let i = 0; i < channels.length; i++) {
+    const ch = channels[i]
+    // Check if this channel's raw code is an arrange() call
+    const raw = code.substring(ch.blockStart, ch.blockEnd)
+    if (/\barrange\s*\(/.test(raw)) {
+      arrangeIndices.add(i)
+    }
+  }
+
   const lines = code.split('\n')
 
-  // Determine which channels should be silent
+  // Determine which channels should be silent (skip arrange blocks)
   const silentSet = new Set<number>()
+  // Count only non-arrange channels for solo logic
+  const playableCount = channels.length - arrangeIndices.size
+  const playableIndices: number[] = []
   for (let i = 0; i < channels.length; i++) {
+    if (arrangeIndices.has(i)) continue
+    playableIndices.push(i)
+  }
+
+  for (const i of playableIndices) {
     if (muted.has(i)) silentSet.add(i)
     if (soloed.size > 0 && !soloed.has(i)) silentSet.add(i)
   }
   if (silentSet.size === 0) return code
 
-  // Build output — replace silent blocks with $name: silence
+  // Build output — replace silent blocks with silence, preserve arrange blocks
   const outputLines: string[] = []
   let lineIdx = 0
 
@@ -731,7 +753,7 @@ export function applyMixerOverrides(
       }
       lineIdx = ch.lineEnd
     } else {
-      // Keep original block
+      // Keep original block (including arrange blocks)
       while (lineIdx < ch.lineEnd) {
         outputLines.push(lines[lineIdx])
         lineIdx++
