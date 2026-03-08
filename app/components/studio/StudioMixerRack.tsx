@@ -15,7 +15,7 @@ import { ChevronDown, ChevronRight, Plus, Volume2, VolumeX, Headphones, GripVert
 import StudioKnob from './StudioKnob'
 import ChannelLCD from './ChannelLCD'
 import EffectsDocModal from './EffectsDocModal'
-import TrackView from './TrackView'
+import TrackView, { type Rack } from './TrackView'
 import PresetRack from './PresetRack'
 import StudioEffectsPanel from './StudioEffectsPanel'
 import { FX_PRESETS, FX_PRESET_CATEGORIES, type FxPresetCategory } from '@/lib/fx-presets'
@@ -1613,6 +1613,10 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   const [showFxPanel, setShowFxPanel] = useState(false)
   const [fxSelectedTrack, setFxSelectedTrack] = useState(0)
   const groupCounter = useRef(0)
+  // ── Rack system state ──
+  const [racks, setRacks] = useState<Rack[]>([])
+  const rackCounter = useRef(0)
+  const RACK_COLORS = ['#00e5c7', '#c77dba', '#06b6d4', '#6f8fb3', '#22d3ee', '#e879a8']
   const fxDropdownRef = useRef<HTMLDivElement>(null)
   const addMenuRef = useRef<HTMLDivElement>(null)
 
@@ -1717,6 +1721,38 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
       else next.add(idx)
       return next
     })
+  }, [])
+
+  // ── Rack handlers ──
+  const handleCreateRack = useCallback((channelIndices: number[], name: string) => {
+    rackCounter.current++
+    const color = RACK_COLORS[(rackCounter.current - 1) % RACK_COLORS.length]
+    setRacks(prev => [...prev, {
+      id: `rack-${rackCounter.current}`,
+      name,
+      color,
+      channelIndices,
+      collapsed: false,
+    }])
+  }, [])
+
+  const handleDissolveRack = useCallback((rackId: string) => {
+    setRacks(prev => prev.filter(r => r.id !== rackId))
+  }, [])
+
+  const handleToggleRackCollapse = useCallback((rackId: string) => {
+    setRacks(prev => prev.map(r => r.id === rackId ? { ...r, collapsed: !r.collapsed } : r))
+  }, [])
+
+  const handleRenameRack = useCallback((rackId: string, name: string) => {
+    setRacks(prev => prev.map(r => r.id === rackId ? { ...r, name } : r))
+  }, [])
+
+  const handleRemoveFromRack = useCallback((rackId: string, channelIdx: number) => {
+    setRacks(prev => prev
+      .map(r => r.id === rackId ? { ...r, channelIndices: r.channelIndices.filter(i => i !== channelIdx) } : r)
+      .filter(r => r.channelIndices.length >= 2) // dissolve racks with < 2 members
+    )
   }, [])
 
   // Helper: use live code change (re-evaluates engine) when available, else fallback
@@ -2926,8 +2962,14 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                   next.has(idx) ? next.delete(idx) : next.add(idx)
                   return next
                 })}
-                onSolo={(idx: number) => handleSolo(idx, true)}
+                onSolo={handleSolo}
                 onMute={handleMute}
+                racks={racks}
+                onCreateRack={handleCreateRack}
+                onDissolveRack={handleDissolveRack}
+                onToggleRackCollapse={handleToggleRackCollapse}
+                onRenameRack={handleRenameRack}
+                onRemoveFromRack={handleRemoveFromRack}
                 onToggleChannel={toggleChannel}
                 onParamChange={handleParamChange}
                 onEffectInsert={handleEffectInsert}

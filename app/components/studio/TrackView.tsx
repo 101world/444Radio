@@ -12,7 +12,16 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { useRef, useEffect, useCallback, useState, useMemo, memo } from 'react'
-import { ChevronDown, ChevronRight, Plus, Piano, Grid3X3, MoreVertical, Copy, RotateCcw, Trash2, Link, Unlink, X, Pencil } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus, Piano, Grid3X3, MoreVertical, Copy, RotateCcw, Trash2, Link, Unlink, X, Pencil, Layers, VolumeX, Volume2 } from 'lucide-react'
+
+// ─── Rack type: a named group of channels ───
+export type Rack = {
+  id: string
+  name: string
+  color: string
+  channelIndices: number[]
+  collapsed: boolean
+}
 import StudioKnob from './StudioKnob'
 import HardwareKnob from './HardwareKnob'
 import { getOrbitAnalyser } from '@/lib/studio-analysers'
@@ -868,8 +877,15 @@ interface TrackViewProps {
   getCyclePosition?: () => number | null
   projectBpm: number
   onToggleCollapse: (idx: number) => void
-  onSolo: (idx: number) => void
+  onSolo: (idx: number, exclusive: boolean) => void
   onMute: (idx: number) => void
+  // ── Rack system ──
+  racks: Rack[]
+  onCreateRack?: (channelIndices: number[], name: string) => void
+  onDissolveRack?: (rackId: string) => void
+  onToggleRackCollapse?: (rackId: string) => void
+  onRenameRack?: (rackId: string, name: string) => void
+  onRemoveFromRack?: (rackId: string, channelIdx: number) => void
   onToggleChannel: (id: string) => void
   onParamChange: (channelIdx: number, key: string, value: number) => void
   onEffectInsert: (channelIdx: number, effectCode: string) => void
@@ -921,6 +937,13 @@ const TrackView = memo(function TrackView({
   onToggleCollapse,
   onSolo,
   onMute,
+  // Rack system
+  racks,
+  onCreateRack,
+  onDissolveRack,
+  onToggleRackCollapse,
+  onRenameRack,
+  onRemoveFromRack,
   onParamChange,
   onEffectInsert,
   onRemoveEffect,
@@ -988,6 +1011,312 @@ const TrackView = memo(function TrackView({
 
   const selectedChannel = channels[selectedTrack]
 
+  // ── Context menu state ──
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; channelIdx: number } | null>(null)
+  const [selectedChannels, setSelectedChannels] = useState<Set<number>>(new Set())
+  const [rackRenaming, setRackRenaming] = useState<string | null>(null)
+  const [rackRenameValue, setRackRenameValue] = useState('')
+  const rackRenameRef = useRef<HTMLInputElement>(null)
+
+  // Close context menu on outside click
+  useEffect(() => {
+    if (!ctxMenu) return
+    const handler = () => setCtxMenu(null)
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [ctxMenu])
+
+  // ── Build render items: racks (with their channels) and ungrouped channels ──
+  const renderItems = useMemo(() => {
+    const racked = new Set<number>()
+    racks.forEach(r => r.channelIndices.forEach(i => racked.add(i)))
+
+    const items: ({ type: 'rack'; rack: Rack } | { type: 'channel'; idx: number })[] = []
+    const rackInserted = new Set<string>()
+
+    channels.forEach((_, idx) => {
+      if (racked.has(idx)) {
+        // Find which rack this belongs to
+        const rack = racks.find(r => r.channelIndices.includes(idx))
+        if (rack && !rackInserted.has(rack.id)) {
+          rackInserted.add(rack.id)
+          items.push({ type: 'rack', rack })
+        }
+        // Individual channels inside racks are rendered by the rack item
+      } else {
+        items.push({ type: 'channel', idx })
+      }
+    })
+    return items
+  }, [channels, racks])
+
+  // ── Render a single track lane (used for both racked and ungrouped channels) ──
+  const renderTrackLane = (ch: ParsedChannel, idx: number) => {
+    const isMuted = mutedChannels.has(idx)
+    const isSoloed = soloedChannels.has(idx)
+    const isActive = isPlaying && !isMuted
+    const collapsed = trackCollapsed.has(idx)
+    const isSelected = selectedTrack === idx
+    const gainParam = ch.params.find((p: { key: string }) => p.key === 'gain')
+    const scopeType = trackScopes[idx] || 'waveform'
+    const isInRack = racks.some(r => r.channelIndices.includes(idx))
+
+    // Editor type
+    const isVocal = ch.sourceType === 'sample' && ch.effects.includes('loopAt')
+    const isMelodic = ch.sourceType === 'synth' || ch.sourceType === 'note'
+    const isDrum = (ch.sourceType === 'sample' && !ch.effects.includes('loopAt')) || ch.sourceType === 'stack'
+    const primaryEditor = isVocal ? 'sampler' : isMelodic ? 'piano' : isDrum ? 'drum' : 'piano'
+
+    return (
+      <div
+        key={ch.id}
+        className={`flex transition-all duration-200 ${isMuted ? 'opacity-35' : ''}`}
+        style={{
+          background: isSelected ? '#131620' : '#111318',
+          borderBottom: '1px solid rgba(255,255,255,0.04)',
+          minHeight: collapsed ? 32 : 80,
+          borderLeft: isSelected ? `2px solid ${ch.color}60` : isInRack ? `2px solid ${racks.find(r => r.channelIndices.includes(idx))?.color || 'transparent'}20` : '2px solid transparent',
+        }}
+        onContextMenu={(e) => {
+          e.preventDefault()
+          if (!selectedChannels.has(idx)) setSelectedChannels(new Set([idx]))
+          setCtxMenu({ x: e.clientX, y: e.clientY, channelIdx: idx })
+        }}
+      >
+        {/* ── LEFT PANEL ── */}
+        <div
+          className="shrink-0 flex flex-col border-r relative overflow-hidden cursor-pointer"
+          style={{ width: 158, borderColor: `${ch.color}18`, background: isSelected ? '#0e1016' : '#0d0e11' }}
+          onClick={(e) => {
+            if (e.ctrlKey || e.metaKey) {
+              setSelectedChannels(prev => { const n = new Set(prev); n.has(idx) ? n.delete(idx) : n.add(idx); return n })
+            } else {
+              setSelectedTrack(idx)
+            }
+          }}
+        >
+          {/* Color accent */}
+          <div className="absolute top-0 left-0 right-0"
+            style={{
+              height: 2,
+              background: `linear-gradient(90deg, ${ch.color} 0%, ${ch.color}40 100%)`,
+              opacity: isMuted ? 0.15 : isActive ? 1 : 0.5,
+              boxShadow: isActive ? `0 0 8px ${ch.color}50` : 'none',
+            }} />
+
+          {/* Controls row */}
+          <div className="flex items-center gap-1 px-2 pt-2 pb-0.5">
+            <button onClick={(e) => { e.stopPropagation(); onToggleCollapse(idx) }}
+              className="cursor-pointer" style={{ color: '#5a616b', background: 'none', border: 'none', padding: 0 }}>
+              {collapsed ? <ChevronRight size={10} /> : <ChevronDown size={10} />}
+            </button>
+
+            <button onClick={(e) => { e.stopPropagation(); onSolo(idx, !e.ctrlKey && !e.shiftKey) }}
+              className="cursor-pointer transition-all duration-100 active:scale-90"
+              style={{
+                width: 16, height: 16, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '7px', fontWeight: 900, lineHeight: 1,
+                color: isSoloed ? '#06b6d4' : '#5a616b', background: isSoloed ? '#1a1a16' : '#0a0b0d', border: 'none',
+                boxShadow: isSoloed ? `inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22, 0 0 4px #06b6d430` : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+              }}
+              title="Solo (Ctrl+click for multi)">S</button>
+
+            <button onClick={(e) => { e.stopPropagation(); onMute(idx) }}
+              className="cursor-pointer transition-all duration-100 active:scale-90"
+              style={{
+                width: 16, height: 16, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '7px', fontWeight: 900, lineHeight: 1,
+                color: isMuted ? '#b86f6f' : '#5a616b', background: isMuted ? '#1a1114' : '#0a0b0d', border: 'none',
+                boxShadow: isMuted ? `inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22, 0 0 4px #b86f6f30` : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+              }}>M</button>
+
+            {/* Peak meter — only expanded */}
+            {!collapsed && <PeakMeter channel={ch} isPlaying={isPlaying} isMuted={isMuted} />}
+
+            {/* Track name — inline rename on pencil click */}
+            {renamingTrack === idx ? (
+              <input
+                ref={renameInputRef}
+                autoFocus
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value.replace(/[^\w]/g, '').toLowerCase().slice(0, 12))}
+                onBlur={() => {
+                  if (renameValue.trim() && renameValue !== ch.name && onRename) {
+                    onRename(idx, renameValue)
+                  }
+                  setRenamingTrack(null)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.currentTarget.blur()
+                  else if (e.key === 'Escape') { setRenameValue(ch.name); setRenamingTrack(null) }
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="flex-1 min-w-0 text-[8px] font-extrabold uppercase tracking-[.1em] outline-none font-mono"
+                style={{
+                  color: `${ch.color}cc`, background: 'rgba(255,255,255,0.06)',
+                  border: `1px solid ${ch.color}40`, borderRadius: 3, padding: '1px 4px',
+                  caretColor: ch.color, maxWidth: '70px',
+                }}
+                maxLength={12} spellCheck={false}
+              />
+            ) : (
+              <span className="flex-1 min-w-0 truncate text-[8px] font-extrabold uppercase tracking-[.12em] font-mono"
+                style={{ color: ch.color }} title={`${ch.name} · Double-click to rename`}
+                onDoubleClick={(e) => {
+                  e.stopPropagation()
+                  if (onRename) { setRenameValue(ch.name); setRenamingTrack(idx) }
+                }}>
+                <span className="text-[9px] mr-0.5 opacity-60">{getSourceIcon(ch.source, ch.sourceType)}</span>
+                {ch.name}
+              </span>
+            )}
+
+            {/* Pencil rename button — only expanded */}
+            {!collapsed && onRename && renamingTrack !== idx && (
+              <button onClick={(e) => { e.stopPropagation(); setRenameValue(ch.name); setRenamingTrack(idx) }}
+                className="cursor-pointer opacity-30 hover:opacity-70 transition-opacity"
+                style={{ background: 'none', border: 'none', padding: 0, color: ch.color }}
+                title="Rename track">
+                <Pencil size={8} />
+              </button>
+            )}
+
+            {/* Selected indicator for multi-select */}
+            {selectedChannels.has(idx) && (
+              <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: '#00e5c7', boxShadow: '0 0 4px #00e5c780' }} />
+            )}
+          </div>
+
+          {/* Expanded: gain knob + editor + full expansion panel */}
+          {!collapsed && (
+            <div className="flex flex-col gap-0.5 px-2 pb-1">
+              <div className="flex items-center gap-1">
+                <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                  <StudioKnob label="" value={gainParam?.value ?? 0.8} min={0} max={2} step={0.01} size={22}
+                    color={ch.color} isComplex={gainParam?.isComplex} onChange={(v: number) => onParamChange(idx, 'gain', v)} />
+                </div>
+                {primaryEditor === 'piano' && onOpenPianoRoll && (
+                  <button onClick={(e) => { e.stopPropagation(); onOpenPianoRoll(idx) }}
+                    className="flex items-center gap-0.5 px-1.5 py-1 rounded cursor-pointer transition-all hover:opacity-100 active:scale-95"
+                    style={{ color: '#6f8fb3', opacity: 0.8, background: 'rgba(111,143,179,0.08)', border: '1px solid rgba(111,143,179,0.12)', fontSize: 0 }}>
+                    <Piano size={10} /><span className="text-[6px] font-bold leading-none">NOTES</span>
+                  </button>
+                )}
+                {primaryEditor === 'drum' && onOpenDrumSequencer && (
+                  <button onClick={(e) => { e.stopPropagation(); onOpenDrumSequencer(idx) }}
+                    className="flex items-center gap-0.5 px-1.5 py-1 rounded cursor-pointer transition-all hover:opacity-100 active:scale-95"
+                    style={{ color: '#06b6d4', opacity: 0.8, background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.12)', fontSize: 0 }}>
+                    <Grid3X3 size={10} /><span className="text-[6px] font-bold leading-none">STEPS</span>
+                  </button>
+                )}
+                {primaryEditor === 'sampler' && onOpenPadSampler && (
+                  <button onClick={(e) => { e.stopPropagation(); onOpenPadSampler(idx) }}
+                    className="flex items-center gap-0.5 px-1.5 py-1 rounded cursor-pointer transition-all hover:opacity-100 active:scale-95"
+                    style={{ color: '#22d3ee', opacity: 0.8, background: 'rgba(34,211,238,0.08)', border: '1px solid rgba(34,211,238,0.12)', fontSize: 0 }}>
+                    <span className="text-[9px]">🎹</span><span className="text-[6px] font-bold leading-none">PAD</span>
+                  </button>
+                )}
+              </div>
+              {/* Full expansion panel — sound/bank, effect tags, grouped FX knobs, stack rows, actions */}
+              <TrackExpansionPanel
+                channel={ch}
+                channelIdx={idx}
+                onParamChange={onParamChange}
+                onRemoveEffect={onRemoveEffect}
+                onSoundChange={onSoundChange}
+                onBankChange={onBankChange}
+                onRename={onRename}
+                onDuplicate={onDuplicate}
+                onDelete={onDelete}
+                onReset={onReset}
+                onTranspose={onTranspose}
+                onAddSound={onAddSound}
+                onPreview={onPreview}
+                onStackRowSoundChange={onStackRowSoundChange}
+                onStackRowGainChange={onStackRowGainChange}
+                onStackRowBankChange={onStackRowBankChange}
+                onRemoveStackRow={onRemoveStackRow}
+                stackRows={stackRowsMap.get(idx) || []}
+                scaleRoot={scaleRoot}
+                onAutoPitchMatch={onAutoPitchMatch}
+                sidechainInfo={getSidechainInfo ? getSidechainInfo(idx) : undefined}
+                onEnableSidechain={onEnableSidechain ? () => onEnableSidechain(idx) : undefined}
+                onDisableSidechain={onDisableSidechain ? () => onDisableSidechain(idx) : undefined}
+                onAddSidechainTarget={onAddSidechainTarget ? (targetIdx: number) => onAddSidechainTarget(idx, targetIdx) : undefined}
+                onRemoveSidechainTarget={onRemoveSidechainTarget ? (targetIdx: number) => onRemoveSidechainTarget(idx, targetIdx) : undefined}
+                onDisconnectSidechain={onDisconnectSidechain ? () => onDisconnectSidechain(idx) : undefined}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* ── RIGHT SCOPE ── */}
+        <div
+          className="flex-1 min-w-0 relative overflow-hidden cursor-pointer"
+          style={{
+            background: '#0a0b0d',
+            borderLeft: isActive ? `1px solid ${ch.color}35` : '1px solid rgba(255,255,255,0.02)',
+          }}
+          onClick={() => cycleScopeType(idx)}
+          onDragOver={(e) => { e.preventDefault(); onDragOver(idx) }}
+          onDragLeave={onDragLeave}
+          onDrop={(e) => onDrop(idx, e)}
+          title="Click to change visualizer"
+        >
+          <BeatGrid />
+
+          {/* Scope */}
+          <div className="absolute inset-0 z-[2]">
+            <TrackScope
+              channel={ch} isPlaying={isPlaying} isMuted={isMuted}
+              scopeType={scopeType} collapsed={collapsed} isSelected={isSelected}
+            />
+          </div>
+
+          {/* Active glow */}
+          {isActive && (
+            <div className="absolute inset-0 pointer-events-none z-[3]"
+              style={{
+                background: `linear-gradient(90deg, ${ch.color}06 0%, transparent 15%, transparent 85%, ${ch.color}04 100%)`,
+                borderTop: `1px solid ${ch.color}08`, borderBottom: `1px solid ${ch.color}08`,
+              }} />
+          )}
+
+          {/* Scope type label */}
+          <div className="absolute top-1 right-2 z-[5]">
+            <span className="text-[6px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full opacity-30 hover:opacity-80 transition-opacity"
+              style={{ color: `${ch.color}`, background: 'rgba(10,11,13,0.8)', border: `1px solid ${ch.color}20` }}>
+              {TRACK_SCOPE_TYPES.find(s => s.id === scopeType)?.label || 'WAVE'}
+            </span>
+          </div>
+
+          {/* Channel type badge */}
+          <div className="absolute bottom-1 right-2 z-[5] text-[5px] font-bold uppercase tracking-widest font-mono"
+            style={{ color: `${ch.color}25` }}>
+            {ch.sourceType === 'synth' ? 'SYNTH' :
+             ch.sourceType === 'note' ? 'INST' :
+             ch.sourceType === 'stack' ? 'DRUM' :
+             ch.sourceType === 'sample' ? (ch.effects.includes('loopAt') ? 'VOCAL' : 'SAMPLE') : 'CH'}
+          </div>
+
+          {/* Selected indicator */}
+          {isSelected && (
+            <div className="absolute top-0 bottom-0 left-0 w-0.5 z-[6]"
+              style={{ background: ch.color, boxShadow: `0 0 6px ${ch.color}40` }} />
+          )}
+
+          {/* Drop FX indicator */}
+          {dragOverChannel === idx && (
+            <div className="absolute inset-0 flex items-center justify-center z-10"
+              style={{ background: 'rgba(0,229,199,0.1)', border: '2px solid rgba(0,229,199,0.4)', borderRadius: 4 }}>
+              <span className="text-[10px] font-bold" style={{ color: '#00e5c7' }}>⬇ DROP FX</span>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* ── Tracks area (scrollable) ── */}
@@ -1010,254 +1339,261 @@ const TrackView = memo(function TrackView({
             <PlayheadOverlay getCyclePosition={getCyclePosition} isPlaying={isPlaying} trackCount={channels.length} />
           </div>
 
-          {/* Track lanes */}
-          {channels.map((ch, idx) => {
-            const isMuted = mutedChannels.has(idx)
-            const isSoloed = soloedChannels.has(idx)
-            const isActive = isPlaying && !isMuted
-            const collapsed = trackCollapsed.has(idx)
-            const isSelected = selectedTrack === idx
-            const gainParam = ch.params.find(p => p.key === 'gain')
-            const scopeType = trackScopes[idx] || 'waveform'
+          {/* Track lanes — rack-aware rendering */}
+          {renderItems.map((item) => {
+            if (item.type === 'rack') {
+              const rack = item.rack
+              const rackChannels = rack.channelIndices.filter(i => i < channels.length)
+              const allMuted = rackChannels.every(i => mutedChannels.has(i))
+              const anySoloed = rackChannels.some(i => soloedChannels.has(i))
 
-            // Editor type
-            const isVocal = ch.sourceType === 'sample' && ch.effects.includes('loopAt')
-            const isMelodic = ch.sourceType === 'synth' || ch.sourceType === 'note'
-            const isDrum = (ch.sourceType === 'sample' && !ch.effects.includes('loopAt')) || ch.sourceType === 'stack'
-            const primaryEditor = isVocal ? 'sampler' : isMelodic ? 'piano' : isDrum ? 'drum' : 'piano'
-
-            return (
-              <div
-                key={ch.id}
-                className={`flex transition-all duration-200 ${isMuted ? 'opacity-35' : ''}`}
-                style={{
-                  background: isSelected ? '#131620' : '#111318',
-                  borderBottom: '1px solid rgba(255,255,255,0.04)',
-                  minHeight: collapsed ? 32 : 80,
-                  borderLeft: isSelected ? `2px solid ${ch.color}60` : '2px solid transparent',
-                }}
-              >
-                {/* ── LEFT PANEL ── */}
-                <div
-                  className="shrink-0 flex flex-col border-r relative overflow-hidden cursor-pointer"
-                  style={{ width: 158, borderColor: `${ch.color}18`, background: isSelected ? '#0e1016' : '#0d0e11' }}
-                  onClick={() => setSelectedTrack(idx)}
-                >
-                  {/* Color accent */}
-                  <div className="absolute top-0 left-0 right-0"
+              return (
+                <div key={rack.id}>
+                  {/* ── Rack Header ── */}
+                  <div
+                    className="flex transition-all duration-200"
                     style={{
-                      height: 2,
-                      background: `linear-gradient(90deg, ${ch.color} 0%, ${ch.color}40 100%)`,
-                      opacity: isMuted ? 0.15 : isActive ? 1 : 0.5,
-                      boxShadow: isActive ? `0 0 8px ${ch.color}50` : 'none',
-                    }} />
-
-                  {/* Controls row */}
-                  <div className="flex items-center gap-1 px-2 pt-2 pb-0.5">
-                    <button onClick={(e) => { e.stopPropagation(); onToggleCollapse(idx) }}
-                      className="cursor-pointer" style={{ color: '#5a616b', background: 'none', border: 'none', padding: 0 }}>
-                      {collapsed ? <ChevronRight size={10} /> : <ChevronDown size={10} />}
-                    </button>
-
-                    <button onClick={(e) => { e.stopPropagation(); onSolo(idx) }}
-                      className="cursor-pointer transition-all duration-100 active:scale-90"
-                      style={{
-                        width: 16, height: 16, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '7px', fontWeight: 900, lineHeight: 1,
-                        color: isSoloed ? '#06b6d4' : '#5a616b', background: isSoloed ? '#1a1a16' : '#0a0b0d', border: 'none',
-                        boxShadow: isSoloed ? `inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22, 0 0 4px #06b6d430` : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
-                      }}>S</button>
-
-                    <button onClick={(e) => { e.stopPropagation(); onMute(idx) }}
-                      className="cursor-pointer transition-all duration-100 active:scale-90"
-                      style={{
-                        width: 16, height: 16, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '7px', fontWeight: 900, lineHeight: 1,
-                        color: isMuted ? '#b86f6f' : '#5a616b', background: isMuted ? '#1a1114' : '#0a0b0d', border: 'none',
-                        boxShadow: isMuted ? `inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22, 0 0 4px #b86f6f30` : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
-                      }}>M</button>
-
-                    {/* Peak meter — only expanded */}
-                    {!collapsed && <PeakMeter channel={ch} isPlaying={isPlaying} isMuted={isMuted} />}
-
-                    {/* Track name — inline rename on pencil click */}
-                    {renamingTrack === idx ? (
-                      <input
-                        ref={renameInputRef}
-                        autoFocus
-                        value={renameValue}
-                        onChange={(e) => setRenameValue(e.target.value.replace(/[^\w]/g, '').toLowerCase().slice(0, 12))}
-                        onBlur={() => {
-                          if (renameValue.trim() && renameValue !== ch.name && onRename) {
-                            onRename(idx, renameValue)
-                          }
-                          setRenamingTrack(null)
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') e.currentTarget.blur()
-                          else if (e.key === 'Escape') { setRenameValue(ch.name); setRenamingTrack(null) }
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex-1 min-w-0 text-[8px] font-extrabold uppercase tracking-[.1em] outline-none font-mono"
-                        style={{
-                          color: `${ch.color}cc`, background: 'rgba(255,255,255,0.06)',
-                          border: `1px solid ${ch.color}40`, borderRadius: 3, padding: '1px 4px',
-                          caretColor: ch.color, maxWidth: '70px',
-                        }}
-                        maxLength={12} spellCheck={false}
-                      />
-                    ) : (
-                      <span className="flex-1 min-w-0 truncate text-[8px] font-extrabold uppercase tracking-[.12em] font-mono"
-                        style={{ color: ch.color }} title={`${ch.name} · Double-click to rename`}
-                        onDoubleClick={(e) => {
-                          e.stopPropagation()
-                          if (onRename) { setRenameValue(ch.name); setRenamingTrack(idx) }
-                        }}>
-                        <span className="text-[9px] mr-0.5 opacity-60">{getSourceIcon(ch.source, ch.sourceType)}</span>
-                        {ch.name}
-                      </span>
-                    )}
-
-                    {/* Pencil rename button — only expanded */}
-                    {!collapsed && onRename && renamingTrack !== idx && (
-                      <button onClick={(e) => { e.stopPropagation(); setRenameValue(ch.name); setRenamingTrack(idx) }}
-                        className="cursor-pointer opacity-30 hover:opacity-70 transition-opacity"
-                        style={{ background: 'none', border: 'none', padding: 0, color: ch.color }}
-                        title="Rename track">
-                        <Pencil size={8} />
+                      background: '#0e1016',
+                      borderBottom: '1px solid rgba(255,255,255,0.06)',
+                      borderLeft: `2px solid ${rack.color}50`,
+                      minHeight: 30,
+                    }}
+                    onContextMenu={(e) => {
+                      e.preventDefault()
+                      setSelectedChannels(new Set(rackChannels))
+                      setCtxMenu({ x: e.clientX, y: e.clientY, channelIdx: rackChannels[0] })
+                    }}
+                  >
+                    {/* Rack left info */}
+                    <div className="shrink-0 flex items-center gap-1.5 px-2 py-1" style={{ width: 158, borderRight: `1px solid ${rack.color}18` }}>
+                      {/* Collapse toggle */}
+                      <button
+                        onClick={() => onToggleRackCollapse?.(rack.id)}
+                        className="cursor-pointer"
+                        style={{ color: rack.color, background: 'none', border: 'none', padding: 0 }}
+                      >
+                        {rack.collapsed ? <ChevronRight size={10} /> : <ChevronDown size={10} />}
                       </button>
-                    )}
-                  </div>
 
-                  {/* Expanded: gain knob + editor + full expansion panel */}
-                  {!collapsed && (
-                    <div className="flex flex-col gap-0.5 px-2 pb-1">
-                      <div className="flex items-center gap-1">
-                        <div onClick={(e) => e.stopPropagation()} className="shrink-0">
-                          <StudioKnob label="" value={gainParam?.value ?? 0.8} min={0} max={2} step={0.01} size={22}
-                            color={ch.color} isComplex={gainParam?.isComplex} onChange={(v: number) => onParamChange(idx, 'gain', v)} />
-                        </div>
-                        {primaryEditor === 'piano' && onOpenPianoRoll && (
-                          <button onClick={(e) => { e.stopPropagation(); onOpenPianoRoll(idx) }}
-                            className="flex items-center gap-0.5 px-1.5 py-1 rounded cursor-pointer transition-all hover:opacity-100 active:scale-95"
-                            style={{ color: '#6f8fb3', opacity: 0.8, background: 'rgba(111,143,179,0.08)', border: '1px solid rgba(111,143,179,0.12)', fontSize: 0 }}>
-                            <Piano size={10} /><span className="text-[6px] font-bold leading-none">NOTES</span>
-                          </button>
-                        )}
-                        {primaryEditor === 'drum' && onOpenDrumSequencer && (
-                          <button onClick={(e) => { e.stopPropagation(); onOpenDrumSequencer(idx) }}
-                            className="flex items-center gap-0.5 px-1.5 py-1 rounded cursor-pointer transition-all hover:opacity-100 active:scale-95"
-                            style={{ color: '#06b6d4', opacity: 0.8, background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.12)', fontSize: 0 }}>
-                            <Grid3X3 size={10} /><span className="text-[6px] font-bold leading-none">STEPS</span>
-                          </button>
-                        )}
-                        {primaryEditor === 'sampler' && onOpenPadSampler && (
-                          <button onClick={(e) => { e.stopPropagation(); onOpenPadSampler(idx) }}
-                            className="flex items-center gap-0.5 px-1.5 py-1 rounded cursor-pointer transition-all hover:opacity-100 active:scale-95"
-                            style={{ color: '#22d3ee', opacity: 0.8, background: 'rgba(34,211,238,0.08)', border: '1px solid rgba(34,211,238,0.12)', fontSize: 0 }}>
-                            <span className="text-[9px]">🎹</span><span className="text-[6px] font-bold leading-none">PAD</span>
-                          </button>
-                        )}
+                      {/* Rack icon */}
+                      <Layers size={10} style={{ color: rack.color, opacity: 0.7 }} />
+
+                      {/* Rack name — editable */}
+                      {rackRenaming === rack.id ? (
+                        <input
+                          ref={rackRenameRef}
+                          autoFocus
+                          value={rackRenameValue}
+                          onChange={(e) => setRackRenameValue(e.target.value.slice(0, 16))}
+                          onBlur={() => {
+                            if (rackRenameValue.trim() && rackRenameValue !== rack.name) {
+                              onRenameRack?.(rack.id, rackRenameValue.trim())
+                            }
+                            setRackRenaming(null)
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') e.currentTarget.blur()
+                            if (e.key === 'Escape') { setRackRenameValue(rack.name); setRackRenaming(null) }
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex-1 min-w-0 text-[8px] font-extrabold uppercase tracking-[.1em] outline-none font-mono"
+                          style={{
+                            color: rack.color, background: 'rgba(255,255,255,0.06)',
+                            border: `1px solid ${rack.color}40`, borderRadius: 3, padding: '1px 4px',
+                            caretColor: rack.color, maxWidth: '60px',
+                          }}
+                          maxLength={16} spellCheck={false}
+                        />
+                      ) : (
+                        <span
+                          className="text-[8px] font-extrabold uppercase tracking-[.12em] font-mono truncate cursor-pointer"
+                          style={{ color: rack.color }}
+                          onDoubleClick={(e) => {
+                            e.stopPropagation()
+                            setRackRenameValue(rack.name)
+                            setRackRenaming(rack.id)
+                          }}
+                          title="Double-click to rename rack"
+                        >
+                          {rack.name}
+                        </span>
+                      )}
+
+                      {/* Mini channel icons — quick mute/solo toggles */}
+                      <div className="flex items-center gap-0.5 ml-auto">
+                        {rackChannels.map(chIdx => {
+                          const ch = channels[chIdx]
+                          if (!ch) return null
+                          const chMuted = mutedChannels.has(chIdx)
+                          return (
+                            <button
+                              key={chIdx}
+                              onClick={(e) => { e.stopPropagation(); onMute(chIdx) }}
+                              className="cursor-pointer transition-all duration-100 active:scale-90 group/rackicon"
+                              style={{
+                                width: 14, height: 14, borderRadius: 3,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: '8px', lineHeight: 1,
+                                background: chMuted ? '#16181d' : `${ch.color}15`,
+                                border: `1px solid ${chMuted ? 'rgba(255,255,255,0.06)' : ch.color + '30'}`,
+                                opacity: chMuted ? 0.35 : 1,
+                                position: 'relative',
+                              }}
+                              title={`${ch.name} — click to ${chMuted ? 'unmute' : 'mute'}`}
+                            >
+                              <span style={{ color: ch.color, filter: chMuted ? 'grayscale(1)' : 'none' }}>
+                                {getSourceIcon(ch.source, ch.sourceType)}
+                              </span>
+                            </button>
+                          )
+                        })}
                       </div>
-                      {/* Full expansion panel — sound/bank, effect tags, grouped FX knobs, stack rows, actions */}
-                      <TrackExpansionPanel
-                        channel={ch}
-                        channelIdx={idx}
-                        onParamChange={onParamChange}
-                        onRemoveEffect={onRemoveEffect}
-                        onSoundChange={onSoundChange}
-                        onBankChange={onBankChange}
-                        onRename={onRename}
-                        onDuplicate={onDuplicate}
-                        onDelete={onDelete}
-                        onReset={onReset}
-                        onTranspose={onTranspose}
-                        onAddSound={onAddSound}
-                        onPreview={onPreview}
-                        onStackRowSoundChange={onStackRowSoundChange}
-                        onStackRowGainChange={onStackRowGainChange}
-                        onStackRowBankChange={onStackRowBankChange}
-                        onRemoveStackRow={onRemoveStackRow}
-                        stackRows={stackRowsMap.get(idx) || []}
-                        scaleRoot={scaleRoot}
-                        onAutoPitchMatch={onAutoPitchMatch}
-                        sidechainInfo={getSidechainInfo ? getSidechainInfo(idx) : undefined}
-                        onEnableSidechain={onEnableSidechain ? () => onEnableSidechain(idx) : undefined}
-                        onDisableSidechain={onDisableSidechain ? () => onDisableSidechain(idx) : undefined}
-                        onAddSidechainTarget={onAddSidechainTarget ? (targetIdx: number) => onAddSidechainTarget(idx, targetIdx) : undefined}
-                        onRemoveSidechainTarget={onRemoveSidechainTarget ? (targetIdx: number) => onRemoveSidechainTarget(idx, targetIdx) : undefined}
-                        onDisconnectSidechain={onDisconnectSidechain ? () => onDisconnectSidechain(idx) : undefined}
-                      />
                     </div>
-                  )}
-                </div>
 
-                {/* ── RIGHT SCOPE ── */}
-                <div
-                  className="flex-1 min-w-0 relative overflow-hidden cursor-pointer"
-                  style={{
-                    background: '#0a0b0d',
-                    borderLeft: isActive ? `1px solid ${ch.color}35` : '1px solid rgba(255,255,255,0.02)',
-                  }}
-                  onClick={() => cycleScopeType(idx)}
-                  onDragOver={(e) => { e.preventDefault(); onDragOver(idx) }}
-                  onDragLeave={onDragLeave}
-                  onDrop={(e) => onDrop(idx, e)}
-                  title="Click to change visualizer"
-                >
-                  <BeatGrid />
-
-                  {/* Scope */}
-                  <div className="absolute inset-0 z-[2]">
-                    <TrackScope
-                      channel={ch} isPlaying={isPlaying} isMuted={isMuted}
-                      scopeType={scopeType} collapsed={collapsed} isSelected={isSelected}
-                    />
-                  </div>
-
-                  {/* Active glow */}
-                  {isActive && (
-                    <div className="absolute inset-0 pointer-events-none z-[3]"
-                      style={{
-                        background: `linear-gradient(90deg, ${ch.color}06 0%, transparent 15%, transparent 85%, ${ch.color}04 100%)`,
-                        borderTop: `1px solid ${ch.color}08`, borderBottom: `1px solid ${ch.color}08`,
-                      }} />
-                  )}
-
-                  {/* Scope type label */}
-                  <div className="absolute top-1 right-2 z-[5]">
-                    <span className="text-[6px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full opacity-30 hover:opacity-80 transition-opacity"
-                      style={{ color: `${ch.color}`, background: 'rgba(10,11,13,0.8)', border: `1px solid ${ch.color}20` }}>
-                      {TRACK_SCOPE_TYPES.find(s => s.id === scopeType)?.label || 'WAVE'}
-                    </span>
-                  </div>
-
-                  {/* Channel type badge */}
-                  <div className="absolute bottom-1 right-2 z-[5] text-[5px] font-bold uppercase tracking-widest font-mono"
-                    style={{ color: `${ch.color}25` }}>
-                    {ch.sourceType === 'synth' ? 'SYNTH' :
-                     ch.sourceType === 'note' ? 'INST' :
-                     ch.sourceType === 'stack' ? 'DRUM' :
-                     ch.sourceType === 'sample' ? (ch.effects.includes('loopAt') ? 'VOCAL' : 'SAMPLE') : 'CH'}
-                  </div>
-
-                  {/* Selected indicator */}
-                  {isSelected && (
-                    <div className="absolute top-0 bottom-0 left-0 w-0.5 z-[6]"
-                      style={{ background: ch.color, boxShadow: `0 0 6px ${ch.color}40` }} />
-                  )}
-
-                  {/* Drop FX indicator */}
-                  {dragOverChannel === idx && (
-                    <div className="absolute inset-0 flex items-center justify-center z-10"
-                      style={{ background: 'rgba(0,229,199,0.1)', border: '2px solid rgba(0,229,199,0.4)', borderRadius: 4 }}>
-                      <span className="text-[10px] font-bold" style={{ color: '#00e5c7' }}>⬇ DROP FX</span>
+                    {/* Rack right area — combined scope placeholder */}
+                    <div className="flex-1 min-w-0 relative overflow-hidden" style={{ background: '#0a0b0d' }}>
+                      {/* Beat grid */}
+                      <BeatGrid />
+                      {/* Show mini colored bars for each channel */}
+                      <div className="absolute inset-0 flex flex-col justify-center z-[2] px-4">
+                        {rackChannels.map(chIdx => {
+                          const ch = channels[chIdx]
+                          if (!ch) return null
+                          const chMuted = mutedChannels.has(chIdx)
+                          return (
+                            <div key={chIdx} className="flex items-center gap-1 py-px" style={{ opacity: chMuted ? 0.15 : 0.6 }}>
+                              <div className="h-[3px] rounded-full" style={{
+                                width: `${30 + Math.random() * 50}%`,
+                                background: `linear-gradient(90deg, ${ch.color}80 0%, ${ch.color}20 100%)`,
+                              }} />
+                            </div>
+                          )
+                        })}
+                      </div>
+                      {/* Rack badge */}
+                      <div className="absolute bottom-1 right-2 z-[5] text-[5px] font-bold uppercase tracking-widest font-mono"
+                        style={{ color: `${rack.color}30` }}>
+                        RACK · {rackChannels.length} CH
+                      </div>
                     </div>
-                  )}
+                  </div>
+
+                  {/* ── Expanded: show individual tracks inside rack ── */}
+                  {!rack.collapsed && rackChannels.map(idx => {
+                    const ch = channels[idx]
+                    if (!ch) return null
+                    return renderTrackLane(ch, idx)
+                  })}
                 </div>
-              </div>
-            )
+              )
+            }
+
+            // ── Regular (ungrouped) channel ──
+            return renderTrackLane(channels[item.idx], item.idx)
           })}
+
+          {/* Context Menu (right-click) */}
+          {ctxMenu && (
+            <div
+              className="fixed z-[100] py-1 rounded-lg overflow-hidden"
+              style={{
+                left: ctxMenu.x, top: ctxMenu.y,
+                background: '#16181d',
+                border: '1px solid rgba(255,255,255,0.08)',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.6), 4px 4px 8px #050607',
+                minWidth: '160px',
+              }}
+            >
+              {/* Create Rack — when 2+ channels selected and not already in a rack */}
+              {selectedChannels.size >= 2 && !racks.some(r => Array.from(selectedChannels).every(i => r.channelIndices.includes(i))) && onCreateRack && (
+                <button
+                  className="w-full text-left px-3 py-1.5 text-[9px] font-bold cursor-pointer hover:bg-white/[0.06] transition-colors flex items-center gap-2"
+                  style={{ color: '#00e5c7', border: 'none', background: 'none' }}
+                  onClick={() => {
+                    const sorted = Array.from(selectedChannels).sort((a, b) => a - b)
+                    onCreateRack(sorted, `Rack ${racks.length + 1}`)
+                    setSelectedChannels(new Set())
+                    setCtxMenu(null)
+                  }}
+                >
+                  <Layers size={10} /> Create Rack ({selectedChannels.size})
+                </button>
+              )}
+
+              {/* Dissolve Rack */}
+              {racks.some(r => r.channelIndices.includes(ctxMenu.channelIdx)) && onDissolveRack && (
+                <button
+                  className="w-full text-left px-3 py-1.5 text-[9px] font-bold cursor-pointer hover:bg-white/[0.06] transition-colors flex items-center gap-2"
+                  style={{ color: '#06b6d4', border: 'none', background: 'none' }}
+                  onClick={() => {
+                    const rack = racks.find(r => r.channelIndices.includes(ctxMenu.channelIdx))
+                    if (rack) onDissolveRack(rack.id)
+                    setSelectedChannels(new Set())
+                    setCtxMenu(null)
+                  }}
+                >
+                  <X size={10} /> Dissolve Rack
+                </button>
+              )}
+
+              {/* Solo all in selection (Ctrl+right-click behavior) */}
+              {selectedChannels.size >= 2 && (
+                <button
+                  className="w-full text-left px-3 py-1.5 text-[9px] font-bold cursor-pointer hover:bg-white/[0.06] transition-colors flex items-center gap-2"
+                  style={{ color: '#06b6d4', border: 'none', background: 'none' }}
+                  onClick={() => {
+                    for (const idx of selectedChannels) {
+                      onSolo(idx, false) // additive solo
+                    }
+                    setCtxMenu(null)
+                  }}
+                >
+                  <Volume2 size={10} /> Solo Selection ({selectedChannels.size})
+                </button>
+              )}
+
+              {/* Mute all in selection */}
+              {selectedChannels.size >= 2 && (
+                <button
+                  className="w-full text-left px-3 py-1.5 text-[9px] font-bold cursor-pointer hover:bg-white/[0.06] transition-colors flex items-center gap-2"
+                  style={{ color: '#b86f6f', border: 'none', background: 'none' }}
+                  onClick={() => {
+                    for (const idx of selectedChannels) {
+                      if (!mutedChannels.has(idx)) onMute(idx)
+                    }
+                    setCtxMenu(null)
+                  }}
+                >
+                  <VolumeX size={10} /> Mute Selection ({selectedChannels.size})
+                </button>
+              )}
+
+              {/* Duplicate */}
+              {onDuplicate && selectedChannels.size <= 1 && (
+                <button
+                  className="w-full text-left px-3 py-1.5 text-[9px] font-bold cursor-pointer hover:bg-white/[0.06] transition-colors flex items-center gap-2"
+                  style={{ color: '#6f8fb3', border: 'none', background: 'none' }}
+                  onClick={() => { onDuplicate(ctxMenu.channelIdx); setCtxMenu(null) }}
+                >
+                  <Copy size={10} /> Duplicate
+                </button>
+              )}
+
+              {/* Delete */}
+              {onDelete && (
+                <>
+                  <div className="mx-2 my-0.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }} />
+                  <button
+                    className="w-full text-left px-3 py-1.5 text-[9px] font-bold cursor-pointer hover:bg-white/[0.06] transition-colors flex items-center gap-2"
+                    style={{ color: '#b86f6f', border: 'none', background: 'none' }}
+                    onClick={() => { onDelete(ctxMenu.channelIdx); setCtxMenu(null) }}
+                  >
+                    <Trash2 size={10} /> Delete
+                  </button>
+                </>
+              )}
+            </div>
+          )}
 
           {/* Add Track button */}
           <button onClick={onShowAddMenu}
