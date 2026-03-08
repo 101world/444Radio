@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { usePathname, useRouter } from 'next/navigation';
-import { Bell, X } from 'lucide-react';
+import { Bell, X, Check, XCircle, Loader2, Crown } from 'lucide-react';
 
 type NotificationItem = {
   id: string;
@@ -11,6 +11,8 @@ type NotificationItem = {
   body?: string;
   unread?: boolean;
   created_at?: string;
+  type?: string;
+  data?: Record<string, any>;
 };
 
 export default function NotificationBell() {
@@ -20,7 +22,43 @@ export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [mounted, setMounted] = useState(false);
+  const [actionLoading, setActionLoading] = useState<Record<string, string>>({});
   const ref = useRef<HTMLDivElement | null>(null);
+
+  const handleChessAction = async (notif: NotificationItem, action: 'accept' | 'decline') => {
+    const gameId = notif.data?.gameId;
+    if (!gameId) return;
+    setActionLoading(prev => ({ ...prev, [notif.id]: action }));
+    try {
+      const res = await fetch('/api/chess', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, gameId }),
+      });
+      const result = await res.json();
+      if (res.ok) {
+        // Mark as read and update the notification in place
+        setItems(s => s.map(it => it.id === notif.id ? {
+          ...it,
+          unread: false,
+          body: action === 'accept' ? '✅ Accepted! Open Chess to play.' : '❌ Declined.',
+          data: { ...it.data, resolved: true },
+        } : it));
+      } else {
+        setItems(s => s.map(it => it.id === notif.id ? {
+          ...it,
+          body: `Error: ${result.error || 'Something went wrong'}`,
+        } : it));
+      }
+    } catch {
+      setItems(s => s.map(it => it.id === notif.id ? {
+        ...it,
+        body: 'Network error. Try again.',
+      } : it));
+    } finally {
+      setActionLoading(prev => { const next = { ...prev }; delete next[notif.id]; return next; });
+    }
+  };
 
   // Prevent hydration mismatch
   useEffect(() => {
@@ -124,19 +162,51 @@ export default function NotificationBell() {
             {items.length === 0 && (
               <div className="p-4 text-sm text-gray-400">No notifications</div>
             )}
-            {items.map((n) => (
-              <div
-                key={n.id}
-                className={`px-3 py-2 hover:bg-gray-800 cursor-pointer ${n.unread ? 'bg-gray-800' : ''}`}
-                onClick={() => {
-                  // simple local mark-as-read
-                  setItems((s) => s.map((it) => (it.id === n.id ? { ...it, unread: false } : it)));
-                }}
-              >
-                <div className="text-sm font-medium">{n.title}</div>
-                {n.body && <div className="text-xs text-gray-400">{n.body}</div>}
-              </div>
-            ))}
+            {items.map((n) => {
+              const isChessChallenge = n.type === 'chess_challenge' && n.data?.gameId && !n.data?.resolved;
+              const loading = actionLoading[n.id];
+
+              return (
+                <div
+                  key={n.id}
+                  className={`px-3 py-2 hover:bg-gray-800 ${n.unread ? 'bg-gray-800/60' : ''}`}
+                  onClick={() => {
+                    if (!isChessChallenge) {
+                      setItems((s) => s.map((it) => (it.id === n.id ? { ...it, unread: false } : it)));
+                    }
+                  }}
+                >
+                  <div className="text-sm font-medium">{n.title}</div>
+                  {n.body && <div className="text-xs text-gray-400 mt-0.5">{n.body}</div>}
+
+                  {isChessChallenge && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <button
+                        disabled={!!loading}
+                        onClick={(e) => { e.stopPropagation(); handleChessAction(n, 'accept'); }}
+                        className="flex items-center gap-1 px-3 py-1 rounded bg-green-600 hover:bg-green-500 disabled:opacity-50 text-xs font-medium text-white transition-colors"
+                      >
+                        {loading === 'accept' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                        Accept
+                      </button>
+                      <button
+                        disabled={!!loading}
+                        onClick={(e) => { e.stopPropagation(); handleChessAction(n, 'decline'); }}
+                        className="flex items-center gap-1 px-3 py-1 rounded bg-red-600/80 hover:bg-red-500 disabled:opacity-50 text-xs font-medium text-white transition-colors"
+                      >
+                        {loading === 'decline' ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />}
+                        Decline
+                      </button>
+                      {n.data?.wager != null && n.data.wager > 0 && (
+                        <span className="text-xs text-amber-400 flex items-center gap-0.5">
+                          <Crown className="w-3 h-3" /> {n.data?.wager} credits
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           <div className="px-3 py-2 border-t border-gray-800">
