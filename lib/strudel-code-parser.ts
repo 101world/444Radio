@@ -1620,7 +1620,67 @@ export function addChannel(
     const loopCycles = vocalLoopAt ?? 4
     block = `$${name}: note("c3 e3 g3 c4")\n  .s("${soundName}")\n  .loopAt(${loopCycles})${trimCode}\n  .gain(0.6)\n  .orbit(${nextOrbit})\n  .lpf(8000).lpq(1)\n  .room(0.15).delay(0.1).delaytime(0.125).delayfeedback(0.2)`
   } else {
-    block = `$${name}: s("${soundName}")\n  .gain(0.8)\n  .lpf(6000).lpq(1)\n  .room(0.2).delay(0.1).delaytime(0.125).delayfeedback(0.2)\n  .shape(0)`
+    // ── Per-drum-type templates: unique pattern + effects for each sound ──
+    const drumTemplates: Record<string, { pattern: string; gain: string; effects: string }> = {
+      // Kick: 4-on-the-floor, deep low-pass, slight room
+      bd:    { pattern: 'bd bd bd bd',                    gain: '0.85', effects: '.lpf(2500).lpq(1)\n  .room(0.1).shape(0.3)' },
+      hardkick: { pattern: 'hardkick hardkick hardkick hardkick', gain: '0.85', effects: '.lpf(2000).lpq(1)\n  .shape(0.4)' },
+      clubkick: { pattern: 'clubkick ~ clubkick ~',      gain: '0.8',  effects: '.lpf(2200).lpq(1)\n  .room(0.15).shape(0.2)' },
+      popkick:  { pattern: 'popkick ~ popkick ~',        gain: '0.8',  effects: '.lpf(3000).lpq(1)\n  .room(0.1)' },
+      kick:  { pattern: 'kick kick kick kick',            gain: '0.85', effects: '.lpf(2500).lpq(1)\n  .room(0.1).shape(0.3)' },
+      gabba: { pattern: 'gabba gabba gabba gabba',        gain: '0.75', effects: '.lpf(3000).shape(0.5)\n  .distort(0.4)' },
+      // Snare: backbeat (beats 2 & 4), brighter, more body
+      sd:    { pattern: '~ sd ~ sd',                      gain: '0.8',  effects: '.lpf(8000).lpq(1)\n  .room(0.2).delay(0.05).delaytime(0.08).delayfeedback(0.15)' },
+      sn:    { pattern: '~ sn ~ sn',                      gain: '0.8',  effects: '.lpf(8000).lpq(1)\n  .room(0.2).delay(0.05).delaytime(0.08).delayfeedback(0.15)' },
+      // Clap: backbeat, bright, wider reverb
+      cp:    { pattern: '~ cp ~ cp',                      gain: '0.7',  effects: '.lpf(9000)\n  .room(0.35).delay(0.08).delaytime(0.06).delayfeedback(0.1)' },
+      realclaps: { pattern: '~ realclaps ~ realclaps',    gain: '0.7',  effects: '.lpf(9000)\n  .room(0.3)' },
+      // Rimshot: syncopated ghost notes
+      rim:   { pattern: '~ ~ rim ~ ~ rim ~ ~',            gain: '0.6',  effects: '.lpf(7000)\n  .room(0.15)' },
+      // Hi-hat: eighth notes, high-pass, dry + tight
+      hh:    { pattern: 'hh*8',                            gain: '0.55', effects: '.hpf(4000)\n  .lpf(12000)' },
+      hh27:  { pattern: 'hh27*8',                          gain: '0.55', effects: '.hpf(4000)\n  .lpf(12000)' },
+      hc:    { pattern: 'hc*8',                            gain: '0.55', effects: '.hpf(4000)\n  .lpf(12000)' },
+      linnhats: { pattern: 'linnhats*8',                   gain: '0.5',  effects: '.hpf(3500)\n  .lpf(12000)' },
+      // Open hi-hat: offbeats, slightly longer
+      oh:    { pattern: '~ oh ~ oh',                       gain: '0.5',  effects: '.hpf(3000)\n  .lpf(11000).room(0.1)' },
+      ho:    { pattern: '~ ho ~ ho',                       gain: '0.5',  effects: '.hpf(3000)\n  .lpf(11000).room(0.1)' },
+      // Tom: fills and accents
+      tom:   { pattern: '~ ~ ~ tom',                       gain: '0.7',  effects: '.lpf(5000).lpq(1)\n  .room(0.25)' },
+      ht:    { pattern: '~ ~ ht ~',                        gain: '0.7',  effects: '.lpf(5000).lpq(1)\n  .room(0.25)' },
+      mt:    { pattern: '~ ~ ~ mt',                        gain: '0.7',  effects: '.lpf(4500).lpq(1)\n  .room(0.25)' },
+      lt:    { pattern: '~ ~ ~ ~ ~ ~ lt lt',              gain: '0.75', effects: '.lpf(3500).lpq(1)\n  .room(0.3)' },
+      // Ride: steady, bright, natural shimmer
+      ride:  { pattern: 'ride*4',                          gain: '0.45', effects: '.hpf(2000)\n  .lpf(12000).room(0.2)' },
+      // Crash: downbeat accent, bright + long tail
+      crash: { pattern: 'crash ~ ~ ~',                    gain: '0.5',  effects: '.hpf(1500)\n  .lpf(12000).room(0.35)' },
+      cr:    { pattern: 'cr ~ ~ ~',                        gain: '0.5',  effects: '.hpf(1500)\n  .lpf(12000).room(0.35)' },
+      // Percussion: syncopated groove
+      perc:  { pattern: 'perc ~ perc ~ ~ perc ~ ~',       gain: '0.6',  effects: '.lpf(7000)\n  .room(0.15)' },
+      hand:  { pattern: '~ hand ~ ~ hand ~ ~ ~',          gain: '0.6',  effects: '.lpf(7000)\n  .room(0.15)' },
+      stomp: { pattern: 'stomp ~ ~ stomp ~ ~ ~ ~',        gain: '0.7',  effects: '.lpf(5000)\n  .room(0.2)' },
+      cb:    { pattern: '~ cb ~ cb ~ ~ cb ~',             gain: '0.5',  effects: '.hpf(2000)\n  .lpf(10000).room(0.1)' },
+      click: { pattern: 'click*4',                         gain: '0.4',  effects: '.hpf(5000)\n  .lpf(12000)' },
+      clak:  { pattern: '~ clak ~ ~ clak ~ ~ ~',          gain: '0.5',  effects: '.hpf(3000)\n  .lpf(10000)' },
+      tok:   { pattern: 'tok ~ ~ tok ~ tok ~ ~',          gain: '0.5',  effects: '.hpf(3000)\n  .lpf(10000)' },
+      tink:  { pattern: 'tink ~ tink ~ tink ~ ~ ~',       gain: '0.4',  effects: '.hpf(4000)\n  .lpf(12000)' },
+      mouth: { pattern: '~ mouth ~ mouth',                gain: '0.6',  effects: '.lpf(8000)\n  .room(0.1)' },
+      tabla: { pattern: 'tabla ~ tabla ~ ~ tabla ~ tabla', gain: '0.6', effects: '.lpf(6000)\n  .room(0.2)' },
+      tabla2:{ pattern: 'tabla2 ~ ~ tabla2 ~ tabla2 ~ ~', gain: '0.6',  effects: '.lpf(6000)\n  .room(0.2)' },
+      conga: { pattern: '~ conga ~ ~ conga ~ ~ conga',    gain: '0.6',  effects: '.lpf(5000)\n  .room(0.2)' },
+      east:  { pattern: 'east ~ east ~ ~ east ~ ~',       gain: '0.55', effects: '.lpf(7000)\n  .room(0.2)' },
+      // Full kits — single hit, user opens drum sequencer
+      gretsch:  { pattern: 'gretsch',    gain: '0.7', effects: '.lpf(6000).lpq(1)\n  .room(0.25)' },
+      jazz:     { pattern: 'jazz',       gain: '0.7', effects: '.lpf(6000).lpq(1)\n  .room(0.3)' },
+      drumtraks:{ pattern: 'drumtraks',  gain: '0.7', effects: '.lpf(6000)\n  .room(0.2)' },
+    }
+
+    const tmpl = drumTemplates[soundName]
+    if (tmpl) {
+      block = `$${name}: s("${tmpl.pattern}")\n  .gain(${tmpl.gain})\n  ${tmpl.effects}`
+    } else {
+      block = `$${name}: s("${soundName}")\n  .gain(0.8)\n  .lpf(6000).lpq(1)\n  .room(0.2).delay(0.1).delaytime(0.125).delayfeedback(0.2)\n  .shape(0)`
+    }
   }
 
   // Append after the last channel or at the end

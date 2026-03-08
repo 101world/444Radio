@@ -193,20 +193,96 @@ function playDrumPreview(instrument: string) {
     osc.connect(gain).connect(previewCtx.destination)
     osc.start()
     osc.stop(now + 0.2)
-  } else if (instrument === 'sd' || instrument === 'snare') {
-    // Snare: noise burst + tone
+  } else if (instrument === 'sd' || instrument === 'snare' || instrument === 'sn') {
+    // Snare: noise burst + tonal body
     const bufferSize = previewCtx.sampleRate * 0.08
     const buffer = previewCtx.createBuffer(1, bufferSize, previewCtx.sampleRate)
     const data = buffer.getChannelData(0)
     for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize)
     const noise = previewCtx.createBufferSource()
     noise.buffer = buffer
-    const gain = previewCtx.createGain()
-    gain.gain.setValueAtTime(0.15, now)
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1)
-    noise.connect(gain).connect(previewCtx.destination)
+    const noiseGain = previewCtx.createGain()
+    noiseGain.gain.setValueAtTime(0.15, now)
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1)
+    noise.connect(noiseGain).connect(previewCtx.destination)
     noise.start()
-  } else if (instrument === 'hh' || instrument === 'oh' || instrument === 'ride' || instrument === 'crash') {
+    // Tonal body
+    const osc = previewCtx.createOscillator()
+    const oscGain = previewCtx.createGain()
+    osc.type = 'triangle'
+    osc.frequency.setValueAtTime(200, now)
+    osc.frequency.exponentialRampToValueAtTime(120, now + 0.04)
+    oscGain.gain.setValueAtTime(0.15, now)
+    oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.06)
+    osc.connect(oscGain).connect(previewCtx.destination)
+    osc.start()
+    osc.stop(now + 0.1)
+  } else if (instrument === 'cp' || instrument === 'realclaps') {
+    // Clap: layered noise bursts with slight spread
+    for (let layer = 0; layer < 3; layer++) {
+      const offset = layer * 0.008
+      const bufferSize = previewCtx.sampleRate * 0.06
+      const buffer = previewCtx.createBuffer(1, bufferSize, previewCtx.sampleRate)
+      const data = buffer.getChannelData(0)
+      for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize)
+      const noise = previewCtx.createBufferSource()
+      noise.buffer = buffer
+      const bpf = previewCtx.createBiquadFilter()
+      bpf.type = 'bandpass'
+      bpf.frequency.value = 1200
+      bpf.Q.value = 2
+      const gain = previewCtx.createGain()
+      gain.gain.setValueAtTime(0.1, now + offset)
+      gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.08)
+      noise.connect(bpf).connect(gain).connect(previewCtx.destination)
+      noise.start(now + offset)
+    }
+  } else if (instrument === 'rim') {
+    // Rimshot: short bright click with metallic ring
+    const osc = previewCtx.createOscillator()
+    const gain = previewCtx.createGain()
+    osc.type = 'square'
+    osc.frequency.setValueAtTime(1800, now)
+    osc.frequency.exponentialRampToValueAtTime(600, now + 0.01)
+    gain.gain.setValueAtTime(0.12, now)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03)
+    osc.connect(gain).connect(previewCtx.destination)
+    osc.start()
+    osc.stop(now + 0.04)
+  } else if (instrument === 'tom' || instrument === 'ht' || instrument === 'mt' || instrument === 'lt') {
+    // Tom: sine sweep with body
+    const osc = previewCtx.createOscillator()
+    const gain = previewCtx.createGain()
+    osc.type = 'sine'
+    const baseFreq = instrument === 'ht' ? 280 : instrument === 'mt' ? 200 : instrument === 'lt' ? 120 : 180
+    osc.frequency.setValueAtTime(baseFreq * 1.5, now)
+    osc.frequency.exponentialRampToValueAtTime(baseFreq, now + 0.06)
+    gain.gain.setValueAtTime(0.25, now)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2)
+    osc.connect(gain).connect(previewCtx.destination)
+    osc.start()
+    osc.stop(now + 0.25)
+  } else if (instrument === 'cb') {
+    // Cowbell: two detuned square oscillators
+    const osc1 = previewCtx.createOscillator()
+    const osc2 = previewCtx.createOscillator()
+    const gain = previewCtx.createGain()
+    osc1.type = 'square'
+    osc2.type = 'square'
+    osc1.frequency.value = 587
+    osc2.frequency.value = 845
+    gain.gain.setValueAtTime(0.08, now)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15)
+    osc1.connect(gain)
+    osc2.connect(gain)
+    gain.connect(previewCtx.destination)
+    osc1.start()
+    osc2.start()
+    osc1.stop(now + 0.18)
+    osc2.stop(now + 0.18)
+  } else if (instrument === 'hh' || instrument === 'oh' || instrument === 'ho' || instrument === 'hc' ||
+             instrument === 'hh27' || instrument === 'linnhats' ||
+             instrument === 'ride' || instrument === 'crash' || instrument === 'cr') {
     // Hihat/cymbal: filtered noise
     const bufferSize = previewCtx.sampleRate * (instrument === 'oh' || instrument === 'crash' ? 0.15 : 0.04)
     const buffer = previewCtx.createBuffer(1, bufferSize, previewCtx.sampleRate)
@@ -222,6 +298,46 @@ function playDrumPreview(instrument: string) {
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08)
     noise.connect(hpf).connect(gain).connect(previewCtx.destination)
     noise.start()
+  } else if (instrument === 'perc' || instrument === 'hand' || instrument === 'stomp' ||
+             instrument === 'click' || instrument === 'clak' || instrument === 'tok' || instrument === 'tink') {
+    // Percussion: pitched click/wood-block sound
+    const osc = previewCtx.createOscillator()
+    const gain = previewCtx.createGain()
+    osc.type = instrument === 'stomp' ? 'sine' : 'triangle'
+    const freq = instrument === 'tink' ? 2400 : instrument === 'click' || instrument === 'clak' ? 1600 :
+      instrument === 'tok' ? 1000 : instrument === 'stomp' ? 100 : 700
+    osc.frequency.setValueAtTime(freq, now)
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.5, now + 0.03)
+    gain.gain.setValueAtTime(0.12, now)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + (instrument === 'stomp' ? 0.12 : 0.06))
+    osc.connect(gain).connect(previewCtx.destination)
+    osc.start()
+    osc.stop(now + 0.15)
+  } else if (instrument === 'tabla' || instrument === 'tabla2' || instrument === 'conga' || instrument === 'east') {
+    // World percussion: tuned membrane
+    const osc = previewCtx.createOscillator()
+    const gain = previewCtx.createGain()
+    osc.type = 'sine'
+    const freq = instrument === 'conga' ? 220 : instrument === 'east' ? 350 : 300
+    osc.frequency.setValueAtTime(freq, now)
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.6, now + 0.08)
+    gain.gain.setValueAtTime(0.2, now)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15)
+    osc.connect(gain).connect(previewCtx.destination)
+    osc.start()
+    osc.stop(now + 0.2)
+    // Add noise layer for slap
+    const bufSz = previewCtx.sampleRate * 0.03
+    const buf = previewCtx.createBuffer(1, bufSz, previewCtx.sampleRate)
+    const d = buf.getChannelData(0)
+    for (let i = 0; i < bufSz; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / bufSz)
+    const noiseSrc = previewCtx.createBufferSource()
+    noiseSrc.buffer = buf
+    const ng = previewCtx.createGain()
+    ng.gain.setValueAtTime(0.06, now)
+    ng.gain.exponentialRampToValueAtTime(0.001, now + 0.03)
+    noiseSrc.connect(ng).connect(previewCtx.destination)
+    noiseSrc.start()
   } else {
     // Generic click
     const osc = previewCtx.createOscillator()
