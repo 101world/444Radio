@@ -22,8 +22,6 @@ import {
   nextClipId,
   barsToSeconds,
   secondsToBars,
-  calcAutoSyncRate,
-  calcAutoPitch,
 } from '@/lib/audio-clip-engine'
 
 // ─── Layout ───
@@ -266,15 +264,10 @@ const AudioClipLane = memo(function AudioClipLane({
   // ── Auto-Sync: snap clip duration to nearest whole bars via playback rate ──
   const handleAutoSync = useCallback(() => {
     if (!contextMenu?.clipId) return
-    const clip = clips.find(c => c.id === contextMenu.clipId)
-    if (!clip) { setContextMenu(null); return }
-
-    const { durationBars: newDur } = calcAutoSyncRate(clip, bpm)
-    const updated: AudioClip = { ...clip, durationBars: newDur }
-    onClipsChange(clips.map(c => c.id === clip.id ? updated : c))
+    // Delegate entirely to the parent handler which updates state + applies rate
     onAutoSync?.(contextMenu.clipId)
     setContextMenu(null)
-  }, [contextMenu, clips, bpm, onClipsChange, onAutoSync])
+  }, [contextMenu, onAutoSync])
 
   // ── Auto-Pitch: detect and display pitch correction info ──
   const handleAutoPitch = useCallback(() => {
@@ -360,7 +353,7 @@ const AudioClipLane = memo(function AudioClipLane({
               color={clip.color}
             />
 
-            {/* Clip name */}
+            {/* Clip name + indicators */}
             <div className="absolute top-[2px] left-[6px] right-[6px] flex items-center gap-1 pointer-events-none z-[2]">
               <span className="text-[8px] font-semibold truncate" style={{ color: `${clip.color}ee` }}>
                 {clip.name}
@@ -368,6 +361,16 @@ const AudioClipLane = memo(function AudioClipLane({
               {clip.gain !== 1 && (
                 <span className="text-[7px] font-mono" style={{ color: `${clip.color}88` }}>
                   {clip.gain.toFixed(1)}
+                </span>
+              )}
+              {clip.playbackRate !== 1 && (
+                <span className="text-[7px] font-mono" style={{ color: '#a78bfa' }} title={`Synced: ${clip.playbackRate.toFixed(2)}x`}>
+                  ⏱{clip.playbackRate.toFixed(2)}x
+                </span>
+              )}
+              {clip.detuneCents !== 0 && (
+                <span className="text-[7px] font-mono" style={{ color: '#22d3ee' }} title={`Pitch: ${clip.detuneCents > 0 ? '+' : ''}${clip.detuneCents.toFixed(0)}¢`}>
+                  ♪{clip.detuneCents > 0 ? '+' : ''}{clip.detuneCents.toFixed(0)}¢
                 </span>
               )}
             </div>

@@ -42,6 +42,10 @@ export interface AudioClip {
   trimEnd: number
   /** Colour accent for the clip block */
   color: string
+  /** Playback rate multiplier (1 = normal, >1 = faster). Set by Auto-Sync. */
+  playbackRate: number
+  /** Pitch shift in cents. Set by Auto-Pitch. */
+  detuneCents: number
 }
 
 export interface AudioTrack {
@@ -135,6 +139,8 @@ export function createClipFromBuffer(
     trimStart: 0,
     trimEnd: 0,
     color: color || trackColor(trackIndex),
+    playbackRate: 1,
+    detuneCents: 0,
   }
 }
 
@@ -248,6 +254,13 @@ export class ClipPlaybackEngine {
     const source = this.ctx.createBufferSource()
     source.buffer = clip.buffer
 
+    // Apply playback rate (Auto-Sync) and pitch shift (Auto-Pitch)
+    const rate = clip.playbackRate || 1
+    source.playbackRate.value = rate
+    if (clip.detuneCents && clip.detuneCents !== 0) {
+      source.detune.value = clip.detuneCents
+    }
+
     // Per-clip gain
     const clipGain = this.ctx.createGain()
     clipGain.gain.value = clip.gain
@@ -258,10 +271,13 @@ export class ClipPlaybackEngine {
     clipGain.connect(trackGain)
 
     // Trim: offset into buffer, and limit duration
+    // When playbackRate != 1, the buffer plays faster/slower but
+    // source.start(when, offset, duration) offset/duration are in
+    // buffer-time (before rate), so we divide arrangement-time by rate.
     const offset = clip.trimStart
-    const maxDurationFromTrim = clip.buffer.duration - clip.trimStart - clip.trimEnd
-    // Also limit by the arrangement boundary (maxPlayBars converted to seconds)
-    const maxDurationFromArrangement = barsToSeconds(maxPlayBars, bpm)
+    const maxDurationFromTrim = (clip.buffer.duration - clip.trimStart - clip.trimEnd)
+    // Arrangement boundary in real seconds, converted to buffer-seconds
+    const maxDurationFromArrangement = barsToSeconds(maxPlayBars, bpm) / rate
     const duration = Math.max(0.001, Math.min(maxDurationFromTrim, maxDurationFromArrangement))
 
     source.start(when, offset, duration)

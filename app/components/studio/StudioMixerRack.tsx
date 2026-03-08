@@ -2808,17 +2808,17 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     setAudioClips(prev => prev.filter(c => c.id !== clipId))
   }, [])
 
-  // ── Auto-Sync: snap clip to nearest whole-bar boundary via playback rate adjustment ──
+  // ── Auto-Sync: snap clip to nearest whole-bar boundary and set playbackRate ──
   const handleAutoSyncClip = useCallback((clipId: string) => {
     setAudioClips(prev => prev.map(c => {
       if (c.id !== clipId) return c
-      const { durationBars } = calcAutoSyncRate(c, projectBpm)
-      console.log(`[444 STUDIO] Auto-Sync: "${c.name}" → ${durationBars} bars (was ${c.durationBars.toFixed(2)})`)
-      return { ...c, durationBars }
+      const { durationBars, rate } = calcAutoSyncRate(c, projectBpm)
+      console.log(`[444 STUDIO] Auto-Sync: "${c.name}" → ${durationBars} bars @ ${rate.toFixed(3)}x speed (was ${c.durationBars.toFixed(2)} bars)`)
+      return { ...c, durationBars, playbackRate: rate }
     }))
   }, [projectBpm])
 
-  // ── Auto-Pitch: detect pitch and log the correction needed ──
+  // ── Auto-Pitch: detect pitch and store detune correction on the clip ──
   const handleAutoPitchClip = useCallback((clipId: string) => {
     const clip = audioClips.find(c => c.id === clipId)
     if (!clip) return
@@ -2827,11 +2827,16 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     const result = calcAutoPitch(clip, root)
     if (result.detectedHz) {
       console.log(`[444 STUDIO] Auto-Pitch: "${clip.name}" detected ${result.detectedNote} (${result.detectedHz.toFixed(1)}Hz) → shift ${result.detuneCents.toFixed(0)} cents to ${result.targetNote}`)
+      // Store the detune value on the clip so the playback engine applies it
+      setAudioClips(prev => prev.map(c =>
+        c.id === clipId ? { ...c, detuneCents: result.detuneCents } : c
+      ))
     } else {
-      console.log(`[444 STUDIO] Auto-Pitch: "${clip.name}" — unable to detect pitch, no correction applied`)
+      console.log(`[444 STUDIO] Auto-Pitch: "${clip.name}" — unable to detect pitch, resetting to 0 cents`)
+      setAudioClips(prev => prev.map(c =>
+        c.id === clipId ? { ...c, detuneCents: 0 } : c
+      ))
     }
-    // Store the correction for future playback (clip gain node + detune on source)
-    // For now this logs the result; the playback engine can apply detune in a follow-up
   }, [audioClips, code])
 
   // ── Create Instrument: register clip as a Strudel sample and create a channel ──
@@ -2843,10 +2848,13 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     if (onRegisterCustomSound) {
       await onRegisterCustomSound(meta.soundName, meta.sampleUrl)
     }
-    // Create a new instrument channel via Strudel code
+    // Create as a vocal/sample channel with loopAt + cut to prevent
+    // overlapping glitches.  Use 'vocal' type which generates
+    // s("name").loopAt(N).cut(X) — safe for long audio.
     if (onAddChannel) {
-      onAddChannel(meta.soundName, 'instrument', Math.round(meta.loopBars))
-      console.log(`[444 STUDIO] Created instrument "${meta.soundName}" from clip "${clip.name}" (${meta.loopBars.toFixed(1)} bars, begin=${meta.begin.toFixed(2)}, end=${meta.end.toFixed(2)})`)
+      const loopAt = Math.max(1, Math.round(meta.loopBars))
+      onAddChannel(meta.soundName, 'vocal', loopAt)
+      console.log(`[444 STUDIO] Created sample channel "${meta.soundName}" from clip "${clip.name}" (loopAt=${loopAt})`)
     } else {
       console.warn('[444 STUDIO] Cannot create instrument — onAddChannel not wired')
     }
