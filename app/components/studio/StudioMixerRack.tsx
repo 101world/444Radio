@@ -16,6 +16,7 @@ import StudioKnob from './StudioKnob'
 import ChannelLCD from './ChannelLCD'
 import EffectsDocModal from './EffectsDocModal'
 import TrackView, { type Rack } from './TrackView'
+import ArrangementTimeline, { type ArrangementSection } from './ArrangementTimeline'
 import PresetRack from './PresetRack'
 import StudioEffectsPanel from './StudioEffectsPanel'
 import { FX_PRESETS, FX_PRESET_CATEGORIES, type FxPresetCategory } from '@/lib/fx-presets'
@@ -33,6 +34,7 @@ import {
   getTranspose, setTranspose,
   STRUDEL_SCALES, SCALE_ROOTS,
   DRAGGABLE_EFFECTS, type ParsedChannel, type StackRow,
+  parseArrangement, generateArrangeCode, updateArrangeInCode,
 } from '@/lib/strudel-code-parser'
 
 // ─── Sound / Bank pick-lists for dropdown ───
@@ -1617,6 +1619,10 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   const [racks, setRacks] = useState<Rack[]>([])
   const rackCounter = useRef(0)
   const RACK_COLORS = ['#00e5c7', '#c77dba', '#06b6d4', '#6f8fb3', '#22d3ee', '#e879a8']
+  // ── Arrangement timeline state ──
+  const [arrangeSections, setArrangeSections] = useState<ArrangementSection[]>([])
+  const [arrangeOpen, setArrangeOpen] = useState(false)
+  const arrangeInitialized = useRef(false)
   const fxDropdownRef = useRef<HTMLDivElement>(null)
   const addMenuRef = useRef<HTMLDivElement>(null)
 
@@ -1755,6 +1761,64 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
       .filter(r => r.channelIndices.length >= 2) // dissolve racks with < 2 members
     )
   }, [])
+
+  // ── Arrangement handlers ──
+  // Parse arrangement from code on first load or when code has arrange() but we have no sections
+  useEffect(() => {
+    if (arrangeInitialized.current) return
+    if (channels.length === 0) return
+    const parsed = parseArrangement(code)
+    if (parsed && parsed.length > 0) {
+      // Map channel names back to indices
+      const nameToIdx = new Map<string, number>()
+      channels.forEach((ch, i) => nameToIdx.set(ch.name, i))
+      const sections: ArrangementSection[] = parsed.map((sec, i) => ({
+        id: `sec-${i + 1}`,
+        name: ['Intro', 'Verse', 'Build', 'Chorus', 'Bridge', 'Drop', 'Break', 'Outro'][i % 8],
+        bars: sec.bars,
+        activeChannels: new Set(sec.channelNames.map(n => nameToIdx.get(n) ?? -1).filter(i => i >= 0)),
+      }))
+      setArrangeSections(sections)
+      setArrangeOpen(true)
+    }
+    arrangeInitialized.current = true
+  }, [channels, code])
+
+  // Reset arrangement when channels change (template switch)
+  useEffect(() => {
+    arrangeInitialized.current = false
+    setArrangeSections([])
+  }, [channels.length])
+
+  const handleArrangeSectionsChange = useCallback((sections: ArrangementSection[]) => {
+    setArrangeSections(sections)
+
+    // Generate arrange code and update
+    const channelNames = channels.map(ch => ch.name)
+    const sectionData = sections.map(sec => ({
+      bars: sec.bars,
+      activeIndices: Array.from(sec.activeChannels).sort((a, b) => a - b),
+    }))
+
+    const currentCode = codeRef.current
+    if (sections.length === 0) {
+      // Remove arrange block if exists — replace with simple $: stack/s_polymeter of all channels
+      const arrangeMatch = currentCode.match(/\$\s*:\s*arrange\s*\(/)
+      if (arrangeMatch) {
+        const allNames = channelNames.filter(n => n !== '')
+        const replacement = allNames.length > 0
+          ? `$: s_polymeter(${allNames.join(',')})`
+          : ''
+        const newCode = updateArrangeInCode(currentCode, replacement)
+        onCodeChange(newCode)
+      }
+      return
+    }
+
+    const arrangeCode = generateArrangeCode(channelNames, sectionData)
+    const newCode = updateArrangeInCode(currentCode, arrangeCode)
+    onCodeChange(newCode)
+  }, [channels, onCodeChange])
 
   // Helper: use live code change (re-evaluates engine) when available, else fallback
   const liveUpdate = useCallback((newCode: string) => {
@@ -3006,6 +3070,10 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                 onRemoveSidechainTarget={handleRemoveSidechainTarget}
                 onDisconnectSidechain={handleDisconnectSidechain}
                 onSelectedTrackChange={setFxSelectedTrack}
+                arrangeSections={arrangeSections}
+                arrangeOpen={arrangeOpen}
+                onArrangeToggle={() => setArrangeOpen(v => !v)}
+                onArrangeSectionsChange={handleArrangeSectionsChange}
               />
             )}
 

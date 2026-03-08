@@ -22,6 +22,7 @@ export type Rack = {
   channelIndices: number[]
   collapsed: boolean
 }
+import ArrangementTimeline, { type ArrangementSection } from './ArrangementTimeline'
 import StudioKnob from './StudioKnob'
 import HardwareKnob from './HardwareKnob'
 import { getOrbitAnalyser } from '@/lib/studio-analysers'
@@ -924,6 +925,11 @@ interface TrackViewProps {
   onDisconnectSidechain?: (targetIdx: number) => void
   // ── FX Panel communication ──
   onSelectedTrackChange?: (trackIdx: number) => void
+  // ── Arrangement timeline ──
+  arrangeSections?: ArrangementSection[]
+  arrangeOpen?: boolean
+  onArrangeToggle?: () => void
+  onArrangeSectionsChange?: (sections: ArrangementSection[]) => void
 }
 
 const TrackView = memo(function TrackView({
@@ -980,6 +986,11 @@ const TrackView = memo(function TrackView({
   onRemoveSidechainTarget,
   onDisconnectSidechain,
   onSelectedTrackChange,
+  // Arrangement
+  arrangeSections,
+  arrangeOpen,
+  onArrangeToggle,
+  onArrangeSectionsChange,
 }: TrackViewProps) {
   // Selected track: always one is selected (default 0)
   const [selectedTrack, setSelectedTrack] = useState(0)
@@ -1691,6 +1702,18 @@ const TrackView = memo(function TrackView({
           </button>
         </div>
       </div>
+
+      {/* ═══ ARRANGEMENT TIMELINE — section sequencer ═══ */}
+      {onArrangeSectionsChange && onArrangeToggle && (
+        <ArrangementTimeline
+          channels={channels}
+          sections={arrangeSections ?? []}
+          isOpen={arrangeOpen ?? false}
+          isPlaying={isPlaying}
+          onToggle={onArrangeToggle}
+          onSectionsChange={onArrangeSectionsChange}
+        />
+      )}
 
     </div>
   )

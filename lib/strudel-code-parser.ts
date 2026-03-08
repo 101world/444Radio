@@ -2177,3 +2177,157 @@ export function setTranspose(
 }
 
 export { PARAM_DEFS as PARAM_PATTERNS }
+
+// ═══════════════════════════════════════════════════════════════
+//  ARRANGEMENT PARSER & GENERATOR
+//  Parses $:arrange(...) blocks from Strudel code into sections,
+//  and generates $:arrange() code from section state.
+// ═══════════════════════════════════════════════════════════════
+
+export interface ArrangeSection {
+  bars: number
+  channelNames: string[] // variable names active in this section
+}
+
+/**
+ * Parse an existing $:arrange(...) block from code.
+ * Returns null if no arrange block found.
+ * Returns array of { bars, channelNames[] } for each section.
+ */
+export function parseArrangement(code: string): ArrangeSection[] | null {
+  // Find $:arrange( or $ :arrange( pattern
+  const arrangeMatch = code.match(/\$\s*:\s*arrange\s*\(/)
+  if (!arrangeMatch || arrangeMatch.index === undefined) return null
+
+  const startIdx = arrangeMatch.index + arrangeMatch[0].length - 1 // position of opening (
+  const closeIdx = findClosingParen(code, startIdx)
+  if (closeIdx === -1) return null
+
+  const inner = code.substring(startIdx + 1, closeIdx).trim()
+  if (!inner) return null
+
+  // Parse each [N, pattern] pair
+  const sections: ArrangeSection[] = []
+
+  // Use bracket-aware splitting: find each [...] at the top level
+  let depth = 0
+  let current = ''
+  for (let i = 0; i < inner.length; i++) {
+    const ch = inner[i]
+    if (ch === '[' && depth === 0) {
+      depth = 1
+      current = ''
+    } else if (ch === '[') {
+      depth++
+      current += ch
+    } else if (ch === ']' && depth === 1) {
+      depth = 0
+      // Parse this section: "N, pattern"
+      const commaIdx = current.indexOf(',')
+      if (commaIdx > -1) {
+        const bars = parseInt(current.substring(0, commaIdx).trim())
+        const patternStr = current.substring(commaIdx + 1).trim()
+
+        // Extract variable names from the pattern (s_polymeter(a,b,c) or stack(a,b))
+        const channelNames: string[] = []
+        // Match variable references — word characters that are standalone identifiers
+        // in s_polymeter(...) or stack(...) or plain variable refs
+        const varRegex = /\b([a-zA-Z_]\w*)\b/g
+        let vm: RegExpExecArray | null
+        const skip = new Set(['s_polymeter', 'stack', 'arrange', 'silence', 'fast', 'slow', 'rev'])
+        while ((vm = varRegex.exec(patternStr)) !== null) {
+          const name = vm[1]
+          if (!skip.has(name) && !channelNames.includes(name) && !/^\d/.test(name)) {
+            channelNames.push(name)
+          }
+        }
+
+        if (!isNaN(bars) && bars > 0) {
+          sections.push({ bars, channelNames })
+        }
+      }
+    } else if (ch === ']') {
+      depth--
+      current += ch
+    } else if (depth > 0) {
+      current += ch
+    }
+  }
+
+  return sections.length > 0 ? sections : null
+}
+
+/**
+ * Generate $:arrange() code from sections + channel list.
+ * channelNames: array of channel variable names (in order matching channel indices).
+ * sections: array of { bars, activeChannelIndices }.
+ */
+export function generateArrangeCode(
+  channelNames: string[],
+  sections: { bars: number; activeIndices: number[] }[]
+): string {
+  if (sections.length === 0) return ''
+
+  const lines: string[] = ['$:arrange(']
+  sections.forEach((sec, i) => {
+    const activeNames = sec.activeIndices
+      .filter(idx => idx < channelNames.length)
+      .map(idx => channelNames[idx])
+
+    if (activeNames.length === 0) {
+      lines.push(`  [${sec.bars},silence]${i < sections.length - 1 ? ',' : ''}`)
+    } else if (activeNames.length === 1) {
+      lines.push(`  [${sec.bars},${activeNames[0]}]${i < sections.length - 1 ? ',' : ''}`)
+    } else {
+      lines.push(`  [${sec.bars},s_polymeter(${activeNames.join(',')})]${i < sections.length - 1 ? ',' : ''}`)
+    }
+  })
+  lines.push('  )')
+  return lines.join('\n')
+}
+
+/**
+ * Replace or insert $:arrange() block in code.
+ * If an existing $:arrange() exists, replaces it.
+ * If a bare $: block exists (not arrange), replaces it.
+ * Otherwise appends at the end.
+ */
+export function updateArrangeInCode(code: string, arrangeCode: string): string {
+  // Case 1: existing $:arrange(...)
+  const arrangeMatch = code.match(/\$\s*:\s*arrange\s*\(/)
+  if (arrangeMatch && arrangeMatch.index !== undefined) {
+    const startIdx = arrangeMatch.index + arrangeMatch[0].length - 1
+    const closeIdx = findClosingParen(code, startIdx)
+    if (closeIdx !== -1) {
+      // Find the start of the $: line
+      let lineStart = arrangeMatch.index
+      while (lineStart > 0 && code[lineStart - 1] !== '\n') lineStart--
+      // Find end (after closing paren, skip trailing whitespace/newline)
+      let lineEnd = closeIdx + 1
+      while (lineEnd < code.length && (code[lineEnd] === ' ' || code[lineEnd] === '\t')) lineEnd++
+      if (lineEnd < code.length && code[lineEnd] === '\n') lineEnd++
+      return code.substring(0, lineStart) + arrangeCode + '\n' + code.substring(lineEnd)
+    }
+  }
+
+  // Case 2: bare $: block (e.g. $: stack(...))
+  const bareDollarMatch = code.match(/^\s*\$\s*:\s*/m)
+  if (bareDollarMatch && bareDollarMatch.index !== undefined) {
+    // Find where this block ends (next block start or end of code)
+    const blockStart = bareDollarMatch.index
+    let lineStart = blockStart
+    while (lineStart > 0 && code[lineStart - 1] !== '\n') lineStart--
+
+    // Find end: next $ block or let block, or end of file
+    const rest = code.substring(blockStart + bareDollarMatch[0].length)
+    const nextBlockMatch = rest.match(/\n\s*(?:\$\w*\s*:|let\s+\w+\s*=)/)
+    const blockEnd = nextBlockMatch && nextBlockMatch.index !== undefined
+      ? blockStart + bareDollarMatch[0].length + nextBlockMatch.index
+      : code.length
+
+    return code.substring(0, lineStart) + arrangeCode + '\n' + code.substring(blockEnd)
+  }
+
+  // Case 3: no existing $ block — append
+  return code.trimEnd() + '\n\n' + arrangeCode + '\n'
+}
