@@ -79,10 +79,10 @@ export async function GET(req: NextRequest) {
       id: n.id,
       title: n.data?.title || n.title || (n.type ? `${String(n.type).charAt(0).toUpperCase()}${String(n.type).slice(1)} update` : 'Notification'),
       body: n.data?.message || n.body || n.message || undefined,
-      unread: !n.read_at,
+      unread: n.read_at ? false : n.is_read !== undefined ? !n.is_read : true,
       created_at: n.created_at,
       type: n.type,
-      data: n.data,
+      data: n.data || n.metadata,
     }));
 
     return corsResponse(NextResponse.json({ notifications }));

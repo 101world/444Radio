@@ -143,18 +143,21 @@ async function handleCreate(userId: string, body: { opponent: string; wager: num
   }
 
   // Send notification to opponent
-  await supabase.from('notifications').insert({
+  const insertResult = await supabase.from('notifications').insert({
     user_id: opponentUser.clerk_user_id,
     type: 'chess_challenge',
-    data: {
-      title: '♟️ Chess Challenge!',
-      message: `@${challengerUsername} challenged you to chess${wagerAmount > 0 ? ` for ${wagerAmount} credits` : ''}!`,
+    title: '♟️ Chess Challenge!',
+    message: `@${challengerUsername} challenged you to chess${wagerAmount > 0 ? ` for ${wagerAmount} credits` : ''}!`,
+    metadata: {
       gameId: game.id,
       challengerId: userId,
       challengerUsername,
       wager: wagerAmount,
     },
   })
+  if (insertResult.error) {
+    console.error('[chess] Notification insert error:', insertResult.error)
+  }
 
   return corsResponse(NextResponse.json({
     success: true,
@@ -222,11 +225,9 @@ async function handleAccept(userId: string, body: { gameId: string }) {
   await supabase.from('notifications').insert({
     user_id: game.white_player_id,
     type: 'chess_accepted',
-    data: {
-      title: '♟️ Challenge Accepted!',
-      message: `@${accepterUsername} accepted your chess challenge${game.wager > 0 ? ` (${game.wager} credits each)` : ''}!`,
-      gameId,
-    },
+    title: '♟️ Challenge Accepted!',
+    message: `@${accepterUsername} accepted your chess challenge${game.wager > 0 ? ` (${game.wager} credits each)` : ''}!`,
+    metadata: { gameId },
   })
 
   return corsResponse(NextResponse.json({ success: true, message: 'Challenge accepted! Game is now active.' }))
@@ -276,11 +277,9 @@ async function handleDecline(userId: string, body: { gameId: string }) {
   await supabase.from('notifications').insert({
     user_id: game.white_player_id,
     type: 'chess_declined',
-    data: {
-      title: '♟️ Challenge Declined',
-      message: `@${declinerUsername} declined your chess challenge${game.wager > 0 ? '. Your ${game.wager} credits have been refunded.' : '.'}`,
-      gameId,
-    },
+    title: '♟️ Challenge Declined',
+    message: `@${declinerUsername} declined your chess challenge${game.wager > 0 ? `. Your ${game.wager} credits have been refunded.` : '.'}`,
+    metadata: { gameId },
   })
 
   return corsResponse(NextResponse.json({ success: true, message: 'Challenge declined.' }))
