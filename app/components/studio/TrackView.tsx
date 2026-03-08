@@ -1017,11 +1017,15 @@ const TrackView = memo(function TrackView({
   const [rackRenaming, setRackRenaming] = useState<string | null>(null)
   const [rackRenameValue, setRackRenameValue] = useState('')
   const rackRenameRef = useRef<HTMLInputElement>(null)
+  const ctxMenuRef = useRef<HTMLDivElement>(null)
 
   // Close context menu on outside click
   useEffect(() => {
     if (!ctxMenu) return
-    const handler = () => setCtxMenu(null)
+    const handler = (e: MouseEvent) => {
+      if (ctxMenuRef.current && ctxMenuRef.current.contains(e.target as Node)) return
+      setCtxMenu(null)
+    }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [ctxMenu])
@@ -1574,8 +1578,8 @@ const TrackView = memo(function TrackView({
           {/* Context Menu (right-click) */}
           {ctxMenu && (
             <div
+              ref={ctxMenuRef}
               className="fixed z-[100] py-1 rounded-lg overflow-hidden"
-              onMouseDown={(e) => e.stopPropagation()}
               style={{
                 left: ctxMenu.x, top: ctxMenu.y,
                 background: '#16181d',
