@@ -90,11 +90,14 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
   const animRafRef = useRef<number>(0)
   const sectionsRef = useRef(sections)
   sectionsRef.current = sections
+  const getCyclePositionRef = useRef(getCyclePosition)
+  getCyclePositionRef.current = getCyclePosition
   const [trackedBar, setTrackedBar] = useState<number>(-1)
 
   // ── Smooth playhead animation via requestAnimationFrame ──
+  // Uses getCyclePositionRef (not closure) to avoid effect churn from inline fn prop
   useEffect(() => {
-    if (!isPlaying || !getCyclePosition) {
+    if (!isPlaying) {
       if (playheadRef.current) playheadRef.current.style.opacity = '0'
       setTrackedBar(-1)
       return
@@ -102,12 +105,13 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
     let lastStateUpdate = 0
     const tick = () => {
       const sec = sectionsRef.current
-      if (!sec.length || !playheadRef.current) {
+      const getPos = getCyclePositionRef.current
+      if (!sec.length || !playheadRef.current || !getPos) {
         if (playheadRef.current) playheadRef.current.style.opacity = '0'
         animRafRef.current = requestAnimationFrame(tick)
         return
       }
-      const pos = getCyclePosition()
+      const pos = getPos()
       if (pos === null) {
         playheadRef.current.style.opacity = '0'
         animRafRef.current = requestAnimationFrame(tick)
@@ -137,7 +141,7 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
     }
     animRafRef.current = requestAnimationFrame(tick)
     return () => { if (animRafRef.current) cancelAnimationFrame(animRafRef.current) }
-  }, [isPlaying, getCyclePosition])
+  }, [isPlaying])
 
   useEffect(() => { if (renamingId && renameRef.current) renameRef.current.focus() }, [renamingId])
   useEffect(() => {
@@ -588,24 +592,27 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
                   ))}
 
                   {/* ── Smooth playhead line ── */}
+                  {/* ── Smooth playhead line ── */}
                   <div
                     ref={playheadRef}
-                    className="absolute top-0 bottom-0 pointer-events-none z-30"
+                    className="absolute top-0 bottom-0 pointer-events-none"
                     style={{
                       width: 2,
                       opacity: 0,
+                      zIndex: 50,
                       background: '#00e5c7',
-                      boxShadow: '0 0 8px #00e5c740',
+                      boxShadow: '0 0 10px rgba(0,229,199,0.5), 0 0 4px rgba(0,229,199,0.8)',
                       transition: 'opacity 0.15s',
                     }}
                   >
                     {/* Playhead head marker */}
                     <div style={{
-                      position: 'absolute', top: -1, left: -4,
+                      position: 'absolute', top: -1, left: -5,
                       width: 0, height: 0,
-                      borderLeft: '5px solid transparent',
-                      borderRight: '5px solid transparent',
-                      borderTop: '6px solid #00e5c7',
+                      borderLeft: '6px solid transparent',
+                      borderRight: '6px solid transparent',
+                      borderTop: '7px solid #00e5c7',
+                      filter: 'drop-shadow(0 0 3px rgba(0,229,199,0.6))',
                     }} />
                   </div>
 
