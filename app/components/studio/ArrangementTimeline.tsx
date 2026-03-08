@@ -9,6 +9,7 @@
 import { useState, useRef, useEffect, useCallback, memo, useMemo } from 'react'
 import { Plus, Minus, X, ChevronUp, ChevronDown, Copy, Music, Activity, Mic, Upload, Volume2, VolumeX } from 'lucide-react'
 import type { ParsedChannel } from '@/lib/strudel-code-parser'
+import { getMaxPatternBars } from '@/lib/strudel-code-parser'
 import type { AudioClip, AudioTrack, ClipClipboard } from '@/lib/audio-clip-engine'
 import AudioClipLane, { AUDIO_CLIP_ROW_H } from './AudioClipLane'
 
@@ -220,7 +221,9 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
   // ── Section operations ──
   const addSection = useCallback(() => {
     const name = SECTION_NAMES[sections.length % SECTION_NAMES.length]
-    onSectionsChange([...sections, { id: nextSectionId(), name, bars: 4, activeChannels: new Set(channels.map((_, i) => i)), clipVariants: new Map() }])
+    // Smart default: use the longest pattern cycle length across all channels
+    const defaultBars = sections.length === 0 ? getMaxPatternBars(channels) : (sections[sections.length - 1]?.bars ?? 4)
+    onSectionsChange([...sections, { id: nextSectionId(), name, bars: defaultBars, activeChannels: new Set(channels.map((_, i) => i)), clipVariants: new Map() }])
   }, [sections, channels, onSectionsChange])
 
   const duplicateSection = useCallback((id: string) => {

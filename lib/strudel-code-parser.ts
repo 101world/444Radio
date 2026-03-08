@@ -2769,3 +2769,79 @@ export function applyAutomationOverrides(
 
   return result
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  estimatePatternBars — estimate how many bars one cycle of a
+//  channel's pattern spans.
+//
+//  Heuristics (applied multiplicatively):
+//  1. Top-level slowcat `<a b c ...>` → count elements
+//  2. `.slow(n)` → multiply by n
+//  3. `.fast(n)` → divide by n
+//  4. `.loopAt(n)` → n bars (overrides for sample channels)
+//
+//  Returns 1 if nothing special is detected (default 1-cycle pattern).
+// ═══════════════════════════════════════════════════════════════
+
+export function estimatePatternBars(rawCode: string): number {
+  let bars = 1
+
+  // 1. Count top-level slowcat <a b c ...> elements
+  //    Match the first pattern string "..." and look for <...>
+  const patternMatch = rawCode.match(/"([^"]*)"/)
+  if (patternMatch) {
+    const pat = patternMatch[1].trim()
+    // Top-level slowcat: starts and ends with < >
+    if (pat.startsWith('<') && pat.endsWith('>')) {
+      // Count space-separated elements inside < >
+      const inner = pat.slice(1, -1).trim()
+      if (inner.length > 0) {
+        // Split by whitespace but respect nested brackets
+        let depth = 0
+        let count = 1
+        for (let i = 0; i < inner.length; i++) {
+          const ch = inner[i]
+          if (ch === '[' || ch === '<' || ch === '{' || ch === '(') depth++
+          else if (ch === ']' || ch === '>' || ch === '}' || ch === ')') depth--
+          else if (ch === ' ' && depth === 0 && i > 0 && inner[i - 1] !== ' ') count++
+        }
+        bars = Math.max(1, count)
+      }
+    }
+  }
+
+  // 2. .slow(n) — multiply pattern length
+  const slowMatch = rawCode.match(/\.slow\(\s*([\d.]+)\s*\)/)
+  if (slowMatch) {
+    bars *= parseFloat(slowMatch[1]) || 1
+  }
+
+  // 3. .fast(n) — divide pattern length
+  const fastMatch = rawCode.match(/\.fast\(\s*([\d.]+)\s*\)/)
+  if (fastMatch) {
+    const f = parseFloat(fastMatch[1])
+    if (f > 0) bars /= f
+  }
+
+  // 4. .loopAt(n) — overrides for sample-based channels
+  const loopMatch = rawCode.match(/\.loopAt\(\s*([\d.]+)\s*\)/)
+  if (loopMatch) {
+    bars = parseFloat(loopMatch[1]) || bars
+  }
+
+  return Math.max(1, Math.round(bars))
+}
+
+/**
+ * Given an array of ParsedChannels, return the maximum pattern cycle
+ * length across all channels (in bars).  Useful as a default section size.
+ */
+export function getMaxPatternBars(channels: ParsedChannel[]): number {
+  if (channels.length === 0) return 4
+  let maxBars = 1
+  for (const ch of channels) {
+    const b = estimatePatternBars(ch.rawCode)
+    if (b > maxBars) maxBars = b
+  }
+  return Math.max(1, Math.min(64, maxBars))
+}
