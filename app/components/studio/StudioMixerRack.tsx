@@ -26,6 +26,7 @@ import {
   startRecording, decodeAudioFile,
   ClipPlaybackEngine,
   calcAutoSyncRate, calcAutoPitch, prepareInstrumentFromClip,
+  autoProcessClip,
 } from '@/lib/audio-clip-engine'
 import {
   parseStrudelCode, updateParamInCode, insertEffectInChannel,
@@ -2886,6 +2887,15 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
         recordingTrackIndex,
         projectBpm,
       )
+      // Auto-process: detect BPM → sync to bars → pitch to key
+      const scale = parseScale(code)
+      const key = scale?.root ?? 'C'
+      const processed = autoProcessClip(clip, projectBpm, key)
+      clip.durationBars = processed.sync.durationBars
+      clip.playbackRate = processed.sync.rate
+      if (processed.pitch.detectedHz) {
+        clip.detuneCents = processed.pitch.detuneCents
+      }
       setAudioClips(prev => [...prev, clip])
     } catch (err) {
       console.error('[AudioClip] Failed to stop recording:', err)
@@ -2894,7 +2904,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
       setIsAudioRecording(false)
       setRecordingTrackIndex(-1)
     }
-  }, [getCyclePosition, audioClips.length, recordingTrackIndex, projectBpm])
+  }, [getCyclePosition, audioClips.length, recordingTrackIndex, projectBpm, code])
 
   const handleUploadAudio = useCallback((trackIndex: number) => {
     pendingUploadTrackRef.current = trackIndex
@@ -2916,13 +2926,22 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
         pendingUploadTrackRef.current,
         projectBpm,
       )
+      // Auto-process: detect BPM → sync to bars → pitch to key
+      const scale = parseScale(code)
+      const key = scale?.root ?? 'C'
+      const processed = autoProcessClip(clip, projectBpm, key)
+      clip.durationBars = processed.sync.durationBars
+      clip.playbackRate = processed.sync.rate
+      if (processed.pitch.detectedHz) {
+        clip.detuneCents = processed.pitch.detuneCents
+      }
       setAudioClips(prev => [...prev, clip])
     } catch (err) {
       console.error('[AudioClip] Failed to decode uploaded file:', err)
     }
     // Reset the input so the same file can be re-selected
     e.target.value = ''
-  }, [getCyclePosition, projectBpm])
+  }, [getCyclePosition, projectBpm, code])
 
   return (
     <div className="h-full flex flex-row" style={{ overflow: 'visible' }}>

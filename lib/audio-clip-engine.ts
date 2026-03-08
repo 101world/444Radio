@@ -478,6 +478,137 @@ export function splitClip(clip: AudioClip, atBar: number, bpm: number): [AudioCl
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  BPM DETECTION — onset-based tempo estimation
+//  Analyses energy peaks (onsets) in the audio and finds the
+//  most common inter-onset interval to estimate BPM.
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Detect the approximate BPM of an AudioBuffer using onset
+ * energy analysis.  Returns null if the signal is too short
+ * or too quiet to get a reliable estimate.
+ *
+ * Scans the first 30 seconds (or full buffer) at ~43 Hz (1024-sample
+ * hop at 44.1 kHz) for energy peaks, then builds an inter-onset
+ * interval histogram to find the dominant tempo.
+ */
+export function detectBPM(buffer: AudioBuffer): number | null {
+  const data = buffer.getChannelData(0)
+  const sr = buffer.sampleRate
+  const hop = 1024
+  // Limit analysis to first 30s
+  const maxSamples = Math.min(data.length, sr * 30)
+  const numFrames = Math.floor(maxSamples / hop)
+  if (numFrames < 10) return null
+
+  // 1) Compute RMS energy per frame
+  const energy = new Float32Array(numFrames)
+  for (let f = 0; f < numFrames; f++) {
+    let sum = 0
+    const start = f * hop
+    const end = Math.min(start + hop, data.length)
+    for (let i = start; i < end; i++) {
+      sum += data[i] * data[i]
+    }
+    energy[f] = Math.sqrt(sum / (end - start))
+  }
+
+  // 2) Find onsets (frames where energy rises significantly)
+  const onsets: number[] = []
+  // Use a running mean for adaptive threshold
+  const windowSize = 8
+  for (let f = windowSize; f < numFrames; f++) {
+    let localMean = 0
+    for (let w = f - windowSize; w < f; w++) localMean += energy[w]
+    localMean /= windowSize
+    // Onset if current energy is 1.5× the local mean and above a minimum
+    if (energy[f] > localMean * 1.5 && energy[f] > 0.01) {
+      onsets.push(f)
+    }
+  }
+
+  if (onsets.length < 4) return null
+
+  // 3) Build histogram of inter-onset intervals (in BPM)
+  // Resolution: 1 BPM bins from 60-200 BPM
+  const minBpm = 60
+  const maxBpm = 200
+  const bins = new Float32Array(maxBpm - minBpm + 1)
+  const frameDuration = hop / sr // seconds per frame
+
+  for (let i = 0; i < onsets.length - 1; i++) {
+    const gap = (onsets[i + 1] - onsets[i]) * frameDuration // seconds between onsets
+    if (gap <= 0) continue
+    // gap is the time between beats; try beat, half-beat, double-beat
+    for (const mult of [1, 2, 0.5]) {
+      const bpm = 60 / (gap * mult)
+      if (bpm >= minBpm && bpm <= maxBpm) {
+        const bin = Math.round(bpm) - minBpm
+        bins[bin] += 1
+      }
+    }
+  }
+
+  // 4) Smooth the histogram with a ±2 BPM window
+  const smooth = new Float32Array(bins.length)
+  for (let i = 0; i < bins.length; i++) {
+    let sum = 0
+    for (let j = Math.max(0, i - 2); j <= Math.min(bins.length - 1, i + 2); j++) {
+      sum += bins[j]
+    }
+    smooth[i] = sum
+  }
+
+  // 5) Find the peak
+  let bestBin = 0
+  let bestVal = 0
+  for (let i = 0; i < smooth.length; i++) {
+    if (smooth[i] > bestVal) {
+      bestVal = smooth[i]
+      bestBin = i
+    }
+  }
+
+  if (bestVal < 3) return null // Not enough evidence
+  return bestBin + minBpm
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  AUTO-PROCESS — one-shot BPM detect + sync + pitch
+//  Called automatically when a clip is uploaded/recorded.
+//  Mutates the clip in-place and returns analysis results.
+// ═══════════════════════════════════════════════════════════════
+
+export interface AutoProcessResult {
+  /** Detected BPM of the audio (null if undetectable) */
+  detectedBpm: number | null
+  /** Sync result (playbackRate + bar-snapped duration) */
+  sync: SyncResult
+  /** Pitch result (detune cents) */
+  pitch: PitchResult
+}
+
+/**
+ * Automatically analyse a clip and return the playbackRate and
+ * detuneCents values that should be applied.  Does NOT mutate
+ * the clip — caller should set the returned values.
+ */
+export function autoProcessClip(clip: AudioClip, projectBpm: number, projectKey: string): AutoProcessResult {
+  const detectedBpm = detectBPM(clip.buffer)
+  const sync = calcAutoSyncRate(clip, projectBpm)
+  const pitch = calcAutoPitch(clip, projectKey)
+
+  console.log(
+    `[444 STUDIO] Auto-Process: "${clip.name}" ` +
+    `| BPM: ${detectedBpm ?? '?'} → project ${projectBpm} ` +
+    `| Sync: ${sync.durationBars} bars @ ${sync.rate.toFixed(3)}x ` +
+    `| Pitch: ${pitch.detectedNote ?? '?'} → ${pitch.targetNote} (${pitch.detuneCents.toFixed(0)}¢)`
+  )
+
+  return { detectedBpm, sync, pitch }
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  AUTO-SYNC — adjust clip playbackRate so it fits an integer
 //  number of bars at the project BPM.
 //
