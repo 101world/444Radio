@@ -70,6 +70,29 @@ export default function StudioEditor() {
   const [status, setStatus] = useState<'loading' | 'ready' | 'playing' | 'error'>('loading')
   const [loadingMsg, setLoadingMsg] = useState('initializing...')
   const [error, setError] = useState<string | null>(null)
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  /** Show a user-friendly error that auto-dismisses after `ms` (default 4s). */
+  const showError = useCallback((msg: string, ms = 4000) => {
+    // Sanitize raw JS/engine errors into friendly text
+    const friendly =
+      /not ready|not initialized/i.test(msg) ? 'Engine loading — try again in a moment'
+      : /Enter a pattern/i.test(msg) ? msg
+      : /timeout|timed out/i.test(msg) ? 'Audio engine timed out — try again'
+      : /network|fetch|abort/i.test(msg) ? 'Network issue — check connection'
+      : /evaluate|syntax|unexpected|unterminated|reference.*error/i.test(msg) ? 'Pattern error — check your code'
+      : msg.length > 80 ? msg.slice(0, 60) + '…'
+      : msg
+    setError(friendly)
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current)
+    errorTimerRef.current = setTimeout(() => setError(null), ms)
+  }, [])
+
+  const clearError = useCallback(() => {
+    setError(null)
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current)
+  }, [])
+
   const [masterVolume, setMasterVolume] = useState(0.75)
   const [activeGenre, setActiveGenre] = useState('acid')
   const [sliderDefs, setSliderDefs] = useState<Record<string, { min: number; max: number; value: number }>>({})
@@ -231,7 +254,7 @@ export default function StudioEditor() {
       } catch (err: any) {
         console.error('[444 STUDIO] init failed:', err)
         if (!cancelled) {
-          setError(err.message || 'Engine init failed')
+          showError(err.message || 'Engine init failed', 6000)
           setStatus('error')
         }
       }
@@ -289,7 +312,7 @@ export default function StudioEditor() {
 
   const handlePlay = useCallback(async () => {
     const engine = engineRef.current
-    if (!engine?.evaluate) { setError('Engine not ready'); return }
+    if (!engine?.evaluate) { showError('Engine loading — try again in a moment'); return }
 
     try {
       if (isPlaying) {
@@ -299,9 +322,9 @@ export default function StudioEditor() {
         clearOrbitAnalysers()
         setIsPlaying(false)
         setStatus('ready')
-        setError(null)
+        clearError()
       } else {
-        setError(null)
+        clearError()
         let src = codeRef.current.trim()
         if (!src || src.split('\n').every(l => l.trim().startsWith('//'))) {
           throw new Error('Enter a pattern to play')
@@ -387,7 +410,7 @@ export default function StudioEditor() {
       }
     } catch (err: any) {
       console.error('[444 STUDIO] play error:', err)
-      setError(err.message || 'Playback failed')
+      showError(err.message || 'Playback failed')
       setStatus('error')
       setIsPlaying(false)
     }
@@ -398,7 +421,7 @@ export default function StudioEditor() {
     const engine = engineRef.current
     if (!engine?.evaluate || !isPlayingRef.current) return
     try {
-      setError(null)
+      clearError()
       let src = codeRef.current.trim()
       if (!src) return
       if (src === lastEvaluatedRef.current) return
@@ -443,8 +466,9 @@ export default function StudioEditor() {
       }
       setSliderDefs({ ...sliderDefsRef.current })
     } catch (err: any) {
-      console.error('[444 STUDIO] update error:', err)
-      setError(err.message || 'Update failed')
+      // Live-update errors are transient (auto-retries on next edit) — show briefly
+      console.warn('[444 STUDIO] update error:', err)
+      showError(err.message || 'Update failed', 2500)
     }
   }, [])
 
