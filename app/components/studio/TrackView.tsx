@@ -1863,40 +1863,45 @@ const TrackView = memo(function TrackView({
         const currentParamObj = ch.params.find((p: { key: string }) => p.key === selectedParam)
         const currentVal = currentParamObj?.value ?? (pdef?.min ?? 0)
 
-        // Build categorized automation params: channel's existing params + all useful automatable effects
-        // Categorize PARAM_DEFS into groups for the dropdown
-        const AUTO_CATEGORIES: { label: string; color: string; keys: string[] }[] = [
-          { label: 'Level', color: '#00e5c7', keys: ['gain', 'velocity', 'pan', 'postgain', 'dry'] },
-          { label: 'Filter', color: '#06b6d4', keys: ['lpf', 'hpf', 'bpf', 'lpq', 'hpq', 'bpq', 'lpenv', 'hpenv', 'bpenv', 'lpattack', 'lprelease', 'lps', 'lpd'] },
-          { label: 'Drive', color: '#e879a8', keys: ['shape', 'distort', 'crush', 'coarse'] },
-          { label: 'Space', color: '#c77dba', keys: ['room', 'roomsize', 'roomfade', 'roomlp', 'roomdim', 'delay', 'delayfeedback', 'delaytime'] },
-          { label: 'Env', color: '#6f8fb3', keys: ['attack', 'decay', 'sustain', 'release', 'rel', 'legato', 'clip'] },
-          { label: 'Mod', color: '#22d3ee', keys: ['detune', 'vib', 'vibmod', 'phaser', 'phaserdepth', 'phasercenter', 'phasersweep'] },
-          { label: 'FM', color: '#f59e0b', keys: ['fm', 'fmh', 'fmattack', 'fmdecay', 'fmsustain'] },
-          { label: 'Pitch', color: '#10b981', keys: ['penv', 'pattack', 'pdecay', 'prelease', 'pcurve'] },
-          { label: 'Trem', color: '#8b5cf6', keys: ['tremolosync', 'tremolodepth', 'tremoloskew', 'tremolophase'] },
-          { label: 'Sample', color: '#ef4444', keys: ['speed', 'begin', 'end', 'loopAt', 'chop', 'slice', 'stretch'] },
-          { label: 'Rate', color: '#64748b', keys: ['fast', 'slow'] },
-        ]
+        // Build automation params: ONLY show effects that actually exist on this channel
+        // When new effects are added to the channel, they automatically appear here
         const channelParamKeys = new Set(ch.params.map((p: { key: string }) => p.key))
-        // Show: all params that exist on the channel + always show gain, lpf, hpf, room, delay, pan
-        const alwaysShow = new Set(['gain', 'lpf', 'hpf', 'room', 'delay', 'pan'])
-        // Primary row: quick-access params (existing on channel + always-show), scrollable
+        // Always include gain (fundamental) + any param that exists on the channel
         const primaryParams: string[] = []
         const seen = new Set<string>()
-        // First: params already on the channel (in their natural order from PARAM_DEFS)
+        // Gain always first
+        if (!seen.has('gain')) {
+          primaryParams.push('gain')
+          seen.add('gain')
+        }
+        // Then: params already on the channel (in their natural order from PARAM_DEFS)
         for (const pd of PARAM_DEFS) {
           if (channelParamKeys.has(pd.key) && !seen.has(pd.key)) {
             primaryParams.push(pd.key)
             seen.add(pd.key)
           }
         }
-        // Then: always-show params not already added
-        for (const k of alwaysShow) {
-          if (!seen.has(k)) {
-            primaryParams.push(k)
-            seen.add(k)
+        // Also check ch.effects for effects that may not have parsed params but are present
+        for (const fx of ch.effects) {
+          const pd = getParamDef(fx)
+          if (pd && !seen.has(fx)) {
+            primaryParams.push(fx)
+            seen.add(fx)
           }
+        }
+
+        // Color map for active effect indicators
+        const EFFECT_COLORS: Record<string, string> = {
+          gain: '#00e5c7', velocity: '#00e5c7', pan: '#00e5c7', postgain: '#00e5c7', dry: '#00e5c7',
+          lpf: '#06b6d4', hpf: '#06b6d4', bpf: '#06b6d4', lpq: '#06b6d4', hpq: '#06b6d4', bpq: '#06b6d4',
+          lpenv: '#06b6d4', hpenv: '#06b6d4', bpenv: '#06b6d4', lpattack: '#06b6d4', lprelease: '#06b6d4',
+          shape: '#e879a8', distort: '#e879a8', crush: '#e879a8', coarse: '#e879a8',
+          room: '#c77dba', roomsize: '#c77dba', roomfade: '#c77dba', roomlp: '#c77dba', roomdim: '#c77dba',
+          delay: '#c77dba', delayfeedback: '#c77dba', delaytime: '#c77dba',
+          attack: '#6f8fb3', decay: '#6f8fb3', sustain: '#6f8fb3', release: '#6f8fb3', rel: '#6f8fb3',
+          detune: '#22d3ee', vib: '#22d3ee', vibmod: '#22d3ee', phaser: '#22d3ee',
+          fm: '#f59e0b', fmh: '#f59e0b', fmattack: '#f59e0b', fmdecay: '#f59e0b',
+          speed: '#ef4444', begin: '#ef4444', end: '#ef4444', loopAt: '#ef4444',
         }
 
         return (
@@ -1908,51 +1913,32 @@ const TrackView = memo(function TrackView({
             {/* Param selector row — scrollable with all channel params */}
             <div className="flex items-center gap-0.5 px-1 overflow-x-auto" style={{ height: 20, background: '#0a0b0d', borderBottom: '1px solid rgba(255,255,255,0.04)', scrollbarWidth: 'none' }}>
               <span className="text-[6px] font-black uppercase tracking-widest shrink-0 pl-1" style={{ color: '#5a616b', width: 36 }}>AUTO</span>
-              {/* Primary params — always visible */}
+              {/* Active channel params only — auto-updates when effects are added/removed */}
               {primaryParams.map(pk => {
                 const pd = getParamDef(pk)
-                const isOnChannel = channelParamKeys.has(pk)
+                const effectColor = EFFECT_COLORS[pk] || ch.color
+                const isSelected = selectedParam === pk
                 return (
                   <button
                     key={pk}
                     onClick={(e) => { e.stopPropagation(); setAutoParamPerChannel(prev => ({ ...prev, [idx]: pk })) }}
-                    className="px-1.5 py-0.5 rounded cursor-pointer transition-all text-[6px] font-bold uppercase tracking-wider shrink-0"
+                    className="flex items-center gap-0.5 px-1.5 py-0.5 rounded cursor-pointer transition-all text-[6px] font-bold uppercase tracking-wider shrink-0"
                     style={{
-                      color: selectedParam === pk ? ch.color : isOnChannel ? '#8a919d' : '#4a505a',
-                      background: selectedParam === pk ? `${ch.color}15` : 'transparent',
-                      border: selectedParam === pk ? `1px solid ${ch.color}30` : '1px solid transparent',
-                      opacity: isOnChannel || selectedParam === pk ? 1 : 0.7,
+                      color: isSelected ? ch.color : effectColor,
+                      background: isSelected ? `${ch.color}15` : 'transparent',
+                      border: isSelected ? `1px solid ${ch.color}30` : '1px solid transparent',
                     }}
                   >
+                    <span className="w-1 h-1 rounded-full shrink-0" style={{ background: effectColor, opacity: isSelected ? 1 : 0.5 }} />
                     {pd?.label || pk}
                   </button>
                 )
               })}
-              {/* Separator */}
-              <div className="shrink-0 mx-0.5" style={{ width: 1, height: 10, background: 'rgba(255,255,255,0.08)' }} />
-              {/* Category groups — show all remaining available params */}
-              {AUTO_CATEGORIES.map(cat => {
-                // Only show category if it has params NOT already in primaryParams
-                const extraKeys = cat.keys.filter(k => !seen.has(k))
-                if (extraKeys.length === 0) return null
-                return extraKeys.map(pk => {
-                  const pd = getParamDef(pk)
-                  return (
-                    <button
-                      key={pk}
-                      onClick={(e) => { e.stopPropagation(); setAutoParamPerChannel(prev => ({ ...prev, [idx]: pk })) }}
-                      className="px-1.5 py-0.5 rounded cursor-pointer transition-all text-[5px] font-bold uppercase tracking-wider shrink-0"
-                      style={{
-                        color: selectedParam === pk ? ch.color : cat.color + '80',
-                        background: selectedParam === pk ? `${ch.color}15` : 'transparent',
-                        border: selectedParam === pk ? `1px solid ${ch.color}30` : '1px solid transparent',
-                      }}
-                    >
-                      {pd?.label || pk}
-                    </button>
-                  )
-                })
-              })}
+              {primaryParams.length <= 1 && (
+                <span className="text-[5px] italic shrink-0 ml-1" style={{ color: '#5a616b' }}>
+                  add effects to automate
+                </span>
+              )}
               {/* Recording indicator */}
               {isRecording && (
                 <div className="flex items-center gap-1 ml-auto pr-1 shrink-0">

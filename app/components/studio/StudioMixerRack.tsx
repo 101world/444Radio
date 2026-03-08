@@ -3027,6 +3027,69 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
         className="hidden"
         onChange={handleAudioFileChange}
       />
+
+      {/* ═══ LEFT SIDEBAR — FX Panel & Preset Rack (flex, not overlapping) ═══ */}
+      {(showFxPanel || showPresetRack) && (
+        <div
+          className="shrink-0 flex flex-row h-full"
+          style={{
+            borderRight: '1px solid rgba(255,255,255,0.06)',
+            boxShadow: '2px 0 8px rgba(0,0,0,0.3)',
+          }}
+        >
+          {/* ═══ 444 FX PANEL ═══ */}
+          {showFxPanel && channels[fxSelectedTrack] && (
+            <div className="h-full overflow-y-auto" style={{ maxHeight: '100%' }}>
+              <StudioEffectsPanel
+                channel={channels[fxSelectedTrack]}
+                channelIdx={fxSelectedTrack}
+                onParamChange={handleParamChange}
+                onEffectInsert={handleEffectInsert}
+                onRemoveEffect={handleRemoveEffect}
+                layout="sidebar"
+                onClose={() => setShowFxPanel(false)}
+                onSoundChange={handleSoundChange}
+                onBankChange={handleBankChange}
+                onAddSound={handleAddSound}
+                onOpenPianoRoll={onOpenPianoRoll}
+                onOpenDrumSequencer={onOpenDrumSequencer}
+                onOpenPadSampler={onOpenPadSampler}
+                onTranspose={handleTranspose}
+                onPreview={onPreview}
+                sidechainInfo={getSidechainInfo(fxSelectedTrack)}
+                onEnableSidechain={handleEnableSidechain}
+                onDisableSidechain={handleDisableSidechain}
+                onAddSidechainTarget={handleAddSidechainTarget}
+                onRemoveSidechainTarget={handleRemoveSidechainTarget}
+                onDisconnectSidechain={handleDisconnectSidechain}
+                stackRows={stackRowsMap.get(fxSelectedTrack) || []}
+                onStackRowSoundChange={handleStackRowSoundChange}
+                onStackRowGainChange={handleStackRowGainChange}
+                onStackRowBankChange={handleStackRowBankChange}
+                onRemoveStackRow={handleRemoveStackRow}
+              />
+            </div>
+          )}
+
+          {/* ═══ FX PRESET RACK ═══ */}
+          {showPresetRack && (
+            <div
+              className="h-full overflow-hidden"
+              style={{
+                width: 220,
+                borderLeft: '1px solid rgba(255,255,255,0.04)',
+              }}
+            >
+              <PresetRack
+                selectedChannel={firstSelectedChannel}
+                onApplyPreset={applyPreset}
+                channelCount={channels.length}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ══ MAIN CONTENT (header + channels) ══ */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
       {/* ── Header bar — hardware control strip ── */}
@@ -4094,70 +4157,6 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
         </div>
       )}
       </div>{/* end main content column */}
-
-      {/* ═══ LEFT SIDEBARS — absolutely positioned to overlay content ═══ */}
-      {(showFxPanel || showPresetRack) && (
-        <div
-          className="absolute left-0 top-0 bottom-0 flex flex-row"
-          style={{
-            zIndex: 55,
-            pointerEvents: 'none',
-          }}
-        >
-          {/* ═══ 444 FX PANEL ═══ */}
-          {showFxPanel && channels[fxSelectedTrack] && (
-            <div className="h-full" style={{ pointerEvents: 'auto' }}>
-              <StudioEffectsPanel
-                channel={channels[fxSelectedTrack]}
-                channelIdx={fxSelectedTrack}
-                onParamChange={handleParamChange}
-                onEffectInsert={handleEffectInsert}
-                onRemoveEffect={handleRemoveEffect}
-                layout="sidebar"
-                onClose={() => setShowFxPanel(false)}
-                onSoundChange={handleSoundChange}
-                onBankChange={handleBankChange}
-                onAddSound={handleAddSound}
-                onOpenPianoRoll={onOpenPianoRoll}
-                onOpenDrumSequencer={onOpenDrumSequencer}
-                onOpenPadSampler={onOpenPadSampler}
-                onTranspose={handleTranspose}
-                onPreview={onPreview}
-                sidechainInfo={getSidechainInfo(fxSelectedTrack)}
-                onEnableSidechain={handleEnableSidechain}
-                onDisableSidechain={handleDisableSidechain}
-                onAddSidechainTarget={handleAddSidechainTarget}
-                onRemoveSidechainTarget={handleRemoveSidechainTarget}
-                onDisconnectSidechain={handleDisconnectSidechain}
-                stackRows={stackRowsMap.get(fxSelectedTrack) || []}
-                onStackRowSoundChange={handleStackRowSoundChange}
-                onStackRowGainChange={handleStackRowGainChange}
-                onStackRowBankChange={handleStackRowBankChange}
-                onRemoveStackRow={handleRemoveStackRow}
-              />
-            </div>
-          )}
-
-          {/* ═══ FX PRESET RACK ═══ */}
-          {showPresetRack && (
-            <div
-              className="h-full overflow-hidden"
-              style={{
-                width: 220,
-                borderRight: '1px solid rgba(255,255,255,0.04)',
-                boxShadow: '2px 0 8px rgba(0,0,0,0.3)',
-                pointerEvents: 'auto',
-              }}
-            >
-              <PresetRack
-                selectedChannel={firstSelectedChannel}
-                onApplyPreset={applyPreset}
-                channelCount={channels.length}
-              />
-            </div>
-          )}
-        </div>
-      )}
 
       {/* ═══ INSTRUMENT PICKER MODAL — choose sound for piano roll ═══ */}
       <InstrumentPickerModal
