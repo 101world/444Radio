@@ -76,10 +76,39 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded }: 
   const [showWagerSetup, setShowWagerSetup] = useState(false)
   const [inviteStatus, setInviteStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const [inviteMessage, setInviteMessage] = useState('')
+  const [userSearchResults, setUserSearchResults] = useState<{ id: string; username: string; avatar_url: string }[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false)
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const boardRef = useRef<HTMLDivElement>(null)
   const moveListRef = useRef<HTMLDivElement>(null)
   const cpuThinkingRef = useRef(false)
+
+  // ── Debounced user search ──
+  useEffect(() => {
+    const query = inviteUsername.replace('@', '').trim()
+    if (query.length < 1) {
+      setUserSearchResults([])
+      setShowSearchDropdown(false)
+      return
+    }
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+    searchTimeoutRef.current = setTimeout(async () => {
+      setIsSearching(true)
+      try {
+        const res = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`)
+        const data = await res.json()
+        setUserSearchResults(data.users || [])
+        setShowSearchDropdown((data.users || []).length > 0)
+      } catch {
+        setUserSearchResults([])
+      } finally {
+        setIsSearching(false)
+      }
+    }, 250)
+    return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current) }
+  }, [inviteUsername])
 
   // ── Auto-scroll move list ──
   useEffect(() => {
@@ -373,13 +402,50 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded }: 
                     <Trophy size={14} className="text-purple-400" /> Challenge a Producer
                   </h3>
                   <div className="space-y-2">
-                    <input
-                      type="text"
-                      value={inviteUsername}
-                      onChange={e => { setInviteUsername(e.target.value); setInviteStatus('idle'); setInviteMessage('') }}
-                      placeholder="@username to challenge..."
-                      className="w-full bg-black/60 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-white/25 focus:border-purple-500/40 focus:outline-none"
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={inviteUsername}
+                        onChange={e => { setInviteUsername(e.target.value); setInviteStatus('idle'); setInviteMessage(''); setShowSearchDropdown(true) }}
+                        onFocus={() => { if (userSearchResults.length > 0) setShowSearchDropdown(true) }}
+                        onBlur={() => setTimeout(() => setShowSearchDropdown(false), 200)}
+                        placeholder="Search @username..."
+                        className="w-full bg-black/60 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-white/25 focus:border-purple-500/40 focus:outline-none"
+                        autoComplete="off"
+                      />
+                      {isSearching && (
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                          <div className="w-3 h-3 border-2 border-white/20 border-t-purple-400 rounded-full animate-spin" />
+                        </div>
+                      )}
+                      {showSearchDropdown && userSearchResults.length > 0 && (
+                        <div className="absolute left-0 right-0 top-full mt-1 bg-gray-950 border border-white/10 rounded-lg overflow-hidden z-50 shadow-xl shadow-black/50 max-h-[200px] overflow-y-auto">
+                          {userSearchResults.map(u => (
+                            <button
+                              key={u.id}
+                              type="button"
+                              onMouseDown={e => e.preventDefault()}
+                              onClick={() => {
+                                setInviteUsername(u.username)
+                                setShowSearchDropdown(false)
+                                setUserSearchResults([])
+                                setInviteStatus('idle')
+                                setInviteMessage('')
+                              }}
+                              className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-purple-500/10 transition-colors text-left"
+                            >
+                              <img
+                                src={u.avatar_url || '/default-avatar.png'}
+                                alt=""
+                                className="w-6 h-6 rounded-full object-cover bg-white/5 flex-shrink-0"
+                                onError={e => { (e.target as HTMLImageElement).src = '/default-avatar.png' }}
+                              />
+                              <span className="text-xs text-white/80 font-medium">@{u.username}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1 flex-1">
                         <Zap size={12} className="text-yellow-400" />
