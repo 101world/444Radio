@@ -60,41 +60,56 @@ $: s("hh*8").gain("[.15 .25]*4")
     label: 'TRANCE',
     icon: '\uD83C\uDF00',
     bpm: 138,
-    desc: 'Euphoric leads with trans()',
+    desc: 'Euphoric trance with arps, lead melody & warm pads',
     code: `setCps(138/60/4)
 
-// LET US TRANCE ONCE MORE
+// EUPHORIC TRANCE
 
-$: n("<0 4 0 9 7>*16").scale("g:minor").trans(-12)
-  .o(3).s("sawtooth")
-  .lpf(100).lpenv(slider(4, 0, 9)).lps(.2).lpd(.12)
-  .gain(.6).orbit(1)
-  
+$kick: s("bd*4").gain(.9)
+  .shape(.25).lpf(250)
+  .duck(2).duckdepth(.8).duckattack(.15)
+  .orbit(0)
 
-$: n("<0>*16").scale("g:minor").trans(-24)
-  .o(4).s("supersaw")
-  .lpf(100).lpenv(slider(4, 0, 9)).lps(.2).lpd(.12)
-  .gain(.6).orbit(2)
-  
+$clap: s("~ cp ~ cp").bank("RolandTR909")
+  .gain(.5).room(.4).delay(.08)
+  .orbit(1)
 
-$: s("bd:2!4")
-  .duck(1).duckdepth(.8).duckattack(.16)
-  .gain(.8).orbit(3)
+$hats: s("hh*8").gain("[.2 .35]*4")
+  .speed("[1 1.3 1 1.5]*2").hpf(1000)
+  .orbit(2)
 
-$: s("bd*4").gain(.9).orbit(0)
+$arp: n("<[0 4 7 11]*4 [-2 2 5 9]*4 [3 7 10 14]*4 [-1 3 7 10]*4>").scale("D4:minor")
+  .s("supersaw").detune(1.5).gain(.18)
+  .lpf(saw.range(600,3500).slow(8)).lpq(3)
+  .room(.5).delay(.2).delayfeedback(.4)
+  .attack(.01).rel(.3)
+  .orbit(3)
 
-$: s("~ cp ~ ~").gain(.6)
-  .room(.3).delay(.15).orbit(4)
+$lead: note("<[d5@8 ~ ~ ~ ~ ~ ~ ~ ~] [~ ~ ~ ~ a4@8 ~ ~ ~ ~] [f5@6 e5@4 d5@4 ~ ~] [a4@6 ~ c5@6 ~ ~ ~ ~]>")
+  .s("sawtooth").gain(.12)
+  .lpf(sine.range(800,3000).slow(16))
+  .room(.6).delay(.25).delayfeedback(.45)
+  .attack(.02).rel(1).legato(1)
+  .slow(2).orbit(4)
 
-$: s("hh*8").gain("[.2 .35]*4")
-  .speed("[1 1.3]*4").hpf(1000).orbit(5)`,
+$pad: note("<[d3,f3,a3,c4] [bb2,d3,f3,a3] [f3,a3,c4,e4] [c3,e3,g3,bb3]>")
+  .s("gm_pad_warm").gain(.08)
+  .lpf(perlin.range(400,1600).slow(12))
+  .room(.8).delay(.3).delayfeedback(.45)
+  .attack(.3).rel(4).slow(2)
+  .orbit(5)
+
+$bass: n("<0 0 -2 -2 3 3 -1 -1>*2").scale("D1:minor")
+  .s("sawtooth").gain(.4)
+  .lpf(slider(200, 60, 800)).lpq(6)
+  .shape(.25).orbit(6)`,
   },
   {
     id: 'house',
     label: 'DEEP HOUSE',
     icon: '\uD83C\uDFE0',
     bpm: 124,
-    desc: 'Warm deep house with chord stabs and rumble',
+    desc: 'Warm deep house with Rhodes layers & melodic hooks',
     code: `setCps(124/60/4)
 
 // DEEP HOUSE VIBRATIONS
@@ -106,31 +121,44 @@ $kick: s("bd*4").bank("RolandTR909")
 
 $clap: s("~ cp ~ ~").bank("RolandTR909")
   .gain(.55).room(.35).delay(.08)
-  .orbit(2)
+  .orbit(1)
 
 $hats: s("[~ hh]*4").bank("RolandTR909")
   .gain("[.3 .5 .35 .6]")
   .speed("[1 1.15 1 1.2]").hpf(800)
+  .orbit(2)
+
+$rhodes: note("<[[g2,bb2,d3,f3]@16] [[c3,eb3,g3,bb3]@16] [[eb3,g3,bb3,d4]@16] [[d3,f3,a3,c4]@16]>")
+  .s("gm_epiano1").gain(.2)
+  .lpf(sine.range(900,2400).slow(16))
+  .room(.45).delay(.15).delayfeedback(.3)
+  .slow(2).legato(1).attack(.1)
   .orbit(3)
 
-$bass: note("<c2 c2 a1 b1>*2").scale("C4:major")
+$melody: note("<[d4@6 eb4@4 d4@4 ~ ~] [g4@8 ~ ~ ~ ~ ~ ~ ~ ~] [bb4@6 ~ a4@6 ~ ~ ~ ~] [f4@8 ~ d4@4 ~ ~ ~ ~]>")
+  .s("gm_epiano1").gain(.14)
+  .lpf(1800).room(.5).delay(.2).delayfeedback(.35)
+  .slow(2).legato(1)
+  .attack(.08).rel(1.5)
+  .orbit(4)
+
+$bass: note("<g1 [~ g1] c2 [~ c2] eb2 [~ eb2] d2 [~ d2]>")
   .s("sawtooth").gain(.45)
   .lpf(slider(400, 80, 2000)).lpq(4).shape(.12)
-  .orbit(1)
-  
+  .orbit(5)
 
-$chords: note("<[c3,e3,g3] [c3,e3,g3] [a2,c3,e3] [b2,d3,f3]>")
-  .s("gm_epiano1").gain(slider(.2, 0, .5))
-  .lpf(1800).room(.4).delay(.15).delayfeedback(.3)
-  .slow(2).orbit(4)
-  `,
+$vox: note("<[g4 ~ ~ ~ bb4 ~ ~ ~] [~ ~ ~ ~ ~ ~ ~ ~] [eb5 ~ ~ ~ d5 ~ ~ ~] [~ ~ ~ ~ ~ ~ ~ ~]>")
+  .s("gm_voice_oohs").gain(.08)
+  .lpf(2000).room(.6).delay(.2).delayfeedback(.4)
+  .attack(.1).rel(1).slow(2)
+  .orbit(6)`,
   },
   {
     id: 'boombap',
     label: 'BOOM BAP',
     icon: '\uD83C\uDFA4',
     bpm: 92,
-    desc: 'Classic hip-hop boom bap with vinyl warmth',
+    desc: 'Classic hip-hop with sustained keys & melodic hooks',
     code: `setCps(92/60/4)
 
 // BOOM BAP CLASSIC
@@ -151,17 +179,23 @@ $: stack(
     .lpf(saw.slow(8).range(8000,200))
 ).duck(1).duckdepth(.6).orbit(0)
 
-$bass: note("<c2 [~ c2] f1 g1>").scale("C4:major")
-  .s("sine").gain(.5)
-  .lpf(180).shape(.15)
+$keys: note("<[[d2,f3,a3,c4]@16] [[g2,bb2,d3,f3]@16] [[bb2,d3,f3,a3]@16] [[a2,c3,e3,g3]@16]>")
+  .s("gm_epiano1").gain(.2)
+  .lpf(1600).room(.5).delay(.12)
+  .slow(2).legato(1).attack(.15)
   .orbit(1)
-  
 
-$keys: note("<[d3,f3,a3] [g2,b2,d3] [c3,e3,g3] [a2,c3,e3]>")
+$keys2: note("<[a3@3 c4@2 ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~] [d4@3 c4@2 ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~] [f4@3 e4@2 ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~] [e4@3 d4@2 ~ ~ ~ ~ ~ ~ g4@2 ~ e4@2]>")
   .s("gm_epiano1").gain(.18)
   .lpf(1400).room(.5).delay(.12)
-  .slow(2).orbit(2)
-  `,
+  .slow(2).legato(1)
+  .attack(.08).decay(.5).sustain(.05).release(1).rel(.5)
+  .orbit(2)
+
+$bass: note("<d2 [~ d2] g1 [~ a1]>")
+  .s("sine").gain(.5)
+  .lpf(180).shape(.15)
+  .orbit(3)`,
   },
   {
     id: 'ambient',
@@ -204,7 +238,7 @@ $rumble: s("bd:3").gain(sine.range(0,.025).slow(20))
     label: 'DRUM & BASS',
     icon: '\u26A1',
     bpm: 174,
-    desc: 'Fast breakbeats with reese bass',
+    desc: 'Liquid DnB with melodic piano, reese bass & warm pads',
     code: `setCps(174/60/4)
 
 // LIQUID DnB
@@ -219,18 +253,29 @@ $drums: stack(
     .speed("[1 1.2]*4").hpf(1000)
 ).duck(1).duckdepth(.75).duckattack(.1).orbit(0)
 
-$bass: note("<c1 [~ c1] eb1 [f1 ~]>*2")
+$bass: note("<a1 [~ a1] f1 [g1 ~]>*2")
   .s("sawtooth").gain(.4)
   .lpf(slider(300, 60, 1500)).lpq(6)
   .shape(.25).distort(.15)
   .orbit(1)
-  
 
-$: n("<0 4 7 [4 0]>*2").scale("C4:minor")
-  .s("gm_piano").gain(.15)
-  .room(.5).delay(.2).delayfeedback(.35)
-  .lpf(2000).orbit(2)
-  `,
+$keys: note("<[[a2,c3,e3,g3]@16] [[f2,a2,c3,e3]@16] [[c3,e3,g3,b3]@16] [[g2,b2,d3,f3]@16]>")
+  .s("gm_epiano1").gain(.15)
+  .lpf(2000).room(.5).delay(.2).delayfeedback(.35)
+  .slow(2).legato(1).attack(.1)
+  .orbit(2)
+
+$melody: note("<[e4@6 ~ d4@4 ~ ~ ~ ~ ~] [c4@8 ~ ~ ~ ~ ~ ~ ~ ~] [e4@4 g4@4 ~ a4@6 ~] [g4@8 ~ ~ ~ e4@4 ~]>")
+  .s("gm_piano").gain(.12)
+  .lpf(2500).room(.5).delay(.2).delayfeedback(.35)
+  .legato(1).attack(.03).rel(1.5)
+  .slow(2).orbit(3)
+
+$pad: note("<[a2,e3,c4] [f2,c3,a3] [c3,g3,e4] [g2,d3,b3]>")
+  .s("gm_pad_warm").gain(.06)
+  .lpf(perlin.range(400,1400).slow(10))
+  .room(.8).delay(.3).delayfeedback(.5)
+  .slow(4).orbit(4)`,
   },
   {
     id: 'techno',
@@ -420,7 +465,7 @@ $sd: s("~ ~ ~ ~ sd ~ ~ ~ ~ ~ ~ ~ sd ~ ~ ~")
     label: 'RAVE',
     icon: '\uD83C\uDF08',
     bpm: 145,
-    desc: 'Ravebass, chord stabs, breakbeats',
+    desc: 'Rave stabs, hoover leads & breakbeat energy',
     code: `setCps(145/60/4)
 
 // RAVE REVIVAL
@@ -435,23 +480,34 @@ $: s("hh*8").gain("[.2 .35]*4")
   .speed("[1 1.3 1 1.5]*2").hpf(1000)
   .orbit(2)
 
-$stabs: note("[c,eb,f,ab](5,16)/2").scale("C4:minor")
-  .s("sawtooth").gain(.7).clip(.95)
-  .lpenv(4).room(.8)
-  .lpf(1220).delay(.6)
+$stabs: note("[e,g,b,d](5,16)/2").scale("E4:minor")
+  .s("supersaw").detune(2).gain(.55).clip(.95)
+  .lpenv(4).room(.6)
+  .lpf(1400).delay(.5)
   .rarely(add(note(12)))
   .chunk(4,add(note(12)))
   .orbit(3).fast(2)
-  
 
-$bass: note("f1*4")
+$lead: note("<[e5@8 ~ ~ ~ ~ ~ ~ ~ ~] [~ ~ ~ b4@8 ~ ~ ~ ~] [g5@6 ~ e5@6 ~ ~ ~ ~] [d5@6 ~ b4@6 ~ ~ ~ ~]>")
+  .s("sawtooth").gain(.15)
+  .lpf(sine.range(600,3500).slow(8))
+  .room(.5).delay(.2).delayfeedback(.35)
+  .attack(.02).rel(1).legato(1)
+  .slow(2).orbit(4)
+
+$bass: note("e1*4")
   .s("sawtooth").gain(.5)
   .struct("<x(3,8) x*2>*2")
   .shape(.5).room(.2)
   .lpf(perlin.range(500,800).slow(4))
   .lpq(slider(4, 0, 8))
-  .orbit(4)
-  `,
+  .orbit(5)
+
+$pad: note("<[e3,b3,g4] [c3,g3,e4] [g3,d4,b4] [d3,a3,g4]>")
+  .s("gm_pad_warm").gain(.05)
+  .lpf(perlin.range(300,1200).slow(12))
+  .room(.7).delay(.25).delayfeedback(.4)
+  .slow(4).orbit(6)`,
   },
   {
     id: 'birdsofafeather',
@@ -542,27 +598,29 @@ $:arrange(
     label: 'GOSPEL CHOIR',
     icon: '\uD83D\uDE4F',
     bpm: 88,
-    desc: 'Soulful choir harmonies with organ and claps',
+    desc: 'Soulful choir harmonies with organ melodies & walking bass',
     code: `setCps(88/60/4)
 
 // GOSPEL SUNDAY
 
-$choir: note("<[c3,e3,g3,b3] [f3,a3,c4,e4] [g3,b3,d4,f4] [c3,e3,g3,c4]>")
-  .s("gm_choir_aahs").gain(.35)
+$choir: note("<[[ab2,c3,eb3,g3]@16] [[db3,f3,ab3,c4]@16] [[eb3,g3,bb3,d4]@16] [[c3,eb3,ab3,c4]@16]>")
+  .s("gm_choir_aahs").gain(.3)
   .lpf(sine.range(800,2500).slow(16))
   .room(.7).delay(.15).delayfeedback(.25)
-  .attack(.15).rel(2).slow(2)
+  .attack(.15).rel(2).slow(2).legato(1)
   .orbit(0)
 
-$oohs: note("<[e4,g4] [a4,c5] [b4,d5] [g4,c5]>")
-  .s("gm_voice_oohs").gain(.18)
+$oohs: note("<[eb4@6 ~ c4@4 ~ ~ ~ ~ ~] [ab4@8 ~ ~ ~ ~ ~ ~ ~ ~] [bb4@6 ~ g4@4 ~ ~ ~ ~ ~] [ab4@6 ~ eb4@6 ~ ~ ~ ~]>")
+  .s("gm_voice_oohs").gain(.14)
   .lpf(2000).room(.8).delay(.2).delayfeedback(.3)
-  .attack(.2).rel(3).pan(sine.range(.3,.7).slow(8))
+  .attack(.1).rel(2).legato(1)
+  .pan(sine.range(.3,.7).slow(8))
   .slow(2).orbit(1)
 
-$organ: note("<[c2,e2,g2,c3] [f2,a2,c3,f3] [g2,b2,d3,g3] [c2,e2,g2,c3]>")
-  .s("gm_church_organ").gain(.22)
-  .lpf(1200).room(.5).slow(2)
+$organ: note("<[ab3@4 bb3@4 c4@4 eb4@4] [f4@8 ~ ~ ~ eb4@4 ~ ~] [bb3@4 c4@4 eb4@6 ~ ~] [ab3@8 ~ ~ ~ ~ ~ ~ ~ ~]>")
+  .s("gm_church_organ").gain(.18)
+  .lpf(1600).room(.5).slow(2).legato(1)
+  .attack(.06).rel(1.5)
   .orbit(2)
 
 $kick: s("[bd ~ ~ ~] ~ [~ bd] ~").bank("RolandTR808")
@@ -573,65 +631,71 @@ $clap: s("~ [cp ~ cp] ~ [cp ~ ~ cp]").bank("RolandTR808")
   .gain(.4).room(.5).delay(.1)
   .orbit(4)
 
-$bass: note("<c2 f1 g1 c2>")
+$bass: note("<ab1 [~ ab1] db2 [~ db2] eb2 [~ eb2] c2 [~ ab1]>")
   .s("gm_electric_bass_finger").gain(.35)
-  .lpf(400).shape(.08).slow(2)
-  .orbit(5)
-`,
+  .lpf(400).shape(.08).room(.15)
+  .orbit(5)`,
   },
   {
     id: 'synthwave',
     label: 'SYNTHWAVE',
     icon: '\uD83C\uDF03',
     bpm: 118,
-    desc: '80s retro synths with gated reverb and arps',
+    desc: '80s retro synths with soaring leads & gated reverb',
     code: `setCps(118/60/4)
 
 // MIDNIGHT DRIVE
 
-$lead: n("<0 4 7 11 12 11 7 4>*2").scale("A4:minor")
-  .s("supersaw").gain(.25)
-  .lpf(sine.range(600,3000).slow(8)).lpq(4)
+$lead: note("<[a4@8 ~ ~ ~ ~ ~ ~ ~ ~] [~ ~ ~ e5@6 ~ ~ ~ ~ ~] [c5@4 b4@4 a4@6 ~ ~] [e5@6 ~ d5@6 ~ ~ ~ ~]>")
+  .s("supersaw").detune(2).gain(.2)
+  .lpf(sine.range(600,3000).slow(8)).lpq(3)
   .room(.6).delay(.25).delayfeedback(.4)
-  .detune(2).orbit(0)
+  .attack(.02).rel(1).legato(1)
+  .slow(2).orbit(0)
 
-$pad: note("<[a2,c3,e3] [f2,a2,c3] [g2,b2,d3] [e2,g2,b2]>")
-  .s("gm_pad_warm").gain(.2)
+$arp: n("<[0 4 7 11]*4 [-3 0 4 7]*4 [0 3 7 10]*4 [-5 -1 2 7]*4>").scale("A4:minor")
+  .s("square").gain(.1)
+  .lpf(saw.range(500,3500).slow(8)).lpq(2)
+  .room(.4).delay(.2).delayfeedback(.35)
+  .attack(.01).rel(.2)
+  .orbit(1)
+
+$pad: note("<[[a2,c3,e3,g3]@16] [[f2,a2,c3,e3]@16] [[g2,b2,d3,f3]@16] [[e2,g2,b2,d3]@16]>")
+  .s("gm_pad_warm").gain(.15)
   .lpf(perlin.range(400,1800).slow(12))
-  .room(.85).attack(.3).rel(4)
-  .slow(2).orbit(1)
+  .room(.85).attack(.3).rel(4).legato(1)
+  .slow(2).orbit(2)
 
 $synchoir: note("<[a3,e4] [c4,g4] [d4,a4] [e4,b4]>")
-  .s("gm_synth_choir").gain(.1)
+  .s("gm_synth_choir").gain(.08)
   .lpf(1500).room(.7).delay(.3).delayfeedback(.45)
   .attack(.25).rel(3).slow(4)
-  .orbit(2)
+  .orbit(3)
 
 $kick: s("bd*4").gain(.85)
   .shape(.25).lpf(250)
   .duck(2).duckdepth(.7).duckattack(.15)
-  .orbit(3)
+  .orbit(4)
 
 $snare: s("~ sd ~ sd").bank("RolandTR909")
   .gain(.55).room(.6).delay(.08)
-  .orbit(4)
+  .orbit(5)
 
 $hats: s("hh*8").gain("[.15 .3]*4")
   .speed("[1 1.2 1 1.4]*2").hpf(1000)
-  .orbit(5)
+  .orbit(6)
 
 $bass: n("<0 0 -3 -5>*4").scale("A1:minor")
   .s("gm_synth_bass_1").gain(.4)
   .lpf(slider(500, 80, 2000)).lpq(6)
-  .shape(.2).orbit(6)
-`,
+  .shape(.2).orbit(7)`,
   },
   {
     id: 'trap',
     label: 'TRAP',
     icon: '\uD83C\uDFAF',
     bpm: 145,
-    desc: 'Hard 808s, rolling hats, dark melodies',
+    desc: 'Hard 808s with haunting melodies & atmospheric pads',
     code: `setCps(145/60/4)
 
 // TRAP SEASON
@@ -654,46 +718,54 @@ $clap: s("~ cp ~ ~").bank("RolandTR808")
   .gain(.5).room(.3).delay(.06)
   .orbit(3)
 
-$bass: note("<a0 ~ ~ a0 ~ ~ a0 ~ a0 ~ ~ ~ a0 ~ ~ [~ a0]>")
+$bass: note("<c1 ~ ~ c1 ~ ~ c1 ~ c1 ~ ~ ~ c1 ~ ~ [~ c1]>")
   .s("sine").gain(.55)
   .lpf(120).shape(.3).rel(.8)
   .orbit(4)
 
-$melody: n("<0 ~ 7 ~ 5 ~ 3 ~ 0 ~ 7 ~ [10 7] ~ 3 ~>").scale("A3:minor")
+$melody: note("<[eb5@8 ~ ~ ~ ~ ~ ~ ~ ~] [~ ~ ~ c5@6 ~ ~ ~ ~ ~] [g5@6 ~ eb5@4 ~ ~ ~ ~ ~] [d5@4 ~ c5@4 ~ eb5@6 ~ ~]>")
   .s("gm_music_box").gain(.15)
-  .lpf(2500).room(.4).delay(.2).delayfeedback(.35)
-  .orbit(5)
+  .lpf(2500).room(.5).delay(.2).delayfeedback(.4)
+  .legato(1).attack(.02).rel(1.5)
+  .slow(2).orbit(5)
 
-$vox: note("<[a3,c4,e4] ~ ~ ~ [g3,b3,d4] ~ ~ ~>")
-  .s("gm_voice_oohs").gain(.08)
-  .lpf(1800).room(.6).delay(.25).delayfeedback(.4)
-  .attack(.15).rel(2).slow(2)
-  .orbit(6)
-`,
+$melody2: note("<[c4@3 eb4@2 ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~] [g4@3 eb4@2 ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~] [ab4@3 g4@2 ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~] [g4@3 eb4@2 ~ ~ ~ ~ ~ ~ c5@2 ~ eb4@2]>")
+  .s("gm_music_box").gain(.1)
+  .lpf(1800).room(.4).delay(.15).delayfeedback(.3)
+  .legato(1).attack(.02).rel(1)
+  .slow(2).orbit(6)
+
+$pad: note("<[c3,eb3,g3] [ab2,c3,eb3] [eb3,g3,bb3] [bb2,d3,f3]>")
+  .s("gm_pad_warm").gain(.06)
+  .lpf(perlin.range(300,1200).slow(12))
+  .room(.7).delay(.25).delayfeedback(.4)
+  .attack(.2).rel(3).slow(4)
+  .orbit(7)`,
   },
   {
     id: 'jazz',
     label: 'JAZZY KEYS',
     icon: '\uD83C\uDFB7',
     bpm: 96,
-    desc: 'Walking bass, Rhodes, sax with swing feel',
+    desc: 'Walking bass, Rhodes voicings & sax improv in F dorian',
     code: `setCps(96/60/4)
 
 // SMOKY JAZZ CLUB
 
-$rhodes: note("<[d3,f3,a3,c4] [g2,b2,d3,f3] [c3,e3,g3,b3] [a2,c3,e3,g3]>")
-  .s("gm_epiano1").gain(.25)
+$rhodes: note("<[[f2,ab2,c3,eb3]@16] [[g2,bb2,d3,f3]@16] [[ab2,c3,eb3,g3]@16] [[bb2,d3,f3,ab3]@16]>")
+  .s("gm_epiano1").gain(.22)
   .lpf(sine.range(1200,2800).slow(16))
   .room(.45).delay(.15).delayfeedback(.25)
-  .slow(2).orbit(0)
+  .slow(2).legato(1).attack(.1)
+  .orbit(0)
 
-$sax: n("<0 2 4 5 7 5 4 2>").scale("D4:dorian")
-  .s("gm_tenor_sax").gain(.18)
-  .lpf(2200).room(.35).delay(.1)
-  .attack(.05).rel(.8)
-  .orbit(1)
+$sax: note("<[f4@4 ab4@4 c5@4 bb4@4] [ab4@6 ~ g4@4 f4@4 ~ ~] [eb4@4 f4@4 ab4@6 ~ ~] [bb4@8 ~ ~ ~ ab4@4 ~ ~ ~]>")
+  .s("gm_tenor_sax").gain(.16)
+  .lpf(2200).room(.35).delay(.12).delayfeedback(.2)
+  .attack(.04).rel(.8).legato(1)
+  .slow(2).orbit(1)
 
-$bass: note("<d2 [~ d2] g1 [~ g1] c2 [~ c2] a1 [~ a1]>")
+$bass: note("<f2 [~ ab1] c2 [~ f1] g1 [~ bb1] ab1 [eb2 ~ ab1 ~]>")
   .s("gm_acoustic_bass").gain(.35)
   .lpf(600).shape(.05).room(.15)
   .orbit(2)
@@ -709,15 +781,14 @@ $ride: s("ride*8").gain("[.1 .15 .12 .18]*2")
 
 $brush: s("~ [sd:3 ~] ~ [~ sd:3]").bank("RolandTR808")
   .gain(.15).lpf(1800).room(.3)
-  .orbit(5)
-`,
+  .orbit(5)`,
   },
   {
     id: 'reggaeton',
     label: 'REGGAETON',
     icon: '\uD83D\uDD25',
     bpm: 95,
-    desc: 'Dembow rhythm with brass and vocal chops',
+    desc: 'Dembow riddim with brass melodies & vocal hooks',
     code: `setCps(95/60/4)
 
 // DEMBOW HEAT
@@ -739,30 +810,30 @@ $hats: s("oh*8").bank("RolandTR808")
   .speed("[1 1.5]*4").hpf(1200)
   .orbit(3)
 
-$brass: note("<[g3,bb3,d4] [f3,a3,c4] [eb3,g3,bb3] [f3,a3,c4]>")
-  .s("gm_brass_section").gain(.2)
-  .lpf(1600).attack(.05).rel(.5)
-  .room(.25).slow(2)
+$brass: note("<[f4@6 ~ ab4@4 ~ ~ ~ ~ ~] [db4@8 ~ ~ ~ ~ ~ ~ ~ ~] [ab4@4 c5@4 ~ eb5@6 ~ ~] [c5@6 ~ ab4@6 ~ ~ ~ ~]>")
+  .s("gm_brass_section").gain(.18)
+  .lpf(1800).attack(.04).rel(1)
+  .room(.3).delay(.1).delayfeedback(.2)
+  .slow(2).legato(1)
   .orbit(4)
 
-$voxchop: note("<g4 ~ bb4 ~ a4 ~ g4 ~>")
-  .s("gm_choir_aahs").gain(.12)
-  .lpf(2000).chop(4).room(.3)
-  .delay(.12).delayfeedback(.2)
-  .orbit(5)
+$voxchop: note("<[c5@3 ab4@2 ~ ~ ~ ~ ~ ~ ~] [f4@8 ~ ~ ~ ~ ~ ~ ~ ~] [ab4@3 c5@2 ~ ~ ~ eb5@3 ~ ~ ~] [c5@4 ~ ab4@4 ~ ~ ~ ~ ~ ~]>")
+  .s("gm_voice_oohs").gain(.1)
+  .lpf(2200).room(.4).delay(.15).delayfeedback(.25)
+  .attack(.05).rel(.8).legato(1)
+  .slow(2).orbit(5)
 
-$bass: note("<g1 ~ ~ g1 f1 ~ ~ f1>")
+$bass: note("<f1 [~ f1] db2 [~ db2] ab1 [~ ab1] eb2 [~ eb2]>")
   .s("sine").gain(.5)
   .lpf(150).shape(.2).rel(.6)
-  .orbit(6)
-`,
+  .orbit(6)`,
   },
   {
     id: 'edm',
     label: 'EDM / BIG ROOM',
     icon: '\uD83D\uDCA5',
     bpm: 128,
-    desc: 'Festival drops with supersaw builds and vocal stabs',
+    desc: 'Festival drops with soaring leads & supersaw builds',
     code: `setCps(128/60/4)
 
 // FESTIVAL MAIN STAGE
@@ -776,42 +847,48 @@ $clap: s("~ cp ~ cp").bank("RolandTR909")
   .gain(.5).room(.4).delay(.06)
   .orbit(1)
 
-$drop: n("<0 0 3 5 0 0 7 5>*2").scale("E3:minor")
-  .s("supersaw").gain(.55)
+$drop: n("<[0 0 3 5]*2 [0 0 5 7]*2 [3 3 5 7]*2 [0 0 7 5]*2>").scale("G3:minor")
+  .s("supersaw").gain(.5)
   .lpf(slider(1500, 200, 4000)).lpq(3)
   .detune(3).room(.3)
   .duck(0).duckdepth(.7).duckattack(.1)
   .orbit(2)
 
-$voxstab: note("<[e4,g4,b4] ~ ~ ~ [d4,g4,b4] ~ ~ ~>")
-  .s("gm_synth_choir").gain(.2)
+$lead: note("<[g5@8 ~ ~ ~ ~ ~ ~ ~ ~] [~ ~ ~ ~ d5@8 ~ ~ ~ ~] [bb5@6 ~ a5@4 g5@4 ~ ~] [d5@6 ~ f5@6 ~ ~ ~ ~]>")
+  .s("supersaw").detune(2).gain(.15)
+  .lpf(sine.range(800,4000).slow(8))
+  .room(.5).delay(.2).delayfeedback(.35)
+  .attack(.02).rel(1).legato(1)
+  .slow(2).orbit(3)
+
+$voxstab: note("<[g4,bb4,d5] ~ ~ ~ [c4,eb4,g4] ~ ~ ~>")
+  .s("gm_synth_choir").gain(.18)
   .lpf(3000).room(.5).chop(8)
   .delay(.15).delayfeedback(.3)
-  .orbit(3)
+  .orbit(4)
 
 $hats: s("hh*16").gain(perlin.range(.08,.22).slow(2))
   .speed("[1 1.3 1 1.5]*4").hpf(1200)
-  .orbit(4)
+  .orbit(5)
 
-$bass: n("<0 0 3 5>*2").scale("E1:minor")
+$bass: n("<0 0 3 5>*2").scale("G1:minor")
   .s("sawtooth").gain(.4)
   .lpf(300).shape(.35).lpq(4)
   .duck(0).duckdepth(.6).duckattack(.1)
-  .orbit(5)
+  .orbit(6)
 
-$riser: note("e3")
+$riser: note("g3")
   .s("gm_pad_sweep").gain(sine.range(0,.12).slow(32))
   .lpf(sine.range(200,4000).slow(32))
   .room(.7).slow(8)
-  .orbit(6)
-`,
+  .orbit(7)`,
   },
   {
     id: 'afrobeat',
     label: 'AFROBEATS',
     icon: '\uD83E\uDD41',
     bpm: 108,
-    desc: 'Afrobeat grooves with kalimba and percussion',
+    desc: 'West African grooves with kalimba melodies & choir',
     code: `setCps(108/60/4)
 
 // AFRO GROOVE
@@ -832,80 +909,80 @@ $shaker: s("hh*16").gain("[.08 .15 .1 .18]*4")
   .speed("[2 2.3 2 2.5]*4").hpf(2000)
   .orbit(3)
 
-$kalimba: n("<0 2 4 7 9 7 4 2>*2").scale("G4:major")
-  .s("gm_kalimba").gain(.2)
+$kalimba: note("<[bb4@4 c5@4 d5@6 ~ ~] [f5@8 ~ ~ ~ d5@4 ~] [eb5@4 d5@4 c5@6 ~ ~] [d5@6 ~ bb4@6 ~ ~ ~ ~]>")
+  .s("gm_kalimba").gain(.18)
   .room(.5).delay(.2).delayfeedback(.35)
-  .lpf(3500).orbit(4)
+  .lpf(3500).legato(1)
+  .slow(2).orbit(4)
 
-$choir: note("<[g3,b3,d4] [c4,e4,g4] [d4,f4,a4] [c4,e4,g4]>")
-  .s("gm_choir_aahs").gain(.12)
+$choir: note("<[[bb2,d3,f3,a3]@16] [[eb3,g3,bb3,d4]@16] [[f3,a3,c4,eb4]@16] [[c3,eb3,g3,bb3]@16]>")
+  .s("gm_choir_aahs").gain(.1)
   .lpf(1800).room(.5).attack(.1).rel(2)
-  .slow(2).orbit(5)
+  .slow(2).legato(1).orbit(5)
 
-$bass: note("<g1 [~ g1] c2 [~ c2] d2 [~ d2] c2 [~ c2]>")
+$bass: note("<bb1 [~ bb1] eb2 [~ eb2] f2 [~ f2] c2 [~ c2]>")
   .s("gm_synth_bass_1").gain(.35)
   .lpf(500).shape(.1).orbit(6)
 
-$guitar: n("<0 4 7 4>*4").scale("G3:major")
-  .s("gm_electric_guitar_clean").gain(.12)
-  .lpf(2000).room(.3).delay(.1)
-  .orbit(7)
-`,
+$guitar: note("<[bb3@3 d4@2 f4@3 d4@2 ~ ~ ~ ~ ~ ~] [eb4@3 g4@2 bb4@3 g4@2 ~ ~ ~ ~ ~ ~] [f4@3 a4@2 c5@3 a4@2 ~ ~ ~ ~ ~ ~] [eb4@3 g4@2 c5@3 ~ ~ ~ ~ ~ ~ ~]>")
+  .s("gm_acoustic_guitar_steel").gain(.12)
+  .lpf(2200).room(.3).delay(.1)
+  .slow(2).legato(1)
+  .orbit(7)`,
   },
   {
     id: 'cinematic',
     label: 'CINEMATIC',
     icon: '\uD83C\uDFAC',
     bpm: 65,
-    desc: 'Epic strings, choir, and thunderous percussion',
+    desc: 'Epic strings, choir & soaring horn melodies in Bb minor',
     code: `setCps(65/60/4)
 
 // EPIC CINEMATIC
 
-$strings: note("<[d2,a2,d3,f3] [c2,g2,c3,e3] [bb1,f2,bb2,d3] [a1,e2,a2,c3]>")
-  .s("gm_string_ensemble_1").gain(.3)
+$strings: note("<[[bb1,f2,bb2,db3]@16] [[ab1,eb2,ab2,c3]@16] [[gb1,db2,gb2,bb2]@16] [[f1,c2,f2,ab2]@16]>")
+  .s("gm_string_ensemble_1").gain(.28)
   .lpf(perlin.range(600,2500).slow(16))
-  .room(.8).attack(.4).rel(4)
+  .room(.8).attack(.4).rel(4).legato(1)
   .slow(4).orbit(0)
 
-$choir: note("<[d3,f3,a3] [c3,e3,g3] [bb2,d3,f3] [a2,c3,e3]>")
-  .s("gm_choir_aahs").gain(.2)
+$choir: note("<[[bb2,db3,f3]@16] [[ab2,c3,eb3]@16] [[gb2,bb2,db3]@16] [[f2,ab2,c3]@16]>")
+  .s("gm_choir_aahs").gain(.18)
   .lpf(1800).room(.85).delay(.2).delayfeedback(.3)
-  .attack(.3).rel(3).slow(4)
+  .attack(.3).rel(3).slow(4).legato(1)
   .orbit(1)
 
-$voxhigh: note("<a4 g4 f4 e4>")
-  .s("gm_voice_oohs").gain(.1)
-  .lpf(2500).room(.9).delay(.3).delayfeedback(.45)
-  .attack(.5).rel(4).slow(8)
-  .orbit(2)
+$horn: note("<[bb3@8 ~ ~ ~ ~ ~ ~ ~ ~] [ab3@6 ~ c4@6 ~ ~ ~ ~] [db4@8 ~ ~ ~ ~ ~ ~ ~ ~] [c4@6 ~ ab3@6 ~ ~ ~ ~]>")
+  .s("gm_french_horn").gain(.14)
+  .lpf(1600).room(.6).attack(.15).rel(2).legato(1)
+  .slow(4).orbit(2)
 
-$horn: note("<d3 c3 bb2 a2>")
-  .s("gm_french_horn").gain(.15)
-  .lpf(1400).room(.6).attack(.2).rel(2)
-  .slow(4).orbit(3)
+$voxhigh: note("<[f5@8 ~ ~ ~ ~ ~ ~ ~ ~] [eb5@6 ~ db5@6 ~ ~ ~ ~] [bb4@8 ~ ~ ~ ~ ~ ~ ~ ~] [c5@6 ~ ab4@6 ~ ~ ~ ~]>")
+  .s("gm_voice_oohs").gain(.08)
+  .lpf(2500).room(.9).delay(.3).delayfeedback(.45)
+  .attack(.3).rel(3).slow(8).legato(1)
+  .orbit(3)
+
+$cello: note("<[bb2@6 ~ c3@4 db3@4 ~] [eb3@8 ~ ~ ~ ~ ~ ~ ~ ~] [db3@6 ~ bb2@6 ~ ~ ~ ~] [ab2@8 ~ ~ ~ ~ ~ ~ ~ ~]>")
+  .s("gm_cello").gain(.18)
+  .lpf(900).room(.5).attack(.1).rel(3).legato(1)
+  .slow(4).orbit(4)
 
 $timpani: s("[bd:5 ~ ~ ~] ~ [~ bd:5] ~")
   .gain(.45).speed(.5).lpf(250).room(.6)
-  .slow(2).orbit(4)
+  .slow(2).orbit(5)
 
 $cymbal: s("~ ~ ~ [crash ~]")
   .gain(sine.range(.05,.2).slow(16))
   .room(.7).hpf(600).slow(4)
-  .orbit(5)
-
-$cello: note("<d2 c2 bb1 a1>")
-  .s("gm_cello").gain(.2)
-  .lpf(800).room(.5).attack(.1).rel(3)
-  .slow(4).orbit(6)
-`,
+  .orbit(6)`,
   },
   {
     id: 'phonk',
     label: 'PHONK',
     icon: '\uD83D\uDC80',
     bpm: 140,
-    desc: 'Dark Memphis beats with cowbell and distorted choir',
+    desc: 'Dark Memphis beats with sustained melody & distorted choir',
     code: `setCps(140/60/4)
 
 // DRIFT PHONK
@@ -928,50 +1005,51 @@ $hats: s("oh*8").bank("RolandTR808")
   .speed("[1.5 1.8]*4").hpf(1500)
   .orbit(3)
 
-$darkchoir: note("<[a2,c3,e3] ~ [g2,b2,d3] ~>")
-  .s("gm_choir_aahs").gain(.2)
+$darkchoir: note("<[[a2,c3,e3]@16] [[g2,b2,d3]@16] [[f2,a2,c3]@16] [[e2,g2,b2]@16]>")
+  .s("gm_choir_aahs").gain(.16)
   .lpf(800).distort(.4).crush(12)
   .room(.5).delay(.2).delayfeedback(.3)
-  .slow(2).orbit(4)
+  .slow(2).legato(1).orbit(4)
 
 $bass: note("<a0 ~ a0 ~ a0 ~ a0 [a0 g0]>")
   .s("sine").gain(.5)
   .lpf(100).shape(.5).rel(.5)
   .orbit(5)
 
-$melody: n("<0 3 5 7 8 7 5 3>").scale("A3:phrygian")
+$melody: note("<[a4@6 ~ c5@4 ~ ~ ~ ~ ~] [e5@8 ~ ~ ~ ~ ~ ~ ~ ~] [c5@4 b4@4 a4@6 ~ ~] [e5@4 ~ d5@4 ~ b4@6 ~ ~]>")
   .s("gm_music_box").gain(.12)
   .lpf(1600).crush(10).room(.3)
   .delay(.15).delayfeedback(.25)
-  .orbit(6)
-`,
+  .legato(1).slow(2)
+  .orbit(6)`,
   },
   {
     id: 'rnb',
     label: 'R&B',
     icon: '\uD83D\uDC9C',
     bpm: 80,
-    desc: 'Smooth R&B with vocal pads and neo-soul keys',
+    desc: 'Neo-soul keys with vocal melodies & warm basslines',
     code: `setCps(80/60/4)
 
 // SMOOTH R&B
 
-$rhodes: note("<[e3,g3,b3,d4] [a2,c3,e3,g3] [d3,f3,a3,c4] [g2,b2,d3,f3]>")
+$rhodes: note("<[[ab2,c3,eb3,g3]@16] [[f2,ab2,c3,eb3]@16] [[db2,f2,ab2,c3]@16] [[eb2,g2,bb2,d3]@16]>")
   .s("gm_epiano1").gain(.22)
   .lpf(sine.range(1000,2200).slow(16))
   .room(.5).delay(.15).delayfeedback(.3)
-  .slow(2).orbit(0)
+  .slow(2).legato(1).attack(.12)
+  .orbit(0)
 
-$voxpad: note("<[e3,b3] [a3,e4] [d4,a4] [g3,d4]>")
-  .s("gm_voice_oohs").gain(.12)
-  .lpf(1600).room(.7).delay(.25).delayfeedback(.4)
-  .attack(.2).rel(3).slow(4)
+$voxlead: note("<[c4@6 ~ eb4@4 ~ ~ ~ ~ ~] [ab4@8 ~ ~ ~ ~ ~ ~ ~ ~] [f4@4 eb4@4 ab4@6 ~ ~] [g4@6 ~ eb4@6 ~ ~ ~ ~]>")
+  .s("gm_voice_oohs").gain(.14)
+  .lpf(1800).room(.7).delay(.25).delayfeedback(.4)
+  .attack(.1).rel(2).legato(1)
   .pan(sine.range(.3,.7).slow(10))
-  .orbit(1)
+  .slow(2).orbit(1)
 
-$choir: note("<[e4,g4] [c4,e4] [d4,f4] [b3,d4]>")
-  .s("gm_synth_choir").gain(.08)
-  .lpf(2000).room(.6).attack(.15).rel(2)
+$choir: note("<[eb4@8 ~ ~ ~ ~ ~ ~ ~ ~] [c4@4 ab3@4 ~ ~ ~ ~ ~ ~ ~] [f4@8 ~ ~ ~ ~ ~ ~ ~ ~] [g4@4 eb4@4 ~ ~ ~ ~ ~ ~ ~]>")
+  .s("gm_synth_choir").gain(.07)
+  .lpf(2000).room(.6).attack(.1).rel(2).legato(1)
   .slow(4).orbit(2)
 
 $kick: s("[bd ~ ~ ~] ~ [~ bd] ~").bank("RolandTR808")
@@ -986,11 +1064,10 @@ $hats: s("hh*16").gain("[.05 .12 .08 .15]*4")
   .speed("[1.5 1.8 1.5 2]*4").hpf(1500)
   .orbit(5)
 
-$bass: note("<e1 a1 d2 g1>")
+$bass: note("<ab1 [~ ab1] f1 [~ f1] db1 [~ db1] eb2 [~ eb2]>")
   .s("gm_electric_bass_finger").gain(.3)
   .lpf(500).shape(.05).room(.1)
-  .slow(2).orbit(6)
-`,
+  .orbit(6)`,
   },
   // -- POP --
   {
@@ -998,7 +1075,7 @@ $bass: note("<e1 a1 d2 g1>")
     label: 'POP',
     icon: '\u2B50',
     bpm: 118,
-    desc: 'Modern pop with vocal chops, clean keys & four-on-the-floor',
+    desc: 'Bright pop with sustained vocal hooks & clean keys',
     code: `setCps(118/60/4)
 
 // MODERN POP HIT
@@ -1022,29 +1099,29 @@ $perc: s("[~ ~ cp ~] [~ rim ~ ~]").bank("RolandTR909")
   .gain(.3).room(.4).delay(.1).delayfeedback(.2)
   .orbit(3)
 
-$vox: note("<[e4 g4 a4 b4] [a4 g4 e4 d4] [e4 ~ g4 a4] [b4 a4 ~ g4]>")
-  .s("gm_voice_oohs").gain(.18)
-  .lpf(2200).room(.5).delay(.2).delayfeedback(.35)
-  .attack(.08).rel(.4)
+$vox: note("<[d5@4 f5@4 ~ bb5@6 ~ ~] [a4@8 ~ ~ ~ ~ ~ ~ ~ ~] [bb4@4 d5@4 f5@6 ~ ~] [d5@6 ~ c5@6 ~ ~ ~ ~]>")
+  .s("gm_voice_oohs").gain(.16)
+  .lpf(2400).room(.5).delay(.2).delayfeedback(.35)
+  .attack(.06).rel(.6).legato(1)
   .pan(sine.range(.2,.8).slow(6))
-  .orbit(4)
+  .slow(2).orbit(4)
 
-$keys: note("<[e3,g3,b3] [a2,c3,e3] [d3,f3,a3] [g2,b2,d3]>")
-  .s("gm_epiano1").gain(slider(.2, 0, .4))
+$keys: note("<[[bb2,d3,f3,a3]@16] [[g2,bb2,d3,f3]@16] [[eb2,g2,bb2,d3]@16] [[f2,a2,c3,eb3]@16]>")
+  .s("gm_epiano1").gain(.18)
   .lpf(2000).room(.35).delay(.12).delayfeedback(.25)
-  .slow(2).orbit(5)
+  .slow(2).legato(1).attack(.1)
+  .orbit(5)
 
-$bass: note("<e2 a1 d2 g1>")
+$bass: note("<bb1 bb1 g1 f1>*2")
   .s("gm_synth_bass_1").gain(.4)
   .lpf(slider(600, 100, 1500)).shape(.1)
-  .slow(2).orbit(6)
+  .orbit(6)
 
-$pad: note("<[e3,b3,g4] [a2,e3,c4] [d3,a3,f4] [g2,d3,b3]>")
+$pad: note("<[bb3,f4,d5] [g3,d4,bb4] [eb3,bb3,g4] [f3,c4,a4]>")
   .s("gm_pad_warm").gain(.06)
   .lpf(perlin.range(400, 1200).slow(12))
   .room(.7).delay(.2).delayfeedback(.4)
-  .slow(4).orbit(7)
-`,
+  .slow(4).orbit(7)`,
   },
   // -- DARK HOUSE --
   {
@@ -1110,7 +1187,7 @@ $texture: s("noise").gain(sine.range(0,.015).slow(16))
     label: 'UK GARAGE',
     icon: '\uD83D\uDD27',
     bpm: 130,
-    desc: '2-step garage with choppy vocals and shuffled beats',
+    desc: '2-step garage with choppy vocals, 7th chords & shuffled beats',
     code: `setCps(130/60/4)
 
 // UK GARAGE
@@ -1140,18 +1217,18 @@ $bass: note("<[c2 ~ c2 ~] [~ c2 ~ c2] [bb1 ~ bb1 ~] [~ ab1 ~ ab1]>")
   .lpf(slider(400, 80, 1000)).lpq(4).shape(.1)
   .orbit(4)
 
-$vox: note("<[c4 eb4 g4 ~] [~ g4 eb4 c4] [bb3 ~ d4 f4] [~ f4 d4 bb3]>")
+$vox: note("<[c4@4 eb4@4 g4@6 ~ ~] [g4@4 ~ eb4@4 c4@6 ~] [bb3@4 d4@4 f4@6 ~ ~] [f4@4 ~ d4@6 bb3@4 ~]>")
   .s("gm_voice_oohs").gain(.14)
   .lpf(1800).room(.5).delay(.15).delayfeedback(.3)
-  .attack(.04).rel(.3)
+  .attack(.04).rel(.4).legato(1)
   .jux(rev)
   .orbit(5)
 
-$chords: note("<[c3,eb3,g3] [c3,eb3,g3] [bb2,d3,f3] [ab2,c3,eb3]>")
-  .s("gm_epiano1").gain(slider(.15, 0, .3))
+$chords: note("<[[c3,eb3,g3,bb3]@16] [[c3,eb3,g3,bb3]@16] [[bb2,d3,f3,ab3]@16] [[ab2,c3,eb3,g3]@16]>")
+  .s("gm_epiano1").gain(.15)
   .lpf(1500).room(.4).delay(.12).delayfeedback(.2)
-  .slow(2).orbit(6)
-`,
+  .slow(2).legato(1).attack(.08)
+  .orbit(6)`,
   },
   // -- DISCO / FUNK --
   {
@@ -1159,7 +1236,7 @@ $chords: note("<[c3,eb3,g3] [c3,eb3,g3] [bb2,d3,f3] [ab2,c3,eb3]>")
     label: 'DISCO FUNK',
     icon: '\uD83D\uDD7A',
     bpm: 115,
-    desc: 'Groovy disco with funky bass, strings & vocal hooks',
+    desc: 'Groovy disco with funky slap bass, string melodies & vocal hooks',
     code: `setCps(115/60/4)
 
 // DISCO FUNK GROOVE
@@ -1178,37 +1255,36 @@ $snare: s("~ sd ~ sd").bank("RolandTR909")
   .gain(.5).room(.3)
   .orbit(2)
 
-$bass: note("<[c2 ~ c2 c2] [~ c2 c3 c2] [f1 ~ f1 f1] [~ g1 g2 g1]>")
+$bass: note("<[bb1 ~ bb1 bb1] [~ bb1 bb2 bb1] [g1 ~ g1 g1] [~ c2 c3 c2]>")
   .s("gm_slap_bass_1").gain(.45)
   .lpf(slider(800, 200, 2000)).shape(.08)
   .velocity("[.7 .9 .8 1]*4")
   .orbit(3)
 
-$strings: note("<[c4,e4,g4,b4] [c4,e4,g4,b4] [f3,a3,c4,e4] [g3,b3,d4,f4]>")
-  .s("gm_string_ensemble_1").gain(.12)
+$strings: note("<[bb3@6 ~ d4@4 ~ ~ ~ ~ ~] [g4@8 ~ ~ ~ f4@4 ~ ~] [eb4@4 d4@4 c4@6 ~ ~] [f4@6 ~ d4@6 ~ ~ ~ ~]>")
+  .s("gm_string_ensemble_1").gain(.14)
   .lpf(2500).room(.4)
-  .attack(.1).rel(1)
+  .attack(.08).rel(1.5).legato(1)
   .slow(2).orbit(4)
 
-$guitar: note("<[c3 e3 g3 e3] [c3 e3 g3 e3] [f2 a2 c3 a2] [g2 b2 d3 b2]>*2")
+$guitar: note("<[bb3 d4 f4 d4] [bb3 d4 f4 d4] [g3 bb3 d4 bb3] [c4 eb4 g4 eb4]>*2")
   .s("gm_electric_guitar_clean").gain(.15)
   .lpf(2200).room(.3).delay(.08)
   .velocity("[.6 .8 .7 .9]*4")
   .orbit(5)
 
-$vox: note("<[g4 ~ e4 ~] [~ c4 ~ e4] [a4 ~ f4 ~] [~ d4 ~ f4]>")
+$vox: note("<[d5@4 ~ bb4@4 ~ ~ ~ ~ ~ ~] [~ ~ ~ ~ ~ ~ ~ ~ ~] [eb5@4 ~ c5@4 ~ d5@6 ~ ~] [~ ~ ~ ~ ~ ~ ~ ~ ~]>")
   .s("gm_choir_aahs").gain(.1)
   .lpf(2000).room(.55).delay(.15).delayfeedback(.3)
-  .attack(.06).rel(.5)
+  .attack(.06).rel(.5).legato(1)
   .pan(sine.range(.25,.75).slow(8))
-  .orbit(6)
+  .slow(2).orbit(6)
 
-$brass: note("<[c4,e4] ~ ~ ~ [f3,a3] ~ ~ ~>")
+$brass: note("<[bb4,d5] ~ ~ ~ [g4,bb4] ~ ~ ~>")
   .s("gm_brass_section").gain(.15)
   .lpf(1800).room(.3)
   .attack(.03).rel(.4)
-  .slow(2).orbit(7)
-`,
+  .slow(2).orbit(7)`,
   },
   // -- PROGRESSIVE HOUSE --
   {
@@ -1216,7 +1292,7 @@ $brass: note("<[c4,e4] ~ ~ ~ [f3,a3] ~ ~ ~>")
     label: 'PROG HOUSE',
     icon: '\u2728',
     bpm: 124,
-    desc: 'Progressive house with building layers and euphoric breakdown',
+    desc: 'Progressive house with soaring leads & euphoric breakdowns',
     code: `setCps(124/60/4)
 
 // PROGRESSIVE HOUSE
@@ -1239,31 +1315,30 @@ $perc: s("[~ ~ rim ~]*2").gain(.2)
   .room(.5).delay(.12).delayfeedback(.3)
   .hpf(600).orbit(3)
 
-$bass: note("<[a1 ~ a1 ~] [~ a1 ~ a1] [f1 ~ f1 ~] [~ g1 ~ g1]>")
+$bass: note("<[eb1 ~ eb1 ~] [~ eb1 ~ eb1] [bb0 ~ bb0 ~] [~ db1 ~ db1]>")
   .s("sawtooth").gain(.35)
   .lpf(slider(300, 60, 900)).lpq(5).lpenv(2)
   .shape(.2).orbit(4)
 
-$lead: n("<0 4 7 12 7 4 0 -3>*2").scale("A4:minor")
-  .s("supersaw").detune(1).gain(.12)
+$lead: note("<[eb5@8 ~ ~ ~ ~ ~ ~ ~ ~] [~ ~ ~ bb4@8 ~ ~ ~ ~ ~] [db5@6 ~ c5@4 bb4@4 ~ ~] [gb5@6 ~ eb5@6 ~ ~ ~ ~]>")
+  .s("supersaw").detune(1.5).gain(.14)
   .lpf(saw.range(400, 3000).slow(16))
   .room(.5).delay(.2).delayfeedback(.4)
-  .attack(.01).rel(.3)
-  .orbit(5)
+  .attack(.02).rel(1).legato(1)
+  .slow(2).orbit(5)
 
-$pad: note("<[a2,c3,e3,g3] [a2,c3,e3,g3] [f2,a2,c3,e3] [g2,b2,d3,f3]>")
-  .s("gm_pad_warm").gain(sine.range(.02,.08).slow(16))
+$pad: note("<[[eb2,gb2,bb2,db3]@16] [[eb2,gb2,bb2,db3]@16] [[bb1,db2,f2,ab2]@16] [[db2,f2,ab2,c3]@16]>")
+  .s("gm_pad_warm").gain(sine.range(.03,.08).slow(16))
   .lpf(perlin.range(500, 1800).slow(10))
   .room(.8).delay(.25).delayfeedback(.45)
-  .slow(4).orbit(6)
+  .slow(4).legato(1).orbit(6)
 
-$vox: note("<a3 ~ c4 ~ e4 ~ c4 ~>")
-  .s("gm_choir_aahs").gain(saw.range(0,.08).slow(32))
+$vox: note("<[eb4@4 ~ gb4@4 ~ bb4@6 ~ ~] [bb4@8 ~ ~ ~ ~ ~ ~ ~ ~] [db4@4 ~ eb4@4 ~ gb4@6 ~ ~] [eb4@8 ~ ~ ~ ~ ~ ~ ~ ~]>")
+  .s("gm_choir_aahs").gain(saw.range(0,.07).slow(32))
   .lpf(perlin.range(600, 2000).slow(8))
   .room(.7).delay(.3).delayfeedback(.5)
-  .attack(.15).rel(1)
-  .orbit(7)
-`,
+  .attack(.1).rel(1).legato(1)
+  .slow(2).orbit(7)`,
   },
   // -- MINIMAL TECHNO --
   {
@@ -1321,7 +1396,7 @@ $texture: s("noise").gain(sine.range(0,.008).slow(20))
     label: 'ELECTRO POP',
     icon: '\uD83C\uDFB9',
     bpm: 120,
-    desc: 'Catchy electro pop with arpeggios, vocal layers & danceable groove',
+    desc: 'Catchy electro pop with sustained arps & vocal melodies',
     code: `setCps(120/60/4)
 
 // ELECTRO POP
@@ -1344,31 +1419,30 @@ $cp: s("~ ~ ~ [~ cp]").bank("RolandTR808")
   .gain(.3).room(.4).delay(.1).delayfeedback(.2)
   .orbit(3)
 
-$arp: n("<0 3 7 12 7 3 0 -5>*4").scale("C4:major")
+$arp: note("<[f4@3 a4@2 c5@3 e5@2 ~ ~ ~ ~ ~ ~] [c5@3 a4@2 f4@3 d4@2 ~ ~ ~ ~ ~ ~] [g4@3 bb4@2 d5@3 f5@2 ~ ~ ~ ~ ~ ~] [d5@3 bb4@2 g4@3 f4@2 ~ ~ ~ ~ ~ ~]>")
   .s("square").gain(.12)
   .lpf(saw.range(600, 4000).slow(8))
   .lpq(3).room(.4).delay(.15).delayfeedback(.35)
-  .attack(.01).rel(.15).clip(1)
+  .attack(.01).rel(.2).legato(1)
   .pan(sine.range(.2,.8).slow(4))
-  .orbit(4)
+  .slow(2).orbit(4)
 
-$bass: note("<c2 c2 f1 g1>*2")
+$bass: note("<f2 f2 g1 c2>*2")
   .s("gm_synth_bass_2").gain(.4)
   .lpf(slider(500, 80, 1200)).shape(.12)
   .orbit(5)
 
-$chords: note("<[c3,e3,g3] [c3,e3,g3] [f2,a2,c3] [g2,b2,d3]>")
+$chords: note("<[[f2,a2,c3,e3]@16] [[f2,a2,c3,e3]@16] [[g2,bb2,d3,f3]@16] [[c3,e3,g3,bb3]@16]>")
   .s("supersaw").detune(.8).gain(.1)
   .lpf(1500).room(.4).delay(.12).delayfeedback(.25)
-  .attack(.02).rel(.8)
+  .attack(.02).rel(.8).legato(1)
   .slow(2).orbit(6)
 
-$vox: note("<[e4 g4 ~ c5] [~ b4 g4 ~] [a4 c5 ~ a4] [~ g4 e4 ~]>")
-  .s("gm_voice_oohs").gain(.12)
+$vox: note("<[a4@4 c5@4 ~ f5@6 ~ ~] [e5@4 ~ c5@6 a4@4 ~ ~] [bb4@4 d5@4 f5@6 ~ ~] [d5@6 ~ bb4@6 ~ ~ ~ ~]>")
+  .s("gm_voice_oohs").gain(.11)
   .lpf(2400).room(.5).delay(.2).delayfeedback(.35)
-  .attack(.06).rel(.4)
-  .jux(rev).orbit(7)
-`,
+  .attack(.05).rel(.5).legato(1)
+  .jux(rev).slow(2).orbit(7)`,
   },
   // -- FUTURE BASS --
   {
@@ -1376,7 +1450,7 @@ $vox: note("<[e4 g4 ~ c5] [~ b4 g4 ~] [a4 c5 ~ a4] [~ g4 e4 ~]>")
     label: 'FUTURE BASS',
     icon: '\uD83C\uDF1F',
     bpm: 150,
-    desc: 'Lush supersaws, vocal chops and sidechained chords',
+    desc: 'Lush supersaws, sustained vocal melodies & sidechained chords',
     code: `setCps(150/60/4)
 
 // FUTURE BASS
@@ -1394,13 +1468,13 @@ $hats: s("hh*8").gain("[.1 .25]*4")
   .speed("[1.3 1 1.4 1.1]*2").hpf(1100)
   .orbit(2)
 
-$chords: note("<[ab3,c4,eb4,g4] [ab3,c4,eb4,g4] [f3,ab3,c4,eb4] [eb3,g3,bb3,d4]>")
-  .s("supersaw").detune(2).gain(.2)
+$chords: note("<[[ab3,c4,eb4,g4]@16] [[ab3,c4,eb4,g4]@16] [[f3,ab3,c4,eb4]@16] [[eb3,g3,bb3,d4]@16]>")
+  .s("supersaw").detune(2).gain(.18)
   .lpf(saw.range(300, 3500).slow(8))
   .room(.5).delay(.2).delayfeedback(.35)
-  .attack(.01).rel(.6)
+  .attack(.01).rel(.8).legato(1)
   .duck(1).duckdepth(.7)
-  .orbit(3)
+  .slow(2).orbit(3)
 
 $bass: note("<ab1 ab1 f1 eb1>*2")
   .s("sawtooth").gain(.4)
@@ -1408,26 +1482,25 @@ $bass: note("<ab1 ab1 f1 eb1>*2")
   .shape(.25).distort(.1)
   .orbit(4)
 
-$vox: note("<[eb5 c5 ab4 ~] [~ g4 ab4 c5] [c5 ab4 f4 ~] [~ eb4 g4 bb4]>")
-  .s("gm_choir_aahs").gain(.1)
+$vox: note("<[eb5@6 ~ c5@4 ~ ~ ~ ~ ~] [ab4@4 ~ g4@4 ab4@6 ~ ~] [c5@4 ab4@4 f4@6 ~ ~] [eb4@4 ~ g4@4 bb4@6 ~ ~]>")
+  .s("gm_choir_aahs").gain(.12)
   .lpf(2800).room(.6).delay(.2).delayfeedback(.4)
-  .attack(.03).rel(.35)
+  .attack(.04).rel(.5).legato(1)
   .pan(sine.range(.2,.8).slow(5))
-  .orbit(5)
+  .slow(2).orbit(5)
 
-$arp: n("<0 4 7 11 7 4>*4").scale("Ab4:major")
+$arp: note("<[ab4@2 c5@2 eb5@2 g5@2 eb5@2 c5@2 ~ ~ ~ ~] [c5@2 eb5@2 g5@2 ab5@2 g5@2 eb5@2 ~ ~ ~ ~] [f4@2 ab4@2 c5@2 eb5@2 c5@2 ab4@2 ~ ~ ~ ~] [eb4@2 g4@2 bb4@2 d5@2 bb4@2 g4@2 ~ ~ ~ ~]>")
   .s("gm_music_box").gain(.06)
   .room(.7).delay(.25).delayfeedback(.5)
-  .lpf(3000).hpf(500)
+  .lpf(3000).hpf(500).legato(1)
   .jux(rev)
-  .orbit(6)
+  .slow(2).orbit(6)
 
 $pad: note("<[ab2,eb3,c4] [ab2,eb3,c4] [f2,c3,ab3] [eb2,bb2,g3]>")
   .s("gm_pad_choir").gain(.05)
   .lpf(perlin.range(400, 1200).slow(10))
   .room(.85).delay(.3).delayfeedback(.5)
-  .slow(4).orbit(7)
-`,
+  .slow(4).orbit(7)`,
   },
   // -- DANCEHALL --
   {
@@ -1435,7 +1508,7 @@ $pad: note("<[ab2,eb3,c4] [ab2,eb3,c4] [f2,c3,ab3] [eb2,bb2,g3]>")
     label: 'DANCEHALL',
     icon: '\uD83D\uDC83',
     bpm: 100,
-    desc: 'Caribbean riddim with bouncy bass and vocal hooks',
+    desc: 'Caribbean riddim with sustained hooks & bouncy bass',
     code: `setCps(100/60/4)
 
 // DANCEHALL RIDDIM
@@ -1456,28 +1529,28 @@ $perc: s("[~ rim] [~ ~] [rim ~] [~ ~]")
   .gain(.25).room(.3).delay(.06)
   .speed(1.1).orbit(3)
 
-$bass: note("<[c2 ~ c2 ~] [~ c2 ~ c3] [f1 ~ f1 ~] [~ g1 ~ g2]>")
+$bass: note("<[f1 ~ f1 ~] [~ f1 ~ f2] [db1 ~ db1 ~] [~ eb1 ~ eb2]>")
   .s("sine").gain(.5)
   .lpf(slider(250, 60, 600)).shape(.2)
   .orbit(4)
 
-$keys: note("<[c3,eb3,g3] ~ [c3,eb3,g3] ~ [f2,ab2,c3] ~ [g2,bb2,d3] ~>")
+$keys: note("<[[f2,ab2,c3,eb3]@16] [[f2,ab2,c3,eb3]@16] [[db2,f2,ab2,c3]@16] [[eb2,g2,bb2,d3]@16]>")
   .s("gm_epiano1").gain(.18)
   .lpf(1800).room(.4).delay(.1).delayfeedback(.2)
+  .slow(2).legato(1).attack(.1)
   .orbit(5)
 
-$vox: note("<[g4 eb4 c4 ~] [~ c4 eb4 g4] [ab4 f4 ~ c4] [~ eb4 g4 ~]>")
+$vox: note("<[c5@4 ab4@4 f4@6 ~ ~] [~ ~ ~ f4@4 ab4@4 c5@6 ~] [ab4@6 ~ f4@6 ~ ~ ~ ~] [eb4@4 ~ f4@4 ab4@6 ~ ~]>")
   .s("gm_voice_oohs").gain(.12)
   .lpf(2000).room(.45).delay(.15).delayfeedback(.3)
-  .attack(.05).rel(.35)
-  .orbit(6)
+  .attack(.05).rel(.4).legato(1)
+  .slow(2).orbit(6)
 
-$brass: note("<[c4,eb4] ~ ~ ~ [f3,ab3] ~ [g3,bb3] ~>")
+$brass: note("<[f4,ab4] ~ ~ ~ [db4,f4] ~ [eb4,g4] ~>")
   .s("gm_brass_section").gain(.12)
   .lpf(1600).room(.3)
   .attack(.02).rel(.3)
-  .orbit(7)
-`,
+  .orbit(7)`,
   },
   // -- TECHNO MELODIC --
   {
@@ -1485,7 +1558,7 @@ $brass: note("<[c4,eb4] ~ ~ ~ [f3,ab3] ~ [g3,bb3] ~>")
     label: 'MELODIC TECHNO',
     icon: '\uD83C\uDFB6',
     bpm: 128,
-    desc: 'Melodic techno � driving beats with emotional synth layers',
+    desc: 'Melodic techno with emotional synth leads & driving beats',
     code: `setCps(128/60/4)
 
 // MELODIC TECHNO
@@ -1508,30 +1581,30 @@ $ride: s("[~ ~ ride ~]*2").gain(.12)
   .pan(sine.range(.3,.7).slow(6))
   .orbit(3)
 
-$bass: n("<0 0 -3 -3 2 2 -1 -1>").scale("d:minor")
+$bass: n("<0 0 -2 -2 3 3 -1 -1>").scale("f#:minor")
   .s("sawtooth").gain(.35)
   .lpf(slider(250, 50, 700)).lpenv(3).lpq(7)
   .shape(.25).orbit(4)
 
-$lead: n("<0 4 7 11 12 11 7 4>*2").scale("D4:minor")
-  .s("sawtooth").gain(.12)
+$lead: note("<[f#4@8 ~ ~ ~ ~ ~ ~ ~ ~] [~ ~ ~ c#5@6 ~ ~ ~ ~ ~] [a4@4 g#4@4 f#4@6 ~ ~] [c#5@6 ~ b4@6 ~ ~ ~ ~]>")
+  .s("sawtooth").gain(.14)
   .lpf(saw.range(500, 4000).slow(16))
   .lpq(3).room(.5).delay(.2).delayfeedback(.4)
-  .attack(.02).rel(.25)
-  .jux(rev).orbit(5)
+  .attack(.02).rel(1).legato(1)
+  .jux(rev).slow(2).orbit(5)
 
-$pad: note("<[d3,f3,a3,c4] [d3,f3,a3,c4] [bb2,d3,f3,a3] [c3,e3,g3,b3]>")
-  .s("gm_pad_sweep").gain(sine.range(.02,.07).slow(16))
+$pad: note("<[[f#2,a2,c#3,e3]@16] [[f#2,a2,c#3,e3]@16] [[d2,f#2,a2,c#3]@16] [[e2,g#2,b2,d#3]@16]>")
+  .s("gm_pad_sweep").gain(sine.range(.03,.07).slow(16))
   .lpf(perlin.range(400, 1600).slow(8))
   .room(.8).delay(.25).delayfeedback(.45)
-  .slow(4).orbit(6)
+  .slow(4).legato(1).orbit(6)
 
-$vox: note("<d4 ~ f4 ~ a4 ~ f4 ~>")
+$vox: note("<[f#4@4 ~ a4@4 ~ c#5@6 ~ ~] [c#5@8 ~ ~ ~ ~ ~ ~ ~ ~] [a4@4 ~ b4@4 ~ a4@6 ~ ~] [f#4@8 ~ ~ ~ ~ ~ ~ ~ ~]>")
   .s("gm_synth_choir").gain(saw.range(0,.06).slow(32))
   .lpf(perlin.range(500, 1800).slow(10))
   .room(.75).delay(.3).delayfeedback(.5)
-  .attack(.2).rel(1.5)
-  .orbit(7)
+  .attack(.12).rel(1.5).legato(1)
+  .slow(2).orbit(7)
 `,
   },
   {
