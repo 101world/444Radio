@@ -2832,13 +2832,13 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     setAudioClips(prev => prev.filter(c => c.id !== clipId))
   }, [])
 
-  // ── Auto-Sync: snap clip to nearest whole-bar boundary and set playbackRate ──
+  // ── Auto-Sync: snap clip to nearest whole-bar boundary, set playbackRate + pitch compensation ──
   const handleAutoSyncClip = useCallback((clipId: string) => {
     setAudioClips(prev => prev.map(c => {
       if (c.id !== clipId) return c
-      const { durationBars, rate } = calcAutoSyncRate(c, projectBpm)
-      console.log(`[444 STUDIO] Auto-Sync: "${c.name}" → ${durationBars} bars @ ${rate.toFixed(3)}x speed (was ${c.durationBars.toFixed(2)} bars)`)
-      return { ...c, durationBars, playbackRate: rate }
+      const { durationBars, rate, pitchCompensationCents } = calcAutoSyncRate(c, projectBpm)
+      console.log(`[444 STUDIO] Auto-Sync: "${c.name}" → ${durationBars} bars @ ${rate.toFixed(3)}x speed, pitch comp: ${pitchCompensationCents.toFixed(0)}¢ (was ${c.durationBars.toFixed(2)} bars)`)
+      return { ...c, durationBars, playbackRate: rate, ratePitchCents: pitchCompensationCents }
     }))
   }, [projectBpm])
 
@@ -2924,12 +2924,13 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
         recordingTrackIndex,
         projectBpm,
       )
-      // Auto-process: detect BPM → sync to bars → pitch to key
+      // Auto-process: detect BPM → sync to bars → pitch to key (preserves pitch like Logic Pro)
       const scale = parseScale(code)
       const key = scale?.root ?? 'C'
       const processed = autoProcessClip(clip, projectBpm, key)
       clip.durationBars = processed.sync.durationBars
       clip.playbackRate = processed.sync.rate
+      clip.ratePitchCents = processed.sync.pitchCompensationCents
       if (processed.pitch.detectedHz) {
         clip.detuneCents = processed.pitch.detuneCents
       }
@@ -2963,12 +2964,13 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
         pendingUploadTrackRef.current,
         projectBpm,
       )
-      // Auto-process: detect BPM → sync to bars → pitch to key
+      // Auto-process: detect BPM → sync to bars → pitch to key (preserves pitch like Logic Pro)
       const scale = parseScale(code)
       const key = scale?.root ?? 'C'
       const processed = autoProcessClip(clip, projectBpm, key)
       clip.durationBars = processed.sync.durationBars
       clip.playbackRate = processed.sync.rate
+      clip.ratePitchCents = processed.sync.pitchCompensationCents
       if (processed.pitch.detectedHz) {
         clip.detuneCents = processed.pitch.detuneCents
       }

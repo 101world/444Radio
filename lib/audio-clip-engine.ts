@@ -44,7 +44,9 @@ export interface AudioClip {
   color: string
   /** Playback rate multiplier (1 = normal, >1 = faster). Set by Auto-Sync. */
   playbackRate: number
-  /** Pitch shift in cents. Set by Auto-Pitch. */
+  /** Pitch compensation in cents for playbackRate change (preserves original pitch). */
+  ratePitchCents: number
+  /** Pitch shift in cents for musical key correction. Set by Auto-Pitch. */
   detuneCents: number
 }
 
@@ -140,6 +142,7 @@ export function createClipFromBuffer(
     trimEnd: 0,
     color: color || trackColor(trackIndex),
     playbackRate: 1,
+    ratePitchCents: 0,
     detuneCents: 0,
   }
 }
@@ -265,11 +268,15 @@ export class ClipPlaybackEngine {
     const source = this.ctx.createBufferSource()
     source.buffer = clip.buffer
 
-    // Apply playback rate (Auto-Sync) and pitch shift (Auto-Pitch)
+    // Apply playback rate (Auto-Sync) and pitch shift
+    // ratePitchCents = compensation to preserve original pitch when rate != 1
+    // detuneCents = musical key correction from Auto-Pitch
+    // Total detune = both combined (Logic Pro style: stretch without pitch change + key correction)
     const rate = clip.playbackRate || 1
     source.playbackRate.value = rate
-    if (clip.detuneCents && clip.detuneCents !== 0) {
-      source.detune.value = clip.detuneCents
+    const totalDetune = (clip.ratePitchCents || 0) + (clip.detuneCents || 0)
+    if (totalDetune !== 0) {
+      source.detune.value = totalDetune
     }
 
     // Per-clip gain
@@ -307,8 +314,9 @@ export class ClipPlaybackEngine {
 
     const rate = clip.playbackRate || 1
     source.playbackRate.value = rate
-    if (clip.detuneCents && clip.detuneCents !== 0) {
-      source.detune.value = clip.detuneCents
+    const totalDetune = (clip.ratePitchCents || 0) + (clip.detuneCents || 0)
+    if (totalDetune !== 0) {
+      source.detune.value = totalDetune
     }
 
     const clipGain = this.ctx.createGain()
@@ -673,6 +681,8 @@ export interface SyncResult {
   durationBars: number
   /** Nearest whole-bar count the clip was snapped to */
   targetBars: number
+  /** Detune in cents to compensate for rate-induced pitch shift (preserves original pitch) */
+  pitchCompensationCents: number
 }
 
 /**
@@ -687,7 +697,10 @@ export function calcAutoSyncRate(clip: AudioClip, bpm: number): SyncResult {
   const targetBars = Math.max(1, Math.round(naturalBars))
   const targetSec = barsToSeconds(targetBars, bpm)
   const rate = effectiveSec / targetSec   // speed up if clip is too long
-  return { rate, durationBars: targetBars, targetBars }
+  // Pitch compensation: changing playbackRate shifts pitch by 12*log2(rate) semitones.
+  // Counter-detune to preserve original pitch (Logic Pro style).
+  const pitchCompensationCents = -1200 * Math.log2(rate)
+  return { rate, durationBars: targetBars, targetBars, pitchCompensationCents }
 }
 
 // ═══════════════════════════════════════════════════════════════
