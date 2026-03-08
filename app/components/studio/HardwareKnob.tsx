@@ -31,6 +31,8 @@ interface HardwareKnobProps {
   active?: boolean      // whether this effect is on the channel
   description?: string  // what this effect does (shown on hover)
   paramKey?: string     // the strudel param key (e.g. 'lpf')
+  onTweakStart?: (paramKey: string) => void   // called when user starts dragging
+  onTweakEnd?: () => void                     // called when user stops dragging
 }
 
 export default function HardwareKnob({
@@ -49,6 +51,8 @@ export default function HardwareKnob({
   active = true,
   description,
   paramKey,
+  onTweakStart,
+  onTweakEnd,
 }: HardwareKnobProps) {
   const dragRef = useRef<{ startY: number; startVal: number } | null>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -102,8 +106,9 @@ export default function HardwareKnob({
       dragRef.current = { startY: e.clientY, startVal: value }
       setIsDragging(true)
       ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+      if (paramKey && onTweakStart) onTweakStart(paramKey)
     },
-    [value],
+    [value, paramKey, onTweakStart],
   )
 
   const handlePointerMove = useCallback(
@@ -120,7 +125,8 @@ export default function HardwareKnob({
   const handlePointerUp = useCallback(() => {
     dragRef.current = null
     setIsDragging(false)
-  }, [])
+    if (onTweakEnd) onTweakEnd()
+  }, [onTweakEnd])
 
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {

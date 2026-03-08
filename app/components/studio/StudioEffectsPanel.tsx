@@ -12,6 +12,7 @@ import { useRef, useEffect, useCallback, useState, useMemo } from 'react'
 import { Piano, Grid3X3, Mic, Link, Unlink, X, Volume2 } from 'lucide-react'
 import HardwareKnob from './HardwareKnob'
 import StudioKnob from './StudioKnob'
+import FxLcdMonitor from './FxLcdMonitor'
 import { PARAM_DEFS, getParamDef, getTranspose, type ParsedChannel, type ParamDef, type StackRow } from '@/lib/strudel-code-parser'
 
 // ─── FX groups definition ───
@@ -292,6 +293,9 @@ export default function StudioEffectsPanel({
   const [panelHeight, setPanelHeight] = useState(220)
   const resizeRef = useRef<{ startY: number; startH: number } | null>(null)
 
+  // LCD monitor — tracks which knob the user is currently tweaking
+  const [activeParam, setActiveParam] = useState<{ key: string; value: number; min: number; max: number; unit?: string } | null>(null)
+
   const relevantGroupNames = TYPE_RELEVANT_GROUPS[channel.sourceType] || TYPE_RELEVANT_GROUPS.sample
 
   const gainParam = channel.params.find(p => p.key === 'gain')
@@ -325,6 +329,21 @@ export default function StudioEffectsPanel({
   }, [groups, activeGroup])
 
   const currentGroup = groups.find(g => g.label === activeGroup)
+
+  // LCD tweak callbacks
+  const handleTweakStart = useCallback((paramKey: string) => {
+    const group = currentGroup || groups.find(g => g.knobs.some(k => k.key === paramKey))
+    const knob = group?.knobs.find(k => k.key === paramKey)
+    if (knob) {
+      setActiveParam({ key: paramKey, value: knob.existingParam?.value ?? knob.paramDef.min, min: knob.paramDef.min, max: knob.paramDef.max, unit: knob.paramDef.unit })
+    }
+  }, [currentGroup, groups])
+  const tweakEndTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const handleTweakEnd = useCallback(() => {
+    // Keep showing the last-tweaked param for 3s so user can read the display
+    if (tweakEndTimer.current) clearTimeout(tweakEndTimer.current)
+    tweakEndTimer.current = setTimeout(() => setActiveParam(null), 3000)
+  }, [])
 
   const handleResizeDown = useCallback((e: React.PointerEvent) => {
     if (layout !== 'bottom') return
@@ -388,10 +407,14 @@ export default function StudioEffectsPanel({
               size={knobSize} color={hasValue ? channel.color : '#4a4e56'}
               unit={paramDef.unit} isComplex={isComplex} active={hasValue}
               paramKey={key} description={FX_DESCRIPTIONS[key]}
+              onTweakStart={handleTweakStart}
+              onTweakEnd={handleTweakEnd}
               onRemove={hasValue ? () => onRemoveEffect(channelIdx, key) : undefined}
               onChange={(v: number) => {
                 if (hasValue) { onParamChange(channelIdx, key, v) }
                 else { onEffectInsert(channelIdx, `.${key}(${v})`) }
+                // Keep LCD in sync while dragging
+                setActiveParam(prev => prev?.key === key ? { ...prev, value: v } : prev)
               }}
             />
           )
@@ -820,6 +843,21 @@ export default function StudioEffectsPanel({
               ))}
             </div>
 
+            {/* LCD Monitor */}
+            <div className="px-3 py-2" style={{ borderBottom: '1px solid #111a1a' }}>
+              <FxLcdMonitor
+                paramKey={activeParam?.key ?? null}
+                paramLabel={activeParam?.key ? (FX_DESCRIPTIONS[activeParam.key] || activeParam.key) : ''}
+                value={activeParam?.value ?? 0}
+                min={activeParam?.min ?? 0}
+                max={activeParam?.max ?? 1}
+                color={channel.color}
+                unit={activeParam?.unit}
+                width={240}
+                height={72}
+              />
+            </div>
+
             {/* Knobs */}
             {renderKnobs(44)}
           </div>
@@ -900,20 +938,33 @@ export default function StudioEffectsPanel({
       {/* Knobs area */}
       {currentGroup && (
         <div className="flex-1 overflow-y-auto px-6 pt-3 pb-4" style={{ height: panelHeight - 56 }}>
-          <div className="flex items-center gap-3 mb-3">
-            <div className="px-3 py-1 rounded-sm" style={{
-              background: 'linear-gradient(180deg, #0a1015 0%, #0c1218 100%)',
-              border: '1px solid #1a3030', boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.6)',
-            }}>
-              <span className="text-[8px] font-black tracking-[.2em] uppercase"
-                style={{ color: `${channel.color}90`, fontFamily: 'monospace' }}>
-                {currentGroup.icon} {currentGroup.label}
+          {/* LCD Monitor */}
+          <div className="flex items-center gap-4 mb-3">
+            <FxLcdMonitor
+              paramKey={activeParam?.key ?? null}
+              paramLabel={activeParam?.key ? (FX_DESCRIPTIONS[activeParam.key] || activeParam.key) : ''}
+              value={activeParam?.value ?? 0}
+              min={activeParam?.min ?? 0}
+              max={activeParam?.max ?? 1}
+              color={channel.color}
+              unit={activeParam?.unit}
+              width={280}
+              height={80}
+            />
+            <div className="flex flex-col gap-1">
+              <div className="px-3 py-1 rounded-sm" style={{
+                background: 'linear-gradient(180deg, #0a1015 0%, #0c1218 100%)',
+                border: '1px solid #1a3030', boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.6)',
+              }}>
+                <span className="text-[8px] font-black tracking-[.2em] uppercase"
+                  style={{ color: `${channel.color}90`, fontFamily: 'monospace' }}>
+                  {currentGroup.icon} {currentGroup.label}
+                </span>
+              </div>
+              <span className="text-[7px] font-bold font-mono" style={{ color: '#1a4040' }}>
+                {currentGroup.knobs.filter(k => k.existingParam).length}/{currentGroup.knobs.length} ACTIVE
               </span>
             </div>
-            <div className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, #1a303020 0%, transparent 100%)' }} />
-            <span className="text-[7px] font-bold font-mono" style={{ color: '#1a4040' }}>
-              {currentGroup.knobs.filter(k => k.existingParam).length}/{currentGroup.knobs.length}
-            </span>
           </div>
           <div className="flex flex-wrap gap-x-2 gap-y-3 justify-start">
             {currentGroup.knobs.map(({ paramDef, existingParam, key }) => {
@@ -926,10 +977,13 @@ export default function StudioEffectsPanel({
                   size={48} color={hasValue ? channel.color : '#4a4e56'}
                   unit={paramDef.unit} isComplex={isComplex} active={hasValue}
                   paramKey={key} description={FX_DESCRIPTIONS[key]}
+                  onTweakStart={handleTweakStart}
+                  onTweakEnd={handleTweakEnd}
                   onRemove={hasValue ? () => onRemoveEffect(channelIdx, key) : undefined}
                   onChange={(v: number) => {
                     if (hasValue) { onParamChange(channelIdx, key, v) }
                     else { onEffectInsert(channelIdx, `.${key}(${v})`) }
+                    setActiveParam(prev => prev?.key === key ? { ...prev, value: v } : prev)
                   }}
                 />
               )
