@@ -2447,3 +2447,86 @@ export function updateArrangeInCode(code: string, arrangeCode: string): string {
   // Case 2: no existing arrange block — append at end
   return code.trimEnd() + '\n\n' + arrangeCode + '\n'
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  applyAutomationOverrides — Eval-time automation layer
+//
+//  Takes clean editor code + per-section param overrides and
+//  replaces static param values with time-varying mini-notation
+//  patterns that align with the arrangement sections.
+//
+//  e.g. .gain(0.5) → .gain("[0.5@4 0.8@4 0.3@8]")
+//        (gain 0.5 for 4 bars, 0.8 for 4 bars, 0.3 for 8 bars)
+//
+//  This is eval-only — the editor always shows clean code.
+// ═══════════════════════════════════════════════════════════════
+
+export function applyAutomationOverrides(
+  code: string,
+  automationData: Map<string, number>,
+  sections: { id: string; bars: number }[],
+): string {
+  if (automationData.size === 0 || sections.length === 0) return code
+
+  const channels = parseStrudelCode(code)
+
+  // Group automation: channelIdx → paramKey → Map<sectionId, value>
+  const grouped = new Map<number, Map<string, Map<string, number>>>()
+  for (const [key, value] of automationData) {
+    const sepFirst = key.indexOf(':')
+    const sepSecond = key.indexOf(':', sepFirst + 1)
+    if (sepFirst === -1 || sepSecond === -1) continue
+    const secId = key.substring(0, sepFirst)
+    const chIdx = parseInt(key.substring(sepFirst + 1, sepSecond))
+    const paramKey = key.substring(sepSecond + 1)
+    if (isNaN(chIdx)) continue
+
+    if (!grouped.has(chIdx)) grouped.set(chIdx, new Map())
+    const chMap = grouped.get(chIdx)!
+    if (!chMap.has(paramKey)) chMap.set(paramKey, new Map())
+    chMap.get(paramKey)!.set(secId, value)
+  }
+
+  // Build replacement operations (sorted by position, applied bottom-to-top)
+  const replacements: { start: number; end: number; newText: string }[] = []
+
+  for (const [chIdx, paramMap] of grouped) {
+    const ch = channels[chIdx]
+    if (!ch) continue
+
+    for (const [paramKey, sectionValues] of paramMap) {
+      const param = ch.params.find(p => p.key === paramKey)
+      if (!param) continue
+
+      // Build mini-notation: value@bars for each section in order
+      const parts: string[] = []
+      let allSame = true
+      let firstVal: number | null = null
+      for (const sec of sections) {
+        const val = sectionValues.has(sec.id) ? sectionValues.get(sec.id)! : param.value
+        const rounded = Math.round(val * 1000) / 1000
+        if (firstVal === null) firstVal = rounded
+        else if (rounded !== firstVal) allSame = false
+        parts.push(`${rounded}@${sec.bars}`)
+      }
+
+      // Skip if all sections have the same value (no actual automation)
+      if (allSame) continue
+
+      const pattern = `"[${parts.join(' ')}]"`
+      replacements.push({ start: param.argStart, end: param.argEnd, newText: pattern })
+    }
+  }
+
+  if (replacements.length === 0) return code
+
+  // Sort descending by start (safe bottom-up replacement)
+  replacements.sort((a, b) => b.start - a.start)
+
+  let result = code
+  for (const r of replacements) {
+    result = result.substring(0, r.start) + r.newText + result.substring(r.end)
+  }
+
+  return result
+}

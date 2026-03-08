@@ -23,6 +23,7 @@ export type Rack = {
   collapsed: boolean
 }
 import ArrangementTimeline, { type ArrangementSection } from './ArrangementTimeline'
+import AutomationLane from './AutomationLane'
 import StudioKnob from './StudioKnob'
 import HardwareKnob from './HardwareKnob'
 import { getOrbitAnalyser } from '@/lib/studio-analysers'
@@ -930,6 +931,13 @@ interface TrackViewProps {
   arrangeOpen?: boolean
   onArrangeToggle?: () => void
   onArrangeSectionsChange?: (sections: ArrangementSection[]) => void
+  // ── Automation recording ──
+  automationData?: Map<string, number>
+  isRecording?: boolean
+  onRecordToggle?: () => void
+  onClearAutomation?: (sectionId: string) => void
+  onSetAutomation?: (sectionId: string, channelIdx: number, paramKey: string, value: number) => void
+  onClearParamAutomation?: (channelIdx: number, paramKey: string) => void
 }
 
 const TrackView = memo(function TrackView({
@@ -991,11 +999,22 @@ const TrackView = memo(function TrackView({
   arrangeOpen,
   onArrangeToggle,
   onArrangeSectionsChange,
+  // Automation
+  automationData,
+  isRecording,
+  onRecordToggle,
+  onClearAutomation,
+  onSetAutomation,
+  onClearParamAutomation,
 }: TrackViewProps) {
   // Selected track: always one is selected (default 0)
   const [selectedTrack, setSelectedTrack] = useState(0)
   // Per-track scope type
   const [trackScopes, setTrackScopes] = useState<Record<number, TrackScopeType>>({})
+  // Per-channel automation lane visibility
+  const [automationVisible, setAutomationVisible] = useState<Set<number>>(new Set())
+  // Per-channel selected automation param (defaults to 'gain')
+  const [autoParamPerChannel, setAutoParamPerChannel] = useState<Record<number, string>>({})
   // Inline rename state
   // Notify parent when selected track changes
   useEffect(() => {
@@ -1083,12 +1102,12 @@ const TrackView = memo(function TrackView({
     const primaryEditor = isVocal ? 'sampler' : isMelodic ? 'piano' : isDrum ? 'drum' : 'piano'
 
     return (
+      <div key={ch.id}>
       <div
-        key={ch.id}
         className={`flex transition-all duration-200 ${isMuted ? 'opacity-35' : ''}`}
         style={{
           background: isSelected ? '#131620' : '#111318',
-          borderBottom: '1px solid rgba(255,255,255,0.04)',
+          borderBottom: automationVisible.has(idx) ? 'none' : '1px solid rgba(255,255,255,0.04)',
           minHeight: collapsed ? 32 : 80,
           borderLeft: isSelected ? `2px solid ${ch.color}60` : isInRack ? `2px solid ${racks.find(r => r.channelIndices.includes(idx))?.color || 'transparent'}20` : '2px solid transparent',
         }}
@@ -1151,6 +1170,28 @@ const TrackView = memo(function TrackView({
                 color: isMuted ? '#b86f6f' : '#5a616b', background: isMuted ? '#1a1114' : '#0a0b0d', border: 'none',
                 boxShadow: isMuted ? `inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22, 0 0 4px #b86f6f30` : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
               }}>M</button>
+
+            {/* Automation toggle */}
+            {arrangeSections && arrangeSections.length > 0 && (
+              <button onClick={(e) => {
+                e.stopPropagation()
+                setAutomationVisible(prev => {
+                  const next = new Set(prev)
+                  next.has(idx) ? next.delete(idx) : next.add(idx)
+                  return next
+                })
+              }}
+                className="cursor-pointer transition-all duration-100 active:scale-90"
+                style={{
+                  width: 16, height: 16, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '7px', fontWeight: 900, lineHeight: 1,
+                  color: automationVisible.has(idx) ? '#22d3ee' : '#5a616b',
+                  background: automationVisible.has(idx) ? '#0d1a1e' : '#0a0b0d',
+                  border: 'none',
+                  boxShadow: automationVisible.has(idx) ? `inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22, 0 0 4px #22d3ee30` : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+                }}
+                title="Toggle automation lane">A</button>
+            )}
 
             {/* Peak meter — only expanded */}
             {!collapsed && <PeakMeter channel={ch} isPlaying={isPlaying} isMuted={isMuted} />}
@@ -1336,6 +1377,74 @@ const TrackView = memo(function TrackView({
           )}
         </div>
       </div>
+
+      {/* ═══ AUTOMATION LANE — per-channel, toggled by A button ═══ */}
+      {automationVisible.has(idx) && arrangeSections && arrangeSections.length > 0 && automationData && onSetAutomation && onClearParamAutomation && (() => {
+        const selectedParam = autoParamPerChannel[idx] || 'gain'
+        const pdef = getParamDef(selectedParam)
+        const currentParamObj = ch.params.find((p: { key: string }) => p.key === selectedParam)
+        const currentVal = currentParamObj?.value ?? (pdef?.min ?? 0)
+        // Automatable params: only show params that exist on this channel OR common ones
+        const COMMON_AUTO_PARAMS = ['gain', 'lpf', 'hpf', 'room', 'delay', 'pan', 'shape', 'distort', 'crush']
+        const channelParamKeys = new Set(ch.params.map((p: { key: string }) => p.key))
+        const autoParams = COMMON_AUTO_PARAMS.filter(k => channelParamKeys.has(k) || k === 'gain')
+
+        return (
+          <div style={{
+            background: '#08090c',
+            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            borderLeft: `2px solid ${ch.color}30`,
+          }}>
+            {/* Param selector row */}
+            <div className="flex items-center gap-1 px-1" style={{ height: 18, background: '#0a0b0d', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+              <span className="text-[6px] font-black uppercase tracking-widest shrink-0 pl-1" style={{ color: '#5a616b', width: 52 }}>AUTO</span>
+              {autoParams.map(pk => {
+                const pd = getParamDef(pk)
+                return (
+                  <button
+                    key={pk}
+                    onClick={(e) => { e.stopPropagation(); setAutoParamPerChannel(prev => ({ ...prev, [idx]: pk })) }}
+                    className="px-1.5 py-0.5 rounded cursor-pointer transition-all text-[6px] font-bold uppercase tracking-wider"
+                    style={{
+                      color: selectedParam === pk ? ch.color : '#5a616b',
+                      background: selectedParam === pk ? `${ch.color}15` : 'transparent',
+                      border: selectedParam === pk ? `1px solid ${ch.color}30` : '1px solid transparent',
+                    }}
+                  >
+                    {pd?.label || pk}
+                  </button>
+                )
+              })}
+              {/* Recording indicator */}
+              {isRecording && (
+                <div className="flex items-center gap-1 ml-auto pr-1">
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#ef4444', boxShadow: '0 0 4px #ef444480' }}>
+                    <style>{`@keyframes recpulse { 0%,100% { opacity: 0.4 } 50% { opacity: 1 } }`}</style>
+                    <div style={{ animation: 'recpulse 1s infinite', width: '100%', height: '100%', borderRadius: '50%', background: '#ef4444' }} />
+                  </div>
+                  <span className="text-[5px] font-bold uppercase" style={{ color: '#ef4444' }}>REC</span>
+                </div>
+              )}
+            </div>
+            {/* Automation curve */}
+            <AutomationLane
+              channelIdx={idx}
+              channelColor={ch.color}
+              paramKey={selectedParam}
+              paramLabel={pdef?.label || selectedParam}
+              paramMin={pdef?.min ?? 0}
+              paramMax={pdef?.max ?? 1}
+              currentValue={currentVal}
+              sections={arrangeSections}
+              automationData={automationData}
+              isRecording={isRecording ?? false}
+              onSetAutomation={onSetAutomation}
+              onClearParamAutomation={onClearParamAutomation}
+            />
+          </div>
+        )
+      })()}
+    </div>
     )
   }
 

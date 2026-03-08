@@ -35,6 +35,7 @@ import {
   STRUDEL_SCALES, SCALE_ROOTS,
   DRAGGABLE_EFFECTS, type ParsedChannel, type StackRow,
   parseArrangement, generateArrangeCode, updateArrangeInCode, convertBlocksToLet, convertLetToBlocks,
+  applyAutomationOverrides,
 } from '@/lib/strudel-code-parser'
 
 // ─── Sound / Bank pick-lists for dropdown ───
@@ -1577,6 +1578,8 @@ interface StudioMixerRackProps {
   onCodeChange: (code: string) => void
   onLiveCodeChange?: (code: string) => void  // updates text + re-evaluates immediately
   onMixerStateChange?: (state: { muted: Set<number>; soloed: Set<number> }) => void
+  /** Called when automation data changes so eval chain can apply overrides */
+  onAutomationDataChange?: (data: Map<string, number>, sections: { id: string; bars: number }[]) => void
   metronomeEnabled?: boolean
   onMetronomeToggle?: (enabled: boolean) => void
   onOpenPianoRoll?: (channelIdx: number) => void
@@ -1590,7 +1593,7 @@ interface StudioMixerRackProps {
   projectBpm?: number
 }
 
-export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, onMixerStateChange, metronomeEnabled = false, onMetronomeToggle, onOpenPianoRoll, onOpenDrumSequencer, onOpenPadSampler, isPlaying: isPlayingProp = false, onPreview, getCyclePosition, projectBpm = 120 }: StudioMixerRackProps) {
+export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, onMixerStateChange, onAutomationDataChange, metronomeEnabled = false, onMetronomeToggle, onOpenPianoRoll, onOpenDrumSequencer, onOpenPadSampler, isPlaying: isPlayingProp = false, onPreview, getCyclePosition, projectBpm = 120 }: StudioMixerRackProps) {
   const channels = useMemo(() => parseStrudelCode(code), [code])
   const [expandedChannels, setExpandedChannels] = useState<Set<string>>(new Set())
   const [mutedChannels, setMutedChannels] = useState<Set<number>>(new Set())
@@ -1623,6 +1626,10 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   const [arrangeSections, setArrangeSections] = useState<ArrangementSection[]>([])
   const [arrangeOpen, setArrangeOpen] = useState(false)
   const arrangeInitialized = useRef(false)
+  // ── Automation recording state ──
+  const [automationData, setAutomationData] = useState<Map<string, number>>(new Map())
+  const [isRecordingAutomation, setIsRecordingAutomation] = useState(false)
+  const automationRef = useRef<Map<string, number>>(new Map())
   const fxDropdownRef = useRef<HTMLDivElement>(null)
   const addMenuRef = useRef<HTMLDivElement>(null)
 
@@ -1788,6 +1795,10 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   useEffect(() => {
     arrangeInitialized.current = false
     setArrangeSections([])
+    // Clear automation when template changes
+    automationRef.current = new Map()
+    setAutomationData(new Map())
+    setIsRecordingAutomation(false)
   }, [channels.length])
 
   const handleArrangeSectionsChange = useCallback((sections: ArrangementSection[]) => {
@@ -1801,6 +1812,10 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
       currentCode = convertLetToBlocks(currentCode)      // let → $name: (self-playing)
       currentCode = currentCode.replace(/\n{3,}/g, '\n\n') // clean blank lines
       onCodeChange(currentCode)
+      // Clear all automation
+      automationRef.current = new Map()
+      setAutomationData(new Map())
+      onAutomationDataChange?.(new Map(), [])
       return
     }
 
@@ -1817,7 +1832,9 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     const arrangeCode = generateArrangeCode(nameMap, sectionData)
     const newCode = updateArrangeInCode(currentCode, arrangeCode)
     onCodeChange(newCode)
-  }, [channels, onCodeChange])
+    // Notify eval chain of current automation + section layout
+    onAutomationDataChange?.(automationRef.current, sections.map(s => ({ id: s.id, bars: s.bars })))
+  }, [channels, onCodeChange, onAutomationDataChange])
 
   // Helper: use live code change (re-evaluates engine) when available, else fallback
   const liveUpdate = useCallback((newCode: string) => {
@@ -1831,6 +1848,52 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   // For other params, knob does nothing if param missing (use drag-and-drop).
   const handleParamChange = useCallback(
     (channelIdx: number, paramKey: string, value: number) => {
+      // ── Automation recording: capture keyframe instead of (or in addition to) code change ──
+      if (isRecordingAutomation && isPlayingProp && getCyclePosition && arrangeSections.length > 0) {
+        const cyclePos = getCyclePosition()
+        if (cyclePos !== null) {
+          const totalBars = arrangeSections.reduce((sum, s) => sum + s.bars, 0)
+          const currentBar = cyclePos % totalBars
+          let barAcc = 0
+          let currentSecIdx = 0
+          for (let i = 0; i < arrangeSections.length; i++) {
+            if (currentBar < barAcc + arrangeSections[i].bars) { currentSecIdx = i; break }
+            barAcc += arrangeSections[i].bars
+          }
+
+          const currentSection = arrangeSections[currentSecIdx]
+          if (currentSection) {
+            const newAuto = new Map(automationRef.current)
+
+            // Seed ALL sections with the current static value if this is the first
+            // automation for this channel+param (preserves base for non-recorded sections)
+            const existingKeyPrefix = `:${channelIdx}:${paramKey}`
+            const hasExisting = [...newAuto.keys()].some(k => k.endsWith(existingKeyPrefix) || k.includes(`:${channelIdx}:${paramKey}`))
+            if (!hasExisting) {
+              // Get current static value from parsed code
+              const channels = parseStrudelCode(codeRef.current)
+              const ch = channels[channelIdx]
+              const staticParam = ch?.params.find(p => p.key === paramKey)
+              const baseVal = staticParam?.value ?? value
+              for (const sec of arrangeSections) {
+                const seedKey = `${sec.id}:${channelIdx}:${paramKey}`
+                newAuto.set(seedKey, baseVal)
+              }
+            }
+
+            // Set the recorded value for the current section
+            const recKey = `${currentSection.id}:${channelIdx}:${paramKey}`
+            newAuto.set(recKey, value)
+
+            automationRef.current = newAuto
+            setAutomationData(newAuto)
+            const sectionLayout = arrangeSections.map(s => ({ id: s.id, bars: s.bars }))
+            onAutomationDataChange?.(newAuto, sectionLayout)
+          }
+        }
+      }
+
+      // Still modify the code normally (knob visual feedback)
       const currentCode = codeRef.current
       const newCode = updateParamInCode(currentCode, channelIdx, paramKey, value)
       if (newCode !== currentCode) {
@@ -1858,6 +1921,49 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
       }
     },
     [liveUpdate],
+  )
+
+  // ── Automation lane: set a breakpoint value (click/drag in AutomationLane) ──
+  const handleSetAutomation = useCallback(
+    (sectionId: string, channelIdx: number, paramKey: string, value: number) => {
+      const newAuto = new Map(automationRef.current)
+
+      // Seed ALL sections with the current static value if this is the first
+      // automation for this channel+param
+      const existingKeyPrefix = `:${channelIdx}:${paramKey}`
+      const hasExisting = [...newAuto.keys()].some(k => k.endsWith(existingKeyPrefix) || k.includes(`:${channelIdx}:${paramKey}`))
+      if (!hasExisting) {
+        const channels = parseStrudelCode(codeRef.current)
+        const ch = channels[channelIdx]
+        const staticParam = ch?.params.find((p: { key: string }) => p.key === paramKey)
+        const baseVal = staticParam?.value ?? value
+        for (const sec of arrangeSections) {
+          newAuto.set(`${sec.id}:${channelIdx}:${paramKey}`, baseVal)
+        }
+      }
+
+      newAuto.set(`${sectionId}:${channelIdx}:${paramKey}`, value)
+      automationRef.current = newAuto
+      setAutomationData(newAuto)
+      onAutomationDataChange?.(newAuto, arrangeSections.map(s => ({ id: s.id, bars: s.bars })))
+    },
+    [arrangeSections, onAutomationDataChange],
+  )
+
+  // ── Automation lane: clear all automation for a specific channel+param ──
+  const handleClearParamAutomation = useCallback(
+    (channelIdx: number, paramKey: string) => {
+      const newAuto = new Map(automationRef.current)
+      for (const key of [...newAuto.keys()]) {
+        if (key.includes(`:${channelIdx}:${paramKey}`)) {
+          newAuto.delete(key)
+        }
+      }
+      automationRef.current = newAuto
+      setAutomationData(newAuto)
+      onAutomationDataChange?.(newAuto, arrangeSections.map(s => ({ id: s.id, bars: s.bars })))
+    },
+    [arrangeSections, onAutomationDataChange],
   )
 
   // ── Effect insert handler (for TrackView effects panel) ──
@@ -3073,6 +3179,20 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                 arrangeOpen={arrangeOpen}
                 onArrangeToggle={() => setArrangeOpen(v => !v)}
                 onArrangeSectionsChange={handleArrangeSectionsChange}
+                automationData={automationData}
+                isRecording={isRecordingAutomation}
+                onRecordToggle={() => setIsRecordingAutomation(v => !v)}
+                onClearAutomation={(sectionId) => {
+                  const newAuto = new Map(automationRef.current)
+                  for (const key of [...newAuto.keys()]) {
+                    if (key.startsWith(sectionId + ':')) newAuto.delete(key)
+                  }
+                  automationRef.current = newAuto
+                  setAutomationData(newAuto)
+                  onAutomationDataChange?.(newAuto, arrangeSections.map(s => ({ id: s.id, bars: s.bars })))
+                }}
+                onSetAutomation={handleSetAutomation}
+                onClearParamAutomation={handleClearParamAutomation}
               />
             )}
 

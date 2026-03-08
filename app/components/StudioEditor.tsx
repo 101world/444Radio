@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import type { StrudelEngine } from '@/lib/strudel-engine'
 import { fixSoundfontNames } from '@/lib/strudel-engine'
-import { applyMixerOverrides, parseStrudelCode, parseChannelPattern, replaceChannelPattern, replaceChannelBlock, parseScale as parseMixerScale, updateScale, insertScale, updateParamInCode, insertEffectInChannel, removeEffectFromChannel, getArpInfo, setArpMode, setArpRate, getTranspose, setTranspose, getParamDef, PARAM_DEFS, parseBPM, addChannel } from '@/lib/strudel-code-parser'
+import { applyMixerOverrides, applyAutomationOverrides, parseStrudelCode, parseChannelPattern, replaceChannelPattern, replaceChannelBlock, parseScale as parseMixerScale, updateScale, insertScale, updateParamInCode, insertEffectInChannel, removeEffectFromChannel, getArpInfo, setArpMode, setArpRate, getTranspose, setTranspose, getParamDef, PARAM_DEFS, parseBPM, addChannel } from '@/lib/strudel-code-parser'
 import { generateMetronomeCode } from '@/lib/strudel-code-parser'
 import { setOrbitAnalyser, clearOrbitAnalysers } from '@/lib/studio-analysers'
 import StudioPianoRoll from './studio/StudioPianoRoll'
@@ -107,6 +107,7 @@ export default function StudioEditor() {
   const sliderDefsRef = useRef<Record<string, { min: number; max: number; value: number }>>({})
   const drawStateRef = useRef({ counter: 0 })
   const mixerStateRef = useRef<{ muted: Set<number>; soloed: Set<number> }>({ muted: new Set(), soloed: new Set() })
+  const automationStateRef = useRef<{ data: Map<string, number>; sections: { id: string; bars: number }[] }>({ data: new Map(), sections: [] })
   const metronomeRef = useRef(false)
   const evalThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingEvalRef = useRef<string | null>(null)
@@ -239,6 +240,33 @@ export default function StudioEditor() {
   }, [])
 
   // â”€â”€ Play/Stop â”€â”€
+  // Build final eval code: mixer overrides + automation overrides
+  const buildEvalCode = useCallback((src: string, muted: Set<number>, soloed: Set<number>) => {
+    let code = applyMixerOverrides(
+      fixSoundfontNames(src) + (metronomeRef.current ? generateMetronomeCode(0) : ''),
+      muted, soloed
+    )
+    const { data, sections } = automationStateRef.current
+    if (data.size > 0 && sections.length > 0) {
+      code = applyAutomationOverrides(code, data, sections)
+    }
+    return code
+  }, [])
+
+  // Automation data change: store + re-evaluate
+  const handleAutomationDataChange = useCallback((data: Map<string, number>, sections: { id: string; bars: number }[]) => {
+    automationStateRef.current = { data, sections }
+    if (isPlayingRef.current && engineRef.current?.evaluate) {
+      const src = codeRef.current.trim()
+      if (!src) return
+      const { muted, soloed } = mixerStateRef.current
+      const finalCode = buildEvalCode(src, muted, soloed)
+      engineRef.current.evaluate(finalCode).catch(err => {
+        console.error('[444 STUDIO] automation update error:', err)
+      })
+    }
+  }, [buildEvalCode])
+
   const handlePlay = useCallback(async () => {
     const engine = engineRef.current
     if (!engine?.evaluate) { setError('Engine not ready'); return }
@@ -324,7 +352,7 @@ export default function StudioEditor() {
           console.log('[444 STUDIO] controller not available yet:', err)
         }
 
-        await engine.evaluate(applyMixerOverrides(fixSoundfontNames(src) + (metronomeRef.current ? generateMetronomeCode(0) : ''), mixerStateRef.current.muted, mixerStateRef.current.soloed))
+        await engine.evaluate(buildEvalCode(src, mixerStateRef.current.muted, mixerStateRef.current.soloed))
         setSliderDefs({ ...sliderDefsRef.current })
 
         if (drawerRef.current && engine.scheduler) {
@@ -343,7 +371,7 @@ export default function StudioEditor() {
       setStatus('error')
       setIsPlaying(false)
     }
-  }, [isPlaying])
+  }, [isPlaying, buildEvalCode])
 
   // â”€â”€ Live Update â”€â”€
   const handleUpdate = useCallback(async () => {
@@ -379,7 +407,7 @@ export default function StudioEditor() {
           for (let i = 0; i < 12; i++) controller.getOrbit(i)
         }
       } catch {}
-      const evalCode = applyMixerOverrides(fixSoundfontNames(src) + (metronomeRef.current ? generateMetronomeCode(0) : ''), mixerStateRef.current.muted, mixerStateRef.current.soloed)
+      const evalCode = buildEvalCode(src, mixerStateRef.current.muted, mixerStateRef.current.soloed)
       await engine.evaluate(evalCode)
       if (engine.scheduler?.clock) {
         setTimeout(() => {
@@ -520,26 +548,22 @@ export default function StudioEditor() {
   // â”€â”€ Mixer solo/mute â”€â”€
   const handleMixerStateChange = useCallback((state: { muted: Set<number>; soloed: Set<number> }) => {
     mixerStateRef.current = state
-    // Re-evaluate immediately if playing so user hears the change
     if (isPlayingRef.current && engineRef.current?.evaluate) {
       const src = codeRef.current.trim()
       if (!src) return
-      const finalCode = applyMixerOverrides(fixSoundfontNames(src) + (metronomeRef.current ? generateMetronomeCode(0) : ''), state.muted, state.soloed)
+      const finalCode = buildEvalCode(src, state.muted, state.soloed)
       engineRef.current.evaluate(finalCode).catch(err => {
         console.error('[444 STUDIO] mixer state update error:', err)
       })
     }
-  }, [])
+  }, [buildEvalCode])
 
   // Throttled evaluate helper - pre-warms orbits so effects (room, delay) work
   const doEvaluate = useCallback((src: string) => {
     if (!isPlayingRef.current || !engineRef.current?.evaluate) return
     lastEvaluatedRef.current = src
     const { muted, soloed } = mixerStateRef.current
-    const finalCode = applyMixerOverrides(
-      fixSoundfontNames(src) + (metronomeRef.current ? generateMetronomeCode(0) : ''),
-      muted, soloed
-    )
+    const finalCode = buildEvalCode(src, muted, soloed)
     // Pre-warm orbits so effects (room, delay) work on all orbit buses
     try {
       const controller = (engineRef.current.webaudio as any).getSuperdoughAudioController?.()
@@ -571,21 +595,18 @@ export default function StudioEditor() {
 
   // â”€â”€ Metronome toggle (re-evaluate during playback) â”€â”€
   const handleMetronomeToggle = useCallback((enabled: boolean) => {
+    metronomeRef.current = enabled
     setMetronomeEnabled(enabled)
-    // Re-evaluate immediately so metronome starts/stops without pressing play again
     if (isPlayingRef.current && engineRef.current?.evaluate) {
       const src = codeRef.current.trim()
       if (!src) return
       const { muted, soloed } = mixerStateRef.current
-      const finalCode = applyMixerOverrides(
-        fixSoundfontNames(src) + (enabled ? generateMetronomeCode(0) : ''),
-        muted, soloed
-      )
+      const finalCode = buildEvalCode(src, muted, soloed)
       engineRef.current.evaluate(finalCode).catch(err => {
         console.error('[444 STUDIO] metronome toggle error:', err)
       })
     }
-  }, [])
+  }, [buildEvalCode])
 
   // â”€â”€ Register custom sound in Strudel engine â”€â”€
   const registerCustomSound = useCallback(async (name: string, url: string) => {
