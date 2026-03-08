@@ -24,6 +24,7 @@ export type Rack = {
 }
 import ArrangementTimeline, { type ArrangementSection } from './ArrangementTimeline'
 import AutomationLane from './AutomationLane'
+import TrackTimeline from './TrackTimeline'
 import StudioKnob from './StudioKnob'
 import HardwareKnob from './HardwareKnob'
 import { getOrbitAnalyser } from '@/lib/studio-analysers'
@@ -47,6 +48,7 @@ const TRACK_SCOPE_TYPES = [
   { id: 'waveform', label: 'WAVE' },
   { id: 'bars',     label: 'FREQ' },
   { id: 'mirror',   label: 'MIRROR' },
+  { id: 'timeline', label: 'LANE' },
 ] as const
 type TrackScopeType = typeof TRACK_SCOPE_TYPES[number]['id']
 
@@ -1326,23 +1328,39 @@ const TrackView = memo(function TrackView({
           onDrop={(e) => onDrop(idx, e)}
           title="Click to change visualizer"
         >
-          <BeatGrid />
-
-          {/* Scope */}
-          <div className="absolute inset-0 z-[2]">
-            <TrackScope
-              channel={ch} isPlaying={isPlaying} isMuted={isMuted}
-              scopeType={scopeType} collapsed={collapsed} isSelected={isSelected}
-            />
-          </div>
-
-          {/* Active glow */}
-          {isActive && (
-            <div className="absolute inset-0 pointer-events-none z-[3]"
-              style={{
-                background: `linear-gradient(90deg, ${ch.color}06 0%, transparent 15%, transparent 85%, ${ch.color}04 100%)`,
-                borderTop: `1px solid ${ch.color}08`, borderBottom: `1px solid ${ch.color}08`,
-              }} />
+          {/* Scope or Timeline */}
+          {scopeType === 'timeline' ? (
+            <div className="absolute inset-0 z-[2]">
+              <TrackTimeline
+                channelIdx={idx}
+                channelColor={ch.color}
+                sections={arrangeSections || []}
+                automationData={automationData}
+                autoParam={autoParamPerChannel[idx] || 'gain'}
+                isPlaying={isPlaying}
+                isMuted={isMuted}
+                getCyclePosition={getCyclePosition}
+                collapsed={collapsed}
+              />
+            </div>
+          ) : (
+            <>
+              <BeatGrid />
+              <div className="absolute inset-0 z-[2]">
+                <TrackScope
+                  channel={ch} isPlaying={isPlaying} isMuted={isMuted}
+                  scopeType={scopeType} collapsed={collapsed} isSelected={isSelected}
+                />
+              </div>
+              {/* Active glow */}
+              {isActive && (
+                <div className="absolute inset-0 pointer-events-none z-[3]"
+                  style={{
+                    background: `linear-gradient(90deg, ${ch.color}06 0%, transparent 15%, transparent 85%, ${ch.color}04 100%)`,
+                    borderTop: `1px solid ${ch.color}08`, borderBottom: `1px solid ${ch.color}08`,
+                  }} />
+              )}
+            </>
           )}
 
           {/* Scope type label */}
