@@ -2573,8 +2573,46 @@ export function applyAutomationOverrides(
     chMap.get(parsed.paramKey)!.push({ bar: absoluteBar, value })
   }
 
+  // Helper: generate per-bar interpolated pattern string from keyframes
+  function buildAutoPattern(
+    keyframes: { bar: number; value: number }[],
+    totalBars: number,
+    pMin: number,
+    pMax: number,
+  ): string {
+    keyframes.sort((a, b) => a.bar - b.bar)
+    const barValues: number[] = []
+    for (let b = 0; b < totalBars; b++) {
+      let value: number
+      if (keyframes.length === 1) {
+        value = keyframes[0].value
+      } else {
+        let rightIdx = keyframes.findIndex(kf => kf.bar >= b)
+        if (rightIdx === -1) {
+          value = keyframes[keyframes.length - 1].value
+        } else if (rightIdx === 0) {
+          value = keyframes[0].value
+        } else {
+          const left = keyframes[rightIdx - 1]
+          const right = keyframes[rightIdx]
+          const p0 = rightIdx > 1 ? keyframes[rightIdx - 2].value : left.value
+          const p3 = rightIdx < keyframes.length - 1 ? keyframes[rightIdx + 1].value : right.value
+          const t = (b - left.bar) / Math.max(0.001, right.bar - left.bar)
+          value = catmullRomInterp(p0, left.value, right.value, p3, t)
+        }
+      }
+      const clamped = Math.max(pMin, Math.min(pMax, value))
+      barValues.push(Math.round(clamped * 1000) / 1000)
+    }
+    const parts = barValues.map(v => `${v}@1`)
+    return `"[${parts.join(' ')}]"`
+  }
+
   // Build replacement operations (sorted by position, applied bottom-to-top)
+  // Two types: (A) replace existing param arg, (B) inject new .param(pattern) call
   const replacements: { start: number; end: number; newText: string }[] = []
+  // Injections: append .paramKey(pattern) at insertion point in channel block
+  const injections: { insertPos: number; text: string }[] = []
 
   for (const [chIdx, paramMap] of grouped) {
     const ch = channels[chIdx]
@@ -2582,69 +2620,87 @@ export function applyAutomationOverrides(
 
     for (const [paramKey, keyframes] of paramMap) {
       const param = ch.params.find(p => p.key === paramKey)
-      if (!param) continue
-
-      // Sort keyframes by absolute bar position
-      keyframes.sort((a, b) => a.bar - b.bar)
-
-      // Check if all keyframe values match the static param value — skip if no change
-      const allSameAsStatic = keyframes.every(kf => Math.round(kf.value * 1000) === Math.round(param.value * 1000))
-      if (allSameAsStatic) continue
-
       const pdef = PARAM_DEFS.find(pd => pd.key === paramKey)
       const pMin = pdef?.min ?? 0
       const pMax = pdef?.max ?? 1
 
-      // Generate one value per bar using Catmull-Rom interpolation between keyframes
-      const barValues: number[] = []
-      for (let b = 0; b < totalBars; b++) {
-        let value: number
-        if (keyframes.length === 1) {
-          // Single keyframe: flat value everywhere
-          value = keyframes[0].value
+      if (param) {
+        // (A) Param already exists in code — replace its argument with automation pattern
+        keyframes.sort((a, b) => a.bar - b.bar)
+
+        // Check if all keyframe values match the static param value — skip if no change
+        const allSameAsStatic = keyframes.every(kf => Math.round(kf.value * 1000) === Math.round(param.value * 1000))
+        if (allSameAsStatic) continue
+
+        const pattern = buildAutoPattern(keyframes, totalBars, pMin, pMax)
+        replacements.push({ start: param.argStart, end: param.argEnd, newText: pattern })
+      } else {
+        // (B) Param NOT in channel code — inject .paramKey(pattern) into the block
+        // Find the best insertion point: just before .scope() / .pianoroll(), or at block end
+        const rawCode = code.substring(ch.blockStart, ch.blockEnd)
+        const pattern = buildAutoPattern(keyframes, totalBars, pMin, pMax)
+
+        // Find insertion point: before .scope() or .pianoroll() if present, else before block end
+        const visualMatch = rawCode.match(/\.(?:_)?(?:scope|pianoroll)\(\)/)
+        let insertOffset: number
+        if (visualMatch && visualMatch.index !== undefined) {
+          // Insert before the visual method
+          insertOffset = visualMatch.index
         } else {
-          // Find surrounding keyframes
-          let rightIdx = keyframes.findIndex(kf => kf.bar >= b)
-          if (rightIdx === -1) {
-            // Past last keyframe: hold last value
-            value = keyframes[keyframes.length - 1].value
-          } else if (rightIdx === 0) {
-            if (keyframes[0].bar === b) {
-              value = keyframes[0].value
-            } else {
-              // Before first keyframe: hold first value
-              value = keyframes[0].value
-            }
-          } else {
-            // Between keyframes: Catmull-Rom interpolation
-            const left = keyframes[rightIdx - 1]
-            const right = keyframes[rightIdx]
-            const p0 = rightIdx > 1 ? keyframes[rightIdx - 2].value : left.value
-            const p3 = rightIdx < keyframes.length - 1 ? keyframes[rightIdx + 1].value : right.value
-            const t = (b - left.bar) / Math.max(0.001, right.bar - left.bar)
-            value = catmullRomInterp(p0, left.value, right.value, p3, t)
+          // Insert at end of block content (trim trailing whitespace/newlines)
+          let endOff = rawCode.length
+          while (endOff > 0 && (rawCode[endOff - 1] === '\n' || rawCode[endOff - 1] === '\r' || rawCode[endOff - 1] === ' ')) {
+            endOff--
           }
+          insertOffset = endOff
         }
 
-        const clamped = Math.max(pMin, Math.min(pMax, value))
-        barValues.push(Math.round(clamped * 1000) / 1000)
+        const insertPos = ch.blockStart + insertOffset
+        // Detect chain indentation from existing code
+        const lastNewline = rawCode.lastIndexOf('\n', insertOffset)
+        const lineStart = lastNewline >= 0 ? rawCode.substring(lastNewline + 1) : rawCode
+        const indent = lineStart.match(/^(\s*)/)?.[1] || '  '
+        injections.push({ insertPos, text: `\n${indent}.${paramKey}(${pattern})` })
       }
-
-      // Build mini-notation with 1 value per bar
-      const parts = barValues.map(v => `${v}@1`)
-      const pattern = `"[${parts.join(' ')}]"`
-      replacements.push({ start: param.argStart, end: param.argEnd, newText: pattern })
     }
   }
 
-  if (replacements.length === 0) return code
+  if (replacements.length === 0 && injections.length === 0) return code
 
-  // Sort descending by start (safe bottom-up replacement)
+  // Apply replacements first (bottom-to-top by position)
   replacements.sort((a, b) => b.start - a.start)
 
   let result = code
   for (const r of replacements) {
     result = result.substring(0, r.start) + r.newText + result.substring(r.end)
+  }
+
+  // Apply injections (bottom-to-top so positions don't shift)
+  // Must adjust positions for any replacements that came before them
+  // Since replacements are already applied, re-parse is cleanest for injections
+  // But for simplicity and speed, sort injections descending and apply in order
+  if (injections.length > 0) {
+    // Re-adjust injection positions based on replacement shifts
+    // Track cumulative shift from replacements applied above
+    let shift = 0
+    // Replacements were applied descending, so shifts don't cascade for inject positions
+    // Re-calculate: for each injection, check how many replacement bytes shifted before it
+    const replSorted = [...replacements].sort((a, b) => a.start - b.start) // ascending
+    const adjustedInjections = injections.map(inj => {
+      let adj = 0
+      for (const r of replSorted) {
+        if (r.start < inj.insertPos) {
+          adj += r.newText.length - (r.end - r.start)
+        }
+      }
+      return { insertPos: inj.insertPos + adj, text: inj.text }
+    })
+
+    // Sort descending by position
+    adjustedInjections.sort((a, b) => b.insertPos - a.insertPos)
+    for (const inj of adjustedInjections) {
+      result = result.substring(0, inj.insertPos) + inj.text + result.substring(inj.insertPos)
+    }
   }
 
   return result
