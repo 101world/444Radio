@@ -23,6 +23,7 @@ export type Rack = {
   collapsed: boolean
 }
 import ArrangementTimeline, { type ArrangementSection, type PatternVariant } from './ArrangementTimeline'
+import type { AudioClip, AudioTrack, ClipClipboard } from '@/lib/audio-clip-engine'
 import AutomationLane from './AutomationLane'
 import TrackTimeline from './TrackTimeline'
 import StudioKnob from './StudioKnob'
@@ -947,6 +948,20 @@ interface TrackViewProps {
   onSetAutomation?: (sectionId: string, channelIdx: number, paramKey: string, value: number, barOffset?: number) => void
   onClearParamAutomation?: (channelIdx: number, paramKey: string) => void
   onDeleteKeyframe?: (sectionId: string, channelIdx: number, paramKey: string, barOffset?: number) => void
+  // ── Audio clip tracks ──
+  audioClips?: AudioClip[]
+  audioTracks?: AudioTrack[]
+  audioClipboard?: ClipClipboard | null
+  onAudioClipsChange?: (clips: AudioClip[]) => void
+  onAudioTracksChange?: (tracks: AudioTrack[]) => void
+  onAudioClipboardChange?: (cb: ClipClipboard | null) => void
+  onDeleteAudioClip?: (clipId: string) => void
+  onAddAudioTrack?: () => void
+  onStartRecording?: (trackIndex: number) => void
+  onStopRecording?: () => void
+  onUploadAudio?: (trackIndex: number) => void
+  isAudioRecording?: boolean
+  recordingTrackIndex?: number
 }
 
 const TrackView = memo(function TrackView({
@@ -957,6 +972,7 @@ const TrackView = memo(function TrackView({
   trackCollapsed,
   dragOverChannel,
   getCyclePosition,
+  projectBpm,
   onToggleCollapse,
   onSolo,
   onMute,
@@ -1022,6 +1038,20 @@ const TrackView = memo(function TrackView({
   onSetAutomation,
   onClearParamAutomation,
   onDeleteKeyframe,
+  // Audio clip tracks
+  audioClips,
+  audioTracks,
+  audioClipboard,
+  onAudioClipsChange,
+  onAudioTracksChange,
+  onAudioClipboardChange,
+  onDeleteAudioClip,
+  onAddAudioTrack,
+  onStartRecording,
+  onStopRecording,
+  onUploadAudio,
+  isAudioRecording,
+  recordingTrackIndex,
 }: TrackViewProps) {
   // Selected track: always one is selected (default 0)
   const [selectedTrack, setSelectedTrack] = useState(0)
@@ -1863,6 +1893,20 @@ const TrackView = memo(function TrackView({
           patternVariants={patternVariants}
           onPatternVariantsChange={onPatternVariantsChange}
           onCreateVariant={onCreateVariant}
+          audioClips={audioClips}
+          audioTracks={audioTracks}
+          audioClipboard={audioClipboard}
+          bpm={projectBpm}
+          onAudioClipsChange={onAudioClipsChange}
+          onAudioTracksChange={onAudioTracksChange}
+          onAudioClipboardChange={onAudioClipboardChange}
+          onDeleteAudioClip={onDeleteAudioClip}
+          onAddAudioTrack={onAddAudioTrack}
+          onStartRecording={onStartRecording}
+          onStopRecording={onStopRecording}
+          onUploadAudio={onUploadAudio}
+          isRecording={isAudioRecording}
+          recordingTrackIndex={recordingTrackIndex}
         />
       )}
 

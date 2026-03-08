@@ -7,8 +7,10 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { useState, useRef, useEffect, useCallback, memo, useMemo } from 'react'
-import { Plus, Minus, X, ChevronUp, ChevronDown, Copy, Music, Activity } from 'lucide-react'
+import { Plus, Minus, X, ChevronUp, ChevronDown, Copy, Music, Activity, Mic, Upload, Volume2, VolumeX } from 'lucide-react'
 import type { ParsedChannel } from '@/lib/strudel-code-parser'
+import type { AudioClip, AudioTrack, ClipClipboard } from '@/lib/audio-clip-engine'
+import AudioClipLane, { AUDIO_CLIP_ROW_H } from './AudioClipLane'
 
 // ─── Types ───
 
@@ -42,6 +44,21 @@ interface ArrangementTimelineProps {
   patternVariants?: PatternVariant[]
   onPatternVariantsChange?: (variants: PatternVariant[]) => void
   onCreateVariant?: (channelIdx: number, name: string) => void
+  // ── Audio clip track props ──
+  audioClips?: AudioClip[]
+  audioTracks?: AudioTrack[]
+  audioClipboard?: ClipClipboard | null
+  bpm?: number
+  onAudioClipsChange?: (clips: AudioClip[]) => void
+  onAudioTracksChange?: (tracks: AudioTrack[]) => void
+  onAudioClipboardChange?: (cb: ClipClipboard | null) => void
+  onDeleteAudioClip?: (clipId: string) => void
+  onAddAudioTrack?: () => void
+  onStartRecording?: (trackIndex: number) => void
+  onStopRecording?: () => void
+  onUploadAudio?: (trackIndex: number) => void
+  isRecording?: boolean
+  recordingTrackIndex?: number
 }
 
 // ─── Layout constants (DAW-scale) ───
@@ -83,6 +100,12 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
   automationData, onDuplicateAutomation, onSeek,
   onToggle, onSectionsChange,
   patternVariants = [], onPatternVariantsChange, onCreateVariant,
+  // Audio clip track props
+  audioClips = [], audioTracks = [], audioClipboard = null, bpm = 120,
+  onAudioClipsChange, onAudioTracksChange, onAudioClipboardChange,
+  onDeleteAudioClip, onAddAudioTrack,
+  onStartRecording, onStopRecording, onUploadAudio,
+  isRecording = false, recordingTrackIndex = -1,
 }: ArrangementTimelineProps) {
   const [height, setHeight] = useState(DEFAULT_HEIGHT)
   const [renamingId, setRenamingId] = useState<string | null>(null)
@@ -359,6 +382,15 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
     return cells
   }, [automationData])
 
+  // ── Section bar starts/lengths (for audio clip lanes) ──
+  const sectionBarStarts = useMemo(() => {
+    const starts: number[] = []
+    let acc = 0
+    for (const s of sections) { starts.push(acc); acc += s.bars }
+    return starts
+  }, [sections])
+  const sectionBarLengths = useMemo(() => sections.map(s => s.bars), [sections])
+
   // ═══════════════════ COLLAPSED STATE ═══════════════════
   if (!isOpen) {
     return (
@@ -400,6 +432,15 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
         <span className="text-[11px] font-semibold text-white/50 uppercase tracking-wider">Arrangement</span>
         <span className="text-[10px] text-white/20 font-mono">{totalBars} bars</span>
         <div className="flex-1" />
+        {onAddAudioTrack && (
+          <button
+            onClick={onAddAudioTrack}
+            className="flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-semibold cursor-pointer transition-colors hover:bg-white/[0.06]"
+            style={{ color: '#f97316', background: '#1a1c24', border: '1px solid #262830' }}
+          >
+            <Mic size={10} /> Audio Track
+          </button>
+        )}
         <button
           onClick={addSection}
           className="flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-semibold cursor-pointer transition-colors hover:bg-white/[0.06]"
@@ -444,6 +485,54 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
                   )}
                 </div>
               ))}
+              {/* ── Audio track labels ── */}
+              {audioTracks.length > 0 && (
+                <div className="shrink-0 flex items-center px-3" style={{ height: 1, borderBottom: '1px solid #f9731640', borderRight: '1px solid #1a1c22' }} />
+              )}
+              {audioTracks.map((at, atIdx) => {
+                const isTrackRecording = isRecording && recordingTrackIndex === atIdx
+                return (
+                  <div key={at.id} className="flex items-center gap-1.5 px-2 shrink-0 group" style={{ height: AUDIO_CLIP_ROW_H, borderBottom: '1px solid #151720', borderRight: '1px solid #1a1c22' }}>
+                    <div className="w-2 h-2 rounded-full shrink-0" style={{ background: isTrackRecording ? '#ef4444' : at.color, animation: isTrackRecording ? 'pulse 1s infinite' : 'none' }} />
+                    <span className="text-[10px] font-medium truncate flex-1" style={{ color: at.muted ? '#555' : '#b0b8c8' }}>{at.name}</span>
+                    {/* Record button */}
+                    {onStartRecording && onStopRecording && (
+                      <button
+                        className="w-4 h-4 flex items-center justify-center rounded-full cursor-pointer opacity-60 hover:opacity-100 transition-all"
+                        style={{ background: isTrackRecording ? '#ef4444' : '#333', border: 'none', color: isTrackRecording ? '#fff' : '#888' }}
+                        onClick={() => isTrackRecording ? onStopRecording() : onStartRecording(atIdx)}
+                        title={isTrackRecording ? 'Stop recording' : 'Record'}
+                      >
+                        {isTrackRecording ? <span className="w-2 h-2 rounded-sm bg-white" /> : <Mic size={8} />}
+                      </button>
+                    )}
+                    {/* Upload button */}
+                    {onUploadAudio && (
+                      <button
+                        className="w-4 h-4 flex items-center justify-center rounded cursor-pointer opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-all"
+                        style={{ background: 'none', border: 'none', color: '#888' }}
+                        onClick={() => onUploadAudio(atIdx)}
+                        title="Upload audio file"
+                      >
+                        <Upload size={8} />
+                      </button>
+                    )}
+                    {/* Mute */}
+                    <button
+                      className="w-3 h-3 flex items-center justify-center rounded cursor-pointer opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-all"
+                      style={{ background: 'none', border: 'none', color: at.muted ? '#ef4444' : '#555' }}
+                      onClick={() => {
+                        if (onAudioTracksChange) {
+                          onAudioTracksChange(audioTracks.map((t, i) => i === atIdx ? { ...t, muted: !t.muted } : t))
+                        }
+                      }}
+                      title={at.muted ? 'Unmute' : 'Mute'}
+                    >
+                      {at.muted ? <VolumeX size={8} /> : <Volume2 size={8} />}
+                    </button>
+                  </div>
+                )
+              })}
             </div>
 
             {/* ── Timeline columns ── */}
@@ -737,7 +826,27 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
                     </div>
                   ))}
 
-                  {/* ── Smooth playhead line ── */}
+                  {/* ── Audio clip track lanes ── */}
+                  {audioTracks.length > 0 && (
+                    <div className="shrink-0" style={{ height: 1, borderBottom: '1px solid #f9731640' }} />
+                  )}
+                  {audioTracks.map((at, atIdx) => (
+                    <AudioClipLane
+                      key={at.id}
+                      track={at}
+                      trackIndex={atIdx}
+                      clips={audioClips}
+                      totalBars={totalBars}
+                      sectionBarStarts={sectionBarStarts}
+                      sectionBarLengths={sectionBarLengths}
+                      bpm={bpm}
+                      clipboard={audioClipboard ?? null}
+                      onClipsChange={onAudioClipsChange ?? (() => {})}
+                      onClipboardChange={onAudioClipboardChange ?? (() => {})}
+                      onDeleteClip={onDeleteAudioClip ?? (() => {})}
+                    />
+                  ))}
+
                   {/* ── Smooth playhead line ── */}
                   <div
                     ref={playheadRef}

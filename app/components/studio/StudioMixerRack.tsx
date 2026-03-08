@@ -21,6 +21,12 @@ import PresetRack from './PresetRack'
 import StudioEffectsPanel from './StudioEffectsPanel'
 import { FX_PRESETS, FX_PRESET_CATEGORIES, type FxPresetCategory } from '@/lib/fx-presets'
 import {
+  type AudioClip, type AudioTrack, type ClipClipboard,
+  createDefaultTrack, createClipFromBuffer,
+  startRecording, decodeAudioFile, secondsToBars,
+  ClipPlaybackEngine,
+} from '@/lib/audio-clip-engine'
+import {
   parseStrudelCode, updateParamInCode, insertEffectInChannel,
   swapSoundInChannel, swapBankInChannel, addSoundToChannel, renameChannel, duplicateChannel,
   addChannel, removeChannel, resetChannel, reorderChannels,
@@ -1646,6 +1652,56 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   const fxDropdownRef = useRef<HTMLDivElement>(null)
   const addMenuRef = useRef<HTMLDivElement>(null)
 
+  // ── Audio clip track state ──
+  const [audioClips, setAudioClips] = useState<AudioClip[]>([])
+  const [audioTracks, setAudioTracks] = useState<AudioTrack[]>([])
+  const [audioClipboard, setAudioClipboard] = useState<ClipClipboard | null>(null)
+  const [isAudioRecording, setIsAudioRecording] = useState(false)
+  const [recordingTrackIndex, setRecordingTrackIndex] = useState(-1)
+  const recordingHandleRef = useRef<{ stop: () => Promise<any>; cancel: () => void; stream: MediaStream } | null>(null)
+  const audioFileInputRef = useRef<HTMLInputElement>(null)
+  const pendingUploadTrackRef = useRef(0)
+
+  // ── Audio clip playback engine ──
+  const clipEngineRef = useRef<ClipPlaybackEngine | null>(null)
+
+  // Total bars across all arrangement sections (for ClipPlaybackEngine)
+  const totalArrangeBars = useMemo(
+    () => arrangeSections.reduce((sum, s) => sum + s.bars, 0) || 4,
+    [arrangeSections],
+  )
+
+  // Start/stop clip scheduling when transport plays/stops
+  useEffect(() => {
+    if (isPlayingProp && audioClips.length > 0) {
+      if (!clipEngineRef.current) {
+        clipEngineRef.current = new ClipPlaybackEngine(new AudioContext())
+      }
+      const engine = clipEngineRef.current
+      engine.startLoop(
+        getCyclePosition ?? (() => null),
+        projectBpm,
+        audioClips,
+        audioTracks,
+        totalArrangeBars,
+      )
+    } else {
+      clipEngineRef.current?.stopLoop()
+    }
+    return () => { clipEngineRef.current?.stopLoop() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlayingProp])
+
+  // Update clip engine state when clips/tracks/bpm change (without restarting loop)
+  useEffect(() => {
+    clipEngineRef.current?.updateLoopState(audioClips, audioTracks, totalArrangeBars, projectBpm)
+  }, [audioClips, audioTracks, totalArrangeBars, projectBpm])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => { clipEngineRef.current?.destroy() }
+  }, [])
+
   // ── Grid zoom & pan state ──
   const [gridZoom, setGridZoom] = useState(1.45)
   const [gridPan, setGridPan] = useState({ x: 0, y: 0 })
@@ -2720,8 +2776,95 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     return Math.min(...Array.from(selectedChannels))
   }, [selectedChannels])
 
+  // ═══ Audio clip track handlers ═══
+
+  const handleAddAudioTrack = useCallback(() => {
+    setAudioTracks(prev => [...prev, createDefaultTrack(prev.length)])
+  }, [])
+
+  const handleAudioClipsChange = useCallback((clips: AudioClip[]) => {
+    setAudioClips(clips)
+  }, [])
+
+  const handleDeleteAudioClip = useCallback((clipId: string) => {
+    setAudioClips(prev => prev.filter(c => c.id !== clipId))
+  }, [])
+
+  const handleStartRecording = useCallback(async (trackIndex: number) => {
+    try {
+      // Create a temporary AudioContext for recording if needed
+      const ctx = new AudioContext()
+      const handle = await startRecording(ctx)
+      recordingHandleRef.current = handle
+      setRecordingTrackIndex(trackIndex)
+      setIsAudioRecording(true)
+    } catch (err) {
+      console.error('[AudioClip] Failed to start recording:', err)
+    }
+  }, [])
+
+  const handleStopRecording = useCallback(async () => {
+    const handle = recordingHandleRef.current
+    if (!handle) return
+    try {
+      const result = await handle.stop()
+      const currentBar = getCyclePosition?.() ?? 0
+      const clip = createClipFromBuffer(
+        result.buffer,
+        result.blobUrl,
+        `Recording ${audioClips.length + 1}`,
+        Math.max(0, currentBar - secondsToBars(result.buffer.duration, projectBpm)),
+        recordingTrackIndex,
+        projectBpm,
+      )
+      setAudioClips(prev => [...prev, clip])
+    } catch (err) {
+      console.error('[AudioClip] Failed to stop recording:', err)
+    } finally {
+      recordingHandleRef.current = null
+      setIsAudioRecording(false)
+      setRecordingTrackIndex(-1)
+    }
+  }, [getCyclePosition, audioClips.length, recordingTrackIndex, projectBpm])
+
+  const handleUploadAudio = useCallback((trackIndex: number) => {
+    pendingUploadTrackRef.current = trackIndex
+    audioFileInputRef.current?.click()
+  }, [])
+
+  const handleAudioFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      const ctx = new AudioContext()
+      const { buffer, blobUrl } = await decodeAudioFile(file, ctx)
+      const currentBar = getCyclePosition?.() ?? 0
+      const clip = createClipFromBuffer(
+        buffer,
+        blobUrl,
+        file.name.replace(/\.[^.]+$/, ''),
+        currentBar,
+        pendingUploadTrackRef.current,
+        projectBpm,
+      )
+      setAudioClips(prev => [...prev, clip])
+    } catch (err) {
+      console.error('[AudioClip] Failed to decode uploaded file:', err)
+    }
+    // Reset the input so the same file can be re-selected
+    e.target.value = ''
+  }, [getCyclePosition, projectBpm])
+
   return (
     <div className="h-full flex flex-row" style={{ overflow: 'visible' }}>
+      {/* Hidden file input for audio upload */}
+      <input
+        ref={audioFileInputRef}
+        type="file"
+        accept="audio/*"
+        className="hidden"
+        onChange={handleAudioFileChange}
+      />
       {/* ══ MAIN CONTENT (header + channels) ══ */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
       {/* ── Header bar — hardware control strip ── */}
@@ -3388,6 +3531,19 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                 onSetAutomation={handleSetAutomation}
                 onClearParamAutomation={handleClearParamAutomation}
                 onDeleteKeyframe={handleDeleteKeyframe}
+                audioClips={audioClips}
+                audioTracks={audioTracks}
+                audioClipboard={audioClipboard}
+                onAudioClipsChange={handleAudioClipsChange}
+                onAudioTracksChange={setAudioTracks}
+                onAudioClipboardChange={setAudioClipboard}
+                onDeleteAudioClip={handleDeleteAudioClip}
+                onAddAudioTrack={handleAddAudioTrack}
+                onStartRecording={handleStartRecording}
+                onStopRecording={handleStopRecording}
+                onUploadAudio={handleUploadAudio}
+                isAudioRecording={isAudioRecording}
+                recordingTrackIndex={recordingTrackIndex}
               />
             )}
 
