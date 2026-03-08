@@ -1732,7 +1732,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
       name,
       color,
       channelIndices,
-      collapsed: false,
+      collapsed: true,
     }])
   }, [])
 

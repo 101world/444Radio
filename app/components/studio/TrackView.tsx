@@ -1349,14 +1349,15 @@ const TrackView = memo(function TrackView({
 
               return (
                 <div key={rack.id}>
-                  {/* ── Rack Header ── */}
+                  {/* ── Rack Header Node ── */}
                   <div
                     className="flex transition-all duration-200"
                     style={{
-                      background: '#0e1016',
-                      borderBottom: '1px solid rgba(255,255,255,0.06)',
-                      borderLeft: `2px solid ${rack.color}50`,
-                      minHeight: 30,
+                      background: `linear-gradient(180deg, ${rack.color}08 0%, #0e1016 100%)`,
+                      borderBottom: `1px solid ${rack.color}20`,
+                      borderLeft: `3px solid ${rack.color}`,
+                      minHeight: rack.collapsed ? 38 : 32,
+                      boxShadow: rack.collapsed ? `inset 0 0 12px ${rack.color}06, 0 2px 8px rgba(0,0,0,0.3)` : `0 1px 4px rgba(0,0,0,0.2)`,
                     }}
                     onContextMenu={(e) => {
                       e.preventDefault()
@@ -1364,63 +1365,119 @@ const TrackView = memo(function TrackView({
                       setCtxMenu({ x: e.clientX, y: e.clientY, channelIdx: rackChannels[0] })
                     }}
                   >
-                    {/* Rack left info */}
-                    <div className="shrink-0 flex items-center gap-1.5 px-2 py-1" style={{ width: 158, borderRight: `1px solid ${rack.color}18` }}>
-                      {/* Collapse toggle */}
-                      <button
-                        onClick={() => onToggleRackCollapse?.(rack.id)}
-                        className="cursor-pointer"
-                        style={{ color: rack.color, background: 'none', border: 'none', padding: 0 }}
-                      >
-                        {rack.collapsed ? <ChevronRight size={10} /> : <ChevronDown size={10} />}
-                      </button>
+                    {/* Rack left panel */}
+                    <div className="shrink-0 flex flex-col justify-center border-r relative overflow-hidden" style={{ width: 158, borderColor: `${rack.color}20`, background: '#0c0d10' }}>
+                      {/* Color accent bar */}
+                      <div className="absolute top-0 left-0 right-0" style={{
+                        height: 2,
+                        background: `linear-gradient(90deg, ${rack.color} 0%, ${rack.color}60 100%)`,
+                        boxShadow: `0 0 6px ${rack.color}40`,
+                      }} />
 
-                      {/* Rack icon */}
-                      <Layers size={10} style={{ color: rack.color, opacity: 0.7 }} />
-
-                      {/* Rack name — editable */}
-                      {rackRenaming === rack.id ? (
-                        <input
-                          ref={rackRenameRef}
-                          autoFocus
-                          value={rackRenameValue}
-                          onChange={(e) => setRackRenameValue(e.target.value.slice(0, 16))}
-                          onBlur={() => {
-                            if (rackRenameValue.trim() && rackRenameValue !== rack.name) {
-                              onRenameRack?.(rack.id, rackRenameValue.trim())
-                            }
-                            setRackRenaming(null)
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') e.currentTarget.blur()
-                            if (e.key === 'Escape') { setRackRenameValue(rack.name); setRackRenaming(null) }
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                          className="flex-1 min-w-0 text-[8px] font-extrabold uppercase tracking-[.1em] outline-none font-mono"
-                          style={{
-                            color: rack.color, background: 'rgba(255,255,255,0.06)',
-                            border: `1px solid ${rack.color}40`, borderRadius: 3, padding: '1px 4px',
-                            caretColor: rack.color, maxWidth: '60px',
-                          }}
-                          maxLength={16} spellCheck={false}
-                        />
-                      ) : (
-                        <span
-                          className="text-[8px] font-extrabold uppercase tracking-[.12em] font-mono truncate cursor-pointer"
-                          style={{ color: rack.color }}
-                          onDoubleClick={(e) => {
-                            e.stopPropagation()
-                            setRackRenameValue(rack.name)
-                            setRackRenaming(rack.id)
-                          }}
-                          title="Double-click to rename rack"
+                      {/* Controls row */}
+                      <div className="flex items-center gap-1 px-2 py-1">
+                        {/* Collapse toggle */}
+                        <button
+                          onClick={() => onToggleRackCollapse?.(rack.id)}
+                          className="cursor-pointer"
+                          style={{ color: rack.color, background: 'none', border: 'none', padding: 0 }}
                         >
-                          {rack.name}
-                        </span>
-                      )}
+                          {rack.collapsed ? <ChevronRight size={11} /> : <ChevronDown size={11} />}
+                        </button>
 
-                      {/* Mini channel icons — quick mute/solo toggles */}
-                      <div className="flex items-center gap-0.5 ml-auto">
+                        {/* Rack Solo — solos all channels in rack */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            for (const i of rackChannels) onSolo(i, false)
+                          }}
+                          className="cursor-pointer transition-all duration-100 active:scale-90"
+                          style={{
+                            width: 16, height: 16, borderRadius: 4,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '7px', fontWeight: 900, lineHeight: 1,
+                            color: anySoloed ? '#06b6d4' : '#5a616b',
+                            background: anySoloed ? '#1a1a16' : '#0a0b0d',
+                            border: 'none',
+                            boxShadow: anySoloed
+                              ? `inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22, 0 0 4px #06b6d430`
+                              : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+                          }}
+                          title="Solo all in rack"
+                        >S</button>
+
+                        {/* Rack Mute — mutes/unmutes all channels in rack */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const shouldMute = !allMuted
+                            for (const i of rackChannels) {
+                              if (shouldMute && !mutedChannels.has(i)) onMute(i)
+                              if (!shouldMute && mutedChannels.has(i)) onMute(i)
+                            }
+                          }}
+                          className="cursor-pointer transition-all duration-100 active:scale-90"
+                          style={{
+                            width: 16, height: 16, borderRadius: 4,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '7px', fontWeight: 900, lineHeight: 1,
+                            color: allMuted ? '#b86f6f' : '#5a616b',
+                            background: allMuted ? '#1a1114' : '#0a0b0d',
+                            border: 'none',
+                            boxShadow: allMuted
+                              ? `inset 2px 2px 4px #050607, inset -2px -2px 4px #1a1d22, 0 0 4px #b86f6f30`
+                              : '2px 2px 4px #050607, -2px -2px 4px #1a1d22',
+                          }}
+                          title="Mute all in rack"
+                        >M</button>
+
+                        {/* Rack icon */}
+                        <Layers size={11} style={{ color: rack.color, opacity: 0.8, filter: `drop-shadow(0 0 3px ${rack.color}40)` }} />
+
+                        {/* Rack name — editable */}
+                        {rackRenaming === rack.id ? (
+                          <input
+                            ref={rackRenameRef}
+                            autoFocus
+                            value={rackRenameValue}
+                            onChange={(e) => setRackRenameValue(e.target.value.slice(0, 16))}
+                            onBlur={() => {
+                              if (rackRenameValue.trim() && rackRenameValue !== rack.name) {
+                                onRenameRack?.(rack.id, rackRenameValue.trim())
+                              }
+                              setRackRenaming(null)
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') e.currentTarget.blur()
+                              if (e.key === 'Escape') { setRackRenameValue(rack.name); setRackRenaming(null) }
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex-1 min-w-0 text-[8px] font-extrabold uppercase tracking-[.1em] outline-none font-mono"
+                            style={{
+                              color: rack.color, background: 'rgba(255,255,255,0.06)',
+                              border: `1px solid ${rack.color}40`, borderRadius: 3, padding: '1px 4px',
+                              caretColor: rack.color, maxWidth: '60px',
+                            }}
+                            maxLength={16} spellCheck={false}
+                          />
+                        ) : (
+                          <span
+                            className="text-[8px] font-extrabold uppercase tracking-[.12em] font-mono truncate cursor-pointer"
+                            style={{ color: rack.color }}
+                            onDoubleClick={(e) => {
+                              e.stopPropagation()
+                              setRackRenameValue(rack.name)
+                              setRackRenaming(rack.id)
+                            }}
+                            title="Double-click to rename rack"
+                          >
+                            {rack.name}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Mini channel icons row — always visible for quick mute toggles */}
+                      <div className="flex items-center gap-1 px-2 pb-1">
                         {rackChannels.map(chIdx => {
                           const ch = channels[chIdx]
                           if (!ch) return null
@@ -1429,42 +1486,48 @@ const TrackView = memo(function TrackView({
                             <button
                               key={chIdx}
                               onClick={(e) => { e.stopPropagation(); onMute(chIdx) }}
-                              className="cursor-pointer transition-all duration-100 active:scale-90 group/rackicon"
+                              className="cursor-pointer transition-all duration-100 active:scale-90"
                               style={{
-                                width: 14, height: 14, borderRadius: 3,
+                                width: 18, height: 18, borderRadius: 4,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                fontSize: '8px', lineHeight: 1,
-                                background: chMuted ? '#16181d' : `${ch.color}15`,
-                                border: `1px solid ${chMuted ? 'rgba(255,255,255,0.06)' : ch.color + '30'}`,
-                                opacity: chMuted ? 0.35 : 1,
-                                position: 'relative',
+                                fontSize: '9px', lineHeight: 1,
+                                background: chMuted ? '#0a0b0d' : `${ch.color}12`,
+                                border: `1px solid ${chMuted ? 'rgba(255,255,255,0.04)' : ch.color + '35'}`,
+                                opacity: chMuted ? 0.3 : 1,
+                                boxShadow: chMuted
+                                  ? 'inset 1px 1px 2px #050607'
+                                  : `1px 1px 3px #050607, -1px -1px 3px #1a1d22, 0 0 4px ${ch.color}10`,
                               }}
                               title={`${ch.name} — click to ${chMuted ? 'unmute' : 'mute'}`}
                             >
-                              <span style={{ color: ch.color, filter: chMuted ? 'grayscale(1)' : 'none' }}>
+                              <span style={{ color: ch.color, filter: chMuted ? 'grayscale(1) brightness(0.5)' : `drop-shadow(0 0 2px ${ch.color}40)` }}>
                                 {getSourceIcon(ch.source, ch.sourceType)}
                               </span>
                             </button>
                           )
                         })}
+                        {/* Channel count badge */}
+                        <span className="text-[6px] font-bold ml-auto font-mono" style={{ color: `${rack.color}50` }}>
+                          {rackChannels.length}CH
+                        </span>
                       </div>
                     </div>
 
-                    {/* Rack right area — combined scope placeholder */}
+                    {/* Rack right area — combined mini scopes */}
                     <div className="flex-1 min-w-0 relative overflow-hidden" style={{ background: '#0a0b0d' }}>
-                      {/* Beat grid */}
                       <BeatGrid />
-                      {/* Show mini colored bars for each channel */}
-                      <div className="absolute inset-0 flex flex-col justify-center z-[2] px-4">
+                      {/* Stacked color bars representing each channel */}
+                      <div className="absolute inset-0 flex flex-col justify-center z-[2] px-3 gap-px">
                         {rackChannels.map(chIdx => {
                           const ch = channels[chIdx]
                           if (!ch) return null
                           const chMuted = mutedChannels.has(chIdx)
                           return (
-                            <div key={chIdx} className="flex items-center gap-1 py-px" style={{ opacity: chMuted ? 0.15 : 0.6 }}>
-                              <div className="h-[3px] rounded-full" style={{
-                                width: `${30 + Math.random() * 50}%`,
-                                background: `linear-gradient(90deg, ${ch.color}80 0%, ${ch.color}20 100%)`,
+                            <div key={chIdx} className="flex items-center gap-1.5" style={{ opacity: chMuted ? 0.1 : 0.7 }}>
+                              <span className="text-[6px] font-bold font-mono w-8 truncate" style={{ color: `${ch.color}80` }}>{ch.name}</span>
+                              <div className="h-[3px] rounded-full flex-1" style={{
+                                background: `linear-gradient(90deg, ${ch.color}60 0%, ${ch.color}15 80%, transparent 100%)`,
+                                boxShadow: chMuted ? 'none' : `0 0 4px ${ch.color}20`,
                               }} />
                             </div>
                           )
@@ -1472,9 +1535,18 @@ const TrackView = memo(function TrackView({
                       </div>
                       {/* Rack badge */}
                       <div className="absolute bottom-1 right-2 z-[5] text-[5px] font-bold uppercase tracking-widest font-mono"
-                        style={{ color: `${rack.color}30` }}>
-                        RACK · {rackChannels.length} CH
+                        style={{ color: `${rack.color}35` }}>
+                        RACK
                       </div>
+                      {/* Rack expand hint when collapsed */}
+                      {rack.collapsed && (
+                        <div className="absolute top-1 right-2 z-[5]">
+                          <span className="text-[5px] font-bold uppercase tracking-widest font-mono px-1 py-0.5 rounded"
+                            style={{ color: `${rack.color}50`, background: `${rack.color}08`, border: `1px solid ${rack.color}15` }}>
+                            ▶ EXPAND
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
