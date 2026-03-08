@@ -19,6 +19,7 @@ import TrackView, { type Rack } from './TrackView'
 import ArrangementTimeline, { type ArrangementSection, type PatternVariant, nextVariantId } from './ArrangementTimeline'
 import PresetRack from './PresetRack'
 import StudioEffectsPanel from './StudioEffectsPanel'
+import InstrumentPickerModal from './InstrumentPickerModal'
 import { FX_PRESETS, FX_PRESET_CATEGORIES, type FxPresetCategory } from '@/lib/fx-presets'
 import {
   type AudioClip, type AudioTrack, type ClipClipboard,
@@ -1668,6 +1669,8 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   const audioFileInputRef = useRef<HTMLInputElement>(null)
   const pendingUploadTrackRef = useRef(0)
   const recordingStartBarRef = useRef(0)
+  // ── Instrument picker modal state (Create Instrument from clip) ──
+  const [pendingInstrumentClipId, setPendingInstrumentClipId] = useState<string | null>(null)
 
   // ── Audio clip playback engine ──
   const clipEngineRef = useRef<ClipPlaybackEngine | null>(null)
@@ -2840,25 +2843,39 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     }
   }, [audioClips, code])
 
-  // ── Create Instrument: register clip as a Strudel sample and create a channel ──
-  const handleCreateInstrumentFromClip = useCallback(async (clipId: string) => {
+  // ── Create Instrument: open sound picker modal instead of auto-creating ──
+  const handleCreateInstrumentFromClip = useCallback((clipId: string) => {
     const clip = audioClips.find(c => c.id === clipId)
     if (!clip) return
-    const meta = prepareInstrumentFromClip(clip, projectBpm)
-    // Register the blob URL as a Strudel sample
-    if (onRegisterCustomSound) {
-      await onRegisterCustomSound(meta.soundName, meta.sampleUrl)
-    }
-    // Create as an 'instrument' channel — note("c3") + loopAt + cut
-    // so it's pitched (piano-roll playable) and tempo-synced without glitch
-    if (onAddChannel) {
-      const loopAt = Math.max(1, Math.round(meta.loopBars))
-      onAddChannel(meta.soundName, 'instrument', loopAt)
-      console.log(`[444 STUDIO] Created instrument "${meta.soundName}" from clip "${clip.name}" (loopAt=${loopAt})`)
+    setPendingInstrumentClipId(clipId)
+  }, [audioClips])
+
+  // ── Sound picked from InstrumentPickerModal ──
+  const handleInstrumentSoundPicked = useCallback(async (soundId: string) => {
+    if (!pendingInstrumentClipId) return
+    const clip = audioClips.find(c => c.id === pendingInstrumentClipId)
+    if (!clip) { setPendingInstrumentClipId(null); return }
+
+    if (soundId === '__clip__') {
+      // Use the clip's own audio as the instrument
+      const meta = prepareInstrumentFromClip(clip, projectBpm)
+      if (onRegisterCustomSound) {
+        await onRegisterCustomSound(meta.soundName, meta.sampleUrl)
+      }
+      if (onAddChannel) {
+        const loopAt = Math.max(1, Math.round(meta.loopBars))
+        onAddChannel(meta.soundName, 'instrument', loopAt)
+        console.log(`[444 STUDIO] Created instrument "${meta.soundName}" from clip "${clip.name}" (loopAt=${loopAt})`)
+      }
     } else {
-      console.warn('[444 STUDIO] Cannot create instrument — onAddChannel not wired')
+      // Use a built-in sound on the piano roll
+      if (onAddChannel) {
+        onAddChannel(soundId, 'synth')
+        console.log(`[444 STUDIO] Created instrument channel with sound "${soundId}" from clip "${clip.name}"`)
+      }
     }
-  }, [audioClips, projectBpm, onRegisterCustomSound, onAddChannel])
+    setPendingInstrumentClipId(null)
+  }, [pendingInstrumentClipId, audioClips, projectBpm, onRegisterCustomSound, onAddChannel])
 
   const handleStartRecording = useCallback(async (trackIndex: number) => {
     try {
@@ -4084,6 +4101,15 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
           )}
         </div>
       )}
+
+      {/* ═══ INSTRUMENT PICKER MODAL — choose sound for piano roll ═══ */}
+      <InstrumentPickerModal
+        isOpen={!!pendingInstrumentClipId}
+        clipName={audioClips.find(c => c.id === pendingInstrumentClipId)?.name ?? ''}
+        onClose={() => setPendingInstrumentClipId(null)}
+        onSelect={handleInstrumentSoundPicked}
+        onPreview={onPreview}
+      />
     </div>
   )
 }
