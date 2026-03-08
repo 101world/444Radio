@@ -1970,6 +1970,9 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   const handleArrangeSectionsChange = useCallback((sections: ArrangementSection[]) => {
     setArrangeSections(sections)
 
+    // Capture current playback position so we can restore it after code change
+    const currentPos = getCyclePosition?.() ?? null
+
     let currentCode = codeRef.current
 
     if (sections.length === 0) {
@@ -1977,11 +1980,15 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
       currentCode = updateArrangeInCode(currentCode, '') // remove arrange
       currentCode = convertLetToBlocks(currentCode)      // let → $name: (self-playing)
       currentCode = currentCode.replace(/\n{3,}/g, '\n\n') // clean blank lines
-      onCodeChange(currentCode)
+      ;(onLiveCodeChange ?? onCodeChange)(currentCode)
       // Clear all automation
       automationRef.current = new Map()
       setAutomationData(new Map())
       onAutomationDataChange?.(new Map(), [])
+      // Restore playback position after a short delay so the engine processes the code first
+      if (currentPos !== null && onSeek) {
+        setTimeout(() => onSeek(currentPos), 80)
+      }
       return
     }
 
@@ -2012,10 +2019,18 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
 
     const arrangeCode = generateArrangeCode(nameMap, sectionData)
     const newCode = updateArrangeInCode(currentCode, arrangeCode)
-    onCodeChange(newCode)
+    // Use live code change to immediately evaluate (hot-swap) the arrangement
+    ;(onLiveCodeChange ?? onCodeChange)(newCode)
     // Notify eval chain of current automation + section layout
     onAutomationDataChange?.(automationRef.current, sections.map(s => ({ id: s.id, bars: s.bars })))
-  }, [channels, patternVariants, onCodeChange, onAutomationDataChange])
+    // Restore playback position after arrangement code is evaluated
+    if (currentPos !== null && onSeek) {
+      const totalBars = sections.reduce((sum, s) => sum + s.bars, 0)
+      // Clamp to valid range for the new arrangement
+      const clampedPos = totalBars > 0 ? currentPos % totalBars : currentPos
+      setTimeout(() => onSeek(clampedPos), 80)
+    }
+  }, [channels, patternVariants, onCodeChange, onLiveCodeChange, onAutomationDataChange, getCyclePosition, onSeek])
 
   /** Create a new pattern variant from a channel's current pattern */
   const handleCreateVariant = useCallback((channelIdx: number, name: string) => {

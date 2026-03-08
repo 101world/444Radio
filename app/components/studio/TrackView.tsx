@@ -46,10 +46,19 @@ type SidechainInfo = {
 
 // ─── Scope types for per-track visualization ───
 const TRACK_SCOPE_TYPES = [
-  { id: 'waveform', label: 'WAVE' },
-  { id: 'bars',     label: 'FREQ' },
-  { id: 'mirror',   label: 'MIRROR' },
-  { id: 'timeline', label: 'LANE' },
+  { id: 'waveform',     label: 'WAVE' },
+  { id: 'bars',         label: 'FREQ' },
+  { id: 'mirror',       label: 'MIRROR' },
+  { id: 'circular',     label: 'CIRCLE' },
+  { id: 'dots',         label: 'DOTS' },
+  { id: 'spectrogram',  label: 'SPECTRO' },
+  { id: 'lissajous',    label: 'LISSA' },
+  { id: 'needle',       label: 'NEEDLE' },
+  { id: 'waterfall',    label: 'WATER' },
+  { id: 'rings',        label: 'RINGS' },
+  { id: 'terrain',      label: 'TERRAIN' },
+  { id: 'plasma',       label: 'PLASMA' },
+  { id: 'timeline',     label: 'LANE' },
 ] as const
 type TrackScopeType = typeof TRACK_SCOPE_TYPES[number]['id']
 
@@ -94,7 +103,7 @@ function getChannelOrbit(channel: ParsedChannel): number {
     const n = parseFloat(String(p.value))
     if (!isNaN(n)) return n
   }
-  return 1
+  return 0 // Strudel default orbit is 0
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -182,6 +191,33 @@ function TrackScope({
         break
       case 'mirror':
         drawMirror(ctx, timeData, w, h, color, intensity)
+        break
+      case 'circular':
+        drawCircular(ctx, timeData, w, h, color, intensity)
+        break
+      case 'dots':
+        drawDots(ctx, timeData, w, h, color, intensity)
+        break
+      case 'spectrogram':
+        drawSpectrogram(ctx, freqData, w, h, color)
+        break
+      case 'lissajous':
+        drawLissajous(ctx, timeData, w, h, color, intensity)
+        break
+      case 'needle':
+        drawNeedle(ctx, timeData, w, h, color, intensity)
+        break
+      case 'waterfall':
+        drawWaterfall(ctx, freqData, w, h, color)
+        break
+      case 'rings':
+        drawRings(ctx, freqData, w, h, color, intensity)
+        break
+      case 'terrain':
+        drawTerrain(ctx, freqData, w, h, color, intensity)
+        break
+      case 'plasma':
+        drawPlasma(ctx, timeData, freqData, w, h, color, intensity)
         break
     }
 
@@ -325,6 +361,265 @@ function drawMirror(
   ctx.moveTo(0, cy)
   ctx.lineTo(w, cy)
   ctx.stroke()
+}
+
+// ─── Circular oscilloscope ───
+function drawCircular(
+  ctx: CanvasRenderingContext2D, data: Uint8Array,
+  w: number, h: number, color: string, intensity: number,
+) {
+  const cx = w / 2, cy = h / 2
+  const r = Math.min(cx, cy) * 0.7
+  const points = Math.min(data.length, 256)
+  ctx.strokeStyle = `${color}70`
+  ctx.lineWidth = 1.5 + intensity
+  ctx.beginPath()
+  for (let i = 0; i <= points; i++) {
+    const idx = i % points
+    const angle = (idx / points) * Math.PI * 2 - Math.PI / 2
+    const v = (data[Math.floor((idx / points) * data.length)] - 128) / 128
+    const rad = r + v * r * 0.5
+    const x = cx + Math.cos(angle) * rad
+    const y = cy + Math.sin(angle) * rad
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+  }
+  ctx.closePath()
+  ctx.stroke()
+  ctx.strokeStyle = `${color}20`
+  ctx.lineWidth = 0.5
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.stroke()
+}
+
+// ─── Dots / scatter ───
+function drawDots(
+  ctx: CanvasRenderingContext2D, data: Uint8Array,
+  w: number, h: number, color: string, intensity: number,
+) {
+  const cy = h / 2
+  const dotCount = Math.min(data.length, 128)
+  const dotR = 1 + intensity * 1.5
+  for (let i = 0; i < dotCount; i++) {
+    const x = (i / dotCount) * w
+    const v = (data[Math.floor((i / dotCount) * data.length)] - 128) / 128
+    const y = cy + v * cy * 0.85
+    const alpha = 0.3 + Math.abs(v) * 0.7
+    ctx.fillStyle = `${color}${Math.round(alpha * 255).toString(16).padStart(2, '0')}`
+    ctx.beginPath()
+    ctx.arc(x, y, dotR, 0, Math.PI * 2)
+    ctx.fill()
+  }
+}
+
+// Spectrogram history buffer (per-canvas persistent via module-level WeakMap)
+const spectroHistory = new WeakMap<HTMLCanvasElement, Uint8Array[]>()
+
+// ─── Spectrogram (scrolling frequency heatmap) ───
+function drawSpectrogram(
+  ctx: CanvasRenderingContext2D, data: Uint8Array,
+  w: number, h: number, color: string,
+) {
+  const canvas = ctx.canvas
+  let history = spectroHistory.get(canvas)
+  if (!history) { history = []; spectroHistory.set(canvas, history) }
+  history.push(new Uint8Array(data))
+  const maxCols = Math.ceil(w)
+  if (history.length > maxCols) history.splice(0, history.length - maxCols)
+  const colW = Math.max(1, w / maxCols)
+  const freqBins = Math.min(data.length * 0.6, 128)
+  const r = parseInt(color.slice(1, 3), 16) || 0
+  const g = parseInt(color.slice(3, 5), 16) || 100
+  const b = parseInt(color.slice(5, 7), 16) || 200
+  for (let col = 0; col < history.length; col++) {
+    const frame = history[col]
+    for (let row = 0; row < freqBins; row++) {
+      const val = frame[row] / 255
+      if (val < 0.05) continue
+      const y = h - (row / freqBins) * h
+      const rowH = Math.max(1, h / freqBins)
+      ctx.fillStyle = `rgba(${r},${g},${b},${val * 0.85})`
+      ctx.fillRect(col * colW, y, colW, rowH)
+    }
+  }
+}
+
+// ─── Lissajous (X-Y plot) ───
+function drawLissajous(
+  ctx: CanvasRenderingContext2D, data: Uint8Array,
+  w: number, h: number, color: string, intensity: number,
+) {
+  const cx = w / 2, cy = h / 2
+  const scale = Math.min(cx, cy) * 0.8
+  const half = Math.floor(data.length / 2)
+  ctx.strokeStyle = `${color}60`
+  ctx.lineWidth = 1 + intensity
+  ctx.beginPath()
+  for (let i = 0; i < half; i++) {
+    const vx = (data[i] - 128) / 128
+    const vy = (data[i + half] - 128) / 128
+    const x = cx + vx * scale
+    const y = cy + vy * scale
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+  }
+  ctx.stroke()
+  // Crosshair
+  ctx.strokeStyle = `${color}12`
+  ctx.lineWidth = 0.5
+  ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(w, cy); ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, h); ctx.stroke()
+}
+
+// ─── Needle / VU-meter ───
+function drawNeedle(
+  ctx: CanvasRenderingContext2D, data: Uint8Array,
+  w: number, h: number, color: string, _intensity: number,
+) {
+  let maxAmp = 0
+  for (let i = 0; i < data.length; i++) {
+    const v = Math.abs(data[i] - 128)
+    if (v > maxAmp) maxAmp = v
+  }
+  const level = Math.min(1, maxAmp / 100)
+  const cx = w / 2, needleBase = h * 0.95
+  const needleLen = Math.min(cx, h) * 0.8
+  const angle = -Math.PI * 0.8 + level * Math.PI * 0.6
+  // Arc
+  ctx.strokeStyle = `${color}20`
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  ctx.arc(cx, needleBase, needleLen, -Math.PI * 0.8, -Math.PI * 0.2)
+  ctx.stroke()
+  // Tick marks
+  for (let t = 0; t <= 10; t++) {
+    const a = -Math.PI * 0.8 + (t / 10) * Math.PI * 0.6
+    const inner = needleLen * 0.88
+    ctx.strokeStyle = t > 7 ? '#f8717180' : `${color}40`
+    ctx.lineWidth = t % 5 === 0 ? 1.5 : 0.5
+    ctx.beginPath()
+    ctx.moveTo(cx + Math.cos(a) * inner, needleBase + Math.sin(a) * inner)
+    ctx.lineTo(cx + Math.cos(a) * needleLen, needleBase + Math.sin(a) * needleLen)
+    ctx.stroke()
+  }
+  // Needle
+  ctx.strokeStyle = color
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.moveTo(cx, needleBase)
+  ctx.lineTo(cx + Math.cos(angle) * needleLen * 0.9, needleBase + Math.sin(angle) * needleLen * 0.9)
+  ctx.stroke()
+  ctx.fillStyle = `${color}80`
+  ctx.beginPath()
+  ctx.arc(cx, needleBase, 3, 0, Math.PI * 2)
+  ctx.fill()
+}
+
+// Waterfall history buffer
+const waterfallHistory = new WeakMap<HTMLCanvasElement, Uint8Array[]>()
+
+// ─── Waterfall (3D frequency bars scrolling) ───
+function drawWaterfall(
+  ctx: CanvasRenderingContext2D, data: Uint8Array,
+  w: number, h: number, color: string,
+) {
+  const canvas = ctx.canvas
+  let history = waterfallHistory.get(canvas)
+  if (!history) { history = []; waterfallHistory.set(canvas, history) }
+  history.push(new Uint8Array(data))
+  const maxRows = 24
+  if (history.length > maxRows) history.splice(0, history.length - maxRows)
+  const barCount = 32
+  const barW = w / barCount
+  const r = parseInt(color.slice(1, 3), 16) || 0
+  const g = parseInt(color.slice(3, 5), 16) || 100
+  const b = parseInt(color.slice(5, 7), 16) || 200
+  for (let row = 0; row < history.length; row++) {
+    const frame = history[row]
+    const depth = row / maxRows
+    const rowY = h * (1 - depth * 0.9)
+    const rowH = Math.max(1, h / maxRows * 0.7)
+    const alpha = 0.15 + depth * 0.6
+    for (let i = 0; i < barCount; i++) {
+      const idx = Math.floor((i / barCount) * data.length * 0.6)
+      const val = (frame[idx] || 0) / 255
+      if (val < 0.05) continue
+      ctx.fillStyle = `rgba(${r},${g},${b},${val * alpha})`
+      ctx.fillRect(i * barW + 1, rowY - val * rowH, barW - 2, val * rowH)
+    }
+  }
+}
+
+// ─── Rings (concentric frequency rings) ───
+function drawRings(
+  ctx: CanvasRenderingContext2D, data: Uint8Array,
+  w: number, h: number, color: string, intensity: number,
+) {
+  const cx = w / 2, cy = h / 2
+  const maxR = Math.min(cx, cy) * 0.9
+  const ringCount = 8
+  for (let ring = 0; ring < ringCount; ring++) {
+    const idx = Math.floor((ring / ringCount) * data.length * 0.5)
+    const val = data[idx] / 255
+    const r = (ring + 1) / ringCount * maxR
+    const alpha = 0.1 + val * 0.5
+    const lw = 1 + val * intensity * 2
+    ctx.strokeStyle = `${color}${Math.round(alpha * 255).toString(16).padStart(2, '0')}`
+    ctx.lineWidth = lw
+    ctx.beginPath()
+    ctx.arc(cx, cy, r, 0, Math.PI * 2)
+    ctx.stroke()
+  }
+}
+
+// ─── Terrain (mountain frequency landscape) ───
+function drawTerrain(
+  ctx: CanvasRenderingContext2D, data: Uint8Array,
+  w: number, h: number, color: string, _intensity: number,
+) {
+  const layers = 6
+  const barCount = 48
+  for (let layer = 0; layer < layers; layer++) {
+    const baseY = h * (0.3 + layer * 0.12)
+    const alpha = 0.15 + (layers - layer) / layers * 0.4
+    ctx.fillStyle = `${color}${Math.round(alpha * 255).toString(16).padStart(2, '0')}`
+    ctx.beginPath()
+    ctx.moveTo(0, h)
+    for (let i = 0; i <= barCount; i++) {
+      const x = (i / barCount) * w
+      const idx = Math.floor(((i + layer * 5) / barCount) * data.length * 0.5) % data.length
+      const val = data[idx] / 255
+      const y = baseY - val * h * 0.25
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+    }
+    ctx.lineTo(w, h)
+    ctx.lineTo(0, h)
+    ctx.closePath()
+    ctx.fill()
+  }
+}
+
+// ─── Plasma (combined time+freq psychedelic) ───
+function drawPlasma(
+  ctx: CanvasRenderingContext2D, timeData: Uint8Array, freqData: Uint8Array,
+  w: number, h: number, color: string, intensity: number,
+) {
+  const r = parseInt(color.slice(1, 3), 16) || 0
+  const g = parseInt(color.slice(3, 5), 16) || 100
+  const b = parseInt(color.slice(5, 7), 16) || 200
+  const cellW = 8, cellH = 4
+  const cols = Math.ceil(w / cellW), rows = Math.ceil(h / cellH)
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const tIdx = Math.floor((col / cols) * timeData.length)
+      const fIdx = Math.floor((row / rows) * freqData.length * 0.5)
+      const tVal = (timeData[tIdx] - 128) / 128
+      const fVal = freqData[fIdx] / 255
+      const v = (Math.abs(tVal) + fVal) * 0.5 * (0.5 + intensity * 0.5)
+      if (v < 0.05) continue
+      ctx.fillStyle = `rgba(${Math.round(r * v)},${Math.round(g * (0.5 + v * 0.5))},${Math.round(b * (0.3 + v * 0.7))},${v * 0.7})`
+      ctx.fillRect(col * cellW, row * cellH, cellW - 1, cellH - 1)
+    }
+  }
 }
 
 // ─── Mini peak meter ───
@@ -1099,6 +1394,8 @@ const TrackView = memo(function TrackView({
 
   // ── Context menu state ──
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; channelIdx: number } | null>(null)
+  const [scopePicker, setScopePicker] = useState<{ x: number; y: number; channelIdx: number } | null>(null)
+  const scopePickerRef = useRef<HTMLDivElement>(null)
   const [selectedChannels, setSelectedChannels] = useState<Set<number>>(new Set())
   const [rackRenaming, setRackRenaming] = useState<string | null>(null)
   const [rackRenameValue, setRackRenameValue] = useState('')
@@ -1115,6 +1412,17 @@ const TrackView = memo(function TrackView({
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [ctxMenu])
+
+  // Close scope picker on outside click
+  useEffect(() => {
+    if (!scopePicker) return
+    const handler = (e: MouseEvent) => {
+      if (scopePickerRef.current && scopePickerRef.current.contains(e.target as Node)) return
+      setScopePicker(null)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [scopePicker])
 
   // ── Build render items: racks (with their channels) and ungrouped channels ──
   const renderItems = useMemo(() => {
@@ -1471,10 +1779,14 @@ const TrackView = memo(function TrackView({
             borderLeft: isActive ? `1px solid ${ch.color}35` : '1px solid rgba(255,255,255,0.02)',
           }}
           onClick={() => cycleScopeType(idx)}
+          onContextMenu={(e) => {
+            e.preventDefault()
+            setScopePicker({ x: e.clientX, y: e.clientY, channelIdx: idx })
+          }}
           onDragOver={(e) => { e.preventDefault(); onDragOver(idx) }}
           onDragLeave={onDragLeave}
           onDrop={(e) => onDrop(idx, e)}
-          title="Click to change visualizer"
+          title="Click to cycle • Right-click to pick visualizer"
         >
           {/* Scope or Timeline */}
           {scopeType === 'timeline' ? (
@@ -1965,6 +2277,43 @@ const TrackView = memo(function TrackView({
                   </button>
                 </>
               )}
+            </div>
+          )}
+
+          {/* Scope picker dropdown */}
+          {scopePicker && (
+            <div
+              ref={scopePickerRef}
+              className="fixed z-[9999] rounded-md p-1.5 flex flex-col gap-0.5"
+              style={{
+                left: scopePicker.x, top: scopePicker.y,
+                background: '#16181d',
+                border: '1px solid rgba(255,255,255,0.08)',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.6), 4px 4px 8px #050607',
+                minWidth: '140px',
+              }}
+            >
+              <div className="px-2 py-1 text-[8px] uppercase tracking-wider" style={{ color: '#5a616b' }}>Visualizer</div>
+              {TRACK_SCOPE_TYPES.map(st => {
+                const active = (trackScopes[scopePicker.channelIdx] ?? 'waveform') === st.id
+                return (
+                  <button
+                    key={st.id}
+                    className="w-full text-left px-3 py-1.5 text-[9px] font-bold cursor-pointer hover:bg-white/[0.06] transition-colors flex items-center gap-2 rounded-sm"
+                    style={{
+                      color: active ? '#00e5c7' : '#a0a7b3',
+                      background: active ? 'rgba(0,229,199,0.06)' : 'none',
+                      border: 'none',
+                    }}
+                    onClick={() => {
+                      setTrackScopes(prev => ({ ...prev, [scopePicker.channelIdx]: st.id }))
+                      setScopePicker(null)
+                    }}
+                  >
+                    {active ? '●' : '○'} {st.label}
+                  </button>
+                )
+              })}
             </div>
           )}
 
