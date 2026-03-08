@@ -256,14 +256,18 @@ export default function StudioEditor() {
   // Automation data change: store + re-evaluate
   const handleAutomationDataChange = useCallback((data: Map<string, number>, sections: { id: string; bars: number }[]) => {
     automationStateRef.current = { data, sections }
+    console.log(`[444 STUDIO] automation data updated: ${data.size} keyframes, ${sections.length} sections`)
     if (isPlayingRef.current && engineRef.current?.evaluate) {
       const src = codeRef.current.trim()
       if (!src) return
       const { muted, soloed } = mixerStateRef.current
       const finalCode = buildEvalCode(src, muted, soloed)
+      console.log('[444 STUDIO] re-evaluating with automation overrides applied')
       engineRef.current.evaluate(finalCode).catch(err => {
         console.error('[444 STUDIO] automation update error:', err)
       })
+    } else if (!isPlayingRef.current) {
+      console.log('[444 STUDIO] automation stored (will apply on next play)')
     }
   }, [buildEvalCode])
 

@@ -2664,8 +2664,10 @@ export function applyAutomationOverrides(
       const clamped = Math.max(pMin, Math.min(pMax, value))
       barValues.push(Math.round(clamped * 1000) / 1000)
     }
-    const parts = barValues.map(v => `${v}@1`)
-    return `"[${parts.join(' ')}]"`
+    // Use <> (slowcat) so each value plays for one cycle (= one bar).
+    // [v1 v2 ...] would squeeze all values into ONE cycle — completely wrong.
+    // <v1 v2 ...> advances one element per cycle, matching per-bar automation.
+    return `"<${barValues.join(' ')}>"` 
   }
 
   // Build replacement operations (sorted by position, applied bottom-to-top)
@@ -2726,6 +2728,8 @@ export function applyAutomationOverrides(
   }
 
   if (replacements.length === 0 && injections.length === 0) return code
+
+  console.log(`[444 STUDIO] applyAutomationOverrides: ${replacements.length} param replacements, ${injections.length} param injections across ${totalBars} bars`)
 
   // Apply replacements first (bottom-to-top by position)
   replacements.sort((a, b) => b.start - a.start)
