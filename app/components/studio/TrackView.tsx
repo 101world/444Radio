@@ -944,9 +944,9 @@ interface TrackViewProps {
   isRecording?: boolean
   onRecordToggle?: () => void
   onClearAutomation?: (sectionId: string) => void
-  onSetAutomation?: (sectionId: string, channelIdx: number, paramKey: string, value: number) => void
+  onSetAutomation?: (sectionId: string, channelIdx: number, paramKey: string, value: number, barOffset?: number) => void
   onClearParamAutomation?: (channelIdx: number, paramKey: string) => void
-  onDeleteKeyframe?: (sectionId: string, channelIdx: number, paramKey: string) => void
+  onDeleteKeyframe?: (sectionId: string, channelIdx: number, paramKey: string, barOffset?: number) => void
 }
 
 const TrackView = memo(function TrackView({

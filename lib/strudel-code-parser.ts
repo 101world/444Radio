@@ -2479,12 +2479,16 @@ export function updateArrangeInCode(code: string, arrangeCode: string): string {
 // ═══════════════════════════════════════════════════════════════
 //  applyAutomationOverrides — Eval-time automation layer
 //
-//  Takes clean editor code + per-section param overrides and
+//  Takes clean editor code + per-bar param overrides and
 //  replaces static param values with time-varying mini-notation
-//  patterns using smooth Catmull-Rom interpolation between sections.
+//  patterns using smooth Catmull-Rom interpolation between keyframes.
+//
+//  Keyframe key format:
+//    sectionId@barOffset:channelIdx:paramKey  (per-bar, barOffset 0-based)
+//    sectionId:channelIdx:paramKey            (legacy, treated as bar 0)
 //
 //  e.g. .gain(0.5) → .gain("[0.5@1 0.55@1 0.65@1 0.8@1 ...]")
-//        (one value per bar, smoothly interpolated across sections)
+//        (one value per bar, smoothly interpolated between keyframes)
 //
 //  This is eval-only — the editor always shows clean code.
 // ═══════════════════════════════════════════════════════════════
@@ -2501,6 +2505,35 @@ function catmullRomInterp(p0: number, p1: number, p2: number, p3: number, t: num
   )
 }
 
+/**
+ * Parse an automation map key into structured components.
+ * Supports both per-bar format (sectionId@barOffset:chIdx:param)
+ * and legacy format (sectionId:chIdx:param → barOffset = 0).
+ */
+export function parseAutoKey(key: string): { sectionId: string; barOffset: number; channelIdx: number; paramKey: string } | null {
+  const sepFirst = key.indexOf(':')
+  const sepSecond = key.indexOf(':', sepFirst + 1)
+  if (sepFirst === -1 || sepSecond === -1) return null
+
+  const secPart = key.substring(0, sepFirst)
+  const chIdx = parseInt(key.substring(sepFirst + 1, sepSecond))
+  const paramKey = key.substring(sepSecond + 1)
+  if (isNaN(chIdx)) return null
+
+  const atIdx = secPart.indexOf('@')
+  let sectionId: string
+  let barOffset: number
+  if (atIdx >= 0) {
+    sectionId = secPart.substring(0, atIdx)
+    barOffset = parseInt(secPart.substring(atIdx + 1)) || 0
+  } else {
+    sectionId = secPart
+    barOffset = 0
+  }
+
+  return { sectionId, barOffset, channelIdx: chIdx, paramKey }
+}
+
 export function applyAutomationOverrides(
   code: string,
   automationData: Map<string, number>,
@@ -2512,21 +2545,29 @@ export function applyAutomationOverrides(
   const totalBars = sections.reduce((sum, s) => sum + s.bars, 0)
   if (totalBars === 0) return code
 
-  // Group automation: channelIdx → paramKey → Map<sectionId, value>
-  const grouped = new Map<number, Map<string, Map<string, number>>>()
-  for (const [key, value] of automationData) {
-    const sepFirst = key.indexOf(':')
-    const sepSecond = key.indexOf(':', sepFirst + 1)
-    if (sepFirst === -1 || sepSecond === -1) continue
-    const secId = key.substring(0, sepFirst)
-    const chIdx = parseInt(key.substring(sepFirst + 1, sepSecond))
-    const paramKey = key.substring(sepSecond + 1)
-    if (isNaN(chIdx)) continue
+  // Section start bar positions
+  const sectionStartBar: number[] = []
+  let bAcc = 0
+  for (const sec of sections) {
+    sectionStartBar.push(bAcc)
+    bAcc += sec.bars
+  }
 
-    if (!grouped.has(chIdx)) grouped.set(chIdx, new Map())
-    const chMap = grouped.get(chIdx)!
-    if (!chMap.has(paramKey)) chMap.set(paramKey, new Map())
-    chMap.get(paramKey)!.set(secId, value)
+  // Group automation: channelIdx → paramKey → [{absoluteBar, value}]
+  const grouped = new Map<number, Map<string, { bar: number; value: number }[]>>()
+  for (const [key, value] of automationData) {
+    const parsed = parseAutoKey(key)
+    if (!parsed) continue
+
+    const secIdx = sections.findIndex(s => s.id === parsed.sectionId)
+    if (secIdx === -1) continue
+
+    const absoluteBar = sectionStartBar[secIdx] + Math.min(parsed.barOffset, sections[secIdx].bars - 1)
+
+    if (!grouped.has(parsed.channelIdx)) grouped.set(parsed.channelIdx, new Map())
+    const chMap = grouped.get(parsed.channelIdx)!
+    if (!chMap.has(parsed.paramKey)) chMap.set(parsed.paramKey, [])
+    chMap.get(parsed.paramKey)!.push({ bar: absoluteBar, value })
   }
 
   // Build replacement operations (sorted by position, applied bottom-to-top)
@@ -2536,41 +2577,54 @@ export function applyAutomationOverrides(
     const ch = channels[chIdx]
     if (!ch) continue
 
-    for (const [paramKey, sectionValues] of paramMap) {
+    for (const [paramKey, keyframes] of paramMap) {
       const param = ch.params.find(p => p.key === paramKey)
       if (!param) continue
 
-      // Build per-section normalized values array
-      const sectionVals: number[] = sections.map(sec => {
-        return sectionValues.has(sec.id) ? sectionValues.get(sec.id)! : param.value
-      })
+      // Sort keyframes by absolute bar position
+      keyframes.sort((a, b) => a.bar - b.bar)
 
-      // Check if all same — skip if no actual variation
-      const allSame = sectionVals.every(v => Math.round(v * 1000) === Math.round(sectionVals[0] * 1000))
-      if (allSame) continue
+      // Check if all keyframe values match the static param value — skip if no change
+      const allSameAsStatic = keyframes.every(kf => Math.round(kf.value * 1000) === Math.round(param.value * 1000))
+      if (allSameAsStatic) continue
 
-      // Generate one value per bar using Catmull-Rom interpolation
+      const pdef = PARAM_DEFS.find(pd => pd.key === paramKey)
+      const pMin = pdef?.min ?? 0
+      const pMax = pdef?.max ?? 1
+
+      // Generate one value per bar using Catmull-Rom interpolation between keyframes
       const barValues: number[] = []
-      let barAcc = 0
-      for (let si = 0; si < sections.length; si++) {
-        const sec = sections[si]
-        const p0 = sectionVals[Math.max(si - 1, 0)]
-        const p1 = sectionVals[si]
-        const p2 = sectionVals[Math.min(si + 1, sections.length - 1)]
-        const p3 = sectionVals[Math.min(si + 2, sections.length - 1)]
-
-        for (let b = 0; b < sec.bars; b++) {
-          // Smooth ramp between section keyframes using Catmull-Rom
-          const tSmooth = sec.bars === 1 ? 0.5 : b / sec.bars
-          const interp = catmullRomInterp(p0, p1, p2, p3, tSmooth)
-          // Clamp to param range using PARAM_DEFS
-          const pdef = PARAM_DEFS.find(pd => pd.key === paramKey)
-          const pMin = pdef?.min ?? 0
-          const pMax = pdef?.max ?? 1
-          const clamped = Math.max(pMin, Math.min(pMax, interp))
-          barValues.push(Math.round(clamped * 1000) / 1000)
+      for (let b = 0; b < totalBars; b++) {
+        let value: number
+        if (keyframes.length === 1) {
+          // Single keyframe: flat value everywhere
+          value = keyframes[0].value
+        } else {
+          // Find surrounding keyframes
+          let rightIdx = keyframes.findIndex(kf => kf.bar >= b)
+          if (rightIdx === -1) {
+            // Past last keyframe: hold last value
+            value = keyframes[keyframes.length - 1].value
+          } else if (rightIdx === 0) {
+            if (keyframes[0].bar === b) {
+              value = keyframes[0].value
+            } else {
+              // Before first keyframe: hold first value
+              value = keyframes[0].value
+            }
+          } else {
+            // Between keyframes: Catmull-Rom interpolation
+            const left = keyframes[rightIdx - 1]
+            const right = keyframes[rightIdx]
+            const p0 = rightIdx > 1 ? keyframes[rightIdx - 2].value : left.value
+            const p3 = rightIdx < keyframes.length - 1 ? keyframes[rightIdx + 1].value : right.value
+            const t = (b - left.bar) / Math.max(0.001, right.bar - left.bar)
+            value = catmullRomInterp(p0, left.value, right.value, p3, t)
+          }
         }
-        barAcc += sec.bars
+
+        const clamped = Math.max(pMin, Math.min(pMax, value))
+        barValues.push(Math.round(clamped * 1000) / 1000)
       }
 
       // Build mini-notation with 1 value per bar

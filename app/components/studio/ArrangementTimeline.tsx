@@ -342,13 +342,16 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
     const cells = new Map<string, Set<string>>()
     if (!automationData || automationData.size === 0) return cells
     for (const key of automationData.keys()) {
-      // key format: sectionId:channelIdx:paramKey
+      // Parse key: sectionId@barOffset:channelIdx:paramKey or sectionId:channelIdx:paramKey
       const first = key.indexOf(':')
       const second = key.indexOf(':', first + 1)
       if (first === -1 || second === -1) continue
-      const secId = key.substring(0, first)
+      const secPart = key.substring(0, first)
       const chIdx = key.substring(first + 1, second)
       const paramKey = key.substring(second + 1)
+      // Extract sectionId (strip @barOffset if present)
+      const atIdx = secPart.indexOf('@')
+      const secId = atIdx >= 0 ? secPart.substring(0, atIdx) : secPart
       const cellKey = `${secId}:${chIdx}`
       if (!cells.has(cellKey)) cells.set(cellKey, new Set())
       cells.get(cellKey)!.add(paramKey)
@@ -571,54 +574,75 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
                                 >
                                   {/* Mini automation curve overlay */}
                                   {hasAutomation && automationData && (() => {
-                                    // Build smooth Catmull-Rom mini-curves for automated params
+                                    // Build smooth mini-curves for automated params (supports per-bar keyframes)
                                     const paramList = Array.from(cellAutoParams!)
-                                    const allSecIds = sections.map(s => s.id)
                                     const clipW = w - 6 // inset-x 3px each side
                                     const clipH = ROW_H - 6
 
-                                    // For each param, build a smooth curve across sections and extract this section's segment
+                                    // Build section start bars for absolute positioning
+                                    const secStartBars: number[] = []
+                                    let ba = 0
+                                    for (const s of sections) { secStartBars.push(ba); ba += s.bars }
+                                    const totalB = ba
+
                                     const curvePaths = paramList.slice(0, 3).map((pk, pIdx) => {
-                                      // Gather values for this param across all sections
-                                      const sectionValues: { secId: string; val: number }[] = []
-                                      let min = Infinity, max = -Infinity
-                                      for (const sid of allSecIds) {
-                                        const k = `${sid}:${chIdx}:${pk}`
-                                        if (automationData.has(k)) {
-                                          const v = automationData.get(k)!
-                                          sectionValues.push({ secId: sid, val: v })
-                                          if (v < min) min = v
-                                          if (v > max) max = v
+                                      // Gather ALL keyframes for this param across all sections (per-bar + legacy)
+                                      const allKfs: { bar: number; value: number }[] = []
+                                      for (let si = 0; si < sections.length; si++) {
+                                        const s = sections[si]
+                                        let hasBarKeys = false
+                                        for (let b = 0; b < s.bars; b++) {
+                                          const k = `${s.id}@${b}:${chIdx}:${pk}`
+                                          if (automationData.has(k)) {
+                                            allKfs.push({ bar: secStartBars[si] + b, value: automationData.get(k)! })
+                                            hasBarKeys = true
+                                          }
+                                        }
+                                        // Legacy key fallback
+                                        if (!hasBarKeys) {
+                                          const legK = `${s.id}:${chIdx}:${pk}`
+                                          if (automationData.has(legK)) {
+                                            allKfs.push({ bar: secStartBars[si], value: automationData.get(legK)! })
+                                          }
                                         }
                                       }
-                                      if (sectionValues.length < 1) return null
+                                      if (allKfs.length < 1) return null
+                                      allKfs.sort((a, b) => a.bar - b.bar)
+
+                                      let min = Infinity, max = -Infinity
+                                      for (const kf of allKfs) { if (kf.value < min) min = kf.value; if (kf.value > max) max = kf.value }
                                       if (min === max) { min -= 0.1; max += 0.1 }
 
-                                      // Find this section's index in the value array
-                                      const thisSectionValIdx = sectionValues.findIndex(sv => sv.secId === section.id)
-                                      if (thisSectionValIdx === -1) return null
-
-                                      // Build normalized value array and compute smooth curve for this clip
-                                      const normValues = sectionValues.map(sv => (sv.val - min) / (max - min))
+                                      // Sample curve across this section's bars using Catmull-Rom between keyframes
+                                      const thisSectionStartBar = secStartBars[sIdx]
+                                      const thisSectionBars = section.bars
                                       const steps = Math.max(8, Math.round(clipW / 3))
                                       const points: string[] = []
 
-                                      // Catmull-Rom through the section values; sample the segment for this section
-                                      const n = normValues.length
                                       for (let step = 0; step <= steps; step++) {
-                                        // t goes from 0 to 1 within this section's segment
                                         const t = step / steps
-                                        // Map to global position
-                                        const globalT = thisSectionValIdx + t
-                                        const segIdx = Math.min(Math.floor(globalT), n - 1)
-                                        const localT = globalT - segIdx
-                                        const p0 = normValues[Math.max(0, segIdx - 1)]
-                                        const p1 = normValues[segIdx]
-                                        const p2 = normValues[Math.min(n - 1, segIdx + 1)]
-                                        const p3 = normValues[Math.min(n - 1, segIdx + 2)]
-                                        const val = catmullRom(p0, p1, p2, p3, localT)
+                                        const barPos = thisSectionStartBar + t * thisSectionBars
+
+                                        // Interpolate between keyframes
+                                        let val: number
+                                        if (allKfs.length === 1) {
+                                          val = allKfs[0].value
+                                        } else {
+                                          let ri = allKfs.findIndex(kf => kf.bar >= barPos)
+                                          if (ri === -1) val = allKfs[allKfs.length - 1].value
+                                          else if (ri === 0) val = allKfs[0].value
+                                          else {
+                                            const left = allKfs[ri - 1], right = allKfs[ri]
+                                            const p0 = ri > 1 ? allKfs[ri - 2].value : left.value
+                                            const p3 = ri < allKfs.length - 1 ? allKfs[ri + 1].value : right.value
+                                            const lt = (barPos - left.bar) / Math.max(0.001, right.bar - left.bar)
+                                            val = catmullRom(p0, left.value, right.value, p3, lt)
+                                          }
+                                        }
+
+                                        const norm = (val - min) / (max - min)
                                         const x = (step / steps) * clipW
-                                        const y = clipH * (1 - Math.max(0, Math.min(1, val)))
+                                        const y = clipH * (1 - Math.max(0, Math.min(1, norm)))
                                         points.push(`${x.toFixed(1)},${y.toFixed(1)}`)
                                       }
 

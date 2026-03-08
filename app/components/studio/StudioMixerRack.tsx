@@ -2021,24 +2021,9 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
           if (currentSection) {
             const newAuto = new Map(automationRef.current)
 
-            // Seed ALL sections with the current static value if this is the first
-            // automation for this channel+param (preserves base for non-recorded sections)
-            const existingKeyPrefix = `:${channelIdx}:${paramKey}`
-            const hasExisting = [...newAuto.keys()].some(k => k.endsWith(existingKeyPrefix) || k.includes(`:${channelIdx}:${paramKey}`))
-            if (!hasExisting) {
-              // Get current static value from parsed code
-              const channels = parseStrudelCode(codeRef.current)
-              const ch = channels[channelIdx]
-              const staticParam = ch?.params.find(p => p.key === paramKey)
-              const baseVal = staticParam?.value ?? value
-              for (const sec of recSections) {
-                const seedKey = `${sec.id}:${channelIdx}:${paramKey}`
-                newAuto.set(seedKey, baseVal)
-              }
-            }
-
-            // Set the recorded value for the current section
-            const recKey = `${currentSection.id}:${channelIdx}:${paramKey}`
+            // Per-bar recording: write keyframe at the exact bar position within the section
+            const barOffset = Math.floor(currentBar - barAcc)
+            const recKey = `${currentSection.id}@${barOffset}:${channelIdx}:${paramKey}`
             newAuto.set(recKey, value)
 
             automationRef.current = newAuto
@@ -2080,25 +2065,12 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   )
 
   // ── Automation lane: set a breakpoint value (click/drag in AutomationLane) ──
+  // Per-bar keyframes: key format is sectionId@barOffset:channelIdx:paramKey
   const handleSetAutomation = useCallback(
-    (sectionId: string, channelIdx: number, paramKey: string, value: number) => {
+    (sectionId: string, channelIdx: number, paramKey: string, value: number, barOffset: number = 0) => {
       const newAuto = new Map(automationRef.current)
-
-      // Seed ALL sections with the current static value if this is the first
-      // automation for this channel+param
-      const existingKeyPrefix = `:${channelIdx}:${paramKey}`
-      const hasExisting = [...newAuto.keys()].some(k => k.endsWith(existingKeyPrefix) || k.includes(`:${channelIdx}:${paramKey}`))
-      if (!hasExisting) {
-        const channels = parseStrudelCode(codeRef.current)
-        const ch = channels[channelIdx]
-        const staticParam = ch?.params.find((p: { key: string }) => p.key === paramKey)
-        const baseVal = staticParam?.value ?? value
-        for (const sec of arrangeSections) {
-          newAuto.set(`${sec.id}:${channelIdx}:${paramKey}`, baseVal)
-        }
-      }
-
-      newAuto.set(`${sectionId}:${channelIdx}:${paramKey}`, value)
+      const key = `${sectionId}@${barOffset}:${channelIdx}:${paramKey}`
+      newAuto.set(key, value)
       automationRef.current = newAuto
       setAutomationData(newAuto)
       onAutomationDataChange?.(newAuto, arrangeSections.map(s => ({ id: s.id, bars: s.bars })))
@@ -2112,8 +2084,9 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
       const newAuto = new Map(automationRef.current)
       let changed = false
       for (const [key, value] of automationRef.current) {
-        if (key.startsWith(fromSectionId + ':')) {
-          const suffix = key.substring(fromSectionId.length) // :channelIdx:paramKey
+        // Match both new format (sectionId@barOffset:...) and legacy (sectionId:...)
+        if (key.startsWith(fromSectionId + '@') || key.startsWith(fromSectionId + ':')) {
+          const suffix = key.substring(fromSectionId.length) // @barOffset:channelIdx:paramKey or :channelIdx:paramKey
           newAuto.set(toSectionId + suffix, value)
           changed = true
         }
@@ -2143,13 +2116,15 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     [arrangeSections, onAutomationDataChange],
   )
 
-  // ── Automation lane: delete a single keyframe (sectionId + channel + param) ──
+  // ── Automation lane: delete a single keyframe (per-bar or legacy) ──
   const handleDeleteKeyframe = useCallback(
-    (sectionId: string, channelIdx: number, paramKey: string) => {
-      const key = `${sectionId}:${channelIdx}:${paramKey}`
-      if (!automationRef.current.has(key)) return
+    (sectionId: string, channelIdx: number, paramKey: string, barOffset: number = 0) => {
+      const key = `${sectionId}@${barOffset}:${channelIdx}:${paramKey}`
+      const legacyKey = `${sectionId}:${channelIdx}:${paramKey}`
+      if (!automationRef.current.has(key) && !automationRef.current.has(legacyKey)) return
       const newAuto = new Map(automationRef.current)
       newAuto.delete(key)
+      newAuto.delete(legacyKey)
       automationRef.current = newAuto
       setAutomationData(newAuto)
       onAutomationDataChange?.(newAuto, arrangeSections.map(s => ({ id: s.id, bars: s.bars })))
@@ -3403,7 +3378,8 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                 onClearAutomation={(sectionId) => {
                   const newAuto = new Map(automationRef.current)
                   for (const key of [...newAuto.keys()]) {
-                    if (key.startsWith(sectionId + ':')) newAuto.delete(key)
+                    // Match both new format (sectionId@barOffset:...) and legacy (sectionId:...)
+                    if (key.startsWith(sectionId + '@') || key.startsWith(sectionId + ':')) newAuto.delete(key)
                   }
                   automationRef.current = newAuto
                   setAutomationData(newAuto)

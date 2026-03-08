@@ -1,12 +1,15 @@
 'use client'
 
 // ═══════════════════════════════════════════════════════════════
-//  AUTOMATION LANE — Arrangement-aware smooth automation curves
+//  AUTOMATION LANE — Per-bar keyframe automation curves
 //
 //  Renders per-channel automation as smooth Catmull-Rom splines
-//  mapped to arrangement sections. Includes a live playhead that
-//  tracks the arrangement position, section labels, draggable
-//  breakpoints, and a real-time value readout.
+//  with individual keyframes at any bar position. Includes a
+//  live playhead, section labels, draggable breakpoints, ghost
+//  preview dot, and a real-time value readout.
+//
+//  Key format: sectionId@barOffset:channelIdx:paramKey
+//  (legacy sectionId:channelIdx:paramKey treated as bar 0)
 // ═══════════════════════════════════════════════════════════════
 
 import { memo, useCallback, useRef, useState, useEffect } from 'react'
@@ -28,9 +31,9 @@ interface AutomationLaneProps {
   isPlaying?: boolean
   getCyclePosition?: () => number | null
   height?: number
-  onSetAutomation: (sectionId: string, channelIdx: number, paramKey: string, value: number) => void
+  onSetAutomation: (sectionId: string, channelIdx: number, paramKey: string, value: number, barOffset?: number) => void
   onClearParamAutomation: (channelIdx: number, paramKey: string) => void
-  onDeleteKeyframe?: (sectionId: string, channelIdx: number, paramKey: string) => void
+  onDeleteKeyframe?: (sectionId: string, channelIdx: number, paramKey: string, barOffset?: number) => void
 }
 
 const PX_PER_BAR = 48
@@ -45,6 +48,15 @@ function catmullRom(p0: number, p1: number, p2: number, p3: number, t: number): 
     (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
     (-p0 + 3 * p1 - 3 * p2 + p3) * t3
   )
+}
+
+// ─── Parsed keyframe ───
+interface Keyframe {
+  sectionIdx: number
+  barOffset: number
+  absoluteBar: number
+  value: number
+  key: string
 }
 
 const AutomationLane = memo(function AutomationLane({
@@ -70,9 +82,9 @@ const AutomationLane = memo(function AutomationLane({
   const autoDataRef = useRef(automationData)
   autoDataRef.current = automationData
 
-  const [hoveredSection, setHoveredSection] = useState<number | null>(null)
-  const [dragging, setDragging] = useState<{ sectionIdx: number } | null>(null)
-  const [lastClickedSection, setLastClickedSection] = useState<number | null>(null)
+  const [hoveredKf, setHoveredKf] = useState<number | null>(null)
+  const [dragging, setDragging] = useState<{ kfIndex: number } | null>(null)
+  const [lastClickedBar, setLastClickedBar] = useState<number | null>(null)
 
   const totalBars = sections.reduce((sum, s) => sum + s.bars, 0)
   const totalWidth = totalBars * PX_PER_BAR
@@ -80,59 +92,105 @@ const AutomationLane = memo(function AutomationLane({
 
   // Section layout
   const sectionStartPx: number[] = []
+  const sectionStartBar: number[] = []
   const sectionWidthsPx: number[] = []
   let pxAcc = 0
+  let barAcc = 0
   for (const sec of sections) {
     sectionStartPx.push(pxAcc)
+    sectionStartBar.push(barAcc)
     const w = sec.bars * PX_PER_BAR
     sectionWidthsPx.push(w)
     pxAcc += w
+    barAcc += sec.bars
   }
 
   const normalize = (v: number) => Math.max(0, Math.min(1, (v - paramMin) / (paramMax - paramMin || 1)))
   const denormalize = (n: number) => paramMin + n * (paramMax - paramMin)
 
-  const getAutoValue = (sectionId: string): number => {
-    const key = `${sectionId}:${channelIdx}:${paramKey}`
-    return automationData.has(key) ? automationData.get(key)! : currentValue
+  // ─── Parse keyframes from automation data ───
+  const keyframes: Keyframe[] = []
+  for (let si = 0; si < sections.length; si++) {
+    const sec = sections[si]
+    // Check for per-bar keyframes: sectionId@barOffset:channelIdx:paramKey
+    for (let b = 0; b < sec.bars; b++) {
+      const key = `${sec.id}@${b}:${channelIdx}:${paramKey}`
+      if (automationData.has(key)) {
+        keyframes.push({
+          sectionIdx: si,
+          barOffset: b,
+          absoluteBar: sectionStartBar[si] + b,
+          value: automationData.get(key)!,
+          key,
+        })
+      }
+    }
+    // Also check legacy key (no @) — treat as bar 0
+    const legacyKey = `${sec.id}:${channelIdx}:${paramKey}`
+    if (automationData.has(legacyKey)) {
+      const hasBar0 = keyframes.some(kf => kf.sectionIdx === si && kf.barOffset === 0)
+      if (!hasBar0) {
+        keyframes.push({
+          sectionIdx: si,
+          barOffset: 0,
+          absoluteBar: sectionStartBar[si],
+          value: automationData.get(legacyKey)!,
+          key: legacyKey,
+        })
+      }
+    }
   }
-
-  const hasAnyAutomation = sections.some(s => automationData.has(`${s.id}:${channelIdx}:${paramKey}`))
-  const normValues = sections.map(s => normalize(getAutoValue(s.id)))
+  keyframes.sort((a, b) => a.absoluteBar - b.absoluteBar)
+  const hasAnyAutomation = keyframes.length > 0
 
   // ─── Interpolated value at fractional bar position ───
   const getInterpValue = useCallback((barPos: number): number => {
     const sec = sectionsRef.current
     const ad = autoDataRef.current
-    const tb = sec.reduce((sum, s) => sum + s.bars, 0)
-    if (tb === 0 || sec.length === 0) return currentValue
+    if (sec.length === 0) return currentValue
 
-    const nv = sec.map(s => {
-      const key = `${s.id}:${channelIdx}:${paramKey}`
-      const val = ad.has(key) ? ad.get(key)! : currentValue
-      return Math.max(0, Math.min(1, (val - paramMin) / (paramMax - paramMin || 1)))
-    })
+    // Rebuild keyframes from refs (for rAF loop)
+    const secStartBar: number[] = []
+    let ba = 0
+    for (const s of sec) { secStartBar.push(ba); ba += s.bars }
 
-    let bAcc = 0, secIdx = 0
-    for (let i = 0; i < sec.length; i++) {
-      if (barPos < bAcc + sec[i].bars) { secIdx = i; break }
-      bAcc += sec[i].bars
-      if (i === sec.length - 1) secIdx = i
+    const kfs: { absoluteBar: number; value: number }[] = []
+    for (let si = 0; si < sec.length; si++) {
+      const s = sec[si]
+      for (let b = 0; b < s.bars; b++) {
+        const key = `${s.id}@${b}:${channelIdx}:${paramKey}`
+        if (ad.has(key)) {
+          kfs.push({ absoluteBar: secStartBar[si] + b, value: ad.get(key)! })
+        }
+      }
+      // Legacy key
+      const legKey = `${s.id}:${channelIdx}:${paramKey}`
+      if (ad.has(legKey) && !kfs.some(k => k.absoluteBar === secStartBar[si])) {
+        kfs.push({ absoluteBar: secStartBar[si], value: ad.get(legKey)! })
+      }
     }
-    const localT = Math.max(0, Math.min(1, (barPos - bAcc) / (sec[secIdx].bars || 1)))
+    kfs.sort((a, b) => a.absoluteBar - b.absoluteBar)
 
-    const p0 = nv[Math.max(secIdx - 1, 0)]
-    const p1 = nv[secIdx]
-    const p2 = nv[Math.min(secIdx + 1, nv.length - 1)]
-    const p3 = nv[Math.min(secIdx + 2, nv.length - 1)]
+    if (kfs.length === 0) return currentValue
+    if (kfs.length === 1) return kfs[0].value
 
-    const interpNorm = catmullRom(p0, p1, p2, p3, localT)
-    return paramMin + Math.max(0, Math.min(1, interpNorm)) * (paramMax - paramMin)
+    // Find surrounding keyframes for Catmull-Rom
+    let rightIdx = kfs.findIndex(kf => kf.absoluteBar >= barPos)
+    if (rightIdx === -1) return kfs[kfs.length - 1].value
+    if (rightIdx === 0) return kfs[0].value
+
+    const left = kfs[rightIdx - 1]
+    const right = kfs[rightIdx]
+    const p0 = rightIdx > 1 ? kfs[rightIdx - 2].value : left.value
+    const p3 = rightIdx < kfs.length - 1 ? kfs[rightIdx + 1].value : right.value
+    const t = (barPos - left.absoluteBar) / Math.max(0.001, right.absoluteBar - left.absoluteBar)
+    const interp = catmullRom(p0, left.value, right.value, p3, t)
+    return Math.max(paramMin, Math.min(paramMax, interp))
   }, [channelIdx, paramKey, paramMin, paramMax, currentValue])
 
   // ─── Build smooth SVG path ───
   const buildCurvePath = (): string => {
-    if (sections.length === 0) return ''
+    if (keyframes.length === 0) return ''
     const steps = Math.max(Math.round(totalWidth / 2), 60)
     const pts: string[] = []
     for (let i = 0; i <= steps; i++) {
@@ -204,6 +262,22 @@ const AutomationLane = memo(function AutomationLane({
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
   }, [isPlaying, height, getInterpValue])
 
+  // ─── X position helpers ───
+  const barFromPx = useCallback((xPx: number): { barIdx: number; sectionIdx: number; barOffset: number } => {
+    const barIdx = Math.max(0, Math.min(totalBars - 1, Math.floor(xPx / PX_PER_BAR)))
+    let ba = 0
+    for (let i = 0; i < sections.length; i++) {
+      if (barIdx < ba + sections[i].bars) {
+        return { barIdx, sectionIdx: i, barOffset: barIdx - ba }
+      }
+      ba += sections[i].bars
+    }
+    const lastSec = sections.length - 1
+    return { barIdx, sectionIdx: lastSec, barOffset: Math.min(barIdx - sectionStartBar[lastSec], sections[lastSec].bars - 1) }
+  }, [sections, totalBars, sectionStartBar])
+
+  const barCenterPx = (absoluteBar: number) => absoluteBar * PX_PER_BAR + PX_PER_BAR / 2
+
   // ─── Mouse tracking for ghost preview dot ───
   const handleMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     if (dragging || !svgRef.current) return
@@ -213,32 +287,27 @@ const AutomationLane = memo(function AutomationLane({
     const yRatio = yPx / rect.height
     const val = denormalize(1 - Math.max(0, Math.min(1, yRatio)))
 
-    // Find which section we're over
-    let barAcc = 0
-    let secIdx = -1
-    for (let i = 0; i < sections.length; i++) {
-      const secEndPx = (barAcc + sections[i].bars) * PX_PER_BAR
-      if (xPx < secEndPx) { secIdx = i; break }
-      barAcc += sections[i].bars
-    }
+    // Snap ghost to bar center
+    const barIdx = Math.max(0, Math.min(totalBars - 1, Math.floor(xPx / PX_PER_BAR)))
+    const snapX = barIdx * PX_PER_BAR + PX_PER_BAR / 2
 
     if (ghostDotRef.current) {
-      ghostDotRef.current.setAttribute('cx', String(xPx))
+      ghostDotRef.current.setAttribute('cx', String(snapX))
       ghostDotRef.current.setAttribute('cy', String(Math.max(2, Math.min(height - 2, yPx))))
-      ghostDotRef.current.style.opacity = secIdx >= 0 ? '0.5' : '0'
+      ghostDotRef.current.style.opacity = '0.4'
     }
     if (ghostLineRef.current) {
-      ghostLineRef.current.setAttribute('x1', String(xPx))
-      ghostLineRef.current.setAttribute('x2', String(xPx))
-      ghostLineRef.current.style.opacity = secIdx >= 0 ? '0.15' : '0'
+      ghostLineRef.current.setAttribute('x1', String(snapX))
+      ghostLineRef.current.setAttribute('x2', String(snapX))
+      ghostLineRef.current.style.opacity = '0.12'
     }
     if (ghostTextRef.current) {
-      ghostTextRef.current.setAttribute('x', String(Math.min(xPx + 8, totalWidth - 40)))
+      ghostTextRef.current.setAttribute('x', String(Math.min(snapX + 8, totalWidth - 55)))
       ghostTextRef.current.setAttribute('y', String(Math.max(12, yPx - 6)))
-      ghostTextRef.current.textContent = val.toFixed(2)
-      ghostTextRef.current.style.opacity = secIdx >= 0 ? '0.5' : '0'
+      ghostTextRef.current.textContent = `${val.toFixed(2)} [bar ${barIdx + 1}]`
+      ghostTextRef.current.style.opacity = '0.4'
     }
-  }, [sections, height, totalWidth, dragging, paramMin, paramMax])
+  }, [height, totalWidth, dragging, totalBars])
 
   const handleMouseLeave = useCallback(() => {
     if (ghostDotRef.current) ghostDotRef.current.style.opacity = '0'
@@ -246,7 +315,7 @@ const AutomationLane = memo(function AutomationLane({
     if (ghostTextRef.current) ghostTextRef.current.style.opacity = '0'
   }, [])
 
-  // ─── Click to add/update keyframe ───
+  // ─── Click to add/update keyframe at bar position ───
   const handleClick = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     if (!svgRef.current || dragging) return
     const rect = svgRef.current.getBoundingClientRect()
@@ -254,70 +323,50 @@ const AutomationLane = memo(function AutomationLane({
     const yRatio = (e.clientY - rect.top) / rect.height
     const value = denormalize(1 - Math.max(0, Math.min(1, yRatio)))
 
-    let barAcc = 0
-    for (let i = 0; i < sections.length; i++) {
-      const secEndPx = (barAcc + sections[i].bars) * PX_PER_BAR
-      if (xPx < secEndPx) {
-        onSetAutomation(sections[i].id, channelIdx, paramKey, Math.round(value * 1000) / 1000)
-        setLastClickedSection(i)
-        // Clear the pulse after animation completes
-        setTimeout(() => setLastClickedSection(null), 600)
-        break
-      }
-      barAcc += sections[i].bars
-    }
-  }, [sections, channelIdx, paramKey, paramMin, paramMax, onSetAutomation, dragging])
+    const { barIdx, sectionIdx, barOffset } = barFromPx(xPx)
+    onSetAutomation(sections[sectionIdx].id, channelIdx, paramKey, Math.round(value * 1000) / 1000, barOffset)
+    setLastClickedBar(barIdx)
+    setTimeout(() => setLastClickedBar(null), 600)
+  }, [sections, channelIdx, paramKey, onSetAutomation, dragging, barFromPx])
 
-  // ─── Right-click to delete keyframe ───
-  const handleContextMenu = useCallback((e: React.MouseEvent, sectionIdx: number) => {
+  // ─── Right-click to delete nearest keyframe ───
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    const sec = sections[sectionIdx]
-    if (!sec) return
-    const key = `${sec.id}:${channelIdx}:${paramKey}`
-    if (automationData.has(key)) {
-      if (onDeleteKeyframe) {
-        onDeleteKeyframe(sec.id, channelIdx, paramKey)
-      } else {
-        // Fallback: set to current value effectively removing the override
-        onSetAutomation(sec.id, channelIdx, paramKey, currentValue)
+    if (!svgRef.current || !onDeleteKeyframe) return
+    const rect = svgRef.current.getBoundingClientRect()
+    const xPx = e.clientX - rect.left
+    const clickBar = xPx / PX_PER_BAR
+
+    // Find nearest keyframe within 1.5 bars
+    let nearestKf: Keyframe | null = null
+    let nearestDist = Infinity
+    for (const kf of keyframes) {
+      const dist = Math.abs(kf.absoluteBar + 0.5 - clickBar)
+      if (dist < nearestDist && dist < 1.5) {
+        nearestDist = dist
+        nearestKf = kf
       }
     }
-  }, [sections, channelIdx, paramKey, automationData, onDeleteKeyframe, onSetAutomation, currentValue])
 
-  // ─── Drag breakpoint (X + Y) ───
-  const handleMouseDown = useCallback((e: React.MouseEvent, sectionIdx: number) => {
+    if (nearestKf) {
+      onDeleteKeyframe(sections[nearestKf.sectionIdx].id, channelIdx, paramKey, nearestKf.barOffset)
+    }
+  }, [sections, channelIdx, paramKey, keyframes, onDeleteKeyframe])
+
+  // ─── Drag breakpoint (Y-axis value change, fixed bar position) ───
+  const handleDotMouseDown = useCallback((e: React.MouseEvent, kfIndex: number) => {
     e.stopPropagation()
     e.preventDefault()
-    setDragging({ sectionIdx })
-    const startSectionIdx = sectionIdx
+    setDragging({ kfIndex })
+    const kf = keyframes[kfIndex]
 
     const onMove = (ev: MouseEvent) => {
       if (!svgRef.current) return
       const rect = svgRef.current.getBoundingClientRect()
-      const xPx = ev.clientX - rect.left
       const yRatio = (ev.clientY - rect.top) / rect.height
       const value = denormalize(1 - Math.max(0, Math.min(1, yRatio)))
-
-      // Find which section the cursor is now over (for X-axis movement)
-      let barAcc = 0
-      let targetSecIdx = startSectionIdx
-      for (let i = 0; i < sections.length; i++) {
-        const secEndPx = (barAcc + sections[i].bars) * PX_PER_BAR
-        if (xPx < secEndPx) { targetSecIdx = i; break }
-        barAcc += sections[i].bars
-      }
-
-      // If moved to a different section, delete from old and set on new
-      if (targetSecIdx !== startSectionIdx) {
-        const oldKey = `${sections[startSectionIdx].id}:${channelIdx}:${paramKey}`
-        if (automationData.has(oldKey) && onDeleteKeyframe) {
-          onDeleteKeyframe(sections[startSectionIdx].id, channelIdx, paramKey)
-        }
-      }
-
-      onSetAutomation(sections[targetSecIdx].id, channelIdx, paramKey, Math.round(value * 1000) / 1000)
-      setDragging({ sectionIdx: targetSecIdx })
+      onSetAutomation(sections[kf.sectionIdx].id, channelIdx, paramKey, Math.round(value * 1000) / 1000, kf.barOffset)
     }
     const onUp = () => {
       setDragging(null)
@@ -326,9 +375,7 @@ const AutomationLane = memo(function AutomationLane({
     }
     document.addEventListener('mousemove', onMove)
     document.addEventListener('mouseup', onUp)
-  }, [sections, channelIdx, paramKey, paramMin, paramMax, onSetAutomation, automationData, onDeleteKeyframe])
-
-  const sectionCenterX = sections.map((_, i) => sectionStartPx[i] + sectionWidthsPx[i] / 2)
+  }, [sections, channelIdx, paramKey, keyframes, onSetAutomation])
 
   return (
     <div className="flex items-stretch relative" style={{ height }}>
@@ -365,7 +412,7 @@ const AutomationLane = memo(function AutomationLane({
             style={{ background: 'rgba(8,9,12,0.5)' }}>
             <span className="text-[8px] font-medium px-2 py-0.5 rounded pointer-events-auto"
               style={{ color: '#5a616b', background: '#0e1014', border: '1px solid #1a1c22' }}>
-              Click to draw keyframes · or press REC + Play + tweak knob
+              Click on any bar to add keyframes · right-click to delete
             </span>
           </div>
         )}
@@ -394,6 +441,7 @@ const AutomationLane = memo(function AutomationLane({
           onClick={handleClick}
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
+          onContextMenu={handleContextMenu}
         >
           {/* Section dividers + labels + bar grid */}
           {sections.map((sec, i) => {
@@ -432,7 +480,7 @@ const AutomationLane = memo(function AutomationLane({
             />
           ))}
 
-          {/* Baseline */}
+          {/* Baseline (current static value) */}
           <line
             x1={0} y1={(1 - normalize(currentValue)) * height}
             x2={totalWidth} y2={(1 - normalize(currentValue)) * height}
@@ -463,87 +511,72 @@ const AutomationLane = memo(function AutomationLane({
             </>
           )}
 
-          {/* ─── Breakpoint dots (enhanced: larger, draggable X+Y, right-click delete) ─── */}
-          {sections.map((sec, i) => {
-            const key = `${sec.id}:${channelIdx}:${paramKey}`
-            const hasAuto = automationData.has(key)
-            const val = getAutoValue(sec.id)
-            const cx = sectionCenterX[i]
-            const cy = (1 - normValues[i]) * height
-            const isHovered = hoveredSection === i
-            const isDragging = dragging?.sectionIdx === i
-            const justClicked = lastClickedSection === i
+          {/* ─── Per-bar keyframe dots ─── */}
+          {keyframes.map((kf, ki) => {
+            const cx = barCenterPx(kf.absoluteBar)
+            const cy = (1 - normalize(kf.value)) * height
+            const isHovered = hoveredKf === ki
+            const isDragging = dragging?.kfIndex === ki
+            const justClicked = lastClickedBar === kf.absoluteBar
 
             return (
-              <g key={sec.id}>
+              <g key={kf.key}>
                 {/* Vertical stem line */}
-                {(hasAuto || isHovered) && (
-                  <line x1={cx} y1={cy} x2={cx} y2={height}
-                    stroke={channelColor} strokeWidth={1} opacity={0.12}
-                    strokeDasharray="2 2" />
-                )}
-                {/* Outer ring (visible on hover/drag) */}
-                {hasAuto && (
-                  <circle cx={cx} cy={cy}
-                    r={isDragging ? 14 : isHovered ? 11 : 8}
-                    fill="none" stroke={channelColor}
-                    strokeWidth={isDragging ? 2 : 1}
-                    opacity={isDragging ? 0.5 : isHovered ? 0.3 : 0.08}
-                    style={{ transition: 'r 0.15s, opacity 0.15s' }}
-                  />
-                )}
-                {/* Pulse ring on click */}
-                {justClicked && hasAuto && (
-                  <circle cx={cx} cy={cy} r={6}
+                <line x1={cx} y1={cy} x2={cx} y2={height}
+                  stroke={channelColor} strokeWidth={1}
+                  opacity={isHovered || isDragging ? 0.2 : 0.08}
+                  strokeDasharray="2 2" />
+                {/* Outer ring */}
+                <circle cx={cx} cy={cy}
+                  r={isDragging ? 12 : isHovered ? 10 : 7}
+                  fill="none" stroke={channelColor}
+                  strokeWidth={isDragging ? 2 : 1}
+                  opacity={isDragging ? 0.5 : isHovered ? 0.3 : 0.06}
+                  style={{ transition: 'r 0.15s, opacity 0.15s' }}
+                />
+                {/* Pulse on click */}
+                {justClicked && (
+                  <circle cx={cx} cy={cy} r={5}
                     fill="none" stroke={channelColor}
                     strokeWidth={2} opacity={0}
                   >
-                    <animate attributeName="r" from="6" to="20" dur="0.5s" fill="freeze" />
+                    <animate attributeName="r" from="5" to="18" dur="0.5s" fill="freeze" />
                     <animate attributeName="opacity" from="0.7" to="0" dur="0.5s" fill="freeze" />
                   </circle>
                 )}
                 {/* Main keyframe dot */}
                 <circle
                   cx={cx} cy={cy}
-                  r={hasAuto ? (isDragging ? 7 : isHovered ? 6 : 5) : 3.5}
-                  fill={hasAuto ? channelColor : `${channelColor}30`}
-                  stroke={hasAuto ? '#fff' : `${channelColor}50`}
-                  strokeWidth={hasAuto ? (isDragging ? 2.5 : 1.5) : 1}
-                  opacity={hasAuto ? 1 : 0.4}
+                  r={isDragging ? 6 : isHovered ? 5.5 : 4.5}
+                  fill={channelColor}
+                  stroke="#fff"
+                  strokeWidth={isDragging ? 2.5 : 1.5}
                   className="cursor-grab active:cursor-grabbing"
-                  style={{ transition: isDragging ? 'none' : 'r 0.12s, stroke-width 0.12s', filter: isDragging ? `drop-shadow(0 0 6px ${channelColor})` : 'none' }}
-                  onMouseDown={(e) => handleMouseDown(e as unknown as React.MouseEvent, i)}
-                  onContextMenu={(e) => handleContextMenu(e as unknown as React.MouseEvent, i)}
-                  onMouseEnter={() => setHoveredSection(i)}
-                  onMouseLeave={() => setHoveredSection(null)}
+                  style={{ transition: isDragging ? 'none' : 'r 0.12s', filter: isDragging ? `drop-shadow(0 0 6px ${channelColor})` : 'none' }}
+                  onMouseDown={(e) => handleDotMouseDown(e as unknown as React.MouseEvent, ki)}
+                  onMouseEnter={() => setHoveredKf(ki)}
+                  onMouseLeave={() => setHoveredKf(null)}
                 />
-                {/* Value label on hover/drag */}
+                {/* Value + bar label on hover/drag */}
                 {(isHovered || isDragging) && (
                   <>
                     <rect
-                      x={cx - 22} y={Math.max(1, cy - 23)}
-                      width={44} height={14}
+                      x={cx - 28} y={Math.max(1, cy - 23)}
+                      width={56} height={14}
                       rx={3} fill="#111317" stroke={channelColor}
                       strokeWidth={0.5} opacity={0.9}
                     />
                     <text x={cx} y={Math.max(11, cy - 12)}
-                      textAnchor="middle" fill="white" fontSize={9}
+                      textAnchor="middle" fill="white" fontSize={8}
                       fontWeight="bold" fontFamily="monospace"
-                    >{val.toFixed(2)}</text>
+                    >{kf.value.toFixed(2)} bar {kf.absoluteBar + 1}</text>
                   </>
-                )}
-                {/* "Click to add" hint for empty (no keyframe) sections */}
-                {!hasAuto && isHovered && (
-                  <text x={cx} y={Math.max(10, cy - 10)}
-                    textAnchor="middle" fill={channelColor} fontSize={7}
-                    fontFamily="monospace" opacity={0.5}
-                  >click to add</text>
                 )}
               </g>
             )
           })}
 
-          {/* ─── Ghost preview dot (follows mouse) ─── */}
+          {/* ─── Ghost preview dot (follows mouse, snaps to bars) ─── */}
           <line ref={ghostLineRef}
             x1={0} y1={0} x2={0} y2={height}
             stroke={channelColor} strokeWidth={1} opacity={0}
