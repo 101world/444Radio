@@ -409,7 +409,11 @@ export function parseStrudelCode(code: string): ParsedChannel[] {
     // Match $name: or $: blocks
     const dollarMatch = lines[i].match(/^\s*\$(\w*):\s*/)
     if (dollarMatch) {
-      blockStarts.push({ name: dollarMatch[1] || '', lineIdx: i, charIdx: charPos, blockType: 'dollar' })
+      // Skip $:arrange() blocks — system infrastructure, not a user channel
+      const afterPrefix = lines[i].slice(dollarMatch[0].length).trim()
+      if (!/^arrange\s*\(/.test(afterPrefix)) {
+        blockStarts.push({ name: dollarMatch[1] || '', lineIdx: i, charIdx: charPos, blockType: 'dollar' })
+      }
     } else {
       // Match let varName = ... blocks (but NOT let varName = silence, which is our mute placeholder)
       const letMatch = lines[i].match(/^\s*let\s+(\w+)\s*=\s*/)
@@ -2298,37 +2302,48 @@ export function convertBlocksToLet(code: string): { code: string; nameMap: strin
   const nameMap: string[] = []
   const usedNames = new Set<string>()
 
-  // Collect all existing names first
+  // Collect all existing named identifiers first (for uniqueness)
   channels.forEach(ch => {
-    if (ch.name && ch.name !== '') usedNames.add(ch.name)
+    if (ch.blockType === 'let') {
+      usedNames.add(ch.name)
+    } else {
+      // Get the REAL prefix name from the raw code, not the display name
+      const raw = code.substring(ch.blockStart, ch.blockEnd)
+      const m = raw.match(/^\s*\$(\w+):\s*/)
+      if (m) usedNames.add(m[1])
+    }
   })
 
-  // Process from bottom to top (so char offsets stay valid as we replace)
-  const replacements: { start: number; end: number; replacement: string; name: string }[] = []
+  const replacements: { start: number; end: number; replacement: string }[] = []
 
   for (let i = 0; i < channels.length; i++) {
     const ch = channels[i]
-    let varName = ch.name
 
-    // Skip if already a let block
+    // Already a let block — keep as-is
     if (ch.blockType === 'let') {
-      nameMap.push(varName)
+      nameMap.push(ch.name)
       continue
     }
 
-    // Skip $:arrange() blocks — they're not regular channels
-    const blockContent = code.substring(ch.blockStart, ch.blockEnd)
-    if (blockContent.match(/\$\s*:\s*arrange\s*\(/)) {
-      nameMap.push('')
+    // Dollar block — extract real prefix name from the raw code
+    const blockCode = code.substring(ch.blockStart, ch.blockEnd)
+    const prefixMatch = blockCode.match(/^(\s*)\$(\w*):\s*/)
+    if (!prefixMatch) {
+      nameMap.push(ch.name)
       continue
     }
 
-    // For anonymous $: blocks, generate a name from the source
-    if (!varName || varName === '') {
-      // Try to derive from source
-      const source = ch.source.replace(/[^a-zA-Z]/g, '').toLowerCase()
-      varName = source && source !== 'unknown' ? source : `ch${i + 1}`
-      // Ensure unique
+    const indent = prefixMatch[1]
+    const realName = prefixMatch[2] // '' for anonymous $:, 'bass' for $bass:
+    let varName: string
+
+    if (realName) {
+      // Named block like $bass: → use its name
+      varName = realName
+    } else {
+      // Anonymous $: block → derive name from sound source
+      const src = ch.source.replace(/[^a-zA-Z]/g, '').toLowerCase()
+      varName = src && src !== 'unknown' && src !== 'stack' ? src : `ch${i + 1}`
       let candidate = varName
       let counter = 2
       while (usedNames.has(candidate)) {
@@ -2340,38 +2355,62 @@ export function convertBlocksToLet(code: string): { code: string; nameMap: strin
 
     nameMap.push(varName)
 
-    // Find the $name: or $: prefix in the raw code
-    const blockCode = code.substring(ch.blockStart, ch.blockEnd)
+    // Build replacement: let varName = <rest of the block>
+    const restStart = ch.blockStart + prefixMatch[0].length
+    const rest = code.substring(restStart, ch.blockEnd).trimEnd()
 
-    // Match the prefix: $name: or $:
-    const prefixMatch = blockCode.match(/^(\s*)\$(\w*):\s*/)
-    if (prefixMatch) {
-      const indent = prefixMatch[1]
-      const restStart = ch.blockStart + prefixMatch[0].length
-      const rest = code.substring(restStart, ch.blockEnd).trimEnd()
-
-      replacements.push({
-        start: ch.blockStart,
-        end: ch.blockEnd,
-        replacement: `${indent}let ${varName} =\n${indent}${rest}`,
-        name: varName,
-      })
-    }
+    replacements.push({
+      start: ch.blockStart,
+      end: ch.blockEnd,
+      replacement: `${indent}let ${varName} = ${rest}`,
+    })
   }
 
-  // Apply replacements from bottom to top
+  // Apply replacements from bottom to top (preserves char offsets)
   let result = code
   for (let i = replacements.length - 1; i >= 0; i--) {
     const r = replacements[i]
     result = result.substring(0, r.start) + r.replacement + result.substring(r.end)
   }
 
-  // Fill in any missing names for let blocks
-  for (let i = 0; i < channels.length; i++) {
-    if (!nameMap[i]) nameMap[i] = channels[i].name || `ch${i + 1}`
+  return { code: result, nameMap }
+}
+
+/**
+ * Reverse of convertBlocksToLet: convert let blocks back to $name: blocks
+ * so they become self-playing again. Used when arrangement is disabled.
+ */
+export function convertLetToBlocks(code: string): string {
+  const channels = parseStrudelCode(code)
+  const replacements: { start: number; end: number; replacement: string }[] = []
+
+  for (const ch of channels) {
+    if (ch.blockType !== 'let') continue
+
+    const blockCode = code.substring(ch.blockStart, ch.blockEnd)
+    const letMatch = blockCode.match(/^(\s*)let\s+(\w+)\s*=\s*/)
+    if (!letMatch) continue
+
+    const indent = letMatch[1]
+    const name = letMatch[2]
+    const restStart = ch.blockStart + letMatch[0].length
+    const rest = code.substring(restStart, ch.blockEnd).trimEnd()
+
+    replacements.push({
+      start: ch.blockStart,
+      end: ch.blockEnd,
+      replacement: `${indent}$${name}: ${rest}`,
+    })
   }
 
-  return { code: result, nameMap }
+  // Apply bottom to top
+  let result = code
+  for (let i = replacements.length - 1; i >= 0; i--) {
+    const r = replacements[i]
+    result = result.substring(0, r.start) + r.replacement + result.substring(r.end)
+  }
+
+  return result
 }
 
 /**
@@ -2394,28 +2433,17 @@ export function updateArrangeInCode(code: string, arrangeCode: string): string {
       let lineEnd = closeIdx + 1
       while (lineEnd < code.length && (code[lineEnd] === ' ' || code[lineEnd] === '\t')) lineEnd++
       if (lineEnd < code.length && code[lineEnd] === '\n') lineEnd++
+      if (!arrangeCode) {
+        // Remove the arrange block entirely, clean up extra blank lines
+        return (code.substring(0, lineStart) + code.substring(lineEnd)).replace(/\n{3,}/g, '\n\n')
+      }
       return code.substring(0, lineStart) + arrangeCode + '\n' + code.substring(lineEnd)
     }
   }
 
-  // Case 2: bare $: block (e.g. $: stack(...))
-  const bareDollarMatch = code.match(/^\s*\$\s*:\s*/m)
-  if (bareDollarMatch && bareDollarMatch.index !== undefined) {
-    // Find where this block ends (next block start or end of code)
-    const blockStart = bareDollarMatch.index
-    let lineStart = blockStart
-    while (lineStart > 0 && code[lineStart - 1] !== '\n') lineStart--
+  // If we're clearing (empty arrangeCode) and no arrange block found, nothing to do
+  if (!arrangeCode) return code
 
-    // Find end: next $ block or let block, or end of file
-    const rest = code.substring(blockStart + bareDollarMatch[0].length)
-    const nextBlockMatch = rest.match(/\n\s*(?:\$\w*\s*:|let\s+\w+\s*=)/)
-    const blockEnd = nextBlockMatch && nextBlockMatch.index !== undefined
-      ? blockStart + bareDollarMatch[0].length + nextBlockMatch.index
-      : code.length
-
-    return code.substring(0, lineStart) + arrangeCode + '\n' + code.substring(blockEnd)
-  }
-
-  // Case 3: no existing $ block — append
+  // Case 2: no existing arrange block — append at end
   return code.trimEnd() + '\n\n' + arrangeCode + '\n'
 }
