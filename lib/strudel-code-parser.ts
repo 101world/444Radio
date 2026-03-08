@@ -1217,8 +1217,8 @@ export function updateScale(code: string, newRoot: string, newScale: string): st
 
 /** Insert .scale("root:scale") on the first note/synth channel that uses n()/note() */
 export function insertScale(code: string, root: string, scale: string): string {
-  // Find first channel that has n( or note( — those benefit most from .scale()
-  const notePatterns = [/\.n\(/, /\.note\(/]
+  // Find first channel that has n( or note( — both as method chains (.n() .note()) and standalone calls
+  const notePatterns = [/\.n\(/, /\.note\(/, /(?:^|[\s:])note\(/m, /(?:^|[\s:])n\(/m]
   for (const pat of notePatterns) {
     const match = pat.exec(code)
     if (match) {
@@ -1228,10 +1228,16 @@ export function insertScale(code: string, root: string, scale: string): string {
       return code.slice(0, lineEnd) + `.scale("${root}:${scale}")` + code.slice(lineEnd)
     }
   }
-  // Fallback: add to the first channel line ($name:)
-  const channelMatch = /(\$\w*:\s*[^\n]+)/.exec(code)
+  // Fallback: add to the first named channel line ($name:), skip stack() calls
+  const channelMatch = /(\$\w+:\s*(?!stack\()[^\n]+)/.exec(code)
   if (channelMatch) {
     const insertAt = channelMatch.index + channelMatch[0].length
+    return code.slice(0, insertAt) + `.scale("${root}:${scale}")` + code.slice(insertAt)
+  }
+  // Last resort: add to any channel line that is NOT a stack() call
+  const anyChannel = /(\$\w*:\s*(?!stack\()[^\n]+)/.exec(code)
+  if (anyChannel) {
+    const insertAt = anyChannel.index + anyChannel[0].length
     return code.slice(0, insertAt) + `.scale("${root}:${scale}")` + code.slice(insertAt)
   }
   return code
