@@ -34,7 +34,7 @@ import {
   getTranspose, setTranspose,
   STRUDEL_SCALES, SCALE_ROOTS,
   DRAGGABLE_EFFECTS, type ParsedChannel, type StackRow,
-  parseArrangement, generateArrangeCode, updateArrangeInCode,
+  parseArrangement, generateArrangeCode, updateArrangeInCode, convertBlocksToLet,
 } from '@/lib/strudel-code-parser'
 
 // ─── Sound / Bank pick-lists for dropdown ───
@@ -1793,21 +1793,16 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   const handleArrangeSectionsChange = useCallback((sections: ArrangementSection[]) => {
     setArrangeSections(sections)
 
-    // Generate arrange code and update
-    const channelNames = channels.map(ch => ch.name)
-    const sectionData = sections.map(sec => ({
-      bars: sec.bars,
-      activeIndices: Array.from(sec.activeChannels).sort((a, b) => a - b),
-    }))
+    let currentCode = codeRef.current
 
-    const currentCode = codeRef.current
     if (sections.length === 0) {
-      // Remove arrange block if exists — replace with simple $: stack/s_polymeter of all channels
+      // Remove arrange block if exists — convert let blocks back to $ blocks
       const arrangeMatch = currentCode.match(/\$\s*:\s*arrange\s*\(/)
       if (arrangeMatch) {
-        const allNames = channelNames.filter(n => n !== '')
-        const replacement = allNames.length > 0
-          ? `$: s_polymeter(${allNames.join(',')})`
+        // Remove the arrange block, convert lets back to $ blocks
+        const channelNames = channels.map(ch => ch.name).filter(n => n !== '')
+        const replacement = channelNames.length > 0
+          ? `$: s_polymeter(${channelNames.join(',')})`
           : ''
         const newCode = updateArrangeInCode(currentCode, replacement)
         onCodeChange(newCode)
@@ -1815,7 +1810,17 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
       return
     }
 
-    const arrangeCode = generateArrangeCode(channelNames, sectionData)
+    // Convert all $name: and anonymous $: blocks to let syntax
+    // so they become variable declarations (don't auto-play)
+    const { code: convertedCode, nameMap } = convertBlocksToLet(currentCode)
+    currentCode = convertedCode
+
+    const sectionData = sections.map(sec => ({
+      bars: sec.bars,
+      activeIndices: Array.from(sec.activeChannels).sort((a, b) => a - b),
+    }))
+
+    const arrangeCode = generateArrangeCode(nameMap, sectionData)
     const newCode = updateArrangeInCode(currentCode, arrangeCode)
     onCodeChange(newCode)
   }, [channels, onCodeChange])

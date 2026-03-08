@@ -2273,6 +2273,7 @@ export function generateArrangeCode(
     const activeNames = sec.activeIndices
       .filter(idx => idx < channelNames.length)
       .map(idx => channelNames[idx])
+      .filter(n => n !== '') // skip empty names
 
     if (activeNames.length === 0) {
       lines.push(`  [${sec.bars},silence]${i < sections.length - 1 ? ',' : ''}`)
@@ -2284,6 +2285,93 @@ export function generateArrangeCode(
   })
   lines.push('  )')
   return lines.join('\n')
+}
+
+/**
+ * Convert all $name: and $: blocks to let syntax so they become
+ * non-playing variable declarations. Anonymous $: blocks get assigned
+ * a generated name based on their source (e.g. $: s("hh*8") → let hh = s("hh*8")).
+ * Returns { code, nameMap } where nameMap maps channel index → variable name.
+ */
+export function convertBlocksToLet(code: string): { code: string; nameMap: string[] } {
+  const channels = parseStrudelCode(code)
+  const nameMap: string[] = []
+  const usedNames = new Set<string>()
+
+  // Collect all existing names first
+  channels.forEach(ch => {
+    if (ch.name && ch.name !== '') usedNames.add(ch.name)
+  })
+
+  // Process from bottom to top (so char offsets stay valid as we replace)
+  const replacements: { start: number; end: number; replacement: string; name: string }[] = []
+
+  for (let i = 0; i < channels.length; i++) {
+    const ch = channels[i]
+    let varName = ch.name
+
+    // Skip if already a let block
+    if (ch.blockType === 'let') {
+      nameMap.push(varName)
+      continue
+    }
+
+    // Skip $:arrange() blocks — they're not regular channels
+    const blockContent = code.substring(ch.blockStart, ch.blockEnd)
+    if (blockContent.match(/\$\s*:\s*arrange\s*\(/)) {
+      nameMap.push('')
+      continue
+    }
+
+    // For anonymous $: blocks, generate a name from the source
+    if (!varName || varName === '') {
+      // Try to derive from source
+      const source = ch.source.replace(/[^a-zA-Z]/g, '').toLowerCase()
+      varName = source && source !== 'unknown' ? source : `ch${i + 1}`
+      // Ensure unique
+      let candidate = varName
+      let counter = 2
+      while (usedNames.has(candidate)) {
+        candidate = `${varName}${counter++}`
+      }
+      varName = candidate
+      usedNames.add(varName)
+    }
+
+    nameMap.push(varName)
+
+    // Find the $name: or $: prefix in the raw code
+    const blockCode = code.substring(ch.blockStart, ch.blockEnd)
+
+    // Match the prefix: $name: or $:
+    const prefixMatch = blockCode.match(/^(\s*)\$(\w*):\s*/)
+    if (prefixMatch) {
+      const indent = prefixMatch[1]
+      const restStart = ch.blockStart + prefixMatch[0].length
+      const rest = code.substring(restStart, ch.blockEnd).trimEnd()
+
+      replacements.push({
+        start: ch.blockStart,
+        end: ch.blockEnd,
+        replacement: `${indent}let ${varName} =\n${indent}${rest}`,
+        name: varName,
+      })
+    }
+  }
+
+  // Apply replacements from bottom to top
+  let result = code
+  for (let i = replacements.length - 1; i >= 0; i--) {
+    const r = replacements[i]
+    result = result.substring(0, r.start) + r.replacement + result.substring(r.end)
+  }
+
+  // Fill in any missing names for let blocks
+  for (let i = 0; i < channels.length; i++) {
+    if (!nameMap[i]) nameMap[i] = channels[i].name || `ch${i + 1}`
+  }
+
+  return { code: result, nameMap }
 }
 
 /**
