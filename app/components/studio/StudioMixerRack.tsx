@@ -23,7 +23,7 @@ import { FX_PRESETS, FX_PRESET_CATEGORIES, type FxPresetCategory } from '@/lib/f
 import {
   type AudioClip, type AudioTrack, type ClipClipboard,
   createDefaultTrack, createClipFromBuffer,
-  startRecording, decodeAudioFile, secondsToBars,
+  startRecording, decodeAudioFile,
   ClipPlaybackEngine,
 } from '@/lib/audio-clip-engine'
 import {
@@ -1661,6 +1661,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   const recordingHandleRef = useRef<{ stop: () => Promise<any>; cancel: () => void; stream: MediaStream } | null>(null)
   const audioFileInputRef = useRef<HTMLInputElement>(null)
   const pendingUploadTrackRef = useRef(0)
+  const recordingStartBarRef = useRef(0)
 
   // ── Audio clip playback engine ──
   const clipEngineRef = useRef<ClipPlaybackEngine | null>(null)
@@ -2780,7 +2781,19 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
 
   const handleAddAudioTrack = useCallback(() => {
     setAudioTracks(prev => [...prev, createDefaultTrack(prev.length)])
-  }, [])
+    // Auto-open arrangement timeline and ensure at least one section exists
+    if (!arrangeOpen) setArrangeOpen(true)
+    if (arrangeSections.length === 0) {
+      const sectionNames = ['Intro', 'Verse', 'Build', 'Chorus', 'Bridge', 'Drop', 'Break', 'Outro']
+      setArrangeSections([{
+        id: `sec-auto-1`,
+        name: sectionNames[0],
+        bars: 4,
+        activeChannels: new Set(channels.map((_: ParsedChannel, i: number) => i)),
+        clipVariants: new Map(),
+      }])
+    }
+  }, [arrangeOpen, arrangeSections.length, channels])
 
   const handleAudioClipsChange = useCallback((clips: AudioClip[]) => {
     setAudioClips(clips)
@@ -2792,7 +2805,8 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
 
   const handleStartRecording = useCallback(async (trackIndex: number) => {
     try {
-      // Create a temporary AudioContext for recording if needed
+      // Capture the current bar position so the clip is placed at record-start position
+      recordingStartBarRef.current = Math.max(0, getCyclePosition?.() ?? 0)
       const ctx = new AudioContext()
       const handle = await startRecording(ctx)
       recordingHandleRef.current = handle
@@ -2801,19 +2815,18 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     } catch (err) {
       console.error('[AudioClip] Failed to start recording:', err)
     }
-  }, [])
+  }, [getCyclePosition])
 
   const handleStopRecording = useCallback(async () => {
     const handle = recordingHandleRef.current
     if (!handle) return
     try {
       const result = await handle.stop()
-      const currentBar = getCyclePosition?.() ?? 0
       const clip = createClipFromBuffer(
         result.buffer,
         result.blobUrl,
         `Recording ${audioClips.length + 1}`,
-        Math.max(0, currentBar - secondsToBars(result.buffer.duration, projectBpm)),
+        recordingStartBarRef.current,
         recordingTrackIndex,
         projectBpm,
       )

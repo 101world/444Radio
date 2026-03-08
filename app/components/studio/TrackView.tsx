@@ -29,7 +29,7 @@ import TrackTimeline from './TrackTimeline'
 import StudioKnob from './StudioKnob'
 import HardwareKnob from './HardwareKnob'
 import { getOrbitAnalyser } from '@/lib/studio-analysers'
-import { PARAM_DEFS, getParamDef, getTranspose, getArpInfo, ARP_MODES, type ParsedChannel, type ParamDef, type StackRow } from '@/lib/strudel-code-parser'
+import { PARAM_DEFS, getParamDef, getTranspose, getArpInfo, ARP_MODES, parseAutoKey, type ParsedChannel, type ParamDef, type StackRow } from '@/lib/strudel-code-parser'
 import { FX_GROUPS, TYPE_RELEVANT_GROUPS, FX_DESCRIPTIONS } from './StudioEffectsPanel'
 
 // Sidechain routing info (mirrors ChannelStrip's sidechainInfo prop)
@@ -464,6 +464,7 @@ function TrackExpansionPanel({
   onTranspose, onAddSound, onPreview,
   onStackRowSoundChange, onStackRowGainChange, onStackRowBankChange, onRemoveStackRow,
   stackRows, scaleRoot, onAutoPitchMatch,
+  getAutoKnobValue,
   // Sidechain routing
   sidechainInfo, onEnableSidechain, onDisableSidechain, onAddSidechainTarget, onRemoveSidechainTarget, onDisconnectSidechain,
 }: {
@@ -486,6 +487,7 @@ function TrackExpansionPanel({
   stackRows: StackRow[]
   scaleRoot?: string | null
   onAutoPitchMatch?: (channelIdx: number) => void
+  getAutoKnobValue?: (chIdx: number, paramKey: string, staticVal: number) => number
   // Sidechain routing
   sidechainInfo?: SidechainInfo
   onEnableSidechain?: () => void
@@ -717,7 +719,7 @@ function TrackExpansionPanel({
                   const def = getParamDef(param.key)
                   if (!def) return null
                   return (
-                    <StudioKnob key={param.key} label={def.label} value={param.value} min={def.min} max={def.max} step={def.step}
+                    <StudioKnob key={param.key} label={def.label} value={getAutoKnobValue ? getAutoKnobValue(channelIdx, param.key, param.value) : param.value} min={def.min} max={def.max} step={def.step}
                       size={20} color={channel.color} unit={def.unit} isComplex={param.isComplex}
                       onChange={(v: number) => onParamChange(channelIdx, param.key, v)}
                       onRemove={onRemoveEffect ? () => onRemoveEffect(channelIdx, param.key) : undefined} />
@@ -780,7 +782,7 @@ function TrackExpansionPanel({
                 <div className="flex flex-wrap gap-0.5 justify-center pt-0.5">
                   {channel.params.filter(p => p.key === 'duckdepth' || p.key === 'duckattack').map((param) => {
                     const def = getParamDef(param.key); if (!def) return null
-                    return <StudioKnob key={param.key} label={def.label} value={param.value} min={def.min} max={def.max} step={def.step}
+                    return <StudioKnob key={param.key} label={def.label} value={getAutoKnobValue ? getAutoKnobValue(channelIdx, param.key, param.value) : param.value} min={def.min} max={def.max} step={def.step}
                       size={20} color="#fb923c" unit={def.unit} isComplex={param.isComplex}
                       onChange={(v: number) => onParamChange(channelIdx, param.key, v)}
                       onRemove={onRemoveEffect ? () => onRemoveEffect(channelIdx, param.key) : undefined} />
@@ -802,7 +804,7 @@ function TrackExpansionPanel({
             <div className="flex flex-wrap gap-0.5 justify-center">
               {channel.params.filter(p => p.key === 'duckdepth' || p.key === 'duckattack').map((param) => {
                 const def = getParamDef(param.key); if (!def) return null
-                return <StudioKnob key={param.key} label={def.label} value={param.value} min={def.min} max={def.max} step={def.step}
+                return <StudioKnob key={param.key} label={def.label} value={getAutoKnobValue ? getAutoKnobValue(channelIdx, param.key, param.value) : param.value} min={def.min} max={def.max} step={def.step}
                   size={20} color="#fb923c" unit={def.unit} isComplex={param.isComplex}
                   onChange={(v: number) => onParamChange(channelIdx, param.key, v)}
                   onRemove={onRemoveEffect ? () => onRemoveEffect(channelIdx, param.key) : undefined} />
@@ -1130,6 +1132,99 @@ const TrackView = memo(function TrackView({
     return items
   }, [channels, racks])
 
+  // ── Live automation value display (knobs track interpolated values during playback) ──
+  const liveAutoRef = useRef<Record<string, number>>({})
+  const [liveAutoTick, setLiveAutoTick] = useState(0)
+  const liveAutoTickRef = useRef(0)
+
+  useEffect(() => {
+    if (!isPlaying || !automationData || automationData.size === 0 || !arrangeSections || arrangeSections.length === 0) {
+      // Clear live values when stopped
+      if (Object.keys(liveAutoRef.current).length > 0) {
+        liveAutoRef.current = {}
+        setLiveAutoTick(t => t + 1)
+      }
+      return
+    }
+
+    // Build section layout once
+    const secStartBar: number[] = []
+    let ba = 0
+    for (const s of arrangeSections) { secStartBar.push(ba); ba += s.bars }
+    const totalBars = ba
+    if (totalBars === 0) return
+
+    // Group keyframes by channelIdx:paramKey for quick interpolation
+    const groups = new Map<string, { bar: number; value: number }[]>()
+    for (const [key, value] of automationData) {
+      const parsed = parseAutoKey(key)
+      if (!parsed) continue
+      const secIdx = arrangeSections.findIndex(s => s.id === parsed.sectionId)
+      if (secIdx === -1) continue
+      const absoluteBar = secStartBar[secIdx] + Math.min(parsed.barOffset, arrangeSections[secIdx].bars - 1)
+      const groupKey = `${parsed.channelIdx}:${parsed.paramKey}`
+      if (!groups.has(groupKey)) groups.set(groupKey, [])
+      groups.get(groupKey)!.push({ bar: absoluteBar, value })
+    }
+    // Sort each group
+    for (const kfs of groups.values()) kfs.sort((a, b) => a.bar - b.bar)
+
+    // Catmull-Rom helper
+    const cmr = (p0: number, p1: number, p2: number, p3: number, t: number) => {
+      const t2 = t * t, t3 = t2 * t
+      return 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3)
+    }
+
+    let rafId: number
+    let lastUpdate = 0
+    const tick = () => {
+      const now = performance.now()
+      // Throttle to ~12fps to avoid excessive re-renders
+      if (now - lastUpdate > 83) {
+        lastUpdate = now
+        const pos = getCyclePosition?.()
+        if (pos !== null && pos !== undefined) {
+          const barPos = pos % totalBars
+          const newVals: Record<string, number> = {}
+          for (const [groupKey, kfs] of groups) {
+            if (kfs.length === 0) continue
+            let val: number
+            if (kfs.length === 1) {
+              val = kfs[0].value
+            } else {
+              let ri = kfs.findIndex(kf => kf.bar >= barPos)
+              if (ri === -1) { val = kfs[kfs.length - 1].value }
+              else if (ri === 0) { val = kfs[0].value }
+              else {
+                const left = kfs[ri - 1], right = kfs[ri]
+                const p0 = ri > 1 ? kfs[ri - 2].value : left.value
+                const p3 = ri < kfs.length - 1 ? kfs[ri + 1].value : right.value
+                const t = (barPos - left.bar) / Math.max(0.001, right.bar - left.bar)
+                val = cmr(p0, left.value, right.value, p3, t)
+              }
+            }
+            newVals[groupKey] = val
+          }
+          liveAutoRef.current = newVals
+          // Trigger re-render
+          liveAutoTickRef.current++
+          setLiveAutoTick(liveAutoTickRef.current)
+        }
+      }
+      rafId = requestAnimationFrame(tick)
+    }
+    rafId = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafId)
+  }, [isPlaying, automationData, arrangeSections, getCyclePosition])
+
+  /** Get live automation-overridden value for a knob, or the static value if no automation */
+  const getAutoKnobValue = useCallback((chIdx: number, paramKey: string, staticVal: number): number => {
+    // Reference liveAutoTick to ensure React knows about the dependency
+    void liveAutoTick
+    const key = `${chIdx}:${paramKey}`
+    return key in liveAutoRef.current ? liveAutoRef.current[key] : staticVal
+  }, [liveAutoTick])
+
   // ── Render a single track lane (used for both racked and ungrouped channels) ──
   const renderTrackLane = (ch: ParsedChannel, idx: number) => {
     const isMuted = mutedChannels.has(idx)
@@ -1301,7 +1396,7 @@ const TrackView = memo(function TrackView({
             <div className="flex flex-col gap-0.5 px-2 pb-1">
               <div className="flex items-center gap-1">
                 <div onClick={(e) => e.stopPropagation()} className="shrink-0">
-                  <StudioKnob label="" value={gainParam?.value ?? 0.8} min={0} max={2} step={0.01} size={22}
+                  <StudioKnob label="" value={getAutoKnobValue(idx, 'gain', gainParam?.value ?? 0.8)} min={0} max={2} step={0.01} size={22}
                     color={ch.color} isComplex={gainParam?.isComplex} onChange={(v: number) => onParamChange(idx, 'gain', v)} />
                 </div>
                 {primaryEditor === 'piano' && onOpenPianoRoll && (
@@ -1354,6 +1449,7 @@ const TrackView = memo(function TrackView({
                 onAddSidechainTarget={onAddSidechainTarget ? (targetIdx: number) => onAddSidechainTarget(idx, targetIdx) : undefined}
                 onRemoveSidechainTarget={onRemoveSidechainTarget ? (targetIdx: number) => onRemoveSidechainTarget(idx, targetIdx) : undefined}
                 onDisconnectSidechain={onDisconnectSidechain ? () => onDisconnectSidechain(idx) : undefined}
+                getAutoKnobValue={getAutoKnobValue}
               />
             </div>
           )}
@@ -1496,7 +1592,7 @@ const TrackView = memo(function TrackView({
               paramLabel={pdef?.label || selectedParam}
               paramMin={pdef?.min ?? 0}
               paramMax={pdef?.max ?? 1}
-              currentValue={currentVal}
+              currentValue={getAutoKnobValue(idx, selectedParam, currentVal)}
               sections={arrangeSections}
               automationData={automationData}
               isRecording={isRecording ?? false}
