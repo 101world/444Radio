@@ -2690,10 +2690,8 @@ export function applyAutomationOverrides(
         // (A) Param already exists in code — replace its argument with automation pattern
         keyframes.sort((a, b) => a.bar - b.bar)
 
-        // Check if all keyframe values match the static param value — skip if no change
-        const allSameAsStatic = keyframes.every(kf => Math.round(kf.value * 1000) === Math.round(param.value * 1000))
-        if (allSameAsStatic) continue
-
+        // Always apply automation pattern — even if current static value matches some keyframes,
+        // the pattern varies over time which is the whole point of automation.
         const pattern = buildAutoPattern(keyframes, totalBars, pMin, pMax)
         replacements.push({ start: param.argStart, end: param.argEnd, newText: pattern })
       } else {

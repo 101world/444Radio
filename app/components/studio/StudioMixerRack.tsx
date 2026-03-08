@@ -2088,10 +2088,11 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   // For other params, knob does nothing if param missing (use drag-and-drop).
   const handleParamChange = useCallback(
     (channelIdx: number, paramKey: string, value: number) => {
-      // ── Automation recording: capture keyframe instead of (or in addition to) code change ──
+      // ── Automation recording: capture keyframe instead of code change ──
       // Uses refs (not closure values) to avoid stale captures
       const recSections = arrangeSectionsRef.current
-      if (isRecordingRef.current && isPlayingRef.current && getCyclePosition && recSections.length > 0) {
+      const isRecordingAuto = isRecordingRef.current && isPlayingRef.current && getCyclePosition && recSections.length > 0
+      if (isRecordingAuto) {
         const cyclePos = getCyclePosition()
         if (cyclePos !== null) {
           const totalBars = recSections.reduce((sum, s) => sum + s.bars, 0)
@@ -2118,9 +2119,13 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
             onAutomationDataChangeRef.current?.(newAuto, sectionLayout)
           }
         }
+        // During automation recording, DON'T update the static code.
+        // The automation system handles generating the correct pattern values.
+        // Updating static code would overwrite the automation-generated "<v1 v2 ...>" patterns.
+        return
       }
 
-      // Still modify the code normally (knob visual feedback)
+      // Not recording — modify the code normally (static knob value)
       const currentCode = codeRef.current
       const newCode = updateParamInCode(currentCode, channelIdx, paramKey, value)
       if (newCode !== currentCode) {
@@ -4090,10 +4095,10 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
       )}
       </div>{/* end main content column */}
 
-      {/* ═══ RIGHT SIDEBARS — absolutely positioned to overlay piano roll below ═══ */}
+      {/* ═══ LEFT SIDEBARS — absolutely positioned to overlay content ═══ */}
       {(showFxPanel || showPresetRack) && (
         <div
-          className="absolute right-0 top-0 bottom-0 flex flex-row"
+          className="absolute left-0 top-0 bottom-0 flex flex-row"
           style={{
             zIndex: 55,
             pointerEvents: 'none',
@@ -4139,8 +4144,8 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
               className="h-full overflow-hidden"
               style={{
                 width: 220,
-                borderLeft: '1px solid rgba(255,255,255,0.04)',
-                boxShadow: '-2px 0 8px rgba(0,0,0,0.3)',
+                borderRight: '1px solid rgba(255,255,255,0.04)',
+                boxShadow: '2px 0 8px rgba(0,0,0,0.3)',
                 pointerEvents: 'auto',
               }}
             >

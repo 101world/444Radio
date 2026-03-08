@@ -1991,6 +1991,43 @@ const TrackView = memo(function TrackView({
 
   return (
     <div className="flex flex-col h-full">
+      {/* ═══ ARRANGEMENT TIMELINE — section sequencer (docked at top, Ableton-style) ═══ */}
+      {onArrangeSectionsChange && onArrangeToggle && (
+        <ArrangementTimeline
+          channels={channels}
+          sections={arrangeSections ?? []}
+          isOpen={arrangeOpen ?? false}
+          isPlaying={isPlaying}
+          getCyclePosition={getCyclePosition}
+          automationData={automationData}
+          onToggle={onArrangeToggle}
+          onSectionsChange={onArrangeSectionsChange}
+          onDuplicateAutomation={onDuplicateAutomation}
+          onSeek={onSeek}
+          patternVariants={patternVariants}
+          onPatternVariantsChange={onPatternVariantsChange}
+          onCreateVariant={onCreateVariant}
+          audioClips={audioClips}
+          audioTracks={audioTracks}
+          audioClipboard={audioClipboard}
+          bpm={projectBpm}
+          onAudioClipsChange={onAudioClipsChange}
+          onAudioTracksChange={onAudioTracksChange}
+          onAudioClipboardChange={onAudioClipboardChange}
+          onDeleteAudioClip={onDeleteAudioClip}
+          onAutoSyncClip={onAutoSyncClip}
+          onAutoPitchClip={onAutoPitchClip}
+          onCreateInstrumentFromClip={onCreateInstrumentFromClip}
+          projectKey={projectKey}
+          onAddAudioTrack={onAddAudioTrack}
+          onStartRecording={onStartRecording}
+          onStopRecording={onStopRecording}
+          onUploadAudio={onUploadAudio}
+          isRecording={isAudioRecording}
+          recordingTrackIndex={recordingTrackIndex}
+        />
+      )}
+
       {/* ── Tracks area (scrollable) ── */}
       <div className="flex-1 flex flex-col overflow-auto relative">
         {/* Beat ruler */}
@@ -2390,42 +2427,6 @@ const TrackView = memo(function TrackView({
         </div>
       </div>
 
-      {/* ═══ ARRANGEMENT TIMELINE — section sequencer ═══ */}
-      {onArrangeSectionsChange && onArrangeToggle && (
-        <ArrangementTimeline
-          channels={channels}
-          sections={arrangeSections ?? []}
-          isOpen={arrangeOpen ?? false}
-          isPlaying={isPlaying}
-          getCyclePosition={getCyclePosition}
-          automationData={automationData}
-          onToggle={onArrangeToggle}
-          onSectionsChange={onArrangeSectionsChange}
-          onDuplicateAutomation={onDuplicateAutomation}
-          onSeek={onSeek}
-          patternVariants={patternVariants}
-          onPatternVariantsChange={onPatternVariantsChange}
-          onCreateVariant={onCreateVariant}
-          audioClips={audioClips}
-          audioTracks={audioTracks}
-          audioClipboard={audioClipboard}
-          bpm={projectBpm}
-          onAudioClipsChange={onAudioClipsChange}
-          onAudioTracksChange={onAudioTracksChange}
-          onAudioClipboardChange={onAudioClipboardChange}
-          onDeleteAudioClip={onDeleteAudioClip}
-          onAutoSyncClip={onAutoSyncClip}
-          onAutoPitchClip={onAutoPitchClip}
-          onCreateInstrumentFromClip={onCreateInstrumentFromClip}
-          projectKey={projectKey}
-          onAddAudioTrack={onAddAudioTrack}
-          onStartRecording={onStartRecording}
-          onStopRecording={onStopRecording}
-          onUploadAudio={onUploadAudio}
-          isRecording={isAudioRecording}
-          recordingTrackIndex={recordingTrackIndex}
-        />
-      )}
 
     </div>
   )
