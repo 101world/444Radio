@@ -1079,7 +1079,14 @@ const TrackView = memo(function TrackView({
         }}
         onContextMenu={(e) => {
           e.preventDefault()
-          if (!selectedChannels.has(idx)) setSelectedChannels(new Set([idx]))
+          // Ctrl+right-click: add to selection
+          if (e.ctrlKey || e.metaKey) {
+            setSelectedChannels(prev => { const n = new Set(prev); n.add(idx); return n })
+          } else if (!selectedChannels.has(idx)) {
+            // Plain right-click on unselected channel: select only it
+            setSelectedChannels(new Set([idx]))
+          }
+          // If channel is already selected, preserve current multi-selection
           setCtxMenu({ x: e.clientX, y: e.clientY, channelIdx: idx })
         }}
       >
@@ -1568,6 +1575,7 @@ const TrackView = memo(function TrackView({
           {ctxMenu && (
             <div
               className="fixed z-[100] py-1 rounded-lg overflow-hidden"
+              onMouseDown={(e) => e.stopPropagation()}
               style={{
                 left: ctxMenu.x, top: ctxMenu.y,
                 background: '#16181d',
