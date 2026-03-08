@@ -549,6 +549,23 @@ function playPreview(midi: number, source: string) {
   osc.stop(now + 0.3)
 }
 
+/**
+ * Check if a bracket-wrapped string has commas at the top level
+ * (depth 0 inside the outer brackets). This distinguishes chords like
+ * [c3,e3,g3] (top-level commas) from sub-groups like [~ [b5,c6] ~ ~]
+ * (commas only inside nested brackets).
+ */
+function hasTopLevelComma(str: string): boolean {
+  let depth = 0
+  for (let i = 1; i < str.length - 1; i++) {
+    const ch = str[i]
+    if (ch === '[' || ch === '<') depth++
+    else if (ch === ']' || ch === '>') depth--
+    else if (ch === ',' && depth === 0) return true
+  }
+  return false
+}
+
 // â”€â”€â”€ Pattern parsing â”€â”€â”€
 
 /** Parse a single token into notes on the grid (handles chords, rests, sub-groups, numbers/names) */
@@ -565,7 +582,7 @@ function parseToken(tok: string, step: number, scale: string, notes: Map<string,
 
   // Sub-group: [~ c2] or [a3 ~ b3 ~] â€” brackets with spaces, NOT commas (those are chords)
   // Recursively subdivide this token's span among sub-tokens
-  if (tok.startsWith('[') && tok.endsWith(']') && !tok.includes(',')) {
+  if (tok.startsWith('[') && tok.endsWith(']') && !hasTopLevelComma(tok)) {
     const inner = tok.slice(1, -1).trim()
     const subTokens = tokenizePattern(inner)
     if (subTokens.length > 0) {
@@ -588,7 +605,8 @@ function parseToken(tok: string, step: number, scale: string, notes: Map<string,
 
   // Chord: [d3,f3,a3,c4] or [2,5] or [1,3,5] or [0,2,4]@4
   // Handles bracket-level @N weight: [a,b,c]@N
-  if (tok.startsWith('[') && tok.includes(',')) {
+  // Only match when commas are at the top bracket level (not nested)
+  if (tok.startsWith('[') && hasTopLevelComma(tok)) {
     let chordInner: string
     let chordLength = defaultLength
     // Check for bracket-level weight: [a,b,c]@N
@@ -719,7 +737,7 @@ function parsePattern(
       const barOffset = barIdx * stepsPerBar
       // Unwrap structural grouping brackets [0 ~ ~ ~] â†’ inner,
       // but keep chord brackets [d3,f3,a3,c4] intact (they contain commas, not spaces)
-      const isChord = entry.startsWith('[') && entry.endsWith(']') && entry.includes(',')
+      const isChord = entry.startsWith('[') && entry.endsWith(']') && hasTopLevelComma(entry)
       const isGrouping = entry.startsWith('[') && entry.endsWith(']') && !isChord
       const clean = isGrouping ? entry.slice(1, -1).trim() : entry
       const tokens = tokenizePattern(clean)
