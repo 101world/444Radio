@@ -904,6 +904,8 @@ export default function StudioEditor() {
               }
             }}
             projectBpm={parseBPM(code) ?? 120}
+            onRegisterCustomSound={registerCustomSound}
+            onAddChannel={handleBrowserAddChannel}
           />
 
           {/* Piano Roll — docks at bottom */}

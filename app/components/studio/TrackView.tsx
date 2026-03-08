@@ -958,6 +958,10 @@ interface TrackViewProps {
   onAudioTracksChange?: (tracks: AudioTrack[]) => void
   onAudioClipboardChange?: (cb: ClipClipboard | null) => void
   onDeleteAudioClip?: (clipId: string) => void
+  onAutoSyncClip?: (clipId: string) => void
+  onAutoPitchClip?: (clipId: string) => void
+  onCreateInstrumentFromClip?: (clipId: string) => void
+  projectKey?: string
   onAddAudioTrack?: () => void
   onStartRecording?: (trackIndex: number) => void
   onStopRecording?: () => void
@@ -1048,6 +1052,10 @@ const TrackView = memo(function TrackView({
   onAudioTracksChange,
   onAudioClipboardChange,
   onDeleteAudioClip,
+  onAutoSyncClip,
+  onAutoPitchClip,
+  onCreateInstrumentFromClip,
+  projectKey,
   onAddAudioTrack,
   onStartRecording,
   onStopRecording,
@@ -1997,6 +2005,10 @@ const TrackView = memo(function TrackView({
           onAudioTracksChange={onAudioTracksChange}
           onAudioClipboardChange={onAudioClipboardChange}
           onDeleteAudioClip={onDeleteAudioClip}
+          onAutoSyncClip={onAutoSyncClip}
+          onAutoPitchClip={onAutoPitchClip}
+          onCreateInstrumentFromClip={onCreateInstrumentFromClip}
+          projectKey={projectKey}
           onAddAudioTrack={onAddAudioTrack}
           onStartRecording={onStartRecording}
           onStopRecording={onStopRecording}

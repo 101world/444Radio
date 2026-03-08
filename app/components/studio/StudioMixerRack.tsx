@@ -25,6 +25,7 @@ import {
   createDefaultTrack, createClipFromBuffer,
   startRecording, decodeAudioFile,
   ClipPlaybackEngine,
+  calcAutoSyncRate, calcAutoPitch, prepareInstrumentFromClip,
 } from '@/lib/audio-clip-engine'
 import {
   parseStrudelCode, updateParamInCode, insertEffectInChannel,
@@ -1599,9 +1600,13 @@ interface StudioMixerRackProps {
   onSeek?: (barPosition: number) => void
   /** Project BPM for playhead speed calculation */
   projectBpm?: number
+  /** Register a custom sound buffer/URL with Strudel engine */
+  onRegisterCustomSound?: (name: string, url: string) => Promise<void>
+  /** Add a new Strudel channel (used by create-instrument) */
+  onAddChannel?: (soundId: string, type: 'synth' | 'sample' | 'vocal' | 'instrument' | 'drumpad', loopAt?: number) => void
 }
 
-export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, onMixerStateChange, onAutomationDataChange, metronomeEnabled = false, onMetronomeToggle, onOpenPianoRoll, onOpenDrumSequencer, onOpenPadSampler, isPlaying: isPlayingProp = false, onPreview, getCyclePosition, onSeek, projectBpm = 120 }: StudioMixerRackProps) {
+export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, onMixerStateChange, onAutomationDataChange, metronomeEnabled = false, onMetronomeToggle, onOpenPianoRoll, onOpenDrumSequencer, onOpenPadSampler, isPlaying: isPlayingProp = false, onPreview, getCyclePosition, onSeek, projectBpm = 120, onRegisterCustomSound, onAddChannel }: StudioMixerRackProps) {
   const channels = useMemo(() => parseStrudelCode(code), [code])
   const [expandedChannels, setExpandedChannels] = useState<Set<string>>(new Set())
   const [mutedChannels, setMutedChannels] = useState<Set<number>>(new Set())
@@ -2803,6 +2808,50 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     setAudioClips(prev => prev.filter(c => c.id !== clipId))
   }, [])
 
+  // ── Auto-Sync: snap clip to nearest whole-bar boundary via playback rate adjustment ──
+  const handleAutoSyncClip = useCallback((clipId: string) => {
+    setAudioClips(prev => prev.map(c => {
+      if (c.id !== clipId) return c
+      const { durationBars } = calcAutoSyncRate(c, projectBpm)
+      console.log(`[444 STUDIO] Auto-Sync: "${c.name}" → ${durationBars} bars (was ${c.durationBars.toFixed(2)})`)
+      return { ...c, durationBars }
+    }))
+  }, [projectBpm])
+
+  // ── Auto-Pitch: detect pitch and log the correction needed ──
+  const handleAutoPitchClip = useCallback((clipId: string) => {
+    const clip = audioClips.find(c => c.id === clipId)
+    if (!clip) return
+    const scale = parseScale(code)
+    const root = scale?.root ?? 'C'
+    const result = calcAutoPitch(clip, root)
+    if (result.detectedHz) {
+      console.log(`[444 STUDIO] Auto-Pitch: "${clip.name}" detected ${result.detectedNote} (${result.detectedHz.toFixed(1)}Hz) → shift ${result.detuneCents.toFixed(0)} cents to ${result.targetNote}`)
+    } else {
+      console.log(`[444 STUDIO] Auto-Pitch: "${clip.name}" — unable to detect pitch, no correction applied`)
+    }
+    // Store the correction for future playback (clip gain node + detune on source)
+    // For now this logs the result; the playback engine can apply detune in a follow-up
+  }, [audioClips, code])
+
+  // ── Create Instrument: register clip as a Strudel sample and create a channel ──
+  const handleCreateInstrumentFromClip = useCallback(async (clipId: string) => {
+    const clip = audioClips.find(c => c.id === clipId)
+    if (!clip) return
+    const meta = prepareInstrumentFromClip(clip, projectBpm)
+    // Register the blob URL as a Strudel sample
+    if (onRegisterCustomSound) {
+      await onRegisterCustomSound(meta.soundName, meta.sampleUrl)
+    }
+    // Create a new instrument channel via Strudel code
+    if (onAddChannel) {
+      onAddChannel(meta.soundName, 'instrument', Math.round(meta.loopBars))
+      console.log(`[444 STUDIO] Created instrument "${meta.soundName}" from clip "${clip.name}" (${meta.loopBars.toFixed(1)} bars, begin=${meta.begin.toFixed(2)}, end=${meta.end.toFixed(2)})`)
+    } else {
+      console.warn('[444 STUDIO] Cannot create instrument — onAddChannel not wired')
+    }
+  }, [audioClips, projectBpm, onRegisterCustomSound, onAddChannel])
+
   const handleStartRecording = useCallback(async (trackIndex: number) => {
     try {
       // Capture the current bar position so the clip is placed at record-start position
@@ -3551,6 +3600,10 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                 onAudioTracksChange={setAudioTracks}
                 onAudioClipboardChange={setAudioClipboard}
                 onDeleteAudioClip={handleDeleteAudioClip}
+                onAutoSyncClip={handleAutoSyncClip}
+                onAutoPitchClip={handleAutoPitchClip}
+                onCreateInstrumentFromClip={handleCreateInstrumentFromClip}
+                projectKey={currentScale?.root ?? undefined}
                 onAddAudioTrack={handleAddAudioTrack}
                 onStartRecording={handleStartRecording}
                 onStopRecording={handleStopRecording}

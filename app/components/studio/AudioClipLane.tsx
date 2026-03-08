@@ -22,6 +22,8 @@ import {
   nextClipId,
   barsToSeconds,
   secondsToBars,
+  calcAutoSyncRate,
+  calcAutoPitch,
 } from '@/lib/audio-clip-engine'
 
 // ─── Layout ───
@@ -48,6 +50,12 @@ interface AudioClipLaneProps {
   onClipsChange: (clips: AudioClip[]) => void
   onClipboardChange: (cb: ClipClipboard | null) => void
   onDeleteClip: (clipId: string) => void
+  // ── New: auto-sync / auto-pitch / create-instrument ──
+  onAutoSync?: (clipId: string) => void
+  onAutoPitch?: (clipId: string) => void
+  onCreateInstrument?: (clipId: string) => void
+  /** Project root note / key (e.g. "C", "F#") for auto-pitch */
+  projectKey?: string
 }
 
 // ─── Waveform cache (avoid recalculating every render) ───
@@ -94,6 +102,7 @@ const MiniWaveform = memo(function MiniWaveform({
 const AudioClipLane = memo(function AudioClipLane({
   track, trackIndex, clips, totalBars, sectionBarStarts, sectionBarLengths,
   bpm, clipboard, onClipsChange, onClipboardChange, onDeleteClip,
+  onAutoSync, onAutoPitch, onCreateInstrument, projectKey,
 }: AudioClipLaneProps) {
 
   const laneRef = useRef<HTMLDivElement>(null)
@@ -254,6 +263,33 @@ const AudioClipLane = memo(function AudioClipLane({
     setContextMenu(null)
   }, [contextMenu, onDeleteClip])
 
+  // ── Auto-Sync: snap clip duration to nearest whole bars via playback rate ──
+  const handleAutoSync = useCallback(() => {
+    if (!contextMenu?.clipId) return
+    const clip = clips.find(c => c.id === contextMenu.clipId)
+    if (!clip) { setContextMenu(null); return }
+
+    const { durationBars: newDur } = calcAutoSyncRate(clip, bpm)
+    const updated: AudioClip = { ...clip, durationBars: newDur }
+    onClipsChange(clips.map(c => c.id === clip.id ? updated : c))
+    onAutoSync?.(contextMenu.clipId)
+    setContextMenu(null)
+  }, [contextMenu, clips, bpm, onClipsChange, onAutoSync])
+
+  // ── Auto-Pitch: detect and display pitch correction info ──
+  const handleAutoPitch = useCallback(() => {
+    if (!contextMenu?.clipId) return
+    onAutoPitch?.(contextMenu.clipId)
+    setContextMenu(null)
+  }, [contextMenu, onAutoPitch])
+
+  // ── Create Instrument: turn clip into a Strudel sampler channel ──
+  const handleCreateInstrument = useCallback(() => {
+    if (!contextMenu?.clipId) return
+    onCreateInstrument?.(contextMenu.clipId)
+    setContextMenu(null)
+  }, [contextMenu, onCreateInstrument])
+
   // ── Double-click lane to paste or place clip ──
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
     if (!clipboard) return
@@ -374,6 +410,17 @@ const AudioClipLane = memo(function AudioClipLane({
               </button>
               <button className="w-full px-3 py-2 text-left text-[11px] hover:bg-white/[0.06] transition-colors" style={{ color: '#ccc', background: 'none', border: 'none', cursor: 'pointer' }} onClick={handleSplit}>
                 Split at cursor <span className="float-right text-[9px] text-white/30">S</span>
+              </button>
+              <div style={{ borderTop: '1px solid #262830' }} />
+              {/* ── Audio Processing ── */}
+              <button className="w-full px-3 py-2 text-left text-[11px] hover:bg-white/[0.06] transition-colors" style={{ color: '#a78bfa', background: 'none', border: 'none', cursor: 'pointer' }} onClick={handleAutoSync}>
+                Auto-Sync to BPM <span className="float-right text-[9px] text-white/30">⏱</span>
+              </button>
+              <button className="w-full px-3 py-2 text-left text-[11px] hover:bg-white/[0.06] transition-colors" style={{ color: '#22d3ee', background: 'none', border: 'none', cursor: 'pointer' }} onClick={handleAutoPitch}>
+                Auto-Pitch to Key{projectKey ? ` (${projectKey})` : ''} <span className="float-right text-[9px] text-white/30">♪</span>
+              </button>
+              <button className="w-full px-3 py-2 text-left text-[11px] hover:bg-white/[0.06] transition-colors" style={{ color: '#10b981', background: 'none', border: 'none', cursor: 'pointer' }} onClick={handleCreateInstrument}>
+                Create Instrument <span className="float-right text-[9px] text-white/30">🎹</span>
               </button>
               <div style={{ borderTop: '1px solid #262830' }} />
               <button className="w-full px-3 py-2 text-left text-[11px] hover:bg-red-500/10 transition-colors" style={{ color: '#f87171', background: 'none', border: 'none', cursor: 'pointer' }} onClick={handleDelete}>

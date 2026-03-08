@@ -53,6 +53,10 @@ interface ArrangementTimelineProps {
   onAudioTracksChange?: (tracks: AudioTrack[]) => void
   onAudioClipboardChange?: (cb: ClipClipboard | null) => void
   onDeleteAudioClip?: (clipId: string) => void
+  onAutoSyncClip?: (clipId: string) => void
+  onAutoPitchClip?: (clipId: string) => void
+  onCreateInstrumentFromClip?: (clipId: string) => void
+  projectKey?: string
   onAddAudioTrack?: () => void
   onStartRecording?: (trackIndex: number) => void
   onStopRecording?: () => void
@@ -103,7 +107,8 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
   // Audio clip track props
   audioClips = [], audioTracks = [], audioClipboard = null, bpm = 120,
   onAudioClipsChange, onAudioTracksChange, onAudioClipboardChange,
-  onDeleteAudioClip, onAddAudioTrack,
+  onDeleteAudioClip, onAutoSyncClip, onAutoPitchClip, onCreateInstrumentFromClip, projectKey,
+  onAddAudioTrack,
   onStartRecording, onStopRecording, onUploadAudio,
   isRecording = false, recordingTrackIndex = -1,
 }: ArrangementTimelineProps) {
@@ -844,6 +849,10 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
                       onClipsChange={onAudioClipsChange ?? (() => {})}
                       onClipboardChange={onAudioClipboardChange ?? (() => {})}
                       onDeleteClip={onDeleteAudioClip ?? (() => {})}
+                      onAutoSync={onAutoSyncClip}
+                      onAutoPitch={onAutoPitchClip}
+                      onCreateInstrument={onCreateInstrumentFromClip}
+                      projectKey={projectKey}
                     />
                   ))}
 

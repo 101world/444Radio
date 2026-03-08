@@ -147,11 +147,11 @@ export function createClipFromBuffer(
 export class ClipPlaybackEngine {
   private ctx: AudioContext
   private masterGain: GainNode
-  private activeSources: Map<string, AudioBufferSourceNode> = new Map()
+  private activeSources: Map<string, { source: AudioBufferSourceNode; clipGain: GainNode }> = new Map()
   private trackGains: Map<string, GainNode> = new Map()
   private scheduledClips: Set<string> = new Set()
   private rafId: number | null = null
-  private lastScheduledCycle = -1
+  private lastPass = -1   // Track loop pass to detect wrapping
 
   constructor(ctx: AudioContext) {
     this.ctx = ctx
@@ -174,12 +174,8 @@ export class ClipPlaybackEngine {
   /**
    * Schedule all clips that should start within the upcoming window.
    * Called repeatedly from a rAF loop while playing.
-   *
-   * @param currentCycle  Current Strudel cycle position (fractional bars)
-   * @param bpm           Project BPM
-   * @param clips         All audio clips
-   * @param tracks        All audio tracks
-   * @param totalBars     Total arrangement bars (for looping)
+   * Detects transport loop and stops all playing clips when the
+   * arrangement wraps around so vocals don't bleed into the next pass.
    */
   scheduleClips(
     currentCycle: number,
@@ -190,13 +186,21 @@ export class ClipPlaybackEngine {
   ): void {
     if (totalBars <= 0) return
     const now = this.ctx.currentTime
-    // Look-ahead window: 200ms
-    const lookAheadSec = 0.2
     const beatsPerSec = bpm / 60
     const barsPerSec = beatsPerSec / 4
-    const lookAheadBars = lookAheadSec * barsPerSec
+    // Look-ahead window: 200ms
+    const lookAheadBars = 0.2 * barsPerSec
 
+    const currentPass = Math.floor(currentCycle / totalBars)
     const cycleWrapped = currentCycle % totalBars
+
+    // ── LOOP WRAP DETECTION ──
+    // When the transport loops back to the beginning, stop ALL
+    // playing sources so long clips (vocals) don't keep going
+    if (currentPass !== this.lastPass && this.lastPass >= 0) {
+      this.stopAll()
+    }
+    this.lastPass = currentPass
 
     // Check which tracks are soloed
     const anyTrackSoloed = tracks.some(t => t.soloed)
@@ -207,8 +211,12 @@ export class ClipPlaybackEngine {
       if (track.muted) continue
       if (anyTrackSoloed && !track.soloed) continue
 
-      // Compare clip start against the current window
+      // Effective clip end after trim
+      const effectiveDurationBars = clip.durationBars - secondsToBars(clip.trimStart + clip.trimEnd, bpm)
       const clipStart = clip.startBar % totalBars
+      const clipEnd = clipStart + effectiveDurationBars
+
+      // Compare clip start against the current window
       let delta = clipStart - cycleWrapped
       // Handle wrapping around arrangement end
       if (delta < -totalBars / 2) delta += totalBars
@@ -216,23 +224,27 @@ export class ClipPlaybackEngine {
 
       // Only schedule clips in the near future (not already scheduled this pass)
       if (delta >= 0 && delta < lookAheadBars) {
-        const scheduleKey = `${clip.id}@${Math.floor(currentCycle / totalBars)}`
+        const scheduleKey = `${clip.id}@${currentPass}`
         if (this.scheduledClips.has(scheduleKey)) continue
 
         const startTimeSec = now + (delta / barsPerSec)
-        this.playClip(clip, track, startTimeSec, scheduleKey)
+
+        // Limit play duration so clip stops at arrangement end
+        const remainingBarsInArrangement = totalBars - clipStart
+        const maxPlayBars = Math.min(effectiveDurationBars, remainingBarsInArrangement)
+
+        this.playClip(clip, track, startTimeSec, scheduleKey, maxPlayBars, bpm)
       }
     }
 
     // Clean old schedule keys (keep only recent loop pass)
-    const currentPass = Math.floor(currentCycle / totalBars)
     for (const key of this.scheduledClips) {
       const pass = parseInt(key.split('@')[1])
       if (pass < currentPass - 1) this.scheduledClips.delete(key)
     }
   }
 
-  private playClip(clip: AudioClip, track: AudioTrack, when: number, scheduleKey: string): void {
+  private playClip(clip: AudioClip, track: AudioTrack, when: number, scheduleKey: string, maxPlayBars: number, bpm: number): void {
     const source = this.ctx.createBufferSource()
     source.buffer = clip.buffer
 
@@ -247,12 +259,14 @@ export class ClipPlaybackEngine {
 
     // Trim: offset into buffer, and limit duration
     const offset = clip.trimStart
-    const maxDuration = clip.buffer.duration - clip.trimStart - clip.trimEnd
-    const duration = Math.max(0.001, maxDuration)
+    const maxDurationFromTrim = clip.buffer.duration - clip.trimStart - clip.trimEnd
+    // Also limit by the arrangement boundary (maxPlayBars converted to seconds)
+    const maxDurationFromArrangement = barsToSeconds(maxPlayBars, bpm)
+    const duration = Math.max(0.001, Math.min(maxDurationFromTrim, maxDurationFromArrangement))
 
     source.start(when, offset, duration)
     this.scheduledClips.add(scheduleKey)
-    this.activeSources.set(scheduleKey, source)
+    this.activeSources.set(scheduleKey, { source, clipGain })
 
     source.onended = () => {
       this.activeSources.delete(scheduleKey)
@@ -261,7 +275,7 @@ export class ClipPlaybackEngine {
 
   /** Stop all currently playing clip sources */
   stopAll(): void {
-    for (const [key, source] of this.activeSources) {
+    for (const [, { source }] of this.activeSources) {
       try { source.stop() } catch { /* already stopped */ }
     }
     this.activeSources.clear()
@@ -277,7 +291,7 @@ export class ClipPlaybackEngine {
     totalBars: number,
   ): void {
     this.stopLoop()
-    // Store refs for the rAF callback to access mutable data
+    this.lastPass = -1
     const state = { clips, tracks, totalBars, bpm }
     const tick = () => {
       const pos = getCyclePosition()
@@ -287,7 +301,6 @@ export class ClipPlaybackEngine {
       this.rafId = requestAnimationFrame(tick)
     }
     this.rafId = requestAnimationFrame(tick)
-    // Expose state object so caller can update clips/tracks/bpm without restarting
     ;(this as any)._loopState = state
   }
 
@@ -446,4 +459,179 @@ export function splitClip(clip: AudioClip, atBar: number, bpm: number): [AudioCl
   }
 
   return [left, right]
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  AUTO-SYNC — adjust clip playbackRate so it fits an integer
+//  number of bars at the project BPM.
+//
+//  Returns the playbackRate multiplier and the new durationBars.
+//  The caller stores these and uses the rate when scheduling.
+// ═══════════════════════════════════════════════════════════════
+
+export interface SyncResult {
+  /** playbackRate to apply (>1 = faster, <1 = slower) */
+  rate: number
+  /** New clip durationBars after sync */
+  durationBars: number
+  /** Nearest whole-bar count the clip was snapped to */
+  targetBars: number
+}
+
+/**
+ * Calculate the playbackRate needed to stretch/compress an audio
+ * clip so that it lands on the nearest whole-bar boundary at the
+ * project BPM.  Does not mutate the clip.
+ */
+export function calcAutoSyncRate(clip: AudioClip, bpm: number): SyncResult {
+  const effectiveSec = clip.buffer.duration - clip.trimStart - clip.trimEnd
+  const naturalBars = secondsToBars(effectiveSec, bpm)
+  // Snap to nearest whole bar (min 1)
+  const targetBars = Math.max(1, Math.round(naturalBars))
+  const targetSec = barsToSeconds(targetBars, bpm)
+  const rate = effectiveSec / targetSec   // speed up if clip is too long
+  return { rate, durationBars: targetBars, targetBars }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  AUTO-PITCH — estimate fundamental frequency of a clip and
+//  return the detune (cents) needed to shift it to a target note.
+//
+//  Uses autocorrelation pitch detection on a short segment of
+//  the audio (first 2 seconds, or the whole buffer if shorter).
+// ═══════════════════════════════════════════════════════════════
+
+const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const
+
+export interface PitchResult {
+  /** Detected fundamental frequency (Hz), or null if unable to detect */
+  detectedHz: number | null
+  /** Nearest named note */
+  detectedNote: string | null
+  /** Detune in cents to shift from detected pitch to target root */
+  detuneCents: number
+  /** Target note the clip will be shifted to */
+  targetNote: string
+}
+
+/**
+ * Simple autocorrelation pitch detector.
+ * Returns the estimated fundamental frequency (Hz) or null.
+ */
+function detectPitch(buffer: AudioBuffer, sampleRate: number): number | null {
+  const data = buffer.getChannelData(0)
+  // Analyse the first 2 seconds (or full buffer)
+  const len = Math.min(data.length, sampleRate * 2)
+  // Minimum/maximum expected frequencies (human vocal range 80-1000 Hz)
+  const minPeriod = Math.floor(sampleRate / 1000)
+  const maxPeriod = Math.floor(sampleRate / 80)
+  if (len < maxPeriod * 2) return null
+
+  let bestCorrelation = 0
+  let bestPeriod = 0
+
+  for (let period = minPeriod; period <= maxPeriod; period++) {
+    let correlation = 0
+    let energy1 = 0
+    let energy2 = 0
+    const n = Math.min(len - period, maxPeriod * 2)
+    for (let i = 0; i < n; i++) {
+      correlation += data[i] * data[i + period]
+      energy1 += data[i] * data[i]
+      energy2 += data[i + period] * data[i + period]
+    }
+    const norm = Math.sqrt(energy1 * energy2)
+    if (norm > 0) correlation /= norm
+    if (correlation > bestCorrelation) {
+      bestCorrelation = correlation
+      bestPeriod = period
+    }
+  }
+
+  // Require decent correlation
+  if (bestCorrelation < 0.5 || bestPeriod === 0) return null
+  return sampleRate / bestPeriod
+}
+
+/**
+ * Calculate the detune (in cents) required to shift a clip's
+ * detected pitch to the nearest occurrence of `targetRoot` note.
+ *
+ * @param clip        The audio clip to analyse
+ * @param targetRoot  Target root note name, e.g. "C", "F#", "Bb"
+ */
+export function calcAutoPitch(clip: AudioClip, targetRoot: string): PitchResult {
+  const sr = clip.buffer.sampleRate
+  const hz = detectPitch(clip.buffer, sr)
+
+  // Normalise target to sharp notation
+  const normTarget = targetRoot.replace('b', '')
+    .replace('Db', 'C#').replace('Eb', 'D#').replace('Gb', 'F#')
+    .replace('Ab', 'G#').replace('Bb', 'A#')
+  const targetIdx = NOTE_NAMES.indexOf(normTarget as any)
+  const targetNote = targetIdx >= 0 ? NOTE_NAMES[targetIdx] : 'C'
+  const targetNoteIdx = targetIdx >= 0 ? targetIdx : 0
+
+  if (hz === null) {
+    return { detectedHz: null, detectedNote: null, detuneCents: 0, targetNote }
+  }
+
+  // MIDI note number (A4 = 69 = 440 Hz)
+  const midiFloat = 69 + 12 * Math.log2(hz / 440)
+  const midiNote = Math.round(midiFloat)
+  const detectedPitchClass = ((midiNote % 12) + 12) % 12
+  const detectedNote = NOTE_NAMES[detectedPitchClass]
+
+  // Find the smallest interval (in semitones) to get to targetNoteIdx
+  let semitoneDiff = targetNoteIdx - detectedPitchClass
+  if (semitoneDiff > 6) semitoneDiff -= 12
+  if (semitoneDiff < -6) semitoneDiff += 12
+
+  // Also account for the fractional cents the detected pitch is off from its nearest note
+  const centsOffFromNearest = (midiFloat - midiNote) * 100
+  const detuneCents = semitoneDiff * 100 - centsOffFromNearest
+
+  return { detectedHz: hz, detectedNote, detuneCents, targetNote }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  AUDIO-TO-INSTRUMENT — extract from a clip the data needed
+//  to register it as a Strudel sample and create a piano-roll
+//  channel.  Returns the trimmed blob URL and metadata.
+// ═══════════════════════════════════════════════════════════════
+
+export interface InstrumentFromClipResult {
+  /** Unique sound name for Strudel registration */
+  soundName: string
+  /** Blob URL that Strudel can fetch as a sample */
+  sampleUrl: string
+  /** Begin fraction (0..1 into buffer) — for .begin() */
+  begin: number
+  /** End fraction (0..1 into buffer) — for .end() */
+  end: number
+  /** Duration in bars of the trimmed region (for loopAt) */
+  loopBars: number
+}
+
+let _instrCounter = 0
+
+/**
+ * Prepare metadata for registering a clip as a playable instrument.
+ * Does not mutate the clip.
+ */
+export function prepareInstrumentFromClip(clip: AudioClip, bpm: number): InstrumentFromClipResult {
+  const dur = clip.buffer.duration
+  const begin = dur > 0 ? clip.trimStart / dur : 0
+  const end = dur > 0 ? 1 - (clip.trimEnd / dur) : 1
+  const effectiveSec = dur - clip.trimStart - clip.trimEnd
+  const loopBars = secondsToBars(effectiveSec, bpm)
+  const soundName = `clip${++_instrCounter}_${clip.name.replace(/[^a-zA-Z0-9]/g, '').slice(0, 12)}`
+
+  return {
+    soundName,
+    sampleUrl: clip.blobUrl,
+    begin: Math.max(0, Math.min(1, begin)),
+    end: Math.max(0, Math.min(1, end)),
+    loopBars: Math.max(0.25, loopBars),
+  }
 }
