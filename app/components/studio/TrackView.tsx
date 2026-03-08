@@ -22,7 +22,7 @@ export type Rack = {
   channelIndices: number[]
   collapsed: boolean
 }
-import ArrangementTimeline, { type ArrangementSection } from './ArrangementTimeline'
+import ArrangementTimeline, { type ArrangementSection, type PatternVariant } from './ArrangementTimeline'
 import AutomationLane from './AutomationLane'
 import TrackTimeline from './TrackTimeline'
 import StudioKnob from './StudioKnob'
@@ -933,6 +933,10 @@ interface TrackViewProps {
   arrangeOpen?: boolean
   onArrangeToggle?: () => void
   onArrangeSectionsChange?: (sections: ArrangementSection[]) => void
+  // ── Pattern variants ──
+  patternVariants?: PatternVariant[]
+  onPatternVariantsChange?: (variants: PatternVariant[]) => void
+  onCreateVariant?: (channelIdx: number, name: string) => void
   // ── Automation recording ──
   automationData?: Map<string, number>
   isRecording?: boolean
@@ -1001,6 +1005,10 @@ const TrackView = memo(function TrackView({
   arrangeOpen,
   onArrangeToggle,
   onArrangeSectionsChange,
+  // Pattern variants
+  patternVariants,
+  onPatternVariantsChange,
+  onCreateVariant,
   // Automation
   automationData,
   isRecording,
@@ -1839,6 +1847,9 @@ const TrackView = memo(function TrackView({
           isPlaying={isPlaying}
           onToggle={onArrangeToggle}
           onSectionsChange={onArrangeSectionsChange}
+          patternVariants={patternVariants}
+          onPatternVariantsChange={onPatternVariantsChange}
+          onCreateVariant={onCreateVariant}
         />
       )}
 

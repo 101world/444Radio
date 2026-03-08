@@ -2264,11 +2264,13 @@ export function parseArrangement(code: string): ArrangeSection[] | null {
 /**
  * Generate $:arrange() code from sections + channel list.
  * channelNames: array of channel variable names (in order matching channel indices).
- * sections: array of { bars, activeChannelIndices }.
+ * sections: array of { bars, activeChannelIndices, variantNames? }.
+ *   variantNames: optional Map<channelIdx, variableName> for per-section variant overrides.
+ *   When a channel has a variant override, its variant variable name is used instead of the default.
  */
 export function generateArrangeCode(
   channelNames: string[],
-  sections: { bars: number; activeIndices: number[] }[]
+  sections: { bars: number; activeIndices: number[]; variantNames?: Map<number, string> }[]
 ): string {
   if (sections.length === 0) return ''
 
@@ -2276,7 +2278,11 @@ export function generateArrangeCode(
   sections.forEach((sec, i) => {
     const activeNames = sec.activeIndices
       .filter(idx => idx < channelNames.length)
-      .map(idx => channelNames[idx])
+      .map(idx => {
+        // Use variant variable name if one is set for this channel in this section
+        if (sec.variantNames?.has(idx)) return sec.variantNames.get(idx)!
+        return channelNames[idx]
+      })
       .filter(n => n !== '') // skip empty names
 
     if (activeNames.length === 0) {

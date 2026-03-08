@@ -16,7 +16,7 @@ import StudioKnob from './StudioKnob'
 import ChannelLCD from './ChannelLCD'
 import EffectsDocModal from './EffectsDocModal'
 import TrackView, { type Rack } from './TrackView'
-import ArrangementTimeline, { type ArrangementSection } from './ArrangementTimeline'
+import ArrangementTimeline, { type ArrangementSection, type PatternVariant, nextVariantId } from './ArrangementTimeline'
 import PresetRack from './PresetRack'
 import StudioEffectsPanel from './StudioEffectsPanel'
 import { FX_PRESETS, FX_PRESET_CATEGORIES, type FxPresetCategory } from '@/lib/fx-presets'
@@ -1626,6 +1626,8 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   const [arrangeSections, setArrangeSections] = useState<ArrangementSection[]>([])
   const [arrangeOpen, setArrangeOpen] = useState(false)
   const arrangeInitialized = useRef(false)
+  // ── Pattern variants state ──
+  const [patternVariants, setPatternVariants] = useState<PatternVariant[]>([])
   // ── Automation recording state ──
   const [automationData, setAutomationData] = useState<Map<string, number>>(new Map())
   const [isRecordingAutomation, setIsRecordingAutomation] = useState(false)
@@ -1869,6 +1871,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
         name: ['Intro', 'Verse', 'Build', 'Chorus', 'Bridge', 'Drop', 'Break', 'Outro'][i % 8],
         bars: sec.bars,
         activeChannels: new Set(sec.channelNames.map(n => nameToIdx.get(n) ?? -1).filter(i => i >= 0)),
+        clipVariants: new Map(),
       }))
       setArrangeSections(sections)
       setArrangeOpen(true)
@@ -1880,6 +1883,7 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
   useEffect(() => {
     arrangeInitialized.current = false
     setArrangeSections([])
+    setPatternVariants([])
     // Clear automation when template changes
     automationRef.current = new Map()
     setAutomationData(new Map())
@@ -1909,17 +1913,71 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     const { code: convertedCode, nameMap } = convertBlocksToLet(currentCode)
     currentCode = convertedCode
 
-    const sectionData = sections.map(sec => ({
-      bars: sec.bars,
-      activeIndices: Array.from(sec.activeChannels).sort((a, b) => a - b),
-    }))
+    const sectionData = sections.map(sec => {
+      // Build variant name overrides for this section
+      const variantNames = new Map<number, string>()
+      if (sec.clipVariants.size > 0) {
+        for (const [chIdx, variantId] of sec.clipVariants) {
+          const variant = patternVariants.find(v => v.id === variantId)
+          if (variant && chIdx < nameMap.length) {
+            // Variant variable name: channelName_variantName
+            const varName = `${nameMap[chIdx]}_${variant.name.replace(/[^a-zA-Z0-9_]/g, '_')}`
+            variantNames.set(chIdx, varName)
+          }
+        }
+      }
+      return {
+        bars: sec.bars,
+        activeIndices: Array.from(sec.activeChannels).sort((a, b) => a - b),
+        variantNames: variantNames.size > 0 ? variantNames : undefined,
+      }
+    })
 
     const arrangeCode = generateArrangeCode(nameMap, sectionData)
     const newCode = updateArrangeInCode(currentCode, arrangeCode)
     onCodeChange(newCode)
     // Notify eval chain of current automation + section layout
     onAutomationDataChange?.(automationRef.current, sections.map(s => ({ id: s.id, bars: s.bars })))
-  }, [channels, onCodeChange, onAutomationDataChange])
+  }, [channels, patternVariants, onCodeChange, onAutomationDataChange])
+
+  /** Create a new pattern variant from a channel's current pattern */
+  const handleCreateVariant = useCallback((channelIdx: number, name: string) => {
+    if (channelIdx >= channels.length) return
+    const ch = channels[channelIdx]
+    // Extract the channel's current pattern from code
+    const blockCode = codeRef.current.substring(ch.blockStart, ch.blockEnd)
+    // Strip the $name: or let name = prefix to get the raw pattern
+    const stripped = blockCode
+      .replace(/^\s*\$\w*:\s*/, '')
+      .replace(/^\s*let\s+\w+\s*=\s*/, '')
+      .trim()
+
+    const variant: PatternVariant = {
+      id: nextVariantId(),
+      name,
+      pattern: stripped,
+      channelIdx,
+    }
+    setPatternVariants(prev => [...prev, variant])
+
+    // Also insert a let declaration for this variant in the code
+    const { nameMap } = convertBlocksToLet(codeRef.current)
+    const channelVarName = nameMap[channelIdx] || `ch${channelIdx + 1}`
+    const varName = `${channelVarName}_${name.replace(/[^a-zA-Z0-9_]/g, '_')}`
+    const letDecl = `let ${varName} = ${stripped}`
+
+    // Insert the variant declaration before the arrange block or at end
+    let currentCode = codeRef.current
+    const arrangeMatch = currentCode.match(/\$\s*:\s*arrange\s*\(/)
+    if (arrangeMatch?.index !== undefined) {
+      // Insert right before the arrange block
+      const insertPos = arrangeMatch.index
+      currentCode = currentCode.substring(0, insertPos) + letDecl + '\n\n' + currentCode.substring(insertPos)
+    } else {
+      currentCode = currentCode.trimEnd() + '\n\n' + letDecl + '\n'
+    }
+    onCodeChange(currentCode)
+  }, [channels, onCodeChange])
 
   // Helper: use live code change (re-evaluates engine) when available, else fallback
   const liveUpdate = useCallback((newCode: string) => {
@@ -3264,6 +3322,9 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
                 arrangeOpen={arrangeOpen}
                 onArrangeToggle={() => setArrangeOpen(v => !v)}
                 onArrangeSectionsChange={handleArrangeSectionsChange}
+                patternVariants={patternVariants}
+                onPatternVariantsChange={setPatternVariants}
+                onCreateVariant={handleCreateVariant}
                 automationData={automationData}
                 isRecording={isRecordingAutomation}
                 onRecordToggle={() => setIsRecordingAutomation(v => !v)}
