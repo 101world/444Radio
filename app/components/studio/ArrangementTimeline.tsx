@@ -148,14 +148,19 @@ const ArrangementTimeline = memo(function ArrangementTimeline({
     return (
       <button
         onClick={onToggle}
-        className="flex items-center gap-2 w-full py-1.5 cursor-pointer transition-all hover:bg-white/[0.03]"
-        style={{ background: '#0b0c10', borderTop: '1px solid rgba(255,255,255,0.04)', border: 'none' }}
+        className="flex items-center gap-2 w-full py-2 cursor-pointer transition-all hover:bg-cyan-500/10 group"
+        style={{ background: 'linear-gradient(to right, #0d0e14, #0f1018)', borderTop: '1px solid rgba(0,229,199,0.15)' }}
       >
-        <ChevronUp size={10} className="text-white/20 ml-3" />
-        <Layers size={10} className="text-cyan-400/60" />
-        <span className="text-[8px] font-bold text-white/25 uppercase tracking-widest">
-          Arrangement {sections.length > 0 ? `(${sections.length} sections · ${totalBars} bars)` : ''}
+        <ChevronUp size={11} className="text-cyan-400/40 ml-3 group-hover:text-cyan-400/80 transition-colors" />
+        <Layers size={11} className="text-cyan-400/70" />
+        <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest group-hover:text-white/70 transition-colors">
+          Arrangement
         </span>
+        {sections.length > 0 && (
+          <span className="text-[8px] font-mono text-cyan-400/50 bg-cyan-400/[0.06] px-1.5 py-0.5 rounded">
+            {sections.length} sections · {totalBars} bars
+          </span>
+        )}
       </button>
     )
   }
