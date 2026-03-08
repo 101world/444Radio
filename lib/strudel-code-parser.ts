@@ -2290,7 +2290,7 @@ export function generateArrangeCode(
     } else if (activeNames.length === 1) {
       lines.push(`  [${sec.bars},${activeNames[0]}]${i < sections.length - 1 ? ',' : ''}`)
     } else {
-      lines.push(`  [${sec.bars},s_polymeter(${activeNames.join(',')})]${i < sections.length - 1 ? ',' : ''}`)
+      lines.push(`  [${sec.bars},stack(${activeNames.join(',')})]${i < sections.length - 1 ? ',' : ''}`)
     }
   })
   lines.push('  )')
