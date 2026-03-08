@@ -156,25 +156,41 @@ const AudioClipLane = memo(function AudioClipLane({
 
       let updated: AudioClip
       if (dragState.mode === 'move') {
+        // Move snaps to 1/64 grid (fine positioning)
         const newStart = snapToGrid(Math.max(0, dragState.origStartBar + deltaBars))
         updated = { ...clip, startBar: newStart }
       } else if (dragState.mode === 'trim-right') {
-        const newDur = snapToGrid(Math.max(1 / 64, dragState.origDurationBars + deltaBars))
-        // Don't exceed buffer duration (accounting for trim start)
-        const maxDurBars = secondsToBars(clip.buffer.duration - clip.trimStart, bpm)
-        const trimEnd = clip.buffer.duration - clip.trimStart - barsToSeconds(Math.min(newDur, maxDurBars), bpm)
-        updated = { ...clip, durationBars: Math.min(newDur, maxDurBars), trimEnd: Math.max(0, trimEnd) }
+        // ── WHOLE-BAR STRETCH ──
+        // Snap to nearest whole bar so clip always stays in tempo.
+        // Recalculate playbackRate so the audio fits exactly in those bars.
+        const rawDur = dragState.origDurationBars + deltaBars
+        const wholeBars = Math.max(1, Math.round(rawDur))
+        // Effective audio duration in seconds (original audio region)
+        const effectiveSec = clip.buffer.duration - clip.trimStart - clip.trimEnd
+        // playbackRate = how much to speed/slow to fit in wholeBars
+        const targetSec = barsToSeconds(wholeBars, bpm)
+        const rate = targetSec > 0 ? effectiveSec / targetSec : 1
+        updated = { ...clip, durationBars: wholeBars, playbackRate: rate }
       } else {
-        // trim-left: move start + add trimStart
-        const rawDelta = snapToGrid(deltaBars)
-        const clampedDelta = Math.max(-dragState.origTrimStart / barsToSeconds(1, bpm) * barsToSeconds(1, bpm),
-          Math.min(rawDelta, dragState.origDurationBars - 1 / 64))
+        // ── TRIM-LEFT: whole-bar snap ──
+        // Snap delta to whole bars; adjust start position + trimStart + duration
+        const rawDelta = Math.round(deltaBars) // whole bar steps
+        // Clamp: can't trim beyond buffer start or shrink to 0
+        const maxTrimBars = dragState.origDurationBars - 1
+        const minTrimBars = -secondsToBars(dragState.origTrimStart, bpm)
+        const clampedDelta = Math.max(Math.ceil(minTrimBars), Math.min(rawDelta, maxTrimBars))
         const newTrimStart = dragState.origTrimStart + barsToSeconds(clampedDelta, bpm)
+        const newDur = dragState.origDurationBars - clampedDelta
+        // Recalculate playbackRate for the new region
+        const effectiveSec = clip.buffer.duration - Math.max(0, newTrimStart) - clip.trimEnd
+        const targetSec = barsToSeconds(Math.max(1, newDur), bpm)
+        const rate = targetSec > 0 ? effectiveSec / targetSec : 1
         updated = {
           ...clip,
           startBar: snapToGrid(dragState.origStartBar + clampedDelta),
-          durationBars: dragState.origDurationBars - clampedDelta,
+          durationBars: Math.max(1, newDur),
           trimStart: Math.max(0, newTrimStart),
+          playbackRate: rate,
         }
       }
 
