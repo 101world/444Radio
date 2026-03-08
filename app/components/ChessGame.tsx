@@ -74,6 +74,8 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded }: 
   const [wagerAmount, setWagerAmount] = useState(0)
   const [inviteUsername, setInviteUsername] = useState('')
   const [showWagerSetup, setShowWagerSetup] = useState(false)
+  const [inviteStatus, setInviteStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [inviteMessage, setInviteMessage] = useState('')
 
   const boardRef = useRef<HTMLDivElement>(null)
   const moveListRef = useRef<HTMLDivElement>(null)
@@ -374,7 +376,7 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded }: 
                     <input
                       type="text"
                       value={inviteUsername}
-                      onChange={e => setInviteUsername(e.target.value)}
+                      onChange={e => { setInviteUsername(e.target.value); setInviteStatus('idle'); setInviteMessage('') }}
                       placeholder="@username to challenge..."
                       className="w-full bg-black/60 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-white/25 focus:border-purple-500/40 focus:outline-none"
                     />
@@ -397,36 +399,61 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded }: 
                     </p>
                     <button
                       onClick={async () => {
-                        if (!inviteUsername.replace('@', '').trim()) return
-                        // Create multiplayer game via API
+                        const cleanUsername = inviteUsername.replace('@', '').trim()
+                        if (!cleanUsername) return
+                        setInviteStatus('sending')
+                        setInviteMessage('')
                         try {
                           const res = await fetch('/api/chess', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                               action: 'create',
-                              opponent: inviteUsername.replace('@', '').trim(),
+                              opponent: cleanUsername,
                               wager: wagerAmount,
                             })
                           })
                           const data = await res.json()
                           if (data.success) {
-                            resetGame()
-                            setPlayerColor('white')
-                            setGameMode('multiplayer')
+                            setInviteStatus('sent')
+                            setInviteMessage(data.message || `Challenge sent to @${cleanUsername}!`)
                           } else {
-                            alert(data.error || 'Failed to create game')
+                            setInviteStatus('error')
+                            setInviteMessage(data.error || 'Failed to create game')
                           }
                         } catch {
-                          alert('Failed to create game. Please try again.')
+                          setInviteStatus('error')
+                          setInviteMessage('Network error. Please try again.')
                         }
                       }}
-                      disabled={!inviteUsername.replace('@', '').trim()}
+                      disabled={!inviteUsername.replace('@', '').trim() || inviteStatus === 'sending'}
                       className="w-full px-4 py-2.5 bg-gradient-to-r from-purple-600/30 to-cyan-600/30 border border-purple-500/30 rounded-lg text-xs font-bold text-white hover:from-purple-600/40 hover:to-cyan-600/40 transition-all disabled:opacity-30"
                     >
-                      <Users size={12} className="inline mr-2" />
-                      Send Challenge {wagerAmount > 0 ? `(${wagerAmount} credits)` : '(Free)'}
+                      {inviteStatus === 'sending' ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          Sending...
+                        </span>
+                      ) : (
+                        <>
+                          <Users size={12} className="inline mr-2" />
+                          Send Challenge {wagerAmount > 0 ? `(${wagerAmount} credits)` : '(Free)'}
+                        </>
+                      )}
                     </button>
+                    {/* Invite status feedback */}
+                    {inviteStatus === 'sent' && (
+                      <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                        <span className="text-emerald-400 text-[10px]">✓</span>
+                        <span className="text-[10px] text-emerald-300/80">{inviteMessage}</span>
+                      </div>
+                    )}
+                    {inviteStatus === 'error' && (
+                      <div className="flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg">
+                        <span className="text-red-400 text-[10px]">✕</span>
+                        <span className="text-[10px] text-red-300/80">{inviteMessage}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

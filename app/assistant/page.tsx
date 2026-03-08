@@ -51,8 +51,8 @@ interface AssistantSettings {
 const DEFAULT_SETTINGS: AssistantSettings = {
   temperature: 1,
   top_p: 0.95,
-  max_output_tokens: 16384,
-  thinking_level: 'high',
+  max_output_tokens: 2048,
+  thinking_level: 'low',
 }
 
 const STORAGE_KEY = '444radio_assistant_sessions'
@@ -465,9 +465,16 @@ export default function AssistantPage() {
 
   // ─── RENDER ───────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white flex md:pl-14">
+    <div className="min-h-screen bg-black text-white flex md:pl-14">
+      {/* Ambient Glow Overlays — matches Create page */}
+      <div className="fixed inset-0 pointer-events-none z-0" aria-hidden="true">
+        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] rounded-full blur-[120px] bg-cyan-500/[0.03]" />
+        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full blur-[100px] bg-teal-500/[0.025]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] rounded-full blur-[150px] bg-cyan-400/[0.015]" />
+      </div>
+
       {/* ══ Sessions Sidebar (DESKTOP) ══ */}
-      <div className="hidden lg:flex flex-col w-60 border-r border-white/[0.06] bg-[#0c0c14]">
+      <div className="hidden lg:flex flex-col w-60 border-r border-white/[0.06] bg-black/80 backdrop-blur-xl relative z-10">
         <div className="p-3 border-b border-white/[0.06]">
           <button
             onClick={createSession}
@@ -525,9 +532,9 @@ export default function AssistantPage() {
       </div>
 
       {/* ══ Main Chat Area ══ */}
-      <div className="flex-1 flex flex-col min-w-0 relative">
+      <div className="flex-1 flex flex-col min-w-0 relative z-10">
         {/* ── Header ── */}
-        <header className="sticky top-0 z-20 bg-[#0a0a0f]/95 backdrop-blur-xl border-b border-white/[0.06] px-4 py-2.5 flex items-center gap-3">
+        <header className="sticky top-0 z-20 bg-black/90 backdrop-blur-xl border-b border-white/[0.06] px-4 py-2.5 flex items-center gap-3">
           <button onClick={() => setShowSessions(!showSessions)} className="lg:hidden p-2 rounded-lg hover:bg-white/[0.06] transition-colors">
             <MessageSquare size={17} className="text-white/40" />
           </button>
@@ -567,7 +574,7 @@ export default function AssistantPage() {
 
         {/* ── Mobile sessions drawer ── */}
         {showSessions && (
-          <div className="lg:hidden absolute inset-0 z-30 bg-[#0a0a0f]/98 backdrop-blur-xl flex flex-col">
+          <div className="lg:hidden absolute inset-0 z-30 bg-black/98 backdrop-blur-xl flex flex-col">
             <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
               <h2 className="text-sm font-semibold text-white/70">Chat History</h2>
               <button onClick={() => setShowSessions(false)} className="text-white/30 hover:text-white"><X size={16} /></button>
@@ -596,7 +603,7 @@ export default function AssistantPage() {
 
         {/* ── Settings panel ── */}
         {showSettings && (
-          <div className="bg-[#0c0c14] border-b border-white/[0.06] px-4 py-4">
+          <div className="bg-black/80 backdrop-blur-xl border-b border-white/[0.06] px-4 py-4">
             <div className="max-w-2xl mx-auto space-y-4">
               <h3 className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Model Settings</h3>
 
@@ -772,7 +779,7 @@ export default function AssistantPage() {
         )}
 
         {/* ── Input area ── */}
-        <div className="sticky bottom-0 bg-[#0a0a0f]/95 backdrop-blur-xl border-t border-white/[0.06] px-4 py-3">
+        <div className="sticky bottom-0 bg-black/90 backdrop-blur-xl border-t border-white/[0.06] px-4 py-3">
           <div className="max-w-3xl mx-auto">
             {pendingAttachments.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-2">
