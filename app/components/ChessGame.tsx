@@ -18,6 +18,7 @@ interface ChessGameProps {
   onClose: () => void
   currentUserId?: string
   embedded?: boolean  // When used inside profile page
+  activeGameId?: string  // When joining a multiplayer game from notification
 }
 
 type GameMode = 'menu' | 'cpu' | 'multiplayer' | 'wager'
@@ -47,7 +48,7 @@ const RULES = [
 // ═══════════════════════════════════════════════════════════════
 //  CHESS GAME COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function ChessGame({ isOpen, onClose, currentUserId, embedded }: ChessGameProps) {
+export default function ChessGame({ isOpen, onClose, currentUserId, embedded, activeGameId }: ChessGameProps) {
   // ── Game state ──
   const [gameState, setGameState] = useState<GameState>(createInitialState())
   const [selectedSquare, setSelectedSquare] = useState<[number, number] | null>(null)
@@ -81,6 +82,11 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded }: 
   const [showSearchDropdown, setShowSearchDropdown] = useState(false)
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+  // ── Multiplayer game state ──
+  const [multiplayerGameId, setMultiplayerGameId] = useState<string | null>(null)
+  const [opponentName, setOpponentName] = useState<string>('')
+  const [multiplayerColor, setMultiplayerColor] = useState<PieceColor>('white')
+
   const boardRef = useRef<HTMLDivElement>(null)
   const moveListRef = useRef<HTMLDivElement>(null)
   const cpuThinkingRef = useRef(false)
@@ -109,6 +115,37 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded }: 
     }, 250)
     return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current) }
   }, [inviteUsername])
+
+  // ── Auto-join multiplayer game from notification ──
+  useEffect(() => {
+    if (!activeGameId || !currentUserId) return
+    // Fetch game details and enter game mode
+    async function loadGame() {
+      try {
+        const res = await fetch(`/api/chess?gameId=${encodeURIComponent(activeGameId!)}`)
+        if (!res.ok) return
+        const data = await res.json()
+        const game = data.game
+        if (!game) return
+
+        // Determine player color
+        const isWhite = game.white_player_id === currentUserId
+        const color: PieceColor = isWhite ? 'white' : 'black'
+
+        setMultiplayerGameId(game.id)
+        setMultiplayerColor(color)
+        setPlayerColor(color)
+        setBoardFlipped(color === 'black')
+        setOpponentName(data.opponentUsername || 'Opponent')
+        setWagerAmount(game.wager || 0)
+        setGameMode('multiplayer')
+        resetGame()
+      } catch (err) {
+        console.error('[chess] Failed to load game:', err)
+      }
+    }
+    loadGame()
+  }, [activeGameId, currentUserId])
 
   // ── Auto-scroll move list ──
   useEffect(() => {
@@ -310,7 +347,7 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded }: 
               <p className="text-[9px] text-cyan-400/50">
                 {gameMode === 'menu' ? 'Choose your battle' :
                   gameMode === 'cpu' ? `vs CPU (${difficulty})` :
-                  'Multiplayer'}
+                  `vs @${opponentName || 'Opponent'}${wagerAmount > 0 ? ` • ${wagerAmount} credits` : ''}`}
               </p>
             </div>
           </div>
@@ -537,8 +574,13 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded }: 
                     {gameMode === 'cpu' ? '🤖' : '👤'}
                   </div>
                   <span className="text-xs text-white/60 font-medium">
-                    {gameMode === 'cpu' ? `CPU (${difficulty})` : inviteUsername || 'Opponent'}
+                    {gameMode === 'cpu' ? `CPU (${difficulty})` : opponentName || inviteUsername || 'Opponent'}
                   </span>
+                  {gameMode === 'multiplayer' && wagerAmount > 0 && (
+                    <span className="text-[10px] text-amber-400 font-medium flex items-center gap-1">
+                      <Zap size={10} /> {wagerAmount} credits
+                    </span>
+                  )}
                   <div className="flex-1" />
                   {/* Captured pieces */}
                   <div className="flex gap-0.5">

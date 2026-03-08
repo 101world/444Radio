@@ -1,34 +1,84 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useUser } from '@clerk/nextjs';
-import { usePathname, useRouter } from 'next/navigation';
-import { Bell, X, Check, XCircle, Loader2, Crown } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Bell, X, Check, XCircle, Loader2, Swords } from 'lucide-react';
 
-type NotificationItem = {
+// ─── Types ──────────────────────────────────────────────────
+interface Notification {
   id: string;
   title: string;
   body?: string;
-  unread?: boolean;
+  unread: boolean;
   created_at?: string;
   type?: string;
   data?: Record<string, any>;
-};
+}
 
+type ActionState = { status: 'loading' | 'done' | 'error'; action?: string; msg?: string };
+
+// ─── Component ──────────────────────────────────────────────
 export default function NotificationBell() {
   const { user, isLoaded } = useUser();
-  const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState<NotificationItem[]>([]);
-  const [mounted, setMounted] = useState(false);
-  const [actionLoading, setActionLoading] = useState<Record<string, string>>({});
-  const ref = useRef<HTMLDivElement | null>(null);
+  const [items, setItems] = useState<Notification[]>([]);
+  const [ready, setReady] = useState(false);
+  const [actionStates, setActionStates] = useState<Record<string, ActionState>>({});
+  const panelRef = useRef<HTMLDivElement>(null);
 
-  const handleChessAction = async (notif: NotificationItem, action: 'accept' | 'decline') => {
+  // ── Fetch notifications ──
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await fetch('/api/notifications');
+      if (!res.ok) { console.warn('[bell] fetch failed', res.status); return; }
+      const json = await res.json();
+      const list: Notification[] = (json?.notifications ?? json ?? []).map((n: any) => ({
+        id: n.id ?? crypto.randomUUID(),
+        title: n.title ?? 'Notification',
+        body: n.body ?? n.message ?? undefined,
+        unread: typeof n.unread === 'boolean' ? n.unread : true,
+        created_at: n.created_at,
+        type: n.type,
+        data: n.data ?? n.metadata ?? undefined,
+      }));
+      setItems(list);
+    } catch (err) {
+      console.error('[bell] fetch error', err);
+    }
+  }, []);
+
+  // ── Mount + hydration guard ──
+  useEffect(() => { setReady(true); }, []);
+
+  // ── Fetch on load and periodically ──
+  useEffect(() => {
+    if (!isLoaded || !user?.id) return;
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30_000); // poll every 30s
+    return () => clearInterval(interval);
+  }, [isLoaded, user?.id, fetchNotifications]);
+
+  // ── Click outside to close ──
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (panelRef.current && e.target instanceof Node && !panelRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  // ── Chess accept / decline ──
+  const handleChessAction = async (notif: Notification, action: 'accept' | 'decline') => {
     const gameId = notif.data?.gameId;
     if (!gameId) return;
-    setActionLoading(prev => ({ ...prev, [notif.id]: action }));
+
+    setActionStates(prev => ({ ...prev, [notif.id]: { status: 'loading', action } }));
+
     try {
       const res = await fetch('/api/chess', {
         method: 'POST',
@@ -36,186 +86,189 @@ export default function NotificationBell() {
         body: JSON.stringify({ action, gameId }),
       });
       const result = await res.json();
+
       if (res.ok) {
-        // Mark as read and update the notification in place
-        setItems(s => s.map(it => it.id === notif.id ? {
-          ...it,
-          unread: false,
-          body: action === 'accept' ? '✅ Accepted! Open Chess to play.' : '❌ Declined.',
-          data: { ...it.data, resolved: true },
-        } : it));
+        setActionStates(prev => ({
+          ...prev,
+          [notif.id]: { status: 'done', action, msg: action === 'accept' ? 'Accepted!' : 'Declined.' },
+        }));
+        // Mark as read locally
+        setItems(prev => prev.map(it => it.id === notif.id ? { ...it, unread: false } : it));
+
+        // If accepted, navigate to chess game after a brief moment
+        if (action === 'accept') {
+          setTimeout(() => {
+            setOpen(false);
+            router.push(`/assistant?chess=${gameId}`);
+          }, 600);
+        }
       } else {
-        setItems(s => s.map(it => it.id === notif.id ? {
-          ...it,
-          body: `Error: ${result.error || 'Something went wrong'}`,
-        } : it));
+        setActionStates(prev => ({
+          ...prev,
+          [notif.id]: { status: 'error', msg: result.error || 'Failed' },
+        }));
       }
     } catch {
-      setItems(s => s.map(it => it.id === notif.id ? {
-        ...it,
-        body: 'Network error. Try again.',
-      } : it));
-    } finally {
-      setActionLoading(prev => { const next = { ...prev }; delete next[notif.id]; return next; });
+      setActionStates(prev => ({
+        ...prev,
+        [notif.id]: { status: 'error', msg: 'Network error' },
+      }));
     }
   };
 
-  // Prevent hydration mismatch
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // ── Mark all read ──
+  const markAllRead = () => setItems(prev => prev.map(it => ({ ...it, unread: false })));
 
-  useEffect(() => {
-    function onDoc(e: MouseEvent) {
-      if (!ref.current) return;
-      if (e.target instanceof Node && !ref.current.contains(e.target)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener('click', onDoc);
-    return () => document.removeEventListener('click', onDoc);
-  }, []);
-
-  useEffect(() => {
-    if (!isLoaded || !user?.id) return;
-
-    let mounted = true;
-    async function fetchNotifications() {
-      try {
-        const res = await fetch('/api/notifications');
-        if (!res.ok) return;
-        const data = await res.json();
-        const nextItems = Array.isArray(data)
-          ? data
-          : Array.isArray(data?.notifications)
-            ? data.notifications
-            : [];
-        if (mounted) setItems(nextItems);
-      } catch (err) {
-        // noop
-      }
-    }
-    fetchNotifications();
-    return () => {
-      mounted = false;
-    };
-  }, [isLoaded, user?.id]);
-
-  // Return placeholder during SSR to prevent hydration mismatch
-  if (!mounted || !isLoaded || !user) {
+  // ── SSR placeholder ──
+  if (!ready || !isLoaded || !user) {
     return (
-      <div className={pathname === '/create' ? 'fixed top-4 right-[5.5rem] z-50' : 'relative'}>
-        <div className="p-2 text-gray-300 flex items-center opacity-50">
+      <div className="relative">
+        <div className="p-2 text-gray-400">
           <Bell className="w-5 h-5" />
         </div>
       </div>
     );
   }
 
-  const unreadCount = items.filter((i) => i.unread).length;
-
-  const openSettings = () => router.push('/settings?tab=notifications');
-
-  // Render floating bell on create page to sit near CreditBadge
-  const isCreate = pathname === '/create';
+  const unreadCount = items.filter(i => i.unread).length;
 
   return (
-    <div
-      ref={ref}
-      className={isCreate ? 'fixed top-4 right-[5.5rem] z-50' : 'relative'}
-    >
+    <div ref={panelRef} className="relative">
+      {/* ── Bell button ── */}
       <button
-        onClick={() => setOpen((s) => !s)}
+        onClick={() => setOpen(prev => !prev)}
         aria-label="Notifications"
-        className="p-2 text-gray-300 hover:text-white transition-colors flex items-center"
-        title="Notifications"
+        className="p-2 text-gray-300 hover:text-white transition-colors relative"
       >
         <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
-          <span className="ml-1 inline-flex items-center justify-center rounded-full bg-red-600 text-white text-[10px] w-4 h-4">
-            {unreadCount}
+          <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-red-500 text-white text-[9px] font-bold px-1 leading-none">
+            {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
       </button>
 
+      {/* ── Dropdown panel ── */}
       {open && (
         <div
-          className="mt-2 w-80 bg-gray-900 text-white rounded-lg shadow-lg overflow-hidden"
-          style={{ position: 'absolute', right: 0, top: '100%' }}
+          className="absolute right-0 top-full mt-2 w-80 bg-gray-950 border border-white/10 rounded-xl shadow-2xl shadow-black/80 overflow-hidden z-[200]"
         >
-          <div className="flex items-center justify-between px-3 py-2 border-b border-gray-800">
-            <div className="text-sm font-medium">Notifications</div>
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5 bg-black/50">
+            <span className="text-sm font-semibold text-white">Notifications</span>
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => setItems((s) => s.map((i) => ({ ...i, unread: false })))}
-                className="text-xs text-gray-400 hover:text-white"
-              >
-                Mark all read
-              </button>
-              <button onClick={() => setOpen(false)} className="p-1">
-                <X className="w-4 h-4 text-gray-400" />
+              {items.length > 0 && (
+                <button onClick={markAllRead} className="text-[10px] text-gray-500 hover:text-white transition-colors">
+                  Mark all read
+                </button>
+              )}
+              <button onClick={() => setOpen(false)} className="p-1 hover:bg-white/5 rounded">
+                <X className="w-3.5 h-3.5 text-gray-500" />
               </button>
             </div>
           </div>
 
-          <div className="max-h-64 overflow-auto">
+          {/* Items */}
+          <div className="max-h-72 overflow-y-auto divide-y divide-white/[0.03]">
             {items.length === 0 && (
-              <div className="p-4 text-sm text-gray-400">No notifications</div>
+              <div className="px-4 py-8 text-center">
+                <Bell className="w-6 h-6 text-gray-700 mx-auto mb-2" />
+                <p className="text-xs text-gray-600">No notifications yet</p>
+              </div>
             )}
-            {items.map((n) => {
-              const isChessChallenge = n.type === 'chess_challenge' && n.data?.gameId && !n.data?.resolved;
-              const loading = actionLoading[n.id];
+
+            {items.map(n => {
+              const isChess = n.type === 'chess_challenge';
+              const state = actionStates[n.id];
+              const resolved = state?.status === 'done';
 
               return (
                 <div
                   key={n.id}
-                  className={`px-3 py-2 hover:bg-gray-800 ${n.unread ? 'bg-gray-800/60' : ''}`}
+                  className={`px-4 py-3 transition-colors ${n.unread ? 'bg-cyan-500/[0.03]' : ''} hover:bg-white/[0.02]`}
                   onClick={() => {
-                    if (!isChessChallenge) {
-                      setItems((s) => s.map((it) => (it.id === n.id ? { ...it, unread: false } : it)));
-                    }
+                    if (!isChess) setItems(prev => prev.map(it => it.id === n.id ? { ...it, unread: false } : it));
                   }}
                 >
-                  <div className="text-sm font-medium">{n.title}</div>
-                  {n.body && <div className="text-xs text-gray-400 mt-0.5">{n.body}</div>}
+                  {/* Title + body */}
+                  <p className={`text-sm font-medium ${n.unread ? 'text-white' : 'text-gray-400'}`}>{n.title}</p>
+                  {n.body && <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{n.body}</p>}
 
-                  {isChessChallenge && (
-                    <div className="flex items-center gap-2 mt-2">
+                  {/* Chess challenge actions */}
+                  {isChess && !resolved && (
+                    <div className="flex items-center gap-2 mt-2.5">
                       <button
-                        disabled={!!loading}
+                        disabled={state?.status === 'loading'}
                         onClick={(e) => { e.stopPropagation(); handleChessAction(n, 'accept'); }}
-                        className="flex items-center gap-1 px-3 py-1 rounded bg-green-600 hover:bg-green-500 disabled:opacity-50 text-xs font-medium text-white transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-xs font-semibold text-white transition-all"
                       >
-                        {loading === 'accept' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                        {state?.status === 'loading' && state.action === 'accept'
+                          ? <Loader2 className="w-3 h-3 animate-spin" />
+                          : <Check className="w-3 h-3" />
+                        }
                         Accept
                       </button>
                       <button
-                        disabled={!!loading}
+                        disabled={state?.status === 'loading'}
                         onClick={(e) => { e.stopPropagation(); handleChessAction(n, 'decline'); }}
-                        className="flex items-center gap-1 px-3 py-1 rounded bg-red-600/80 hover:bg-red-500 disabled:opacity-50 text-xs font-medium text-white transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-red-500/20 border border-white/10 hover:border-red-500/30 disabled:opacity-40 text-xs font-semibold text-gray-400 hover:text-red-300 transition-all"
                       >
-                        {loading === 'decline' ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />}
+                        {state?.status === 'loading' && state.action === 'decline'
+                          ? <Loader2 className="w-3 h-3 animate-spin" />
+                          : <XCircle className="w-3 h-3" />
+                        }
                         Decline
                       </button>
                       {n.data?.wager != null && n.data.wager > 0 && (
-                        <span className="text-xs text-amber-400 flex items-center gap-0.5">
-                          <Crown className="w-3 h-3" /> {n.data?.wager} credits
-                        </span>
+                        <span className="text-[10px] text-amber-400 ml-auto">{n.data?.wager} credits</span>
                       )}
                     </div>
+                  )}
+
+                  {/* Resolved state */}
+                  {isChess && resolved && (
+                    <div className={`mt-2 text-xs font-medium flex items-center gap-1.5 ${state.action === 'accept' ? 'text-emerald-400' : 'text-gray-500'}`}>
+                      {state.action === 'accept' ? <Swords className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                      {state.msg}
+                      {state.action === 'accept' && (
+                        <span className="text-[10px] text-emerald-500/60 ml-1">Joining game...</span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Error state */}
+                  {state?.status === 'error' && (
+                    <p className="mt-1.5 text-[10px] text-red-400">{state.msg}</p>
+                  )}
+
+                  {/* Timestamp */}
+                  {n.created_at && (
+                    <p className="text-[10px] text-gray-700 mt-1.5">
+                      {formatTime(n.created_at)}
+                    </p>
                   )}
                 </div>
               );
             })}
           </div>
-
-          <div className="px-3 py-2 border-t border-gray-800">
-            <button onClick={openSettings} className="w-full text-sm text-gray-300 hover:text-white">
-              Open notification settings
-            </button>
-          </div>
         </div>
       )}
     </div>
   );
+}
+
+// ─── Time formatter ──────────────────────────────────────────
+function formatTime(iso: string): string {
+  try {
+    const d = new Date(iso);
+    const now = Date.now();
+    const diff = now - d.getTime();
+    if (diff < 60_000) return 'Just now';
+    if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+    if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+    if (diff < 604_800_000) return `${Math.floor(diff / 86_400_000)}d ago`;
+    return d.toLocaleDateString();
+  } catch {
+    return '';
+  }
 }

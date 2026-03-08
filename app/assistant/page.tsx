@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useUser } from '@clerk/nextjs'
+import { useSearchParams } from 'next/navigation'
 import {
   Send, Loader2, Settings, Trash2, Plus, ChevronDown,
   MessageSquare, Bot, User as UserIcon, Sparkles, Volume2, Music,
@@ -94,6 +95,17 @@ export default function AssistantPage() {
   // ── Tools ──
   const [showChess, setShowChess] = useState(false)
   const [showProducerTools, setShowProducerTools] = useState(false)
+  const [activeChessGameId, setActiveChessGameId] = useState<string | null>(null)
+
+  // ── Auto-open chess from URL param (e.g. /assistant?chess=gameId) ──
+  const searchParams = useSearchParams()
+  useEffect(() => {
+    const chessParam = searchParams.get('chess')
+    if (chessParam) {
+      setActiveChessGameId(chessParam)
+      setShowChess(true)
+    }
+  }, [searchParams])
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const chatContainerRef = useRef<HTMLDivElement>(null)
@@ -839,7 +851,7 @@ export default function AssistantPage() {
       </div>
 
       {/* ═══ Tool Overlays ═══ */}
-      {showChess && <ChessGame isOpen={showChess} onClose={() => setShowChess(false)} currentUserId={user?.id} />}
+      {showChess && <ChessGame isOpen={showChess} onClose={() => { setShowChess(false); setActiveChessGameId(null); }} currentUserId={user?.id} activeGameId={activeChessGameId ?? undefined} />}
       {showProducerTools && <ProducerToolsPanel isOpen={showProducerTools} onClose={() => setShowProducerTools(false)} />}
     </div>
   )

@@ -39,6 +39,40 @@ export async function POST(req: NextRequest) {
   }
 }
 
+// ─── GET: fetch game details by ID ───
+export async function GET(req: NextRequest) {
+  const { userId } = await auth()
+  if (!userId) {
+    return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+  }
+
+  const gameId = req.nextUrl.searchParams.get('gameId')
+  if (!gameId) {
+    return corsResponse(NextResponse.json({ error: 'gameId required' }, { status: 400 }))
+  }
+
+  const { data: game, error } = await supabase
+    .from('chess_games')
+    .select('*')
+    .eq('id', gameId)
+    .single()
+
+  if (error || !game) {
+    return corsResponse(NextResponse.json({ error: 'Game not found' }, { status: 404 }))
+  }
+
+  // Only allow players in this game to see details
+  if (game.white_player_id !== userId && game.black_player_id !== userId) {
+    return corsResponse(NextResponse.json({ error: 'Not your game' }, { status: 403 }))
+  }
+
+  // Get opponent username
+  const opponentId = game.white_player_id === userId ? game.black_player_id : game.white_player_id
+  const opponentUsername = await getUsername(opponentId)
+
+  return corsResponse(NextResponse.json({ game, opponentUsername }))
+}
+
 // ─── Helper: look up username from clerk_user_id ───
 async function getUsername(clerkUserId: string): Promise<string> {
   const { data } = await supabase
