@@ -194,8 +194,8 @@ export class ClipPlaybackEngine {
     const now = this.ctx.currentTime
     const beatsPerSec = bpm / 60
     const barsPerSec = beatsPerSec / 4
-    // Look-ahead window: 200ms
-    const lookAheadBars = 0.2 * barsPerSec
+    // Look-ahead window: 300ms worth of bars (generous to avoid missing clips)
+    const lookAheadBars = 0.3 * barsPerSec
 
     const currentPass = Math.floor(currentCycle / totalBars)
     const cycleWrapped = currentCycle % totalBars
@@ -217,22 +217,22 @@ export class ClipPlaybackEngine {
       if (track.muted) continue
       if (anyTrackSoloed && !track.soloed) continue
 
-      // Effective clip end after trim
+      // Effective duration after trim
       const effectiveDurationBars = clip.durationBars - secondsToBars(clip.trimStart + clip.trimEnd, bpm)
+      if (effectiveDurationBars <= 0) continue
       const clipStart = clip.startBar % totalBars
-      const clipEnd = clipStart + effectiveDurationBars
 
-      // Compare clip start against the current window
+      const scheduleKey = `${clip.id}@${currentPass}`
+      if (this.scheduledClips.has(scheduleKey)) continue
+
+      // Compare clip start against the current position
       let delta = clipStart - cycleWrapped
       // Handle wrapping around arrangement end
       if (delta < -totalBars / 2) delta += totalBars
       if (delta > totalBars / 2) delta -= totalBars
 
-      // Only schedule clips in the near future (not already scheduled this pass)
+      // Schedule clips in the near future (look-ahead window)
       if (delta >= 0 && delta < lookAheadBars) {
-        const scheduleKey = `${clip.id}@${currentPass}`
-        if (this.scheduledClips.has(scheduleKey)) continue
-
         const startTimeSec = now + (delta / barsPerSec)
 
         // Limit play duration so clip stops at arrangement end
@@ -240,6 +240,17 @@ export class ClipPlaybackEngine {
         const maxPlayBars = Math.min(effectiveDurationBars, remainingBarsInArrangement)
 
         this.playClip(clip, track, startTimeSec, scheduleKey, maxPlayBars, bpm)
+      }
+      // Also schedule if we're already INSIDE the clip (e.g. user just uploaded
+      // it, or seeked into the middle). Play from the offset position.
+      else if (delta < 0 && delta > -effectiveDurationBars) {
+        // We're |delta| bars into the clip already
+        const elapsedBars = -delta
+        const remainBars = Math.min(effectiveDurationBars - elapsedBars, totalBars - cycleWrapped)
+        if (remainBars > 0.1) { // at least 0.1 bar remaining
+          const elapsedSec = barsToSeconds(elapsedBars, bpm)
+          this.playClipFromOffset(clip, track, now, scheduleKey, remainBars, bpm, elapsedSec)
+        }
       }
     }
 
@@ -289,6 +300,41 @@ export class ClipPlaybackEngine {
     }
   }
 
+  /** Play a clip starting from a given offset (for joining mid-clip) */
+  private playClipFromOffset(clip: AudioClip, track: AudioTrack, when: number, scheduleKey: string, remainBars: number, bpm: number, offsetSec: number): void {
+    const source = this.ctx.createBufferSource()
+    source.buffer = clip.buffer
+
+    const rate = clip.playbackRate || 1
+    source.playbackRate.value = rate
+    if (clip.detuneCents && clip.detuneCents !== 0) {
+      source.detune.value = clip.detuneCents
+    }
+
+    const clipGain = this.ctx.createGain()
+    clipGain.gain.value = clip.gain
+
+    const trackGain = this.getTrackGain(track.id, track.gain)
+    source.connect(clipGain)
+    clipGain.connect(trackGain)
+
+    // Start from trimStart + the elapsed offset (adjusted for rate)
+    const bufferOffset = clip.trimStart + (offsetSec / rate)
+    const maxDurationFromTrim = clip.buffer.duration - bufferOffset - clip.trimEnd
+    const maxDurationFromArrangement = barsToSeconds(remainBars, bpm) / rate
+    const duration = Math.max(0.001, Math.min(maxDurationFromTrim, maxDurationFromArrangement))
+
+    if (duration <= 0 || bufferOffset >= clip.buffer.duration) return
+
+    source.start(when, bufferOffset, duration)
+    this.scheduledClips.add(scheduleKey)
+    this.activeSources.set(scheduleKey, { source, clipGain })
+
+    source.onended = () => {
+      this.activeSources.delete(scheduleKey)
+    }
+  }
+
   /** Stop all currently playing clip sources */
   stopAll(): void {
     for (const [, { source }] of this.activeSources) {
@@ -298,7 +344,7 @@ export class ClipPlaybackEngine {
     this.scheduledClips.clear()
   }
 
-  /** Start the scheduling loop */
+  /** Start the scheduling loop (if already running, updates state without restart) */
   startLoop(
     getCyclePosition: () => number | null,
     bpm: number,
@@ -306,7 +352,11 @@ export class ClipPlaybackEngine {
     tracks: AudioTrack[],
     totalBars: number,
   ): void {
-    this.stopLoop()
+    // If loop is already running, just update state — don't fully restart
+    if (this.rafId !== null) {
+      this.updateLoopState(clips, tracks, totalBars, bpm)
+      return
+    }
     this.lastPass = -1
     const state = { clips, tracks, totalBars, bpm }
     const tick = () => {

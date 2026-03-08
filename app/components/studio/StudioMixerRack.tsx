@@ -1681,30 +1681,35 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     [arrangeSections],
   )
 
-  // Start/stop clip scheduling when transport plays/stops
+  // Start/stop clip scheduling when transport plays/stops OR clips are added/removed
+  const getCyclePositionRef = useRef(getCyclePosition)
+  getCyclePositionRef.current = getCyclePosition
   useEffect(() => {
     if (isPlayingProp && audioClips.length > 0) {
       if (!clipEngineRef.current) {
         clipEngineRef.current = new ClipPlaybackEngine(new AudioContext())
       }
       const engine = clipEngineRef.current
+      // Start the loop if it's not already running (or restart with fresh state)
       engine.startLoop(
-        getCyclePosition ?? (() => null),
+        () => getCyclePositionRef.current?.() ?? null,
         projectBpm,
         audioClips,
         audioTracks,
         totalArrangeBars,
       )
-    } else {
+    } else if (!isPlayingProp) {
       clipEngineRef.current?.stopLoop()
     }
     return () => { clipEngineRef.current?.stopLoop() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPlayingProp])
+  }, [isPlayingProp, audioClips.length > 0])
 
   // Update clip engine state when clips/tracks/bpm change (without restarting loop)
   useEffect(() => {
-    clipEngineRef.current?.updateLoopState(audioClips, audioTracks, totalArrangeBars, projectBpm)
+    if (clipEngineRef.current) {
+      clipEngineRef.current.updateLoopState(audioClips, audioTracks, totalArrangeBars, projectBpm)
+    }
   }, [audioClips, audioTracks, totalArrangeBars, projectBpm])
 
   // Cleanup on unmount
