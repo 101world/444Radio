@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { X, Wand2, Replace, RefreshCw, MicVocal, Headphones, Crown, Upload, Loader2, Zap, ArrowLeft, HelpCircle, Mic, Square, Sparkles } from 'lucide-react'
+import { X, Wand2, Replace, RefreshCw, MicVocal, Headphones, Crown, Upload, Loader2, Zap, ArrowLeft, HelpCircle, Mic, Square, Sparkles, Video } from 'lucide-react'
 
 interface ProFeaturesModalProps {
   isOpen: boolean
   onClose: () => void
-  initialFeature: 'extend' | 'inpaint' | 'cover' | 'add-vocals' | 'voice-to-melody'
+  initialFeature: 'extend' | 'inpaint' | 'cover' | 'add-vocals' | 'voice-to-melody' | 'music-video'
   userCredits: number | null
 }
 
@@ -41,6 +41,12 @@ const FEATURE_INFO: Record<string, { icon: any; label: string; desc: string; cos
     fields: ['uploadUrl', 'title', 'tags'],
     help: 'Upload a vocal recording, hum, or melody you\'ve sung. The AI will create full instrumental backing that matches your melody. Add style tags (e.g. "lo-fi hip-hop, chill") to guide the genre.',
   },
+  'music-video': {
+    icon: Video, label: '444 Music Video', desc: 'Generate a cinematic music video for any track',
+    cost: 22,
+    fields: ['taskId', 'audioId', 'author', 'domainName'],
+    help: 'Create a music video (MP4) from a previously generated track. Provide the Task ID and Audio ID from the original generation. Author and domain customize the watermark. 22 credits per video.',
+  },
 }
 
 export default function ProFeaturesModal({ isOpen, onClose, initialFeature, userCredits }: ProFeaturesModalProps) {
@@ -60,6 +66,8 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
   const [side, setSide] = useState<'left' | 'right'>('right')
   const [infillStartS, setInfillStartS] = useState('')
   const [infillEndS, setInfillEndS] = useState('')
+  const [author, setAuthor] = useState('444 Radio')
+  const [domainName, setDomainName] = useState('444radio.co.in')
 
   // File upload state
   const [uploadFile, setUploadFile] = useState<File | null>(null)
@@ -162,6 +170,7 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
     setAudioId(''); setTaskId(''); setUploadUrl(''); setTitle('');
     setPrompt(''); setStyle(''); setTags(''); setSide('right');
     setInfillStartS(''); setInfillEndS('');
+    setAuthor('444 Radio'); setDomainName('444radio.co.in');
     setResult(null); setError(null); setUploadFile(null);
     setRecordedBlob(null); setRecordingTime(0);
     if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop()
@@ -228,6 +237,12 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
           if (!tags) throw new Error('Style tags are required')
           endpoint = '/api/generate/suno/voice-to-melody'
           body = { uploadUrl, title: title || 'Voice to Melody', tags }
+          break
+        case 'music-video':
+          if (!taskId) throw new Error('Task ID from a previous generation is required')
+          if (!audioId) throw new Error('Audio ID is required')
+          endpoint = '/api/generate/suno/music-video'
+          body = { taskId, audioId, author: author || '444 Radio', domainName: domainName || '444radio.co.in' }
           break
       }
 
@@ -485,6 +500,45 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
             </div>
           )}
 
+          {info.fields.includes('taskId') && (
+            <div>
+              <label className={labelClass}>
+                Task ID
+                <span className="relative group/tip inline-block ml-1 align-middle">
+                  <HelpCircle size={10} className="text-white/20 hover:text-red-400 cursor-help" />
+                  <span className="hidden group-hover/tip:block absolute left-0 top-4 z-50 w-52 p-2 rounded-lg bg-black/95 border border-white/10 text-[10px] text-white/60 font-normal normal-case tracking-normal shadow-xl">The task ID from a previously completed music generation. Found in your generation history.</span>
+                </span>
+              </label>
+              <input type="text" value={taskId} onChange={(e) => setTaskId(e.target.value)} placeholder="Paste task ID from generation..." className={inputClass} />
+            </div>
+          )}
+
+          {info.fields.includes('audioId') && (
+            <div>
+              <label className={labelClass}>
+                Audio ID
+                <span className="relative group/tip inline-block ml-1 align-middle">
+                  <HelpCircle size={10} className="text-white/20 hover:text-red-400 cursor-help" />
+                  <span className="hidden group-hover/tip:block absolute left-0 top-4 z-50 w-52 p-2 rounded-lg bg-black/95 border border-white/10 text-[10px] text-white/60 font-normal normal-case tracking-normal shadow-xl">The audio ID of the specific track to create a video for.</span>
+                </span>
+              </label>
+              <input type="text" value={audioId} onChange={(e) => setAudioId(e.target.value)} placeholder="Paste audio ID..." className={inputClass} />
+            </div>
+          )}
+
+          {info.fields.includes('author') && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelClass}>Author</label>
+                <input type="text" value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="444 Radio" maxLength={50} className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Domain</label>
+                <input type="text" value={domainName} onChange={(e) => setDomainName(e.target.value)} placeholder="444radio.co.in" maxLength={50} className={inputClass} />
+              </div>
+            </div>
+          )}
+
           {info.fields.includes('tags') && (
             <div>
               <label className={labelClass}>Style Tags</label>
@@ -518,6 +572,13 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
                   <p className="text-xs font-bold text-green-300">Generation complete!</p>
                   <audio controls src={result.audioUrl} className="w-full h-10 rounded-lg" />
                   <p className="text-[10px] text-white/30">{result.title}</p>
+                </div>
+              )}
+              {result.videoUrl && (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-green-300">Music video ready!</p>
+                  <video controls src={result.videoUrl} className="w-full rounded-lg" />
+                  <a href={result.videoUrl} download className="inline-flex items-center gap-1 text-[11px] text-red-300 hover:text-red-200 underline underline-offset-2">Download MP4</a>
                 </div>
               )}
               {result.creditsDeducted !== undefined && (

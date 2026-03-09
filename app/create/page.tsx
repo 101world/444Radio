@@ -176,7 +176,7 @@ function CreatePageContent() {
   const [showBeatMakerModal, setShowBeatMakerModal] = useState(false)
   const [showCoverArtGenModal, setShowCoverArtGenModal] = useState(false)
   const [showProFeaturesModal, setShowProFeaturesModal] = useState(false)
-  const [proFeatureType, setProFeatureType] = useState<'extend' | 'inpaint' | 'cover' | 'add-vocals' | 'voice-to-melody'>('extend')
+  const [proFeatureType, setProFeatureType] = useState<'extend' | 'inpaint' | 'cover' | 'add-vocals' | 'voice-to-melody' | 'music-video'>('extend')
   // Audio recording for voice reference (actual mic capture, not speech-to-text)
   const [isAudioRecording, setIsAudioRecording] = useState(false)
   const [audioRecordingTime, setAudioRecordingTime] = useState(0)
@@ -1145,13 +1145,13 @@ function CreatePageContent() {
           // Fallback to standard lyrics generation
         }
 
-        // If lyrics still empty after Hindi enhancer, fall back to atom-lyrics
+        // If lyrics still empty after Hindi enhancer, fall back to Suno lyrics
         if (!finalLyrics.trim() && !wasCancelled()) {
           try {
-            const lyricsResponse = await fetch('/api/generate/atom-lyrics', {
+            const lyricsResponse = await fetch('/api/generate/suno/lyrics', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ prompt: originalPrompt, language: selectedLanguage, mode: isProMode ? 'pro' : 'standard', genre })
+              body: JSON.stringify({ prompt: originalPrompt, language: selectedLanguage, genre })
             })
             const lyricsData = await lyricsResponse.json()
             if (lyricsData.success && lyricsData.lyrics) {
@@ -1165,14 +1165,14 @@ function CreatePageContent() {
           }
         }
       } else if (!finalLyrics.trim()) {
-        // Standard lyrics generation for English and other non-Hindi languages
-        console.log('🤖 Auto-generating lyrics from prompt...')
+        // Standard lyrics generation for all non-Hindi languages via Suno
+        console.log('🤖 Auto-generating lyrics from prompt via Suno...')
         wasAutoFilled = true
         try {
-          const lyricsResponse = await fetch('/api/generate/atom-lyrics', {
+          const lyricsResponse = await fetch('/api/generate/suno/lyrics', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: originalPrompt, language: selectedLanguage, mode: isProMode ? 'pro' : 'standard', genre })
+            body: JSON.stringify({ prompt: originalPrompt, language: selectedLanguage, genre })
           })
           const lyricsData = await lyricsResponse.json()
           if (lyricsData.success && lyricsData.lyrics) {
@@ -3049,6 +3049,7 @@ function CreatePageContent() {
           onShowProCover={() => { setProFeatureType('cover'); setShowProFeaturesModal(true) }}
           onShowProAddVocals={() => { setProFeatureType('add-vocals'); setShowProFeaturesModal(true) }}
           onShowProVoiceToMelody={() => { setProFeatureType('voice-to-melody'); setShowProFeaturesModal(true) }}
+          onShowProMusicVideo={() => { setProFeatureType('music-video'); setShowProFeaturesModal(true) }}
           onTagClick={(tag: string) => {
             const newInput = input ? `${input}, ${tag}` : tag
             setInput(newInput.slice(0, MAX_PROMPT_LENGTH))
@@ -4428,14 +4429,14 @@ function CreatePageContent() {
                       try {
                         setIsGeneratingAtomLyrics(true)
 
-                        // Hindi/South-Asian languages use atom-hindi (generates both enhanced prompt + lyrics)
+                        // Hindi/South-Asian languages use atom-hindi for prompt enhancement + lyrics
                         const hindiLangs = ['hindi', 'urdu', 'punjabi', 'tamil', 'telugu']
                         const isHindiLang = hindiLangs.includes(selectedLanguage.toLowerCase())
 
-                        const endpoint = isHindiLang ? '/api/generate/atom-hindi' : '/api/generate/atom-lyrics'
+                        const endpoint = isHindiLang ? '/api/generate/atom-hindi' : '/api/generate/suno/lyrics'
                         const body = isHindiLang
                           ? { prompt: input, instrumental: false }
-                          : { prompt: input, language: selectedLanguage, mode: isProMode ? 'pro' : 'standard', genre }
+                          : { prompt: input, language: selectedLanguage, genre }
 
                         const response = await fetch(endpoint, {
                           method: 'POST',
@@ -5579,7 +5580,7 @@ function CreatePageContent() {
         />
       </Suspense>
 
-      {/* Pro Features Modal (Extend, Inpaint, Cover, Add Vocals, Voice-to-Melody, Boost Style) */}
+      {/* Pro Features Modal (Extend, Inpaint, Cover, Add Vocals, Voice-to-Melody, Music Video, Boost Style) */}
       {showProFeaturesModal && (
         <Suspense fallback={null}>
           <ProFeaturesModal

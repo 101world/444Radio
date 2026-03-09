@@ -23,7 +23,7 @@ import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-trans
 import { findBestMatchingLyrics } from '@/lib/lyrics-matcher'
 import { sanitizeError, sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 import { randomUUID } from 'crypto'
-import { extendMusic, replaceSection, uploadAndCover, addVocals, addInstrumental, boostStyle, pollTaskUntilDone, sanitizeSunoError, SunoApiError } from '@/lib/suno-api'
+import { extendMusic, replaceSection, uploadAndCover, addVocals, addInstrumental, boostStyle, generateLyrics, createMusicVideo, pollTaskUntilDone, pollLyricsUntilDone, pollMusicVideoUntilDone, sanitizeSunoError, SunoApiError } from '@/lib/suno-api'
 import type { SunoExtendParams, SunoReplaceSectionParams, SunoUploadCoverParams, SunoAddVocalsParams, SunoAddInstrumentalParams } from '@/lib/suno-api'
 
 export const maxDuration = 300 // Vercel Pro 5-min limit
@@ -75,6 +75,8 @@ const CREDIT_COSTS: Record<string, number | ((params: Record<string, unknown>) =
   'pro-add-vocals': 22,
   'pro-voice-to-melody': 22,
   'pro-boost-style': 0,
+  'pro-lyrics': 0,
+  'pro-music-video': 22,
 }
 
 function getCreditCost(type: string, params: Record<string, unknown>): number {
@@ -243,6 +245,12 @@ export async function POST(req: NextRequest) {
           break
         case 'pro-boost-style':
           result = await generateProBoostStyle(userId, body, jobId)
+          break
+        case 'pro-lyrics':
+          result = await generateProLyrics(userId, body, jobId)
+          break
+        case 'pro-music-video':
+          result = await generateProMusicVideo(userId, body, jobId)
           break
         default:
           result = { success: false, error: 'Unknown type' }
@@ -1892,6 +1900,82 @@ async function generateProBoostStyle(userId: string, body: Record<string, unknow
     return { success: true, enhancedStyle: enhanced, original: content }
   } catch (error) {
     console.error('[plugin/pro-boost-style] Error:', error)
+    return { success: false, error: sanitizeSunoError(error) }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────
+// PRO: LYRICS  (generate lyrics via Suno — FREE)
+// ──────────────────────────────────────────────────────────────────
+async function generateProLyrics(userId: string, body: Record<string, unknown>, jobId: string) {
+  const prompt = (body.prompt as string || '').trim()
+  if (!prompt) return { success: false, error: 'Prompt is required (max 200 chars)' }
+
+  await updatePluginJob(jobId, { status: 'processing' })
+
+  try {
+    const task = await generateLyrics({ prompt: prompt.slice(0, 200), callBackUrl: 'https://www.444radio.co.in/api/webhook/generation-callback' })
+    const taskId = task.data?.taskId
+    if (!taskId) return { success: false, error: 'Failed to start lyrics generation' }
+
+    const completed = await pollLyricsUntilDone(taskId)
+    const lyricsData = completed.data?.response?.data
+    if (!lyricsData?.length || !lyricsData[0]?.text) return { success: false, error: 'Lyrics generation returned empty result' }
+
+    const lyrics = lyricsData[0].text
+    const title = lyricsData[0].title || ''
+
+    await updatePluginJob(jobId, { status: 'completed', output: { lyrics, title } })
+    return { success: true, lyrics, title, taskId }
+  } catch (error) {
+    console.error('[plugin/pro-lyrics] Error:', error)
+    return { success: false, error: sanitizeSunoError(error) }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────
+// PRO: MUSIC VIDEO  (generate MP4 from a track — 22 credits)
+// ──────────────────────────────────────────────────────────────────
+async function generateProMusicVideo(userId: string, body: Record<string, unknown>, jobId: string) {
+  const taskId = (body.taskId as string || '').trim()
+  const audioId = (body.audioId as string || '').trim()
+  if (!taskId) return { success: false, error: 'taskId from a previous generation is required' }
+  if (!audioId) return { success: false, error: 'audioId is required' }
+
+  const author = ((body.author as string) || '444 Radio').trim().slice(0, 50)
+  const domainName = ((body.domainName as string) || '444radio.co.in').trim().slice(0, 50)
+
+  await updatePluginJob(jobId, { status: 'processing' })
+
+  try {
+    const videoTask = await createMusicVideo({
+      taskId, audioId,
+      callBackUrl: 'https://www.444radio.co.in/api/webhook/generation-callback',
+      author, domainName,
+    })
+    const videoTaskId = videoTask.data.taskId
+
+    const completed = await pollMusicVideoUntilDone(videoTaskId)
+    const videoUrl = completed.data.response?.videoUrl
+    if (!videoUrl) return { success: false, error: 'No video URL in result' }
+
+    const fileName = `plugin-mv-${taskId.substring(0, 15)}-${Date.now()}.mp4`
+    const r2 = await downloadAndUploadToR2(videoUrl, userId, 'video', fileName)
+    if (!r2.success) return { success: false, error: 'Failed to save video' }
+
+    // Save to combined_media
+    try {
+      await fetch(`${supabaseUrl}/rest/v1/combined_media`, {
+        method: 'POST',
+        headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, type: 'video', title: 'Music Video', audio_url: r2.url, is_public: false, genre: '444-music-video', metadata: JSON.stringify({ source: 'plugin', original_task_id: taskId, audio_id: audioId }) }),
+      })
+    } catch {}
+
+    await updatePluginJob(jobId, { status: 'completed', output: { videoUrl: r2.url } })
+    return { success: true, videoUrl: r2.url }
+  } catch (error) {
+    console.error('[plugin/pro-music-video] Error:', error)
     return { success: false, error: sanitizeSunoError(error) }
   }
 }

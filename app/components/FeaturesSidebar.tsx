@@ -1,6 +1,6 @@
 'use client'
 
-import { Music, Sparkles, Repeat, Image as ImageIcon, Edit3, Rocket, Upload, X, Mic, Zap, Film, Scissors, Lightbulb, ChevronLeft, Volume2, Layers, AudioLines, RefreshCw, AudioWaveform, Wand2, Replace, Headphones, MicVocal, Crown, HelpCircle } from 'lucide-react'
+import { Music, Sparkles, Repeat, Image as ImageIcon, Edit3, Rocket, Upload, X, Mic, Zap, Film, Scissors, Lightbulb, ChevronLeft, Volume2, Layers, AudioLines, RefreshCw, AudioWaveform, Wand2, Replace, Headphones, MicVocal, Crown, HelpCircle, Video } from 'lucide-react'
 import { useState } from 'react'
 
 interface FeaturesSidebarProps {
@@ -37,6 +37,7 @@ interface FeaturesSidebarProps {
   onShowProCover: () => void
   onShowProAddVocals: () => void
   onShowProVoiceToMelody: () => void
+  onShowProMusicVideo: () => void
   onClearChat: () => void
   onToggleInstrumental: () => void
   onToggleRecording: () => void
@@ -100,6 +101,7 @@ export default function FeaturesSidebar({
   onShowProCover,
   onShowProAddVocals,
   onShowProVoiceToMelody,
+  onShowProMusicVideo,
   onClearChat,
   onToggleInstrumental,
   onToggleRecording,
@@ -357,6 +359,15 @@ export default function FeaturesSidebar({
         active: false, cost: 22,
         onClick: onShowProVoiceToMelody,
         helpText: 'Upload a vocal recording or hum. The AI creates full instrumental backing to match your melody.',
+      },
+      {
+        icon: Video, label: 'Music Video', desc: 'Generate MP4 video for track',
+        gradient: proGradient('from-violet-500/35 via-purple-500/25 to-fuchsia-500/30'),
+        glowColor: proGlow('shadow-violet-400/30'),
+        activeGradient: proActiveGrad('from-violet-500/50 via-purple-500/40 to-fuchsia-500/45 ring-violet-400/70'),
+        active: false, cost: 22,
+        onClick: onShowProMusicVideo,
+        helpText: 'Generate a cinematic music video (MP4) from a previously generated track. 22 credits.',
       },
     ],
   }

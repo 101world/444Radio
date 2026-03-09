@@ -907,7 +907,7 @@ function PluginPageInner() {
 
   const autoFillLyrics = async (prompt: string): Promise<string> => {
     try {
-      const res = await fetch('/api/generate/atom-lyrics', {
+      const res = await fetch('/api/generate/suno/lyrics', {
         method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
         body: JSON.stringify({ prompt, language: selectedLanguage })
       })
