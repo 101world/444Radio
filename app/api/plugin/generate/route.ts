@@ -1628,7 +1628,7 @@ async function generateBeatmaker(userId: string, body: Record<string, unknown>, 
 }
 
 // ──────────────────────────────────────────────────────────────────
-// PRO: EXTEND  (Suno outpaint — 22 credits)
+// PRO: EXTEND  (Suno outpaint — 4 credits)
 // ──────────────────────────────────────────────────────────────────
 async function generateProExtend(userId: string, body: Record<string, unknown>, jobId: string) {
   const audioId = (body.audioId as string || '').trim()
@@ -1680,7 +1680,7 @@ async function generateProExtend(userId: string, body: Record<string, unknown>, 
 }
 
 // ──────────────────────────────────────────────────────────────────
-// PRO: INPAINT  (Suno replace section — 11 credits)
+// PRO: INPAINT  (Suno replace section — 4 credits)
 // ──────────────────────────────────────────────────────────────────
 async function generateProInpaint(userId: string, body: Record<string, unknown>, jobId: string) {
   const taskId = (body.taskId as string || '').trim()
@@ -1734,7 +1734,7 @@ async function generateProInpaint(userId: string, body: Record<string, unknown>,
 }
 
 // ──────────────────────────────────────────────────────────────────
-// PRO: COVER  (upload audio & re-style — 22 credits)
+// PRO: COVER  (upload audio & re-style — 5 credits)
 // ──────────────────────────────────────────────────────────────────
 async function generateProCover(userId: string, body: Record<string, unknown>, jobId: string) {
   const uploadUrl = (body.uploadUrl as string || '').trim()
@@ -1784,7 +1784,7 @@ async function generateProCover(userId: string, body: Record<string, unknown>, j
 }
 
 // ──────────────────────────────────────────────────────────────────
-// PRO: ADD VOCALS  (add vocals to instrumental — 22 credits)
+// PRO: ADD VOCALS  (add vocals to instrumental — 5 credits)
 // ──────────────────────────────────────────────────────────────────
 async function generateProAddVocals(userId: string, body: Record<string, unknown>, jobId: string) {
   const uploadUrl = (body.uploadUrl as string || '').trim()
@@ -1835,7 +1835,7 @@ async function generateProAddVocals(userId: string, body: Record<string, unknown
 }
 
 // ──────────────────────────────────────────────────────────────────
-// PRO: VOICE TO MELODY  (add instrumental to vocals — 22 credits)
+// PRO: VOICE TO MELODY  (add instrumental to vocals — 5 credits)
 // ──────────────────────────────────────────────────────────────────
 async function generateProVoiceToMelody(userId: string, body: Record<string, unknown>, jobId: string) {
   const uploadUrl = (body.uploadUrl as string || '').trim()
@@ -1934,7 +1934,7 @@ async function generateProLyrics(userId: string, body: Record<string, unknown>, 
 }
 
 // ──────────────────────────────────────────────────────────────────
-// PRO: MUSIC VIDEO  (generate MP4 from a track — 22 credits)
+// PRO: MUSIC VIDEO  (generate MP4 from a track — 5 credits)
 // ──────────────────────────────────────────────────────────────────
 async function generateProMusicVideo(userId: string, body: Record<string, unknown>, jobId: string) {
   const taskId = (body.taskId as string || '').trim()

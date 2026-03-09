@@ -20,7 +20,7 @@ const CREDIT_COST = SUNO_CREDIT_COSTS.uploadExtend
  * POST /api/generate/suno/upload-extend
  *
  * 444 Pro Upload & Extend — upload audio and extend it.
- * Costs 22 credits. Returns NDJSON stream.
+ * Costs 5 credits. Returns NDJSON stream.
  *
  * Body: { uploadUrl, title, prompt?, style?, instrumental?, model?, continueAt?, vocalGender? }
  */

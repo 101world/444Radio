@@ -20,7 +20,7 @@ const CREDIT_COST = SUNO_CREDIT_COSTS.cover
  * POST /api/generate/suno/cover
  *
  * 444 Pro Cover — upload audio and re-create it in a new style.
- * Costs 22 credits. Returns NDJSON stream.
+ * Costs 5 credits. Returns NDJSON stream.
  * Max 8 min audio (1 min for V4_5ALL model).
  *
  * Body: { uploadUrl, title, prompt?, style?, instrumental?, model?, vocalGender? }

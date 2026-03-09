@@ -93,6 +93,17 @@ const GENERATION_COSTS = [
   { name: 'Video\u2192Audio',   credits: 4,  icon: Video },
 ]
 
+// ── Pro feature costs ──
+const PRO_GENERATION_COSTS = [
+  { name: 'Pro Song',      credits: 5,  icon: Music },
+  { name: 'Cover',         credits: 5,  icon: Repeat },
+  { name: 'Add Vocals',    credits: 5,  icon: Volume2 },
+  { name: 'Melody\u2192Song',  credits: 5,  icon: Music },
+  { name: 'Extend',        credits: 4,  icon: Wand2 },
+  { name: 'Inpaint',       credits: 4,  icon: Scissors },
+  { name: 'Music Video',   credits: 5,  icon: Video },
+]
+
 function calcCharge(amountUsd: number, currency: 'INR' | 'USD') {
   const baseInr = amountUsd * INR_RATE
   // International (PayPal): base → +4.4% fee → subtotal → +18% GST → total
@@ -604,6 +615,7 @@ export default function PricingPage() {
 
           {showCostModal && (
             <div className="border-t border-white/5 p-4 sm:p-6">
+              <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-2">Standard</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
                 {GENERATION_COSTS.map((item) => (
                   <div key={item.name} className="flex items-center gap-2.5 p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl">
@@ -617,9 +629,23 @@ export default function PricingPage() {
                   </div>
                 ))}
               </div>
+              <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mt-4 mb-2">Pro Features</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
+                {PRO_GENERATION_COSTS.map((item) => (
+                  <div key={item.name} className="flex items-center gap-2.5 p-3 bg-white/[0.03] border border-purple-500/20 rounded-xl">
+                    <div className="p-2 bg-purple-500/10 rounded-lg flex-shrink-0">
+                      <item.icon className="w-4 h-4 text-purple-300" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-white truncate">{item.name}</p>
+                      <p className="text-xs text-purple-400 font-bold">{item.credits} cr</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
               <div className="mt-4 p-3 bg-white/5 border border-white/10 rounded-xl">
                 <p className="text-xs text-gray-300">
-                  <strong>Example:</strong> $10 deposit → ~257 credits → ~128 songs or ~257 cover art images. All pay-per-use — no subscriptions.
+                  <strong>Example:</strong> $10 deposit → ~285 credits → ~142 songs or ~285 cover art images. All pay-per-use — no subscriptions.
                 </p>
               </div>
             </div>

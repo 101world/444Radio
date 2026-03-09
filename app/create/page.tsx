@@ -1447,7 +1447,7 @@ function CreatePageContent() {
             isProMode,
             isInstrumentalGen,
             willUse: !isInstrumentalGen && isProMode && (isHindiFamily || hasIndicScript || hindiKeywordsInPrompt)
-              ? '444 Pro Engine (20 credits, 2 outputs)'
+              ? '444 Pro Engine (5 credits, 2 outputs)'
               : (isHindiFamily || hasIndicScript || hindiKeywordsInPrompt)
                 ? isProMode ? '444 Pro (5 credits)' : '444 Regional (2 credits)'
                 : isProMode
@@ -1456,9 +1456,9 @@ function CreatePageContent() {
           })
 
           if (!isInstrumentalGen && isProMode && (isHindiFamily || hasIndicScript || hindiKeywordsInPrompt)) {
-            // PRO MODE + Hindi/regional + vocals → 444 Pro Engine (20 credits, returns 2 tracks)
+            // PRO MODE + Hindi/regional + vocals → 444 Pro Engine (5 credits, returns 2 tracks)
             const reason = isHindiFamily ? `language: ${selectedLanguage}` : hasIndicScript ? 'Indic/Arabic script in lyrics' : 'Hindi keyword in prompt'
-            console.log(`[Generation] 🔴 PRO MODE — Using 444 Pro Engine (${reason}) — 20 credits, 2 outputs`)
+            console.log(`[Generation] 🔴 PRO MODE — Using 444 Pro Engine (${reason}) — 5 credits, 2 outputs`)
             result = await generateProSunoMusic(promptWithAccent, titleToUse, lyricsToUse, genreToUse, selectedLanguage, abortController.signal, messageId)
           } else if (isHindiFamily || hasIndicScript || hindiKeywordsInPrompt) {
             // Hindi/regional (standard or instrumental-pro) → MiniMax 2.0

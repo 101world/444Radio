@@ -19,7 +19,7 @@ const CREDIT_COST = SUNO_CREDIT_COSTS.addInstrumental
  * POST /api/generate/suno/voice-to-melody
  *
  * 444 Pro Voice-to-Melody — add instrumental backing to a vocal/melody/hum recording.
- * Costs 22 credits. Returns NDJSON stream.
+ * Costs 5 credits. Returns NDJSON stream.
  * Models: V4_5PLUS or V5 only.
  *
  * Body: { uploadUrl, title, tags, negativeTags?, model?, vocalGender? }

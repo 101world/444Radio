@@ -13,13 +13,13 @@ import {
 
 export const maxDuration = 300
 
-const CREDIT_COST = SUNO_CREDIT_COSTS.musicVideo // 22 credits
+const CREDIT_COST = SUNO_CREDIT_COSTS.musicVideo // 5 credits
 
 /**
  * POST /api/generate/suno/music-video
  *
  * 444 Pro Music Video — create a visualized MP4 from a previously generated track.
- * Costs 22 credits. Returns NDJSON stream.
+ * Costs 5 credits. Returns NDJSON stream.
  *
  * Body: { taskId, audioId, author?, domainName? }
  */

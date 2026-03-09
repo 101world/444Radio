@@ -25,27 +25,27 @@ const FEATURE_INFO: Record<string, { icon: any; label: string; desc: string; cos
   },
   cover: {
     icon: RefreshCw, label: '444 Cover', desc: 'Re-create audio in a completely new style',
-    cost: 22,
+    cost: 5,
     fields: ['uploadUrl', 'title', 'prompt', 'style'],
-    help: 'Upload any audio file (up to 8 min) or paste a public URL. The AI will re-create it in a completely different style while preserving the melody and structure. Add style tags to guide the output.',
+    help: 'Upload any audio file (up to 8 min) or paste a public URL. The AI will re-create it in a completely different style while preserving the melody and structure. Add style tags to guide the output. 5 credits per generation.',
   },
   'add-vocals': {
     icon: MicVocal, label: '444 Add Vocals', desc: 'Add AI-generated vocals to an instrumental track',
-    cost: 22,
+    cost: 5,
     fields: ['uploadUrl', 'title', 'prompt', 'style'],
-    help: 'Upload an instrumental track (no vocals). Write lyrics in the prompt field and set style tags. The AI will generate and layer vocals that match the beat and your lyrics.',
+    help: 'Upload an instrumental track (no vocals). Write lyrics in the prompt field and set style tags. The AI will generate and layer vocals that match the beat and your lyrics. 5 credits per generation.',
   },
   'voice-to-melody': {
     icon: Headphones, label: '444 Voice to Melody', desc: 'Turn a vocal recording or hum into a full song',
-    cost: 22,
+    cost: 5,
     fields: ['uploadUrl', 'title', 'tags'],
-    help: 'Upload a vocal recording, hum, or melody you\'ve sung. The AI will create full instrumental backing that matches your melody. Add style tags (e.g. "lo-fi hip-hop, chill") to guide the genre.',
+    help: 'Upload a vocal recording, hum, or melody you\'ve sung. The AI will create full instrumental backing that matches your melody. Add style tags (e.g. "lo-fi hip-hop, chill") to guide the genre. 5 credits per generation.',
   },
   'music-video': {
     icon: Video, label: '444 Music Video', desc: 'Generate a cinematic music video for any track',
-    cost: 22,
+    cost: 5,
     fields: ['taskId', 'audioId', 'author', 'domainName'],
-    help: 'Create a music video (MP4) from a previously generated track. Provide the Task ID and Audio ID from the original generation. Author and domain customize the watermark. 22 credits per video.',
+    help: 'Create a music video (MP4) from a previously generated track. Provide the Task ID and Audio ID from the original generation. Author and domain customize the watermark. 5 credits per video.',
   },
 }
 

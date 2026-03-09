@@ -8,14 +8,14 @@ import { generateMusic, pollTaskUntilDone, sanitizeSunoError, SUNO_CREDIT_COSTS,
 
 export const maxDuration = 300
 
-const CREDIT_COST = SUNO_CREDIT_COSTS.generate // 20 credits
+const CREDIT_COST = SUNO_CREDIT_COSTS.generate // 5 credits
 const DEFAULT_MODEL: SunoModel = 'V5'
 
 /**
  * POST /api/generate/suno/generate
  *
  * 444 Pro Music — Hindi / Urdu / Arabic / Tamil / Telugu / Punjabi generation
- * via Suno API. Returns NDJSON stream. Costs 20 credits per generation (2 tracks).
+ * via Suno API. Returns NDJSON stream. Costs 5 credits per generation (2 tracks).
  *
  * Body: { title, prompt, lyrics, genre, language, instrumental?, model?, vocalGender? }
  */

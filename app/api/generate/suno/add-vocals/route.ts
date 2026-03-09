@@ -19,7 +19,7 @@ const CREDIT_COST = SUNO_CREDIT_COSTS.addVocals
  * POST /api/generate/suno/add-vocals
  *
  * 444 Pro Add Vocals — add AI vocals to an instrumental track.
- * Costs 22 credits. Returns NDJSON stream.
+ * Costs 5 credits. Returns NDJSON stream.
  * Models: V4_5PLUS or V5 only.
  *
  * Body: { uploadUrl, title, prompt, style, negativeTags?, model?, vocalGender? }
