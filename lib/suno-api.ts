@@ -284,7 +284,7 @@ export interface SunoBoostStyleResponse {
 // ---------------------------------------------------------------------------
 
 export const SUNO_CREDIT_COSTS = {
-  generate: 2,         // Hindi / regional Pro music (user keeps same 2 credit cost)
+  generate: 20,        // Hindi / regional Pro music — premium engine, returns 2 tracks
   extend: 22,
   inpaint: 11,
   cover: 22,

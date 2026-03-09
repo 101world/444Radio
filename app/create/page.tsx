@@ -1432,6 +1432,9 @@ function CreatePageContent() {
           // Also detect Hindi-family keywords in the prompt (catches romanized Hindi)
           const hindiKeywordsInPrompt = /\b(hindi|urdu|punjabi|tamil|telugu|bengali|marathi|gujarati|kannada|malayalam|arabic|bollywood|desi|bhangra|ghazal|qawwali|filmi|sufi|carnatic|raga|raaga)\b/i.test(params.prompt)
 
+          // Instrumental always uses MiniMax (Suno is for vocal tracks only)
+          const isInstrumentalGen = !lyricsToUse?.trim()
+
           // Log all routing conditions for debugging model selection
           console.log('[Model Routing]', {
             selectedLanguage,
@@ -1439,31 +1442,33 @@ function CreatePageContent() {
             hasIndicScript,
             hindiKeywordsInPrompt,
             isProMode,
-            willUse: isProMode && (isHindiFamily || hasIndicScript || hindiKeywordsInPrompt)
-              ? '444 Pro Engine'
+            isInstrumentalGen,
+            willUse: !isInstrumentalGen && isProMode && (isHindiFamily || hasIndicScript || hindiKeywordsInPrompt)
+              ? '444 Pro Engine (20 credits, 2 outputs)'
               : (isHindiFamily || hasIndicScript || hindiKeywordsInPrompt)
-                ? 'MiniMax 2.0 (Hindi)'
+                ? isProMode ? 'MiniMax 2.0 (Pro, 5 credits)' : 'MiniMax 2.0 (Hindi, 2 credits)'
                 : isProMode
-                  ? 'MiniMax 2.0 (Pro)'
-                  : 'MiniMax 1.5 (Standard)'
+                  ? 'MiniMax 2.0 (Pro, 5 credits)'
+                  : 'MiniMax 1.5 (Standard, 2 credits)'
           })
 
-          if (isProMode && (isHindiFamily || hasIndicScript || hindiKeywordsInPrompt)) {
-            // PRO MODE + Hindi/regional language → 444 Pro Engine (premium)
+          if (!isInstrumentalGen && isProMode && (isHindiFamily || hasIndicScript || hindiKeywordsInPrompt)) {
+            // PRO MODE + Hindi/regional + vocals → 444 Pro Engine (20 credits, returns 2 tracks)
             const reason = isHindiFamily ? `language: ${selectedLanguage}` : hasIndicScript ? 'Indic/Arabic script in lyrics' : 'Hindi keyword in prompt'
-            console.log(`[Generation] 🔴 PRO MODE — Using 444 Pro Engine (${reason})`)
+            console.log(`[Generation] 🔴 PRO MODE — Using 444 Pro Engine (${reason}) — 20 credits, 2 outputs`)
             result = await generateProSunoMusic(promptWithAccent, titleToUse, lyricsToUse, genreToUse, selectedLanguage, abortController.signal, messageId)
           } else if (isHindiFamily || hasIndicScript || hindiKeywordsInPrompt) {
-            // Standard mode + Hindi/regional → MiniMax 2.0
+            // Hindi/regional (standard or instrumental-pro) → MiniMax 2.0
             const reason = isHindiFamily ? `language: ${selectedLanguage}` : hasIndicScript ? 'Indic script in lyrics' : 'Hindi keyword in prompt'
-            console.log(`[Generation] Using MiniMax 2.0 via fal.ai (${reason})`)
-            result = await generateHindiMusic(promptWithAccent, titleToUse, lyricsToUse, genreToUse, abortController.signal, messageId)
+            const mode = isProMode ? 'pro' : undefined
+            console.log(`[Generation] Using MiniMax 2.0 via fal.ai (${reason})${isProMode ? ' — 5 credits' : ' — 2 credits'}`)
+            result = await generateHindiMusic(promptWithAccent, titleToUse, lyricsToUse, genreToUse, abortController.signal, messageId, mode)
           } else if (isProMode) {
-            // PRO MODE + non-Hindi → MiniMax 2.0 (fal.ai)
-            console.log('[Generation] 🔴 PRO MODE — Using premium engine via fal.ai')
+            // PRO MODE + non-Hindi → MiniMax 2.0 (fal.ai) — 5 credits
+            console.log('[Generation] 🔴 PRO MODE — Using premium engine via fal.ai — 5 credits')
             result = await generateHindiMusic(promptWithAccent, titleToUse, lyricsToUse, genreToUse, abortController.signal, messageId, 'pro')
           } else {
-            console.log('[Generation] Using MiniMax 1.5 via Replicate (Standard mode)')
+            console.log('[Generation] Using MiniMax 1.5 via Replicate (Standard mode) — 2 credits')
             result = await generateMusic(promptWithAccent, titleToUse, lyricsToUse, durationToUse, genreToUse, undefined, abortController.signal, messageId)
           }
         }
@@ -1507,6 +1512,12 @@ function CreatePageContent() {
       // Update message with result - mark as NOT generating
       // Guard: skip if user started a new chat (session changed)
       if (!isStaleSession()) {
+        const trackCount = ('trackCount' in result && result.trackCount === 2) ? 2 : 1
+        const successMsg = type === 'music'
+          ? trackCount === 2
+            ? `✅ ${result.title || 'Track'} — 2 takes are ready!`
+            : `✅ ${result.title || 'Track'} is ready!`
+          : '✅ Cover art generated!'
         setMessages(prev => {
           console.log('[Generation] Updating message', messageId, 'with result:', result)
           return prev.map(msg => 
@@ -1514,7 +1525,7 @@ function CreatePageContent() {
               ? {
                   ...msg,
                   isGenerating: false,
-                  content: result.error ? '❌ 444 Radio locking in. Please try again.' : (type === 'music' ? `✅ ${result.title || 'Track'} is ready!` : '✅ Cover art generated!'),
+                  content: result.error ? '❌ 444 Radio locking in. Please try again.' : successMsg,
                   result: result.error ? undefined : result
                 }
               : msg
@@ -1526,11 +1537,14 @@ function CreatePageContent() {
 
       // Add assistant response
       if (!result.error && !isStaleSession()) {
+        const trackCount = ('trackCount' in result && result.trackCount === 2) ? 2 : 1
         const assistantMessage: Message = {
           id: (Date.now() + Math.random()).toString(),
           type: 'assistant',
           content: type === 'music' 
-            ? `${result.title || 'Your track'} is ready! Want to create cover art for it? Or generate another track?`
+            ? trackCount === 2
+              ? `🔥 ${result.title || 'Your track'} — 2 takes ready! Both are saved in your library. Want to create cover art?`
+              : `${result.title || 'Your track'} is ready! Want to create cover art for it? Or generate another track?`
             : 'Cover art created! Want to combine it with a track?',
           timestamp: new Date()
         }
@@ -2080,10 +2094,13 @@ function CreatePageContent() {
     if (resultData.success) {
       return {
         audioUrl: resultData.audioUrl,
+        secondAudioUrl: resultData.secondAudioUrl || null,
         title: resultData.title || title || prompt.substring(0, 50),
+        secondTitle: resultData.secondTitle || null,
         prompt,
         lyrics: resultData.lyrics || lyrics,
         creditsRemaining: resultData.creditsRemaining,
+        trackCount: resultData.trackCount || 1,
       }
     }
     return { error: resultData.error || 'Failed to generate music' }

@@ -9,7 +9,8 @@ import { buildMiniMaxV2Input, preValidateMiniMaxV2 } from '@/lib/minimax-v2-vali
 // Allow up to 5 minutes for fal.ai MiniMax 2.0 generation
 export const maxDuration = 300
 
-const CREDIT_COST = 2
+const STANDARD_CREDIT_COST = 2
+const PRO_CREDIT_COST = 5
 const FAL_MODEL = 'fal-ai/minimax-music/v2'
 
 /**
@@ -95,6 +96,7 @@ export async function POST(req: NextRequest) {
     // Label for logging — 'pro' for Pro Mode, 'hindi' for South Asian languages
     const sourceLabel = source === 'pro' ? 'Pro Music' : 'Hindi Music'
     const sourceTag = source === 'pro' ? 'pro' : 'hindi'
+    const CREDIT_COST = source === 'pro' ? PRO_CREDIT_COST : STANDARD_CREDIT_COST
 
     // Validate
     if (!title || typeof title !== 'string' || title.trim().length < 3 || title.trim().length > 100) {
