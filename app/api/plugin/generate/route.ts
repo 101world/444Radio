@@ -23,8 +23,8 @@ import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-trans
 import { findBestMatchingLyrics } from '@/lib/lyrics-matcher'
 import { sanitizeError, sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 import { randomUUID } from 'crypto'
-import { extendMusic, replaceSection, uploadAndCover, addVocals, addInstrumental, boostStyle, generateLyrics, pollTaskUntilDone, pollLyricsUntilDone, sanitizeSunoError, SunoApiError } from '@/lib/suno-api'
-import type { SunoExtendParams, SunoReplaceSectionParams, SunoUploadCoverParams, SunoAddVocalsParams, SunoAddInstrumentalParams } from '@/lib/suno-api'
+import { extendMusic, replaceSection, uploadAndCover, addVocals, addInstrumental, boostStyle, generateLyrics, pollTaskUntilDone, pollLyricsUntilDone, sanitizeSunoError, SunoApiError, generateMusic as sunoGenerateMusic } from '@/lib/suno-api'
+import type { SunoExtendParams, SunoReplaceSectionParams, SunoUploadCoverParams, SunoAddVocalsParams, SunoAddInstrumentalParams, SunoModel } from '@/lib/suno-api'
 
 export const maxDuration = 300 // Vercel Pro 5-min limit
 
@@ -43,7 +43,11 @@ export async function OPTIONS() {
 // Credit costs per generation type
 // ------------------------------------------------------------------
 const CREDIT_COSTS: Record<string, number | ((params: Record<string, unknown>) => number)> = {
-  music: 2,
+  music: (p) => {
+    const lang = ((p.language as string) || 'english').toLowerCase()
+    // Non-English → Suno (5 credits), English → MiniMax (2 credits)
+    return lang !== 'english' ? 5 : 2
+  },
   image: 1,
   effects: 2,
   loops: (p) => ((p.max_duration as number) || 8) <= 10 ? 6 : 7,
@@ -370,6 +374,8 @@ async function generateMusic(userId: string, body: Record<string, unknown>, jobI
   const sample_rate = (body.sample_rate as number) || 44100
   const audio_format = (body.audio_format as string) || 'wav'  // WAV for DAW compatibility
   const generateCoverArt = body.generateCoverArt === true
+  const language = ((body.language as string) || 'english').trim()
+  const isNonEnglish = language.toLowerCase() !== 'english'
 
   if (!title || title.length < 3 || title.length > 100) {
     return { success: false, error: 'Title required (3-100 chars)' }
@@ -378,6 +384,158 @@ async function generateMusic(userId: string, body: Record<string, unknown>, jobI
     return { success: false, error: 'Prompt required (10-300 chars)' }
   }
 
+  // ── Non-English → Route through Suno API for proper multilingual support ──
+  if (isNonEnglish) {
+    console.log(`[plugin/music] Non-English language detected: ${language} → routing to Suno`)
+    try {
+      const cleanTitle = title.slice(0, 80)
+      const cleanPrompt = prompt.slice(0, 3000)
+      const cleanStyle = genre?.trim().slice(0, 1000) || undefined
+      const cleanLyrics = lyrics?.trim() || undefined
+      const isCustomMode = !!(cleanLyrics || cleanStyle)
+
+      // Language injection: prepend language to style/prompt
+      const langTag = language.charAt(0).toUpperCase() + language.slice(1).toLowerCase()
+      const langPrefix = `${langTag} language, `
+
+      const sunoParams: Record<string, unknown> = {
+        customMode: isCustomMode,
+        instrumental: false,
+        model: 'V5' as SunoModel,
+        callBackUrl: 'https://www.444radio.co.in/api/webhook/generation-callback',
+      }
+
+      if (isCustomMode) {
+        const baseStyle = cleanStyle || ''
+        sunoParams.style = baseStyle ? `${langPrefix}${baseStyle}` : langTag
+        sunoParams.title = cleanTitle
+        if (cleanLyrics) {
+          sunoParams.prompt = cleanLyrics
+        } else {
+          sunoParams.prompt = `[Sing in ${langTag}] ${cleanPrompt}`
+        }
+      } else {
+        sunoParams.prompt = `[Sing in ${langTag}] ${cleanPrompt.slice(0, 480)}`
+      }
+
+      console.log('[plugin/music] Calling Suno...', { language: langTag, customMode: isCustomMode })
+
+      const taskRes = await sunoGenerateMusic(sunoParams as any)
+      const taskId = taskRes.data.taskId
+      console.log('[plugin/music] Suno task created:', taskId)
+
+      await updatePluginJob(jobId, { status: 'processing' })
+
+      // Poll until complete (up to 10 min)
+      const completed = await pollTaskUntilDone(taskId, 600_000, 15_000)
+
+      // Extract tracks from response
+      const extractTracks = (data: any): any[] => {
+        return data?.response?.data
+          || data?.response?.sunoData
+          || data?.sunoData
+          || (Array.isArray(data?.response) ? data.response : null)
+          || []
+      }
+
+      let tracks = extractTracks(completed.data)
+
+      // Retry if SUCCESS but no tracks yet
+      if (!tracks.length) {
+        console.log('[plugin/music] SUCCESS but no tracks yet — retrying...')
+        for (let retry = 0; retry < 4; retry++) {
+          await new Promise(r => setTimeout(r, 10_000))
+          try {
+            const { getTaskStatus } = await import('@/lib/suno-api')
+            const retryStatus = await getTaskStatus(taskId)
+            tracks = extractTracks(retryStatus.data)
+            if (tracks.length) break
+          } catch (e) {
+            console.warn(`[plugin/music] Retry ${retry + 1} failed:`, e)
+          }
+        }
+      }
+
+      if (!tracks.length) {
+        throw new Error('No tracks returned from Suno generation')
+      }
+
+      // Extract audio URL
+      const track = tracks[0]
+      let audioUrl = track?.audio_url || track?.audioUrl || track?.stream_audio_url || track?.streamAudioUrl || track?.song_url || track?.songUrl || track?.url || track?.mp3_url || track?.output
+
+      // Retry if no audio URL yet
+      if (!audioUrl) {
+        console.log('[plugin/music] Tracks found but no audio URL — waiting...')
+        for (let audioRetry = 0; audioRetry < 6; audioRetry++) {
+          await new Promise(r => setTimeout(r, 15_000))
+          try {
+            const { getTaskStatus } = await import('@/lib/suno-api')
+            const retryStatus = await getTaskStatus(taskId)
+            const retryTracks = extractTracks(retryStatus.data)
+            if (retryTracks.length) {
+              const retryTrack = retryTracks[0]
+              audioUrl = retryTrack?.audio_url || retryTrack?.audioUrl || retryTrack?.stream_audio_url || retryTrack?.streamAudioUrl || retryTrack?.song_url || retryTrack?.songUrl || retryTrack?.url || retryTrack?.mp3_url || retryTrack?.output
+              if (audioUrl) break
+            }
+          } catch (e) {
+            console.warn(`[plugin/music] Audio retry ${audioRetry + 1} error:`, e)
+          }
+        }
+      }
+
+      if (!audioUrl) {
+        throw new Error('No audio URL in generated Suno track')
+      }
+
+      // Upload to R2
+      const fileName = `pro-${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.wav`
+      const r2 = await downloadAndUploadToR2(audioUrl, userId, 'music', fileName)
+      if (!r2.success) return { success: false, error: 'Failed to save audio' }
+      audioUrl = r2.url
+
+      // Save to music_library
+      await fetch(`${supabaseUrl}/rest/v1/music_library`, {
+        method: 'POST',
+        headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clerk_user_id: userId,
+          title, prompt, lyrics: lyrics || track.lyric || track.lyrics || '',
+          audio_url: audioUrl, audio_format: 'wav', bitrate: 256000, sample_rate: 44100,
+          generation_params: { language, source: 'plugin', engine: '444-pro' },
+          status: 'ready',
+        }),
+      })
+
+      const result: Record<string, unknown> = {
+        success: true,
+        audioUrl,
+        title,
+        lyrics: lyrics || track.lyric || track.lyrics || '',
+        format: 'wav',
+      }
+
+      // Cover art (if requested)
+      if (generateCoverArt) {
+        try {
+          const imageUrl = await generateCoverArtForTrack(userId, prompt, title, genre)
+          if (imageUrl) result.imageUrl = imageUrl
+        } catch (e) {
+          console.error('[plugin] Cover art failed:', e)
+        }
+      }
+
+      return result
+    } catch (error) {
+      console.error('[plugin/music] Suno generation failed:', error)
+      const safeMsg = error instanceof SunoApiError
+        ? sanitizeSunoError(error)
+        : SAFE_ERROR_MESSAGE
+      return { success: false, error: safeMsg }
+    }
+  }
+
+  // ── English → MiniMax 1.5 (standard) ──
   // Lyrics — use smart matcher if not provided
   let formattedLyrics: string
   if (!lyrics || lyrics.trim().length === 0) {

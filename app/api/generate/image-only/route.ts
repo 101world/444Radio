@@ -5,6 +5,7 @@ import { downloadAndUploadToR2 } from '@/lib/storage'
 import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 import { refundCredits } from '@/lib/refund-credits'
+import { notifyGenerationComplete, notifyGenerationFailed, notifyCreditDeduct } from '@/lib/notifications'
 
 // Allow up to 5 minutes for image generation (Vercel Pro limit: 300s)
 export const maxDuration = 300
@@ -244,6 +245,9 @@ export async function POST(req: NextRequest) {
     trackQuestProgress(userId, 'generate_cover_art').catch(() => {})
     trackModelUsage(userId, 'z-image-turbo').catch(() => {})
     trackGenerationStreak(userId).catch(() => {})
+
+    notifyGenerationComplete(userId, savedImage[0]?.id || '', 'image', `Image: ${prompt.substring(0, 50)}`).catch(() => {})
+    notifyCreditDeduct(userId, 1, 'Cover Art Generation').catch(() => {})
 
     return NextResponse.json({ 
       success: true, 

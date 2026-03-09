@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import { downloadAndUploadToR2 } from '@/lib/storage'
 import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { refundCredits } from '@/lib/refund-credits'
+import { notifyGenerationComplete, notifyCreditDeduct } from '@/lib/notifications'
 
 // Allow up to 5 minutes for fal.ai generation
 export const maxDuration = 300
@@ -160,6 +161,9 @@ export async function POST(req: NextRequest) {
         trackGenerationStreak(userId).catch(() => {})
       }).catch(() => {})
       updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: audioUrl, mediaType: 'audio', title, extraMeta: { model: 'fal-stable-audio-25' } }).catch(() => {})
+
+      notifyGenerationComplete(userId, savedMusic?.id || '', 'audio', title.trim()).catch(() => {})
+      notifyCreditDeduct(userId, 10, 'Audio-to-Audio').catch(() => {})
 
       addLine({
         type: 'result',

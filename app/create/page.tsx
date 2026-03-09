@@ -145,6 +145,9 @@ function CreatePageContent() {
   const [hasInteracted, setHasInteracted] = useState(false)
   const [lastScrollY, setLastScrollY] = useState(0)
   const [notificationCount, setNotificationCount] = useState(0)
+  const [showNotificationsPanel, setShowNotificationsPanel] = useState(false)
+  const [notifications, setNotifications] = useState<any[]>([])
+  const notifPanelRef = useRef<HTMLDivElement>(null)
   
   // Generation queue system
   const [generationQueue, setGenerationQueue] = useState<string[]>([])
@@ -757,13 +760,35 @@ function CreatePageContent() {
         const res = await fetch('/api/notifications')
         if (res.ok) {
           const data = await res.json()
-          const items = Array.isArray(data) ? data : data?.notifications || []
+          const items = (Array.isArray(data) ? data : data?.notifications || []).map((n: any) => ({
+            id: n.id ?? crypto.randomUUID(),
+            title: n.data?.title || n.title || 'Notification',
+            body: n.data?.message || n.body || n.message || '',
+            unread: typeof n.unread === 'boolean' ? n.unread : true,
+            created_at: n.created_at,
+            type: n.type,
+          }))
+          setNotifications(items)
           setNotificationCount(items.filter((n: any) => n.unread).length)
         }
       } catch {}
     }
     fetchNotifications()
+    const interval = setInterval(fetchNotifications, 30_000)
+    return () => clearInterval(interval)
   }, [])
+
+  // Close notification panel on click outside
+  useEffect(() => {
+    if (!showNotificationsPanel) return
+    const handler = (e: MouseEvent) => {
+      if (notifPanelRef.current && e.target instanceof Node && !notifPanelRef.current.contains(e.target)) {
+        setShowNotificationsPanel(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showNotificationsPanel])
 
   // Auto-hide top nav after 2 seconds or on interaction
   useEffect(() => {
@@ -953,7 +978,10 @@ function CreatePageContent() {
 
     // Check credits before generation AND prevent multiple simultaneous generations
     const useMusic01 = selectedType === 'music' && hasVoiceOrInstrumentalRef
-    const creditsNeeded = selectedType === 'music' ? (useMusic01 ? 3 : 2) : selectedType === 'image' ? 1 : selectedType === 'effects' ? 2 : 0
+    // Non-English languages route to Suno (5 credits); English uses MiniMax (2 credits standard, 5 credits pro)
+    const isNonEnglishLang = selectedLanguage.toLowerCase() !== 'english'
+    const musicCredits = useMusic01 ? 3 : (isNonEnglishLang || isProMode) ? 5 : 2
+    const creditsNeeded = selectedType === 'music' ? musicCredits : selectedType === 'image' ? 1 : selectedType === 'effects' ? 2 : 0
     
     // Fetch fresh credits to prevent race conditions
     const freshCreditsRes = await fetch('/api/credits')
@@ -964,7 +992,7 @@ function CreatePageContent() {
     const freeCreditsLeft = freshCreditsData.freeCredits || 0
     
     // Also check if there are active generations that haven't deducted credits yet
-    const pendingCredits = activeGenerations.size * (selectedType === 'music' ? (useMusic01 ? 3 : 2) : selectedType === 'effects' ? 2 : 1)
+    const pendingCredits = activeGenerations.size * (selectedType === 'music' ? musicCredits : selectedType === 'effects' ? 2 : 1)
     const availableCredits = currentCredits - pendingCredits
     
     console.log('[Credit Check]', { currentCredits, freeCreditsLeft, walletBalance, pendingCredits, availableCredits, creditsNeeded })
@@ -1424,13 +1452,17 @@ function CreatePageContent() {
             abortController.signal, messageId
           )
         } else {
-          // Languages supported by 444 Pro engine (Suno) and standard Hindi engine (MiniMax 2.0)
-          const hindiLangs = ['hindi', 'urdu', 'punjabi', 'tamil', 'telugu', 'arabic', 'bengali', 'marathi', 'gujarati', 'kannada', 'malayalam']
-          const isHindiFamily = hindiLangs.includes(selectedLanguage.toLowerCase())
-          // Also detect Devanagari/South Asian/Arabic scripts in lyrics
-          const hasIndicScript = lyricsToUse ? /[\u0900-\u0D7F\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/.test(lyricsToUse) : false
-          // Also detect Hindi-family keywords in the prompt (catches romanized Hindi)
-          const hindiKeywordsInPrompt = /\b(hindi|urdu|punjabi|tamil|telugu|bengali|marathi|gujarati|kannada|malayalam|arabic|bollywood|desi|bhangra|ghazal|qawwali|filmi|sufi|carnatic|raga|raaga)\b/i.test(params.prompt)
+          // Language-based routing:
+          //   English → MiniMax 2.0 (Pro) or MiniMax 1.5 (Standard)
+          //   Any non-English language → Suno API (best multilingual support)
+          const isEnglish = selectedLanguage.toLowerCase() === 'english'
+          // Also detect non-Latin scripts in lyrics (Devanagari, Arabic, CJK, Korean, etc.)
+          const hasNonLatinScript = lyricsToUse ? /[\u0900-\u0D7F\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF\u3040-\u30FF\u4E00-\u9FFF\uAC00-\uD7AF\u0400-\u04FF]/.test(lyricsToUse) : false
+          // Detect non-English language keywords in the prompt
+          const nonEnglishKeywordsInPrompt = /\b(hindi|urdu|punjabi|tamil|telugu|bengali|marathi|gujarati|kannada|malayalam|arabic|bollywood|desi|bhangra|ghazal|qawwali|filmi|sufi|carnatic|raga|raaga|mandarin|cantonese|japanese|korean|kpop|jpop|reggaeton|bachata|samba|bossa\s*nova|fado|chanson|schlager)\b/i.test(params.prompt)
+
+          // Non-English detection: language dropdown is not English, OR non-Latin script in lyrics, OR non-English keywords
+          const isNonEnglish = !isEnglish || hasNonLatinScript || nonEnglishKeywordsInPrompt
 
           // Instrumental always uses MiniMax (Suno is for vocal tracks only)
           const isInstrumentalGen = !lyricsToUse?.trim()
@@ -1438,36 +1470,34 @@ function CreatePageContent() {
           // Log all routing conditions for debugging model selection
           console.log('[Model Routing]', {
             selectedLanguage,
-            isHindiFamily,
-            hasIndicScript,
-            hindiKeywordsInPrompt,
+            isEnglish,
+            isNonEnglish,
+            hasNonLatinScript,
+            nonEnglishKeywordsInPrompt,
             isProMode,
             isInstrumentalGen,
-            willUse: !isInstrumentalGen && isProMode && (isHindiFamily || hasIndicScript || hindiKeywordsInPrompt)
-              ? '444 Pro Engine (5 credits, 2 outputs)'
-              : (isHindiFamily || hasIndicScript || hindiKeywordsInPrompt)
-                ? isProMode ? '444 Pro (5 credits)' : '444 Regional (2 credits)'
-                : isProMode
-                  ? '444 Pro (5 credits)'
-                  : '444 Standard (2 credits)'
+            willUse: isNonEnglish && !isInstrumentalGen
+              ? '444 Pro Engine / Suno (non-English)'
+              : isProMode
+                ? 'MiniMax 2.0 Pro (English, 5 credits)'
+                : 'MiniMax 1.5 Standard (English, 2 credits)'
           })
 
-          if (!isInstrumentalGen && isProMode && (isHindiFamily || hasIndicScript || hindiKeywordsInPrompt)) {
-            // PRO MODE + Hindi/regional + vocals → 444 Pro Engine (5 credits, returns 2 tracks)
-            const reason = isHindiFamily ? `language: ${selectedLanguage}` : hasIndicScript ? 'Indic/Arabic script in lyrics' : 'Hindi keyword in prompt'
-            console.log(`[Generation] 🔴 PRO MODE — Using 444 Pro Engine (${reason}) — 5 credits, 2 outputs`)
+          if (isNonEnglish && !isInstrumentalGen) {
+            // Non-English language + vocals → Suno API (best multilingual support)
+            console.log(`[Generation] 🌍 Non-English language (${selectedLanguage}) → Using Suno API — 5 credits, 2 outputs`)
             result = await generateProSunoMusic(promptWithAccent, titleToUse, lyricsToUse, genreToUse, selectedLanguage, abortController.signal, messageId)
-          } else if (isHindiFamily || hasIndicScript || hindiKeywordsInPrompt) {
-            // Hindi/regional (standard or instrumental-pro) → MiniMax 2.0
-            const reason = isHindiFamily ? `language: ${selectedLanguage}` : hasIndicScript ? 'Indic script in lyrics' : 'Hindi keyword in prompt'
+          } else if (isNonEnglish && isInstrumentalGen) {
+            // Non-English instrumental → MiniMax 2.0 (instrumentals don't need language support)
             const mode = isProMode ? 'pro' : undefined
-            console.log(`[Generation] Using MiniMax 2.0 via fal.ai (${reason})${isProMode ? ' — 5 credits' : ' — 2 credits'}`)
+            console.log(`[Generation] 🎹 Non-English instrumental (${selectedLanguage}) → MiniMax 2.0${isProMode ? ' Pro — 5 credits' : ' — 2 credits'}`)
             result = await generateHindiMusic(promptWithAccent, titleToUse, lyricsToUse, genreToUse, abortController.signal, messageId, mode)
           } else if (isProMode) {
-            // PRO MODE + non-Hindi → MiniMax 2.0 (fal.ai) — 5 credits
-            console.log('[Generation] 🔴 PRO MODE — Using premium engine via fal.ai — 5 credits')
+            // English + PRO MODE → MiniMax 2.0 (fal.ai) — 5 credits
+            console.log('[Generation] 🔴 PRO MODE — Using MiniMax 2.0 via fal.ai — 5 credits')
             result = await generateHindiMusic(promptWithAccent, titleToUse, lyricsToUse, genreToUse, abortController.signal, messageId, 'pro')
           } else {
+            // English + Standard → MiniMax 1.5 via Replicate — 2 credits
             console.log('[Generation] Using MiniMax 1.5 via Replicate (Standard mode) — 2 credits')
             result = await generateMusic(promptWithAccent, titleToUse, lyricsToUse, durationToUse, genreToUse, undefined, abortController.signal, messageId)
           }
@@ -2706,19 +2736,72 @@ function CreatePageContent() {
         </button>
 
         {/* Notification Bell */}
-        <button
-          onClick={() => router.push('/settings?tab=notifications')}
-          className="group relative flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 backdrop-blur-xl rounded-full bg-black/60 hover:bg-black/80 border border-white/20 hover:border-white/40 shadow-lg shadow-black/20 transition-all duration-300 pointer-events-auto"
-          title="Notifications"
-        >
-          <Bell size={13} className="sm:hidden text-white/50 group-hover:text-white/80 transition-colors" />
-          <Bell size={14} className="hidden sm:block text-white/50 group-hover:text-white/80 transition-colors" />
-          {notificationCount > 0 && (
-            <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[16px] h-4 px-1 bg-red-500 text-white text-[9px] font-bold rounded-full shadow-lg shadow-red-500/30">
-              {notificationCount > 9 ? '9+' : notificationCount}
-            </span>
+        <div ref={notifPanelRef} className="relative pointer-events-auto">
+          <button
+            onClick={() => setShowNotificationsPanel(prev => !prev)}
+            className={`group relative flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 backdrop-blur-xl rounded-full transition-all duration-300 ${
+              showNotificationsPanel
+                ? 'bg-cyan-950/80 border-2 border-cyan-500/60 shadow-[0_0_15px_rgba(34,211,238,0.3)]'
+                : 'bg-black/60 hover:bg-black/80 border border-white/20 hover:border-white/40 shadow-lg shadow-black/20'
+            }`}
+            title="Notifications"
+          >
+            <Bell size={13} className={`sm:hidden transition-colors ${showNotificationsPanel ? 'text-cyan-400' : 'text-white/50 group-hover:text-white/80'}`} />
+            <Bell size={14} className={`hidden sm:block transition-colors ${showNotificationsPanel ? 'text-cyan-400' : 'text-white/50 group-hover:text-white/80'}`} />
+            {notificationCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[16px] h-4 px-1 bg-red-500 text-white text-[9px] font-bold rounded-full shadow-lg shadow-red-500/30">
+                {notificationCount > 9 ? '9+' : notificationCount}
+              </span>
+            )}
+          </button>
+
+          {/* Notification Dropdown */}
+          {showNotificationsPanel && (
+            <div className="absolute right-0 top-full mt-2 w-80 bg-gray-950 border border-white/10 rounded-xl shadow-2xl shadow-black/80 overflow-hidden z-[200]">
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5 bg-black/50">
+                <span className="text-sm font-semibold text-white">Notifications</span>
+                <div className="flex items-center gap-2">
+                  {notifications.length > 0 && (
+                    <button onClick={() => { setNotifications(prev => prev.map(n => ({...n, unread: false}))); setNotificationCount(0) }} className="text-[10px] text-gray-500 hover:text-white transition-colors cursor-pointer">
+                      Mark all read
+                    </button>
+                  )}
+                  <button onClick={() => setShowNotificationsPanel(false)} className="p-1 hover:bg-white/5 rounded cursor-pointer">
+                    <X className="w-3.5 h-3.5 text-gray-500" />
+                  </button>
+                </div>
+              </div>
+              <div className="max-h-72 overflow-y-auto divide-y divide-white/[0.03]">
+                {notifications.length === 0 && (
+                  <div className="px-4 py-8 text-center">
+                    <Bell className="w-6 h-6 text-gray-700 mx-auto mb-2" />
+                    <p className="text-xs text-gray-600">No notifications yet</p>
+                  </div>
+                )}
+                {notifications.slice(0, 20).map(n => (
+                  <div key={n.id} className={`px-4 py-3 transition-colors ${n.unread ? 'bg-cyan-500/[0.03]' : ''}`}>
+                    <div className="flex items-start gap-2">
+                      {n.unread && <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 mt-1.5 flex-shrink-0" />}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-white truncate">{n.title}</p>
+                        {n.body && <p className="text-[10px] text-gray-500 mt-0.5 line-clamp-2">{n.body}</p>}
+                        {n.created_at && <p className="text-[9px] text-gray-600 mt-1">{new Date(n.created_at).toLocaleString()}</p>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-white/5 px-4 py-2 bg-black/30">
+                <button
+                  onClick={() => { setShowNotificationsPanel(false); router.push('/settings?tab=notifications') }}
+                  className="text-[10px] text-cyan-500 hover:text-cyan-400 transition-colors w-full text-center cursor-pointer"
+                >
+                  View all notifications →
+                </button>
+              </div>
+            </div>
           )}
-        </button>
+        </div>
 
         {/* Credits Badge */}
         <button
@@ -4390,9 +4473,9 @@ function CreatePageContent() {
                     <option value="italian">Italiano Italian</option>
                   </select>
                   <p className="text-[11px] text-gray-600">
-                    {selectedLanguage.toLowerCase() === 'hindi' || ['urdu', 'punjabi', 'tamil', 'telugu'].includes(selectedLanguage.toLowerCase())
-                      ? '🎵 Hindi-family → uses 444 Pro Engine (best for Indic languages)'
-                      : '🎵 Uses 444 Music Engine (optimized for this language)'}
+                    {selectedLanguage.toLowerCase() === 'english'
+                      ? '🎵 Uses MiniMax Engine (optimized for English)'
+                      : '🎵 Uses 444 Pro Engine / Suno (best multilingual support)'}
                   </p>
                 </div>
 

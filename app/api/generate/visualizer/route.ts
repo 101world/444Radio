@@ -4,6 +4,7 @@ import Replicate from 'replicate'
 import { uploadToR2 } from '@/lib/r2-upload'
 import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { refundCredits } from '@/lib/refund-credits'
+import { notifyGenerationComplete, notifyCreditDeduct } from '@/lib/notifications'
 
 // Allow up to 5 minutes for video generation (Vercel Pro limit: 300s)
 export const maxDuration = 300
@@ -354,6 +355,9 @@ export async function POST(req: NextRequest) {
             title,
             extraMeta: { duration: durationSec, resolution: finalResolution },
           }).catch(() => {})
+
+          notifyGenerationComplete(userId!, savedMedia?.id || '', 'video', title).catch(() => {})
+          notifyCreditDeduct(userId!, creditCost, 'Visualizer Video').catch(() => {})
 
           send({
             status: 'complete',

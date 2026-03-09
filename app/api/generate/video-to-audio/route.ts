@@ -5,6 +5,7 @@ import { uploadToR2 } from '@/lib/r2-upload'
 import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 import { refundCredits } from '@/lib/refund-credits'
+import { notifyGenerationComplete, notifyCreditDeduct } from '@/lib/notifications'
 
 // Allow up to 5 minutes for video-to-audio generation (Vercel Pro limit: 300s)
 export const maxDuration = 300
@@ -286,6 +287,9 @@ export async function POST(req: NextRequest) {
     const { trackQuestProgress, trackGenerationStreak } = await import('@/lib/quest-progress')
     trackQuestProgress(userId, 'generate_songs').catch(() => {})
     trackGenerationStreak(userId).catch(() => {})
+
+    notifyGenerationComplete(userId, '', 'audio', `Video SFX: ${prompt.substring(0, 50)}`).catch(() => {})
+    notifyCreditDeduct(userId, creditsRequired, 'Video-to-Audio Generation').catch(() => {})
 
     return NextResponse.json({ 
       success: true, 

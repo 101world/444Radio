@@ -4,6 +4,7 @@ import Replicate from 'replicate'
 import { uploadToR2 } from '@/lib/r2-upload'
 import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { corsResponse, handleOptions } from '@/lib/cors'
+import { notifyGenerationComplete, notifyCreditDeduct } from '@/lib/notifications'
 
 export const maxDuration = 120
 
@@ -251,6 +252,9 @@ export async function POST(req: NextRequest) {
     const { trackQuestProgress, trackGenerationStreak } = await import('@/lib/quest-progress')
     trackQuestProgress(userId, 'generate_songs').catch(() => {})
     trackGenerationStreak(userId).catch(() => {})
+
+    notifyGenerationComplete(userId, '', 'audio', title).catch(() => {})
+    notifyCreditDeduct(userId, CREDIT_COST, 'Autotune').catch(() => {})
 
     return corsResponse(NextResponse.json({ 
       success: true, 

@@ -7,6 +7,7 @@ import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-trans
 import { createClient } from '@supabase/supabase-js'
 import { sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 import { refundCredits } from '@/lib/refund-credits'
+import { notifyGenerationComplete, notifyCreditDeduct } from '@/lib/notifications'
 
 // Allow up to 3 minutes for extraction
 export const maxDuration = 180
@@ -199,6 +200,9 @@ export async function POST(req: NextRequest) {
       const { trackQuestProgress, trackGenerationStreak } = await import('@/lib/quest-progress')
       trackQuestProgress(userId, 'generate_songs').catch(() => {})
       trackGenerationStreak(userId).catch(() => {})
+
+      notifyGenerationComplete(userId, saved?.id || '', 'audio', `${trackTitle} (Video Extract)`).catch(() => {})
+      notifyCreditDeduct(userId, EXTRACT_COST, 'Video Audio Extraction').catch(() => {})
 
       // Update transaction with output media
       updateTransactionMedia({ userId, type: 'generation_extract', mediaUrl: r2Result.url, mediaType: 'audio', title: `${trackTitle} (Video Extract)` }).catch(() => {})

@@ -5,6 +5,7 @@ import { corsResponse, handleOptions } from '@/lib/cors'
 import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { refundCredits } from '@/lib/refund-credits'
 import { downloadAndUploadToR2 } from '@/lib/storage'
+import { notifyGenerationComplete, notifyCreditDeduct } from '@/lib/notifications'
 
 // Allow up to 5 minutes for voice training
 export const maxDuration = 300
@@ -233,6 +234,9 @@ export async function POST(req: NextRequest) {
     } else {
       console.error('❌ Failed to save voice training to DB:', insertRes.status)
     }
+
+    notifyGenerationComplete(userId, savedTraining?.id || '', 'audio', `Voice Training: ${trimmedName}`).catch(() => {})
+    notifyCreditDeduct(userId, COST, 'Voice Training').catch(() => {})
 
     return corsResponse(NextResponse.json({
       success: true,

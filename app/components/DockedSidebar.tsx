@@ -106,11 +106,8 @@ export default function DockedSidebar() {
   if (pathname === '/input' || pathname?.startsWith('/input/')) return null
   if (pathname === '/creator-v2' || pathname?.startsWith('/creator-v2/')) return null
 
-  // Hide on home page and pricing pages
-  const hiddenPages = ['/', '/pricing']
-  if (hiddenPages.includes(pathname)) {
-    return null
-  }
+  // Hide on Create page — Create has its own edge-to-edge UI
+  if (pathname === '/create') return null
 
   const menuItems: MenuItem[] = user ? [
     { icon: Home, label: 'Home', href: '/', highlight: false },

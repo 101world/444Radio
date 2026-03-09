@@ -5,6 +5,7 @@ import { corsResponse, handleOptions } from '@/lib/cors'
 import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 import { refundCredits } from '@/lib/refund-credits'
+import { notifyGenerationComplete, notifyGenerationFailed, notifyCreditDeduct } from '@/lib/notifications'
 
 // Allow up to 5 minutes for HQ SFX generation
 export const maxDuration = 300
@@ -242,6 +243,9 @@ export async function POST(req: NextRequest) {
       const { trackQuestProgress, trackGenerationStreak } = await import('@/lib/quest-progress')
       trackQuestProgress(userId, 'generate_songs').catch(() => {})
       trackGenerationStreak(userId).catch(() => {})
+
+      notifyGenerationComplete(userId, libraryId || '', 'audio', `[HQ] SFX: ${trimmedPrompt.substring(0, 50)}`).catch(() => {})
+      notifyCreditDeduct(userId, 3, 'HQ Sound Effects').catch(() => {})
 
       return corsResponse(NextResponse.json({
         success: true,

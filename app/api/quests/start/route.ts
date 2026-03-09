@@ -47,16 +47,28 @@ export async function POST(req: NextRequest) {
     const quest = quests[0]
     const target = quest.requirement?.target || 1
 
-    // Upsert user quest (prevent duplicate starts)
-    const upsertRes = await fetch(
-      `${supabaseUrl}/rest/v1/user_quests?on_conflict=user_id,quest_id`,
+    // Check if user_quest already exists (don't reset progress!)
+    const existingRes = await fetch(
+      `${supabaseUrl}/rest/v1/user_quests?user_id=eq.${userId}&quest_id=eq.${questId}&limit=1`,
+      { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+    )
+    const existing = await existingRes.json()
+
+    if (existing?.length) {
+      // Already started (possibly auto-started by trackQuestProgress) — return existing progress
+      return corsResponse(NextResponse.json({ success: true, userQuest: existing[0] }))
+    }
+
+    // Insert new user quest (only if none exists — never overwrite progress)
+    const insertRes = await fetch(
+      `${supabaseUrl}/rest/v1/user_quests`,
       {
         method: 'POST',
         headers: {
           apikey: supabaseKey,
           Authorization: `Bearer ${supabaseKey}`,
           'Content-Type': 'application/json',
-          Prefer: 'return=representation,resolution=merge-duplicates',
+          Prefer: 'return=representation',
         },
         body: JSON.stringify({
           user_id: userId,
@@ -69,13 +81,22 @@ export async function POST(req: NextRequest) {
       }
     )
 
-    if (!upsertRes.ok) {
-      const err = await upsertRes.text()
-      console.error('Quest start upsert failed:', err)
+    if (!insertRes.ok) {
+      const err = await insertRes.text()
+      // Unique constraint violation = already exists (race condition) — return success
+      if (insertRes.status === 409 || err.includes('duplicate') || err.includes('unique')) {
+        const refetchRes = await fetch(
+          `${supabaseUrl}/rest/v1/user_quests?user_id=eq.${userId}&quest_id=eq.${questId}&limit=1`,
+          { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+        )
+        const refetched = await refetchRes.json()
+        return corsResponse(NextResponse.json({ success: true, userQuest: refetched?.[0] }))
+      }
+      console.error('Quest start insert failed:', err)
       return corsResponse(NextResponse.json({ error: 'Failed to start quest' }, { status: 500 }))
     }
 
-    const userQuest = await upsertRes.json()
+    const userQuest = await insertRes.json()
     return corsResponse(NextResponse.json({ success: true, userQuest: userQuest?.[0] }))
   } catch (error) {
     console.error('Quest start error:', error)

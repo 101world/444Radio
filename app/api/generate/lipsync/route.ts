@@ -4,6 +4,7 @@ import Replicate from 'replicate'
 import { uploadToR2 } from '@/lib/r2-upload'
 import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { refundCredits } from '@/lib/refund-credits'
+import { notifyGenerationComplete, notifyGenerationFailed, notifyCreditDeduct } from '@/lib/notifications'
 
 // Allow up to 5 minutes for lip-sync video generation (Vercel Pro limit: 300s)
 export const maxDuration = 300
@@ -348,7 +349,8 @@ export async function POST(req: NextRequest) {
             trackQuestProgress(userId!, 'generate_lipsync_1080').catch(() => {})
           }
           trackGenerationStreak(userId!).catch(() => {})
-
+          notifyGenerationComplete(userId!, savedMedia?.id || '', 'video', title).catch(() => {})
+          notifyCreditDeduct(userId!, creditCost, `Lip-Sync Video (${durationSec}s)`).catch(() => {})
           send({
             status: 'complete',
             message: 'Lip-sync video generated successfully!',

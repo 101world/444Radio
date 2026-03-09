@@ -6,6 +6,7 @@ import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-trans
 import { logBoostGeneration, updateBoostLog } from '@/lib/boost-logs'
 import { sanitizeError, sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 import { refundCredits } from '@/lib/refund-credits'
+import { notifyGenerationComplete, notifyCreditDeduct } from '@/lib/notifications'
 
 // Allow up to 2 minutes for audio boost processing
 export const maxDuration = 120
@@ -315,6 +316,9 @@ export async function POST(req: NextRequest) {
       const { trackQuestProgress, trackGenerationStreak } = await import('@/lib/quest-progress')
       trackQuestProgress(userId, 'use_mastering').catch(() => {})
       trackGenerationStreak(userId).catch(() => {})
+
+      notifyGenerationComplete(userId, libraryId || '', 'audio', trackTitle ? `${trackTitle} (Boosted)` : 'Boosted Audio').catch(() => {})
+      notifyCreditDeduct(userId, BOOST_COST, 'Audio Boost').catch(() => {})
 
       return corsResponse(NextResponse.json({
         success: true,

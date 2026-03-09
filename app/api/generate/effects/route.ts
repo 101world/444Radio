@@ -6,6 +6,7 @@ import { corsResponse, handleOptions } from '@/lib/cors'
 import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { sanitizeError, sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 import { refundCredits } from '@/lib/refund-credits'
+import { notifyGenerationComplete, notifyGenerationFailed, notifyCreditDeduct } from '@/lib/notifications'
 
 // Allow up to 2.5 minutes for effects generation (AudioGen can take 60-90s)
 export const maxDuration = 150
@@ -239,6 +240,9 @@ export async function POST(req: NextRequest) {
       const { trackQuestProgress, trackGenerationStreak } = await import('@/lib/quest-progress')
       trackQuestProgress(userId, 'generate_songs').catch(() => {})
       trackGenerationStreak(userId).catch(() => {})
+
+      notifyGenerationComplete(userId, libraryId || '', 'audio', `SFX: ${prompt.substring(0, 50)}`).catch(() => {})
+      notifyCreditDeduct(userId, 2, 'Sound Effects Generation').catch(() => {})
 
       return corsResponse(NextResponse.json({ 
         success: true, 

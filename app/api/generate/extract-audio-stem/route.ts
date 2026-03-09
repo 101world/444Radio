@@ -6,6 +6,7 @@ import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-trans
 import { createClient } from '@supabase/supabase-js'
 import { sanitizeError, sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 import { refundCredits } from '@/lib/refund-credits'
+import { notifyGenerationComplete, notifyCreditDeduct } from '@/lib/notifications'
 
 // Allow up to 5 minutes for stem extraction (large files can take time)
 export const maxDuration = 300
@@ -276,6 +277,9 @@ export async function POST(request: Request) {
         const { trackQuestProgress, trackGenerationStreak } = await import('@/lib/quest-progress')
         trackQuestProgress(userId, 'generate_songs').catch(() => {})
         trackGenerationStreak(userId).catch(() => {})
+
+        notifyGenerationComplete(userId, savedLibraryIds?.[0] || '', 'audio', `${trackTitle} — ${stem.charAt(0).toUpperCase() + stem.slice(1)} Extract`).catch(() => {})
+        notifyCreditDeduct(userId, EXTRACT_COST, 'Stem Extraction').catch(() => {})
 
         // Update transaction with output media
         const primaryStemUrl = permanentStems[stem] || Object.values(permanentStems)[0]

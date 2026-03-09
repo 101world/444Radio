@@ -6,6 +6,7 @@ import { corsResponse, handleOptions } from '@/lib/cors'
 import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 import { refundCredits } from '@/lib/refund-credits'
+import { notifyGenerationComplete, notifyCreditDeduct } from '@/lib/notifications'
 
 // Allow up to 3 minutes for looper generation (can take 1-2 minutes for 20s loops)
 export const maxDuration = 180
@@ -290,6 +291,9 @@ export async function POST(req: NextRequest) {
       const { trackQuestProgress, trackGenerationStreak } = await import('@/lib/quest-progress')
       trackQuestProgress(userId, 'generate_songs').catch(() => {})
       trackGenerationStreak(userId).catch(() => {})
+
+      notifyGenerationComplete(userId, savedLibraryIds?.[0]?.id || '', 'audio', `Loop: ${prompt.substring(0, 40)}`).catch(() => {})
+      notifyCreditDeduct(userId, creditCost, 'Loop Generation').catch(() => {})
 
       return corsResponse(NextResponse.json({ 
         success: true, 
