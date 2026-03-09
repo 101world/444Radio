@@ -4,28 +4,28 @@ import { downloadAndUploadToR2 } from '@/lib/storage'
 import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { refundCredits } from '@/lib/refund-credits'
 import { notifyGenerationComplete, notifyGenerationFailed, notifyCreditDeduct } from '@/lib/notifications'
-import {
-  generateMusic,
-  pollTaskUntilDone,
-  sanitizeSunoError,
-  isSunoLanguage,
-  hasIndicOrArabicScript,
-  SUNO_CREDIT_COSTS,
-  type SunoModel,
-} from '@/lib/suno-api'
 
 export const maxDuration = 300
 
-const CREDIT_COST = SUNO_CREDIT_COSTS.generate // 20 credits — premium Hindi/regional engine
-const DEFAULT_MODEL: SunoModel = 'V4_5ALL'
+const CREDIT_COST = 4 // sonauto v2 costs $0.075/gen → 4 credits @ $0.035/credit
+
+// Sanitize errors — never expose model internals to users
+function sanitize444Error(err: unknown): string {
+  const msg = String(err)
+  if (msg.includes('timed out') || msg.includes('Timeout')) return '444 Radio is locking in — please try again in a moment.'
+  if (msg.includes('rate limit') || msg.includes('429')) return '444 Radio is vibing hard right now — please try again shortly.'
+  if (msg.includes('billing') || msg.includes('402')) return '444 Radio engine billing issue — please contact support.'
+  if (msg.includes('FAL_KEY') || msg.includes('Unauthorized') || msg.includes('401')) return 'Server configuration error — please contact support.'
+  return '444 Radio is locking in — generation hit a snag. Please try again.'
+}
 
 /**
  * POST /api/generate/suno/generate
  *
  * 444 Pro Music — Hindi / Urdu / Arabic / Tamil / Telugu / Punjabi generation
- * via premium engine. Returns NDJSON stream. Costs 2 credits.
+ * via sonauto v2 on fal.ai. Returns NDJSON stream. Costs 4 credits per track.
  *
- * Body: { title, prompt, lyrics, genre, language, instrumental?, model?, vocalGender? }
+ * Body: { title, prompt, lyrics, genre, language, instrumental? }
  */
 export async function POST(req: NextRequest) {
   console.log('🎵 [444-PRO] POST /api/generate/suno/generate')
@@ -43,8 +43,6 @@ export async function POST(req: NextRequest) {
       genre,
       language = 'hindi',
       instrumental = false,
-      model = DEFAULT_MODEL,
-      vocalGender,
     } = body
 
     // ---------- Validation ----------
@@ -55,9 +53,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 })
     }
 
-    const isCustomMode = !!(lyrics?.trim() || genre?.trim())
     const cleanTitle = title.trim().slice(0, 80)
-    const cleanPrompt = prompt.trim().slice(0, isCustomMode ? 5000 : 500)
+    const cleanPrompt = prompt.trim().slice(0, 3000)
     const cleanStyle = genre?.trim().slice(0, 1000) || undefined
     const cleanLyrics = lyrics?.trim() || undefined
 
@@ -66,7 +63,6 @@ export async function POST(req: NextRequest) {
       language,
       genre: cleanStyle,
       instrumental,
-      model,
       promptLen: cleanPrompt.length,
       lyricsLen: cleanLyrics?.length || 0,
     })
@@ -110,7 +106,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: errorMsg }, { status: 402 })
     }
     console.log(`✅ Credits deducted (${CREDIT_COST}). Remaining: ${deductResult.new_credits}`)
-    await logCreditTransaction({ userId, amount: -CREDIT_COST, balanceAfter: deductResult.new_credits, type: 'generation_music', description: `Pro Music: ${cleanTitle}`, metadata: { prompt: cleanPrompt, genre: cleanStyle, language, model, engine: '444-pro' } })
+    await logCreditTransaction({ userId, amount: -CREDIT_COST, balanceAfter: deductResult.new_credits, type: 'generation_music', description: `Pro Music: ${cleanTitle}`, metadata: { prompt: cleanPrompt, genre: cleanStyle, language, engine: '444-pro-sonauto' } })
 
     // ---------- NDJSON stream ----------
     const encoder = new TextEncoder()
@@ -131,70 +127,62 @@ export async function POST(req: NextRequest) {
       try {
         await sendLine({ type: 'started', model: '444-pro-music' })
 
-        // Build Suno generate params
-        const sunoParams: Record<string, unknown> = {
-          customMode: isCustomMode,
-          instrumental,
-          model: model || DEFAULT_MODEL,
-          callBackUrl: '', // We poll instead
+        // Build sonauto v2 params
+        const tags = cleanStyle ? cleanStyle.split(',').map((t: string) => t.trim()).filter(Boolean) : [language || 'hindi']
+        const lyricsPrompt = instrumental ? '' : (cleanLyrics || cleanPrompt)
+
+        const falKey = process.env.FAL_KEY
+        if (!falKey) throw new Error('FAL_KEY environment variable is not set')
+
+        console.log('🎵 [444-PRO] Calling sonauto/v2...', { tags, lyricsLen: lyricsPrompt.length, instrumental })
+
+        // Generate 2 tracks
+        const falRes = await fetch('https://fal.run/sonauto/v2', {
+          method: 'POST',
+          headers: { Authorization: `Key ${falKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: cleanPrompt,
+            tags,
+            lyrics_prompt: lyricsPrompt,
+            num_songs: 2,
+            output_format: 'wav',
+            prompt_strength: 1.8,
+            balance_strength: 0.7,
+          }),
+        })
+
+        if (!falRes.ok) {
+          const errText = await falRes.text().catch(() => `HTTP ${falRes.status}`)
+          console.error('❌ [444-PRO] sonauto/v2 error:', falRes.status, errText)
+          throw new Error(`Generation failed (${falRes.status})`)
         }
 
-        if (isCustomMode) {
-          sunoParams.style = cleanStyle || language
-          sunoParams.title = cleanTitle
-          if (!instrumental && cleanLyrics) {
-            sunoParams.prompt = cleanLyrics // In custom mode, prompt = lyrics
-          } else if (!instrumental) {
-            sunoParams.prompt = cleanPrompt
-          }
-        } else {
-          // Non-custom mode — just provide prompt (max 500 chars)
-          sunoParams.prompt = cleanPrompt.slice(0, 500)
-        }
+        const falData = await falRes.json()
+        const audioFiles = falData?.audio || []
 
-        if (vocalGender) sunoParams.vocalGender = vocalGender
-
-        console.log('🎵 [444-PRO] Calling engine...', { customMode: isCustomMode, model })
-
-        const taskRes = await generateMusic(sunoParams as any)
-        const taskId = taskRes.data.taskId
-        console.log('🎵 [444-PRO] Task created:', taskId)
-
-        await sendLine({ type: 'progress', message: 'Your track is being crafted...', taskId })
-
-        // Poll until complete
-        const completed = await pollTaskUntilDone(taskId, 600_000, 15_000)
-        const tracks = completed.data.response?.data || []
-
-        if (!tracks.length) {
+        if (!audioFiles.length || !audioFiles[0]?.url) {
           throw new Error('No tracks returned from generation')
         }
 
-        // Pick the first track (user gets best one; Suno always returns 2)
-        const track = tracks[0]
-        const audioSourceUrl = track.audio_url
-        if (!audioSourceUrl) {
-          throw new Error('No audio URL in generated track')
-        }
+        console.log('🎵 [444-PRO] Got', audioFiles.length, 'track(s) from sonauto/v2')
 
-        console.log('🎵 [444-PRO] Track 1 ready:', track.title, 'Duration:', track.duration)
+        await sendLine({ type: 'progress', message: 'Saving your tracks...' })
 
-        // Download BOTH tracks to R2 for permanent storage
+        // Download Track 1 to R2
         const fileName1 = `pro-${cleanTitle.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-1-${Date.now()}.wav`
-        const r2Result = await downloadAndUploadToR2(audioSourceUrl, userId, 'music', fileName1)
+        const r2Result = await downloadAndUploadToR2(audioFiles[0].url, userId, 'music', fileName1)
         if (!r2Result.success) {
           throw new Error(`Failed to save to permanent storage: ${r2Result.error}`)
         }
         const permanentAudioUrl = r2Result.url
         console.log('✅ R2 upload (Track 1):', permanentAudioUrl)
 
-        // Save second track if available
+        // Download Track 2 if available
         let permanentAudioUrl2: string | null = null
-        const track2 = tracks[1]
-        if (track2?.audio_url) {
-          console.log('🎵 [444-PRO] Track 2 ready:', track2.title, 'Duration:', track2.duration)
+        if (audioFiles[1]?.url) {
+          console.log('🎵 [444-PRO] Saving Track 2...')
           const fileName2 = `pro-${cleanTitle.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-2-${Date.now()}.wav`
-          const r2Result2 = await downloadAndUploadToR2(track2.audio_url, userId, 'music', fileName2)
+          const r2Result2 = await downloadAndUploadToR2(audioFiles[1].url, userId, 'music', fileName2)
           if (r2Result2.success) {
             permanentAudioUrl2 = r2Result2.url
             console.log('✅ R2 upload (Track 2):', permanentAudioUrl2)
@@ -208,12 +196,12 @@ export async function POST(req: NextRequest) {
           clerk_user_id: userId,
           title: cleanTitle,
           prompt: cleanPrompt,
-          lyrics: cleanLyrics || track.lyric || '',
+          lyrics: cleanLyrics || falData.lyrics || '',
           audio_url: permanentAudioUrl,
           audio_format: 'wav',
           bitrate: 256000,
           sample_rate: 44100,
-          generation_params: { model, language, source: 'pro', engine: '444-pro', trackNumber: 1 },
+          generation_params: { language, source: 'pro', engine: '444-pro-sonauto', trackNumber: 1 },
           status: 'ready',
         }
         const saveRes = await fetch(`${supabaseUrl}/rest/v1/music_library`, {
@@ -235,12 +223,12 @@ export async function POST(req: NextRequest) {
             clerk_user_id: userId,
             title: `${cleanTitle} (Take 2)`,
             prompt: cleanPrompt,
-            lyrics: cleanLyrics || track2?.lyric || '',
+            lyrics: cleanLyrics || falData.lyrics || '',
             audio_url: permanentAudioUrl2,
             audio_format: 'wav',
             bitrate: 256000,
             sample_rate: 44100,
-            generation_params: { model, language, source: 'pro', engine: '444-pro', trackNumber: 2 },
+            generation_params: { language, source: 'pro', engine: '444-pro-sonauto', trackNumber: 2 },
             status: 'ready',
           }
           const saveRes2 = await fetch(`${supabaseUrl}/rest/v1/music_library`, {
@@ -266,12 +254,11 @@ export async function POST(req: NextRequest) {
               type: 'audio',
               title: cleanTitle,
               audio_prompt: cleanPrompt,
-              lyrics: cleanLyrics || track.lyric || '',
+              lyrics: cleanLyrics || falData.lyrics || '',
               audio_url: permanentAudioUrl,
-              image_url: track.image_large_url || track.image_url || null,
               is_public: false,
               genre: cleanStyle || null,
-              metadata: JSON.stringify({ source: 'pro-music', model, language, engine: '444-pro', duration: track.duration, trackNumber: 1 }),
+              metadata: JSON.stringify({ source: 'pro-music', language, engine: '444-pro-sonauto', trackNumber: 1 }),
             }),
           })
           if (cmRes.ok) {
@@ -293,12 +280,11 @@ export async function POST(req: NextRequest) {
                 type: 'audio',
                 title: `${cleanTitle} (Take 2)`,
                 audio_prompt: cleanPrompt,
-                lyrics: cleanLyrics || track2?.lyric || '',
+                lyrics: cleanLyrics || falData.lyrics || '',
                 audio_url: permanentAudioUrl2,
-                image_url: track2?.image_large_url || track2?.image_url || null,
                 is_public: false,
                 genre: cleanStyle || null,
-                metadata: JSON.stringify({ source: 'pro-music', model, language, engine: '444-pro', duration: track2?.duration, trackNumber: 2 }),
+                metadata: JSON.stringify({ source: 'pro-music', language, engine: '444-pro-sonauto', trackNumber: 2 }),
               }),
             })
           } catch (e) {
@@ -317,7 +303,7 @@ export async function POST(req: NextRequest) {
           trackGenerationStreak(userId).catch(() => {})
         } catch {}
 
-        updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: permanentAudioUrl, mediaType: 'audio', title: cleanTitle, extraMeta: { genre: cleanStyle, model, engine: '444-pro' } }).catch(() => {})
+        updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: permanentAudioUrl, mediaType: 'audio', title: cleanTitle, extraMeta: { genre: cleanStyle, engine: '444-pro-sonauto' } }).catch(() => {})
         notifyGenerationComplete(userId, libraryId || '', 'music', cleanTitle).catch(() => {})
         notifyCreditDeduct(userId, CREDIT_COST, `Pro Music: ${cleanTitle}`).catch(() => {})
 
@@ -328,7 +314,7 @@ export async function POST(req: NextRequest) {
           secondAudioUrl: permanentAudioUrl2,
           title: cleanTitle,
           secondTitle: permanentAudioUrl2 ? `${cleanTitle} (Take 2)` : null,
-          lyrics: cleanLyrics || track.lyric || '',
+          lyrics: cleanLyrics || falData.lyrics || '',
           libraryId,
           secondLibraryId: savedMusic2?.id || null,
           creditsRemaining: deductResult!.new_credits,
@@ -347,7 +333,7 @@ export async function POST(req: NextRequest) {
         })
         notifyGenerationFailed(userId, 'music', 'Pro Music generation error — credits refunded').catch(() => {})
         try {
-          await sendLine({ type: 'result', success: false, error: sanitizeSunoError(error) })
+          await sendLine({ type: 'result', success: false, error: sanitize444Error(error) })
           await writer.close()
         } catch { /* stream closed */ }
       }
@@ -362,6 +348,6 @@ export async function POST(req: NextRequest) {
     })
   } catch (error) {
     console.error('❌ Pro music route error:', error)
-    return NextResponse.json({ success: false, error: sanitizeSunoError(error) }, { status: 500 })
+    return NextResponse.json({ success: false, error: sanitize444Error(error) }, { status: 500 })
   }
 }
