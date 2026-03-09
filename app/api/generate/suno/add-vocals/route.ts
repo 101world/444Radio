@@ -31,7 +31,8 @@ export async function POST(req: NextRequest) {
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await req.json()
-    const { uploadUrl, title, prompt, style, negativeTags = '', model = 'V4_5PLUS', vocalGender } = body
+    const { uploadUrl, title, prompt, style, negativeTags: rawNegTags, model = 'V4_5PLUS', vocalGender } = body
+    const negativeTags = (rawNegTags && String(rawNegTags).trim()) || 'noise, distortion'
 
     if (!uploadUrl || typeof uploadUrl !== 'string') return NextResponse.json({ error: 'uploadUrl is required — provide a public URL to your instrumental audio' }, { status: 400 })
     if (!prompt || typeof prompt !== 'string') return NextResponse.json({ error: 'Prompt (lyrics) is required' }, { status: 400 })

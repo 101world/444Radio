@@ -1792,7 +1792,7 @@ async function generateProAddVocals(userId: string, body: Record<string, unknown
   try {
     const params: SunoAddVocalsParams = {
       uploadUrl, prompt, title, style,
-      negativeTags: (body.negativeTags as string) || '',
+      negativeTags: ((body.negativeTags as string) || '').trim() || 'noise, distortion',
       vocalGender: (body.vocalGender as 'm' | 'f') || undefined,
       model: (body.model as any) || 'V4_5PLUS',
     }
@@ -1841,7 +1841,7 @@ async function generateProVoiceToMelody(userId: string, body: Record<string, unk
   try {
     const params: SunoAddInstrumentalParams = {
       uploadUrl, title, tags,
-      negativeTags: (body.negativeTags as string) || '',
+      negativeTags: ((body.negativeTags as string) || '').trim() || 'noise, distortion',
       vocalGender: (body.vocalGender as 'm' | 'f') || undefined,
       model: (body.model as any) || 'V4_5PLUS',
     }
