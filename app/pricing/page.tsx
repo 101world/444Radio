@@ -96,7 +96,7 @@ const GENERATION_COSTS = [
 // ── Pro feature costs ──
 const PRO_GENERATION_COSTS = [
   { name: 'Pro Song',      credits: 5,  icon: Music },
-  { name: 'Cover',         credits: 5,  icon: Repeat },
+  { name: 'Remix',         credits: 3,  icon: Repeat },
   { name: 'Add Vocals',    credits: 5,  icon: Volume2 },
   { name: 'Melody\u2192Song',  credits: 5,  icon: Music },
   { name: 'Extend',        credits: 4,  icon: Wand2 },

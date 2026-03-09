@@ -19,20 +19,20 @@ const CREDIT_COST = SUNO_CREDIT_COSTS.cover
 /**
  * POST /api/generate/suno/cover
  *
- * 444 Pro Cover — upload audio and re-create it in a new style.
- * Costs 5 credits. Returns NDJSON stream.
+ * 444 Remix — upload audio and remix it in a new style.
+ * Costs 3 credits. Returns NDJSON stream.
  * Max 8 min audio (1 min for V4_5ALL model).
  *
- * Body: { uploadUrl, title, prompt?, style?, instrumental?, model?, vocalGender? }
+ * Body: { uploadUrl, title, prompt?, style?, instrumental?, model?, vocalGender?, negativeTags?, personaId?, styleWeight?, weirdnessConstraint?, audioWeight? }
  */
 export async function POST(req: NextRequest) {
-  console.log('🎵 [444-COVER] POST /api/generate/suno/cover')
+  console.log('🎵 [444-REMIX] POST /api/generate/suno/cover')
   try {
     const { userId } = await auth()
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await req.json()
-    const { uploadUrl, title, prompt, style, instrumental = false, model = 'V4_5ALL', vocalGender, negativeTags: rawNegTags, personaId } = body
+    const { uploadUrl, title, prompt, style, instrumental = false, model = 'V4_5ALL', vocalGender, negativeTags: rawNegTags, personaId, styleWeight, weirdnessConstraint, audioWeight } = body
     const negativeTags = (rawNegTags && String(rawNegTags).trim()) || 'noise, distortion'
 
     if (!uploadUrl || typeof uploadUrl !== 'string') return NextResponse.json({ error: 'uploadUrl is required — provide a public URL to the audio file' }, { status: 400 })
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     if (!users?.length) return NextResponse.json({ error: 'User not found' }, { status: 404 })
     const totalCredits = (users[0].credits || 0) + (users[0].free_credits || 0)
     if (totalCredits < CREDIT_COST) {
-      return NextResponse.json({ error: `Insufficient credits. 444 Cover requires ${CREDIT_COST} credits.`, creditsNeeded: CREDIT_COST, creditsAvailable: totalCredits }, { status: 402 })
+      return NextResponse.json({ error: `Insufficient credits. 444 Remix requires ${CREDIT_COST} credits.`, creditsNeeded: CREDIT_COST, creditsAvailable: totalCredits }, { status: 402 })
     }
 
     const deductRes = await fetch(`${supabaseUrl}/rest/v1/rpc/deduct_credits`, {
@@ -65,10 +65,10 @@ export async function POST(req: NextRequest) {
     let deductResult: { success: boolean; new_credits: number; error_message: string | null } | null = null
     if (deductRes.ok) { const raw = await deductRes.json(); deductResult = Array.isArray(raw) ? raw[0] ?? null : raw }
     if (!deductRes.ok || !deductResult?.success) {
-      await logCreditTransaction({ userId, amount: -CREDIT_COST, type: 'generation_music', status: 'failed', description: `444 Cover: ${cleanTitle}`, metadata: { uploadUrl } })
+      await logCreditTransaction({ userId, amount: -CREDIT_COST, type: 'generation_music', status: 'failed', description: `444 Remix: ${cleanTitle}`, metadata: { uploadUrl } })
       return NextResponse.json({ error: deductResult?.error_message || 'Failed to deduct credits' }, { status: 402 })
     }
-    await logCreditTransaction({ userId, amount: -CREDIT_COST, balanceAfter: deductResult.new_credits, type: 'generation_music', description: `444 Cover: ${cleanTitle}`, metadata: { uploadUrl, model, engine: '444-cover' } })
+    await logCreditTransaction({ userId, amount: -CREDIT_COST, balanceAfter: deductResult.new_credits, type: 'generation_music', description: `444 Remix: ${cleanTitle}`, metadata: { uploadUrl, model, engine: '444-remix' } })
 
     // ---------- Stream ----------
     const encoder = new TextEncoder()
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
 
     ;(async () => {
       try {
-        await sendLine({ type: 'started', model: '444-cover' })
+        await sendLine({ type: 'started', model: '444-remix' })
 
         const taskRes = await uploadAndCover({
           uploadUrl,
@@ -93,9 +93,12 @@ export async function POST(req: NextRequest) {
           vocalGender,
           negativeTags,
           personaId,
+          ...(styleWeight != null ? { styleWeight } : {}),
+          ...(weirdnessConstraint != null ? { weirdnessConstraint } : {}),
+          ...(audioWeight != null ? { audioWeight } : {}),
         })
         const taskId = taskRes.data.taskId
-        await sendLine({ type: 'progress', message: 'Creating your cover version...', taskId })
+        await sendLine({ type: 'progress', message: 'Remixing your track...', taskId })
 
         const completed = await pollTaskUntilDone(taskId)
         const cData = completed.data as Record<string, any>
@@ -107,14 +110,14 @@ export async function POST(req: NextRequest) {
         if (!trackAudioUrl) throw new Error('No audio URL in result')
         const trackLyric = track.lyric || track.lyrics || ''
 
-        const fileName = `cover-${cleanTitle.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.wav`
+        const fileName = `remix-${cleanTitle.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.wav`
         const r2 = await downloadAndUploadToR2(trackAudioUrl, userId, 'music', fileName)
         if (!r2.success) throw new Error(`Storage upload failed: ${r2.error}`)
 
         await fetch(`${supabaseUrl}/rest/v1/music_library`, {
           method: 'POST',
           headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
-          body: JSON.stringify({ clerk_user_id: userId, title: cleanTitle, prompt: cleanPrompt, lyrics: trackLyric, audio_url: r2.url, audio_format: 'wav', generation_params: { engine: '444-cover', type: '444-cover', model, source_url: uploadUrl }, status: 'ready' }),
+          body: JSON.stringify({ clerk_user_id: userId, title: cleanTitle, prompt: cleanPrompt, lyrics: trackLyric, audio_url: r2.url, audio_format: 'wav', generation_params: { engine: '444-remix', type: '444-remix', model, source_url: uploadUrl }, status: 'ready' }),
         }).catch(() => {})
 
         let libraryId: string | null = null
@@ -122,21 +125,21 @@ export async function POST(req: NextRequest) {
           const cmRes = await fetch(`${supabaseUrl}/rest/v1/combined_media`, {
             method: 'POST',
             headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
-            body: JSON.stringify({ user_id: userId, type: 'audio', title: cleanTitle, audio_prompt: cleanPrompt, lyrics: trackLyric, audio_url: r2.url, is_public: false, genre: '444-cover', metadata: JSON.stringify({ source: '444-cover', model, duration: track.duration, style: cleanStyle || null }) }),
+            body: JSON.stringify({ user_id: userId, type: 'audio', title: cleanTitle, audio_prompt: cleanPrompt, lyrics: trackLyric, audio_url: r2.url, is_public: false, genre: '444-remix', metadata: JSON.stringify({ source: '444-remix', model, duration: track.duration, style: cleanStyle || null }) }),
           })
           if (cmRes.ok) { const d = await cmRes.json(); libraryId = (Array.isArray(d) ? d[0] : d)?.id }
         } catch {}
 
-        updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: r2.url, mediaType: 'audio', title: cleanTitle, extraMeta: { engine: '444-cover' } }).catch(() => {})
+        updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: r2.url, mediaType: 'audio', title: cleanTitle, extraMeta: { engine: '444-remix' } }).catch(() => {})
         notifyGenerationComplete(userId, libraryId || '', 'music', cleanTitle).catch(() => {})
-        notifyCreditDeduct(userId, CREDIT_COST, `444 Cover: ${cleanTitle}`).catch(() => {})
+        notifyCreditDeduct(userId, CREDIT_COST, `444 Remix: ${cleanTitle}`).catch(() => {})
 
         await sendLine({ type: 'result', success: true, audioUrl: r2.url, title: cleanTitle, lyrics: trackLyric, libraryId, creditsRemaining: deductResult!.new_credits, creditsDeducted: CREDIT_COST })
         await writer.close().catch(() => {})
       } catch (error) {
-        console.error('❌ Cover error:', error)
-        await refundCredits({ userId, amount: CREDIT_COST, type: 'generation_music', reason: `Cover error: ${String(error).substring(0, 80)}`, metadata: { uploadUrl } })
-        notifyGenerationFailed(userId, 'music', '444 Cover error — credits refunded').catch(() => {})
+        console.error('❌ Remix error:', error)
+        await refundCredits({ userId, amount: CREDIT_COST, type: 'generation_music', reason: `Remix error: ${String(error).substring(0, 80)}`, metadata: { uploadUrl } })
+        notifyGenerationFailed(userId, 'music', '444 Remix error — credits refunded').catch(() => {})
         try { await sendLine({ type: 'result', success: false, error: sanitizeSunoError(error) }); await writer.close() } catch {}
       }
     })()

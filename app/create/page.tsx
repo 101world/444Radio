@@ -18,7 +18,6 @@ const AutotuneModal = lazy(() => import('../components/AutotuneModal'))
 const SplitStemsModal = lazy(() => import('../components/SplitStemsModal'))
 const VisualizerModal = lazy(() => import('../components/VisualizerModal'))
 const LipSyncModal = lazy(() => import('../components/LipSyncModal'))
-const ResoundModal = lazy(() => import('../components/ResoundModal'))
 const BeatMakerModal = lazy(() => import('../components/BeatMakerModal'))
 const FeaturesSidebar = lazy(() => import('../components/FeaturesSidebar'))
 const ProFeaturesModal = lazy(() => import('../components/ProFeaturesModal'))
@@ -174,12 +173,10 @@ function CreatePageContent() {
   const [selectedVoiceId, setSelectedVoiceId] = useState('')
   const [trainedVoices, setTrainedVoices] = useState<{ id: string; voice_id: string; name: string; source_audio_url?: string }[]>([])
   const [isUploadingRef, setIsUploadingRef] = useState(false)
-  const [showRemakeModal, setShowRemakeModal] = useState(false)
-  const [showResoundModal, setShowResoundModal] = useState(false)
   const [showBeatMakerModal, setShowBeatMakerModal] = useState(false)
   const [showCoverArtGenModal, setShowCoverArtGenModal] = useState(false)
   const [showProFeaturesModal, setShowProFeaturesModal] = useState(false)
-  const [proFeatureType, setProFeatureType] = useState<'extend' | 'inpaint' | 'cover' | 'add-vocals' | 'voice-to-melody' | 'music-video'>('extend')
+  const [proFeatureType, setProFeatureType] = useState<'extend' | 'inpaint' | 'remix' | 'add-vocals' | 'voice-to-melody' | 'music-video'>('extend')
   // Audio recording for voice reference (actual mic capture, not speech-to-text)
   const [isAudioRecording, setIsAudioRecording] = useState(false)
   const [audioRecordingTime, setAudioRecordingTime] = useState(0)
@@ -2109,233 +2106,6 @@ function CreatePageContent() {
     return { error: resultData.error || 'Failed to generate music' }
   }
 
-  // Generate using fal.ai stable-audio-25/audio-to-audio (444 Radio Remix)
-  const generateResound = async (
-    params: {
-      title: string
-      prompt: string
-      inputAudioUrl: string
-      strength: number
-      num_inference_steps: number
-      total_seconds: number | null
-      guidance_scale: number
-      seed: number | null
-    },
-    signal?: AbortSignal,
-    messageId?: string
-  ) => {
-    const requestBody = {
-      title: params.title,
-      prompt: params.prompt,
-      audio_url: params.inputAudioUrl,
-      strength: params.strength,
-      num_inference_steps: params.num_inference_steps,
-      total_seconds: params.total_seconds,
-      guidance_scale: params.guidance_scale,
-      seed: params.seed,
-    }
-
-    const res = await fetch('/api/generate/resound', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody),
-      signal,
-    })
-
-    // Handle non-streaming error responses (e.g. 500, 402)
-    if (!res.ok && res.headers.get('content-type')?.includes('application/json')) {
-      const errJson = await res.json().catch(() => ({}))
-      return { error: errJson.error || `Server error (${res.status})` }
-    }
-
-    // Parse NDJSON stream (same pattern as generateMusic)
-    const reader = res.body?.getReader()
-    if (!reader) return { error: 'No response stream' }
-
-    const decoder = new TextDecoder()
-    let buffer = ''
-    let resultData: any = null
-
-    try {
-      while (true) {
-        if (signal?.aborted) throw new DOMException('The operation was aborted.', 'AbortError')
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || ''
-        for (const line of lines) {
-          if (!line.trim()) continue
-          try {
-            const parsed = JSON.parse(line)
-            if (parsed.type === 'started' && parsed.predictionId && messageId) {
-              predictionIdsRef.current.set(messageId, parsed.predictionId)
-              if (pendingCancelsRef.current.has(messageId)) {
-                pendingCancelsRef.current.delete(messageId)
-                fetch('/api/generate/cancel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ predictionId: parsed.predictionId }) }).catch(() => {})
-                predictionIdsRef.current.delete(messageId)
-              }
-            } else if (parsed.type === 'result') {
-              resultData = parsed
-            }
-          } catch { /* skip */ }
-        }
-      }
-      if (buffer.trim()) {
-        try {
-          const parsed = JSON.parse(buffer)
-          if (parsed.type === 'result') resultData = parsed
-          else if (parsed.type === 'started' && parsed.predictionId && messageId) {
-            predictionIdsRef.current.set(messageId, parsed.predictionId)
-          }
-        } catch { /* ignore */ }
-      }
-    } finally {
-      reader.releaseLock()
-      if (messageId) predictionIdsRef.current.delete(messageId)
-    }
-
-    if (!resultData) return { error: 'No result received from generation' }
-
-    if (resultData.success) {
-      return {
-        audioUrl: resultData.audioUrl,
-        title: resultData.title || params.title,
-        prompt: params.prompt,
-        creditsRemaining: resultData.creditsRemaining,
-      }
-    }
-    return { error: resultData.error || 'Failed to generate Remix' }
-  }
-
-  // Handler called from the ResoundModal onGenerate callback
-  const handleResoundGenerate = async (resoundParams: {
-    title: string
-    prompt: string
-    inputAudioUrl: string
-    strength: number
-    num_inference_steps: number
-    total_seconds: number | null
-    guidance_scale: number
-    seed: number | null
-  }) => {
-    // Close the modal
-    setShowResoundModal(false)
-
-    // Capture session so results don't leak into a new chat
-    const mySession = chatSessionRef.current
-    const isStale = () => chatSessionRef.current !== mySession
-
-    const generationId = Date.now().toString()
-    const userMessage: Message = {
-      id: generationId,
-      type: 'user',
-      content: `🔁 Remix: "${resoundParams.title}" — ${resoundParams.prompt.substring(0, 80)}`,
-      timestamp: new Date(),
-    }
-    const generatingMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      type: 'generation',
-      content: activeGenerations.size > 0 ? '🔁 Queued — will start soon…' : '🔁 Remixing your beat…',
-      generationType: 'music',
-      isGenerating: true,
-      timestamp: new Date(),
-    }
-
-    setMessages(prev => [...prev, userMessage, generatingMessage])
-    setGenerationQueue(prev => [...prev, generatingMessage.id])
-    setActiveGenerations(prev => new Set(prev).add(generatingMessage.id))
-
-    const abortController = new AbortController()
-    abortControllersRef.current.set(generatingMessage.id, abortController)
-
-    // Add to persistent generation queue
-    const genId = addGeneration({
-      type: 'music',
-      prompt: resoundParams.prompt,
-      title: resoundParams.title,
-    })
-    genSessionMap.current.set(genId, mySession)
-    setMessages(prev => prev.map(msg =>
-      msg.id === generatingMessage.id ? { ...msg, generationId: genId } : msg
-    ))
-    updateGeneration(genId, { status: 'generating', progress: 10 })
-
-    try {
-      const result = await generateResound(resoundParams, abortController.signal, generatingMessage.id)
-
-      if (!result.error && result.creditsRemaining !== undefined) {
-        setUserCredits(result.creditsRemaining)
-      }
-      refreshCredits()
-      window.dispatchEvent(new Event('credits:refresh'))
-
-      processedGenIdsRef.current.add(genId)
-      if (result.error) {
-        updateGeneration(genId, { status: 'failed', error: result.error })
-      } else {
-        updateGeneration(genId, {
-          status: 'completed',
-          result: {
-            audioUrl: 'audioUrl' in result ? result.audioUrl : undefined,
-            title: result.title,
-          },
-        })
-      }
-
-      if (!isStale()) {
-        setMessages(prev =>
-          prev.map(msg =>
-            msg.id === generatingMessage.id || msg.generationId === genId
-              ? {
-                  ...msg,
-                  isGenerating: false,
-                  content: result.error ? '❌ 444 Radio locking in. Please try again.' : `✅ ${result.title || 'Remix track'} is ready!`,
-                  result: result.error ? undefined : result,
-                }
-              : msg
-          )
-        )
-      } else {
-        console.log('[Remix] Skipping message update — chat session changed')
-      }
-
-      if (!result.error && !isStale()) {
-        const assistantMessage: Message = {
-          id: (Date.now() + Math.random()).toString(),
-          type: 'assistant',
-          content: `${result.title || 'Your remix'} is ready! Want to create cover art or generate another?`,
-          timestamp: new Date(),
-        }
-        setMessages(prev => [...prev, assistantMessage])
-      }
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') return
-      console.error('Remix generation error:', error)
-      processedGenIdsRef.current.add(genId)
-      updateGeneration(genId, { status: 'failed', error: error instanceof Error ? error.message : 'Unknown error' })
-      if (!isStale()) {
-        setMessages(prev =>
-          prev.map(msg =>
-            msg.id === generatingMessage.id || msg.generationId === genId
-              ? { ...msg, isGenerating: false, content: '❌ Remix generation failed. Please try again.' }
-              : msg
-          )
-        )
-      }
-      refreshCredits()
-      window.dispatchEvent(new Event('credits:refresh'))
-    } finally {
-      abortControllersRef.current.delete(generatingMessage.id)
-      setGenerationQueue(prev => prev.filter(id => id !== generatingMessage.id))
-      setActiveGenerations(prev => {
-        const newSet = new Set(prev)
-        newSet.delete(generatingMessage.id)
-        return newSet
-      })
-    }
-  }
-
   // ── Beat Maker Generation ──
   const generateBeatMaker = async (
     params: { title: string; prompt: string; duration: number },
@@ -3044,12 +2814,12 @@ function CreatePageContent() {
           onShowAutotune={() => setShowAutotuneModal(true)}
           onShowVisualizer={() => setShowVisualizerModal(true)}
           onShowLipSync={() => setShowLipSyncModal(true)}
-          onShowRemix={() => setShowResoundModal(true)}
+          onShowRemix={() => { setProFeatureType('remix'); setShowProFeaturesModal(true) }}
           onShowBeatMaker={() => setShowBeatMakerModal(true)}
           onOpenRelease={() => handleOpenRelease()}
           onShowProExtend={() => { setProFeatureType('extend'); setShowProFeaturesModal(true) }}
           onShowProInpaint={() => { setProFeatureType('inpaint'); setShowProFeaturesModal(true) }}
-          onShowProCover={() => { setProFeatureType('cover'); setShowProFeaturesModal(true) }}
+          onShowProRemix={() => { setProFeatureType('remix'); setShowProFeaturesModal(true) }}
           onShowProAddVocals={() => { setProFeatureType('add-vocals'); setShowProFeaturesModal(true) }}
           onShowProVoiceToMelody={() => { setProFeatureType('voice-to-melody'); setShowProFeaturesModal(true) }}
           onShowProMusicVideo={() => { setProFeatureType('music-video'); setShowProFeaturesModal(true) }}
@@ -3914,9 +3684,6 @@ function CreatePageContent() {
                   )}
                   <span className="text-white/25">→ Write new lyrics in prompt</span>
                 </div>
-                <button onClick={() => setShowRemakeModal(true)} className="text-[11px] text-purple-300/70 hover:text-purple-200 px-2 py-1 hover:bg-white/5 rounded-lg transition-colors flex-shrink-0">
-                  Edit
-                </button>
                 <button onClick={() => { clearAllRefs() }} className="text-[11px] text-red-400/50 hover:text-red-400 px-2 py-1 hover:bg-white/5 rounded-lg transition-colors flex-shrink-0">
                   Clear
                 </button>
@@ -4056,42 +3823,17 @@ function CreatePageContent() {
                   )}
                 </button>
 
-                {/* Remake — unified voice + song reference */}
+                {/* 444 Remix — upload & remix via Suno */}
                 <button
-                  onClick={() => {
-                    if (isAudioRecording) { stopAudioRecording(); return }
-                    setShowRemakeModal(true)
-                  }}
-                  className={`relative flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-lg transition-all duration-300 flex items-center justify-center ${
-                    isAudioRecording
-                      ? 'bg-purple-500/20 border border-purple-400/40 animate-pulse'
-                      : hasVoiceOrInstrumentalRef
-                      ? 'bg-purple-500/15 border border-purple-400/30'
-                      : 'hover:bg-white/[0.06] border border-transparent hover:border-white/10'
-                  }`}
-                  title={isAudioRecording ? `Recording... ${audioRecordingTime}s` : 'Remake — Use your voice & song to create something new'}
-                >
-                  {isAudioRecording ? (
-                    <div className="w-2.5 h-2.5 bg-purple-400 rounded-sm"></div>
-                  ) : (
-                    <Repeat size={18} className={hasVoiceOrInstrumentalRef ? 'text-purple-400' : 'text-white/50'} />
-                  )}
-                  {hasVoiceOrInstrumentalRef && !isAudioRecording && (
-                    <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-purple-400 rounded-full"></div>
-                  )}
-                </button>
-
-                {/* Remix — upload beat + prompt with 444 Radio */}
-                <button
-                  onClick={() => setShowResoundModal(true)}
+                  onClick={() => { setProFeatureType('remix'); setShowProFeaturesModal(true) }}
                   className={`flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-lg transition-all duration-500 flex items-center justify-center ${
                     isProMode
                       ? 'hover:bg-red-500/20 border border-red-500/20 hover:border-red-400/40 bg-red-500/10'
                       : 'hover:bg-cyan-500/20 border border-cyan-500/20 hover:border-cyan-400/40 bg-cyan-500/10'
                   }`}
-                  title="Remix — Upload a beat & generate with 444 Radio"
+                  title="444 Remix — Upload any song and remix it in a new style"
                 >
-                  <Music2 size={18} className={`transition-colors duration-500 ${isProMode ? 'text-red-400' : 'text-cyan-400'}`} />
+                  <Repeat size={18} className={`transition-colors duration-500 ${isProMode ? 'text-red-400' : 'text-cyan-400'}`} />
                 </button>
 
                 {/* Lyrics Editor */}
@@ -5427,207 +5169,6 @@ function CreatePageContent() {
           </div>
         </div>
       )}
-
-      {/* Remake Modal — unified song + voice reference flow */}
-      {showRemakeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowRemakeModal(false)} />
-          <div className="relative w-full max-w-md bg-gray-950/95 backdrop-blur-2xl border border-purple-500/15 rounded-2xl shadow-2xl shadow-purple-500/10 overflow-hidden">
-            
-            {/* Header */}
-            <div className="px-6 pt-6 pb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/20 to-cyan-500/20 flex items-center justify-center">
-                    <Repeat size={20} className="text-purple-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-semibold text-white">Remake a Song</h3>
-                    <p className="text-xs text-white/40 mt-0.5">New lyrics, same vibe — in any voice</p>
-                  </div>
-                </div>
-                <button onClick={() => setShowRemakeModal(false)} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
-                  <X size={16} className="text-white/40" />
-                </button>
-              </div>
-            </div>
-
-            {/* How it works - subtle explainer */}
-            <div className="mx-6 mb-4 px-4 py-3 bg-white/[0.02] rounded-xl border border-white/[0.04]">
-              <div className="flex items-center gap-6 text-[11px] text-white/30">
-                <span className="flex items-center gap-1.5"><span className="w-5 h-5 rounded-full bg-orange-500/15 flex items-center justify-center text-orange-400 text-[10px] font-bold">1</span> Upload song</span>
-                <span className="text-white/10">→</span>
-                <span className="flex items-center gap-1.5"><span className="w-5 h-5 rounded-full bg-purple-500/15 flex items-center justify-center text-purple-400 text-[10px] font-bold">2</span> Pick voice</span>
-                <span className="text-white/10">→</span>
-                <span className="flex items-center gap-1.5"><span className="w-5 h-5 rounded-full bg-cyan-500/15 flex items-center justify-center text-cyan-400 text-[10px] font-bold">3</span> Write lyrics</span>
-              </div>
-            </div>
-
-            {/* Step 1: Upload Song */}
-            <div className="px-6 pb-3">
-              <div className="text-[11px] font-medium text-white/50 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-orange-500/15 flex items-center justify-center text-orange-400 text-[10px] font-bold">1</span>
-                Upload a song to remake
-              </div>
-              {instrumentalRefFile ? (
-                <div className="flex items-center justify-between px-4 py-3 bg-orange-500/[0.08] border border-orange-500/20 rounded-xl">
-                  <div className="flex items-center gap-2.5">
-                    <Guitar size={16} className="text-orange-400" />
-                    <span className="text-sm text-orange-200 truncate max-w-[220px]">{instrumentalRefFile.name}</span>
-                  </div>
-                  <button onClick={() => { setInstrumentalRefFile(null); setInstrumentalRefUrl('') }} className="text-xs text-white/30 hover:text-red-400 transition-colors">Remove</button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => instrumentalRefInputRef.current?.click()}
-                  className="w-full flex items-center gap-3.5 px-4 py-4 bg-white/[0.03] hover:bg-orange-500/[0.08] border border-dashed border-white/10 hover:border-orange-500/30 rounded-xl transition-all duration-200 group"
-                >
-                  <div className="w-10 h-10 rounded-lg bg-orange-500/10 group-hover:bg-orange-500/20 flex items-center justify-center transition-colors">
-                    <Upload size={18} className="text-orange-400" />
-                  </div>
-                  <div className="text-left">
-                    <div className="text-sm font-medium text-white/80 group-hover:text-orange-200 transition-colors">Upload Song / Instrumental</div>
-                    <div className="text-[11px] text-white/30">.wav or .mp3 — the beat & melody you want to keep</div>
-                  </div>
-                </button>
-              )}
-            </div>
-
-            {/* Step 2: Choose Voice */}
-            <div className="px-6 pb-3">
-              <div className="text-[11px] font-medium text-white/50 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-purple-500/15 flex items-center justify-center text-purple-400 text-[10px] font-bold">2</span>
-                Choose a voice <span className="text-white/25 normal-case">(optional)</span>
-              </div>
-              
-              {/* Current voice status */}
-              {(voiceRefFile || recordedVoiceBlob || selectedVoiceId) ? (
-                <div className="flex items-center justify-between px-4 py-3 bg-purple-500/[0.08] border border-purple-500/20 rounded-xl mb-2">
-                  <div className="flex items-center gap-2.5">
-                    <AudioLines size={16} className="text-purple-400" />
-                    <span className="text-sm text-purple-200 truncate max-w-[220px]">
-                      {selectedVoiceId ? (trainedVoices.find(v => v.voice_id === selectedVoiceId)?.name || 'Trained voice') : voiceRefFile ? voiceRefFile.name : `Recording (${audioRecordingTime}s)`}
-                    </span>
-                  </div>
-                  <button onClick={() => { setVoiceRefFile(null); setVoiceRefUrl(''); setRecordedVoiceBlob(null); setSelectedVoiceId('') }} className="text-xs text-white/30 hover:text-red-400 transition-colors">Remove</button>
-                </div>
-              ) : null}
-
-              <div className="space-y-2">
-                {/* Upload voice file */}
-                <button
-                  onClick={() => {
-                    voiceRefInputRef.current?.click()
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-3 bg-white/[0.03] hover:bg-purple-500/[0.08] border border-white/[0.06] hover:border-purple-500/25 rounded-xl transition-all duration-200 group"
-                >
-                  <div className="w-9 h-9 rounded-lg bg-purple-500/10 group-hover:bg-purple-500/20 flex items-center justify-center transition-colors">
-                    <Upload size={16} className="text-purple-400" />
-                  </div>
-                  <div className="text-left">
-                    <div className="text-sm text-white/80 group-hover:text-purple-200 transition-colors">Upload Voice File</div>
-                    <div className="text-[10px] text-white/25">.wav or .mp3 — a sample of the voice</div>
-                  </div>
-                </button>
-
-                {/* Trained voice */}
-                {trainedVoices.length > 0 ? (
-                  <div className="px-4 py-3 bg-white/[0.03] border border-white/[0.06] rounded-xl">
-                    <div className="flex items-center gap-3 mb-2.5">
-                      <div className="w-9 h-9 rounded-lg bg-cyan-500/10 flex items-center justify-center">
-                        <Sparkles size={16} className="text-cyan-400" />
-                      </div>
-                      <div className="text-sm text-white/80">Use Trained Voice</div>
-                    </div>
-                    <select
-                      value={selectedVoiceId}
-                      onChange={e => {
-                        setSelectedVoiceId(e.target.value)
-                        if (e.target.value) { setVoiceRefFile(null); setVoiceRefUrl(''); setRecordedVoiceBlob(null) }
-                      }}
-                      className="w-full px-3 py-2.5 bg-black/40 border border-white/10 hover:border-cyan-500/30 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-400/50 cursor-pointer appearance-none"
-                      style={{
-                        backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(148,163,184,0.5)' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
-                        backgroundRepeat: 'no-repeat',
-                        backgroundPosition: 'right 0.6rem center',
-                        backgroundSize: '1.1em 1.1em',
-                        paddingRight: '2.2rem'
-                      }}
-                    >
-                      <option value="">Choose a voice...</option>
-                      {trainedVoices.map(v => (
-                        <option key={v.voice_id} value={v.voice_id}>{v.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                ) : null}
-
-                {/* Record live */}
-                <button
-                  onClick={() => { setShowRemakeModal(false); startAudioRecording() }}
-                  className="w-full flex items-center gap-3 px-4 py-3 bg-white/[0.03] hover:bg-red-500/[0.08] border border-white/[0.06] hover:border-red-500/25 rounded-xl transition-all duration-200 group"
-                >
-                  <div className="w-9 h-9 rounded-lg bg-red-500/10 group-hover:bg-red-500/20 flex items-center justify-center transition-colors">
-                    <Mic size={16} className="text-red-400" />
-                  </div>
-                  <div className="text-left">
-                    <div className="text-sm text-white/80 group-hover:text-red-200 transition-colors">Record Live</div>
-                    <div className="text-[10px] text-white/25">Sing or speak into your microphone</div>
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            {/* Step 3: Write lyrics */}
-            <div className="px-6 pb-4 pt-1">
-              <div className="text-[11px] font-medium text-white/50 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-cyan-500/15 flex items-center justify-center text-cyan-400 text-[10px] font-bold">3</span>
-                Write your new lyrics
-              </div>
-              <textarea
-                value={input}
-                onChange={e => setInput(e.target.value.slice(0, 300))}
-                placeholder="Write your new lyrics or describe the vibe you want..."
-                rows={4}
-                className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.08] hover:border-cyan-500/30 focus:border-cyan-400/50 rounded-xl text-sm text-white placeholder-white/25 focus:outline-none resize-none transition-all"
-              />
-              <div className="flex items-center justify-between mt-1.5">
-                <span className={`text-[10px] ${input.length > 270 ? 'text-red-400' : 'text-white/20'}`}>{input.length}/300</span>
-              </div>
-            </div>
-
-            {/* Create / Close button */}
-            <div className="px-6 pb-6 pt-2">
-              <button
-                onClick={() => {
-                  setShowRemakeModal(false)
-                  if (input.trim().length >= 3 && hasVoiceOrInstrumentalRef) {
-                    handleGenerate()
-                  }
-                }}
-                className={`w-full py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                  input.trim().length >= 3 && hasVoiceOrInstrumentalRef
-                    ? 'bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white shadow-lg shadow-red-500/20'
-                    : 'bg-gradient-to-r from-purple-500/20 to-cyan-500/20 hover:from-purple-500/30 hover:to-cyan-500/30 border border-purple-500/20 text-white'
-                }`}
-              >
-                {input.trim().length >= 3 && hasVoiceOrInstrumentalRef ? 'Create Remake' : hasVoiceOrInstrumentalRef ? 'Write lyrics above to create' : 'Close'}
-              </button>
-              <p className="text-[10px] text-white/20 text-center mt-2">Uses advanced AI model • 3 credits per generation</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Remix Modal */}
-      <Suspense fallback={null}>
-        <ResoundModal
-          isOpen={showResoundModal}
-          onClose={() => setShowResoundModal(false)}
-          userCredits={userCredits ?? undefined}
-          onGenerate={handleResoundGenerate}
-        />
-      </Suspense>
 
       {/* Beat Maker Modal */}
       <Suspense fallback={null}>

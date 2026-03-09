@@ -34,7 +34,7 @@ interface FeaturesSidebarProps {
   onOpenRelease: () => void
   onShowProExtend: () => void
   onShowProInpaint: () => void
-  onShowProCover: () => void
+  onShowProRemix: () => void
   onShowProAddVocals: () => void
   onShowProVoiceToMelody: () => void
   onShowProMusicVideo: () => void
@@ -98,7 +98,7 @@ export default function FeaturesSidebar({
   onOpenRelease,
   onShowProExtend,
   onShowProInpaint,
-  onShowProCover,
+  onShowProRemix,
   onShowProAddVocals,
   onShowProVoiceToMelody,
   onShowProMusicVideo,
@@ -168,12 +168,13 @@ export default function FeaturesSidebar({
           onClick: () => onSelectType('image'),
         },
         {
-          icon: Repeat, label: 'Remix', desc: 'Audio-to-audio remix',
+          icon: Repeat, label: 'Remix', desc: 'Remix any song (Suno)',
           gradient: proGradient('from-amber-400/35 via-orange-500/25 to-red-400/30'),
           glowColor: proGlow('shadow-amber-400/30'),
           activeGradient: proActiveGrad('from-amber-400/50 via-orange-500/40 to-red-400/45 ring-amber-400/70'),
-          active: false, cost: 10,
-          onClick: onShowRemix,
+          active: false, cost: 3,
+          onClick: onShowProRemix,
+          helpText: 'Upload any song and remix it in a new style using Suno AI. 3 credits.',
         },
         {
           icon: Edit3, label: 'Lyrics', desc: 'Write & edit words',
@@ -183,14 +184,6 @@ export default function FeaturesSidebar({
           active: !!(customTitle || genre || customLyrics || bpm),
           onClick: onShowLyrics,
           hidden: selectedType !== 'music' || isInstrumental,
-        },
-        {
-          icon: RefreshCw, label: 'Remake', desc: 'Reimagine tracks',
-          gradient: proGradient('from-sky-400/35 via-blue-400/25 to-indigo-400/30'),
-          glowColor: proGlow('shadow-sky-400/30'),
-          activeGradient: proActiveGrad('from-sky-400/50 via-blue-400/40 to-indigo-400/45 ring-sky-400/70'),
-          active: false,
-          onClick: onShowLyrics,
         },
       ],
     },
@@ -334,13 +327,13 @@ export default function FeaturesSidebar({
         helpText: 'Upload audio and set start/end times for the section to replace. Add style tags. 4 credits.',
       },
       {
-        icon: RefreshCw, label: 'Cover', desc: 'Re-create in a new style',
+        icon: RefreshCw, label: 'Remix', desc: 'Remix any song in a new style',
         gradient: proGradient('from-blue-500/35 via-indigo-500/25 to-violet-500/30'),
         glowColor: proGlow('shadow-blue-400/30'),
         activeGradient: proActiveGrad('from-blue-500/50 via-indigo-500/40 to-violet-500/45 ring-blue-400/70'),
-        active: false, cost: 5,
-        onClick: onShowProCover,
-        helpText: 'Upload any audio file or paste a URL. The AI will re-create it in a completely different style. 5 credits.',
+        active: false, cost: 3,
+        onClick: onShowProRemix,
+        helpText: 'Upload any song — with or without vocals. 444 Remix re-creates it in a brand new style. 3 credits.',
       },
       {
         icon: MicVocal, label: 'Add Vocals', desc: 'AI vocals on instrumental',

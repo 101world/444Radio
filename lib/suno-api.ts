@@ -331,11 +331,12 @@ export interface SunoBoostStyleResponse {
 // 444 rate: $0.035 per 444 credit
 //
 // Formula: ceil(suno_credits × $0.005 × 3 / $0.035)   (3× = ~200% margin)
+//   EXCEPT Remix/Cover: 50% margin → ceil(12 × $0.005 × 1.5 / $0.035) = 3
 //
 //   - Generate (12 Suno cr → $0.06): $0.18 → 5 credits
 //   - Extend   (12 cr → $0.06):      $0.18 → 5 credits
 //   - Inpaint  ( 6 cr → $0.03):      $0.09 → 3 credits
-//   - Cover    (12 cr → $0.06):      $0.18 → 5 credits
+//   - Remix    (12 cr → $0.06):      $0.09 → 3 credits  (50% margin)
 //   - UpExtend (12 cr → $0.06):      $0.18 → 5 credits
 //   - AddVocal (12 cr → $0.06):      $0.18 → 5 credits
 //   - AddInstr (12 cr → $0.06):      $0.18 → 5 credits
@@ -349,7 +350,7 @@ export const SUNO_CREDIT_COSTS = {
   generate: 5,         // Hindi / regional Pro music — premium engine, returns 2 tracks
   extend: 5,
   inpaint: 3,
-  cover: 5,
+  cover: 3,            // 444 Remix — 50% margin
   uploadExtend: 5,
   addVocals: 5,
   addInstrumental: 5,

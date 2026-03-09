@@ -6,7 +6,7 @@ import { X, Wand2, Replace, RefreshCw, MicVocal, Headphones, Crown, Upload, Load
 interface ProFeaturesModalProps {
   isOpen: boolean
   onClose: () => void
-  initialFeature: 'extend' | 'inpaint' | 'cover' | 'add-vocals' | 'voice-to-melody' | 'music-video'
+  initialFeature: 'extend' | 'inpaint' | 'remix' | 'add-vocals' | 'voice-to-melody' | 'music-video'
   userCredits: number | null
 }
 
@@ -23,11 +23,11 @@ const FEATURE_INFO: Record<string, { icon: any; label: string; desc: string; cos
     fields: ['uploadUrl', 'infillStartS', 'infillEndS', 'tags', 'title'],
     help: 'Upload an audio file and set start/end times (in seconds) for the section to replace. Add style tags to guide the replacement. Leave lyrics empty for instrumental. 4 credits per generation.',
   },
-  cover: {
-    icon: RefreshCw, label: '444 Cover', desc: 'Re-create audio in a completely new style',
-    cost: 5,
-    fields: ['uploadUrl', 'title', 'prompt', 'style'],
-    help: 'Upload any audio file (up to 8 min) or paste a public URL. The AI will re-create it in a completely different style while preserving the melody and structure. Add style tags to guide the output. 5 credits per generation.',
+  remix: {
+    icon: RefreshCw, label: '444 Remix', desc: 'Remix any song into a brand new style',
+    cost: 3,
+    fields: ['uploadUrl', 'title', 'prompt', 'style', 'remixOptions'],
+    help: 'Upload any song — with or without vocals. 444 Remix re-creates it in a completely different style while preserving the melody & structure. Adjust vocal gender, weirdness, style weight and more. 3 credits per remix.',
   },
   'add-vocals': {
     icon: MicVocal, label: '444 Add Vocals', desc: 'Add AI-generated vocals to an instrumental track',
@@ -44,8 +44,8 @@ const FEATURE_INFO: Record<string, { icon: any; label: string; desc: string; cos
   'music-video': {
     icon: Video, label: '444 Music Video', desc: 'Generate a cinematic music video for any track',
     cost: 5,
-    fields: ['taskId', 'audioId', 'author', 'domainName'],
-    help: 'Create a music video (MP4) from a previously generated track. Provide the Task ID and Audio ID from the original generation. Author and domain customize the watermark. 5 credits per video.',
+    fields: ['uploadUrl', 'taskId', 'audioId', 'author', 'domainName'],
+    help: 'Upload a song or paste Task ID + Audio ID from a previous generation. 444 creates a cinematic music video (MP4) with your branding. 5 credits per video.',
   },
 }
 
@@ -83,6 +83,15 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
 
   // Boost style state
   const [isBoosting, setIsBoosting] = useState(false)
+
+  // Remix advanced options
+  const [instrumental, setInstrumental] = useState(false)
+  const [vocalGender, setVocalGender] = useState<'m' | 'f' | ''>('')
+  const [negativeTags, setNegativeTags] = useState('noise, distortion')
+  const [styleWeight, setStyleWeight] = useState(50)
+  const [weirdness, setWeirdness] = useState(50)
+  const [audioWeight, setAudioWeight] = useState(50)
+  const [showRemixAdvanced, setShowRemixAdvanced] = useState(false)
 
   // Cleanup recording on unmount
   useEffect(() => {
@@ -173,6 +182,8 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
     setAuthor('444 Radio'); setDomainName('444radio.co.in');
     setResult(null); setError(null); setUploadFile(null);
     setRecordedBlob(null); setRecordingTime(0);
+    setInstrumental(false); setVocalGender(''); setNegativeTags('noise, distortion');
+    setStyleWeight(50); setWeirdness(50); setAudioWeight(50); setShowRemixAdvanced(false);
     if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop()
   }
 
@@ -220,10 +231,21 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
           endpoint = '/api/generate/suno/inpaint'
           body = { audio_url: uploadUrl, start: parseFloat(infillStartS), end: parseFloat(infillEndS), tags, title: title || 'Inpainted Track' }
           break
-        case 'cover':
-          if (!uploadUrl) throw new Error('Audio URL is required')
+        case 'remix':
+          if (!uploadUrl) throw new Error('Upload a song to remix')
           endpoint = '/api/generate/suno/cover'
-          body = { uploadUrl, title: title || 'Cover Track', prompt, style }
+          body = {
+            uploadUrl,
+            title: title || 'Remixed Track',
+            prompt,
+            style,
+            instrumental,
+            ...(vocalGender ? { vocalGender } : {}),
+            negativeTags: negativeTags || 'noise, distortion',
+            ...(styleWeight !== 50 ? { styleWeight: styleWeight / 100 } : {}),
+            ...(weirdness !== 50 ? { weirdnessConstraint: weirdness / 100 } : {}),
+            ...(audioWeight !== 50 ? { audioWeight: audioWeight / 100 } : {}),
+          }
           break
         case 'add-vocals':
           if (!uploadUrl) throw new Error('Instrumental audio URL is required')
@@ -497,6 +519,63 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
                   {isBoosting ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Remix advanced options */}
+          {info.fields.includes('remixOptions') && (
+            <div className="space-y-3">
+              {/* Instrumental toggle + vocal gender */}
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={instrumental} onChange={(e) => setInstrumental(e.target.checked)} className="w-4 h-4 rounded border-white/20 bg-white/5 text-red-500 focus:ring-red-400/30" />
+                  <span className="text-xs text-white/60">Instrumental only (no vocals)</span>
+                </label>
+              </div>
+              {!instrumental && (
+                <div>
+                  <label className={labelClass}>Vocal Gender</label>
+                  <select value={vocalGender} onChange={(e) => setVocalGender(e.target.value as any)} className={inputClass}>
+                    <option value="">Auto-detect</option>
+                    <option value="m">Male</option>
+                    <option value="f">Female</option>
+                  </select>
+                </div>
+              )}
+
+              {/* Negative tags */}
+              <div>
+                <label className={labelClass}>Avoid Tags</label>
+                <input type="text" value={negativeTags} onChange={(e) => setNegativeTags(e.target.value)} placeholder="noise, distortion" className={inputClass} />
+              </div>
+
+              {/* Advanced sliders */}
+              <button
+                type="button"
+                onClick={() => setShowRemixAdvanced(!showRemixAdvanced)}
+                className="text-[11px] text-white/30 hover:text-red-400 transition-colors"
+              >
+                {showRemixAdvanced ? '▾ Hide advanced' : '▸ Advanced controls'}
+              </button>
+              {showRemixAdvanced && (
+                <div className="space-y-3 pt-1">
+                  <div>
+                    <label className={labelClass}>Style Weight — {styleWeight}%</label>
+                    <input type="range" min={0} max={100} value={styleWeight} onChange={(e) => setStyleWeight(Number(e.target.value))} className="w-full accent-red-500" />
+                    <p className="text-[10px] text-white/20">How much the new style overrides the original</p>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Weirdness — {weirdness}%</label>
+                    <input type="range" min={0} max={100} value={weirdness} onChange={(e) => setWeirdness(Number(e.target.value))} className="w-full accent-red-500" />
+                    <p className="text-[10px] text-white/20">Higher = more experimental & unpredictable</p>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Audio Fidelity — {audioWeight}%</label>
+                    <input type="range" min={0} max={100} value={audioWeight} onChange={(e) => setAudioWeight(Number(e.target.value))} className="w-full accent-red-500" />
+                    <p className="text-[10px] text-white/20">Higher = stays closer to the original audio</p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
