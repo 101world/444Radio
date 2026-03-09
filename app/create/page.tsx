@@ -4391,8 +4391,8 @@ function CreatePageContent() {
                   </select>
                   <p className="text-[11px] text-gray-600">
                     {selectedLanguage.toLowerCase() === 'hindi' || ['urdu', 'punjabi', 'tamil', 'telugu'].includes(selectedLanguage.toLowerCase())
-                      ? '🎵 Hindi-family → routed to MiniMax 2.0 (best for Indic languages)'
-                      : '🎵 Routed to MiniMax 1.5 (optimized for this language)'}
+                      ? '🎵 Hindi-family → uses 444 Pro Engine (best for Indic languages)'
+                      : '🎵 Uses 444 Music Engine (optimized for this language)'}
                   </p>
                 </div>
 
@@ -4468,14 +4468,14 @@ function CreatePageContent() {
                 <div className="space-y-2">
                   <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
                     <Zap size={13} className="text-yellow-400" />
-                    AI Model Info
+                    Engine Info
                   </h4>
                   
-                  {/* MiniMax 2.0 */}
+                  {/* 444 Pro Engine */}
                   <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500/[0.08] to-transparent border border-purple-500/15">
                     <div className="flex items-center gap-2 mb-2">
                       <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
-                      <span className="text-xs font-bold text-purple-300">MiniMax 2.0</span>
+                      <span className="text-xs font-bold text-purple-300">444 Pro Engine</span>
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/20">Hindi &amp; Indic</span>
                     </div>
                     <p className="text-[11px] text-gray-500 leading-relaxed">Best for Hindi, Urdu, Punjabi, Tamil, Telugu and Indic-script languages. Supports lyrics up to <span className="text-purple-400 font-semibold">3,000 chars</span>.</p>
@@ -4499,11 +4499,11 @@ function CreatePageContent() {
                     </div>
                   </div>
 
-                  {/* MiniMax 1.5 */}
+                  {/* 444 Music Engine */}
                   <div className="p-3 rounded-xl bg-gradient-to-br from-cyan-500/[0.08] to-transparent border border-cyan-500/15">
                     <div className="flex items-center gap-2 mb-2">
                       <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-                      <span className="text-xs font-bold text-cyan-300">MiniMax 1.5</span>
+                      <span className="text-xs font-bold text-cyan-300">444 Music Engine</span>
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/20">All Other Languages</span>
                     </div>
                     <p className="text-[11px] text-gray-500 leading-relaxed">Handles English, Chinese, Japanese, Korean, Spanish, French &amp; more. Lyrics limit: <span className="text-cyan-400 font-semibold">600 chars</span>. Keep verses concise.</p>
@@ -4584,11 +4584,11 @@ function CreatePageContent() {
                     </div>
                     <div className="flex gap-2 p-2 rounded-lg bg-white/[0.02] border border-white/5">
                       <span className="text-cyan-400 mt-0.5 shrink-0">•</span>
-                      <span>Use <span className="text-cyan-400 font-mono">[Instrumental]</span> for breaks — MiniMax 2.0 will insert a musical break without vocals</span>
+                      <span>Use <span className="text-cyan-400 font-mono">[Instrumental]</span> for breaks — the AI will insert a musical break without vocals</span>
                     </div>
                     <div className="flex gap-2 p-2 rounded-lg bg-white/[0.02] border border-white/5">
                       <span className="text-cyan-400 mt-0.5 shrink-0">•</span>
-                      <span>For <span className="text-purple-400 font-semibold">MiniMax 1.5</span>: keep total lyrics under 600 chars. For <span className="text-purple-400 font-semibold">2.0</span>: up to 3,000 chars.</span>
+                      <span>For <span className="text-purple-400 font-semibold">standard mode</span>: keep total lyrics under 600 chars. For <span className="text-purple-400 font-semibold">Hindi/Indic</span>: up to 3,000 chars.</span>
                     </div>
                     <div className="flex gap-2 p-2 rounded-lg bg-white/[0.02] border border-white/5">
                       <span className="text-yellow-400 mt-0.5 shrink-0">⚡</span>
