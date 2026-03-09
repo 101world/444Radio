@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
     if (action === 'decline') return await handleDecline(userId, body)
     if (action === 'settle') return await handleSettle(userId, body)
     if (action === 'move') return await handleMove(userId, body)
+    if (action === 'draw_response') return await handleDrawResponse(userId, body)
 
     return corsResponse(NextResponse.json({ error: 'Unknown action' }, { status: 400 }))
   } catch (error) {
@@ -364,29 +365,49 @@ async function handleSettle(userId: string, body: { gameId: string; result: 'whi
   // CRITICAL: credits MUST be awarded before marking game completed
   if (game.wager > 0) {
     if (result === 'draw') {
-      // Refund both players — both must succeed
-      const { data: refundWhite, error: errWhite } = await supabase.rpc('award_credits', {
-        p_clerk_user_id: game.white_player_id,
-        p_amount: game.wager,
-        p_type: 'chess_draw_refund',
-        p_description: `Chess draw — ${game.wager} credits refunded`,
-        p_metadata: { gameId, pool: totalPool },
-      })
+      // Don't refund immediately — enter draw_pending so players can choose rematch or refund
+      if (game.wager > 0) {
+        await supabase
+          .from('chess_games')
+          .update({
+            status: 'draw_pending',
+            result: 'draw',
+            completed_at: new Date().toISOString(),
+            draw_rematch_white: false,
+            draw_rematch_black: false,
+          })
+          .eq('id', gameId)
 
-      const { data: refundBlack, error: errBlack } = await supabase.rpc('award_credits', {
-        p_clerk_user_id: game.black_player_id,
-        p_amount: game.wager,
-        p_type: 'chess_draw_refund',
-        p_description: `Chess draw — ${game.wager} credits refunded`,
-        p_metadata: { gameId, pool: totalPool },
-      })
+        // Notify both players
+        const whiteUsername = await getUsername(game.white_player_id)
+        const blackUsername = await getUsername(game.black_player_id)
+        await supabase.from('notifications').insert([
+          {
+            user_id: game.white_player_id,
+            type: 'chess_draw',
+            title: '🤝 Chess Draw!',
+            message: `Your game vs @${blackUsername} ended in a draw. Choose rematch or take your ${game.wager} credits back.`,
+            metadata: { gameId, wager: game.wager },
+          },
+          {
+            user_id: game.black_player_id,
+            type: 'chess_draw',
+            title: '🤝 Chess Draw!',
+            message: `Your game vs @${whiteUsername} ended in a draw. Choose rematch or take your ${game.wager} credits back.`,
+            metadata: { gameId, wager: game.wager },
+          },
+        ])
 
-      if (errWhite || !refundWhite?.[0]?.success || errBlack || !refundBlack?.[0]?.success) {
-        console.error('[chess] Draw refund failed:', { errWhite, refundWhite, errBlack, refundBlack })
-        return corsResponse(NextResponse.json({ error: 'Failed to refund draw wagers. Please contact support.' }, { status: 500 }))
+        return corsResponse(NextResponse.json({
+          success: true,
+          result: 'draw',
+          drawPending: true,
+          creditsAwarded: 0,
+        }))
       }
 
-      creditsAwarded = game.wager
+      // No wager — just mark completed
+      creditsAwarded = 0
     } else if (winnerId) {
       // Winner gets the full pool (both wagers combined)
       const loserId = winnerId === game.white_player_id ? game.black_player_id : game.white_player_id
@@ -443,6 +464,165 @@ async function handleSettle(userId: string, body: { gameId: string; result: 'whi
     success: true,
     result,
     creditsAwarded,
+  }))
+}
+
+// ─── DRAW RESPONSE: player chooses rematch or refund after a draw ───
+async function handleDrawResponse(userId: string, body: { gameId: string; choice: 'rematch' | 'refund' }) {
+  const { gameId, choice } = body
+  if (!gameId || !choice || !['rematch', 'refund'].includes(choice)) {
+    return corsResponse(NextResponse.json({ error: 'gameId and choice (rematch|refund) required' }, { status: 400 }))
+  }
+
+  const { data: game, error } = await supabase
+    .from('chess_games')
+    .select('*')
+    .eq('id', gameId)
+    .single()
+
+  if (error || !game) {
+    return corsResponse(NextResponse.json({ error: 'Game not found' }, { status: 404 }))
+  }
+
+  if (game.status !== 'draw_pending') {
+    return corsResponse(NextResponse.json({ error: 'Game is not in draw_pending state' }, { status: 400 }))
+  }
+
+  if (game.white_player_id !== userId && game.black_player_id !== userId) {
+    return corsResponse(NextResponse.json({ error: 'Not your game' }, { status: 403 }))
+  }
+
+  const isWhite = game.white_player_id === userId
+  const opponentId = isWhite ? game.black_player_id : game.white_player_id
+  const playerUsername = await getUsername(userId)
+  const opponentUsername = await getUsername(opponentId)
+
+  // ── REFUND: either player requesting refund → refund BOTH immediately ──
+  if (choice === 'refund') {
+    const totalPool = game.wager * 2
+
+    const { data: refundWhite, error: errWhite } = await supabase.rpc('award_credits', {
+      p_clerk_user_id: game.white_player_id,
+      p_amount: game.wager,
+      p_type: 'chess_draw_refund',
+      p_description: `Chess draw refund — ${game.wager} credits returned`,
+      p_metadata: { gameId, pool: totalPool },
+    })
+
+    const { data: refundBlack, error: errBlack } = await supabase.rpc('award_credits', {
+      p_clerk_user_id: game.black_player_id,
+      p_amount: game.wager,
+      p_type: 'chess_draw_refund',
+      p_description: `Chess draw refund — ${game.wager} credits returned`,
+      p_metadata: { gameId, pool: totalPool },
+    })
+
+    if (errWhite || !refundWhite?.[0]?.success || errBlack || !refundBlack?.[0]?.success) {
+      console.error('[chess] Draw refund failed:', { errWhite, refundWhite, errBlack, refundBlack })
+      return corsResponse(NextResponse.json({ error: 'Failed to refund credits. Please contact support.' }, { status: 500 }))
+    }
+
+    await supabase
+      .from('chess_games')
+      .update({ status: 'completed', result: 'draw' })
+      .eq('id', gameId)
+
+    // Notify opponent that refund was chosen
+    await supabase.from('notifications').insert({
+      user_id: opponentId,
+      type: 'chess_draw_refund',
+      title: '💰 Draw Refund',
+      message: `@${playerUsername} chose refund. Your ${game.wager} credits have been returned.`,
+      metadata: { gameId },
+    })
+
+    return corsResponse(NextResponse.json({
+      success: true,
+      action: 'refunded',
+      creditsRefunded: game.wager,
+    }))
+  }
+
+  // ── REMATCH: player wants to play again with same wager ──
+  // Update this player's rematch flag
+  const updateField = isWhite ? { draw_rematch_white: true } : { draw_rematch_black: true }
+  await supabase
+    .from('chess_games')
+    .update(updateField)
+    .eq('id', gameId)
+
+  // Re-fetch to check if BOTH players have now chosen rematch
+  const { data: updatedGame } = await supabase
+    .from('chess_games')
+    .select('draw_rematch_white, draw_rematch_black, wager, white_player_id, black_player_id')
+    .eq('id', gameId)
+    .single()
+
+  if (updatedGame?.draw_rematch_white && updatedGame?.draw_rematch_black) {
+    // BOTH players want rematch! Create a new game with swapped colors, same wager.
+    // Credits are already escrowed from the original game (no new deduction).
+    const { data: newGame, error: createError } = await supabase
+      .from('chess_games')
+      .insert({
+        white_player_id: game.black_player_id,  // Swap colors
+        black_player_id: game.white_player_id,
+        wager: game.wager,
+        status: 'active',
+        moves: [],
+        parent_game_id: gameId,
+      })
+      .select('id')
+      .single()
+
+    if (createError || !newGame) {
+      console.error('[chess] Rematch create failed:', createError)
+      return corsResponse(NextResponse.json({ error: 'Failed to create rematch game' }, { status: 500 }))
+    }
+
+    // Mark original game as completed with draw_rematch result
+    await supabase
+      .from('chess_games')
+      .update({ status: 'completed', result: 'draw_rematch' })
+      .eq('id', gameId)
+
+    // Notify both players about the rematch
+    await supabase.from('notifications').insert([
+      {
+        user_id: game.white_player_id,
+        type: 'chess_rematch',
+        title: '♟️ Rematch!',
+        message: `Rematch vs @${await getUsername(game.black_player_id)}! Colors swapped. Same ${game.wager} credit wager.`,
+        metadata: { gameId: newGame.id, oldGameId: gameId, wager: game.wager },
+      },
+      {
+        user_id: game.black_player_id,
+        type: 'chess_rematch',
+        title: '♟️ Rematch!',
+        message: `Rematch vs @${await getUsername(game.white_player_id)}! Colors swapped. Same ${game.wager} credit wager.`,
+        metadata: { gameId: newGame.id, oldGameId: gameId, wager: game.wager },
+      },
+    ])
+
+    return corsResponse(NextResponse.json({
+      success: true,
+      action: 'rematch_created',
+      newGameId: newGame.id,
+    }))
+  }
+
+  // Only this player chose rematch so far — notify opponent
+  await supabase.from('notifications').insert({
+    user_id: opponentId,
+    type: 'chess_rematch_request',
+    title: '♟️ Rematch Request',
+    message: `@${playerUsername} wants a rematch! Same ${game.wager} credit wager. Accept or take your refund.`,
+    metadata: { gameId, wager: game.wager },
+  })
+
+  return corsResponse(NextResponse.json({
+    success: true,
+    action: 'rematch_requested',
+    waitingForOpponent: true,
   }))
 }
 

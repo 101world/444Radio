@@ -89,6 +89,11 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded, ac
   const [serverMoveCount, setServerMoveCount] = useState(0)
   const [waitingForOpponent, setWaitingForOpponent] = useState(false)
 
+  // ── Draw rematch state ──
+  const [drawPending, setDrawPending] = useState(false)
+  const [drawChoice, setDrawChoice] = useState<'none' | 'rematch' | 'refund' | 'waiting'>('none')
+  const [drawChoiceLoading, setDrawChoiceLoading] = useState(false)
+
   const boardRef = useRef<HTMLDivElement>(null)
   const moveListRef = useRef<HTMLDivElement>(null)
   const cpuThinkingRef = useRef(false)
@@ -295,15 +300,84 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded, ac
             replayServerMoves(remoteMoves)
           }
           if (game.result) {
-            setGameResult(game.result)
-            if (game.result === 'draw') {
-              setResultMessage('Game drawn!')
+            if (game.result === 'draw_rematch') {
+              // Opponent also chose rematch and a new game was created — handled by Case 5 below
             } else {
-              const youWon = game.result === multiplayerColor
-              setResultMessage(youWon
-                ? `You win! @${opponentName} resigned.`
-                : `@${opponentName} wins! You lost.`
-              )
+              setGameResult(game.result)
+              if (game.result === 'draw') {
+                setDrawPending(false)
+                setDrawChoice('refund')
+                setResultMessage('Draw — credits refunded!')
+              } else {
+                const youWon = game.result === multiplayerColor
+                setResultMessage(youWon
+                  ? `You win! @${opponentName} resigned.`
+                  : `@${opponentName} wins! You lost.`
+                )
+              }
+            }
+          }
+        }
+
+        // Case 4: Draw pending — both players choose rematch or refund
+        if (game.status === 'draw_pending' && !drawPending) {
+          const remoteMoves = game.moves || []
+          if (remoteMoves.length > serverMoveCount) {
+            replayServerMoves(remoteMoves)
+          }
+          setGameResult('draw')
+          setDrawPending(true)
+          setDrawChoice('none')
+          setResultMessage('Draw! Choose rematch or take your refund.')
+        }
+
+        // Case 4b: Draw pending — check if opponent chose rematch while we're waiting
+        if (game.status === 'draw_pending' && drawPending) {
+          const opponentChoseRematch = multiplayerColor === 'white'
+            ? game.draw_rematch_black
+            : game.draw_rematch_white
+          if (opponentChoseRematch && drawChoice === 'waiting') {
+            // We already chose rematch, opponent just did too — will be handled by completed/draw_rematch transition
+          }
+        }
+
+        // Case 5: Rematch game created — auto-join the new game
+        if (game.status === 'completed' && game.result === 'draw_rematch') {
+          setDrawPending(false)
+          setResultMessage('Rematch starting! Loading new game...')
+          // Find rematch game via notification
+          const notifRes = await fetch('/api/notifications')
+          if (notifRes.ok) {
+            const notifs = await notifRes.json()
+            const rematchNotif = Array.isArray(notifs) && notifs.find(
+              (n: any) => n.type === 'chess_rematch' && n.metadata?.oldGameId === multiplayerGameId
+            )
+            if (rematchNotif?.metadata?.gameId) {
+              // Load the rematch game
+              const newGameId = rematchNotif.metadata.gameId
+              setMultiplayerGameId(newGameId)
+              setDrawPending(false)
+              setDrawChoice('none')
+              setDrawChoiceLoading(false)
+              setGameResult(null)
+              setResultMessage('')
+              // Fetch and join the new game
+              const res2 = await fetch(`/api/chess?gameId=${encodeURIComponent(newGameId)}`)
+              if (res2.ok) {
+                const data2 = await res2.json()
+                const newGame = data2.game
+                if (newGame) {
+                  const isWhite = newGame.white_player_id === currentUserId
+                  const color: PieceColor = isWhite ? 'white' : 'black'
+                  setMultiplayerColor(color)
+                  setPlayerColor(color)
+                  setBoardFlipped(color === 'black')
+                  setOpponentName(data2.opponentUsername || opponentName)
+                  setWagerAmount(newGame.wager || 0)
+                  setServerMoveCount(0)
+                  resetGame()
+                }
+              }
             }
           }
         }
@@ -318,7 +392,7 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded, ac
     return () => {
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
     }
-  }, [multiplayerGameId, currentUserId, waitingForOpponent, gameMode, serverMoveCount, gameResult, resetGame, replayServerMoves])
+  }, [multiplayerGameId, currentUserId, waitingForOpponent, gameMode, serverMoveCount, gameResult, resetGame, replayServerMoves, drawPending, drawChoice, multiplayerColor, opponentName])
 
   // ── Process a move ──
   const executeMove = useCallback((move: ChessMove) => {
@@ -363,7 +437,13 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded, ac
           }
         } else {
           setGameResult('draw')
-          setResultMessage('Draw by stalemate!')
+          if (gameMode === 'multiplayer' && wagerAmount > 0) {
+            setDrawPending(true)
+            setDrawChoice('none')
+            setResultMessage('Draw by stalemate! Choose rematch or take your refund.')
+          } else {
+            setResultMessage('Draw by stalemate!')
+          }
         }
       }
 
@@ -401,6 +481,11 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded, ac
               if (!settleData.success) {
                 console.error('[chess] Settle failed:', settleData.error)
                 setResultMessage(m => m + ' (Credit settlement failed — contact support)')
+              } else if (settleData.drawPending) {
+                // Draw with wager — enter draw pending mode
+                setDrawPending(true)
+                setDrawChoice('none')
+                setResultMessage('Draw by stalemate! Choose rematch or take your refund.')
               } else if (settleData.creditsAwarded > 0) {
                 console.log('[chess] Settled — credits awarded:', settleData.creditsAwarded)
               }
@@ -498,6 +583,63 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded, ac
       cpuThinkingRef.current = false
     }
   }, [gameState.turn, gameMode, playerColor, gameResult, difficulty, gameState, executeMove])
+
+  // ── Draw choice handler (rematch or refund) ──
+  const handleDrawChoice = async (choice: 'rematch' | 'refund') => {
+    if (!multiplayerGameId || drawChoiceLoading) return
+    setDrawChoiceLoading(true)
+    try {
+      const res = await fetch('/api/chess', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'draw_response', gameId: multiplayerGameId, choice }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        console.error('[chess] Draw response failed:', data.error)
+        setResultMessage(prev => prev + ` (${data.error || 'Failed to process choice'})`)
+        setDrawChoiceLoading(false)
+        return
+      }
+
+      if (data.action === 'refunded') {
+        setDrawPending(false)
+        setDrawChoice('refund')
+        setResultMessage(`Draw — ${data.creditsRefunded} credits refunded!`)
+      } else if (data.action === 'rematch_created') {
+        // Rematch game created! Load it
+        setDrawPending(false)
+        setDrawChoice('none')
+        setGameResult(null)
+        setResultMessage('')
+        setMultiplayerGameId(data.newGameId)
+        // Fetch and join the new game
+        const res2 = await fetch(`/api/chess?gameId=${encodeURIComponent(data.newGameId)}`)
+        if (res2.ok) {
+          const data2 = await res2.json()
+          const newGame = data2.game
+          if (newGame) {
+            const isWhite = newGame.white_player_id === currentUserId
+            const color: PieceColor = isWhite ? 'white' : 'black'
+            setMultiplayerColor(color)
+            setPlayerColor(color)
+            setBoardFlipped(color === 'black')
+            setOpponentName(data2.opponentUsername || opponentName)
+            setWagerAmount(newGame.wager || 0)
+            setServerMoveCount(0)
+            resetGame()
+          }
+        }
+      } else if (data.action === 'rematch_requested') {
+        setDrawChoice('waiting')
+        setResultMessage(`Rematch requested! Waiting for @${opponentName}...`)
+      }
+    } catch (err) {
+      console.error('[chess] Draw choice error:', err)
+      setResultMessage(prev => prev + ' (Network error)')
+    }
+    setDrawChoiceLoading(false)
+  }
 
   // ── Resign ──
   const handleResign = async () => {
@@ -992,19 +1134,65 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded, ac
                             <Zap size={14} className="inline" /> {wagerAmount * 2} credits to the winner!
                           </p>
                         )}
-                        {wagerAmount > 0 && gameResult === 'draw' && (
-                          <p className="text-sm text-cyan-400 mb-3">
-                            Draw — {wagerAmount} credits refunded to each player
+
+                        {/* Draw with wager — show rematch or refund choice */}
+                        {gameResult === 'draw' && drawPending && gameMode === 'multiplayer' && wagerAmount > 0 && drawChoice === 'none' && (
+                          <div className="mt-3">
+                            <p className="text-sm text-cyan-400/70 mb-4">
+                              <Zap size={14} className="inline" /> {wagerAmount} credits at stake — play again or take them back?
+                            </p>
+                            <div className="flex gap-3 justify-center">
+                              <button
+                                onClick={() => handleDrawChoice('rematch')}
+                                disabled={drawChoiceLoading}
+                                className="px-5 py-2.5 bg-emerald-500/20 border border-emerald-500/40 rounded-lg text-sm font-bold text-emerald-300 hover:bg-emerald-500/30 transition-all disabled:opacity-50"
+                              >
+                                {drawChoiceLoading ? '...' : '♟️ Rematch'}
+                              </button>
+                              <button
+                                onClick={() => handleDrawChoice('refund')}
+                                disabled={drawChoiceLoading}
+                                className="px-5 py-2.5 bg-amber-500/20 border border-amber-500/40 rounded-lg text-sm font-bold text-amber-300 hover:bg-amber-500/30 transition-all disabled:opacity-50"
+                              >
+                                {drawChoiceLoading ? '...' : '💰 Take Refund'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Waiting for opponent to respond to rematch */}
+                        {gameResult === 'draw' && drawChoice === 'waiting' && (
+                          <div className="mt-3">
+                            <p className="text-sm text-cyan-400/60 flex items-center justify-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                              Waiting for @{opponentName} to decide...
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Draw refunded — show standard buttons */}
+                        {gameResult === 'draw' && !drawPending && drawChoice === 'refund' && wagerAmount > 0 && (
+                          <p className="text-sm text-amber-400 mb-3">
+                            <Zap size={14} className="inline" /> {wagerAmount} credits refunded
                           </p>
                         )}
-                        <div className="flex gap-2 justify-center mt-4">
-                          <button onClick={() => { resetGame(); setGameMode('menu') }} className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-xs font-bold text-white hover:bg-white/20 transition-all">
-                            Menu
-                          </button>
-                          <button onClick={() => { resetGame(); if (gameMode === 'cpu') startCpuGame(playerColor, difficulty) }} className="px-4 py-2 bg-cyan-500/20 border border-cyan-500/30 rounded-lg text-xs font-bold text-cyan-300 hover:bg-cyan-500/30 transition-all">
-                            Play Again
-                          </button>
-                        </div>
+
+                        {/* Draw without wager — simple message */}
+                        {gameResult === 'draw' && !drawPending && wagerAmount === 0 && (
+                          <p className="text-sm text-white/40 mb-3">Good game!</p>
+                        )}
+
+                        {/* Standard buttons — hide when draw choice is pending */}
+                        {!(drawPending && drawChoice === 'none') && drawChoice !== 'waiting' && (
+                          <div className="flex gap-2 justify-center mt-4">
+                            <button onClick={() => { resetGame(); setGameMode('menu'); setDrawPending(false); setDrawChoice('none') }} className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-xs font-bold text-white hover:bg-white/20 transition-all">
+                              Menu
+                            </button>
+                            <button onClick={() => { resetGame(); if (gameMode === 'cpu') startCpuGame(playerColor, difficulty) }} className="px-4 py-2 bg-cyan-500/20 border border-cyan-500/30 rounded-lg text-xs font-bold text-cyan-300 hover:bg-cyan-500/30 transition-all">
+                              Play Again
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
