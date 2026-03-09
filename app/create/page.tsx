@@ -4184,307 +4184,461 @@ function CreatePageContent() {
         </div>
       )}
 
-      {/* Lyrics & Settings Modal - Comprehensive */}
+      {/* Lyrics & Settings Modal - Comprehensive Redesign */}
       {showLyricsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 animate-fadeIn">
           {/* Backdrop */}
           <div 
-            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/85 backdrop-blur-md"
             onClick={() => setShowLyricsModal(false)}
           />
           
-          {/* Modal Container - Square 1:1 */}
-          <div className="relative w-full max-w-md max-h-[80vh] md:aspect-square bg-black/90 backdrop-blur-2xl border border-cyan-500/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+          {/* Modal Container - Wide & Tall */}
+          <div className="relative w-full max-w-4xl max-h-[92vh] bg-gradient-to-b from-gray-950 via-black to-gray-950 backdrop-blur-2xl border border-cyan-500/20 rounded-2xl shadow-[0_0_60px_rgba(6,182,212,0.15)] overflow-hidden flex flex-col">
             
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Edit3 size={18} className="text-cyan-400" />
-                Lyrics & Settings
-              </h3>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-gradient-to-r from-cyan-500/5 via-transparent to-purple-500/5">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 flex items-center justify-center">
+                  <Edit3 size={18} className="text-cyan-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">Lyrics & Song Settings</h3>
+                  <p className="text-[11px] text-gray-500">Structure your lyrics for the best AI generation results</p>
+                </div>
+              </div>
               <button
                 onClick={() => setShowLyricsModal(false)}
-                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 transition-all"
               >
-                <X size={16} className="text-gray-400" />
+                <X size={18} className="text-gray-400" />
               </button>
             </div>
 
-            {/* Content - Scrollable */}
-            <div id="parameters-section" className="flex-1 overflow-y-auto p-5 space-y-4">
-              
-              {/* Lyrics - FIRST & MANDATORY (Hidden in instrumental mode) */}
-              {!isInstrumental && (
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-red-400 uppercase tracking-wide">Lyrics *</label>
-                  <button
-                    type="button"
-                    onClick={async (e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      
-                      if (!input || !input.trim()) {
-                        alert('⚠️ Please enter a prompt first!')
-                        return
-                      }
+            {/* Content - Two Column Layout */}
+            <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
 
-                      if (isGeneratingAtomLyrics) return
+              {/* LEFT COLUMN: Lyrics Editor */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-4 border-r border-white/5">
 
-                      try {
-                        setIsGeneratingAtomLyrics(true)
-
-                        // All languages use 444 lyrics engine
-                        const endpoint = '/api/generate/suno/lyrics'
-                        const body = { prompt: input, language: selectedLanguage, genre }
-
-                        const response = await fetch(endpoint, {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify(body)
-                        })
-
-                        const result = await response.json()
-
-                        if (result.success && result.lyrics) {
-                          setCustomLyrics(result.lyrics)
-                        } else {
-                          alert('❌ Failed to generate lyrics: ' + (result.error || 'Unknown error'))
-                        }
-                      } catch (error) {
-                        console.error('Atom lyrics generation error:', error)
-                        alert('❌ Failed to generate lyrics. Please try again.')
-                      } finally {
-                        setIsGeneratingAtomLyrics(false)
-                      }
-                    }}
-                    disabled={isGeneratingAtomLyrics}
-                    className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Atom size={12} className={isGeneratingAtomLyrics ? 'animate-spin' : ''} />
-                    {isGeneratingAtomLyrics ? 'Generating...' : 'Create with Atom'}
-                  </button>
-                </div>
-                <div className="relative">
+                {/* Lyrics Editor (Hidden in instrumental mode) */}
+                {!isInstrumental && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <FileText size={13} />
+                      Lyrics <span className="text-red-400">*</span>
+                    </label>
+                    <div className="flex items-center gap-2">
+                      {/* Randomize */}
+                      <button
+                        type="button"
+                        onClick={async (e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          try {
+                            const languageHook = getLanguageHook(selectedLanguage.toLowerCase())
+                            if (languageHook && selectedLanguage.toLowerCase() !== 'english') {
+                              const structure = getLyricsStructureForLanguage(selectedLanguage.toLowerCase())
+                              setCustomLyrics(structure)
+                              if (languageHook.genres.length > 0 && !genre) {
+                                setGenre(languageHook.genres[Math.floor(Math.random() * languageHook.genres.length)])
+                              }
+                            } else {
+                              const params = new URLSearchParams()
+                              if (input && input.trim()) params.append('description', input)
+                              const url = `/api/lyrics/random${params.toString() ? '?' + params.toString() : ''}`
+                              const response = await fetch(url)
+                              const data = await response.json()
+                              if (data.success && data.lyrics) {
+                                setCustomLyrics(data.lyrics.lyrics)
+                                if (!genre) setGenre(data.lyrics.genre)
+                                if (!customTitle) setCustomTitle(data.lyrics.title)
+                              } else {
+                                const templates = [
+                                  "[Verse]\nWalking down this empty street\nNeon lights guide my way\nCity sounds beneath my feet\nAnother night, another day\n\n[Chorus]\nLost in the rhythm of the night\nHeartbeat syncing with the bass\nEverything just feels so right\nLiving life at my own pace",
+                                  "[Verse]\nStaring at the stars above\nDreaming of a better tomorrow\nSearching for that endless love\nTrying to escape this sorrow\n\n[Chorus]\nHold me close, don't let me go\nIn this moment, we'll take it slow\nFeel the music, let it flow\nThis is all we need to know"
+                                ]
+                                setCustomLyrics(templates[Math.floor(Math.random() * templates.length)])
+                              }
+                            }
+                          } catch {
+                            setCustomLyrics("[Verse]\nWalking down this empty street\nNeon lights guide my way\n\n[Chorus]\nLost in the rhythm of the night")
+                          }
+                        }}
+                        className="text-[11px] text-cyan-400/70 hover:text-cyan-300 flex items-center gap-1 transition-colors px-2 py-1 rounded-md hover:bg-white/5"
+                        title="Random lyrics template"
+                      >
+                        <Dices size={12} />
+                        Random
+                      </button>
+                      {/* Atom AI */}
+                      <button
+                        type="button"
+                        onClick={async (e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          if (!input || !input.trim()) { alert('⚠️ Please enter a prompt first!'); return }
+                          if (isGeneratingAtomLyrics) return
+                          try {
+                            setIsGeneratingAtomLyrics(true)
+                            const response = await fetch('/api/generate/suno/lyrics', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ prompt: input, language: selectedLanguage, genre })
+                            })
+                            const result = await response.json()
+                            if (result.success && result.lyrics) {
+                              setCustomLyrics(result.lyrics)
+                            } else {
+                              alert('❌ Failed to generate lyrics: ' + (result.error || 'Unknown error'))
+                            }
+                          } catch (error) {
+                            console.error('Atom lyrics generation error:', error)
+                            alert('❌ Failed to generate lyrics. Please try again.')
+                          } finally {
+                            setIsGeneratingAtomLyrics(false)
+                          }
+                        }}
+                        disabled={isGeneratingAtomLyrics}
+                        className="text-[11px] text-purple-400 hover:text-purple-300 flex items-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed px-2.5 py-1 rounded-md bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20"
+                      >
+                        <Atom size={12} className={isGeneratingAtomLyrics ? 'animate-spin' : ''} />
+                        {isGeneratingAtomLyrics ? 'Writing...' : 'AI Write'}
+                      </button>
+                    </div>
+                  </div>
                   <textarea
                     id="custom-lyrics"
                     name="customLyrics"
                     value={customLyrics}
                     onChange={(e) => setCustomLyrics(e.target.value)}
-                    placeholder="Enter custom lyrics (required)..."
-                    className="w-full px-3 py-2 bg-white/5 border border-red-500/30 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-all resize-none"
-                    rows={6}
+                    placeholder={"[Verse]\nWrite your verse lyrics here...\nEach line is a lyrical phrase\n\n[Chorus]\nWrite your chorus here...\nThis part repeats throughout the song"}
+                    className="w-full px-4 py-3 bg-white/[0.03] border border-white/10 rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 focus:ring-1 focus:ring-cyan-500/20 transition-all resize-none font-mono leading-relaxed"
+                    rows={12}
                     required
                   />
-                  {/* Dice Button - Bottom Right */}
-                  <button
-                    type="button"
-                    onClick={async (e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      try {
-                        // Check if we have language-specific structure
-                        const languageHook = getLanguageHook(selectedLanguage.toLowerCase())
-                        
-                        if (languageHook && selectedLanguage.toLowerCase() !== 'english') {
-                          // Use language-specific lyrics structure
-                          const structure = getLyricsStructureForLanguage(selectedLanguage.toLowerCase())
-                          setCustomLyrics(structure)
-                          
-                          // Also set a sample genre if available
-                          if (languageHook.genres.length > 0 && !genre) {
-                            setGenre(languageHook.genres[Math.floor(Math.random() * languageHook.genres.length)])
-                          }
-                        } else {
-                          // English: Try API first, fallback to templates
-                          const params = new URLSearchParams()
-                          if (input && input.trim()) {
-                            params.append('description', input)
-                          }
-                          const url = `/api/lyrics/random${params.toString() ? '?' + params.toString() : ''}`
-                          const response = await fetch(url)
-                          const data = await response.json()
-                          
-                          if (data.success && data.lyrics) {
-                            setCustomLyrics(data.lyrics.lyrics)
-                            if (!genre) setGenre(data.lyrics.genre)
-                            if (!customTitle) setCustomTitle(data.lyrics.title)
-                          } else {
-                            // Fallback templates for English
-                            const lyricsTemplates = [
-                              "[verse]\nWalking down this empty street\nNeon lights guide my way\nCity sounds beneath my feet\nAnother night, another day\n\n[chorus]\nLost in the rhythm of the night\nHeartbeat syncing with the bass\nEverything just feels so right\nLiving life at my own pace",
-                              "[verse]\nStaring at the stars above\nDreaming of a better tomorrow\nSearching for that endless love\nTrying to escape this sorrow\n\n[chorus]\nHold me close, don't let me go\nIn this moment, we'll take it slow\nFeel the music, let it flow\nThis is all we need to know"
-                            ]
-                            const randomLyrics = lyricsTemplates[Math.floor(Math.random() * lyricsTemplates.length)]
-                            setCustomLyrics(randomLyrics)
-                          }
-                        }
-                      } catch (error) {
-                        console.error('Failed to fetch random lyrics:', error)
-                        // Ultimate fallback
-                        const lyricsTemplates = [
-                          "[verse]\nWalking down this empty street\nNeon lights guide my way\n\n[chorus]\nLost in the rhythm of the night",
-                          "[verse]\nStaring at the stars above\nDreaming of tomorrow\n\n[chorus]\nHold me close, don't let me go"
-                        ]
-                        const randomLyrics = lyricsTemplates[Math.floor(Math.random() * lyricsTemplates.length)]
-                        setCustomLyrics(randomLyrics)
-                      }
-                    }}
-                    className="absolute bottom-2 right-2 p-1.5 rounded-md bg-black/40 hover:bg-black/60 opacity-30 hover:opacity-100 transition-all duration-200"
-                    title="Randomize lyrics"
-                  >
-                    <Dices size={14} className="text-cyan-400" />
-                  </button>
+                  {/* Character count + hint */}
+                  <div className="flex items-center justify-between">
+                    <p className="text-[11px] text-gray-600">
+                      Use structure tags: <span className="text-cyan-500/70">[Verse]</span> <span className="text-cyan-500/70">[Chorus]</span> <span className="text-cyan-500/70">[Bridge]</span> <span className="text-cyan-500/70">[Intro]</span> <span className="text-cyan-500/70">[Outro]</span>
+                    </p>
+                    <span className={`text-[11px] font-mono ${customLyrics.length > 2800 ? 'text-red-400' : customLyrics.length > 2000 ? 'text-yellow-400' : 'text-gray-600'}`}>
+                      {customLyrics.length}/3000
+                    </span>
+                  </div>
                 </div>
-                <p className="text-xs text-gray-500">Add structure tags like [verse] [chorus]</p>
-              </div>
-              )}
-
-              {/* Language Selector - DROPDOWN */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-red-400 uppercase tracking-wide flex items-center gap-2">
-                  <Globe size={14} className="text-cyan-400" />
-                  Language *
-                </label>
-                <select
-                  value={selectedLanguage}
-                  onChange={(e) => setSelectedLanguage(e.target.value)}
-                  className="w-full px-3 py-2 bg-white/5 border border-red-500/30 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500/50 transition-all appearance-none cursor-pointer"
-                  style={{
-                    backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(34,211,238,0.6)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'right 0.5rem center',
-                    backgroundSize: '1.5em 1.5em',
-                    paddingRight: '2.5rem'
-                  }}
-                >
-                  <option value="English">English</option>
-                  <option value="chinese">中文 Chinese</option>
-                  <option value="japanese">日本語 Japanese</option>
-                  <option value="korean">한국어 Korean</option>
-                  <option value="spanish">Español Spanish</option>
-                  <option value="french">Français French</option>
-                  <option value="hindi">हिन्दी Hindi</option>
-                  <option value="german">Deutsch German</option>
-                  <option value="portuguese">Português Portuguese</option>
-                  <option value="arabic">العربية Arabic</option>
-                  <option value="italian">Italiano Italian</option>
-                </select>
-              </div>
-
-              {/* Title - Moved up since it's required */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-red-400 uppercase tracking-wide">
-                  ✏️ Title <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={customTitle}
-                  onChange={(e) => setCustomTitle(e.target.value)}
-                  placeholder="Enter song title... (Required)"
-                  required
-                  minLength={3}
-                  maxLength={100}
-                  className={`w-full px-3 py-2 bg-white/5 border rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none transition-all ${
-                    showTitleError
-                      ? 'border-red-500 animate-pulse ring-2 ring-red-500/50'
-                      : customTitle.trim().length >= 3
-                      ? 'border-cyan-500 shadow-[0_0_15px_rgba(34,211,238,0.5)]'
-                      : customTitle.trim().length > 0 && customTitle.trim().length < 3
-                      ? 'border-red-500/50 focus:border-red-500'
-                      : 'border-white/10 focus:border-cyan-500/50'
-                  }`}
-                />
-                {customTitle.trim().length > 0 && customTitle.trim().length < 3 && (
-                  <p className="text-xs text-red-400">Title must be at least 3 characters</p>
                 )}
-              </div>
 
-              {/* Genre with Quick Tags */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">🎵 Genre</label>
-                <input
-                  type="text"
-                  value={genre}
-                  onChange={(e) => setGenre(e.target.value)}
-                  placeholder="Select or type a genre..."
-                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-all"
-                />
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {[
-                    'Pop', 'Hip-Hop', 'R&B', 'Jazz', 'Rock', 'Lo-Fi',
-                    'Electronic', 'EDM', 'House', 'Techno', 'Synthwave',
-                    'Acoustic', 'Folk', 'Country', 'Classical', 'Orchestral',
-                    'Reggaeton', 'Afrobeats', 'Bollywood', 'K-Pop', 'J-Pop',
-                    'Drill', 'Trap', 'Ambient', 'Soul', 'Funk',
-                  ].map((tag) => (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => setGenre(tag)}
-                      className={`px-2 py-0.5 rounded text-xs transition-all border ${
-                        genre.toLowerCase() === tag.toLowerCase()
-                          ? 'bg-cyan-500/30 border-cyan-500 text-cyan-300'
-                          : 'bg-white/10 hover:bg-cyan-500/20 border-white/10 hover:border-cyan-500/30 text-white/80 hover:text-cyan-300'
-                      }`}
-                    >
-                      {tag}
-                    </button>
-                  ))}
+                {/* Title */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Type size={13} />
+                    Title <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={customTitle}
+                    onChange={(e) => setCustomTitle(e.target.value)}
+                    placeholder="Enter song title..."
+                    required
+                    minLength={3}
+                    maxLength={100}
+                    className={`w-full px-4 py-2.5 bg-white/[0.03] border rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none transition-all ${
+                      showTitleError
+                        ? 'border-red-500 animate-pulse ring-2 ring-red-500/50'
+                        : customTitle.trim().length >= 3
+                        ? 'border-cyan-500/50 shadow-[0_0_15px_rgba(34,211,238,0.15)]'
+                        : customTitle.trim().length > 0 && customTitle.trim().length < 3
+                        ? 'border-red-500/50 focus:border-red-500'
+                        : 'border-white/10 focus:border-cyan-500/30'
+                    }`}
+                  />
+                  {customTitle.trim().length > 0 && customTitle.trim().length < 3 && (
+                    <p className="text-[11px] text-red-400">Title must be at least 3 characters</p>
+                  )}
+                </div>
+
+                {/* Language */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Globe size={13} />
+                    Language <span className="text-red-400">*</span>
+                  </label>
+                  <select
+                    value={selectedLanguage}
+                    onChange={(e) => setSelectedLanguage(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500/30 transition-all appearance-none cursor-pointer"
+                    style={{
+                      backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(34,211,238,0.6)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
+                      backgroundRepeat: 'no-repeat',
+                      backgroundPosition: 'right 0.75rem center',
+                      backgroundSize: '1.25em 1.25em',
+                      paddingRight: '2.5rem'
+                    }}
+                  >
+                    <option value="English">English</option>
+                    <option value="chinese">中文 Chinese</option>
+                    <option value="japanese">日本語 Japanese</option>
+                    <option value="korean">한국어 Korean</option>
+                    <option value="spanish">Español Spanish</option>
+                    <option value="french">Français French</option>
+                    <option value="hindi">हिन्दी Hindi</option>
+                    <option value="german">Deutsch German</option>
+                    <option value="portuguese">Português Portuguese</option>
+                    <option value="arabic">العربية Arabic</option>
+                    <option value="italian">Italiano Italian</option>
+                  </select>
+                  <p className="text-[11px] text-gray-600">
+                    {selectedLanguage.toLowerCase() === 'hindi' || ['urdu', 'punjabi', 'tamil', 'telugu'].includes(selectedLanguage.toLowerCase())
+                      ? '🎵 Hindi-family → routed to MiniMax 2.0 (best for Indic languages)'
+                      : '🎵 Routed to MiniMax 1.5 (optimized for this language)'}
+                  </p>
+                </div>
+
+                {/* Genre */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Music2 size={13} />
+                    Genre
+                  </label>
+                  <input
+                    type="text"
+                    value={genre}
+                    onChange={(e) => setGenre(e.target.value)}
+                    placeholder="Type or select a genre..."
+                    className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/10 rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/30 transition-all"
+                  />
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                    {[
+                      'Pop', 'Hip-Hop', 'R&B', 'Jazz', 'Rock', 'Lo-Fi',
+                      'Electronic', 'EDM', 'House', 'Techno', 'Synthwave',
+                      'Acoustic', 'Folk', 'Country', 'Classical', 'Orchestral',
+                      'Reggaeton', 'Afrobeats', 'Bollywood', 'K-Pop', 'J-Pop',
+                      'Drill', 'Trap', 'Ambient', 'Soul', 'Funk',
+                    ].map((tag) => (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => setGenre(tag)}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] transition-all border ${
+                          genre.toLowerCase() === tag.toLowerCase()
+                            ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300 shadow-[0_0_8px_rgba(6,182,212,0.2)]'
+                            : 'bg-white/[0.03] hover:bg-cyan-500/10 border-white/5 hover:border-cyan-500/20 text-gray-500 hover:text-cyan-400'
+                        }`}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Song Duration */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                    ⏱️ Song Length
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {([
+                      { key: 'short' as const, label: 'Short', sub: '~60-90s' },
+                      { key: 'medium' as const, label: 'Medium', sub: '~90-150s' },
+                      { key: 'long' as const, label: 'Long', sub: '~150-240s' },
+                    ]).map((d) => (
+                      <button
+                        key={d.key}
+                        onClick={() => setSongDuration(d.key)}
+                        className={`px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
+                          songDuration === d.key
+                            ? 'bg-cyan-500/15 border-2 border-cyan-500/50 text-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.15)]'
+                            : 'bg-white/[0.03] border border-white/5 text-gray-500 hover:bg-white/[0.06] hover:text-gray-300'
+                        }`}
+                      >
+                        <div className="font-bold">{d.label}</div>
+                        <div className="text-[10px] opacity-60 mt-0.5">{d.sub}</div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              {/* Song Duration */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">⏱️ Song Length</label>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    onClick={() => setSongDuration('short')}
-                    className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                      songDuration === 'short'
-                        ? 'bg-cyan-500/20 border-2 border-cyan-500 text-cyan-400'
-                        : 'bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10'
-                    }`}
-                  >
-                    <div className="font-bold">Short</div>
-                    <div className="text-[10px] opacity-60">~60-90s</div>
-                  </button>
-                  <button
-                    onClick={() => setSongDuration('medium')}
-                    className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                      songDuration === 'medium'
-                        ? 'bg-cyan-500/20 border-2 border-cyan-500 text-cyan-400'
-                        : 'bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10'
-                    }`}
-                  >
-                    <div className="font-bold">Medium</div>
-                    <div className="text-[10px] opacity-60">~90-150s</div>
-                  </button>
-                  <button
-                    onClick={() => setSongDuration('long')}
-                    className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                      songDuration === 'long'
-                        ? 'bg-cyan-500/20 border-2 border-cyan-500 text-cyan-400'
-                        : 'bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10'
-                    }`}
-                  >
-                    <div className="font-bold">Long</div>
-                    <div className="text-[10px] opacity-60">~150-240s</div>
-                  </button>
-                </div>
-                <p className="text-xs text-gray-500">Longer songs use extended lyrics structures (verses, chorus, bridge)</p>
-              </div>
+              {/* RIGHT COLUMN: Model Guide & Templates */}
+              <div className="w-full lg:w-[380px] overflow-y-auto p-5 space-y-4 bg-white/[0.01]">
 
+                {/* Model Info Cards */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Zap size={13} className="text-yellow-400" />
+                    AI Model Info
+                  </h4>
+                  
+                  {/* MiniMax 2.0 */}
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500/[0.08] to-transparent border border-purple-500/15">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+                      <span className="text-xs font-bold text-purple-300">MiniMax 2.0</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/20">Hindi &amp; Indic</span>
+                    </div>
+                    <p className="text-[11px] text-gray-500 leading-relaxed">Best for Hindi, Urdu, Punjabi, Tamil, Telugu and Indic-script languages. Supports lyrics up to <span className="text-purple-400 font-semibold">3,000 chars</span>.</p>
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {['[Intro]', '[Verse]', '[Chorus]', '[Bridge]', '[Instrumental]', '[Outro]'].map(t => (
+                        <button key={t} type="button" onClick={() => {
+                          const pos = (document.getElementById('custom-lyrics') as HTMLTextAreaElement)
+                          if (pos) {
+                            const start = pos.selectionStart
+                            const before = customLyrics.substring(0, start)
+                            const after = customLyrics.substring(start)
+                            setCustomLyrics(before + (before.length > 0 && !before.endsWith('\n') ? '\n' : '') + t + '\n' + after)
+                            setTimeout(() => { pos.focus(); pos.selectionStart = pos.selectionEnd = start + t.length + 2 }, 50)
+                          } else {
+                            setCustomLyrics(prev => prev + (prev.length > 0 ? '\n\n' : '') + t + '\n')
+                          }
+                        }} className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-purple-500/10 text-purple-400 border border-purple-500/15 hover:bg-purple-500/20 hover:border-purple-500/30 transition-all cursor-pointer">
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* MiniMax 1.5 */}
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-cyan-500/[0.08] to-transparent border border-cyan-500/15">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                      <span className="text-xs font-bold text-cyan-300">MiniMax 1.5</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/20">All Other Languages</span>
+                    </div>
+                    <p className="text-[11px] text-gray-500 leading-relaxed">Handles English, Chinese, Japanese, Korean, Spanish, French &amp; more. Lyrics limit: <span className="text-cyan-400 font-semibold">600 chars</span>. Keep verses concise.</p>
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {['[Verse]', '[Chorus]', '[Bridge]', '[Outro]'].map(t => (
+                        <button key={t} type="button" onClick={() => {
+                          const pos = (document.getElementById('custom-lyrics') as HTMLTextAreaElement)
+                          if (pos) {
+                            const start = pos.selectionStart
+                            const before = customLyrics.substring(0, start)
+                            const after = customLyrics.substring(start)
+                            setCustomLyrics(before + (before.length > 0 && !before.endsWith('\n') ? '\n' : '') + t + '\n' + after)
+                            setTimeout(() => { pos.focus(); pos.selectionStart = pos.selectionEnd = start + t.length + 2 }, 50)
+                          } else {
+                            setCustomLyrics(prev => prev + (prev.length > 0 ? '\n\n' : '') + t + '\n')
+                          }
+                        }} className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-cyan-500/10 text-cyan-400 border border-cyan-500/15 hover:bg-cyan-500/20 hover:border-cyan-500/30 transition-all cursor-pointer">
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Structure Templates by Genre */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Layers size={13} className="text-cyan-400" />
+                    Genre Templates
+                    <span className="text-[10px] text-gray-600 font-normal normal-case ml-1">click to insert</span>
+                  </h4>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {([
+                      { name: 'Pop / Top 40', icon: '🎤', template: '[Verse]\nI can feel the moment now\nEverything is falling into place\nNothin gonna bring me down\nI see the light upon your face\n\n[Chorus]\nWe are shining bright tonight\nNothing can stop us now\nWe are reaching for the sky\nThis is our time, take a bow\n\n[Verse]\nEvery step I take with you\nFeels like we can conquer the world\nDreams are finally coming true\nWatch our story get unfurled\n\n[Chorus]\nWe are shining bright tonight\nNothing can stop us now\nWe are reaching for the sky\nThis is our time, take a bow\n\n[Bridge]\nEven when the dark descends\nWe will find our way back home\nThis is where the journey bends\nNever have to walk alone\n\n[Outro]\nShining bright, shining bright tonight' },
+                      { name: 'Hip-Hop / Rap', icon: '🎙️', template: '[Verse]\nSteppin on the scene and I mean it\nEvery bar I spit is strategic\nGrindin hard they never believed it\nBut I made it now they see the genius\n\n[Chorus]\nRise up, never back down\nWe run the city, hold the crown\nEvery block, every town\nHear the bass, feel the sound\n\n[Verse]\nStarted from the bottom had a vision\nMade decisions under tough conditions\nNow Im livin life with a mission\nDroppin heat and breakin all traditions\n\n[Bridge]\nThey tried to hold me back\nBut I broke through every wall\nNow I stand ten feet tall\nWatch me never ever fall\n\n[Chorus]\nRise up, never back down\nWe run the city, hold the crown' },
+                      { name: 'R&B / Soul', icon: '💜', template: '[Intro]\nOoh, baby\n\n[Verse]\nLay beside me in the moonlight\nLet me hold you through the night\nEvery whisper, every heartbeat\nMakes this moment feel so right\n\n[Chorus]\nGive me all of your love\nEvery touch, every kiss\nYou are everything I need\nBaby, pure and simple bliss\n\n[Verse]\nSoft and slow, the music playing\nYour eyes tell me everything\nIn your arms I found my heaven\nListen to the song we sing\n\n[Bridge]\nWe don\'t need a single word\nOur bodies speak the truth\nThis love is like no other\nForever me and you\n\n[Chorus]\nGive me all of your love\nEvery touch, every kiss\nYou are everything I need\nBaby, pure and simple bliss' },
+                      { name: 'Lo-Fi / Chill', icon: '🌙', template: '[Verse]\nRainy nights and city lights\nCoffee stains on paper white\nDrifting through the evening haze\nLost in thought for endless days\n\n[Chorus]\nLet it go, let it flow\nSoft and slow, here below\nIn this space we decompress\nFind our peace, nothing less\n\n[Verse]\nVinyl spinning, curtains drawn\nGentle vibes until the dawn\nSketchbook pages, quiet room\nMellow beats dispel the gloom\n\n[Outro]\nLet it go, let it flow' },
+                      { name: 'Electronic / EDM', icon: '⚡', template: '[Intro]\n\n[Verse]\nPulse is rising, feel the frequency\nLasers cutting through the dark\nBass hits heavy, pure intensity\nIgnite the night and light the spark\n\n[Chorus]\nDrop the beat and let it ride\nFeel the rhythm deep inside\nHands up high, electrified\nWe are one, amplified\n\n[Instrumental]\n\n[Verse]\nSpeakers shaking, walls are breaking\nEnergy is overtaking\nEvery soul is wide awake\nFeel the ground beneath us quake\n\n[Chorus]\nDrop the beat and let it ride\nFeel the rhythm deep inside\nHands up high, electrified\nWe are one, amplified\n\n[Outro]' },
+                      { name: 'Rock / Alt', icon: '🎸', template: '[Intro]\n\n[Verse]\nBurning bridges, breaking chains\nRunning wild through fire and rain\nNothing left to hold me back\nI am charging down the track\n\n[Chorus]\nScream it loud, break the silence\nWe are born from defiance\nEvery scar tells a story\nThis is our blaze of glory\n\n[Verse]\nMidnight thunder, rebel heart\nTear the old world apart\nStanding tall against the storm\nFrom the ashes we are born\n\n[Bridge]\nThey said we would never make it\nBut we took their rules and break em\nThis fire will never fade\nWe are the ones that stayed\n\n[Chorus]\nScream it loud, break the silence\nWe are born from defiance\nEvery scar tells a story\nThis is our blaze of glory' },
+                      { name: 'Jazz / Swing', icon: '🎷', template: '[Verse]\nSmoky room and velvet tones\nPiano plays in minor moans\nFingers dancing on the keys\nSwaying gently with the breeze\n\n[Chorus]\nSwing me through the night\nHold me close and tight\nIn this jazzy moonlit scene\nEverything is a dream\n\n[Verse]\nBrass is humming, snares are brushed\nTime stands still, the world is hushed\nBlue notes floating in the air\nMelody beyond compare\n\n[Outro]\nSwing me through the night once more' },
+                      { name: 'Bollywood / Desi', icon: '🪷', template: '[Verse]\nChand ki roshni mein tere saath chalna\nDil ki gehraaiyon mein tera hi basna\nHar pal har lamha tujhe yaad karna\nTere bina is duniya mein kho jaana\n\n[Chorus]\nTu hai meri jaan, tu hai meri duniya\nTere bina sab kuch hai suna\nDil se dil tak tera saath chahiye\nHar janam mein tujhse milna hai\n\n[Verse]\nPehli baarish ki boondein tere naam\nHar dhun mein baste hain tere kaam\nAankhen band karoon toh tera chehra\nDil mein tu hai aur kuch nahi gehra\n\n[Bridge]\nDoor jaake bhi yaad aayegi\nYeh kahaani kabhi na bhoolunga\nTere bin yeh dil na lagega\nHar pal tera intezar karunga\n\n[Chorus]\nTu hai meri jaan, tu hai meri duniya\nTere bina sab kuch hai suna' },
+                    ]).map((tmpl) => (
+                      <button
+                        key={tmpl.name}
+                        type="button"
+                        onClick={() => {
+                          setCustomLyrics(tmpl.template)
+                          const genreFromTemplate = tmpl.name.split(' / ')[0]
+                          if (!genre) setGenre(genreFromTemplate)
+                        }}
+                        className="flex items-center gap-2 p-2.5 rounded-lg bg-white/[0.02] border border-white/5 hover:border-cyan-500/20 hover:bg-cyan-500/[0.05] text-left transition-all group"
+                      >
+                        <span className="text-lg">{tmpl.icon}</span>
+                        <span className="text-[11px] text-gray-400 group-hover:text-cyan-400 transition-colors font-medium">{tmpl.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Pro Tips */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles size={13} className="text-yellow-400" />
+                    Pro Tips
+                  </h4>
+                  <div className="space-y-1.5 text-[11px] text-gray-500">
+                    <div className="flex gap-2 p-2 rounded-lg bg-white/[0.02] border border-white/5">
+                      <span className="text-cyan-400 mt-0.5 shrink-0">•</span>
+                      <span>Always start with a <span className="text-cyan-400 font-mono">[Verse]</span> or <span className="text-cyan-400 font-mono">[Intro]</span> tag — the AI uses these to understand song structure</span>
+                    </div>
+                    <div className="flex gap-2 p-2 rounded-lg bg-white/[0.02] border border-white/5">
+                      <span className="text-cyan-400 mt-0.5 shrink-0">•</span>
+                      <span>Keep 4-6 lines per section. Overly long verses get cut off or compressed</span>
+                    </div>
+                    <div className="flex gap-2 p-2 rounded-lg bg-white/[0.02] border border-white/5">
+                      <span className="text-cyan-400 mt-0.5 shrink-0">•</span>
+                      <span>Repeat your <span className="text-cyan-400 font-mono">[Chorus]</span> 2-3 times in the lyrics for a catchier, more structured song</span>
+                    </div>
+                    <div className="flex gap-2 p-2 rounded-lg bg-white/[0.02] border border-white/5">
+                      <span className="text-cyan-400 mt-0.5 shrink-0">•</span>
+                      <span>Use <span className="text-cyan-400 font-mono">[Instrumental]</span> for breaks — MiniMax 2.0 will insert a musical break without vocals</span>
+                    </div>
+                    <div className="flex gap-2 p-2 rounded-lg bg-white/[0.02] border border-white/5">
+                      <span className="text-cyan-400 mt-0.5 shrink-0">•</span>
+                      <span>For <span className="text-purple-400 font-semibold">MiniMax 1.5</span>: keep total lyrics under 600 chars. For <span className="text-purple-400 font-semibold">2.0</span>: up to 3,000 chars.</span>
+                    </div>
+                    <div className="flex gap-2 p-2 rounded-lg bg-white/[0.02] border border-white/5">
+                      <span className="text-yellow-400 mt-0.5 shrink-0">⚡</span>
+                      <span>Unsupported tags like <span className="text-gray-400 font-mono line-through">[Hook]</span> <span className="text-gray-400 font-mono line-through">[Pre-Chorus]</span> <span className="text-gray-400 font-mono line-through">[Drop]</span> are auto-converted: Hook→Chorus, Pre-Chorus→Verse, Drop→Chorus</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Typical Song Structure */}
+                <div className="p-3 rounded-xl bg-gradient-to-br from-white/[0.03] to-transparent border border-white/5">
+                  <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <Settings size={12} />
+                    Recommended Structure
+                  </h4>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {['Intro', 'Verse', 'Chorus', 'Verse', 'Chorus', 'Bridge', 'Chorus', 'Outro'].map((s, i) => (
+                      <div key={i} className="flex items-center gap-1">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                          s === 'Chorus' ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/20' :
+                          s === 'Verse' ? 'bg-green-500/15 text-green-400 border border-green-500/20' :
+                          s === 'Bridge' ? 'bg-purple-500/15 text-purple-400 border border-purple-500/20' :
+                          'bg-white/5 text-gray-500 border border-white/5'
+                        }`}>{s}</span>
+                        {i < 7 && <span className="text-gray-700">→</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
             </div>
 
             {/* Footer */}
-            <div className="px-5 py-4 border-t border-white/10">
-              <button
-                onClick={() => setShowLyricsModal(false)}
-                className="w-full px-4 py-2.5 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 rounded-lg transition-all flex items-center justify-center gap-2 text-sm font-semibold text-white shadow-lg shadow-cyan-500/30"
-              >
-                Done
-              </button>
+            <div className="px-6 py-4 border-t border-white/10 bg-gradient-to-r from-cyan-500/5 via-transparent to-purple-500/5">
+              <div className="flex items-center gap-3">
+                <div className="flex-1 text-[11px] text-gray-600">
+                  {customLyrics.length > 0 && (
+                    <span>
+                      {customLyrics.split(/\[/g).length - 1} sections · {customLyrics.split('\n').filter(l => l.trim() && !l.startsWith('[')).length} lines · {customLyrics.length} chars
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => setShowLyricsModal(false)}
+                  className="px-8 py-2.5 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 rounded-xl transition-all flex items-center justify-center gap-2 text-sm font-bold text-white shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40"
+                >
+                  <Check size={16} />
+                  Done
+                </button>
+              </div>
             </div>
 
           </div>
