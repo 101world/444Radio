@@ -7,7 +7,7 @@ import {
   Edit3, Dices, Upload, RotateCcw, Repeat, Plus, Square, FileText,
   Layers, Film, Scissors, Volume2, ChevronLeft, ChevronDown, ChevronUp, Lightbulb, Settings,
   RotateCw, Save, RefreshCw, AlertCircle, Compass, ExternalLink, Home,
-  BookOpen, ArrowDownToLine, Pin, PinOff, Code
+  BookOpen, ArrowDownToLine, Pin, PinOff, Code, HelpCircle
 } from 'lucide-react'
 import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLanguage } from '@/lib/language-hooks'
 import PluginAudioPlayer from '@/app/components/PluginAudioPlayer'
@@ -18,7 +18,7 @@ import VisualizerModal from '@/app/components/VisualizerModal'
 import CoverArtGenModal from '@/app/components/CoverArtGenModal'
 import type { StemType, StemAdvancedParams } from '@/app/components/SplitStemsModal'
 const LipSyncModal = lazy(() => import('@/app/components/LipSyncModal'))
-const ResoundModal = lazy(() => import('@/app/components/ResoundModal'))
+const ProFeaturesModal = lazy(() => import('@/app/components/ProFeaturesModal'))
 const InputEditor = lazy(() => import('@/app/components/InputEditor'))
 
 // ─── Types (mirrored from create page) ──────────────────────────
@@ -176,22 +176,22 @@ const GENRE_OPTIONS = [
 
 // ─── Features list (same as FeaturesSidebar) ───────────────────
 const FEATURES = [
-  { key: 'input', icon: Code, label: 'Input', desc: 'Pattern live editor', color: 'cyan', cost: 0 },
-  { key: 'music', icon: Music, label: 'Music', desc: 'Generate AI music', color: 'cyan', cost: 2 },
-  { key: 'effects', icon: Sparkles, label: 'Effects', desc: 'Sound effects', color: 'purple', cost: 2 },
-  { key: 'loops', icon: Repeat, label: 'Loops', desc: 'Fixed BPM loops', color: 'cyan', cost: 6 },
-  { key: 'image', icon: ImageIcon, label: 'Cover Art', desc: 'AI album artwork', color: 'cyan', cost: 1 },
-  { key: 'remix', icon: RotateCw, label: 'Remix', desc: 'Beat upload + AI remix', color: 'purple', cost: 2 },
-  { key: 'lyrics', icon: Edit3, label: 'Lyrics', desc: 'Write & edit lyrics', color: 'cyan', cost: 0 },
-  { key: 'lipsync', icon: Mic, label: 'Lip-Sync', desc: 'Image+Audio→video', color: 'cyan', cost: -1 },
-  { key: 'video-to-audio', icon: Film, label: 'Video to Audio', desc: 'Synced SFX from video', color: 'cyan', cost: 4 },
-  { key: 'stems', icon: Scissors, label: 'Split Stems', desc: 'Vocals, drums, bass & more', color: 'purple', cost: 0 },
-  { key: 'audio-boost', icon: Volume2, label: 'Audio Boost', desc: 'Mix & master your track', color: 'orange', cost: 1 },
-  { key: 'extract', icon: Layers, label: 'Extract', desc: 'Extract audio from video/audio', color: 'cyan', cost: 1 },
-  { key: 'autotune', icon: Zap, label: 'Autotune', desc: 'Pitch correct to any key', color: 'purple', cost: 1 },
-  { key: 'visualizer', icon: Film, label: 'Visualizer', desc: 'Text/Image to video', color: 'purple', cost: -1 },
-  { key: 'upload', icon: Upload, label: 'Upload', desc: 'Upload audio/video', color: 'purple', cost: 0 },
-  { key: 'release', icon: Rocket, label: 'Release', desc: 'Publish to feed', color: 'cyan', cost: 0 },
+  { key: 'input', icon: Code, label: 'Input', desc: 'Pattern live editor', color: 'cyan', cost: 0, helpText: 'Open the live pattern editor to build beats visually with a grid sequencer.' },
+  { key: 'music', icon: Music, label: 'Music', desc: 'Generate AI music', color: 'cyan', cost: 2, helpText: 'Generate AI music from a text prompt. 2 credits per generation (returns 2 tracks).' },
+  { key: 'effects', icon: Sparkles, label: 'Effects', desc: 'Sound effects', color: 'purple', cost: 2, helpText: 'Generate sound effects (up to 10s) from a text description. 2 credits.' },
+  { key: 'loops', icon: Repeat, label: 'Loops', desc: 'Fixed BPM loops', color: 'cyan', cost: 6, helpText: 'Generate seamless loops at a fixed BPM for beat-making. 6 credits per set.' },
+  { key: 'image', icon: ImageIcon, label: 'Cover Art', desc: 'AI album artwork', color: 'cyan', cost: 1, helpText: 'Generate album cover art from a text prompt. 1 credit per image.' },
+  { key: 'remix', icon: RotateCw, label: '444 Remix', desc: 'Upload & remix any song', color: 'purple', cost: 3, helpText: 'Upload any song and remix it in a completely new style. Powered by Suno Cover API. 3 credits.' },
+  { key: 'lyrics', icon: Edit3, label: 'Lyrics', desc: 'Write & edit lyrics', color: 'cyan', cost: 0, helpText: 'Open the lyrics editor to write or edit song lyrics before generating.' },
+  { key: 'lipsync', icon: Mic, label: 'Lip-Sync', desc: 'Image+Audio→video', color: 'cyan', cost: -1, helpText: 'Upload a portrait image + audio to create a lip-sync video. ~5+ credits.' },
+  { key: 'video-to-audio', icon: Film, label: 'Video to Audio', desc: 'Synced SFX from video', color: 'cyan', cost: 4, helpText: 'Upload a video and generate synchronized sound effects. 4 credits.' },
+  { key: 'stems', icon: Scissors, label: 'Split Stems', desc: 'Vocals, drums, bass & more', color: 'purple', cost: 0, helpText: 'Split any audio into individual stems (vocals, drums, bass, etc.). Free.' },
+  { key: 'audio-boost', icon: Volume2, label: 'Audio Boost', desc: 'Mix & master your track', color: 'orange', cost: 1, helpText: 'AI-powered mix and master to boost audio quality. 1 credit.' },
+  { key: 'extract', icon: Layers, label: 'Extract', desc: 'Extract audio from video/audio', color: 'cyan', cost: 1, helpText: 'Extract audio from a video file or re-encode audio. 1 credit.' },
+  { key: 'autotune', icon: Zap, label: 'Autotune', desc: 'Pitch correct to any key', color: 'purple', cost: 1, helpText: 'Apply pitch correction to vocals in any musical key/scale. 1 credit.' },
+  { key: 'visualizer', icon: Film, label: 'Visualizer', desc: 'Text/Image to video', color: 'purple', cost: -1, helpText: 'Generate a music visualizer video from text or an image. ~5+ credits.' },
+  { key: 'upload', icon: Upload, label: 'Upload', desc: 'Upload audio/video', color: 'purple', cost: 0, helpText: 'Upload your own audio or video files to your 444 Radio library.' },
+  { key: 'release', icon: Rocket, label: 'Release', desc: 'Publish to feed', color: 'cyan', cost: 0, helpText: 'Publish a finished track to the 444 Radio feed for the world to hear.' },
 ]
 
 // ═══════════════════════════════════════════════════════════════
@@ -305,7 +305,8 @@ function PluginPageInner() {
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [showVisualizerModal, setShowVisualizerModal] = useState(false)
   const [showLipSyncModal, setShowLipSyncModal] = useState(false)
-  const [showResoundModal, setShowResoundModal] = useState(false)
+  const [showProFeaturesModal, setShowProFeaturesModal] = useState(false)
+  const [proFeatureType, setProFeatureType] = useState<'extend' | 'inpaint' | 'remix' | 'add-vocals' | 'voice-to-melody' | 'music-video'>('remix')
   const [showInputEditor, setShowInputEditor] = useState(false)
   const [showCoverArtGenModal, setShowCoverArtGenModal] = useState(false)
   const [pendingLipSyncImageUrl, setPendingLipSyncImageUrl] = useState<string | null>(null)
@@ -1801,90 +1802,6 @@ function PluginPageInner() {
     openUploadModal(modeMap[featureType] || null)
   }
 
-  // ═══ REMIX (444 Radio Remix) — Beat upload + prompt via fal.ai ═══
-  const generateResound = async (
-    params: {
-      title: string; prompt: string; inputAudioUrl: string;
-      strength: number; num_inference_steps: number;
-      total_seconds: number | null; guidance_scale: number; seed: number | null;
-    },
-    signal?: AbortSignal,
-    messageId?: string
-  ) => {
-    const res = await fetch('/api/generate/resound', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title: params.title, prompt: params.prompt, audio_url: params.inputAudioUrl,
-        strength: params.strength, num_inference_steps: params.num_inference_steps,
-        total_seconds: params.total_seconds, guidance_scale: params.guidance_scale,
-        seed: params.seed,
-      }),
-      signal,
-    })
-    // Handle non-streaming error responses (e.g. 500, 402)
-    if (!res.ok && res.headers.get('content-type')?.includes('application/json')) {
-      const errJson = await res.json().catch(() => ({}))
-      return { error: errJson.error || `Server error (${res.status})` }
-    }
-    const reader = res.body?.getReader()
-    if (!reader) return { error: 'No response stream' }
-    const decoder = new TextDecoder()
-    let buffer = ''
-    let resultData: Record<string, unknown> | null = null
-    try {
-      while (true) {
-        if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n'); buffer = lines.pop() || ''
-        for (const line of lines) {
-          if (!line.trim()) continue
-          try { const p = JSON.parse(line); if (p.type === 'result') resultData = p } catch { /* skip */ }
-        }
-      }
-      if (buffer.trim()) { try { const p = JSON.parse(buffer); if (p.type === 'result') resultData = p } catch { /* skip */ } }
-    } finally { reader.releaseLock() }
-    if (!resultData) return { error: 'No result received' }
-    if (resultData.success) return { audioUrl: resultData.audioUrl as string, title: (resultData.title as string) || params.title, prompt: params.prompt, creditsRemaining: resultData.creditsRemaining as number }
-    return { error: (resultData.error as string) || 'Remix failed' }
-  }
-
-  const handleResoundGenerate = async (resoundParams: {
-    title: string; prompt: string; inputAudioUrl: string;
-    strength: number; num_inference_steps: number;
-    total_seconds: number | null; guidance_scale: number; seed: number | null;
-  }) => {
-    setShowResoundModal(false)
-    const genMsgId = (Date.now() + 1).toString()
-    setMessages(prev => [...prev,
-      { id: Date.now().toString(), type: 'user' as MessageType, content: `🔁 Remix: "${resoundParams.title}" — ${resoundParams.prompt.substring(0, 80)}`, timestamp: new Date() },
-      { id: genMsgId, type: 'generation' as MessageType, content: '🔁 Remixing your beat…', generationType: 'music', isGenerating: true, timestamp: new Date() },
-    ])
-    setActiveGenerations(prev => new Set(prev).add(genMsgId))
-    try {
-      const result = await generateResound(resoundParams)
-      if ('error' in result && result.error) throw new Error(result.error as string)
-      setMessages(prev => prev.map(m => m.id === genMsgId ? {
-        ...m, isGenerating: false, content: '✅ Remix complete!',
-        result: { audioUrl: result.audioUrl, title: result.title, prompt: result.prompt },
-      } : m))
-      if (typeof result.creditsRemaining === 'number') setUserCredits(result.creditsRemaining)
-      // Save to local library
-      try {
-        const lib = JSON.parse(localStorage.getItem(LIBRARY_KEY) || '[]')
-        lib.unshift({ id: Date.now(), type: 'music', title: result.title, audioUrl: result.audioUrl, prompt: result.prompt, createdAt: new Date().toISOString() })
-        localStorage.setItem(LIBRARY_KEY, JSON.stringify(lib.slice(0, 200)))
-      } catch {}
-    } catch (e) {
-      setMessages(prev => prev.map(m => m.id === genMsgId ? { ...m, isGenerating: false, content: `❌ Remix failed: ${e instanceof Error ? e.message : 'Unknown error'}` } : m))
-    } finally {
-      setActiveGenerations(prev => { const s = new Set(prev); s.delete(genMsgId); return s })
-      refreshCredits()
-    }
-  }
-
   // ── Cover Art Generation (from modal) ──
   const handleCoverArtGenerate = async (coverParams: { prompt: string; params: { width: number; height: number; output_format: string; output_quality: number; guidance_scale: number; num_inference_steps: number; go_fast: boolean } }) => {
     setShowCoverArtGenModal(false)
@@ -2498,7 +2415,7 @@ function PluginPageInner() {
                   return true
                 }).map(f => {
                   const Icon = f.icon
-                  const isActive = f.key === selectedType || (f.key === 'lyrics' && !!(customTitle || genre || customLyrics || bpm)) || (f.key === 'input' && showInputEditor) || (f.key === 'lipsync' && showLipSyncModal) || (f.key === 'remix' && showResoundModal) || (f.key === 'image' && showCoverArtGenModal)
+                  const isActive = f.key === selectedType || (f.key === 'lyrics' && !!(customTitle || genre || customLyrics || bpm)) || (f.key === 'input' && showInputEditor) || (f.key === 'lipsync' && showLipSyncModal) || (f.key === 'remix' && showProFeaturesModal) || (f.key === 'image' && showCoverArtGenModal)
                   const colorMap: Record<string, { active: React.CSSProperties; inactive: React.CSSProperties }> = {
                     cyan: {
                       active: {background:'linear-gradient(135deg, rgba(6,182,212,0.18), rgba(20,184,166,0.12))',border:'1px solid rgba(200,200,220,0.45)',color:'rgba(220,240,245,1)',boxShadow:'0 0 24px rgba(6,182,212,0.2), inset 0 1px 0 rgba(6,182,212,0.25)'},
@@ -2531,7 +2448,8 @@ function PluginPageInner() {
                         setShowLipSyncModal(true)
                         setShowFeaturesSidebar(false)
                       } else if (f.key === 'remix') {
-                        setShowResoundModal(true)
+                        setProFeatureType('remix')
+                        setShowProFeaturesModal(true)
                         setShowFeaturesSidebar(false)
                       } else if (f.key === 'input') {
                         setShowInputEditor(true)
@@ -2551,6 +2469,16 @@ function PluginPageInner() {
                         <div className="text-xs font-semibold">{f.label}</div>
                         <div className="text-[9px]" style={{color:isActive ? 'rgba(6,182,212,0.6)' : 'rgba(6,182,212,0.5)'}}>{f.desc}</div>
                       </div>
+                      {(f as any).helpText && (
+                        <div className="group/help relative flex items-center">
+                          <HelpCircle size={11} className="opacity-30 group-hover/help:opacity-70 transition-opacity cursor-help" />
+                          <div className="absolute bottom-full right-0 mb-2 hidden group-hover/help:block z-50 pointer-events-none">
+                            <div className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-[10px] text-gray-300 w-48 shadow-xl whitespace-normal leading-relaxed">
+                              {(f as any).helpText}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       {f.cost > 0 && <span className="text-[10px] px-2 py-1 rounded-full font-bold" style={{color:'rgba(6,182,212,0.7)',background:'rgba(6,182,212,0.1)',border:'1px solid rgba(200,200,220,0.15)'}}>-{f.cost}</span>}
                       {f.cost === -1 && <span className="text-[10px] px-2 py-1 rounded-full font-bold" style={{color:'rgba(6,182,212,0.75)',background:'rgba(6,182,212,0.1)',border:'1px solid rgba(200,200,220,0.18)'}}>~5+</span>}
                     </button>
@@ -4082,15 +4010,17 @@ function PluginPageInner() {
         />
       </Suspense>
 
-      {/* ── Remix (Resound) Modal — Beat Upload + AI Remix ── */}
-      <Suspense fallback={null}>
-        <ResoundModal
-          isOpen={showResoundModal}
-          onClose={() => setShowResoundModal(false)}
-          userCredits={userCredits || 0}
-          onGenerate={handleResoundGenerate}
-        />
-      </Suspense>
+      {/* ── 444 Pro Features Modal (Remix, Extend, Inpaint, etc.) ── */}
+      {showProFeaturesModal && (
+        <Suspense fallback={null}>
+          <ProFeaturesModal
+            isOpen={showProFeaturesModal}
+            onClose={() => setShowProFeaturesModal(false)}
+            initialFeature={proFeatureType}
+            userCredits={userCredits ?? 0}
+          />
+        </Suspense>
+      )}
 
       {/* ── Cover Art Generator Modal ── */}
       <CoverArtGenModal

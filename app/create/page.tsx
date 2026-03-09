@@ -3916,7 +3916,7 @@ function CreatePageContent() {
                     {isLoadingCredits ? '...' : userCredits}
                   </span>
                   <span className={`text-[10px] font-mono transition-colors duration-500 ${isProMode ? 'text-red-400/50' : 'text-cyan-400/50'}`}>
-                    {selectedType === 'music' ? (hasVoiceOrInstrumentalRef ? '(-3)' : '(-2)') : selectedType === 'image' ? '(-1)' : selectedType === 'effects' ? '(-2)' : ''}
+                    {selectedType === 'music' ? (isProMode ? '(-5)' : hasVoiceOrInstrumentalRef ? '(-3)' : '(-2)') : selectedType === 'image' ? '(-1)' : selectedType === 'effects' ? '(-2)' : ''}
                   </span>
                 </div>
 

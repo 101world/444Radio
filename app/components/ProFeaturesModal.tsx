@@ -525,16 +525,34 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
           {/* Remix advanced options */}
           {info.fields.includes('remixOptions') && (
             <div className="space-y-3">
+              {/* How 444 Remix works — always visible */}
+              <div className="flex items-start gap-2.5 px-3 py-2.5 bg-red-500/[0.06] border border-red-500/10 rounded-xl">
+                <HelpCircle size={14} className="text-red-400/60 mt-0.5 shrink-0" />
+                <p className="text-[11px] text-white/50 leading-relaxed">
+                  <span className="text-red-300 font-medium">444 Remix</span> — Upload any song (with or without vocals), set your style, and the AI will re-create it in a completely new genre and feel. Adjust vocal gender, weirdness, and fidelity below.
+                </p>
+              </div>
+
               {/* Instrumental toggle + vocal gender */}
               <div className="flex items-center gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={instrumental} onChange={(e) => setInstrumental(e.target.checked)} className="w-4 h-4 rounded border-white/20 bg-white/5 text-red-500 focus:ring-red-400/30" />
                   <span className="text-xs text-white/60">Instrumental only (no vocals)</span>
+                  <span className="relative group/tip inline-block ml-1 align-middle">
+                    <HelpCircle size={10} className="text-white/20 hover:text-red-400 cursor-help" />
+                    <span className="hidden group-hover/tip:block absolute left-0 top-4 z-50 w-48 p-2 rounded-lg bg-black/95 border border-white/10 text-[10px] text-white/60 font-normal normal-case tracking-normal shadow-xl">Enable this to strip all vocals and produce an instrumental-only remix.</span>
+                  </span>
                 </label>
               </div>
               {!instrumental && (
                 <div>
-                  <label className={labelClass}>Vocal Gender</label>
+                  <label className={labelClass}>
+                    Vocal Gender
+                    <span className="relative group/tip inline-block ml-1 align-middle">
+                      <HelpCircle size={10} className="text-white/20 hover:text-red-400 cursor-help" />
+                      <span className="hidden group-hover/tip:block absolute left-0 top-4 z-50 w-48 p-2 rounded-lg bg-black/95 border border-white/10 text-[10px] text-white/60 font-normal normal-case tracking-normal shadow-xl">Choose the gender of the AI-generated vocals. Auto-detect will match the original track.</span>
+                    </span>
+                  </label>
                   <select value={vocalGender} onChange={(e) => setVocalGender(e.target.value as any)} className={inputClass}>
                     <option value="">Auto-detect</option>
                     <option value="m">Male</option>
@@ -545,7 +563,13 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
 
               {/* Negative tags */}
               <div>
-                <label className={labelClass}>Avoid Tags</label>
+                <label className={labelClass}>
+                  Avoid Tags
+                  <span className="relative group/tip inline-block ml-1 align-middle">
+                    <HelpCircle size={10} className="text-white/20 hover:text-red-400 cursor-help" />
+                    <span className="hidden group-hover/tip:block absolute left-0 top-4 z-50 w-48 p-2 rounded-lg bg-black/95 border border-white/10 text-[10px] text-white/60 font-normal normal-case tracking-normal shadow-xl">Comma-separated tags the AI should avoid (e.g. noise, distortion, reverb). Helps keep the remix clean.</span>
+                  </span>
+                </label>
                 <input type="text" value={negativeTags} onChange={(e) => setNegativeTags(e.target.value)} placeholder="noise, distortion" className={inputClass} />
               </div>
 

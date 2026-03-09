@@ -168,7 +168,7 @@ export default function FeaturesSidebar({
           onClick: () => onSelectType('image'),
         },
         {
-          icon: Repeat, label: 'Remix', desc: 'Remix any song (Suno)',
+          icon: Repeat, label: '444 Remix', desc: 'Remix any song (Suno)',
           gradient: proGradient('from-amber-400/35 via-orange-500/25 to-red-400/30'),
           glowColor: proGlow('shadow-amber-400/30'),
           activeGradient: proActiveGrad('from-amber-400/50 via-orange-500/40 to-red-400/45 ring-amber-400/70'),
@@ -327,7 +327,7 @@ export default function FeaturesSidebar({
         helpText: 'Upload audio and set start/end times for the section to replace. Add style tags. 4 credits.',
       },
       {
-        icon: RefreshCw, label: 'Remix', desc: 'Remix any song in a new style',
+        icon: RefreshCw, label: '444 Remix', desc: 'Remix any song in a new style',
         gradient: proGradient('from-blue-500/35 via-indigo-500/25 to-violet-500/30'),
         glowColor: proGlow('shadow-blue-400/30'),
         activeGradient: proActiveGrad('from-blue-500/50 via-indigo-500/40 to-violet-500/45 ring-blue-400/70'),
