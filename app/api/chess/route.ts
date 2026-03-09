@@ -123,20 +123,21 @@ async function handleCreate(userId: string, body: { opponent: string; wager: num
 
   const wagerAmount = Math.max(0, Math.floor(wager))
 
-  // If wager > 0, check challenger has enough credits
+  // If wager > 0, check challenger has enough credits (paid + free)
   if (wagerAmount > 0) {
     const { data: challenger } = await supabase
       .from('users')
-      .select('credits')
+      .select('credits, free_credits')
       .eq('clerk_user_id', userId)
       .single()
 
-    if (!challenger || challenger.credits < wagerAmount) {
-      return corsResponse(NextResponse.json({ error: 'You don\'t have enough credits for this wager' }, { status: 400 }))
+    const totalCredits = (challenger?.credits || 0) + (challenger?.free_credits || 0)
+    if (!challenger || totalCredits < wagerAmount) {
+      return corsResponse(NextResponse.json({ error: `You don't have enough credits for this wager (need ${wagerAmount}, have ${totalCredits})` }, { status: 400 }))
     }
 
     // Deduct wager from challenger (escrow)
-    const { data: deductResult } = await supabase.rpc('deduct_credits', {
+    const { data: deductResult, error: deductError } = await supabase.rpc('deduct_credits', {
       p_clerk_user_id: userId,
       p_amount: wagerAmount,
       p_type: 'chess_wager',
@@ -144,8 +145,9 @@ async function handleCreate(userId: string, body: { opponent: string; wager: num
       p_metadata: {},
     })
 
-    if (!deductResult?.[0]?.success) {
-      return corsResponse(NextResponse.json({ error: 'Failed to escrow credits' }, { status: 500 }))
+    if (deductError || !deductResult?.[0]?.success) {
+      console.error('[chess] Create escrow failed:', deductError, deductResult)
+      return corsResponse(NextResponse.json({ error: deductResult?.[0]?.error_message || 'Failed to escrow credits' }, { status: 500 }))
     }
   }
 
@@ -229,15 +231,16 @@ async function handleAccept(userId: string, body: { gameId: string }) {
   if (game.wager > 0) {
     const { data: opp } = await supabase
       .from('users')
-      .select('credits')
+      .select('credits, free_credits')
       .eq('clerk_user_id', userId)
       .single()
 
-    if (!opp || opp.credits < game.wager) {
-      return corsResponse(NextResponse.json({ error: `You need ${game.wager} credits to accept this wager` }, { status: 400 }))
+    const totalCredits = (opp?.credits || 0) + (opp?.free_credits || 0)
+    if (!opp || totalCredits < game.wager) {
+      return corsResponse(NextResponse.json({ error: `You need ${game.wager} credits to accept this wager (you have ${totalCredits})` }, { status: 400 }))
     }
 
-    const { data: deductResult } = await supabase.rpc('deduct_credits', {
+    const { data: deductResult, error: deductError } = await supabase.rpc('deduct_credits', {
       p_clerk_user_id: userId,
       p_amount: game.wager,
       p_type: 'chess_wager',
@@ -245,8 +248,9 @@ async function handleAccept(userId: string, body: { gameId: string }) {
       p_metadata: { gameId },
     })
 
-    if (!deductResult?.[0]?.success) {
-      return corsResponse(NextResponse.json({ error: 'Failed to escrow your credits' }, { status: 500 }))
+    if (deductError || !deductResult?.[0]?.success) {
+      console.error('[chess] Accept escrow failed:', deductError, deductResult)
+      return corsResponse(NextResponse.json({ error: deductResult?.[0]?.error_message || 'Failed to escrow your credits' }, { status: 500 }))
     }
   }
 
@@ -292,15 +296,20 @@ async function handleDecline(userId: string, body: { gameId: string }) {
     return corsResponse(NextResponse.json({ error: 'This challenge is no longer pending' }, { status: 400 }))
   }
 
-  // Refund challenger's wager
+  // Refund challenger's wager — must succeed before marking game declined
   if (game.wager > 0) {
-    await supabase.rpc('award_credits', {
+    const { data: refundResult, error: refundError } = await supabase.rpc('award_credits', {
       p_clerk_user_id: game.white_player_id,
       p_amount: game.wager,
       p_type: 'chess_wager_refund',
-      p_description: 'Chess wager refund — challenge declined',
+      p_description: `Chess wager refund — challenge declined (${game.wager} credits returned)`,
       p_metadata: { gameId },
     })
+
+    if (refundError || !refundResult?.[0]?.success) {
+      console.error('[chess] Decline refund failed:', refundError, refundResult)
+      return corsResponse(NextResponse.json({ error: 'Failed to refund challenger credits. Please try again.' }, { status: 500 }))
+    }
   }
 
   await supabase
@@ -349,38 +358,77 @@ async function handleSettle(userId: string, body: { gameId: string; result: 'whi
 
   const winnerId = result === 'white' ? game.white_player_id : result === 'black' ? game.black_player_id : null
   const totalPool = game.wager * 2
+  let creditsAwarded = 0
 
   // Award credits to winner (or refund both on draw)
+  // CRITICAL: credits MUST be awarded before marking game completed
   if (game.wager > 0) {
     if (result === 'draw') {
-      // Refund both players
-      await supabase.rpc('award_credits', {
+      // Refund both players — both must succeed
+      const { data: refundWhite, error: errWhite } = await supabase.rpc('award_credits', {
         p_clerk_user_id: game.white_player_id,
         p_amount: game.wager,
         p_type: 'chess_draw_refund',
-        p_description: 'Chess draw — wager refunded',
-        p_metadata: { gameId },
+        p_description: `Chess draw — ${game.wager} credits refunded`,
+        p_metadata: { gameId, pool: totalPool },
       })
-      await supabase.rpc('award_credits', {
+
+      const { data: refundBlack, error: errBlack } = await supabase.rpc('award_credits', {
         p_clerk_user_id: game.black_player_id,
         p_amount: game.wager,
         p_type: 'chess_draw_refund',
-        p_description: 'Chess draw — wager refunded',
-        p_metadata: { gameId },
+        p_description: `Chess draw — ${game.wager} credits refunded`,
+        p_metadata: { gameId, pool: totalPool },
       })
+
+      if (errWhite || !refundWhite?.[0]?.success || errBlack || !refundBlack?.[0]?.success) {
+        console.error('[chess] Draw refund failed:', { errWhite, refundWhite, errBlack, refundBlack })
+        return corsResponse(NextResponse.json({ error: 'Failed to refund draw wagers. Please contact support.' }, { status: 500 }))
+      }
+
+      creditsAwarded = game.wager
     } else if (winnerId) {
-      // Winner gets the full pool
-      await supabase.rpc('award_credits', {
+      // Winner gets the full pool (both wagers combined)
+      const loserId = winnerId === game.white_player_id ? game.black_player_id : game.white_player_id
+      const winnerUsername = await getUsername(winnerId)
+      const loserUsername = await getUsername(loserId)
+
+      const { data: awardResult, error: awardError } = await supabase.rpc('award_credits', {
         p_clerk_user_id: winnerId,
         p_amount: totalPool,
         p_type: 'chess_win',
-        p_description: `Chess victory — won ${totalPool} credits`,
-        p_metadata: { gameId },
+        p_description: `Chess victory vs @${loserUsername} — won ${totalPool} credits`,
+        p_metadata: { gameId, pool: totalPool, loserId, loserUsername },
       })
+
+      if (awardError || !awardResult?.[0]?.success) {
+        console.error('[chess] Win award failed:', awardError, awardResult)
+        return corsResponse(NextResponse.json({ error: 'Failed to award winning credits. Please contact support.' }, { status: 500 }))
+      }
+
+      creditsAwarded = totalPool
+
+      // Notify both players
+      await supabase.from('notifications').insert([
+        {
+          user_id: winnerId,
+          type: 'chess_win',
+          title: '👑 Chess Victory!',
+          message: `You won ${totalPool} credits in chess vs @${loserUsername}!`,
+          metadata: { gameId, credits: totalPool },
+        },
+        {
+          user_id: loserId,
+          type: 'chess_loss',
+          title: '♟️ Chess Defeat',
+          message: `@${winnerUsername} won the chess match. ${game.wager} credits wagered.`,
+          metadata: { gameId, credits: game.wager },
+        },
+      ])
     }
   }
 
-  // Update game record
+  // Only mark completed AFTER credits are successfully processed
   await supabase
     .from('chess_games')
     .update({
@@ -394,7 +442,7 @@ async function handleSettle(userId: string, body: { gameId: string; result: 'whi
   return corsResponse(NextResponse.json({
     success: true,
     result,
-    creditsAwarded: game.wager > 0 ? (result === 'draw' ? game.wager : totalPool) : 0,
+    creditsAwarded,
   }))
 }
 
