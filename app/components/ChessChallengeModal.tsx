@@ -39,10 +39,9 @@ export default function ChessChallengeModal() {
       const json = await res.json()
       const notifications = json?.notifications ?? json ?? []
 
-      // Find the most recent unread chess_challenge that hasn't been dismissed
-      // Only show challenges from the last 24 hours to prevent stale spam
+      // Find unread chess_challenge notifications (max 24h old, not dismissed)
       const twentyFourHoursAgo = Date.now() - (24 * 60 * 60 * 1000)
-      const pending = notifications.find((n: any) => {
+      const candidates = notifications.filter((n: any) => {
         const gameId = n.data?.gameId || n.metadata?.gameId
         const createdAt = n.created_at ? new Date(n.created_at).getTime() : 0
         return (
@@ -54,17 +53,41 @@ export default function ChessChallengeModal() {
         )
       })
 
-      if (pending) {
-        const gameId = pending.data?.gameId || pending.metadata?.gameId
-        setChallenge({
-          notificationId: pending.id,
-          gameId,
-          challengerUsername: pending.data?.challengerUsername || pending.metadata?.challengerUsername || 'Someone',
-          wager: pending.data?.wager ?? pending.metadata?.wager ?? 0,
-          createdAt: pending.created_at,
-        })
+      // For each candidate, verify the game is STILL pending before showing
+      let validChallenge: PendingChallenge | null = null
+      for (const candidate of candidates) {
+        const gameId = candidate.data?.gameId || candidate.metadata?.gameId
+        try {
+          const gameRes = await fetch(`/api/chess?gameId=${gameId}`)
+          if (gameRes.ok) {
+            const gameData = await gameRes.json()
+            if (gameData.game?.status === 'pending') {
+              validChallenge = {
+                notificationId: candidate.id,
+                gameId,
+                challengerUsername: candidate.data?.challengerUsername || candidate.metadata?.challengerUsername || 'Someone',
+                wager: candidate.data?.wager ?? candidate.metadata?.wager ?? 0,
+                createdAt: candidate.created_at,
+              }
+              break // Show the first valid one
+            } else {
+              // Game is no longer pending — auto-dismiss this one
+              setDismissed(prev => new Set(prev).add(gameId))
+            }
+          } else {
+            // Game not found or not accessible — dismiss
+            setDismissed(prev => new Set(prev).add(gameId))
+          }
+        } catch {
+          // Network error checking game — skip this one
+          setDismissed(prev => new Set(prev).add(gameId))
+        }
+      }
+
+      if (validChallenge) {
+        setChallenge(validChallenge)
       } else {
-        // No pending challenges — clear if showing
+        // No valid pending challenges — clear if showing
         if (challenge && actionStatus === 'idle') {
           setChallenge(null)
         }
@@ -81,8 +104,8 @@ export default function ChessChallengeModal() {
     // Initial check
     checkForChallenges()
 
-    // Poll every 5s
-    pollRef.current = setInterval(checkForChallenges, 5000)
+    // Poll every 15s (includes game status verification per candidate)
+    pollRef.current = setInterval(checkForChallenges, 15000)
     return () => {
       if (pollRef.current) clearInterval(pollRef.current)
     }
@@ -120,37 +143,29 @@ export default function ChessChallengeModal() {
     }
   }
 
-  // Handle decline
+  // Handle decline — ALWAYS dismiss the modal regardless of server response
   const handleDecline = async () => {
     if (!challenge) return
+    const gameId = challenge.gameId
     setActionStatus('declining')
     try {
-      const res = await fetch('/api/chess', {
+      await fetch('/api/chess', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'decline', gameId: challenge.gameId }),
+        body: JSON.stringify({ action: 'decline', gameId }),
       })
-      const result = await res.json()
-      // Treat as success if ok OR if the challenge is already handled (400 = stale)
-      if ((res.ok && result.success) || (res.status === 400)) {
-        setActionStatus('done')
-        setResultMsg('Challenge declined.')
-        setTimeout(() => {
-          setDismissed(prev => new Set(prev).add(challenge.gameId))
-          setChallenge(null)
-          setActionStatus('idle')
-          setResultMsg('')
-        }, 1500)
-      } else {
-        setActionStatus('idle')
-        setResultMsg(result.error || 'Failed to decline')
-        setTimeout(() => setResultMsg(''), 4000)
-      }
     } catch {
-      setActionStatus('idle')
-      setResultMsg('Network error. Try again.')
-      setTimeout(() => setResultMsg(''), 4000)
+      // Ignore errors — we always dismiss
     }
+    // Always dismiss regardless of response
+    setActionStatus('done')
+    setResultMsg('Challenge declined.')
+    setTimeout(() => {
+      setDismissed(prev => new Set(prev).add(gameId))
+      setChallenge(null)
+      setActionStatus('idle')
+      setResultMsg('')
+    }, 1000)
   }
 
   // Dismiss (close without accepting/declining — modal will reappear on next poll)

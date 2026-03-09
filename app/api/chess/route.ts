@@ -280,14 +280,19 @@ async function handleAccept(userId: string, body: { gameId: string }) {
 // ─── Helper: mark chess_challenge notification as read ───
 async function markChallengeNotificationRead(userId: string, gameId: string) {
   try {
-    // Mark all chess_challenge notifications for this user/game as read
-    await supabase
+    // Mark all chess_challenge notifications for this user as read
+    // Table uses is_read (boolean), not read_at
+    const { error } = await supabase
       .from('notifications')
-      .update({ read_at: new Date().toISOString() })
+      .update({ is_read: true })
       .eq('user_id', userId)
       .eq('type', 'chess_challenge')
 
-    console.log(`[chess] Marked chess_challenge notifications as read for user ${userId}`)
+    if (error) {
+      console.error('[chess] Failed to mark notification read (supabase):', error)
+    } else {
+      console.log(`[chess] Marked chess_challenge notifications as read for user ${userId}`)
+    }
   } catch (err) {
     console.error('[chess] Failed to mark notification as read:', err)
   }
