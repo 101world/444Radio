@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { X, Wand2, Replace, RefreshCw, MicVocal, Headphones, Crown, Upload, Loader2, Zap, ArrowLeft, HelpCircle, Mic, Square, Sparkles, Video } from 'lucide-react'
+import { X, Wand2, Replace, RefreshCw, MicVocal, Headphones, Crown, Upload, Loader2, Zap, ArrowLeft, HelpCircle, Mic, Square, Sparkles } from 'lucide-react'
 
 interface ProFeaturesModalProps {
   isOpen: boolean
   onClose: () => void
-  initialFeature: 'extend' | 'inpaint' | 'remix' | 'add-vocals' | 'voice-to-melody' | 'music-video'
+  initialFeature: 'extend' | 'inpaint' | 'remix' | 'add-vocals' | 'voice-to-melody'
   userCredits: number | null
 }
 
@@ -40,12 +40,6 @@ const FEATURE_INFO: Record<string, { icon: any; label: string; desc: string; cos
     cost: 5,
     fields: ['uploadUrl', 'title', 'tags'],
     help: 'Upload a vocal recording, hum, or melody you\'ve sung. The AI will create full instrumental backing that matches your melody. Add style tags (e.g. "lo-fi hip-hop, chill") to guide the genre. 5 credits per generation.',
-  },
-  'music-video': {
-    icon: Video, label: '444 Music Video', desc: 'Generate a cinematic music video for any track',
-    cost: 5,
-    fields: ['uploadUrl', 'taskId', 'audioId', 'author', 'domainName'],
-    help: 'Upload a song or paste Task ID + Audio ID from a previous generation. 444 creates a cinematic music video (MP4) with your branding. 5 credits per video.',
   },
 }
 
@@ -259,12 +253,6 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
           if (!tags) throw new Error('Style tags are required')
           endpoint = '/api/generate/suno/voice-to-melody'
           body = { uploadUrl, title: title || 'Voice to Melody', tags }
-          break
-        case 'music-video':
-          if (!taskId) throw new Error('Task ID from a previous generation is required')
-          if (!audioId) throw new Error('Audio ID is required')
-          endpoint = '/api/generate/suno/music-video'
-          body = { taskId, audioId, author: author || '444 Radio', domainName: domainName || '444radio.co.in' }
           break
       }
 
@@ -679,7 +667,7 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
               )}
               {result.videoUrl && (
                 <div className="space-y-2">
-                  <p className="text-xs font-bold text-green-300">Music video ready!</p>
+                  <p className="text-xs font-bold text-green-300">Video ready!</p>
                   <video controls src={result.videoUrl} className="w-full rounded-lg" />
                   <a href={result.videoUrl} download className="inline-flex items-center gap-1 text-[11px] text-red-300 hover:text-red-200 underline underline-offset-2">Download MP4</a>
                 </div>

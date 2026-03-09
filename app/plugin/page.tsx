@@ -306,7 +306,7 @@ function PluginPageInner() {
   const [showVisualizerModal, setShowVisualizerModal] = useState(false)
   const [showLipSyncModal, setShowLipSyncModal] = useState(false)
   const [showProFeaturesModal, setShowProFeaturesModal] = useState(false)
-  const [proFeatureType, setProFeatureType] = useState<'extend' | 'inpaint' | 'remix' | 'add-vocals' | 'voice-to-melody' | 'music-video'>('remix')
+  const [proFeatureType, setProFeatureType] = useState<'extend' | 'inpaint' | 'remix' | 'add-vocals' | 'voice-to-melody'>('remix')
   const [showInputEditor, setShowInputEditor] = useState(false)
   const [showCoverArtGenModal, setShowCoverArtGenModal] = useState(false)
   const [pendingLipSyncImageUrl, setPendingLipSyncImageUrl] = useState<string | null>(null)

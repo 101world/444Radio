@@ -176,7 +176,7 @@ function CreatePageContent() {
   const [showBeatMakerModal, setShowBeatMakerModal] = useState(false)
   const [showCoverArtGenModal, setShowCoverArtGenModal] = useState(false)
   const [showProFeaturesModal, setShowProFeaturesModal] = useState(false)
-  const [proFeatureType, setProFeatureType] = useState<'extend' | 'inpaint' | 'remix' | 'add-vocals' | 'voice-to-melody' | 'music-video'>('extend')
+  const [proFeatureType, setProFeatureType] = useState<'extend' | 'inpaint' | 'remix' | 'add-vocals' | 'voice-to-melody'>('extend')
   // Audio recording for voice reference (actual mic capture, not speech-to-text)
   const [isAudioRecording, setIsAudioRecording] = useState(false)
   const [audioRecordingTime, setAudioRecordingTime] = useState(0)
@@ -2822,7 +2822,6 @@ function CreatePageContent() {
           onShowProRemix={() => { setProFeatureType('remix'); setShowProFeaturesModal(true) }}
           onShowProAddVocals={() => { setProFeatureType('add-vocals'); setShowProFeaturesModal(true) }}
           onShowProVoiceToMelody={() => { setProFeatureType('voice-to-melody'); setShowProFeaturesModal(true) }}
-          onShowProMusicVideo={() => { setProFeatureType('music-video'); setShowProFeaturesModal(true) }}
           onTagClick={(tag: string) => {
             const newInput = input ? `${input}, ${tag}` : tag
             setInput(newInput.slice(0, MAX_PROMPT_LENGTH))
@@ -5180,7 +5179,7 @@ function CreatePageContent() {
         />
       </Suspense>
 
-      {/* Pro Features Modal (Extend, Inpaint, Cover, Add Vocals, Voice-to-Melody, Music Video, Boost Style) */}
+      {/* Pro Features Modal (Extend, Inpaint, Remix, Add Vocals, Voice-to-Melody) */}
       {showProFeaturesModal && (
         <Suspense fallback={null}>
           <ProFeaturesModal

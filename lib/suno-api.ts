@@ -207,19 +207,6 @@ export interface SunoLyricsParams {
   callBackUrl?: string
 }
 
-export interface SunoMusicVideoParams {
-  /** Task ID from a previous music generation */
-  taskId: string
-  /** Audio ID of the specific track to make a video for */
-  audioId: string
-  /** Callback URL */
-  callBackUrl?: string
-  /** Artist/creator name to display on the video (max 50 chars) */
-  author?: string
-  /** Website/brand watermark (max 50 chars) */
-  domainName?: string
-}
-
 export interface SunoLyricsStatusResponse {
   code: number
   msg: string
@@ -237,25 +224,6 @@ export interface SunoLyricsStatusResponse {
     }
     status: 'PENDING' | 'SUCCESS' | 'CREATE_TASK_FAILED' | 'GENERATE_LYRICS_FAILED' | 'CALLBACK_EXCEPTION' | 'SENSITIVE_WORD_ERROR'
     type: string
-    errorCode?: string | null
-    errorMessage?: string | null
-  }
-}
-
-export interface SunoMusicVideoStatusResponse {
-  code: number
-  msg: string
-  data: {
-    taskId: string
-    musicId: string
-    musicIndex: number
-    callbackUrl?: string
-    completeTime?: string
-    response?: {
-      videoUrl: string
-    }
-    successFlag: 'PENDING' | 'SUCCESS' | 'CREATE_TASK_FAILED' | 'GENERATE_MP4_FAILED' | 'CALLBACK_EXCEPTION'
-    createTime: string
     errorCode?: string | null
     errorMessage?: string | null
   }
@@ -357,7 +325,6 @@ export const SUNO_CREDIT_COSTS = {
   persona: 0,
   boostStyle: 0,
   lyrics: 0,           // Free — utility to improve generation quality
-  musicVideo: 5,
 } as const
 
 // ---------------------------------------------------------------------------
@@ -460,11 +427,6 @@ export async function generateLyrics(params: SunoLyricsParams): Promise<SunoTask
   return sunoPost('/lyrics', params as unknown as Record<string, unknown>)
 }
 
-/** Create a music video (MP4) for a previously generated track */
-export async function createMusicVideo(params: SunoMusicVideoParams): Promise<SunoTaskResponse> {
-  return sunoPost('/mp4/generate', params as unknown as Record<string, unknown>)
-}
-
 // ---------------------------------------------------------------------------
 // Polling / Status
 // ---------------------------------------------------------------------------
@@ -477,11 +439,6 @@ export async function getTaskStatus(taskId: string): Promise<SunoTaskStatus> {
 /** Check the status of a lyrics generation task */
 export async function getLyricsTaskStatus(taskId: string): Promise<SunoLyricsStatusResponse> {
   return sunoGet<SunoLyricsStatusResponse>(`/lyrics/record-info?taskId=${encodeURIComponent(taskId)}`)
-}
-
-/** Check the status of a music video task */
-export async function getMusicVideoStatus(taskId: string): Promise<SunoMusicVideoStatusResponse> {
-  return sunoGet<SunoMusicVideoStatusResponse>(`/mp4/record-info?taskId=${encodeURIComponent(taskId)}`)
 }
 
 /** Poll a lyrics task until it completes */
@@ -500,24 +457,6 @@ export async function pollLyricsUntilDone(
     await new Promise(r => setTimeout(r, intervalMs))
   }
   throw new SunoApiError('Lyrics generation timed out', 408)
-}
-
-/** Poll a music video task until it completes */
-export async function pollMusicVideoUntilDone(
-  taskId: string,
-  maxWaitMs = 300_000,
-  intervalMs = 10_000,
-): Promise<SunoMusicVideoStatusResponse> {
-  const start = Date.now()
-  while (Date.now() - start < maxWaitMs) {
-    const status = await getMusicVideoStatus(taskId)
-    if (status.data.successFlag === 'SUCCESS') return status
-    if (status.data.successFlag !== 'PENDING') {
-      throw new SunoApiError(status.data.errorMessage || 'Music video generation failed', 500)
-    }
-    await new Promise(r => setTimeout(r, intervalMs))
-  }
-  throw new SunoApiError('Music video generation timed out after 5 minutes', 408)
 }
 
 /** Get remaining Suno API credits */

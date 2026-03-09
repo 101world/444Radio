@@ -101,7 +101,6 @@ const PRO_GENERATION_COSTS = [
   { name: 'Melody\u2192Song',  credits: 5,  icon: Music },
   { name: 'Extend',        credits: 4,  icon: Wand2 },
   { name: 'Inpaint',       credits: 4,  icon: Scissors },
-  { name: 'Music Video',   credits: 5,  icon: Video },
 ]
 
 function calcCharge(amountUsd: number, currency: 'INR' | 'USD') {
