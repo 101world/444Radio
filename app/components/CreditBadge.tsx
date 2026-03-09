@@ -17,8 +17,8 @@ export default function CreditBadge() {
   const router = useRouter()
   const { totalCredits } = useCredits()
 
-  // Public paths where badge should not appear
-  const hiddenPaths = ['/', '/sign-in', '/sign-up']
+  // Paths where badge should not appear (public pages + pages with their own credits UI)
+  const hiddenPaths = ['/', '/sign-in', '/sign-up', '/create', '/assistant', '/creator-v2', '/input', '/voice-labs', '/studio']
   const shouldHide = !isLoaded || !user || hiddenPaths.includes(pathname)
 
   if (shouldHide || totalCredits === null) return null

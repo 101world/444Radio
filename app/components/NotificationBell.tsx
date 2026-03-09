@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useUser } from '@clerk/nextjs';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Bell, X, Check, XCircle, Loader2, Swords } from 'lucide-react';
 
 // ─── Types ──────────────────────────────────────────────────
@@ -22,6 +22,7 @@ type ActionState = { status: 'loading' | 'done' | 'error'; action?: string; msg?
 export default function NotificationBell() {
   const { user, isLoaded } = useUser();
   const router = useRouter();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Notification[]>([]);
   const [ready, setReady] = useState(false);
@@ -118,6 +119,10 @@ export default function NotificationBell() {
 
   // ── Mark all read ──
   const markAllRead = () => setItems(prev => prev.map(it => ({ ...it, unread: false })));
+
+  // Hide on pages that render their own notification bell
+  const bellHiddenPaths = ['/create', '/assistant', '/creator-v2', '/input', '/voice-labs', '/studio']
+  if (bellHiddenPaths.includes(pathname)) return null
 
   // ── SSR placeholder ──
   if (!ready || !isLoaded || !user) {

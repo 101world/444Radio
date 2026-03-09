@@ -135,7 +135,6 @@ export default async function RootLayout({
                     </div>
                     <DockedSidebar />
                     <FloatingNavButton />
-                    <CreditBadge />
                   </>
                 )}
                 <Toaster position="top-right" richColors closeButton />
