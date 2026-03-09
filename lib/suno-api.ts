@@ -423,6 +423,7 @@ export async function pollTaskUntilDone(
     const status = await getTaskStatus(taskId)
 
     if (status.data.status === 'SUCCESS') {
+      console.log(`[SunoAPI] Task ${taskId} completed. Response keys:`, JSON.stringify(Object.keys(status.data || {})), 'response keys:', JSON.stringify(Object.keys(status.data?.response || {})))
       return status
     }
     if (status.data.status === 'FAILED') {

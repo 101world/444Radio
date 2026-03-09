@@ -157,9 +157,18 @@ export async function POST(req: NextRequest) {
 
         // Poll until complete
         const completed = await pollTaskUntilDone(taskId, 600_000, 15_000)
-        const tracks = completed.data.response?.data || []
+
+        // V5 may return tracks at different paths — check all known shapes
+        console.log('🎵 [444-PRO] Raw poll response:', JSON.stringify(completed).substring(0, 1000))
+        const responseAny = completed.data as any
+        const tracks = completed.data.response?.data
+          || responseAny.response?.sunoData
+          || responseAny.sunoData
+          || (Array.isArray(responseAny.response) ? responseAny.response : null)
+          || []
 
         if (!tracks.length) {
+          console.error('❌ [444-PRO] No tracks found. Full response:', JSON.stringify(completed))
           throw new Error('No tracks returned from generation')
         }
 
