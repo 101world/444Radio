@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
           title: cleanTitle,
           tags: cleanTags,
           negativeTags,
-          callBackUrl: '',
+          callBackUrl: 'https://www.444radio.co.in/api/webhook/generation-callback',
           vocalGender,
           model: validModel,
         })
@@ -92,20 +92,24 @@ export async function POST(req: NextRequest) {
         await sendLine({ type: 'progress', message: 'Creating instrumental from your melody...', taskId })
 
         const completed = await pollTaskUntilDone(taskId)
-        const tracks = completed.data.response?.data || []
+        // V5 may return tracks at different response paths
+        const cData = completed.data as Record<string, any>
+        const tracks = cData.response?.data || cData?.data || []
         if (!tracks.length) throw new Error('No tracks returned')
 
         const track = tracks[0]
-        if (!track.audio_url) throw new Error('No audio URL in result')
+        const trackAudioUrl = track.audio_url || track.audioUrl || track.stream_audio_url || track.streamAudioUrl || track.song_url || track.songUrl || track.url || track.mp3_url || track.output
+        if (!trackAudioUrl) throw new Error('No audio URL in result')
+        const trackLyric = track.lyric || track.lyrics || ''
 
         const fileName = `v2m-${cleanTitle.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.wav`
-        const r2 = await downloadAndUploadToR2(track.audio_url, userId, 'music', fileName)
+        const r2 = await downloadAndUploadToR2(trackAudioUrl, userId, 'music', fileName)
         if (!r2.success) throw new Error(`Storage upload failed: ${r2.error}`)
 
         await fetch(`${supabaseUrl}/rest/v1/music_library`, {
           method: 'POST',
           headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
-          body: JSON.stringify({ clerk_user_id: userId, title: cleanTitle, prompt: cleanTags, lyrics: track.lyric || '', audio_url: r2.url, audio_format: 'wav', generation_params: { engine: '444-voice-to-melody', type: '444-voice-to-melody', model: validModel, source_url: uploadUrl }, status: 'ready' }),
+          body: JSON.stringify({ clerk_user_id: userId, title: cleanTitle, prompt: cleanTags, lyrics: trackLyric, audio_url: r2.url, audio_format: 'wav', generation_params: { engine: '444-voice-to-melody', type: '444-voice-to-melody', model: validModel, source_url: uploadUrl }, status: 'ready' }),
         }).catch(() => {})
 
         let libraryId: string | null = null
@@ -113,7 +117,7 @@ export async function POST(req: NextRequest) {
           const cmRes = await fetch(`${supabaseUrl}/rest/v1/combined_media`, {
             method: 'POST',
             headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
-            body: JSON.stringify({ user_id: userId, type: 'audio', title: cleanTitle, audio_prompt: cleanTags, lyrics: track.lyric || '', audio_url: r2.url, is_public: false, genre: '444-voice-to-melody', metadata: JSON.stringify({ source: '444-voice-to-melody', model: validModel, duration: track.duration, tags: cleanTags || null }) }),
+            body: JSON.stringify({ user_id: userId, type: 'audio', title: cleanTitle, audio_prompt: cleanTags, lyrics: trackLyric, audio_url: r2.url, is_public: false, genre: '444-voice-to-melody', metadata: JSON.stringify({ source: '444-voice-to-melody', model: validModel, duration: track.duration, tags: cleanTags || null }) }),
           })
           if (cmRes.ok) { const d = await cmRes.json(); libraryId = (Array.isArray(d) ? d[0] : d)?.id }
         } catch {}
@@ -122,7 +126,7 @@ export async function POST(req: NextRequest) {
         notifyGenerationComplete(userId, libraryId || '', 'music', cleanTitle).catch(() => {})
         notifyCreditDeduct(userId, CREDIT_COST, `444 Voice-to-Melody: ${cleanTitle}`).catch(() => {})
 
-        await sendLine({ type: 'result', success: true, audioUrl: r2.url, title: cleanTitle, lyrics: track.lyric || '', libraryId, creditsRemaining: deductResult!.new_credits, creditsDeducted: CREDIT_COST })
+        await sendLine({ type: 'result', success: true, audioUrl: r2.url, title: cleanTitle, lyrics: trackLyric, libraryId, creditsRemaining: deductResult!.new_credits, creditsDeducted: CREDIT_COST })
         await writer.close().catch(() => {})
       } catch (error) {
         console.error('❌ Voice-to-Melody error:', error)

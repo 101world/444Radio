@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { X, Wand2, Replace, RefreshCw, MicVocal, Headphones, Crown, Upload, Loader2, Zap, ArrowLeft, HelpCircle } from 'lucide-react'
+import { useState, useRef, useCallback, useEffect } from 'react'
+import { X, Wand2, Replace, RefreshCw, MicVocal, Headphones, Crown, Upload, Loader2, Zap, ArrowLeft, HelpCircle, Mic, Square, Sparkles } from 'lucide-react'
 
 interface ProFeaturesModalProps {
   isOpen: boolean
@@ -65,6 +65,94 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
 
+  // Microphone recording state
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingTime, setRecordingTime] = useState(0)
+  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Boost style state
+  const [isBoosting, setIsBoosting] = useState(false)
+
+  // Cleanup recording on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+      if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop()
+    }
+  }, [])
+
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4' })
+      chunksRef.current = []
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop())
+        if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+        const blob = new Blob(chunksRef.current, { type: recorder.mimeType })
+        setRecordedBlob(blob)
+        setIsRecording(false)
+        // Auto-upload the recording
+        setUploading(true)
+        setError(null)
+        try {
+          const ext = recorder.mimeType.includes('webm') ? 'webm' : 'mp4'
+          const file = new File([blob], `voice-recording-${Date.now()}.${ext}`, { type: recorder.mimeType })
+          const formData = new FormData()
+          formData.append('file', file)
+          const res = await fetch('/api/upload/media', { method: 'POST', body: formData })
+          if (!res.ok) throw new Error('Upload failed')
+          const data = await res.json()
+          setUploadUrl(data.url || data.publicUrl)
+          setUploadFile(file)
+        } catch {
+          setError('Failed to upload recording. Try again or upload a file instead.')
+        } finally {
+          setUploading(false)
+        }
+      }
+      mediaRecorderRef.current = recorder
+      recorder.start(1000)
+      setRecordingTime(0)
+      setIsRecording(true)
+      setRecordedBlob(null)
+      timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000)
+    } catch {
+      setError('Microphone access denied. Please allow microphone access and try again.')
+    }
+  }, [])
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current?.state === 'recording') {
+      mediaRecorderRef.current.stop()
+    }
+  }, [])
+
+  const handleBoostStyle = useCallback(async (content: string, setter: (v: string) => void) => {
+    if (!content.trim() || content.trim().length < 3) return
+    setIsBoosting(true)
+    try {
+      const res = await fetch('/api/generate/suno/boost-style', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: content.trim() }),
+      })
+      if (!res.ok) throw new Error('Boost failed')
+      const data = await res.json()
+      if (data.success && data.enhanced) {
+        setter(data.enhanced)
+      }
+    } catch {
+      // Silently fail — style stays unchanged
+    } finally {
+      setIsBoosting(false)
+    }
+  }, [])
+
   if (!isOpen) return null
 
   const info = FEATURE_INFO[activeFeature]
@@ -74,7 +162,9 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
     setAudioId(''); setTaskId(''); setUploadUrl(''); setTitle('');
     setPrompt(''); setStyle(''); setTags(''); setSide('right');
     setInfillStartS(''); setInfillEndS('');
-    setResult(null); setError(null); setUploadFile(null)
+    setResult(null); setError(null); setUploadFile(null);
+    setRecordedBlob(null); setRecordingTime(0);
+    if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop()
   }
 
   const switchFeature = (feat: typeof activeFeature) => {
@@ -287,6 +377,38 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
                   <input type="file" accept="audio/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])} />
                 </label>
               </div>
+
+              {/* Microphone recording — voice-to-melody only */}
+              {activeFeature === 'voice-to-melody' && (
+                <div className="mt-3">
+                  <div className="flex items-center gap-2">
+                    {!isRecording ? (
+                      <button
+                        type="button"
+                        onClick={startRecording}
+                        disabled={uploading}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/15 border border-red-500/20 hover:bg-red-500/25 hover:border-red-500/40 text-red-300 text-xs font-semibold transition-all disabled:opacity-30"
+                      >
+                        <Mic size={14} />
+                        Record Melody / Hum
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={stopRecording}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600/30 border border-red-500/40 text-red-200 text-xs font-semibold animate-pulse transition-all"
+                      >
+                        <Square size={12} className="fill-red-300" />
+                        Stop — {recordingTime}s
+                      </button>
+                    )}
+                    {recordedBlob && !isRecording && (
+                      <span className="text-[10px] text-green-400/60">✓ Recorded {recordingTime}s</span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-white/20 mt-1.5">Sing, hum, or whistle your melody. Min 5 seconds recommended.</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -348,14 +470,36 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
           {info.fields.includes('style') && (
             <div>
               <label className={labelClass}>Style Tags</label>
-              <input type="text" value={style} onChange={(e) => setStyle(e.target.value)} placeholder="e.g. lo-fi hip-hop, chill, dreamy" className={inputClass} />
+              <div className="flex gap-2">
+                <input type="text" value={style} onChange={(e) => setStyle(e.target.value)} placeholder="e.g. lo-fi hip-hop, chill, dreamy" className={`${inputClass} flex-1`} />
+                <button
+                  type="button"
+                  onClick={() => handleBoostStyle(style, setStyle)}
+                  disabled={isBoosting || style.trim().length < 3}
+                  title="AI-enhance your style tags (free)"
+                  className="px-3 rounded-xl border border-white/10 hover:border-red-400/30 hover:bg-red-500/10 text-white/30 hover:text-red-400 transition-all disabled:opacity-20 disabled:cursor-not-allowed shrink-0"
+                >
+                  {isBoosting ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                </button>
+              </div>
             </div>
           )}
 
           {info.fields.includes('tags') && (
             <div>
               <label className={labelClass}>Style Tags</label>
-              <input type="text" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="e.g. electronic, ambient, upbeat" className={inputClass} />
+              <div className="flex gap-2">
+                <input type="text" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="e.g. electronic, ambient, upbeat" className={`${inputClass} flex-1`} />
+                <button
+                  type="button"
+                  onClick={() => handleBoostStyle(tags, setTags)}
+                  disabled={isBoosting || tags.trim().length < 3}
+                  title="AI-enhance your style tags (free)"
+                  className="px-3 rounded-xl border border-white/10 hover:border-red-400/30 hover:bg-red-500/10 text-white/30 hover:text-red-400 transition-all disabled:opacity-20 disabled:cursor-not-allowed shrink-0"
+                >
+                  {isBoosting ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                </button>
+              </div>
             </div>
           )}
 
