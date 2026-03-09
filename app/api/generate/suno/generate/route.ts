@@ -220,14 +220,41 @@ export async function POST(req: NextRequest) {
           throw new Error('No tracks returned from generation')
         }
 
-        const track = tracks[0]
+        // Helper: extract audio URL from a track object (V4/V5 compatible)
+        const getTrackAudioUrl = (t: any) => t?.audio_url || t?.audioUrl || t?.stream_audio_url || t?.streamAudioUrl || t?.song_url || t?.songUrl || t?.url || t?.mp3_url || t?.output
+
+        let track = tracks[0]
         console.log('🎵 [444-PRO] Track 1 keys:', JSON.stringify(Object.keys(track)))
         console.log('🎵 [444-PRO] Track 1 data:', JSON.stringify(track).substring(0, 800))
 
-        // V5 may use different field names for audio URL
-        const audioSourceUrl = track.audio_url || track.audioUrl || track.stream_audio_url || track.streamAudioUrl || track.song_url || track.songUrl || track.url || track.mp3_url || track.output
+        // V5 may return track metadata before audio is ready — retry if no audio URL
+        let audioSourceUrl = getTrackAudioUrl(track)
         if (!audioSourceUrl) {
-          console.error('❌ [444-PRO] No audio URL found in track. Full track:', JSON.stringify(track))
+          console.log('⏳ [444-PRO] Tracks found but no audio URL yet — waiting for audio processing...')
+          await sendLine({ type: 'progress', message: 'Audio is processing...' })
+          for (let audioRetry = 0; audioRetry < 6; audioRetry++) {
+            await new Promise(r => setTimeout(r, 15_000)) // wait 15s
+            try {
+              const retryStatus = await import('@/lib/suno-api').then(m => m.getTaskStatus(taskId))
+              const retryTracks = extractTracks(retryStatus.data)
+              if (retryTracks.length) {
+                track = retryTracks[0]
+                audioSourceUrl = getTrackAudioUrl(track)
+                console.log(`🔄 [444-PRO] Audio retry ${audioRetry + 1}: url=${audioSourceUrl ? 'found' : 'still missing'}`)
+                if (audioSourceUrl) {
+                  // Update tracks array for Track 2 extraction later
+                  tracks.splice(0, tracks.length, ...retryTracks)
+                  break
+                }
+              }
+            } catch (e) {
+              console.warn(`⚠️ [444-PRO] Audio retry ${audioRetry + 1} error:`, e)
+            }
+          }
+        }
+
+        if (!audioSourceUrl) {
+          console.error('❌ [444-PRO] No audio URL after retries. Full track:', JSON.stringify(track))
           throw new Error('No audio URL in generated track')
         }
 
@@ -252,7 +279,7 @@ export async function POST(req: NextRequest) {
         // Download Track 2 if available
         let permanentAudioUrl2: string | null = null
         const track2 = tracks[1]
-        const track2AudioUrl = track2?.audio_url || track2?.audioUrl || track2?.stream_audio_url || track2?.streamAudioUrl || track2?.song_url || track2?.songUrl || track2?.url || track2?.mp3_url || track2?.output
+        const track2AudioUrl = getTrackAudioUrl(track2)
         if (track2AudioUrl) {
           const track2Title = track2?.title || track2?.name || `${cleanTitle} (Take 2)`
           const track2Duration = track2?.duration || track2?.audio_duration || 0
