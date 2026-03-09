@@ -126,6 +126,16 @@ export async function POST(req: NextRequest) {
 
         // Build generation params
         // V5 requires a non-empty callBackUrl even when polling
+        //
+        // Language injection: Suno has no explicit "language" param, so we
+        // prepend the language to both the style tag and the prompt so the
+        // model generates in the correct language instead of defaulting to
+        // English.
+        const langTag = language && language.toLowerCase() !== 'english'
+          ? language.charAt(0).toUpperCase() + language.slice(1).toLowerCase()
+          : null
+        const langPrefix = langTag ? `${langTag} language, ` : ''
+
         const sunoParams: Record<string, unknown> = {
           customMode: isCustomMode,
           instrumental,
@@ -134,20 +144,30 @@ export async function POST(req: NextRequest) {
         }
 
         if (isCustomMode) {
-          sunoParams.style = cleanStyle || language
+          // Prepend language to style so Suno picks up the target language
+          const baseStyle = cleanStyle || ''
+          sunoParams.style = langTag
+            ? (baseStyle ? `${langPrefix}${baseStyle}` : langTag)
+            : (baseStyle || undefined)
           sunoParams.title = cleanTitle
           if (!instrumental && cleanLyrics) {
             sunoParams.prompt = cleanLyrics
           } else if (!instrumental) {
-            sunoParams.prompt = cleanPrompt
+            // Inject language hint into the free-form prompt
+            sunoParams.prompt = langTag
+              ? `[Sing in ${langTag}] ${cleanPrompt}`
+              : cleanPrompt
           }
         } else {
-          sunoParams.prompt = cleanPrompt.slice(0, 500)
+          // Non-custom mode: inject language hint into the prompt
+          sunoParams.prompt = langTag
+            ? `[Sing in ${langTag}] ${cleanPrompt.slice(0, 480)}`
+            : cleanPrompt.slice(0, 500)
         }
 
         if (vocalGender) sunoParams.vocalGender = vocalGender
 
-        console.log('🎵 [444-PRO] Calling engine...', { customMode: isCustomMode, model: model || DEFAULT_MODEL })
+        console.log('🎵 [444-PRO] Calling engine...', { customMode: isCustomMode, model: model || DEFAULT_MODEL, langTag, style: sunoParams.style, promptPreview: String(sunoParams.prompt || '').substring(0, 120) })
 
         const taskRes = await generateMusic(sunoParams as any)
         const taskId = taskRes.data.taskId
