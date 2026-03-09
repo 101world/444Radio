@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
 
         // Download to R2 for permanent storage
         const fileName = `mv-${taskId.substring(0, 15)}-${Date.now()}.mp4`
-        const r2 = await downloadAndUploadToR2(videoUrl, userId, 'video', fileName)
+        const r2 = await downloadAndUploadToR2(videoUrl, userId, 'music', fileName)
         if (!r2.success) throw new Error(`Storage upload failed: ${r2.error}`)
 
         // Save to combined_media

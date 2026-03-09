@@ -1960,7 +1960,7 @@ async function generateProMusicVideo(userId: string, body: Record<string, unknow
     if (!videoUrl) return { success: false, error: 'No video URL in result' }
 
     const fileName = `plugin-mv-${taskId.substring(0, 15)}-${Date.now()}.mp4`
-    const r2 = await downloadAndUploadToR2(videoUrl, userId, 'video', fileName)
+    const r2 = await downloadAndUploadToR2(videoUrl, userId, 'music', fileName)
     if (!r2.success) return { success: false, error: 'Failed to save video' }
 
     // Save to combined_media
