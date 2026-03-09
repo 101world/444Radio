@@ -172,7 +172,7 @@ export default function FeaturesSidebar({
           activeGradient: proActiveGrad('from-amber-400/50 via-orange-500/40 to-red-400/45 ring-amber-400/70'),
           active: false, cost: 3,
           onClick: onShowProRemix,
-          helpText: 'Upload any song and remix it in a new style using Suno AI. 3 credits.',
+          helpText: 'Upload any song and remix it in a new style using 444 Remix Engine. 3 credits.',
         },
         {
           icon: Edit3, label: 'Lyrics', desc: 'Write & edit words',

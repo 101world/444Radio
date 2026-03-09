@@ -181,7 +181,7 @@ const FEATURES = [
   { key: 'effects', icon: Sparkles, label: 'Effects', desc: 'Sound effects', color: 'purple', cost: 2, helpText: 'Generate sound effects (up to 10s) from a text description. 2 credits.' },
   { key: 'loops', icon: Repeat, label: 'Loops', desc: 'Fixed BPM loops', color: 'cyan', cost: 6, helpText: 'Generate seamless loops at a fixed BPM for beat-making. 6 credits per set.' },
   { key: 'image', icon: ImageIcon, label: 'Cover Art', desc: 'AI album artwork', color: 'cyan', cost: 1, helpText: 'Generate album cover art from a text prompt. 1 credit per image.' },
-  { key: 'remix', icon: RotateCw, label: '444 Remix', desc: 'Upload & remix any song', color: 'purple', cost: 3, helpText: 'Upload any song and remix it in a completely new style. Powered by Suno Cover API. 3 credits.' },
+  { key: 'remix', icon: RotateCw, label: '444 Remix', desc: 'Upload & remix any song', color: 'purple', cost: 3, helpText: 'Upload any song and remix it in a completely new style. Powered by 444 Remix Engine. 3 credits.' },
   { key: 'lyrics', icon: Edit3, label: 'Lyrics', desc: 'Write & edit lyrics', color: 'cyan', cost: 0, helpText: 'Open the lyrics editor to write or edit song lyrics before generating.' },
   { key: 'lipsync', icon: Mic, label: 'Lip-Sync', desc: 'Image+Audio→video', color: 'cyan', cost: -1, helpText: 'Upload a portrait image + audio to create a lip-sync video. ~5+ credits.' },
   { key: 'video-to-audio', icon: Film, label: 'Video to Audio', desc: 'Synced SFX from video', color: 'cyan', cost: 4, helpText: 'Upload a video and generate synchronized sound effects. 4 credits.' },

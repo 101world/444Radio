@@ -133,7 +133,7 @@ export default function CoverArtGenerationModal({ isOpen, onClose, userCredits, 
             </div>
             <div>
               <h2 className="text-3xl font-bold text-cyan-400">Generate Cover Art</h2>
-              <p className="text-cyan-400/60 text-sm">Powered by Flux Schnell (12B params)</p>
+              <p className="text-cyan-400/60 text-sm">Powered by 444 Image Engine</p>
             </div>
           </div>
 
