@@ -386,7 +386,7 @@ export default function EffectsGenerationModal({
             <div className="flex items-center gap-2 px-3 py-2 bg-red-500/5 border border-red-500/20 rounded-xl">
               <Crown size={14} className="text-red-400 flex-shrink-0" />
               <span className="text-xs text-red-300/80">
-                HQ mode uses CassetteAI for studio-quality sound effects up to 30 seconds
+                HQ mode generates studio-quality sound effects up to 30 seconds
               </span>
             </div>
           )}
