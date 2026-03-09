@@ -1647,7 +1647,7 @@ async function generateProExtend(userId: string, body: Record<string, unknown>, 
 
     // Download & upload first track to R2
     const track = tracks[0]
-    const fileName = `pro-extend-${(track.title || 'extend').substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.mp3`
+    const fileName = `pro-extend-${(track.title || 'extend').substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.wav`
     const r2 = await downloadAndUploadToR2(track.audio_url, userId, 'music', fileName)
     if (!r2.success) return { success: false, error: 'Failed to save audio' }
 
@@ -1657,7 +1657,7 @@ async function generateProExtend(userId: string, body: Record<string, unknown>, 
       headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         clerk_user_id: userId, title: track.title || 'Extended Track', prompt: body.prompt || '',
-        audio_url: r2.url, audio_format: 'mp3',
+        audio_url: r2.url, audio_format: 'wav',
         generation_params: { type: 'pro-extend', source: 'plugin', audioId },
         status: 'ready',
       }),
@@ -1702,7 +1702,7 @@ async function generateProInpaint(userId: string, body: Record<string, unknown>,
     if (tracks.length === 0) return { success: false, error: 'No tracks generated' }
 
     const track = tracks[0]
-    const fileName = `pro-inpaint-${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.mp3`
+    const fileName = `pro-inpaint-${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.wav`
     const r2 = await downloadAndUploadToR2(track.audio_url, userId, 'music', fileName)
     if (!r2.success) return { success: false, error: 'Failed to save audio' }
 
@@ -1711,7 +1711,7 @@ async function generateProInpaint(userId: string, body: Record<string, unknown>,
       headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         clerk_user_id: userId, title: track.title || title, prompt,
-        audio_url: r2.url, audio_format: 'mp3',
+        audio_url: r2.url, audio_format: 'wav',
         generation_params: { type: 'pro-inpaint', source: 'plugin', taskId, audioId },
         status: 'ready',
       }),
@@ -1752,7 +1752,7 @@ async function generateProCover(userId: string, body: Record<string, unknown>, j
     if (tracks.length === 0) return { success: false, error: 'No tracks generated' }
 
     const track = tracks[0]
-    const fileName = `pro-cover-${(track.title || 'cover').substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.mp3`
+    const fileName = `pro-cover-${(track.title || 'cover').substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.wav`
     const r2 = await downloadAndUploadToR2(track.audio_url, userId, 'music', fileName)
     if (!r2.success) return { success: false, error: 'Failed to save audio' }
 
@@ -1761,7 +1761,7 @@ async function generateProCover(userId: string, body: Record<string, unknown>, j
       headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         clerk_user_id: userId, title: track.title || 'Cover Track', prompt: body.prompt || '',
-        audio_url: r2.url, audio_format: 'mp3',
+        audio_url: r2.url, audio_format: 'wav',
         generation_params: { type: 'pro-cover', source: 'plugin', uploadUrl },
         status: 'ready',
       }),
@@ -1803,7 +1803,7 @@ async function generateProAddVocals(userId: string, body: Record<string, unknown
     if (tracks.length === 0) return { success: false, error: 'No tracks generated' }
 
     const track = tracks[0]
-    const fileName = `pro-vocals-${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.mp3`
+    const fileName = `pro-vocals-${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.wav`
     const r2 = await downloadAndUploadToR2(track.audio_url, userId, 'music', fileName)
     if (!r2.success) return { success: false, error: 'Failed to save audio' }
 
@@ -1812,7 +1812,7 @@ async function generateProAddVocals(userId: string, body: Record<string, unknown
       headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         clerk_user_id: userId, title: track.title || title, prompt,
-        audio_url: r2.url, audio_format: 'mp3',
+        audio_url: r2.url, audio_format: 'wav',
         generation_params: { type: 'pro-add-vocals', source: 'plugin', uploadUrl },
         status: 'ready',
       }),
@@ -1852,7 +1852,7 @@ async function generateProVoiceToMelody(userId: string, body: Record<string, unk
     if (tracks.length === 0) return { success: false, error: 'No tracks generated' }
 
     const track = tracks[0]
-    const fileName = `pro-melody-${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.mp3`
+    const fileName = `pro-melody-${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.wav`
     const r2 = await downloadAndUploadToR2(track.audio_url, userId, 'music', fileName)
     if (!r2.success) return { success: false, error: 'Failed to save audio' }
 
@@ -1861,7 +1861,7 @@ async function generateProVoiceToMelody(userId: string, body: Record<string, unk
       headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         clerk_user_id: userId, title: track.title || title, prompt: tags,
-        audio_url: r2.url, audio_format: 'mp3',
+        audio_url: r2.url, audio_format: 'wav',
         generation_params: { type: 'pro-voice-to-melody', source: 'plugin', uploadUrl },
         status: 'ready',
       }),

@@ -180,7 +180,7 @@ export async function POST(req: NextRequest) {
         console.log('🎵 [444-PRO] Track ready:', track.title, 'Duration:', track.duration)
 
         // Download to R2 for permanent storage
-        const fileName = `pro-${cleanTitle.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.mp3`
+        const fileName = `pro-${cleanTitle.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.wav`
         const r2Result = await downloadAndUploadToR2(audioSourceUrl, userId, 'music', fileName)
         if (!r2Result.success) {
           throw new Error(`Failed to save to permanent storage: ${r2Result.error}`)
@@ -195,7 +195,7 @@ export async function POST(req: NextRequest) {
           prompt: cleanPrompt,
           lyrics: cleanLyrics || track.lyric || '',
           audio_url: permanentAudioUrl,
-          audio_format: 'mp3',
+          audio_format: 'wav',
           bitrate: 256000,
           sample_rate: 44100,
           generation_params: { model, language, source: 'pro', engine: '444-pro' },

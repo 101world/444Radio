@@ -373,7 +373,7 @@ export default function FeaturesSidebar({
   }
 
   const sectionKeys: ('create' | 'pro' | 'fx' | 'process' | 'publish')[] = ['create', 'pro', 'fx', 'process', 'publish']
-  const currentSection = sections[activeSection]
+  const currentSection = sections[activeSection] || sections.create
   const visibleTiles = currentSection.tiles.filter(t => !t.hidden)
 
   const tabIcons: Record<string, { icon: any; label: string }> = {

@@ -101,14 +101,14 @@ export async function POST(req: NextRequest) {
         const track = tracks[0]
         if (!track.audio_url) throw new Error('No audio URL in result')
 
-        const fileName = `vocals-${cleanTitle.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.mp3`
+        const fileName = `vocals-${cleanTitle.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.wav`
         const r2 = await downloadAndUploadToR2(track.audio_url, userId, 'music', fileName)
         if (!r2.success) throw new Error(`Storage upload failed: ${r2.error}`)
 
         await fetch(`${supabaseUrl}/rest/v1/music_library`, {
           method: 'POST',
           headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
-          body: JSON.stringify({ clerk_user_id: userId, title: cleanTitle, prompt: cleanPrompt, lyrics: track.lyric || '', audio_url: r2.url, audio_format: 'mp3', generation_params: { engine: '444-add-vocals', model: validModel, source_url: uploadUrl }, status: 'ready' }),
+          body: JSON.stringify({ clerk_user_id: userId, title: cleanTitle, prompt: cleanPrompt, lyrics: track.lyric || '', audio_url: r2.url, audio_format: 'wav', generation_params: { engine: '444-add-vocals', model: validModel, source_url: uploadUrl }, status: 'ready' }),
         }).catch(() => {})
 
         let libraryId: string | null = null
