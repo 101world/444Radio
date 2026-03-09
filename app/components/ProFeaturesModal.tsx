@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Wand2, Replace, RefreshCw, MicVocal, Headphones, Crown, Upload, Loader2, Zap, ArrowLeft } from 'lucide-react'
+import { X, Wand2, Replace, RefreshCw, MicVocal, Headphones, Crown, Upload, Loader2, Zap, ArrowLeft, HelpCircle } from 'lucide-react'
 
 interface ProFeaturesModalProps {
   isOpen: boolean
@@ -10,36 +10,42 @@ interface ProFeaturesModalProps {
   userCredits: number | null
 }
 
-const FEATURE_INFO: Record<string, { icon: any; label: string; desc: string; cost: number; fields: string[] }> = {
+const FEATURE_INFO: Record<string, { icon: any; label: string; desc: string; cost: number; fields: string[]; help: string }> = {
   extend: {
     icon: Wand2, label: '444 Extend', desc: 'Outpaint / continue a track from a specific point',
     cost: 22,
     fields: ['audioId', 'continueAt', 'title', 'prompt', 'style'],
+    help: 'Use Audio ID from a previous generation to extend the track. Set "Continue At" to the timestamp (in seconds) where you want the extension to begin. Optionally add a prompt and style to guide the new section.',
   },
   inpaint: {
     icon: Replace, label: '444 Inpaint', desc: 'Replace a section (6-60s) within an existing track',
     cost: 11,
     fields: ['taskId', 'audioId', 'infillStartS', 'infillEndS', 'prompt', 'tags', 'title'],
+    help: 'Replace a specific time range (6-60 seconds) in a generated track. You need the Task ID and Audio ID from the original generation. Set start/end times and describe what the replacement should sound like.',
   },
   cover: {
     icon: RefreshCw, label: '444 Cover', desc: 'Re-create audio in a completely new style',
     cost: 22,
     fields: ['uploadUrl', 'title', 'prompt', 'style'],
+    help: 'Upload any audio file (up to 8 min) or paste a public URL. The AI will re-create it in a completely different style while preserving the melody and structure. Add style tags to guide the output.',
   },
   'add-vocals': {
     icon: MicVocal, label: '444 Add Vocals', desc: 'Add AI-generated vocals to an instrumental track',
     cost: 22,
     fields: ['uploadUrl', 'title', 'prompt', 'style'],
+    help: 'Upload an instrumental track (no vocals). Write lyrics in the prompt field and set style tags. The AI will generate and layer vocals that match the beat and your lyrics.',
   },
   'voice-to-melody': {
     icon: Headphones, label: '444 Voice to Melody', desc: 'Turn a vocal recording or hum into a full song',
     cost: 22,
     fields: ['uploadUrl', 'title', 'tags'],
+    help: 'Upload a vocal recording, hum, or melody you\'ve sung. The AI will create full instrumental backing that matches your melody. Add style tags (e.g. "lo-fi hip-hop, chill") to guide the genre.',
   },
   'boost-style': {
     icon: Crown, label: '444 Boost Style', desc: 'AI-enhance your style tags for better results',
     cost: 0,
     fields: ['content'],
+    help: 'Paste a short style description (e.g. "upbeat dance music") and the AI will expand it into rich, detailed tags for better generation quality. Free to use — try it before generating!',
   },
 }
 
@@ -234,6 +240,13 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
               <h2 className="text-base font-bold text-white">{info.label}</h2>
               <p className="text-[11px] text-white/40">{info.desc}</p>
             </div>
+            {/* Help popover */}
+            <div className="relative group/info">
+              <HelpCircle size={16} className="text-white/25 hover:text-red-400 cursor-help transition-colors" />
+              <div className="hidden group-hover/info:block absolute right-0 top-8 z-50 w-72 p-3 rounded-xl bg-black/95 border border-red-500/20 shadow-2xl shadow-red-500/10">
+                <p className="text-[11px] text-white/70 leading-relaxed">{info.help}</p>
+              </div>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             {info.cost > 0 && (
@@ -277,7 +290,13 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
           {/* URL / Audio ID fields */}
           {info.fields.includes('uploadUrl') && (
             <div>
-              <label className={labelClass}>Audio File</label>
+              <label className={labelClass}>
+                Audio File
+                <span className="relative group/tip inline-block ml-1 align-middle">
+                  <HelpCircle size={10} className="text-white/20 hover:text-red-400 cursor-help" />
+                  <span className="hidden group-hover/tip:block absolute left-0 top-4 z-50 w-52 p-2 rounded-lg bg-black/95 border border-white/10 text-[10px] text-white/60 font-normal normal-case tracking-normal shadow-xl">Upload an audio file or paste a public URL. Supports MP3, WAV, and most audio formats up to 100MB.</span>
+                </span>
+              </label>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -299,21 +318,39 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
 
           {info.fields.includes('audioId') && (
             <div>
-              <label className={labelClass}>Audio ID</label>
-              <input type="text" value={audioId} onChange={(e) => setAudioId(e.target.value)} placeholder="ID from a previous generation" className={inputClass} />
+              <label className={labelClass}>
+                Audio ID
+                <span className="relative group/tip inline-block ml-1 align-middle">
+                  <HelpCircle size={10} className="text-white/20 hover:text-red-400 cursor-help" />
+                  <span className="hidden group-hover/tip:block absolute left-0 top-4 z-50 w-52 p-2 rounded-lg bg-black/95 border border-white/10 text-[10px] text-white/60 font-normal normal-case tracking-normal shadow-xl">The unique ID of the generated track. You can find this in your library or in the generation result.</span>
+                </span>
+              </label>
+              <input type="text" value={audioId} onChange={(e) => setAudioId(e.target.value)} placeholder="e.g. a1b2c3d4-5678-..." className={inputClass} />
             </div>
           )}
 
           {info.fields.includes('taskId') && (
             <div>
-              <label className={labelClass}>Task ID</label>
-              <input type="text" value={taskId} onChange={(e) => setTaskId(e.target.value)} placeholder="Original generation task ID" className={inputClass} />
+              <label className={labelClass}>
+                Task ID
+                <span className="relative group/tip inline-block ml-1 align-middle">
+                  <HelpCircle size={10} className="text-white/20 hover:text-red-400 cursor-help" />
+                  <span className="hidden group-hover/tip:block absolute left-0 top-4 z-50 w-52 p-2 rounded-lg bg-black/95 border border-white/10 text-[10px] text-white/60 font-normal normal-case tracking-normal shadow-xl">The Task ID from the original generation. Required to identify which track to modify.</span>
+                </span>
+              </label>
+              <input type="text" value={taskId} onChange={(e) => setTaskId(e.target.value)} placeholder="e.g. task_abc123..." className={inputClass} />
             </div>
           )}
 
           {info.fields.includes('continueAt') && (
             <div>
-              <label className={labelClass}>Continue At (seconds)</label>
+              <label className={labelClass}>
+                Continue At (seconds)
+                <span className="relative group/tip inline-block ml-1 align-middle">
+                  <HelpCircle size={10} className="text-white/20 hover:text-red-400 cursor-help" />
+                  <span className="hidden group-hover/tip:block absolute left-0 top-4 z-50 w-52 p-2 rounded-lg bg-black/95 border border-white/10 text-[10px] text-white/60 font-normal normal-case tracking-normal shadow-xl">Timestamp in seconds where the extension begins. The AI will continue from this point.</span>
+                </span>
+              </label>
               <input type="number" value={continueAt} onChange={(e) => setContinueAt(e.target.value)} placeholder="e.g. 30" min="1" step="0.1" className={inputClass} />
             </div>
           )}
@@ -321,11 +358,23 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
           {info.fields.includes('infillStartS') && (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelClass}>Start (seconds)</label>
+                <label className={labelClass}>
+                  Start (seconds)
+                  <span className="relative group/tip inline-block ml-1 align-middle">
+                    <HelpCircle size={10} className="text-white/20 hover:text-red-400 cursor-help" />
+                    <span className="hidden group-hover/tip:block absolute left-0 top-4 z-50 w-44 p-2 rounded-lg bg-black/95 border border-white/10 text-[10px] text-white/60 font-normal normal-case tracking-normal shadow-xl">Where the section to replace begins (min 6s range)</span>
+                  </span>
+                </label>
                 <input type="number" value={infillStartS} onChange={(e) => setInfillStartS(e.target.value)} placeholder="e.g. 15" min="0" step="0.01" className={inputClass} />
               </div>
               <div>
-                <label className={labelClass}>End (seconds)</label>
+                <label className={labelClass}>
+                  End (seconds)
+                  <span className="relative group/tip inline-block ml-1 align-middle">
+                    <HelpCircle size={10} className="text-white/20 hover:text-red-400 cursor-help" />
+                    <span className="hidden group-hover/tip:block absolute left-0 top-4 z-50 w-44 p-2 rounded-lg bg-black/95 border border-white/10 text-[10px] text-white/60 font-normal normal-case tracking-normal shadow-xl">Where the replacement ends (max 60s range)</span>
+                  </span>
+                </label>
                 <input type="number" value={infillEndS} onChange={(e) => setInfillEndS(e.target.value)} placeholder="e.g. 45" min="0" step="0.01" className={inputClass} />
               </div>
             </div>
@@ -383,10 +432,10 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
                   <p className="text-[10px] text-white/30">{result.title}</p>
                 </div>
               )}
-              {result.enhanced && (
+              {(result.enhancedStyle || result.enhanced) && (
                 <div className="space-y-2">
                   <p className="text-xs font-bold text-green-300">Enhanced style:</p>
-                  <p className="text-sm text-white/80 bg-white/[0.05] rounded-lg p-3">{result.enhanced}</p>
+                  <p className="text-sm text-white/80 bg-white/[0.05] rounded-lg p-3">{result.enhancedStyle || result.enhanced}</p>
                 </div>
               )}
               {result.creditsDeducted !== undefined && (

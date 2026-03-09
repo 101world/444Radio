@@ -1,6 +1,6 @@
 'use client'
 
-import { Music, Sparkles, Repeat, Image as ImageIcon, Edit3, Rocket, Upload, X, Mic, Zap, Film, Scissors, Lightbulb, ChevronLeft, Volume2, Layers, AudioLines, RefreshCw, AudioWaveform, Wand2, Replace, Headphones, MicVocal, Crown } from 'lucide-react'
+import { Music, Sparkles, Repeat, Image as ImageIcon, Edit3, Rocket, Upload, X, Mic, Zap, Film, Scissors, Lightbulb, ChevronLeft, Volume2, Layers, AudioLines, RefreshCw, AudioWaveform, Wand2, Replace, Headphones, MicVocal, Crown, HelpCircle } from 'lucide-react'
 import { useState } from 'react'
 
 interface FeaturesSidebarProps {
@@ -65,6 +65,7 @@ type Tile = {
   onClick: () => void
   hidden?: boolean
   size?: 'normal' | 'wide'
+  helpText?: string
 }
 
 export default function FeaturesSidebar({
@@ -309,71 +310,75 @@ export default function FeaturesSidebar({
     },
   }
 
-  // ═══ PRO section — only visible when Pro mode is active ═══
-  if (isProMode) {
-    sections.pro = {
-      label: '444 Pro',
-      emoji: '👑',
-      tiles: [
-        {
-          icon: Wand2, label: 'Extend', desc: 'Outpaint / extend a track',
-          gradient: 'from-red-500/35 via-orange-500/25 to-amber-500/30',
-          glowColor: 'shadow-red-400/30',
-          activeGradient: 'from-red-500/50 via-orange-500/40 to-amber-500/45 ring-red-400/70',
-          active: false, cost: 22,
-          onClick: onShowProExtend,
-        },
-        {
-          icon: Replace, label: 'Inpaint', desc: 'Replace a section',
-          gradient: 'from-red-600/35 via-rose-500/25 to-pink-500/30',
-          glowColor: 'shadow-rose-400/30',
-          activeGradient: 'from-red-600/50 via-rose-500/40 to-pink-500/45 ring-rose-400/70',
-          active: false, cost: 11,
-          onClick: onShowProInpaint,
-        },
-        {
-          icon: RefreshCw, label: 'Cover', desc: 'Reimagine in new style',
-          gradient: 'from-red-500/35 via-red-600/25 to-red-700/30',
-          glowColor: 'shadow-red-500/30',
-          activeGradient: 'from-red-500/50 via-red-600/40 to-red-700/45 ring-red-500/70',
-          active: false, cost: 22,
-          onClick: onShowProCover,
-        },
-        {
-          icon: MicVocal, label: 'Add Vocals', desc: 'AI vocals on instrumental',
-          gradient: 'from-red-400/35 via-pink-500/25 to-rose-500/30',
-          glowColor: 'shadow-pink-400/30',
-          activeGradient: 'from-red-400/50 via-pink-500/40 to-rose-500/45 ring-pink-400/70',
-          active: false, cost: 22,
-          onClick: onShowProAddVocals,
-        },
-        {
-          icon: Headphones, label: 'Melody→Song', desc: 'Hum/sing to full track',
-          gradient: 'from-orange-500/35 via-red-500/25 to-rose-600/30',
-          glowColor: 'shadow-orange-400/30',
-          activeGradient: 'from-orange-500/50 via-red-500/40 to-rose-600/45 ring-orange-400/70',
-          active: false, cost: 22,
-          onClick: onShowProVoiceToMelody,
-        },
-        {
-          icon: Crown, label: 'Boost Style', desc: 'AI-enhanced style tags',
-          gradient: 'from-amber-400/35 via-orange-400/25 to-red-400/30',
-          glowColor: 'shadow-amber-400/30',
-          activeGradient: 'from-amber-400/50 via-orange-400/40 to-red-400/45 ring-amber-400/70',
-          active: false, cost: 0,
-          onClick: onShowProBoostStyle,
-        },
-      ],
-    }
+  // ═══ ADVANCED section — always available (Pro & Standard) ═══
+  sections.pro = {
+    label: '444 Advanced',
+    emoji: '⚡',
+    tiles: [
+      {
+        icon: Wand2, label: 'Extend', desc: 'Continue a track from any point',
+        gradient: proGradient('from-violet-500/35 via-purple-500/25 to-fuchsia-500/30'),
+        glowColor: proGlow('shadow-violet-400/30'),
+        activeGradient: proActiveGrad('from-violet-500/50 via-purple-500/40 to-fuchsia-500/45 ring-violet-400/70'),
+        active: false, cost: 22,
+        onClick: onShowProExtend,
+        helpText: 'Requires an Audio ID from a previous generation. Extends the track from the specified timestamp.',
+      },
+      {
+        icon: Replace, label: 'Inpaint', desc: 'Replace a 6-60s section',
+        gradient: proGradient('from-rose-500/35 via-pink-500/25 to-fuchsia-500/30'),
+        glowColor: proGlow('shadow-rose-400/30'),
+        activeGradient: proActiveGrad('from-rose-500/50 via-pink-500/40 to-fuchsia-500/45 ring-rose-400/70'),
+        active: false, cost: 11,
+        onClick: onShowProInpaint,
+        helpText: 'Needs a Task ID + Audio ID. Replaces a time range (6-60s) with new AI-generated audio matching your prompt.',
+      },
+      {
+        icon: RefreshCw, label: 'Cover', desc: 'Re-create in a new style',
+        gradient: proGradient('from-blue-500/35 via-indigo-500/25 to-violet-500/30'),
+        glowColor: proGlow('shadow-blue-400/30'),
+        activeGradient: proActiveGrad('from-blue-500/50 via-indigo-500/40 to-violet-500/45 ring-blue-400/70'),
+        active: false, cost: 22,
+        onClick: onShowProCover,
+        helpText: 'Upload any audio file or paste a URL. The AI will re-create it in a completely different style.',
+      },
+      {
+        icon: MicVocal, label: 'Add Vocals', desc: 'AI vocals on instrumental',
+        gradient: proGradient('from-pink-500/35 via-rose-500/25 to-red-500/30'),
+        glowColor: proGlow('shadow-pink-400/30'),
+        activeGradient: proActiveGrad('from-pink-500/50 via-rose-500/40 to-red-500/45 ring-pink-400/70'),
+        active: false, cost: 22,
+        onClick: onShowProAddVocals,
+        helpText: 'Upload an instrumental track. The AI generates lyrics/vocals and layers them on top.',
+      },
+      {
+        icon: Headphones, label: 'Melody→Song', desc: 'Hum/sing → full track',
+        gradient: proGradient('from-orange-500/35 via-amber-500/25 to-yellow-500/30'),
+        glowColor: proGlow('shadow-orange-400/30'),
+        activeGradient: proActiveGrad('from-orange-500/50 via-amber-500/40 to-yellow-500/45 ring-orange-400/70'),
+        active: false, cost: 22,
+        onClick: onShowProVoiceToMelody,
+        helpText: 'Upload a vocal recording or hum. The AI creates full instrumental backing to match your melody.',
+      },
+      {
+        icon: Crown, label: 'Boost Style', desc: 'AI-enhanced style tags',
+        gradient: proGradient('from-amber-400/35 via-orange-400/25 to-yellow-400/30'),
+        glowColor: proGlow('shadow-amber-400/30'),
+        activeGradient: proActiveGrad('from-amber-400/50 via-orange-400/40 to-yellow-400/45 ring-amber-400/70'),
+        active: false, cost: 0,
+        onClick: onShowProBoostStyle,
+        helpText: 'Paste your style description and the AI will expand it into richer, more detailed tags for better results. Free to use.',
+      },
+    ],
   }
 
-  const sectionKeys: ('create' | 'pro' | 'fx' | 'process' | 'publish')[] = isProMode ? ['create', 'pro', 'fx', 'process', 'publish'] : ['create', 'fx', 'process', 'publish']
+  const sectionKeys: ('create' | 'pro' | 'fx' | 'process' | 'publish')[] = ['create', 'pro', 'fx', 'process', 'publish']
   const currentSection = sections[activeSection]
   const visibleTiles = currentSection.tiles.filter(t => !t.hidden)
 
   const tabIcons: Record<string, { icon: any; label: string }> = {
     create: { icon: Music, label: 'Create' },
-    ...(isProMode ? { pro: { icon: Crown, label: 'Pro' } } : {}),
+    pro: { icon: Crown, label: 'Advanced' },
     fx: { icon: Sparkles, label: 'FX' },
     process: { icon: Scissors, label: 'Process' },
     publish: { icon: Rocket, label: 'Publish' },
@@ -712,6 +717,16 @@ export default function FeaturesSidebar({
                   }`}>
                     {tile.desc}
                   </div>
+
+                  {/* Help tooltip */}
+                  {tile.helpText && (
+                    <div className="absolute top-2 left-2 group/help">
+                      <HelpCircle size={11} className="text-white/15 group-hover/help:text-white/50 transition-colors cursor-help" />
+                      <div className="hidden group-hover/help:block absolute left-0 top-5 z-50 w-48 p-2 rounded-lg bg-black/95 border border-white/10 shadow-xl">
+                        <p className="text-[10px] text-white/70 leading-relaxed">{tile.helpText}</p>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Credit cost badge */}
                   {tile.cost !== undefined && tile.cost > 0 && (
