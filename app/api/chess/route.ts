@@ -261,6 +261,9 @@ async function handleAccept(userId: string, body: { gameId: string }) {
     .update({ status: 'active' })
     .eq('id', gameId)
 
+  // Mark the chess_challenge notification as read so it stops polling
+  await markChallengeNotificationRead(userId, gameId)
+
   // Notify challenger
   const accepterUsername = await getUsername(userId)
   await supabase.from('notifications').insert({
@@ -272,6 +275,22 @@ async function handleAccept(userId: string, body: { gameId: string }) {
   })
 
   return corsResponse(NextResponse.json({ success: true, message: 'Challenge accepted! Game is now active.' }))
+}
+
+// ─── Helper: mark chess_challenge notification as read ───
+async function markChallengeNotificationRead(userId: string, gameId: string) {
+  try {
+    // Mark all chess_challenge notifications for this user/game as read
+    await supabase
+      .from('notifications')
+      .update({ read_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .eq('type', 'chess_challenge')
+
+    console.log(`[chess] Marked chess_challenge notifications as read for user ${userId}`)
+  } catch (err) {
+    console.error('[chess] Failed to mark notification as read:', err)
+  }
 }
 
 // ─── DECLINE: opponent declines challenge ───
@@ -294,6 +313,11 @@ async function handleDecline(userId: string, body: { gameId: string }) {
   }
 
   if (game.status !== 'pending') {
+    // If already declined/completed, return success (idempotent) and clean up notification
+    if (game.status === 'declined' || game.status === 'completed' || game.status === 'active') {
+      await markChallengeNotificationRead(userId, gameId)
+      return corsResponse(NextResponse.json({ success: true, message: 'Challenge already handled.' }))
+    }
     return corsResponse(NextResponse.json({ error: 'This challenge is no longer pending' }, { status: 400 }))
   }
 
@@ -317,6 +341,9 @@ async function handleDecline(userId: string, body: { gameId: string }) {
     .from('chess_games')
     .update({ status: 'declined' })
     .eq('id', gameId)
+
+  // Mark the chess_challenge notification as read so it stops polling
+  await markChallengeNotificationRead(userId, gameId)
 
   // Notify challenger
   const declinerUsername = await getUsername(userId)

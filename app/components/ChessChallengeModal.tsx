@@ -40,13 +40,17 @@ export default function ChessChallengeModal() {
       const notifications = json?.notifications ?? json ?? []
 
       // Find the most recent unread chess_challenge that hasn't been dismissed
+      // Only show challenges from the last 24 hours to prevent stale spam
+      const twentyFourHoursAgo = Date.now() - (24 * 60 * 60 * 1000)
       const pending = notifications.find((n: any) => {
         const gameId = n.data?.gameId || n.metadata?.gameId
+        const createdAt = n.created_at ? new Date(n.created_at).getTime() : 0
         return (
           n.type === 'chess_challenge' &&
           (n.unread !== false) &&
           gameId &&
-          !dismissed.has(gameId)
+          !dismissed.has(gameId) &&
+          createdAt > twentyFourHoursAgo
         )
       })
 
@@ -127,7 +131,8 @@ export default function ChessChallengeModal() {
         body: JSON.stringify({ action: 'decline', gameId: challenge.gameId }),
       })
       const result = await res.json()
-      if (res.ok && result.success) {
+      // Treat as success if ok OR if the challenge is already handled (400 = stale)
+      if ((res.ok && result.success) || (res.status === 400)) {
         setActionStatus('done')
         setResultMsg('Challenge declined.')
         setTimeout(() => {
