@@ -22,6 +22,7 @@ import { headers } from 'next/headers';
 import { Suspense } from 'react';
 import NotificationBell from './components/NotificationBell';
 import PluginBackButton from './components/PluginBackButton';
+import ChessChallengeModal from './components/ChessChallengeModal';
 import "./globals.css";
 
 const poppins = Poppins({
@@ -147,6 +148,7 @@ export default async function RootLayout({
                 <GenerationMonitor />
                 <GenerationRecovery />
                 <Suspense fallback={null}><PluginBackButton /></Suspense>
+                <Suspense fallback={null}><ChessChallengeModal /></Suspense>
               </GenerationQueueProvider>
             </CreditsProvider>
           </AudioPlayerProvider>
