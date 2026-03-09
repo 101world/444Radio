@@ -96,14 +96,14 @@ export async function POST(req: NextRequest) {
     if (deductRes.ok) { const raw = await deductRes.json(); deductResult = Array.isArray(raw) ? raw[0] ?? null : raw }
     if (!deductRes.ok || !deductResult?.success) {
       const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
-      await logCreditTransaction({ userId, amount: -10, type: 'generation_music', status: 'failed', description: `Remix: ${title}`, metadata: { prompt, model: 'fal-stable-audio-25' } })
+      await logCreditTransaction({ userId, amount: -10, type: 'generation_music', status: 'failed', description: `Remix: ${title}`, metadata: { prompt, model: '444-remix' } })
       return NextResponse.json({ error: errorMsg }, { status: 402 })
     }
     console.log(`✅ Credits deducted. Remaining: ${deductResult.new_credits}`)
-    await logCreditTransaction({ userId, amount: -10, balanceAfter: deductResult.new_credits, type: 'generation_music', description: `Remix: ${title}`, metadata: { prompt, model: 'fal-stable-audio-25' } })
+    await logCreditTransaction({ userId, amount: -10, balanceAfter: deductResult.new_credits, type: 'generation_music', description: `Remix: ${title}`, metadata: { prompt, model: '444-remix' } })
 
     // ---------- fal.ai generation ----------
-    addLine({ type: 'started', model: 'fal-stable-audio-25' })
+    addLine({ type: 'started', model: '444-remix' })
 
     try {
       const falInput: Record<string, unknown> = {
@@ -168,10 +168,10 @@ export async function POST(req: NextRequest) {
       // Quest / transaction tracking (fire & forget)
       import('@/lib/quest-progress').then(({ trackQuestProgress, trackModelUsage, trackGenerationStreak }) => {
         trackQuestProgress(userId, 'generate_songs').catch(() => {})
-        trackModelUsage(userId, 'fal-stable-audio-25').catch(() => {})
+        trackModelUsage(userId, '444-remix').catch(() => {})
         trackGenerationStreak(userId).catch(() => {})
       }).catch(() => {})
-      updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: audioUrl, mediaType: 'audio', title, extraMeta: { model: 'fal-stable-audio-25' } }).catch(() => {})
+      updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: audioUrl, mediaType: 'audio', title, extraMeta: { model: '444-remix' } }).catch(() => {})
 
       addLine({
         type: 'result',
@@ -185,7 +185,7 @@ export async function POST(req: NextRequest) {
       })
     } catch (genErr: any) {
       console.error('❌ Remix generation error:', genErr?.message || genErr, genErr?.stack?.substring(0, 300))
-      await refundCredits({ userId, amount: 10, type: 'generation_music', reason: `Remix error: ${title}`, metadata: { prompt, model: 'fal-stable-audio-25', error: String(genErr).substring(0, 200) } })
+      await refundCredits({ userId, amount: 10, type: 'generation_music', reason: `Remix error: ${title}`, metadata: { prompt, model: '444-remix', error: String(genErr).substring(0, 200) } })
       addLine({ type: 'result', success: false, error: sanitizeError(genErr), creditsRemaining: deductResult.new_credits })
     }
 

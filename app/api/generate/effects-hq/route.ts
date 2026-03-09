@@ -13,7 +13,7 @@ export async function OPTIONS() {
   return handleOptions()
 }
 
-// POST /api/generate/effects-hq — HQ Sound Effects via fal.ai CassetteAI
+// POST /api/generate/effects-hq — HQ Sound Effects via fal.ai
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await auth()
@@ -120,8 +120,8 @@ export async function POST(req: NextRequest) {
       metadata: { prompt: trimmedPrompt, duration: clampedDuration }
     })
 
-    // ── Generate HQ SFX via fal.ai CassetteAI ──
-    console.log('🔴 Generating HQ SFX with CassetteAI/sound-effects-generator...')
+    // ── Generate HQ SFX via fal.ai ──
+    console.log('🔴 Generating HQ SFX with 444 Sound Effects Engine...')
 
     try {
       const falRes = await fetch('https://fal.run/cassetteai/sound-effects-generator', {
@@ -156,7 +156,7 @@ export async function POST(req: NextRequest) {
         throw new Error('No audio in fal.ai output')
       }
 
-      console.log('✅ CassetteAI output:', outputAudioUrl)
+      console.log('✅ HQ SFX output:', outputAudioUrl)
 
       // ── Download and re-upload to R2 for permanent storage ──
       console.log('📥 Downloading generated HQ audio...')
@@ -257,7 +257,7 @@ export async function POST(req: NextRequest) {
       }))
 
     } catch (genError) {
-      console.error('❌ HQ CassetteAI generation failed:', genError)
+      console.error('❌ HQ SFX generation failed:', genError)
       await refundCredits({
         userId,
         amount: 3,

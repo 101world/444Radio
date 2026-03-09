@@ -1529,7 +1529,7 @@ export default function VoiceLabsPage() {
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-white">Voice Labs Guide</h2>
-                  <p className="text-xs text-gray-500">MiniMax Speech 2.8 Turbo · Text-to-Speech</p>
+                  <p className="text-xs text-gray-500">444 Voice Engine · Text-to-Speech</p>
                 </div>
               </div>
               <button onClick={() => setShowTutorial(false)} className="text-gray-500 hover:text-white p-2 hover:bg-white/10 rounded-lg transition-all text-lg">✕</button>

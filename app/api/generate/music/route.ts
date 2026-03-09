@@ -70,8 +70,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing songId or prompt' }, { status: 400 })
     }
 
-    // All languages use MiniMax Music-1.5 via Replicate
-    const modelName = 'MiniMax Music-1.5'
+    // All languages use 444 Music Engine via Replicate
+    const modelName = '444 Music'
     
     console.log(`🎵 Starting music generation with ${modelName} for language: ${language}`)
     console.log('🎵 Prompt:', prompt)
@@ -160,7 +160,7 @@ export async function POST(req: NextRequest) {
       mediaUrl: permanentAudioUrl,
       mediaType: 'audio',
       title: `Music: ${prompt.substring(0, 50)}`,
-      extraMeta: { model: 'minimax-music-1.5', language, song_id: songId },
+      extraMeta: { model: '444-music', language, song_id: songId },
     }).catch(() => {})
 
     // Update song in database with permanent R2 URL and status

@@ -1531,7 +1531,7 @@ async function generateMusic01(userId: string, body: Record<string, unknown>, jo
 
 
 // ──────────────────────────────────────────────────────────────────
-// BEAT MAKER  (fal.ai CassetteAI/music-generator)
+// BEAT MAKER  (fal.ai 444 Beat Engine)
 // ──────────────────────────────────────────────────────────────────
 async function generateBeatmaker(userId: string, body: Record<string, unknown>, jobId: string) {
   const title = (body.title as string || '').trim()
@@ -1546,7 +1546,7 @@ async function generateBeatmaker(userId: string, body: Record<string, unknown>, 
 
   await updatePluginJob(jobId, { status: 'processing' })
 
-  // Call fal.ai CassetteAI/music-generator
+  // Call fal.ai beat generator
   const falRes = await fetch('https://fal.run/CassetteAI/music-generator', {
     method: 'POST',
     headers: { Authorization: `Key ${falKey}`, 'Content-Type': 'application/json' },
