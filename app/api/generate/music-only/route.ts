@@ -355,7 +355,7 @@ export async function POST(req: NextRequest) {
 
       ;(async () => {
         try {
-          await sendLine({ type: 'started', model: 'minimax-music-02' })
+          await sendLine({ type: 'started', model: '444-music' })
 
           // Call fal.ai synchronous endpoint
           const falRes = await fetch(`https://fal.run/fal-ai/minimax-music/v2`, {

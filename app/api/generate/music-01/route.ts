@@ -166,7 +166,7 @@ export async function POST(req: NextRequest) {
     const userCredits = (users[0].credits || 0) + (users[0].free_credits || 0)
     if (userCredits < COST) {
       return corsResponse(NextResponse.json({
-        error: `Insufficient credits. MiniMax 01 generation requires ${COST} credits.`,
+        error: `Insufficient credits. Generation requires ${COST} credits.`,
         creditsNeeded: COST,
         creditsAvailable: userCredits
       }, { status: 402 }))
@@ -190,11 +190,11 @@ export async function POST(req: NextRequest) {
     if (!deductRes.ok || !deductResult?.success) {
       const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
       console.error('❌ Credit deduction blocked:', errorMsg)
-      await logCreditTransaction({ userId, amount: -COST, type: 'generation_music', status: 'failed', description: `Music-01: ${title}`, metadata: { prompt, genre } })
+      await logCreditTransaction({ userId, amount: -COST, type: 'generation_music', status: 'failed', description: `Music: ${title}`, metadata: { prompt, genre } })
       return corsResponse(NextResponse.json({ error: errorMsg }, { status: 402 }))
     }
     console.log(`✅ Credits deducted (${COST}). Remaining: ${deductResult.new_credits}`)
-    await logCreditTransaction({ userId, amount: -COST, balanceAfter: deductResult.new_credits, type: 'generation_music', description: `Music-01: ${title}`, metadata: { prompt, genre, voice_id, hasVoiceRef, hasInstrumentalRef, hasSongRef } })
+    await logCreditTransaction({ userId, amount: -COST, balanceAfter: deductResult.new_credits, type: 'generation_music', description: `Music: ${title}`, metadata: { prompt, genre, voice_id, hasVoiceRef, hasInstrumentalRef, hasSongRef } })
 
     // Use NDJSON streaming (same as music-only)
     const encoder = new TextEncoder()

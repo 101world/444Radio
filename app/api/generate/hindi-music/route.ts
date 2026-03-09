@@ -203,7 +203,7 @@ export async function POST(req: NextRequest) {
 
     ;(async () => {
       try {
-        await sendLine({ type: 'started', model: 'minimax-music-02' })
+await sendLine({ type: 'started', model: '444-music' })
 
         const { data } = await runMiniMax2(falKey, minimax2Input)
 
