@@ -29,7 +29,7 @@
 const SUNO_BASE = 'https://api.sunoapi.org/api/v1'
 
 function getApiKey(): string {
-  const key = process.env.SUNO_API_KEY
+  const key = process.env.SUNO_API_KEY || process.env.suno_api_key
   if (!key) throw new Error('SUNO_API_KEY environment variable is not set')
   return key
 }
