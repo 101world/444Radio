@@ -7,15 +7,15 @@ import { notifyGenerationComplete, notifyGenerationFailed, notifyCreditDeduct } 
 
 export const maxDuration = 300
 
-// Sonauto v2/extend on fal.ai costs $0.075/gen -> 50% profit -> $0.1125 -> 4 credits @ $0.035/credit
+// $0.075/gen -> 50% profit -> $0.1125 -> 4 credits @ $0.035/credit
 const CREDIT_COST = 4
 const FAL_MODEL = 'sonauto/v2/extend'
 
-async function runSonautoExtend(
+async function run444Extend(
   falKey: string,
   input: Record<string, unknown>,
 ): Promise<{ data: any }> {
-  console.log('[Sonauto-Extend] Calling fal.ai:', FAL_MODEL)
+  console.log('[444-EXTEND] Calling engine...')
   const res = await fetch(`https://fal.run/${FAL_MODEL}`, {
     method: 'POST',
     headers: { Authorization: `Key ${falKey}`, 'Content-Type': 'application/json' },
@@ -23,7 +23,7 @@ async function runSonautoExtend(
   })
   if (!res.ok) {
     const errText = await res.text().catch(() => 'Unknown fal.ai error')
-    throw new Error(`Sonauto Extend failed (${res.status}): ${errText.substring(0, 200)}`)
+    throw new Error(`444 Extend failed (${res.status}): ${errText.substring(0, 200)}`)
   }
   return { data: await res.json() }
 }
@@ -31,13 +31,13 @@ async function runSonautoExtend(
 /**
  * POST /api/generate/suno/extend
  *
- * 444 Extend - extend/outpaint an existing track via Sonauto v2 on fal.ai.
+ * 444 Extend — extend/outpaint an existing track.
  * Costs 4 credits. Returns NDJSON stream.
  *
  * Body: { audio_url, side, prompt?, tags?, lyrics_prompt?, extend_duration?, crop_duration?, title? }
  */
 export async function POST(req: NextRequest) {
-  console.log('[444-EXTEND] POST /api/generate/suno/extend (Sonauto v2)')
+  console.log('[444-EXTEND] POST /api/generate/suno/extend')
   try {
     const { userId } = await auth()
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
       await logCreditTransaction({ userId, amount: -CREDIT_COST, type: 'generation_music', status: 'failed', description: `444 Extend: ${cleanTitle}`, metadata: { audio_url } })
       return NextResponse.json({ error: deductResult?.error_message || 'Failed to deduct credits' }, { status: 402 })
     }
-    await logCreditTransaction({ userId, amount: -CREDIT_COST, balanceAfter: deductResult.new_credits, type: 'generation_music', description: `444 Extend: ${cleanTitle}`, metadata: { audio_url, side, engine: 'sonauto-extend' } })
+    await logCreditTransaction({ userId, amount: -CREDIT_COST, balanceAfter: deductResult.new_credits, type: 'generation_music', description: `444 Extend: ${cleanTitle}`, metadata: { audio_url, side, engine: '444-extend' } })
 
     const encoder = new TextEncoder()
     const stream = new TransformStream()
@@ -101,11 +101,11 @@ export async function POST(req: NextRequest) {
         if (balance_strength && typeof balance_strength === 'number') input.balance_strength = balance_strength
 
         await sendLine({ type: 'progress', message: 'Extending your track...' })
-        const result = await runSonautoExtend(falKey, input)
+        const result = await run444Extend(falKey, input)
 
         const audioFiles = Array.isArray(result.data.audio) ? result.data.audio : [result.data.audio]
         const audioFile = audioFiles[0]
-        if (!audioFile?.url) throw new Error('No audio URL in Sonauto response')
+        if (!audioFile?.url) throw new Error('No audio URL returned')
 
         const fileName = `extend-${cleanTitle.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.wav`
         const r2 = await downloadAndUploadToR2(audioFile.url, userId, 'music', fileName)

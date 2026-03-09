@@ -7,11 +7,11 @@ import { notifyGenerationComplete, notifyGenerationFailed, notifyCreditDeduct } 
 
 export const maxDuration = 300
 
-// Sonauto v2/inpaint on fal.ai costs $0.075/gen → 50% profit → 4 credits @ $0.035/credit
+// $0.075/gen → 50% profit → 4 credits @ $0.035/credit
 const CREDIT_COST = 4
 const FAL_MODEL = 'sonauto/v2/inpaint'
 
-async function runSonautoInpaint(
+async function run444Inpaint(
   falKey: string,
   input: Record<string, unknown>,
 ): Promise<{ data: any }> {
@@ -31,13 +31,13 @@ async function runSonautoInpaint(
 /**
  * POST /api/generate/suno/inpaint
  *
- * 444 Inpaint — replace a section of a track via Sonauto v2 on fal.ai.
+ * 444 Inpaint — replace a section of a track.
  * Costs 4 credits. Returns NDJSON stream.
  *
  * Body: { audio_url, start, end, tags, lyrics_prompt, title?, prompt_strength?, balance_strength? }
  */
 export async function POST(req: NextRequest) {
-  console.log('[444-INPAINT] POST /api/generate/suno/inpaint (Sonauto v2)')
+  console.log('[444-INPAINT] POST /api/generate/suno/inpaint')
   try {
     const { userId } = await auth()
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
         if (selection_crop !== undefined) input.selection_crop = selection_crop
 
         await sendLine({ type: 'progress', message: 'Replacing section...' })
-        const result = await runSonautoInpaint(falKey, input)
+        const result = await run444Inpaint(falKey, input)
 
         const audioFiles = Array.isArray(result.data.audio) ? result.data.audio : [result.data.audio]
         const audioFile = audioFiles[0]
