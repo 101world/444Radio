@@ -125,10 +125,12 @@ export async function POST(req: NextRequest) {
         await sendLine({ type: 'started', model: '444-pro-music' })
 
         // Build generation params
+        // V5 requires a non-empty callBackUrl even when polling
         const sunoParams: Record<string, unknown> = {
           customMode: isCustomMode,
           instrumental,
           model: model || DEFAULT_MODEL,
+          callBackUrl: 'https://www.444radio.co.in/api/webhook/generation-callback',
         }
 
         if (isCustomMode) {
