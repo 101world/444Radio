@@ -221,12 +221,22 @@ export async function POST(req: NextRequest) {
         }
 
         const track = tracks[0]
-        const audioSourceUrl = track.audio_url
+        console.log('🎵 [444-PRO] Track 1 keys:', JSON.stringify(Object.keys(track)))
+        console.log('🎵 [444-PRO] Track 1 data:', JSON.stringify(track).substring(0, 800))
+
+        // V5 may use different field names for audio URL
+        const audioSourceUrl = track.audio_url || track.audioUrl || track.stream_audio_url || track.streamAudioUrl || track.song_url || track.songUrl || track.url || track.mp3_url || track.output
         if (!audioSourceUrl) {
+          console.error('❌ [444-PRO] No audio URL found in track. Full track:', JSON.stringify(track))
           throw new Error('No audio URL in generated track')
         }
 
-        console.log('🎵 [444-PRO] Track 1 ready:', track.title, 'Duration:', track.duration)
+        const trackTitle = track.title || track.name || cleanTitle
+        const trackDuration = track.duration || track.audio_duration || 0
+        const trackLyric = track.lyric || track.lyrics || ''
+        const trackImageUrl = track.image_large_url || track.image_url || track.imageUrl || track.cover_url || null
+
+        console.log('🎵 [444-PRO] Track 1 ready:', trackTitle, 'Duration:', trackDuration)
 
         await sendLine({ type: 'progress', message: 'Saving your tracks...' })
 
@@ -242,10 +252,13 @@ export async function POST(req: NextRequest) {
         // Download Track 2 if available
         let permanentAudioUrl2: string | null = null
         const track2 = tracks[1]
-        if (track2?.audio_url) {
-          console.log('🎵 [444-PRO] Track 2 ready:', track2.title, 'Duration:', track2.duration)
+        const track2AudioUrl = track2?.audio_url || track2?.audioUrl || track2?.stream_audio_url || track2?.streamAudioUrl || track2?.song_url || track2?.songUrl || track2?.url || track2?.mp3_url || track2?.output
+        if (track2AudioUrl) {
+          const track2Title = track2?.title || track2?.name || `${cleanTitle} (Take 2)`
+          const track2Duration = track2?.duration || track2?.audio_duration || 0
+          console.log('🎵 [444-PRO] Track 2 ready:', track2Title, 'Duration:', track2Duration)
           const fileName2 = `pro-${cleanTitle.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-2-${Date.now()}.wav`
-          const r2Result2 = await downloadAndUploadToR2(track2.audio_url, userId, 'music', fileName2)
+          const r2Result2 = await downloadAndUploadToR2(track2AudioUrl, userId, 'music', fileName2)
           if (r2Result2.success) {
             permanentAudioUrl2 = r2Result2.url
             console.log('✅ R2 upload (Track 2):', permanentAudioUrl2)
@@ -259,7 +272,7 @@ export async function POST(req: NextRequest) {
           clerk_user_id: userId,
           title: cleanTitle,
           prompt: cleanPrompt,
-          lyrics: cleanLyrics || track.lyric || '',
+          lyrics: cleanLyrics || trackLyric || '',
           audio_url: permanentAudioUrl,
           audio_format: 'wav',
           bitrate: 256000,
@@ -286,7 +299,7 @@ export async function POST(req: NextRequest) {
             clerk_user_id: userId,
             title: `${cleanTitle} (Take 2)`,
             prompt: cleanPrompt,
-            lyrics: cleanLyrics || track2?.lyric || '',
+            lyrics: cleanLyrics || track2?.lyric || track2?.lyrics || '',
             audio_url: permanentAudioUrl2,
             audio_format: 'wav',
             bitrate: 256000,
@@ -317,12 +330,12 @@ export async function POST(req: NextRequest) {
               type: 'audio',
               title: cleanTitle,
               audio_prompt: cleanPrompt,
-              lyrics: cleanLyrics || track.lyric || '',
+              lyrics: cleanLyrics || trackLyric || '',
               audio_url: permanentAudioUrl,
-              image_url: track.image_large_url || track.image_url || null,
+              image_url: trackImageUrl,
               is_public: false,
               genre: cleanStyle || null,
-              metadata: JSON.stringify({ source: 'pro-music', model: model || DEFAULT_MODEL, language, engine: '444-pro', duration: track.duration, trackNumber: 1 }),
+              metadata: JSON.stringify({ source: 'pro-music', model: model || DEFAULT_MODEL, language, engine: '444-pro', duration: trackDuration, trackNumber: 1 }),
             }),
           })
           if (cmRes.ok) {
@@ -344,12 +357,12 @@ export async function POST(req: NextRequest) {
                 type: 'audio',
                 title: `${cleanTitle} (Take 2)`,
                 audio_prompt: cleanPrompt,
-                lyrics: cleanLyrics || track2?.lyric || '',
+                lyrics: cleanLyrics || track2?.lyric || track2?.lyrics || '',
                 audio_url: permanentAudioUrl2,
-                image_url: track2?.image_large_url || track2?.image_url || null,
+                image_url: track2?.image_large_url || track2?.image_url || track2?.imageUrl || track2?.cover_url || null,
                 is_public: false,
                 genre: cleanStyle || null,
-                metadata: JSON.stringify({ source: 'pro-music', model: model || DEFAULT_MODEL, language, engine: '444-pro', duration: track2?.duration, trackNumber: 2 }),
+                metadata: JSON.stringify({ source: 'pro-music', model: model || DEFAULT_MODEL, language, engine: '444-pro', duration: track2?.duration || track2?.audio_duration, trackNumber: 2 }),
               }),
             })
           } catch (e) {
