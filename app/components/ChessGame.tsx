@@ -296,11 +296,15 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded, ac
           }
           if (game.result) {
             setGameResult(game.result)
-            setResultMessage(
-              game.result === 'draw'
-                ? 'Game drawn!'
-                : `${game.result === 'white' ? 'White' : 'Black'} wins!`
-            )
+            if (game.result === 'draw') {
+              setResultMessage('Game drawn!')
+            } else {
+              const youWon = game.result === multiplayerColor
+              setResultMessage(youWon
+                ? `You win! @${opponentName} resigned.`
+                : `@${opponentName} wins! You lost.`
+              )
+            }
           }
         }
       } catch (err) {
@@ -349,8 +353,14 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded, ac
       const enemyMoves = getLegalMoves(newBoard, nextTurn, newEp, newCastling)
       if (enemyMoves.length === 0) {
         if (isInCheck(newBoard, nextTurn)) {
-          setGameResult(prev.turn)
-          setResultMessage(`${prev.turn === 'white' ? 'White' : 'Black'} wins by checkmate!`)
+          const winColor = prev.turn
+          setGameResult(winColor)
+          if (gameMode === 'multiplayer') {
+            const youWon = multiplayerColor === winColor
+            setResultMessage(youWon ? `Checkmate! You win!` : `Checkmate! @${opponentName} wins!`)
+          } else {
+            setResultMessage(`${winColor === 'white' ? 'White' : 'Black'} wins by checkmate!`)
+          }
         } else {
           setGameResult('draw')
           setResultMessage('Draw by stalemate!')
@@ -387,7 +397,17 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded, ac
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ action: 'settle', gameId: multiplayerGameId, result }),
-            }).catch(err => console.error('[chess] Settle error:', err))
+            }).then(res => res.json()).then(settleData => {
+              if (!settleData.success) {
+                console.error('[chess] Settle failed:', settleData.error)
+                setResultMessage(m => m + ' (Credit settlement failed — contact support)')
+              } else if (settleData.creditsAwarded > 0) {
+                console.log('[chess] Settled — credits awarded:', settleData.creditsAwarded)
+              }
+            }).catch(err => {
+              console.error('[chess] Settle error:', err)
+              setResultMessage(m => m + ' (Credit settlement error — contact support)')
+            })
           }
         }).catch(err => console.error('[chess] Move send error:', err))
       }
@@ -480,18 +500,37 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded, ac
   }, [gameState.turn, gameMode, playerColor, gameResult, difficulty, gameState, executeMove])
 
   // ── Resign ──
-  const handleResign = () => {
+  const handleResign = async () => {
     const winner = gameState.turn === 'white' ? 'black' : 'white'
     setGameResult(winner)
-    setResultMessage(`${winner === 'white' ? 'White' : 'Black'} wins by resignation!`)
 
-    // In multiplayer, settle the game on the server
+    // In multiplayer, show player-relative message
+    if (gameMode === 'multiplayer') {
+      const youLost = multiplayerColor === gameState.turn // you resign on your turn
+      setResultMessage(youLost ? `You resigned. @${opponentName} wins!` : `@${opponentName} resigned. You win!`)
+    } else {
+      setResultMessage(`${winner === 'white' ? 'White' : 'Black'} wins by resignation!`)
+    }
+
+    // In multiplayer, settle the game on the server and verify credits
     if (gameMode === 'multiplayer' && multiplayerGameId) {
-      fetch('/api/chess', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'settle', gameId: multiplayerGameId, result: winner }),
-      }).catch(err => console.error('[chess] Settle error:', err))
+      try {
+        const res = await fetch('/api/chess', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'settle', gameId: multiplayerGameId, result: winner }),
+        })
+        const data = await res.json()
+        if (!res.ok || !data.success) {
+          console.error('[chess] Settle failed:', data.error)
+          setResultMessage(prev => prev + ' (Credit settlement failed — contact support)')
+        } else if (data.creditsAwarded > 0) {
+          console.log('[chess] Settled — credits awarded:', data.creditsAwarded)
+        }
+      } catch (err) {
+        console.error('[chess] Settle error:', err)
+        setResultMessage(prev => prev + ' (Credit settlement error — contact support)')
+      }
     }
   }
 
@@ -937,12 +976,25 @@ export default function ChessGame({ isOpen, onClose, currentUserId, embedded, ac
                     <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm rounded-xl">
                       <div className="text-center p-6">
                         <div className="text-4xl mb-3">
-                          {gameResult === 'draw' ? '🤝' : '👑'}
+                          {gameResult === 'draw' ? '🤝' : (gameMode === 'multiplayer' && gameResult === multiplayerColor ? '🏆' : gameMode === 'multiplayer' ? '😔' : '👑')}
                         </div>
                         <h3 className="text-lg font-black text-white mb-1">{resultMessage}</h3>
-                        {wagerAmount > 0 && gameResult !== 'draw' && (
+                        {wagerAmount > 0 && gameResult !== 'draw' && gameMode === 'multiplayer' && (
+                          <p className={`text-sm mb-3 ${gameResult === multiplayerColor ? 'text-emerald-400' : 'text-red-400'}`}>
+                            <Zap size={14} className="inline" />
+                            {gameResult === multiplayerColor
+                              ? ` You won ${wagerAmount * 2} credits!`
+                              : ` You lost ${wagerAmount} credits`}
+                          </p>
+                        )}
+                        {wagerAmount > 0 && gameResult !== 'draw' && gameMode !== 'multiplayer' && (
                           <p className="text-sm text-yellow-400 mb-3">
                             <Zap size={14} className="inline" /> {wagerAmount * 2} credits to the winner!
+                          </p>
+                        )}
+                        {wagerAmount > 0 && gameResult === 'draw' && (
+                          <p className="text-sm text-cyan-400 mb-3">
+                            Draw — {wagerAmount} credits refunded to each player
                           </p>
                         )}
                         <div className="flex gap-2 justify-center mt-4">
