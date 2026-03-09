@@ -31,6 +31,7 @@ interface FeaturesSidebarProps {
   onShowLipSync: () => void
   onShowRemix: () => void
   onShowBeatMaker: () => void
+  onShowCoverArt: () => void
   onOpenRelease: () => void
   onShowProExtend: () => void
   onShowProInpaint: () => void
@@ -94,6 +95,7 @@ export default function FeaturesSidebar({
   onShowLipSync,
   onShowRemix,
   onShowBeatMaker,
+  onShowCoverArt,
   onOpenRelease,
   onShowProExtend,
   onShowProInpaint,
@@ -163,7 +165,7 @@ export default function FeaturesSidebar({
           glowColor: proGlow('shadow-pink-400/30'),
           activeGradient: proActiveGrad('from-pink-400/50 via-rose-500/40 to-orange-400/45 ring-pink-400/70'),
           active: selectedType === 'image', cost: 1,
-          onClick: () => onSelectType('image'),
+          onClick: () => { onSelectType('image'); onShowCoverArt() },
         },
         {
           icon: Repeat, label: '444 Remix', desc: 'Remix any song',

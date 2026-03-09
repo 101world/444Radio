@@ -2899,6 +2899,7 @@ function CreatePageContent() {
           onShowLipSync={() => setShowLipSyncModal(true)}
           onShowRemix={() => { setProFeatureType('remix'); setShowProFeaturesModal(true) }}
           onShowBeatMaker={() => setShowBeatMakerModal(true)}
+          onShowCoverArt={() => setShowCoverArtGenModal(true)}
           onOpenRelease={() => handleOpenRelease()}
           onShowProExtend={() => { setProFeatureType('extend'); setShowProFeaturesModal(true) }}
           onShowProInpaint={() => { setProFeatureType('inpaint'); setShowProFeaturesModal(true) }}
@@ -4079,8 +4080,8 @@ function CreatePageContent() {
                       value={selectedLanguage}
                       onChange={(e) => {
                         setSelectedLanguage(e.target.value)
-                        // Also append language as tag if non-English
-                        if (e.target.value !== 'English') {
+                        // Also append language as tag if non-English and not instrumental
+                        if (e.target.value !== 'English' && !isInstrumental) {
                           const langTag = e.target.value.toLowerCase()
                           if (!input.toLowerCase().includes(langTag)) {
                             const newInput = input ? `${input}, ${langTag}` : langTag
@@ -4450,7 +4451,17 @@ function CreatePageContent() {
                   </label>
                   <select
                     value={selectedLanguage}
-                    onChange={(e) => setSelectedLanguage(e.target.value)}
+                    onChange={(e) => {
+                      setSelectedLanguage(e.target.value)
+                      // Append language tag to prompt for non-English, non-instrumental
+                      if (e.target.value !== 'English' && !isInstrumental) {
+                        const langTag = e.target.value.toLowerCase()
+                        if (!input.toLowerCase().includes(langTag)) {
+                          const newInput = input ? `${input}, ${langTag}` : langTag
+                          setInput(newInput.slice(0, MAX_PROMPT_LENGTH))
+                        }
+                      }
+                    }}
                     className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500/30 transition-all appearance-none cursor-pointer"
                     style={{
                       backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(34,211,238,0.6)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",

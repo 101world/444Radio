@@ -3306,7 +3306,16 @@ function PluginPageInner() {
                 <label className="text-xs font-semibold text-red-400 uppercase tracking-wide flex items-center gap-2">
                   <Globe size={14} style={{color:'rgba(6,182,212,0.5)'}} /> Language *
                 </label>
-                <select value={selectedLanguage} onChange={(e) => setSelectedLanguage(e.target.value)}
+                <select value={selectedLanguage} onChange={(e) => {
+                  setSelectedLanguage(e.target.value)
+                  // Append language tag to prompt for non-English, non-instrumental
+                  if (e.target.value !== 'English' && !isInstrumental) {
+                    const langTag = e.target.value.toLowerCase()
+                    if (!input.toLowerCase().includes(langTag)) {
+                      setInput(prev => (prev ? `${prev}, ${langTag}` : langTag).slice(0, 300))
+                    }
+                  }
+                }}
                   className="w-full px-3 py-2 bg-white/5 border border-red-500/30 rounded-lg text-white text-sm focus:outline-none focus:border-white/30 appearance-none cursor-pointer"
                   style={{ backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(6,182,212,0.4)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")", backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.5em 1.5em', paddingRight: '2.5rem' }}>
                   <option value="English">English</option>
