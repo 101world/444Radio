@@ -62,10 +62,13 @@ interface Message {
   result?: {
     url?: string
     audioUrl?: string
+    secondAudioUrl?: string
     imageUrl?: string
     title?: string
+    secondTitle?: string
     prompt?: string
     lyrics?: string
+    trackCount?: number
   }
   stems?: Record<string, string>
   timestamp: Date
@@ -3191,6 +3194,7 @@ function CreatePageContent() {
 
                 {/* Music Result - Bigger and Cooler */}
                 {message.result?.audioUrl && message.generationType !== 'video' && (
+                  <div className="space-y-3">
                   <div className="backdrop-blur-sm md:backdrop-blur-xl bg-gradient-to-br from-black/60 via-black/50 to-black/60 border border-cyan-500/30 sm:border-2 rounded-2xl sm:rounded-3xl overflow-hidden group hover:border-cyan-400/50 transition-all">
                     {/* Header with Smaller Play Button */}
                     <div className="flex items-center gap-2.5 sm:gap-3 p-3 sm:p-4 border-b border-white/10">
@@ -3342,6 +3346,66 @@ function CreatePageContent() {
                         </div>
                       </details>
                     </div>
+                  </div>
+
+                  {/* Second Track (Pro Suno generates 2 takes) */}
+                  {message.result.secondAudioUrl && (
+                    <div className="backdrop-blur-sm md:backdrop-blur-xl bg-gradient-to-br from-black/60 via-black/50 to-black/60 border border-cyan-500/30 sm:border-2 rounded-2xl sm:rounded-3xl overflow-hidden group hover:border-cyan-400/50 transition-all">
+                      <div className="flex items-center gap-2.5 sm:gap-3 p-3 sm:p-4 border-b border-white/10">
+                        <button
+                          onClick={() => handlePlayPause(`${message.id}-take2`, message.result!.secondAudioUrl!, message.result!.secondTitle || message.result!.title || 'Take 2')}
+                          className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all active:scale-95 hover:scale-105 ${
+                            isProMode
+                              ? 'bg-red-600 hover:bg-red-700 shadow-lg shadow-red-500/40 ring-1 ring-red-400/30'
+                              : 'bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 hover:from-cyan-700 hover:via-cyan-600 hover:to-cyan-500 shadow-lg shadow-cyan-500/30'
+                          }`}
+                        >
+                          {currentTrack?.id === `${message.id}-take2` && isPlaying ? <Pause size={18} className="text-black sm:hidden" /> : <Play size={18} className="text-black ml-0.5 sm:hidden" />}
+                          {currentTrack?.id === `${message.id}-take2` && isPlaying ? <Pause size={20} className="text-black hidden sm:block" /> : <Play size={20} className="text-black ml-0.5 hidden sm:block" />}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] text-cyan-400/70 font-semibold uppercase tracking-wider">Take 2</p>
+                          <h4 className="text-base sm:text-lg font-bold text-white truncate">{message.result.secondTitle || message.result.title}</h4>
+                        </div>
+                        <button
+                          onClick={() => handleOpenRelease(message.id, undefined)}
+                          className="p-2 sm:p-2.5 hover:bg-cyan-500/20 rounded-xl transition-colors md:opacity-0 md:group-hover:opacity-100"
+                          title="Release"
+                        >
+                          <Rocket size={16} className="text-cyan-400 sm:hidden" />
+                          <Rocket size={20} className="text-cyan-400 hidden sm:block" />
+                        </button>
+                      </div>
+                      <div className="flex border-t border-white/10">
+                        <button
+                          onClick={() => handleDownload(message.result!.secondAudioUrl!, `${message.result!.secondTitle || message.result!.title || 'Take 2'}.mp3`, 'mp3')}
+                          className="flex-1 px-3 sm:px-4 py-3 sm:py-4 hover:bg-white/10 text-xs sm:text-sm font-medium text-cyan-400 flex items-center justify-center gap-1.5 sm:gap-2 transition-colors border-r border-white/5"
+                          title="Download MP3"
+                        >
+                          <Download size={16} className="sm:hidden" />
+                          <Download size={18} className="hidden sm:block" />
+                          MP3
+                        </button>
+                        <button
+                          onClick={() => handleDownload(message.result!.secondAudioUrl!, `${message.result!.secondTitle || message.result!.title || 'Take 2'}.mp3`, 'wav')}
+                          className="flex-1 px-3 sm:px-4 py-3 sm:py-4 hover:bg-white/10 text-xs sm:text-sm font-medium text-cyan-300 flex items-center justify-center gap-1.5 sm:gap-2 transition-colors border-r border-white/5"
+                          title="Download WAV"
+                        >
+                          <Download size={16} className="sm:hidden" />
+                          <Download size={18} className="hidden sm:block" />
+                          WAV
+                        </button>
+                        <Link
+                          href="/library"
+                          className="flex-1 px-4 sm:px-6 py-3 sm:py-4 hover:bg-white/10 text-xs sm:text-sm font-medium text-cyan-400 flex items-center justify-center gap-1.5 sm:gap-2 transition-colors"
+                        >
+                          <Layers size={16} className="sm:hidden" />
+                          <Layers size={18} className="hidden sm:block" />
+                          Library
+                        </Link>
+                      </div>
+                    </div>
+                  )}
                   </div>
                 )}
 

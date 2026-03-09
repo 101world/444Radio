@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     console.log('🎸 [ATOM-GENRE] User prompt:', prompt)
 
     // Construct the prompt for GPT-5 Nano to detect genre
-    const fullPrompt = `Based on this music prompt: "${prompt}", what is the most appropriate music genre? Choose ONE from: pop, rock, jazz, hip-hop, electronic, classical, country, blues, reggae, metal, folk, lofi. Only respond with the single genre word, nothing else.`
+    const fullPrompt = `Based on this music prompt: "${prompt}", what is the most appropriate music genre? Choose ONE from: pop, rock, jazz, hip-hop, electronic, classical, country, blues, reggae, metal, folk, lofi, afrobeat, r&b, soul, funk, latin, indie, punk, k-pop, ambient, trap, drill, gospel, edm, disco, house, techno, dnb, phonk. Only respond with the single genre word, nothing else.`
 
     console.log('🎸 [ATOM-GENRE] Full prompt:', fullPrompt)
 
@@ -70,10 +70,9 @@ export async function POST(req: NextRequest) {
       .split(' ')[0] // Take first word only
 
     // Validate against known genres
-    const validGenres = ['pop', 'rock', 'jazz', 'hip-hop', 'electronic', 'classical', 'country', 'blues', 'reggae', 'metal', 'folk', 'lofi']
+    const validGenres = ['pop', 'rock', 'jazz', 'hip-hop', 'electronic', 'classical', 'country', 'blues', 'reggae', 'metal', 'folk', 'lofi', 'afrobeat', 'r&b', 'rnb', 'soul', 'funk', 'latin', 'indie', 'punk', 'k-pop', 'kpop', 'ambient', 'trap', 'drill', 'gospel', 'edm', 'disco', 'house', 'techno', 'dnb', 'phonk', 'grunge', 'alternative', 'dancehall', 'synthwave', 'bolly', 'bollywood']
     if (!validGenres.includes(genre)) {
-      console.warn('⚠️ [ATOM-GENRE] Invalid genre detected, falling back to pop:', genre)
-      genre = 'pop'
+      console.warn('⚠️ [ATOM-GENRE] Unknown genre, passing through as-is:', genre)
     }
 
     console.log('✅ [ATOM-GENRE] Genre detected:', genre)
