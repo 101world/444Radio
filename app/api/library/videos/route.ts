@@ -1,9 +1,15 @@
 import { NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { supabase } from '@/lib/supabase'
 
 export async function GET() {
   try {
-    // Fetch videos from combined_media where video_url exists and is public
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Fetch only THIS user's videos from combined_media
     const { data: videos, error } = await supabase
       .from('combined_media')
       .select(`
@@ -28,7 +34,7 @@ export async function GET() {
         duration_seconds
       `)
       .not('video_url', 'is', null)
-      .eq('is_public', true)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(100)
 
