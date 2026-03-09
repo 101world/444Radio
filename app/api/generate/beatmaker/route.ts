@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
     if (deductRes.ok) { const raw = await deductRes.json(); deductResult = Array.isArray(raw) ? raw[0] ?? null : raw }
     if (!deductRes.ok || !deductResult?.success) {
       const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
-      await logCreditTransaction({ userId, amount: -creditCost, type: 'generation_music', status: 'failed', description: `Beat Maker: ${title}`, metadata: { prompt, model: 'cassetteai-music-generator', duration } })
+      await logCreditTransaction({ userId, amount: -creditCost, type: 'generation_music', status: 'failed', description: `Beat Maker: ${title}`, metadata: { prompt, model: '444-beatmaker', duration } })
       return NextResponse.json({ error: errorMsg }, { status: 402 })
     }
     console.log(`✅ Credits deducted (${creditCost}). Remaining: ${deductResult.new_credits}`)
@@ -113,11 +113,11 @@ export async function POST(req: NextRequest) {
       balanceAfter: deductResult.new_credits,
       type: 'generation_music',
       description: `Beat Maker: ${title} (${duration}s)`,
-      metadata: { prompt, model: 'cassetteai-music-generator', duration, creditCost }
+      metadata: { prompt, model: '444-beatmaker', duration, creditCost }
     })
 
     // ---------- fal.ai generation ----------
-    addLine({ type: 'started', model: 'cassetteai-music-generator' })
+    addLine({ type: 'started', model: '444-beatmaker' })
 
     try {
       const falInput: Record<string, unknown> = {
@@ -158,7 +158,7 @@ export async function POST(req: NextRequest) {
         is_public: false,
         genre: 'beatmaker',
         metadata: JSON.stringify({
-          model: 'cassetteai-music-generator',
+          model: '444-beatmaker',
           duration,
           credit_cost: creditCost,
           type: 'beatmaker',
@@ -177,10 +177,10 @@ export async function POST(req: NextRequest) {
       // Quest / transaction tracking (fire & forget)
       import('@/lib/quest-progress').then(({ trackQuestProgress, trackModelUsage, trackGenerationStreak }) => {
         trackQuestProgress(userId, 'generate_songs').catch(() => {})
-        trackModelUsage(userId, 'cassetteai-music-generator').catch(() => {})
+        trackModelUsage(userId, '444-beatmaker').catch(() => {})
         trackGenerationStreak(userId).catch(() => {})
       }).catch(() => {})
-      updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: audioUrl, mediaType: 'audio', title, extraMeta: { model: 'cassetteai-music-generator', duration } }).catch(() => {})
+      updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: audioUrl, mediaType: 'audio', title, extraMeta: { model: '444-beatmaker', duration } }).catch(() => {})
 
       // Notification: generation complete
       createNotification({
@@ -213,7 +213,7 @@ export async function POST(req: NextRequest) {
         amount: creditCost,
         type: 'generation_music',
         reason: `Beat Maker error: ${title}`,
-        metadata: { prompt, model: 'cassetteai-music-generator', error: String(genErr).substring(0, 200) }
+        metadata: { prompt, model: '444-beatmaker', error: String(genErr).substring(0, 200) }
       })
 
       // Notification: generation failed

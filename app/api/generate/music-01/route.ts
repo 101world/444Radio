@@ -362,7 +362,7 @@ export async function POST(req: NextRequest) {
             image_url: null,
             is_public: false,
             genre: genre || null,
-            metadata: JSON.stringify({ source: 'music-01', model: 'minimax/music-01', voice_id: voice_id || undefined, has_voice_ref: !!voice_file, has_instrumental_ref: !!instrumental_file })
+            metadata: JSON.stringify({ source: 'music-01', model: '444-pro-music', voice_id: voice_id || undefined, has_voice_ref: !!voice_file, has_instrumental_ref: !!instrumental_file })
           }
           const combinedRes = await fetch(`${supabaseUrl}/rest/v1/combined_media`, {
             method: 'POST',
@@ -393,7 +393,7 @@ export async function POST(req: NextRequest) {
         const { trackQuestProgress, trackModelUsage, trackGenerationStreak } = await import('@/lib/quest-progress')
         trackQuestProgress(userId, 'generate_songs').catch(() => {})
         if (genre) trackQuestProgress(userId, 'use_genres', 1, genre).catch(() => {})
-        trackModelUsage(userId, 'minimax-music-01').catch(() => {})
+        trackModelUsage(userId, '444-pro-music').catch(() => {})
         trackGenerationStreak(userId).catch(() => {})
 
         // ── VOICE ROYALTY: award 1 credit to the voice owner if using a listed voice ──

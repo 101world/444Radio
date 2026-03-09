@@ -404,7 +404,7 @@ export async function POST(req: NextRequest) {
             audio_format: chosenFormat,
             bitrate: chosenFormat === 'mp3' ? 256000 : 0,
             sample_rate: 44100,
-            generation_params: { model: 'minimax-music-02', language, audio_format: chosenFormat },
+            generation_params: { model: '444-pro-music', language, audio_format: chosenFormat },
             status: 'ready',
           }
           const saveRes = await fetch(`${supabaseUrl}/rest/v1/music_library`, {
@@ -428,7 +428,7 @@ export async function POST(req: NextRequest) {
               body: JSON.stringify({
                 user_id: userId, type: 'audio', title, audio_prompt: prompt, lyrics: formattedLyrics, audio_url: audioUrl,
                 image_url: null, is_public: false, genre: genre || null,
-                metadata: JSON.stringify({ source: 'music-only-autodetect', model: 'minimax-music-02', language, audio_format: chosenFormat }),
+                metadata: JSON.stringify({ source: 'music-only-autodetect', model: '444-pro-music', language, audio_format: chosenFormat }),
               }),
             })
             if (combinedRes.ok) {
@@ -446,11 +446,11 @@ export async function POST(req: NextRequest) {
             const { trackQuestProgress, trackModelUsage, trackGenerationStreak } = await import('@/lib/quest-progress')
             trackQuestProgress(userId, 'generate_songs').catch(() => {})
             if (genre) trackQuestProgress(userId, 'use_genres', 1, genre).catch(() => {})
-            trackModelUsage(userId, 'minimax-music-02').catch(() => {})
+            trackModelUsage(userId, '444-pro-music').catch(() => {})
             trackGenerationStreak(userId).catch(() => {})
           } catch {}
 
-          updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: audioUrl!, mediaType: 'audio', title, extraMeta: { genre, model: 'minimax-music-02' } }).catch(() => {})
+          updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: audioUrl!, mediaType: 'audio', title, extraMeta: { genre, model: '444-pro-music' } }).catch(() => {})
           notifyGenerationComplete(userId, libraryId || '', 'music', title).catch(() => {})
           notifyCreditDeduct(userId, 2, `Music: ${title}`).catch(() => {})
 

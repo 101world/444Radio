@@ -163,7 +163,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: errorMsg }, { status: 402 })
     }
     console.log(`✅ Credits deducted (${CREDIT_COST}). Remaining: ${deductResult.new_credits}`)
-    await logCreditTransaction({ userId, amount: -CREDIT_COST, balanceAfter: deductResult.new_credits, type: 'generation_music', description: `${sourceLabel}: ${title}`, metadata: { prompt, genre, model: 'minimax-music-02', source: sourceTag } })
+    await logCreditTransaction({ userId, amount: -CREDIT_COST, balanceAfter: deductResult.new_credits, type: 'generation_music', description: `${sourceLabel}: ${title}`, metadata: { prompt, genre, model: '444-pro-music', source: sourceTag } })
 
     // ---------- Build MiniMax 2.0 input (fal.ai V2 schema) ----------
     // Use shared validator to ensure ALL required fields are present and valid
@@ -252,7 +252,7 @@ await sendLine({ type: 'started', model: '444-music' })
           audio_format: chosenFormat,
           bitrate: chosenFormat === 'mp3' ? 256000 : 0,
           sample_rate: 44100,
-          generation_params: { model: 'minimax-music-02', language: sourceTag === 'pro' ? 'english' : 'hindi', source: sourceTag, audio_format: chosenFormat },
+          generation_params: { model: '444-pro-music', language: sourceTag === 'pro' ? 'english' : 'hindi', source: sourceTag, audio_format: chosenFormat },
           status: 'ready',
         }
         const saveRes = await fetch(`${supabaseUrl}/rest/v1/music_library`, {
@@ -285,7 +285,7 @@ await sendLine({ type: 'started', model: '444-music' })
               image_url: null,
               is_public: false,
               genre: genre || null,
-              metadata: JSON.stringify({ source: sourceTag === 'pro' ? 'pro-music' : 'hindi-music', model: 'minimax-music-02', language: sourceTag === 'pro' ? 'english' : 'hindi', audio_format: chosenFormat }),
+              metadata: JSON.stringify({ source: sourceTag === 'pro' ? 'pro-music' : 'hindi-music', model: '444-pro-music', language: sourceTag === 'pro' ? 'english' : 'hindi', audio_format: chosenFormat }),
             }),
           })
           if (combinedRes.ok) {
@@ -304,11 +304,11 @@ await sendLine({ type: 'started', model: '444-music' })
           const { trackQuestProgress, trackModelUsage, trackGenerationStreak } = await import('@/lib/quest-progress')
           trackQuestProgress(userId, 'generate_songs').catch(() => {})
           if (genre) trackQuestProgress(userId, 'use_genres', 1, genre).catch(() => {})
-          trackModelUsage(userId, 'minimax-music-02').catch(() => {})
+          trackModelUsage(userId, '444-pro-music').catch(() => {})
           trackGenerationStreak(userId).catch(() => {})
         } catch {}
 
-        updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: audioUrl!, mediaType: 'audio', title, extraMeta: { genre, model: 'minimax-music-02' } }).catch(() => {})
+        updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: audioUrl!, mediaType: 'audio', title, extraMeta: { genre, model: '444-pro-music' } }).catch(() => {})
         notifyGenerationComplete(userId, libraryId || '', 'music', title).catch(() => {})
         notifyCreditDeduct(userId, CREDIT_COST, `${sourceLabel}: ${title}`).catch(() => {})
 
