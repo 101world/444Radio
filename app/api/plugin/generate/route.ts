@@ -69,8 +69,8 @@ const CREDIT_COSTS: Record<string, number | ((params: Record<string, unknown>) =
   'voice-train': 120,
   'music-01': 3,
   beatmaker: (p) => Math.max(2, Math.ceil(((p.duration as number) || 30) / 60 * 2)),
-  'pro-extend': 22,
-  'pro-inpaint': 11,
+  'pro-extend': 4,
+  'pro-inpaint': 4,
   'pro-cover': 22,
   'pro-add-vocals': 22,
   'pro-voice-to-melody': 22,
@@ -1590,7 +1590,7 @@ async function generateBeatmaker(userId: string, body: Record<string, unknown>, 
   let audioUrl: string | undefined
   if (typeof audioFile === 'string') audioUrl = audioFile
   else if (audioFile?.url) audioUrl = audioFile.url
-  if (!audioUrl) return { success: false, error: 'No audio in fal.ai output' }
+  if (!audioUrl) return { success: false, error: 'No audio generated — please try again' }
 
   // Upload to R2
   const fileName = `beatmaker-${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.wav`

@@ -176,7 +176,7 @@ function CreatePageContent() {
   const [showBeatMakerModal, setShowBeatMakerModal] = useState(false)
   const [showCoverArtGenModal, setShowCoverArtGenModal] = useState(false)
   const [showProFeaturesModal, setShowProFeaturesModal] = useState(false)
-  const [proFeatureType, setProFeatureType] = useState<'extend' | 'inpaint' | 'cover' | 'add-vocals' | 'voice-to-melody' | 'boost-style'>('extend')
+  const [proFeatureType, setProFeatureType] = useState<'extend' | 'inpaint' | 'cover' | 'add-vocals' | 'voice-to-melody'>('extend')
   // Audio recording for voice reference (actual mic capture, not speech-to-text)
   const [isAudioRecording, setIsAudioRecording] = useState(false)
   const [audioRecordingTime, setAudioRecordingTime] = useState(0)
@@ -1446,10 +1446,10 @@ function CreatePageContent() {
             willUse: !isInstrumentalGen && isProMode && (isHindiFamily || hasIndicScript || hindiKeywordsInPrompt)
               ? '444 Pro Engine (20 credits, 2 outputs)'
               : (isHindiFamily || hasIndicScript || hindiKeywordsInPrompt)
-                ? isProMode ? 'MiniMax 2.0 (Pro, 5 credits)' : 'MiniMax 2.0 (Hindi, 2 credits)'
+                ? isProMode ? '444 Pro (5 credits)' : '444 Regional (2 credits)'
                 : isProMode
-                  ? 'MiniMax 2.0 (Pro, 5 credits)'
-                  : 'MiniMax 1.5 (Standard, 2 credits)'
+                  ? '444 Pro (5 credits)'
+                  : '444 Standard (2 credits)'
           })
 
           if (!isInstrumentalGen && isProMode && (isHindiFamily || hasIndicScript || hindiKeywordsInPrompt)) {
@@ -3049,7 +3049,6 @@ function CreatePageContent() {
           onShowProCover={() => { setProFeatureType('cover'); setShowProFeaturesModal(true) }}
           onShowProAddVocals={() => { setProFeatureType('add-vocals'); setShowProFeaturesModal(true) }}
           onShowProVoiceToMelody={() => { setProFeatureType('voice-to-melody'); setShowProFeaturesModal(true) }}
-          onShowProBoostStyle={() => { setProFeatureType('boost-style'); setShowProFeaturesModal(true) }}
           onTagClick={(tag: string) => {
             const newInput = input ? `${input}, ${tag}` : tag
             setInput(newInput.slice(0, MAX_PROMPT_LENGTH))
@@ -3963,7 +3962,7 @@ function CreatePageContent() {
                   }`}
                   title={showAdvancedButtons ? 'Hide Options' : 'More Options'}
                 >
-                  <PlusCircle size={18} className={`${showAdvancedButtons ? 'text-cyan-400 rotate-45' : 'text-white/50'} transition-all duration-300`} />
+                  <Crown size={18} className={`${showAdvancedButtons ? 'text-cyan-400 rotate-12' : 'text-white/50'} transition-all duration-300`} />
                 </button>
 
                 {/* Speech-to-text */}

@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
         await fetch(`${supabaseUrl}/rest/v1/music_library`, {
           method: 'POST',
           headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
-          body: JSON.stringify({ clerk_user_id: userId, title: cleanTitle, prompt: cleanTags, lyrics: track.lyric || '', audio_url: r2.url, audio_format: 'wav', generation_params: { engine: '444-voice-to-melody', model: validModel, source_url: uploadUrl }, status: 'ready' }),
+          body: JSON.stringify({ clerk_user_id: userId, title: cleanTitle, prompt: cleanTags, lyrics: track.lyric || '', audio_url: r2.url, audio_format: 'wav', generation_params: { engine: '444-voice-to-melody', type: '444-voice-to-melody', model: validModel, source_url: uploadUrl }, status: 'ready' }),
         }).catch(() => {})
 
         let libraryId: string | null = null
@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
           const cmRes = await fetch(`${supabaseUrl}/rest/v1/combined_media`, {
             method: 'POST',
             headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
-            body: JSON.stringify({ user_id: userId, type: 'audio', title: cleanTitle, audio_prompt: cleanTags, lyrics: track.lyric || '', audio_url: r2.url, is_public: false, genre: cleanTags || null, metadata: JSON.stringify({ source: '444-voice-to-melody', model: validModel, duration: track.duration }) }),
+            body: JSON.stringify({ user_id: userId, type: 'audio', title: cleanTitle, audio_prompt: cleanTags, lyrics: track.lyric || '', audio_url: r2.url, is_public: false, genre: '444-voice-to-melody', metadata: JSON.stringify({ source: '444-voice-to-melody', model: validModel, duration: track.duration, tags: cleanTags || null }) }),
           })
           if (cmRes.ok) { const d = await cmRes.json(); libraryId = (Array.isArray(d) ? d[0] : d)?.id }
         } catch {}

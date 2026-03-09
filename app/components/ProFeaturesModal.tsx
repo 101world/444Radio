@@ -6,22 +6,22 @@ import { X, Wand2, Replace, RefreshCw, MicVocal, Headphones, Crown, Upload, Load
 interface ProFeaturesModalProps {
   isOpen: boolean
   onClose: () => void
-  initialFeature: 'extend' | 'inpaint' | 'cover' | 'add-vocals' | 'voice-to-melody' | 'boost-style'
+  initialFeature: 'extend' | 'inpaint' | 'cover' | 'add-vocals' | 'voice-to-melody'
   userCredits: number | null
 }
 
 const FEATURE_INFO: Record<string, { icon: any; label: string; desc: string; cost: number; fields: string[]; help: string }> = {
   extend: {
-    icon: Wand2, label: '444 Extend', desc: 'Outpaint / continue a track from a specific point',
-    cost: 22,
-    fields: ['audioId', 'continueAt', 'title', 'prompt', 'style'],
-    help: 'Use Audio ID from a previous generation to extend the track. Set "Continue At" to the timestamp (in seconds) where you want the extension to begin. Optionally add a prompt and style to guide the new section.',
+    icon: Wand2, label: '444 Extend', desc: 'Outpaint / continue a track from any point',
+    cost: 4,
+    fields: ['uploadUrl', 'side', 'title', 'prompt', 'tags'],
+    help: 'Upload an audio file or paste a URL. Choose to extend from the beginning (left) or end (right). Optionally add style tags and lyrics to guide the new section. 4 credits per generation.',
   },
   inpaint: {
-    icon: Replace, label: '444 Inpaint', desc: 'Replace a section (6-60s) within an existing track',
-    cost: 11,
-    fields: ['taskId', 'audioId', 'infillStartS', 'infillEndS', 'prompt', 'tags', 'title'],
-    help: 'Replace a specific time range (6-60 seconds) in a generated track. You need the Task ID and Audio ID from the original generation. Set start/end times and describe what the replacement should sound like.',
+    icon: Replace, label: '444 Inpaint', desc: 'Replace a section within an existing track',
+    cost: 4,
+    fields: ['uploadUrl', 'infillStartS', 'infillEndS', 'tags', 'title'],
+    help: 'Upload an audio file and set start/end times (in seconds) for the section to replace. Add style tags to guide the replacement. Leave lyrics empty for instrumental. 4 credits per generation.',
   },
   cover: {
     icon: RefreshCw, label: '444 Cover', desc: 'Re-create audio in a completely new style',
@@ -41,12 +41,6 @@ const FEATURE_INFO: Record<string, { icon: any; label: string; desc: string; cos
     fields: ['uploadUrl', 'title', 'tags'],
     help: 'Upload a vocal recording, hum, or melody you\'ve sung. The AI will create full instrumental backing that matches your melody. Add style tags (e.g. "lo-fi hip-hop, chill") to guide the genre.',
   },
-  'boost-style': {
-    icon: Crown, label: '444 Boost Style', desc: 'AI-enhance your style tags for better results',
-    cost: 0,
-    fields: ['content'],
-    help: 'Paste a short style description (e.g. "upbeat dance music") and the AI will expand it into rich, detailed tags for better generation quality. Free to use — try it before generating!',
-  },
 }
 
 export default function ProFeaturesModal({ isOpen, onClose, initialFeature, userCredits }: ProFeaturesModalProps) {
@@ -63,10 +57,9 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
   const [prompt, setPrompt] = useState('')
   const [style, setStyle] = useState('')
   const [tags, setTags] = useState('')
-  const [continueAt, setContinueAt] = useState('')
+  const [side, setSide] = useState<'left' | 'right'>('right')
   const [infillStartS, setInfillStartS] = useState('')
   const [infillEndS, setInfillEndS] = useState('')
-  const [content, setContent] = useState('')
 
   // File upload state
   const [uploadFile, setUploadFile] = useState<File | null>(null)
@@ -79,8 +72,8 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
 
   const resetForm = () => {
     setAudioId(''); setTaskId(''); setUploadUrl(''); setTitle('');
-    setPrompt(''); setStyle(''); setTags(''); setContinueAt('');
-    setInfillStartS(''); setInfillEndS(''); setContent('');
+    setPrompt(''); setStyle(''); setTags(''); setSide('right');
+    setInfillStartS(''); setInfillEndS('');
     setResult(null); setError(null); setUploadFile(null)
   }
 
@@ -118,17 +111,15 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
 
       switch (activeFeature) {
         case 'extend':
-          if (!audioId) throw new Error('Audio ID is required')
-          if (!continueAt || parseFloat(continueAt) <= 0) throw new Error('Continue at time (seconds) is required')
+          if (!uploadUrl) throw new Error('Audio file or URL is required')
           endpoint = '/api/generate/suno/extend'
-          body = { audioId, continueAt: parseFloat(continueAt), title: title || 'Extended Track', prompt, style }
+          body = { audio_url: uploadUrl, side, title: title || 'Extended Track', prompt, tags }
           break
         case 'inpaint':
-          if (!taskId || !audioId) throw new Error('Task ID and Audio ID are required')
+          if (!uploadUrl) throw new Error('Audio file or URL is required')
           if (!infillStartS || !infillEndS) throw new Error('Start and end times are required')
-          if (!prompt) throw new Error('Prompt is required')
           endpoint = '/api/generate/suno/inpaint'
-          body = { taskId, audioId, infillStartS: parseFloat(infillStartS), infillEndS: parseFloat(infillEndS), prompt, tags, title: title || 'Inpainted Track' }
+          body = { audio_url: uploadUrl, start: parseFloat(infillStartS), end: parseFloat(infillEndS), tags, title: title || 'Inpainted Track' }
           break
         case 'cover':
           if (!uploadUrl) throw new Error('Audio URL is required')
@@ -148,11 +139,6 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
           endpoint = '/api/generate/suno/voice-to-melody'
           body = { uploadUrl, title: title || 'Voice to Melody', tags }
           break
-        case 'boost-style':
-          if (!content || content.trim().length < 3) throw new Error('Style description is required (min 3 chars)')
-          endpoint = '/api/generate/suno/boost-style'
-          body = { content }
-          break
       }
 
       const res = await fetch(endpoint, {
@@ -161,19 +147,7 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
         body: JSON.stringify(body),
       })
 
-      // For boost-style, it returns JSON directly
-      if (activeFeature === 'boost-style') {
-        const data = await res.json()
-        if (data.success) {
-          setResult(data)
-        } else {
-          setError(data.error || 'Failed')
-        }
-        setIsLoading(false)
-        return
-      }
-
-      // NDJSON streaming for all other features
+      // NDJSON streaming for all features
       if (!res.ok && res.headers.get('content-type')?.includes('application/json')) {
         const errData = await res.json()
         throw new Error(errData.error || `Error (${res.status})`)
@@ -316,42 +290,19 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
             </div>
           )}
 
-          {info.fields.includes('audioId') && (
+          {info.fields.includes('side') && (
             <div>
               <label className={labelClass}>
-                Audio ID
+                Extend Direction
                 <span className="relative group/tip inline-block ml-1 align-middle">
                   <HelpCircle size={10} className="text-white/20 hover:text-red-400 cursor-help" />
-                  <span className="hidden group-hover/tip:block absolute left-0 top-4 z-50 w-52 p-2 rounded-lg bg-black/95 border border-white/10 text-[10px] text-white/60 font-normal normal-case tracking-normal shadow-xl">The unique ID of the generated track. You can find this in your library or in the generation result.</span>
+                  <span className="hidden group-hover/tip:block absolute left-0 top-4 z-50 w-52 p-2 rounded-lg bg-black/95 border border-white/10 text-[10px] text-white/60 font-normal normal-case tracking-normal shadow-xl">Choose &quot;right&quot; to extend from the end, or &quot;left&quot; to add a new intro before the track.</span>
                 </span>
               </label>
-              <input type="text" value={audioId} onChange={(e) => setAudioId(e.target.value)} placeholder="e.g. a1b2c3d4-5678-..." className={inputClass} />
-            </div>
-          )}
-
-          {info.fields.includes('taskId') && (
-            <div>
-              <label className={labelClass}>
-                Task ID
-                <span className="relative group/tip inline-block ml-1 align-middle">
-                  <HelpCircle size={10} className="text-white/20 hover:text-red-400 cursor-help" />
-                  <span className="hidden group-hover/tip:block absolute left-0 top-4 z-50 w-52 p-2 rounded-lg bg-black/95 border border-white/10 text-[10px] text-white/60 font-normal normal-case tracking-normal shadow-xl">The Task ID from the original generation. Required to identify which track to modify.</span>
-                </span>
-              </label>
-              <input type="text" value={taskId} onChange={(e) => setTaskId(e.target.value)} placeholder="e.g. task_abc123..." className={inputClass} />
-            </div>
-          )}
-
-          {info.fields.includes('continueAt') && (
-            <div>
-              <label className={labelClass}>
-                Continue At (seconds)
-                <span className="relative group/tip inline-block ml-1 align-middle">
-                  <HelpCircle size={10} className="text-white/20 hover:text-red-400 cursor-help" />
-                  <span className="hidden group-hover/tip:block absolute left-0 top-4 z-50 w-52 p-2 rounded-lg bg-black/95 border border-white/10 text-[10px] text-white/60 font-normal normal-case tracking-normal shadow-xl">Timestamp in seconds where the extension begins. The AI will continue from this point.</span>
-                </span>
-              </label>
-              <input type="number" value={continueAt} onChange={(e) => setContinueAt(e.target.value)} placeholder="e.g. 30" min="1" step="0.1" className={inputClass} />
+              <select value={side} onChange={(e) => setSide(e.target.value as 'left' | 'right')} className={inputClass}>
+                <option value="right">Right (extend from end)</option>
+                <option value="left">Left (add intro)</option>
+              </select>
             </div>
           )}
 
@@ -408,13 +359,6 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
             </div>
           )}
 
-          {info.fields.includes('content') && (
-            <div>
-              <label className={labelClass}>Style Description</label>
-              <textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Describe the style you want to enhance, e.g. 'upbeat electronic dance music'" rows={3} className={`${inputClass} resize-none`} />
-            </div>
-          )}
-
           {/* Error */}
           {error && (
             <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3">
@@ -430,12 +374,6 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
                   <p className="text-xs font-bold text-green-300">Generation complete!</p>
                   <audio controls src={result.audioUrl} className="w-full h-10 rounded-lg" />
                   <p className="text-[10px] text-white/30">{result.title}</p>
-                </div>
-              )}
-              {(result.enhancedStyle || result.enhanced) && (
-                <div className="space-y-2">
-                  <p className="text-xs font-bold text-green-300">Enhanced style:</p>
-                  <p className="text-sm text-white/80 bg-white/[0.05] rounded-lg p-3">{result.enhancedStyle || result.enhanced}</p>
                 </div>
               )}
               {result.creditsDeducted !== undefined && (
@@ -460,7 +398,7 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
             ) : (
               <>
                 <Zap size={14} />
-                {info.cost > 0 ? `Generate (${info.cost} credits)` : 'Enhance'}
+                Generate ({info.cost} credits)
               </>
             )}
           </button>

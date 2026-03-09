@@ -60,7 +60,7 @@ export async function POST(request: Request) {
     const token = process.env.REPLICATE_API_KEY_LATEST2
     if (!token) {
       console.error('❌ REPLICATE_API_KEY_LATEST2 is not set in environment variables')
-      return corsResponse(NextResponse.json({ success: false, error: 'Missing REPLICATE_API_KEY_LATEST2' }, { status: 500 }))
+      return corsResponse(NextResponse.json({ success: false, error: 'Server configuration error' }, { status: 500 }))
     }
     
     console.log('✅ Replicate API token found, length:', token.length)
@@ -392,7 +392,7 @@ export async function POST(request: Request) {
     const status = error?.response?.status
     
     if (status === 402) {
-      userMessage = 'Unable to process: Replicate billing issue. Please contact support.'
+      userMessage = 'Unable to process: billing issue. Please contact support.'
     } else if (status === 503 || status === 504) {
       userMessage = 'The AI service is temporarily unavailable due to high demand. Please try again in a few minutes.'
     } else if (status === 429) {

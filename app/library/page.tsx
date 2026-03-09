@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { supabase } from '@/lib/supabase'
-import { Music, Music2, Image as ImageIcon, Trash2, Download, Play, Pause, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon, Heart, Scissors, ChevronDown, ChevronUp, Volume2, ShoppingBag, Layers, Repeat, Radio, Info, Mic, Mic2 } from 'lucide-react'
+import { Music, Music2, Image as ImageIcon, Trash2, Download, Play, Pause, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon, Heart, Scissors, ChevronDown, ChevronUp, Volume2, ShoppingBag, Layers, Repeat, Radio, Info, Mic, Mic2, Crown, Wand2, Replace, MicVocal, Headphones } from 'lucide-react'
 import FloatingMenu from '../components/FloatingMenu'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 import { LibraryTabSkeleton } from '../components/LoadingSkeleton'
@@ -61,7 +61,7 @@ export default function LibraryPage() {
   const router = useRouter()
   const { user } = useUser()
   const { playTrack, currentTrack, isPlaying, togglePlayPause, setPlaylist } = useAudioPlayer()
-  const [activeTab, setActiveTab] = useState<'images' | 'music' | 'videos' | 'releases' | 'liked' | 'stems' | 'mixmaster' | 'bought' | 'extract' | 'loops' | 'effects' | 'autotune' | 'chords' | 'remix' | 'voiceover' | 'beatmaker'>('music')
+  const [activeTab, setActiveTab] = useState<'images' | 'music' | 'videos' | 'releases' | 'liked' | 'stems' | 'mixmaster' | 'bought' | 'extract' | 'loops' | 'effects' | 'autotune' | 'chords' | 'remix' | 'voiceover' | 'beatmaker' | 'extend' | 'inpaint' | 'cover' | 'add-vocals' | 'voice-to-melody'>('music')
   const [musicItems, setMusicItems] = useState<LibraryMusic[]>([])
   const [imageItems, setImageItems] = useState<LibraryImage[]>([])
   const [videoItems, setVideoItems] = useState<LibraryMusic[]>([]) // Reuse music interface for videos
@@ -78,6 +78,11 @@ export default function LibraryPage() {
   const [remixItems, setRemixItems] = useState<any[]>([])
   const [beatmakerItems, setBeatmakerItems] = useState<any[]>([])
   const [voiceoverItems, setVoiceoverItems] = useState<LibraryMusic[]>([])
+  const [extendItems, setExtendItems] = useState<any[]>([])
+  const [inpaintItems, setInpaintItems] = useState<any[]>([])
+  const [coverItems, setCoverItems] = useState<any[]>([])
+  const [addVocalsItems, setAddVocalsItems] = useState<any[]>([])
+  const [voiceToMelodyItems, setVoiceToMelodyItems] = useState<any[]>([])
   const [expandedExtracts, setExpandedExtracts] = useState<Set<number>>(new Set())
   const [expandedStems, setExpandedStems] = useState<Set<number>>(new Set())
   const [isLoading, setIsLoading] = useState(true)
@@ -116,7 +121,7 @@ export default function LibraryPage() {
     }
     try {
       // Fetch all user's content from DB, R2, and releases
-      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, videosRes, r2VideosRes, releasesRes, likedRes, stemsRes, mixmasterRes, boughtRes, extractRes, loopsRes, effectsRes, autotuneRes, chordsRes, remixRes, beatmakerRes, voiceoverRes] = await Promise.all([
+      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, videosRes, r2VideosRes, releasesRes, likedRes, stemsRes, mixmasterRes, boughtRes, extractRes, loopsRes, effectsRes, autotuneRes, chordsRes, remixRes, beatmakerRes, voiceoverRes, extendRes, inpaintRes, coverRes, addVocalsRes, voiceToMelodyRes] = await Promise.all([
         fetch('/api/library/music'),
         fetch('/api/r2/list-audio'),
         fetch('/api/library/images'),
@@ -136,6 +141,11 @@ export default function LibraryPage() {
         fetch('/api/library/remix'),
         fetch('/api/library/beatmaker'),
         fetch('/api/library/voiceover'),
+        fetch('/api/library/extend'),
+        fetch('/api/library/inpaint'),
+        fetch('/api/library/cover'),
+        fetch('/api/library/add-vocals'),
+        fetch('/api/library/voice-to-melody'),
       ])
 
       const musicData = await musicRes.json()
@@ -157,6 +167,11 @@ export default function LibraryPage() {
       const remixData = await remixRes.json()
       const beatmakerData = await beatmakerRes.json()
       const voiceoverData = await voiceoverRes.json()
+      const extendData = await extendRes.json()
+      const inpaintData = await inpaintRes.json()
+      const coverData = await coverRes.json()
+      const addVocalsData = await addVocalsRes.json()
+      const voiceToMelodyData = await voiceToMelodyRes.json()
 
       // Use ONLY database music - it has correct titles from generation
       if (musicData.success && Array.isArray(musicData.music)) {
@@ -182,7 +197,7 @@ export default function LibraryPage() {
           (boughtData.success && Array.isArray(boughtData.bought) ? boughtData.bought : []).map((t: any) => t.audio_url).filter(Boolean)
         )
         const nonStemMusic = uniqueMusic.filter((track: any) =>
-          track.genre !== 'stem' && track.genre !== 'boosted' && track.genre !== 'extract' && track.genre !== 'loop' && track.genre !== 'effects' && track.genre !== 'processed' && track.genre !== 'chords' && track.genre !== 'voice-over' && track.genre !== 'beatmaker' &&
+          track.genre !== 'stem' && track.genre !== 'boosted' && track.genre !== 'extract' && track.genre !== 'loop' && track.genre !== 'effects' && track.genre !== 'processed' && track.genre !== 'chords' && track.genre !== 'voice-over' && track.genre !== 'beatmaker' && track.genre !== '444-extend' && track.genre !== '444-inpaint' && track.genre !== '444-cover' && track.genre !== '444-add-vocals' && track.genre !== '444-voice-to-melody' &&
           !(track.prompt && typeof track.prompt === 'string' && track.prompt.toLowerCase().includes('purchased from earn')) &&
           !boughtAudioUrls.has(track.audio_url)
         )
@@ -275,7 +290,21 @@ export default function LibraryPage() {
       }
       if (beatmakerData.success && Array.isArray(beatmakerData.beats)) {
         setBeatmakerItems(beatmakerData.beats)
-        console.log('ðŸ¥ Loaded', beatmakerData.beats.length, 'beat maker items')
+      }
+      if (extendData.success && Array.isArray(extendData.tracks)) {
+        setExtendItems(extendData.tracks)
+      }
+      if (inpaintData.success && Array.isArray(inpaintData.tracks)) {
+        setInpaintItems(inpaintData.tracks)
+      }
+      if (coverData.success && Array.isArray(coverData.tracks)) {
+        setCoverItems(coverData.tracks)
+      }
+      if (addVocalsData.success && Array.isArray(addVocalsData.tracks)) {
+        setAddVocalsItems(addVocalsData.tracks)
+      }
+      if (voiceToMelodyData.success && Array.isArray(voiceToMelodyData.tracks)) {
+        setVoiceToMelodyItems(voiceToMelodyData.tracks)
       }
     } catch (error) {
       console.error('Error fetching library:', error)
@@ -556,6 +585,11 @@ export default function LibraryPage() {
     { key: 'remix', label: 'Remix', icon: Music2, count: remixItems.length, gradient: 'from-cyan-500 to-blue-400' },
     { key: 'voiceover', label: 'Voice Labs', icon: Mic2, count: voiceoverItems.length, gradient: 'from-amber-500 to-orange-400' },
     { key: 'beatmaker', label: 'Beat Maker', icon: Music, count: beatmakerItems.length, gradient: 'from-teal-500 to-cyan-400' },
+    { key: 'extend', label: 'Extend', icon: Wand2, count: extendItems.length, gradient: 'from-violet-500 to-fuchsia-400' },
+    { key: 'inpaint', label: 'Inpaint', icon: Replace, count: inpaintItems.length, gradient: 'from-rose-500 to-pink-400' },
+    { key: 'cover', label: 'Cover', icon: RefreshCw, count: coverItems.length, gradient: 'from-blue-500 to-indigo-400' },
+    { key: 'add-vocals', label: 'Add Vocals', icon: MicVocal, count: addVocalsItems.length, gradient: 'from-pink-500 to-rose-400' },
+    { key: 'voice-to-melody', label: 'Melody→Song', icon: Headphones, count: voiceToMelodyItems.length, gradient: 'from-orange-500 to-amber-400' },
   ]
 
   return (
@@ -1516,6 +1550,226 @@ export default function LibraryPage() {
                         </div>
                         <span className="text-[10px] text-white/15 hidden sm:block">{new Date(item.created_at).toLocaleDateString()}</span>
                         {audioUrl && <button onClick={() => handleDownload(audioUrl, `${item.title || 'beat'}.${item.audio_format || 'wav'}`, item.audio_format || 'wav')} className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-teal-500/10 hover:border-teal-500/20 transition-all" title={`Download ${(item.audio_format || 'WAV').toUpperCase()}`}><Download size={14} className="text-teal-400/50" /></button>}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ——— EXTEND TAB ——— */}
+          {!isLoading && activeTab === 'extend' && (
+            <div>
+              {extendItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24">
+                  <div className="relative w-24 h-24 mb-6 rounded-3xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/10 border border-violet-500/20 flex items-center justify-center">
+                    <Wand2 size={40} className="text-violet-400/60" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white/80 mb-2">No extended tracks yet</h3>
+                  <p className="text-white/30 text-sm mb-8">Extend & outpaint tracks with 444 Extend</p>
+                  <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-400 text-white font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-violet-500/20">
+                    <Wand2 size={16} /> Open 444 Extend
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {extendItems.map((item: any, idx: number) => {
+                    const audioUrl = item.audioUrl || item.audio_url
+                    const isCurrentlyPlaying = currentTrack?.id === item.id && isPlaying
+                    return (
+                      <div key={item.id} className="group flex items-center gap-4 p-3 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.05] hover:border-violet-500/15 transition-all duration-300 animate-slide-in-up" style={{ animationDelay: `${Math.min(idx * 30, 400)}ms` }}>
+                        <button onClick={async () => {
+                          if (!audioUrl) return
+                          if (isCurrentlyPlaying) { togglePlayPause() } else {
+                            const tracks = extendItems.filter((b: any) => b.audioUrl || b.audio_url).map((b: any) => ({ id: b.id, audioUrl: b.audioUrl || b.audio_url, title: b.title || 'Extended Track', artist: user?.firstName || 'You' }))
+                            await setPlaylist(tracks, tracks.findIndex(t => t.id === item.id))
+                          }
+                        }} className="w-11 h-11 flex-shrink-0 rounded-xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/10 border border-violet-500/20 flex items-center justify-center hover:scale-110 transition-transform">
+                          {isCurrentlyPlaying ? <Pause size={16} className="text-violet-400" /> : <Play size={16} className="text-violet-400 ml-0.5" />}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-white/90 font-medium text-sm truncate">{item.title || 'Extended Track'}</h3>
+                          <p className="text-violet-400/30 text-xs mt-0.5 truncate">444 Extend</p>
+                        </div>
+                        <span className="text-[10px] text-white/15 hidden sm:block">{new Date(item.created_at).toLocaleDateString()}</span>
+                        {audioUrl && <button onClick={() => handleDownload(audioUrl, `${item.title || 'extend'}.wav`, 'wav')} className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-violet-500/10 hover:border-violet-500/20 transition-all" title="Download WAV"><Download size={14} className="text-violet-400/50" /></button>}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ——— INPAINT TAB ——— */}
+          {!isLoading && activeTab === 'inpaint' && (
+            <div>
+              {inpaintItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24">
+                  <div className="relative w-24 h-24 mb-6 rounded-3xl bg-gradient-to-br from-rose-500/20 to-pink-500/10 border border-rose-500/20 flex items-center justify-center">
+                    <Replace size={40} className="text-rose-400/60" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white/80 mb-2">No inpainted tracks yet</h3>
+                  <p className="text-white/30 text-sm mb-8">Replace sections in tracks with 444 Inpaint</p>
+                  <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-rose-500 to-pink-400 text-white font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-rose-500/20">
+                    <Replace size={16} /> Open 444 Inpaint
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {inpaintItems.map((item: any, idx: number) => {
+                    const audioUrl = item.audioUrl || item.audio_url
+                    const isCurrentlyPlaying = currentTrack?.id === item.id && isPlaying
+                    return (
+                      <div key={item.id} className="group flex items-center gap-4 p-3 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.05] hover:border-rose-500/15 transition-all duration-300 animate-slide-in-up" style={{ animationDelay: `${Math.min(idx * 30, 400)}ms` }}>
+                        <button onClick={async () => {
+                          if (!audioUrl) return
+                          if (isCurrentlyPlaying) { togglePlayPause() } else {
+                            const tracks = inpaintItems.filter((b: any) => b.audioUrl || b.audio_url).map((b: any) => ({ id: b.id, audioUrl: b.audioUrl || b.audio_url, title: b.title || 'Inpainted Track', artist: user?.firstName || 'You' }))
+                            await setPlaylist(tracks, tracks.findIndex(t => t.id === item.id))
+                          }
+                        }} className="w-11 h-11 flex-shrink-0 rounded-xl bg-gradient-to-br from-rose-500/20 to-pink-500/10 border border-rose-500/20 flex items-center justify-center hover:scale-110 transition-transform">
+                          {isCurrentlyPlaying ? <Pause size={16} className="text-rose-400" /> : <Play size={16} className="text-rose-400 ml-0.5" />}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-white/90 font-medium text-sm truncate">{item.title || 'Inpainted Track'}</h3>
+                          <p className="text-rose-400/30 text-xs mt-0.5 truncate">444 Inpaint</p>
+                        </div>
+                        <span className="text-[10px] text-white/15 hidden sm:block">{new Date(item.created_at).toLocaleDateString()}</span>
+                        {audioUrl && <button onClick={() => handleDownload(audioUrl, `${item.title || 'inpaint'}.wav`, 'wav')} className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-rose-500/10 hover:border-rose-500/20 transition-all" title="Download WAV"><Download size={14} className="text-rose-400/50" /></button>}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ——— COVER TAB ——— */}
+          {!isLoading && activeTab === 'cover' && (
+            <div>
+              {coverItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24">
+                  <div className="relative w-24 h-24 mb-6 rounded-3xl bg-gradient-to-br from-blue-500/20 to-indigo-500/10 border border-blue-500/20 flex items-center justify-center">
+                    <RefreshCw size={40} className="text-blue-400/60" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white/80 mb-2">No cover tracks yet</h3>
+                  <p className="text-white/30 text-sm mb-8">Re-create tracks in new styles with 444 Cover</p>
+                  <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-400 text-white font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-blue-500/20">
+                    <RefreshCw size={16} /> Open 444 Cover
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {coverItems.map((item: any, idx: number) => {
+                    const audioUrl = item.audioUrl || item.audio_url
+                    const isCurrentlyPlaying = currentTrack?.id === item.id && isPlaying
+                    return (
+                      <div key={item.id} className="group flex items-center gap-4 p-3 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.05] hover:border-blue-500/15 transition-all duration-300 animate-slide-in-up" style={{ animationDelay: `${Math.min(idx * 30, 400)}ms` }}>
+                        <button onClick={async () => {
+                          if (!audioUrl) return
+                          if (isCurrentlyPlaying) { togglePlayPause() } else {
+                            const tracks = coverItems.filter((b: any) => b.audioUrl || b.audio_url).map((b: any) => ({ id: b.id, audioUrl: b.audioUrl || b.audio_url, title: b.title || 'Cover Track', artist: user?.firstName || 'You' }))
+                            await setPlaylist(tracks, tracks.findIndex(t => t.id === item.id))
+                          }
+                        }} className="w-11 h-11 flex-shrink-0 rounded-xl bg-gradient-to-br from-blue-500/20 to-indigo-500/10 border border-blue-500/20 flex items-center justify-center hover:scale-110 transition-transform">
+                          {isCurrentlyPlaying ? <Pause size={16} className="text-blue-400" /> : <Play size={16} className="text-blue-400 ml-0.5" />}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-white/90 font-medium text-sm truncate">{item.title || 'Cover Track'}</h3>
+                          <p className="text-blue-400/30 text-xs mt-0.5 truncate">444 Cover</p>
+                        </div>
+                        <span className="text-[10px] text-white/15 hidden sm:block">{new Date(item.created_at).toLocaleDateString()}</span>
+                        {audioUrl && <button onClick={() => handleDownload(audioUrl, `${item.title || 'cover'}.mp3`, 'mp3')} className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-blue-500/10 hover:border-blue-500/20 transition-all" title="Download MP3"><Download size={14} className="text-blue-400/50" /></button>}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ——— ADD VOCALS TAB ——— */}
+          {!isLoading && activeTab === 'add-vocals' && (
+            <div>
+              {addVocalsItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24">
+                  <div className="relative w-24 h-24 mb-6 rounded-3xl bg-gradient-to-br from-pink-500/20 to-rose-500/10 border border-pink-500/20 flex items-center justify-center">
+                    <MicVocal size={40} className="text-pink-400/60" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white/80 mb-2">No vocal tracks yet</h3>
+                  <p className="text-white/30 text-sm mb-8">Add AI vocals to instrumentals with 444 Add Vocals</p>
+                  <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-pink-500 to-rose-400 text-white font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-pink-500/20">
+                    <MicVocal size={16} /> Open 444 Add Vocals
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {addVocalsItems.map((item: any, idx: number) => {
+                    const audioUrl = item.audioUrl || item.audio_url
+                    const isCurrentlyPlaying = currentTrack?.id === item.id && isPlaying
+                    return (
+                      <div key={item.id} className="group flex items-center gap-4 p-3 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.05] hover:border-pink-500/15 transition-all duration-300 animate-slide-in-up" style={{ animationDelay: `${Math.min(idx * 30, 400)}ms` }}>
+                        <button onClick={async () => {
+                          if (!audioUrl) return
+                          if (isCurrentlyPlaying) { togglePlayPause() } else {
+                            const tracks = addVocalsItems.filter((b: any) => b.audioUrl || b.audio_url).map((b: any) => ({ id: b.id, audioUrl: b.audioUrl || b.audio_url, title: b.title || 'Vocals Added', artist: user?.firstName || 'You' }))
+                            await setPlaylist(tracks, tracks.findIndex(t => t.id === item.id))
+                          }
+                        }} className="w-11 h-11 flex-shrink-0 rounded-xl bg-gradient-to-br from-pink-500/20 to-rose-500/10 border border-pink-500/20 flex items-center justify-center hover:scale-110 transition-transform">
+                          {isCurrentlyPlaying ? <Pause size={16} className="text-pink-400" /> : <Play size={16} className="text-pink-400 ml-0.5" />}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-white/90 font-medium text-sm truncate">{item.title || 'Vocals Added'}</h3>
+                          <p className="text-pink-400/30 text-xs mt-0.5 truncate">444 Add Vocals</p>
+                        </div>
+                        <span className="text-[10px] text-white/15 hidden sm:block">{new Date(item.created_at).toLocaleDateString()}</span>
+                        {audioUrl && <button onClick={() => handleDownload(audioUrl, `${item.title || 'add-vocals'}.mp3`, 'mp3')} className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-pink-500/10 hover:border-pink-500/20 transition-all" title="Download MP3"><Download size={14} className="text-pink-400/50" /></button>}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ——— VOICE TO MELODY TAB ——— */}
+          {!isLoading && activeTab === 'voice-to-melody' && (
+            <div>
+              {voiceToMelodyItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24">
+                  <div className="relative w-24 h-24 mb-6 rounded-3xl bg-gradient-to-br from-orange-500/20 to-amber-500/10 border border-orange-500/20 flex items-center justify-center">
+                    <Headphones size={40} className="text-orange-400/60" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white/80 mb-2">No melody tracks yet</h3>
+                  <p className="text-white/30 text-sm mb-8">Turn vocals into full songs with 444 Voice to Melody</p>
+                  <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-400 text-white font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-orange-500/20">
+                    <Headphones size={16} /> Open Voice to Melody
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {voiceToMelodyItems.map((item: any, idx: number) => {
+                    const audioUrl = item.audioUrl || item.audio_url
+                    const isCurrentlyPlaying = currentTrack?.id === item.id && isPlaying
+                    return (
+                      <div key={item.id} className="group flex items-center gap-4 p-3 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.05] hover:border-orange-500/15 transition-all duration-300 animate-slide-in-up" style={{ animationDelay: `${Math.min(idx * 30, 400)}ms` }}>
+                        <button onClick={async () => {
+                          if (!audioUrl) return
+                          if (isCurrentlyPlaying) { togglePlayPause() } else {
+                            const tracks = voiceToMelodyItems.filter((b: any) => b.audioUrl || b.audio_url).map((b: any) => ({ id: b.id, audioUrl: b.audioUrl || b.audio_url, title: b.title || 'Melody Track', artist: user?.firstName || 'You' }))
+                            await setPlaylist(tracks, tracks.findIndex(t => t.id === item.id))
+                          }
+                        }} className="w-11 h-11 flex-shrink-0 rounded-xl bg-gradient-to-br from-orange-500/20 to-amber-500/10 border border-orange-500/20 flex items-center justify-center hover:scale-110 transition-transform">
+                          {isCurrentlyPlaying ? <Pause size={16} className="text-orange-400" /> : <Play size={16} className="text-orange-400 ml-0.5" />}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-white/90 font-medium text-sm truncate">{item.title || 'Melody Track'}</h3>
+                          <p className="text-orange-400/30 text-xs mt-0.5 truncate">444 Voice to Melody</p>
+                        </div>
+                        <span className="text-[10px] text-white/15 hidden sm:block">{new Date(item.created_at).toLocaleDateString()}</span>
+                        {audioUrl && <button onClick={() => handleDownload(audioUrl, `${item.title || 'melody'}.mp3`, 'mp3')} className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-orange-500/10 hover:border-orange-500/20 transition-all" title="Download MP3"><Download size={14} className="text-orange-400/50" /></button>}
                       </div>
                     )
                   })}

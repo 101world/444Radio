@@ -15,7 +15,7 @@ export async function GET() {
   try {
     const token = process.env.REPLICATE_API_KEY_LATEST2
     if (!token) {
-      return corsResponse(NextResponse.json({ success: false, error: 'Missing REPLICATE_API_KEY_LATEST2' }, { status: 500 }))
+      return corsResponse(NextResponse.json({ success: false, error: 'Server configuration error' }, { status: 500 }))
     }
 
     // Ping Replicate model endpoint for MiniMax Music 1.5
@@ -59,6 +59,6 @@ export async function GET() {
     }))
   } catch (error) {
     console.error('MiniMax debug error:', error)
-    return corsResponse(NextResponse.json({ success: false, error: 'Failed to reach Replicate MiniMax' }, { status: 500 }))
+    return corsResponse(NextResponse.json({ success: false, error: 'Failed to reach 444 audio engine' }, { status: 500 }))
   }
 }

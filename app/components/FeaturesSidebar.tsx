@@ -37,7 +37,6 @@ interface FeaturesSidebarProps {
   onShowProCover: () => void
   onShowProAddVocals: () => void
   onShowProVoiceToMelody: () => void
-  onShowProBoostStyle: () => void
   onClearChat: () => void
   onToggleInstrumental: () => void
   onToggleRecording: () => void
@@ -101,7 +100,6 @@ export default function FeaturesSidebar({
   onShowProCover,
   onShowProAddVocals,
   onShowProVoiceToMelody,
-  onShowProBoostStyle,
   onClearChat,
   onToggleInstrumental,
   onToggleRecording,
@@ -320,18 +318,18 @@ export default function FeaturesSidebar({
         gradient: proGradient('from-violet-500/35 via-purple-500/25 to-fuchsia-500/30'),
         glowColor: proGlow('shadow-violet-400/30'),
         activeGradient: proActiveGrad('from-violet-500/50 via-purple-500/40 to-fuchsia-500/45 ring-violet-400/70'),
-        active: false, cost: 22,
+        active: false, cost: 4,
         onClick: onShowProExtend,
-        helpText: 'Requires an Audio ID from a previous generation. Extends the track from the specified timestamp.',
+        helpText: 'Upload audio or paste a URL. Choose to extend from the end (right) or add a new intro (left). 4 credits.',
       },
       {
-        icon: Replace, label: 'Inpaint', desc: 'Replace a 6-60s section',
+        icon: Replace, label: 'Inpaint', desc: 'Replace a section in a track',
         gradient: proGradient('from-rose-500/35 via-pink-500/25 to-fuchsia-500/30'),
         glowColor: proGlow('shadow-rose-400/30'),
         activeGradient: proActiveGrad('from-rose-500/50 via-pink-500/40 to-fuchsia-500/45 ring-rose-400/70'),
-        active: false, cost: 11,
+        active: false, cost: 4,
         onClick: onShowProInpaint,
-        helpText: 'Needs a Task ID + Audio ID. Replaces a time range (6-60s) with new AI-generated audio matching your prompt.',
+        helpText: 'Upload audio and set start/end times for the section to replace. Add style tags. 4 credits.',
       },
       {
         icon: RefreshCw, label: 'Cover', desc: 'Re-create in a new style',
@@ -359,15 +357,6 @@ export default function FeaturesSidebar({
         active: false, cost: 22,
         onClick: onShowProVoiceToMelody,
         helpText: 'Upload a vocal recording or hum. The AI creates full instrumental backing to match your melody.',
-      },
-      {
-        icon: Crown, label: 'Boost Style', desc: 'AI-enhanced style tags',
-        gradient: proGradient('from-amber-400/35 via-orange-400/25 to-yellow-400/30'),
-        glowColor: proGlow('shadow-amber-400/30'),
-        activeGradient: proActiveGrad('from-amber-400/50 via-orange-400/40 to-yellow-400/45 ring-amber-400/70'),
-        active: false, cost: 0,
-        onClick: onShowProBoostStyle,
-        helpText: 'Paste your style description and the AI will expand it into richer, more detailed tags for better results. Free to use.',
       },
     ],
   }

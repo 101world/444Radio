@@ -234,7 +234,7 @@ export async function POST(req: NextRequest) {
             console.error('[lipsync] Error field:', JSON.stringify(finalPrediction.error, null, 2))
             console.error('[lipsync] Full prediction:', JSON.stringify(finalPrediction, null, 2))
             const errDetail = String(finalPrediction.error || 'Lip-sync generation failed')
-            throw new Error(`Replicate prediction ${finalPrediction.status}: ${errDetail}`)
+            throw new Error(`Generation ${finalPrediction.status}: ${errDetail}`)
           }
 
           // ────── Get output URL ──────
