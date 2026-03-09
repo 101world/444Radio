@@ -1,6 +1,6 @@
 'use client'
 
-import { Music, Sparkles, Repeat, Image as ImageIcon, Edit3, Rocket, Upload, X, Mic, Zap, Film, Scissors, Lightbulb, ChevronLeft, Volume2, Layers, AudioLines, RefreshCw, AudioWaveform } from 'lucide-react'
+import { Music, Sparkles, Repeat, Image as ImageIcon, Edit3, Rocket, Upload, X, Mic, Zap, Film, Scissors, Lightbulb, ChevronLeft, Volume2, Layers, AudioLines, RefreshCw, AudioWaveform, Wand2, Replace, Headphones, MicVocal, Crown } from 'lucide-react'
 import { useState } from 'react'
 
 interface FeaturesSidebarProps {
@@ -32,6 +32,12 @@ interface FeaturesSidebarProps {
   onShowRemix: () => void
   onShowBeatMaker: () => void
   onOpenRelease: () => void
+  onShowProExtend: () => void
+  onShowProInpaint: () => void
+  onShowProCover: () => void
+  onShowProAddVocals: () => void
+  onShowProVoiceToMelody: () => void
+  onShowProBoostStyle: () => void
   onClearChat: () => void
   onToggleInstrumental: () => void
   onToggleRecording: () => void
@@ -89,6 +95,12 @@ export default function FeaturesSidebar({
   onShowRemix,
   onShowBeatMaker,
   onOpenRelease,
+  onShowProExtend,
+  onShowProInpaint,
+  onShowProCover,
+  onShowProAddVocals,
+  onShowProVoiceToMelody,
+  onShowProBoostStyle,
   onClearChat,
   onToggleInstrumental,
   onToggleRecording,
@@ -104,7 +116,7 @@ export default function FeaturesSidebar({
   const [showIdeas, setShowIdeas] = useState(false)
   const [ideasView, setIdeasView] = useState<'tags' | 'type' | 'genre' | 'generating'>('tags')
   const [promptType, setPromptType] = useState<'song' | 'beat'>('song')
-  const [activeSection, setActiveSection] = useState<'create' | 'fx' | 'process' | 'publish'>('create')
+  const [activeSection, setActiveSection] = useState<'create' | 'pro' | 'fx' | 'process' | 'publish'>('create')
 
   if (!isOpen) return null
 
@@ -297,12 +309,71 @@ export default function FeaturesSidebar({
     },
   }
 
-  const sectionKeys = ['create', 'fx', 'process', 'publish'] as const
+  // ═══ PRO section — only visible when Pro mode is active ═══
+  if (isProMode) {
+    sections.pro = {
+      label: '444 Pro',
+      emoji: '👑',
+      tiles: [
+        {
+          icon: Wand2, label: 'Extend', desc: 'Outpaint / extend a track',
+          gradient: 'from-red-500/35 via-orange-500/25 to-amber-500/30',
+          glowColor: 'shadow-red-400/30',
+          activeGradient: 'from-red-500/50 via-orange-500/40 to-amber-500/45 ring-red-400/70',
+          active: false, cost: 22,
+          onClick: onShowProExtend,
+        },
+        {
+          icon: Replace, label: 'Inpaint', desc: 'Replace a section',
+          gradient: 'from-red-600/35 via-rose-500/25 to-pink-500/30',
+          glowColor: 'shadow-rose-400/30',
+          activeGradient: 'from-red-600/50 via-rose-500/40 to-pink-500/45 ring-rose-400/70',
+          active: false, cost: 11,
+          onClick: onShowProInpaint,
+        },
+        {
+          icon: RefreshCw, label: 'Cover', desc: 'Reimagine in new style',
+          gradient: 'from-red-500/35 via-red-600/25 to-red-700/30',
+          glowColor: 'shadow-red-500/30',
+          activeGradient: 'from-red-500/50 via-red-600/40 to-red-700/45 ring-red-500/70',
+          active: false, cost: 22,
+          onClick: onShowProCover,
+        },
+        {
+          icon: MicVocal, label: 'Add Vocals', desc: 'AI vocals on instrumental',
+          gradient: 'from-red-400/35 via-pink-500/25 to-rose-500/30',
+          glowColor: 'shadow-pink-400/30',
+          activeGradient: 'from-red-400/50 via-pink-500/40 to-rose-500/45 ring-pink-400/70',
+          active: false, cost: 22,
+          onClick: onShowProAddVocals,
+        },
+        {
+          icon: Headphones, label: 'Melody→Song', desc: 'Hum/sing to full track',
+          gradient: 'from-orange-500/35 via-red-500/25 to-rose-600/30',
+          glowColor: 'shadow-orange-400/30',
+          activeGradient: 'from-orange-500/50 via-red-500/40 to-rose-600/45 ring-orange-400/70',
+          active: false, cost: 22,
+          onClick: onShowProVoiceToMelody,
+        },
+        {
+          icon: Crown, label: 'Boost Style', desc: 'AI-enhanced style tags',
+          gradient: 'from-amber-400/35 via-orange-400/25 to-red-400/30',
+          glowColor: 'shadow-amber-400/30',
+          activeGradient: 'from-amber-400/50 via-orange-400/40 to-red-400/45 ring-amber-400/70',
+          active: false, cost: 0,
+          onClick: onShowProBoostStyle,
+        },
+      ],
+    }
+  }
+
+  const sectionKeys: ('create' | 'pro' | 'fx' | 'process' | 'publish')[] = isProMode ? ['create', 'pro', 'fx', 'process', 'publish'] : ['create', 'fx', 'process', 'publish']
   const currentSection = sections[activeSection]
   const visibleTiles = currentSection.tiles.filter(t => !t.hidden)
 
   const tabIcons: Record<string, { icon: any; label: string }> = {
     create: { icon: Music, label: 'Create' },
+    ...(isProMode ? { pro: { icon: Crown, label: 'Pro' } } : {}),
     fx: { icon: Sparkles, label: 'FX' },
     process: { icon: Scissors, label: 'Process' },
     publish: { icon: Rocket, label: 'Publish' },

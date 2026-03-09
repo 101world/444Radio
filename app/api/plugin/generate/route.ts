@@ -23,6 +23,8 @@ import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-trans
 import { findBestMatchingLyrics } from '@/lib/lyrics-matcher'
 import { sanitizeError, sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 import { randomUUID } from 'crypto'
+import { extendMusic, replaceSection, uploadAndCover, addVocals, addInstrumental, boostStyle, pollTaskUntilDone, sanitizeSunoError, SunoApiError } from '@/lib/suno-api'
+import type { SunoExtendParams, SunoReplaceSectionParams, SunoUploadCoverParams, SunoAddVocalsParams, SunoAddInstrumentalParams } from '@/lib/suno-api'
 
 export const maxDuration = 300 // Vercel Pro 5-min limit
 
@@ -67,6 +69,12 @@ const CREDIT_COSTS: Record<string, number | ((params: Record<string, unknown>) =
   'voice-train': 120,
   'music-01': 3,
   beatmaker: (p) => Math.max(2, Math.ceil(((p.duration as number) || 30) / 60 * 2)),
+  'pro-extend': 22,
+  'pro-inpaint': 11,
+  'pro-cover': 22,
+  'pro-add-vocals': 22,
+  'pro-voice-to-melody': 22,
+  'pro-boost-style': 0,
 }
 
 function getCreditCost(type: string, params: Record<string, unknown>): number {
@@ -217,6 +225,24 @@ export async function POST(req: NextRequest) {
           break
         case 'beatmaker':
           result = await generateBeatmaker(userId, body, jobId)
+          break
+        case 'pro-extend':
+          result = await generateProExtend(userId, body, jobId)
+          break
+        case 'pro-inpaint':
+          result = await generateProInpaint(userId, body, jobId)
+          break
+        case 'pro-cover':
+          result = await generateProCover(userId, body, jobId)
+          break
+        case 'pro-add-vocals':
+          result = await generateProAddVocals(userId, body, jobId)
+          break
+        case 'pro-voice-to-melody':
+          result = await generateProVoiceToMelody(userId, body, jobId)
+          break
+        case 'pro-boost-style':
+          result = await generateProBoostStyle(userId, body, jobId)
           break
         default:
           result = { success: false, error: 'Unknown type' }
@@ -1591,4 +1617,281 @@ async function generateBeatmaker(userId: string, body: Record<string, unknown>, 
   await updatePluginJob(jobId, { status: 'completed', output: { audioUrl, title, duration } })
 
   return { success: true, audioUrl, title, duration }
+}
+
+// ──────────────────────────────────────────────────────────────────
+// PRO: EXTEND  (Suno outpaint — 22 credits)
+// ──────────────────────────────────────────────────────────────────
+async function generateProExtend(userId: string, body: Record<string, unknown>, jobId: string) {
+  const audioId = (body.audioId as string || '').trim()
+  if (!audioId) return { success: false, error: 'Audio ID is required' }
+
+  await updatePluginJob(jobId, { status: 'processing' })
+
+  try {
+    const params: SunoExtendParams = {
+      audioId,
+      defaultParamFlag: !body.prompt,
+      model: (body.model as any) || 'V4_5ALL',
+      prompt: (body.prompt as string) || undefined,
+      style: (body.style as string) || undefined,
+      title: (body.title as string) || undefined,
+      continueAt: body.continueAt ? Number(body.continueAt) : undefined,
+      vocalGender: (body.vocalGender as 'm' | 'f') || undefined,
+    }
+
+    const task = await extendMusic(params)
+    const completed = await pollTaskUntilDone(task.data.taskId, 240_000)
+    const tracks = completed.data.response?.data || []
+    if (tracks.length === 0) return { success: false, error: 'No tracks generated' }
+
+    // Download & upload first track to R2
+    const track = tracks[0]
+    const fileName = `pro-extend-${(track.title || 'extend').substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.mp3`
+    const r2 = await downloadAndUploadToR2(track.audio_url, userId, 'music', fileName)
+    if (!r2.success) return { success: false, error: 'Failed to save audio' }
+
+    // Save to music_library
+    await fetch(`${supabaseUrl}/rest/v1/music_library`, {
+      method: 'POST',
+      headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clerk_user_id: userId, title: track.title || 'Extended Track', prompt: body.prompt || '',
+        audio_url: r2.url, audio_format: 'mp3',
+        generation_params: { type: 'pro-extend', source: 'plugin', audioId },
+        status: 'ready',
+      }),
+    })
+
+    await updatePluginJob(jobId, { status: 'completed', output: { audioUrl: r2.url, title: track.title } })
+    return { success: true, audioUrl: r2.url, title: track.title, duration: track.duration }
+  } catch (error) {
+    console.error('[plugin/pro-extend] Error:', error)
+    return { success: false, error: sanitizeSunoError(error) }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────
+// PRO: INPAINT  (Suno replace section — 11 credits)
+// ──────────────────────────────────────────────────────────────────
+async function generateProInpaint(userId: string, body: Record<string, unknown>, jobId: string) {
+  const taskId = (body.taskId as string || '').trim()
+  const audioId = (body.audioId as string || '').trim()
+  const prompt = (body.prompt as string || '').trim()
+  const tags = (body.tags as string || body.style as string || '').trim()
+  const title = (body.title as string || 'Inpainted Track').trim()
+  const infillStartS = Number(body.infillStartS || 0)
+  const infillEndS = Number(body.infillEndS || 0)
+
+  if (!taskId || !audioId) return { success: false, error: 'Task ID and Audio ID are required' }
+  if (!prompt) return { success: false, error: 'Prompt is required' }
+  if (infillEndS <= infillStartS) return { success: false, error: 'End time must be after start time' }
+
+  await updatePluginJob(jobId, { status: 'processing' })
+
+  try {
+    const params: SunoReplaceSectionParams = {
+      taskId, audioId, prompt, tags, title,
+      infillStartS: Math.round(infillStartS * 100) / 100,
+      infillEndS: Math.round(infillEndS * 100) / 100,
+    }
+
+    const task = await replaceSection(params)
+    const completed = await pollTaskUntilDone(task.data.taskId, 240_000)
+    const tracks = completed.data.response?.data || []
+    if (tracks.length === 0) return { success: false, error: 'No tracks generated' }
+
+    const track = tracks[0]
+    const fileName = `pro-inpaint-${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.mp3`
+    const r2 = await downloadAndUploadToR2(track.audio_url, userId, 'music', fileName)
+    if (!r2.success) return { success: false, error: 'Failed to save audio' }
+
+    await fetch(`${supabaseUrl}/rest/v1/music_library`, {
+      method: 'POST',
+      headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clerk_user_id: userId, title: track.title || title, prompt,
+        audio_url: r2.url, audio_format: 'mp3',
+        generation_params: { type: 'pro-inpaint', source: 'plugin', taskId, audioId },
+        status: 'ready',
+      }),
+    })
+
+    await updatePluginJob(jobId, { status: 'completed', output: { audioUrl: r2.url, title: track.title || title } })
+    return { success: true, audioUrl: r2.url, title: track.title || title, duration: track.duration }
+  } catch (error) {
+    console.error('[plugin/pro-inpaint] Error:', error)
+    return { success: false, error: sanitizeSunoError(error) }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────
+// PRO: COVER  (upload audio & re-style — 22 credits)
+// ──────────────────────────────────────────────────────────────────
+async function generateProCover(userId: string, body: Record<string, unknown>, jobId: string) {
+  const uploadUrl = (body.uploadUrl as string || '').trim()
+  if (!uploadUrl) return { success: false, error: 'Upload URL is required' }
+
+  await updatePluginJob(jobId, { status: 'processing' })
+
+  try {
+    const params: SunoUploadCoverParams = {
+      uploadUrl,
+      customMode: !!body.prompt,
+      instrumental: body.instrumental === true,
+      model: (body.model as any) || 'V4_5ALL',
+      prompt: (body.prompt as string) || undefined,
+      style: (body.style as string) || undefined,
+      title: (body.title as string) || undefined,
+      vocalGender: (body.vocalGender as 'm' | 'f') || undefined,
+    }
+
+    const task = await uploadAndCover(params)
+    const completed = await pollTaskUntilDone(task.data.taskId, 240_000)
+    const tracks = completed.data.response?.data || []
+    if (tracks.length === 0) return { success: false, error: 'No tracks generated' }
+
+    const track = tracks[0]
+    const fileName = `pro-cover-${(track.title || 'cover').substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.mp3`
+    const r2 = await downloadAndUploadToR2(track.audio_url, userId, 'music', fileName)
+    if (!r2.success) return { success: false, error: 'Failed to save audio' }
+
+    await fetch(`${supabaseUrl}/rest/v1/music_library`, {
+      method: 'POST',
+      headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clerk_user_id: userId, title: track.title || 'Cover Track', prompt: body.prompt || '',
+        audio_url: r2.url, audio_format: 'mp3',
+        generation_params: { type: 'pro-cover', source: 'plugin', uploadUrl },
+        status: 'ready',
+      }),
+    })
+
+    await updatePluginJob(jobId, { status: 'completed', output: { audioUrl: r2.url, title: track.title } })
+    return { success: true, audioUrl: r2.url, title: track.title || 'Cover Track', duration: track.duration }
+  } catch (error) {
+    console.error('[plugin/pro-cover] Error:', error)
+    return { success: false, error: sanitizeSunoError(error) }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────
+// PRO: ADD VOCALS  (add vocals to instrumental — 22 credits)
+// ──────────────────────────────────────────────────────────────────
+async function generateProAddVocals(userId: string, body: Record<string, unknown>, jobId: string) {
+  const uploadUrl = (body.uploadUrl as string || '').trim()
+  const prompt = (body.prompt as string || '').trim()
+  const title = (body.title as string || 'Vocalized Track').trim()
+  const style = (body.style as string || '').trim()
+
+  if (!uploadUrl) return { success: false, error: 'Upload URL is required' }
+  if (!prompt) return { success: false, error: 'Prompt is required' }
+
+  await updatePluginJob(jobId, { status: 'processing' })
+
+  try {
+    const params: SunoAddVocalsParams = {
+      uploadUrl, prompt, title, style,
+      negativeTags: (body.negativeTags as string) || '',
+      vocalGender: (body.vocalGender as 'm' | 'f') || undefined,
+      model: (body.model as any) || 'V4_5PLUS',
+    }
+
+    const task = await addVocals(params)
+    const completed = await pollTaskUntilDone(task.data.taskId, 240_000)
+    const tracks = completed.data.response?.data || []
+    if (tracks.length === 0) return { success: false, error: 'No tracks generated' }
+
+    const track = tracks[0]
+    const fileName = `pro-vocals-${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.mp3`
+    const r2 = await downloadAndUploadToR2(track.audio_url, userId, 'music', fileName)
+    if (!r2.success) return { success: false, error: 'Failed to save audio' }
+
+    await fetch(`${supabaseUrl}/rest/v1/music_library`, {
+      method: 'POST',
+      headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clerk_user_id: userId, title: track.title || title, prompt,
+        audio_url: r2.url, audio_format: 'mp3',
+        generation_params: { type: 'pro-add-vocals', source: 'plugin', uploadUrl },
+        status: 'ready',
+      }),
+    })
+
+    await updatePluginJob(jobId, { status: 'completed', output: { audioUrl: r2.url, title: track.title || title } })
+    return { success: true, audioUrl: r2.url, title: track.title || title, duration: track.duration }
+  } catch (error) {
+    console.error('[plugin/pro-add-vocals] Error:', error)
+    return { success: false, error: sanitizeSunoError(error) }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────
+// PRO: VOICE TO MELODY  (add instrumental to vocals — 22 credits)
+// ──────────────────────────────────────────────────────────────────
+async function generateProVoiceToMelody(userId: string, body: Record<string, unknown>, jobId: string) {
+  const uploadUrl = (body.uploadUrl as string || '').trim()
+  const title = (body.title as string || 'Melody Track').trim()
+  const tags = (body.tags as string || body.style as string || '').trim()
+
+  if (!uploadUrl) return { success: false, error: 'Upload URL is required' }
+
+  await updatePluginJob(jobId, { status: 'processing' })
+
+  try {
+    const params: SunoAddInstrumentalParams = {
+      uploadUrl, title, tags,
+      negativeTags: (body.negativeTags as string) || '',
+      vocalGender: (body.vocalGender as 'm' | 'f') || undefined,
+      model: (body.model as any) || 'V4_5PLUS',
+    }
+
+    const task = await addInstrumental(params)
+    const completed = await pollTaskUntilDone(task.data.taskId, 240_000)
+    const tracks = completed.data.response?.data || []
+    if (tracks.length === 0) return { success: false, error: 'No tracks generated' }
+
+    const track = tracks[0]
+    const fileName = `pro-melody-${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.mp3`
+    const r2 = await downloadAndUploadToR2(track.audio_url, userId, 'music', fileName)
+    if (!r2.success) return { success: false, error: 'Failed to save audio' }
+
+    await fetch(`${supabaseUrl}/rest/v1/music_library`, {
+      method: 'POST',
+      headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clerk_user_id: userId, title: track.title || title, prompt: tags,
+        audio_url: r2.url, audio_format: 'mp3',
+        generation_params: { type: 'pro-voice-to-melody', source: 'plugin', uploadUrl },
+        status: 'ready',
+      }),
+    })
+
+    await updatePluginJob(jobId, { status: 'completed', output: { audioUrl: r2.url, title: track.title || title } })
+    return { success: true, audioUrl: r2.url, title: track.title || title, duration: track.duration }
+  } catch (error) {
+    console.error('[plugin/pro-voice-to-melody] Error:', error)
+    return { success: false, error: sanitizeSunoError(error) }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────
+// PRO: BOOST STYLE  (enhance style description — FREE)
+// ──────────────────────────────────────────────────────────────────
+async function generateProBoostStyle(userId: string, body: Record<string, unknown>, jobId: string) {
+  const content = (body.content as string || '').trim()
+  if (!content) return { success: false, error: 'Content/style text is required' }
+
+  await updatePluginJob(jobId, { status: 'processing' })
+
+  try {
+    const result = await boostStyle({ content })
+    const enhanced = result.data.result || result.data.param || content
+
+    await updatePluginJob(jobId, { status: 'completed', output: { enhancedStyle: enhanced } })
+    return { success: true, enhancedStyle: enhanced, original: content }
+  } catch (error) {
+    console.error('[plugin/pro-boost-style] Error:', error)
+    return { success: false, error: sanitizeSunoError(error) }
+  }
 }

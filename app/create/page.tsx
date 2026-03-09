@@ -21,6 +21,7 @@ const LipSyncModal = lazy(() => import('../components/LipSyncModal'))
 const ResoundModal = lazy(() => import('../components/ResoundModal'))
 const BeatMakerModal = lazy(() => import('../components/BeatMakerModal'))
 const FeaturesSidebar = lazy(() => import('../components/FeaturesSidebar'))
+const ProFeaturesModal = lazy(() => import('../components/ProFeaturesModal'))
 import CoverArtGenModal from '../components/CoverArtGenModal'
 const MatrixConsole = lazy(() => import('../components/MatrixConsole'))
 const OutOfCreditsModal = lazy(() => import('../components/OutOfCreditsModal'))
@@ -174,6 +175,8 @@ function CreatePageContent() {
   const [showResoundModal, setShowResoundModal] = useState(false)
   const [showBeatMakerModal, setShowBeatMakerModal] = useState(false)
   const [showCoverArtGenModal, setShowCoverArtGenModal] = useState(false)
+  const [showProFeaturesModal, setShowProFeaturesModal] = useState(false)
+  const [proFeatureType, setProFeatureType] = useState<'extend' | 'inpaint' | 'cover' | 'add-vocals' | 'voice-to-melody' | 'boost-style'>('extend')
   // Audio recording for voice reference (actual mic capture, not speech-to-text)
   const [isAudioRecording, setIsAudioRecording] = useState(false)
   const [audioRecordingTime, setAudioRecordingTime] = useState(0)
@@ -1421,13 +1424,13 @@ function CreatePageContent() {
             abortController.signal, messageId
           )
         } else {
-          // Only Hindi-family languages route to MiniMax 2.0 (fal.ai); everything else uses MiniMax 1.5
-          const hindiLangs = ['hindi', 'urdu', 'punjabi', 'tamil', 'telugu']
+          // Languages supported by 444 Pro engine (Suno) and standard Hindi engine (MiniMax 2.0)
+          const hindiLangs = ['hindi', 'urdu', 'punjabi', 'tamil', 'telugu', 'arabic', 'bengali', 'marathi', 'gujarati', 'kannada', 'malayalam']
           const isHindiFamily = hindiLangs.includes(selectedLanguage.toLowerCase())
-          // Also detect Devanagari/South Asian scripts in lyrics
-          const hasIndicScript = lyricsToUse ? /[\u0900-\u097F\u0980-\u09FF\u0A00-\u0A7F\u0A80-\u0AFF\u0B00-\u0B7F\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F]/.test(lyricsToUse) : false
+          // Also detect Devanagari/South Asian/Arabic scripts in lyrics
+          const hasIndicScript = lyricsToUse ? /[\u0900-\u0D7F\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/.test(lyricsToUse) : false
           // Also detect Hindi-family keywords in the prompt (catches romanized Hindi)
-          const hindiKeywordsInPrompt = /\b(hindi|urdu|punjabi|tamil|telugu|bengali|marathi|gujarati|kannada|malayalam|bollywood|desi|bhangra|ghazal|qawwali|filmi|sufi|carnatic|raga|raaga)\b/i.test(params.prompt)
+          const hindiKeywordsInPrompt = /\b(hindi|urdu|punjabi|tamil|telugu|bengali|marathi|gujarati|kannada|malayalam|arabic|bollywood|desi|bhangra|ghazal|qawwali|filmi|sufi|carnatic|raga|raaga)\b/i.test(params.prompt)
 
           // Log all routing conditions for debugging model selection
           console.log('[Model Routing]', {
@@ -1436,15 +1439,27 @@ function CreatePageContent() {
             hasIndicScript,
             hindiKeywordsInPrompt,
             isProMode,
-            willUse: (isHindiFamily || hasIndicScript || hindiKeywordsInPrompt) ? 'MiniMax 2.0 (Hindi)' : isProMode ? 'MiniMax 2.0 (Pro)' : 'MiniMax 1.5 (Standard)'
+            willUse: isProMode && (isHindiFamily || hasIndicScript || hindiKeywordsInPrompt)
+              ? '444 Pro Engine'
+              : (isHindiFamily || hasIndicScript || hindiKeywordsInPrompt)
+                ? 'MiniMax 2.0 (Hindi)'
+                : isProMode
+                  ? 'MiniMax 2.0 (Pro)'
+                  : 'MiniMax 1.5 (Standard)'
           })
 
-          if (isHindiFamily || hasIndicScript || hindiKeywordsInPrompt) {
+          if (isProMode && (isHindiFamily || hasIndicScript || hindiKeywordsInPrompt)) {
+            // PRO MODE + Hindi/regional language → 444 Pro Engine (premium)
+            const reason = isHindiFamily ? `language: ${selectedLanguage}` : hasIndicScript ? 'Indic/Arabic script in lyrics' : 'Hindi keyword in prompt'
+            console.log(`[Generation] 🔴 PRO MODE — Using 444 Pro Engine (${reason})`)
+            result = await generateProSunoMusic(promptWithAccent, titleToUse, lyricsToUse, genreToUse, selectedLanguage, abortController.signal, messageId)
+          } else if (isHindiFamily || hasIndicScript || hindiKeywordsInPrompt) {
+            // Standard mode + Hindi/regional → MiniMax 2.0
             const reason = isHindiFamily ? `language: ${selectedLanguage}` : hasIndicScript ? 'Indic script in lyrics' : 'Hindi keyword in prompt'
             console.log(`[Generation] Using MiniMax 2.0 via fal.ai (${reason})`)
             result = await generateHindiMusic(promptWithAccent, titleToUse, lyricsToUse, genreToUse, abortController.signal, messageId)
           } else if (isProMode) {
-            // PRO MODE: Route all MiniMax 1.5 generations through MiniMax 2.0 (fal.ai)
+            // PRO MODE + non-Hindi → MiniMax 2.0 (fal.ai)
             console.log('[Generation] 🔴 PRO MODE — Using premium engine via fal.ai')
             result = await generateHindiMusic(promptWithAccent, titleToUse, lyricsToUse, genreToUse, abortController.signal, messageId, 'pro')
           } else {
@@ -1986,6 +2001,92 @@ function CreatePageContent() {
       }
     }
     return { error: resultData.error || 'Failed to generate Hindi music' }
+  }
+
+  // 444 Pro Engine — Hindi / regional / Arabic via premium engine
+  const generateProSunoMusic = async (
+    prompt: string,
+    title?: string,
+    lyrics?: string,
+    genre?: string,
+    language?: string,
+    signal?: AbortSignal,
+    messageId?: string,
+  ) => {
+    const requestBody: Record<string, unknown> = {
+      prompt: prompt.slice(0, 500),
+      title: title || prompt.slice(0, 50),
+      lyrics,
+      genre: genre || undefined,
+      language: language || 'hindi',
+      instrumental: !lyrics,
+    }
+
+    console.log('[444 Pro] Calling /api/generate/suno/generate with:', { title, prompt: prompt.substring(0, 80) + '...', language, genre })
+
+    const res = await fetch('/api/generate/suno/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody),
+      signal,
+    })
+
+    if (!res.ok && res.headers.get('content-type')?.includes('application/json')) {
+      const errData = await res.json()
+      console.error('[444 Pro] Server error:', errData)
+      return { error: errData.error || `Server error (${res.status})` }
+    }
+
+    const reader = res.body?.getReader()
+    if (!reader) return { error: 'No response stream' }
+
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let resultData: any = null
+
+    try {
+      while (true) {
+        if (signal?.aborted) throw new DOMException('The operation was aborted.', 'AbortError')
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+        for (const line of lines) {
+          if (!line.trim()) continue
+          try {
+            const parsed = JSON.parse(line)
+            if (parsed.type === 'started' && messageId) {
+              console.log('[444 Pro] Generation started via 444 Pro Engine')
+            } else if (parsed.type === 'result') {
+              resultData = parsed
+            }
+          } catch { /* skip */ }
+        }
+      }
+      if (buffer.trim()) {
+        try {
+          const parsed = JSON.parse(buffer)
+          if (parsed.type === 'result') resultData = parsed
+        } catch { /* ignore */ }
+      }
+    } finally {
+      reader.releaseLock()
+      if (messageId) predictionIdsRef.current.delete(messageId)
+    }
+
+    if (!resultData) return { error: 'No result received from 444 Pro generation' }
+
+    if (resultData.success) {
+      return {
+        audioUrl: resultData.audioUrl,
+        title: resultData.title || title || prompt.substring(0, 50),
+        prompt,
+        lyrics: resultData.lyrics || lyrics,
+        creditsRemaining: resultData.creditsRemaining,
+      }
+    }
+    return { error: resultData.error || 'Failed to generate music' }
   }
 
   // Generate using fal.ai stable-audio-25/audio-to-audio (444 Radio Remix)
@@ -2926,6 +3027,12 @@ function CreatePageContent() {
           onShowRemix={() => setShowResoundModal(true)}
           onShowBeatMaker={() => setShowBeatMakerModal(true)}
           onOpenRelease={() => handleOpenRelease()}
+          onShowProExtend={() => { setProFeatureType('extend'); setShowProFeaturesModal(true) }}
+          onShowProInpaint={() => { setProFeatureType('inpaint'); setShowProFeaturesModal(true) }}
+          onShowProCover={() => { setProFeatureType('cover'); setShowProFeaturesModal(true) }}
+          onShowProAddVocals={() => { setProFeatureType('add-vocals'); setShowProFeaturesModal(true) }}
+          onShowProVoiceToMelody={() => { setProFeatureType('voice-to-melody'); setShowProFeaturesModal(true) }}
+          onShowProBoostStyle={() => { setProFeatureType('boost-style'); setShowProFeaturesModal(true) }}
           onTagClick={(tag: string) => {
             const newInput = input ? `${input}, ${tag}` : tag
             setInput(newInput.slice(0, MAX_PROMPT_LENGTH))
@@ -5446,6 +5553,18 @@ function CreatePageContent() {
           onGenerate={handleBeatMakerGenerate}
         />
       </Suspense>
+
+      {/* Pro Features Modal (Extend, Inpaint, Cover, Add Vocals, Voice-to-Melody, Boost Style) */}
+      {showProFeaturesModal && (
+        <Suspense fallback={null}>
+          <ProFeaturesModal
+            isOpen={showProFeaturesModal}
+            onClose={() => setShowProFeaturesModal(false)}
+            initialFeature={proFeatureType}
+            userCredits={userCredits ?? 0}
+          />
+        </Suspense>
+      )}
 
       {/* Out of Credits Modal */}
       <Suspense fallback={null}>
