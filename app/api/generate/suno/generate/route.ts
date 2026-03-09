@@ -124,12 +124,11 @@ export async function POST(req: NextRequest) {
       try {
         await sendLine({ type: 'started', model: '444-pro-music' })
 
-        // Build Suno generate params
+        // Build generation params
         const sunoParams: Record<string, unknown> = {
           customMode: isCustomMode,
           instrumental,
           model: model || DEFAULT_MODEL,
-          callBackUrl: '',
         }
 
         if (isCustomMode) {
@@ -331,12 +330,13 @@ export async function POST(req: NextRequest) {
         await writer.close().catch(() => {})
       } catch (error) {
         console.error('❌ Pro music generation error:', error)
+        const sanitizedReason = sanitizeSunoError(error)
         await refundCredits({
           userId,
           amount: CREDIT_COST,
           type: 'generation_music',
-          reason: `Pro gen error: ${String(error).substring(0, 80)}`,
-          metadata: { prompt: cleanPrompt, language, error: String(error).substring(0, 200) },
+          reason: `Pro gen error: ${sanitizedReason}`,
+          metadata: { prompt: cleanPrompt, language, error: sanitizedReason },
         })
         notifyGenerationFailed(userId, 'music', 'Pro Music generation error — credits refunded').catch(() => {})
         try {

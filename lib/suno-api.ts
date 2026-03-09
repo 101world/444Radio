@@ -336,7 +336,7 @@ export class SunoApiError extends Error {
   code: number
   constructor(message: string, code: number) {
     super(message)
-    this.name = 'SunoApiError'
+    this.name = '444ApiError'
     this.code = code
   }
 }
@@ -461,6 +461,10 @@ export function sanitizeSunoError(error: unknown): string {
   // Timeout
   if (msg.includes('timed out') || msg.includes('timeout')) {
     return 'Generation took too long — please try again with a simpler prompt'
+  }
+  // callBackUrl or internal API param errors
+  if (msg.includes('callBackUrl') || msg.includes('callback')) {
+    return '444 Radio engine configuration error — please try again'
   }
   // Generic
   return '444 Radio is locking in, please try again in a few minutes'
