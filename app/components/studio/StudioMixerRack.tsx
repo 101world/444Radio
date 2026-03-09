@@ -2933,15 +2933,18 @@ export default function StudioMixerRack({ code, onCodeChange, onLiveCodeChange, 
     if (!clip) { setPendingInstrumentClipId(null); return }
 
     if (soundId === '__clip__') {
-      // Use the clip's own audio as the instrument
+      // Use the clip's own audio as a Strudel channel
+      // IMPORTANT: Use 'vocal' type, NOT 'instrument'.
+      // 'instrument' adds note("c3") which pitches the sample — wrong for vocals.
+      // 'vocal' creates s("clip").loopAt(N) — plays at correct tempo, no pitch shift.
       const meta = prepareInstrumentFromClip(clip, projectBpm)
       if (onRegisterCustomSound) {
         await onRegisterCustomSound(meta.soundName, meta.sampleUrl)
       }
       if (onAddChannel) {
         const loopAt = Math.max(1, Math.round(meta.loopBars))
-        onAddChannel(meta.soundName, 'instrument', loopAt)
-        console.log(`[444 STUDIO] Created instrument "${meta.soundName}" from clip "${clip.name}" (loopAt=${loopAt})`)
+        onAddChannel(meta.soundName, 'vocal', loopAt)
+        console.log(`[444 STUDIO] Created vocal channel "${meta.soundName}" from clip "${clip.name}" (loopAt=${loopAt})`)
       }
     } else {
       // Use a built-in sound on the piano roll
