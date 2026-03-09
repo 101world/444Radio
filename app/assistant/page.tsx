@@ -224,9 +224,12 @@ export default function AssistantPage() {
         if (res.ok) {
           const data = await res.json()
           newAttachments.push({ type, url: data.url, name: file.name, size: file.size })
+        } else {
+          const errData = await res.json().catch(() => ({ error: 'Upload failed' }))
+          alert(`Failed to upload ${file.name}: ${errData.error || 'Unknown error'}`)
         }
       } catch {
-        // Upload failed silently — could add toast
+        alert(`Failed to upload ${file.name}. Please try again.`)
       }
     }
 

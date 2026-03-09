@@ -4304,7 +4304,7 @@ function CreatePageContent() {
                         className="text-[11px] text-purple-400 hover:text-purple-300 flex items-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed px-2.5 py-1 rounded-md bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20"
                       >
                         <Atom size={12} className={isGeneratingAtomLyrics ? 'animate-spin' : ''} />
-                        {isGeneratingAtomLyrics ? 'Writing...' : 'AI Write'}
+                        {isGeneratingAtomLyrics ? 'Generating...' : 'Create with Atom'}
                       </button>
                     </div>
                   </div>

@@ -166,7 +166,7 @@ export default function FeaturesSidebar({
           onClick: () => onSelectType('image'),
         },
         {
-          icon: Repeat, label: '444 Remix', desc: 'Remix any song (Suno)',
+          icon: Repeat, label: '444 Remix', desc: 'Remix any song',
           gradient: proGradient('from-amber-400/35 via-orange-500/25 to-red-400/30'),
           glowColor: proGlow('shadow-amber-400/30'),
           activeGradient: proActiveGrad('from-amber-400/50 via-orange-500/40 to-red-400/45 ring-amber-400/70'),
