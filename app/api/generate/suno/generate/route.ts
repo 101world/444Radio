@@ -9,7 +9,7 @@ import { generateMusic, pollTaskUntilDone, sanitizeSunoError, SUNO_CREDIT_COSTS,
 export const maxDuration = 300
 
 const CREDIT_COST = SUNO_CREDIT_COSTS.generate // 20 credits
-const DEFAULT_MODEL: SunoModel = 'V4'
+const DEFAULT_MODEL: SunoModel = 'V5'
 
 /**
  * POST /api/generate/suno/generate

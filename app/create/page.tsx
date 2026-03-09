@@ -3724,7 +3724,7 @@ function CreatePageContent() {
                 {/* Content Tools */}
                 <div className="mb-4">
                   <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2 px-1">Tools</h3>
-                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                     {selectedType === 'music' && !isInstrumental && (
                       <button
                         onClick={() => setShowLyricsModal(true)}
@@ -3777,6 +3777,14 @@ function CreatePageContent() {
                     >
                       <Rocket size={20} className="text-white/60 mx-auto group-hover:text-cyan-400" />
                       <span className="block text-xs mt-1 text-center text-white/70">Release</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => { setShowLyricsModal(true); setShowAdvancedButtons(false) }}
+                      className="group relative p-3 rounded-xl transition-all duration-200 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-yellow-400/30"
+                    >
+                      <Settings size={20} className="text-white/60 mx-auto group-hover:text-yellow-400" />
+                      <span className="block text-xs mt-1 text-center text-white/70">Advanced</span>
                     </button>
                   </div>
                 </div>
