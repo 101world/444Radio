@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
         const tags = cleanStyle ? cleanStyle.split(',').map((t: string) => t.trim()).filter(Boolean) : [language || 'hindi']
         const lyricsPrompt = instrumental ? '' : (cleanLyrics || cleanPrompt)
 
-        const falKey = process.env.FAL_KEY
+        const falKey = process.env.FAL_KEY || process.env.fal_key
         if (!falKey) throw new Error('FAL_KEY environment variable is not set')
 
         console.log('🎵 [444-PRO] Calling generation engine...', { tags, lyricsLen: lyricsPrompt.length, instrumental })

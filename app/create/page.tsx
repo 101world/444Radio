@@ -3955,14 +3955,15 @@ function CreatePageContent() {
                 {/* Plus / Advanced */}
                 <button
                   onClick={() => setShowAdvancedButtons(!showAdvancedButtons)}
-                  className={`flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-lg transition-all duration-300 flex items-center justify-center ${
+                  className={`flex-shrink-0 h-8 sm:h-9 rounded-lg transition-all duration-300 flex items-center justify-center gap-1 px-2 ${
                     showAdvancedButtons
                       ? 'bg-cyan-500/20 border border-cyan-400/40'
                       : 'hover:bg-white/[0.06] border border-transparent hover:border-white/10'
                   }`}
                   title={showAdvancedButtons ? 'Hide Options' : 'More Options'}
                 >
-                  <Crown size={18} className={`${showAdvancedButtons ? 'text-cyan-400 rotate-12' : 'text-white/50'} transition-all duration-300`} />
+                  <PlusCircle size={18} className={`${showAdvancedButtons ? 'text-cyan-400 rotate-45' : 'text-white/50'} transition-all duration-300`} />
+                  <Crown size={12} className={`${showAdvancedButtons ? 'text-yellow-400' : 'text-yellow-500/40'} transition-all duration-300`} />
                 </button>
 
                 {/* Speech-to-text */}
