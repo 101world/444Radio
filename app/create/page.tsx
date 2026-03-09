@@ -1148,7 +1148,7 @@ function CreatePageContent() {
           // Fallback to standard lyrics generation
         }
 
-        // If lyrics still empty after Hindi enhancer, fall back to Suno lyrics
+        // If lyrics still empty after Hindi enhancer, fall back to 444 lyrics engine
         if (!finalLyrics.trim() && !wasCancelled()) {
           try {
             const lyricsResponse = await fetch('/api/generate/suno/lyrics', {
@@ -1168,8 +1168,8 @@ function CreatePageContent() {
           }
         }
       } else if (!finalLyrics.trim()) {
-        // Standard lyrics generation for all non-Hindi languages via Suno
-        console.log('🤖 Auto-generating lyrics from prompt via Suno...')
+        // Standard lyrics generation for all non-Hindi languages
+        console.log('🤖 Auto-generating lyrics from prompt...')
         wasAutoFilled = true
         try {
           const lyricsResponse = await fetch('/api/generate/suno/lyrics', {
@@ -3348,7 +3348,7 @@ function CreatePageContent() {
                     </div>
                   </div>
 
-                  {/* Second Track (Pro Suno generates 2 takes) */}
+                  {/* Second Track (Pro mode generates 2 takes) */}
                   {message.result.secondAudioUrl && (
                     <div className="backdrop-blur-sm md:backdrop-blur-xl bg-gradient-to-br from-black/60 via-black/50 to-black/60 border border-cyan-500/30 sm:border-2 rounded-2xl sm:rounded-3xl overflow-hidden group hover:border-cyan-400/50 transition-all">
                       <div className="flex items-center gap-2.5 sm:gap-3 p-3 sm:p-4 border-b border-white/10">
@@ -4493,14 +4493,9 @@ function CreatePageContent() {
                       try {
                         setIsGeneratingAtomLyrics(true)
 
-                        // Hindi/South-Asian languages use atom-hindi for prompt enhancement + lyrics
-                        const hindiLangs = ['hindi', 'urdu', 'punjabi', 'tamil', 'telugu']
-                        const isHindiLang = hindiLangs.includes(selectedLanguage.toLowerCase())
-
-                        const endpoint = isHindiLang ? '/api/generate/atom-hindi' : '/api/generate/suno/lyrics'
-                        const body = isHindiLang
-                          ? { prompt: input, instrumental: false }
-                          : { prompt: input, language: selectedLanguage, genre }
+                        // All languages use 444 lyrics engine
+                        const endpoint = '/api/generate/suno/lyrics'
+                        const body = { prompt: input, language: selectedLanguage, genre }
 
                         const response = await fetch(endpoint, {
                           method: 'POST',

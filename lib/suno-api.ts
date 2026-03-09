@@ -325,37 +325,38 @@ export interface SunoBoostStyleResponse {
 }
 
 // ---------------------------------------------------------------------------
-// 444 Credit Costs (our prices — 50 %+ profit over Suno cost)
+// 444 Credit Costs (~200% margin over Suno cost)
 //
-// Suno charges ~10 credits per generation (~$0.40–0.50 at $0.04–0.05/cr)
-// Our rate: $0.035 per 444 credit
+// Suno API (sunoapi.org): 1000 credits = $5 → $0.005 / Suno credit
+// 444 rate: $0.035 per 444 credit
 //
-// Formula: ceil(suno_cost_usd × 1.5 / 0.035)
-//   - Generate (10 cr → ~$0.50): $0.75 → 22 credits
-//   - Extend   (10 cr → ~$0.50): $0.75 → 22 credits
-//   - Inpaint  ( 5 cr → ~$0.25): $0.375 → 11 credits
-//   - Cover    (10 cr):                    22 credits
-//   - UpExtend (10 cr):                    22 credits
-//   - AddVocal (10 cr):                    22 credits
-//   - AddInstr (10 cr):                    22 credits
-//   - Persona  (FREE):                     0 credits
-//   - Boost    (FREE):                     0 credits
+// Formula: ceil(suno_credits × $0.005 × 3 / $0.035)   (3× = ~200% margin)
 //
-// Hindi Pro generate is 2 credits (same as standard — user's explicit request).
+//   - Generate (12 Suno cr → $0.06): $0.18 → 5 credits
+//   - Extend   (12 cr → $0.06):      $0.18 → 5 credits
+//   - Inpaint  ( 6 cr → $0.03):      $0.09 → 3 credits
+//   - Cover    (12 cr → $0.06):      $0.18 → 5 credits
+//   - UpExtend (12 cr → $0.06):      $0.18 → 5 credits
+//   - AddVocal (12 cr → $0.06):      $0.18 → 5 credits
+//   - AddInstr (12 cr → $0.06):      $0.18 → 5 credits
+//   - MusicVid (12 cr → $0.06):      $0.18 → 5 credits
+//   - Persona  (FREE):                       0 credits
+//   - Boost    (FREE):                       0 credits
+//   - Lyrics   (FREE):                       0 credits
 // ---------------------------------------------------------------------------
 
 export const SUNO_CREDIT_COSTS = {
-  generate: 20,        // Hindi / regional Pro music — premium engine, returns 2 tracks
-  extend: 22,
-  inpaint: 11,
-  cover: 22,
-  uploadExtend: 22,
-  addVocals: 22,
-  addInstrumental: 22,
+  generate: 5,         // Hindi / regional Pro music — premium engine, returns 2 tracks
+  extend: 5,
+  inpaint: 3,
+  cover: 5,
+  uploadExtend: 5,
+  addVocals: 5,
+  addInstrumental: 5,
   persona: 0,
   boostStyle: 0,
   lyrics: 0,           // Free — utility to improve generation quality
-  musicVideo: 22,      // ~10 Suno cr → $0.50 → $0.75 → 22 credits (50%+ margin)
+  musicVideo: 5,
 } as const
 
 // ---------------------------------------------------------------------------
