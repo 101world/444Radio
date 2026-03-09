@@ -160,15 +160,63 @@ export async function POST(req: NextRequest) {
 
         // V5 may return tracks at different paths — check all known shapes
         console.log('🎵 [444-PRO] Raw poll response:', JSON.stringify(completed).substring(0, 1000))
-        const responseAny = completed.data as any
-        const tracks = completed.data.response?.data
-          || responseAny.response?.sunoData
-          || responseAny.sunoData
-          || (Array.isArray(responseAny.response) ? responseAny.response : null)
-          || []
+
+        const extractTracks = (data: any): any[] => {
+          return data?.response?.data
+            || data?.response?.sunoData
+            || data?.sunoData
+            || (Array.isArray(data?.response) ? data.response : null)
+            || []
+        }
+
+        let tracks = extractTracks(completed.data)
+
+        // V5 with callBackUrl may deliver tracks via callback instead of poll response.
+        // If SUCCESS but empty tracks, retry polling a few times then check callback data.
+        if (!tracks.length) {
+          console.log('⏳ [444-PRO] SUCCESS but no tracks yet — retrying poll...')
+          for (let retry = 0; retry < 4; retry++) {
+            await new Promise(r => setTimeout(r, 10_000)) // wait 10s between retries
+            try {
+              const retryStatus = await import('@/lib/suno-api').then(m => m.getTaskStatus(taskId))
+              console.log(`🔄 [444-PRO] Retry ${retry + 1}:`, JSON.stringify(retryStatus).substring(0, 500))
+              tracks = extractTracks(retryStatus.data)
+              if (tracks.length) {
+                console.log(`✅ [444-PRO] Got ${tracks.length} tracks on retry ${retry + 1}`)
+                break
+              }
+            } catch (e) {
+              console.warn(`⚠️ [444-PRO] Retry ${retry + 1} failed:`, e)
+            }
+          }
+        }
+
+        // Fallback: check if callback endpoint stored the data
+        if (!tracks.length) {
+          console.log('🔔 [444-PRO] Checking callback data...')
+          try {
+            const cbRes = await fetch(
+              `${supabaseUrl}/rest/v1/generation_callbacks?task_id=eq.${taskId}&select=payload&limit=1`,
+              { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } },
+            )
+            if (cbRes.ok) {
+              const cbRows = await cbRes.json()
+              if (cbRows?.[0]?.payload) {
+                const cbPayload = cbRows[0].payload
+                console.log('🔔 [444-PRO] Callback payload found:', JSON.stringify(cbPayload).substring(0, 500))
+                tracks = extractTracks(cbPayload)
+                  || extractTracks(cbPayload?.data)
+                  || cbPayload?.data?.response?.data
+                  || []
+              }
+            }
+          } catch (e) {
+            console.warn('⚠️ [444-PRO] Callback lookup failed:', e)
+          }
+        }
 
         if (!tracks.length) {
-          console.error('❌ [444-PRO] No tracks found. Full response:', JSON.stringify(completed))
+          console.error('❌ [444-PRO] No tracks found after retries + callback. Full response:', JSON.stringify(completed))
           throw new Error('No tracks returned from generation')
         }
 
