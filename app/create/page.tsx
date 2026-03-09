@@ -3780,7 +3780,7 @@ function CreatePageContent() {
                     </button>
                     
                     <button
-                      onClick={() => { setShowLyricsModal(true); setShowAdvancedButtons(false) }}
+                      onClick={() => { setShowFeaturesSidebar(true); setShowAdvancedButtons(false) }}
                       className="group relative p-3 rounded-xl transition-all duration-200 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-yellow-400/30"
                     >
                       <Settings size={20} className="text-white/60 mx-auto group-hover:text-yellow-400" />
