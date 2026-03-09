@@ -90,8 +90,7 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
     try {
       const formData = new FormData()
       formData.append('file', file)
-      formData.append('type', 'audio')
-      const res = await fetch('/api/upload/temp', { method: 'POST', body: formData })
+      const res = await fetch('/api/upload/media', { method: 'POST', body: formData })
       if (!res.ok) throw new Error('Upload failed')
       const data = await res.json()
       setUploadUrl(data.url || data.publicUrl)
