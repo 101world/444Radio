@@ -4745,11 +4745,6 @@ function CreatePageContent() {
                     <option value="arabic">العربية Arabic</option>
                     <option value="italian">Italiano Italian</option>
                   </select>
-                  <p className="text-[11px] text-gray-600">
-                    {selectedLanguage.toLowerCase() === 'english'
-                      ? '🎵 Uses MiniMax Engine (optimized for English)'
-                      : '🎵 Uses 444 Pro Engine / Suno (best multilingual support)'}
-                  </p>
                 </div>
 
                 {/* Genre */}
