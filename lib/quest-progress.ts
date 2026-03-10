@@ -38,6 +38,33 @@ function isTimeoutOrAbort(err: unknown): boolean {
   return false
 }
 
+/** Check if Supabase environment variables are properly configured */
+function isSupabaseConfigured(): boolean {
+  return !!(supabaseUrl && supabaseKey)
+}
+
+/** Create a fetch request with timeout and better error handling */
+async function safeFetch(url: string, init?: RequestInit): Promise<Response> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase not configured - missing environment variables')
+  }
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+
+  try {
+    const response = await fetch(url, { ...init, signal: controller.signal })
+    clearTimeout(timeoutId)
+    return response
+  } catch (err) {
+    clearTimeout(timeoutId)
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error('Request timeout - Supabase connection issue')
+    }
+    throw err
+  }
+}
+
 /** Wrapper around fetch — no AbortSignal since quest tracking is fire-and-forget.
  *  Vercel kills the Lambda naturally; adding a timeout just creates noisy errors. */
 function qfetch(url: string, init?: RequestInit): Promise<Response> {
@@ -75,15 +102,15 @@ export async function trackQuestProgress(
 
     // 1-3. Fetch quest pass, active quests, and user quests IN PARALLEL
     const [passRes, allQRes, uqRes] = await Promise.all([
-      qfetch(
+      safeFetch(
         `${supabaseUrl}/rest/v1/quest_passes?user_id=eq.${userId}&is_active=eq.true&expires_at=gt.${new Date().toISOString()}&limit=1`,
         { headers: headers() }
       ),
-      qfetch(
+      safeFetch(
         `${supabaseUrl}/rest/v1/quests?is_active=eq.true&select=id,requirement,quest_level`,
         { headers: headers() }
       ),
-      qfetch(
+      safeFetch(
         `${supabaseUrl}/rest/v1/user_quests?user_id=eq.${userId}&select=id,quest_id,progress,target,status`,
         { headers: headers() }
       ),
@@ -202,7 +229,7 @@ export async function trackModelUsage(
     )
 
     // Check if user has used all available models
-    const usageRes = await qfetch(
+    const usageRes = await safeFetch(
       `${supabaseUrl}/rest/v1/user_model_usage?user_id=eq.${userId}&select=model_name`,
       { headers: headers() }
     )
@@ -256,7 +283,7 @@ export async function trackGenerationStreak(userId: string): Promise<void> {
     )
 
     // Check if both generated AND released today
-    const todayRes = await qfetch(
+    const todayRes = await safeFetch(
       `${supabaseUrl}/rest/v1/generation_streaks?user_id=eq.${userId}&streak_date=eq.${today}&select=generated,released`,
       { headers: headers() }
     )
@@ -264,7 +291,7 @@ export async function trackGenerationStreak(userId: string): Promise<void> {
     
     if (todayData?.[0]?.generated && todayData?.[0]?.released) {
       // Calculate current streak
-      const streakRes = await qfetch(
+      const streakRes = await safeFetch(
         `${supabaseUrl}/rpc/get_user_streak`,
         {
           method: 'POST',
@@ -279,7 +306,7 @@ export async function trackGenerationStreak(userId: string): Promise<void> {
       await trackQuestProgress(userId, 'streak_lord', 0)
 
       // Set absolute progress = current streak count on all streak_lord user_quests
-      const streakQuestRes = await qfetch(
+      const streakQuestRes = await safeFetch(
         `${supabaseUrl}/rest/v1/quests?requirement->>action=eq.streak_lord&is_active=eq.true&select=id,requirement`,
         { headers: headers() }
       )
