@@ -86,7 +86,6 @@ export async function POST(req: NextRequest) {
           tags: cleanTags,
           negativeTags,
           callBackUrl: 'https://www.444radio.co.in/api/webhook/generation-callback',
-          vocalGender,
           model: validModel,
         })
         const taskId = taskRes.data.taskId
