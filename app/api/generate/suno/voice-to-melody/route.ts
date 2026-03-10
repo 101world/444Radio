@@ -9,6 +9,7 @@ import {
   pollTaskUntilDone,
   sanitizeSunoError,
   SUNO_CREDIT_COSTS,
+  normalizeSunoUnitIntervalParam,
 } from '@/lib/suno-api'
 
 export const maxDuration = 300
@@ -22,7 +23,7 @@ const CREDIT_COST = SUNO_CREDIT_COSTS.addInstrumental
  * Costs 5 credits. Returns NDJSON stream.
  * Models: V4_5PLUS or V5 only.
  *
- * Body: { uploadUrl, title, tags, negativeTags?, model?, vocalGender? }
+ * Body: { uploadUrl, title, tags, negativeTags?, model?, vocalGender?, styleWeight?, weirdnessConstraint?, audioWeight? }
  */
 export async function POST(req: NextRequest) {
   console.log('🎵 [444-VOICE2MELODY] POST /api/generate/suno/voice-to-melody')
@@ -47,8 +48,31 @@ export async function POST(req: NextRequest) {
     if (!uploadUrl || typeof uploadUrl !== 'string') return NextResponse.json({ error: 'uploadUrl is required — provide a public URL to your vocal/melody recording' }, { status: 400 })
     if (!tags || typeof tags !== 'string') return NextResponse.json({ error: 'Style tags are required' }, { status: 400 })
 
-    const cleanTitle = (title || 'Voice to Melody').trim().slice(0, 80)
+    try {
+      new URL(uploadUrl)
+    } catch {
+      return NextResponse.json({ error: 'uploadUrl must be a valid URL' }, { status: 400 })
+    }
+
+    if (vocalGender && vocalGender !== 'm' && vocalGender !== 'f') {
+      return NextResponse.json({ error: 'vocalGender must be either "m" or "f"' }, { status: 400 })
+    }
+
+    let normalizedStyleWeight: number | undefined
+    let normalizedWeirdnessConstraint: number | undefined
+    let normalizedAudioWeight: number | undefined
+
+    try {
+      normalizedStyleWeight = normalizeSunoUnitIntervalParam(styleWeight, 'styleWeight')
+      normalizedWeirdnessConstraint = normalizeSunoUnitIntervalParam(weirdnessConstraint, 'weirdnessConstraint')
+      normalizedAudioWeight = normalizeSunoUnitIntervalParam(audioWeight, 'audioWeight')
+    } catch (error) {
+      return NextResponse.json({ error: sanitizeSunoError(error) }, { status: 400 })
+    }
+
+    const cleanTitle = (title || 'Voice to Melody').trim().slice(0, 100)
     const cleanTags = tags.trim().slice(0, 1000)
+    const cleanNegativeTags = negativeTags.trim().slice(0, 1000)
     const validModel = model === 'V5' ? 'V5' : 'V4_5PLUS'
 
     // ---------- Credits ----------
@@ -94,13 +118,13 @@ export async function POST(req: NextRequest) {
           uploadUrl,
           title: cleanTitle,
           tags: cleanTags,
-          negativeTags,
+          negativeTags: cleanNegativeTags,
           callBackUrl: 'https://www.444radio.co.in/api/webhook/generation-callback',
           model: validModel,
           vocalGender,
-          styleWeight,
-          weirdnessConstraint,
-          audioWeight,
+          styleWeight: normalizedStyleWeight,
+          weirdnessConstraint: normalizedWeirdnessConstraint,
+          audioWeight: normalizedAudioWeight,
         })
         const taskId = taskRes.data.taskId
         await sendLine({ type: 'progress', message: 'Creating instrumental from your melody...', taskId })

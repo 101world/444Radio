@@ -373,6 +373,30 @@ export class SunoApiError extends Error {
   }
 }
 
+export function normalizeSunoUnitIntervalParam(
+  value: unknown,
+  fieldName: 'styleWeight' | 'weirdnessConstraint' | 'audioWeight',
+): number | undefined {
+  if (value === undefined || value === null || value === '') return undefined
+
+  const numeric = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(numeric)) {
+    throw new SunoApiError(`${fieldName} must be a number between 0 and 1`, 400)
+  }
+
+  if (numeric < 0 || numeric > 1) {
+    throw new SunoApiError(`${fieldName} must be between 0 and 1`, 400)
+  }
+
+  const centi = Math.round(numeric * 100)
+  const normalized = centi / 100
+  if (Math.abs(normalized - numeric) > 1e-9) {
+    throw new SunoApiError(`${fieldName} must be a multiple of 0.01`, 400)
+  }
+
+  return normalized
+}
+
 // ---------------------------------------------------------------------------
 // API Methods
 // ---------------------------------------------------------------------------
@@ -409,18 +433,37 @@ export async function addVocals(params: SunoAddVocalsParams): Promise<SunoTaskRe
 
 /** Add instrumental backing to a vocal/melody recording */
 export async function addInstrumental(params: SunoAddInstrumentalParams): Promise<SunoTaskResponse> {
+  const uploadUrl = String(params.uploadUrl || '').trim()
+  const title = String(params.title || '').trim().slice(0, 100)
+  const tags = String(params.tags || '').trim().slice(0, 1000)
+  const negativeTags = String(params.negativeTags || '').trim().slice(0, 1000)
+  const callBackUrl = params.callBackUrl?.trim() || undefined
+  const model = params.model === 'V5' ? 'V5' : 'V4_5PLUS'
+
+  if (!uploadUrl) throw new SunoApiError('uploadUrl is required', 400)
+  if (!title) throw new SunoApiError('title is required', 400)
+  if (!tags) throw new SunoApiError('tags is required', 400)
+  if (!negativeTags) throw new SunoApiError('negativeTags is required', 400)
+  if (params.vocalGender && params.vocalGender !== 'm' && params.vocalGender !== 'f') {
+    throw new SunoApiError('vocalGender must be either "m" or "f"', 400)
+  }
+
+  const styleWeight = normalizeSunoUnitIntervalParam(params.styleWeight, 'styleWeight')
+  const weirdnessConstraint = normalizeSunoUnitIntervalParam(params.weirdnessConstraint, 'weirdnessConstraint')
+  const audioWeight = normalizeSunoUnitIntervalParam(params.audioWeight, 'audioWeight')
+
   // Map parameters to match the Suno API specification
   const requestBody = {
-    uploadUrl: params.uploadUrl,
-    title: params.title,
-    tags: params.tags,
-    negativeTags: params.negativeTags,
-    callBackUrl: params.callBackUrl,
+    uploadUrl,
+    title,
+    tags,
+    negativeTags,
+    callBackUrl,
     vocalGender: params.vocalGender,
-    styleWeight: params.styleWeight,
-    weirdnessConstraint: params.weirdnessConstraint,
-    audioWeight: params.audioWeight,
-    model: params.model || 'V4_5PLUS'
+    styleWeight,
+    weirdnessConstraint,
+    audioWeight,
+    model,
   }
   
   return sunoPost('/generate/add-instrumental', requestBody)
@@ -540,6 +583,16 @@ export function sanitizeSunoError(error: unknown): string {
   // callBackUrl or internal API param errors
   if (msg.includes('callBackUrl') || msg.includes('callback')) {
     return '444 Radio engine configuration error — please try again'
+  }
+  // Validation errors from request constraints
+  if (
+    msg.includes('must be between 0 and 1')
+    || msg.includes('must be a multiple of 0.01')
+    || msg.includes('must be a number between 0 and 1')
+    || msg.includes('is required')
+    || msg.includes('vocalGender must be either')
+  ) {
+    return msg
   }
   // Generic
   return '444 Radio is locking in, please try again in a few minutes'

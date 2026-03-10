@@ -23,7 +23,7 @@ import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-trans
 import { findBestMatchingLyrics } from '@/lib/lyrics-matcher'
 import { sanitizeError, sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 import { randomUUID } from 'crypto'
-import { extendMusic, replaceSection, uploadAndCover, addVocals, addInstrumental, boostStyle, generateLyrics, pollTaskUntilDone, pollLyricsUntilDone, sanitizeSunoError, SunoApiError, generateMusic as sunoGenerateMusic } from '@/lib/suno-api'
+import { extendMusic, replaceSection, uploadAndCover, addVocals, addInstrumental, boostStyle, generateLyrics, pollTaskUntilDone, pollLyricsUntilDone, sanitizeSunoError, SunoApiError, generateMusic as sunoGenerateMusic, normalizeSunoUnitIntervalParam } from '@/lib/suno-api'
 import type { SunoExtendParams, SunoReplaceSectionParams, SunoUploadCoverParams, SunoAddVocalsParams, SunoAddInstrumentalParams, SunoModel } from '@/lib/suno-api'
 
 export const maxDuration = 300 // Vercel Pro 5-min limit
@@ -1993,19 +1993,50 @@ async function generateProAddVocals(userId: string, body: Record<string, unknown
 // ──────────────────────────────────────────────────────────────────
 async function generateProVoiceToMelody(userId: string, body: Record<string, unknown>, jobId: string) {
   const uploadUrl = (body.uploadUrl as string || '').trim()
-  const title = (body.title as string || 'Melody Track').trim()
+  const title = (body.title as string || 'Melody Track').trim().slice(0, 100)
   const tags = (body.tags as string || body.style as string || '').trim()
+  const negativeTags = ((body.negativeTags as string) || '').trim() || 'noise, distortion'
+  const vocalGender = (body.vocalGender as 'm' | 'f' | undefined)
+  const model = (body.model as string) === 'V5' ? 'V5' : 'V4_5PLUS'
 
   if (!uploadUrl) return { success: false, error: 'Upload URL is required' }
+  if (!tags) return { success: false, error: 'Style tags are required' }
+
+  try {
+    new URL(uploadUrl)
+  } catch {
+    return { success: false, error: 'uploadUrl must be a valid URL' }
+  }
+
+  if (vocalGender && vocalGender !== 'm' && vocalGender !== 'f') {
+    return { success: false, error: 'vocalGender must be either "m" or "f"' }
+  }
+
+  let styleWeight: number | undefined
+  let weirdnessConstraint: number | undefined
+  let audioWeight: number | undefined
+  try {
+    styleWeight = normalizeSunoUnitIntervalParam(body.styleWeight, 'styleWeight')
+    weirdnessConstraint = normalizeSunoUnitIntervalParam(body.weirdnessConstraint, 'weirdnessConstraint')
+    audioWeight = normalizeSunoUnitIntervalParam(body.audioWeight, 'audioWeight')
+  } catch (error) {
+    return { success: false, error: sanitizeSunoError(error) }
+  }
 
   await updatePluginJob(jobId, { status: 'processing' })
 
   try {
     const params: SunoAddInstrumentalParams = {
-      uploadUrl, title, tags,
-      negativeTags: ((body.negativeTags as string) || '').trim() || 'noise, distortion',
-      vocalGender: (body.vocalGender as 'm' | 'f') || undefined,
-      model: (body.model as any) || 'V4_5PLUS',
+      uploadUrl,
+      title,
+      tags: tags.slice(0, 1000),
+      negativeTags: negativeTags.slice(0, 1000),
+      callBackUrl: 'https://www.444radio.co.in/api/webhook/generation-callback',
+      vocalGender,
+      styleWeight,
+      weirdnessConstraint,
+      audioWeight,
+      model,
     }
 
     const task = await addInstrumental(params)
