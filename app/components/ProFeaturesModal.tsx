@@ -26,8 +26,8 @@ const FEATURE_INFO: Record<string, { icon: any; label: string; desc: string; cos
   remix: {
     icon: RefreshCw, label: '444 Remix', desc: 'Remix any song into a brand new style',
     cost: 3,
-    fields: ['uploadUrl', 'title', 'prompt', 'style', 'remixOptions'],
-    help: 'Upload any song — with or without vocals. 444 Remix re-creates it in a completely different style while preserving the melody & structure. Adjust vocal gender, weirdness, style weight and more. 3 credits per remix.',
+    fields: ['uploadUrl', 'title', 'lyrics', 'style', 'remixOptions'],
+    help: 'Upload any song — with or without vocals. 444 Remix re-creates it in a completely different style while preserving the melody & structure. Leave lyrics empty to keep the original vocals. 3 credits per remix.',
   },
   'add-vocals': {
     icon: MicVocal, label: '444 Add Vocals', desc: 'Add AI-generated vocals to an instrumental track',
@@ -434,20 +434,10 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
                 Audio File
                 <span className="relative group/tip inline-block ml-1 align-middle">
                   <HelpCircle size={10} className="text-white/20 hover:text-red-400 cursor-help" />
-                  <span className="hidden group-hover/tip:block absolute left-0 top-4 z-50 w-52 p-2 rounded-lg bg-black/95 border border-white/10 text-[10px] text-white/60 font-normal normal-case tracking-normal shadow-xl">Upload an audio file or paste a public URL. Supports MP3, WAV, and most audio formats up to 100MB.</span>
+                  <span className="hidden group-hover/tip:block absolute left-0 top-4 z-50 w-52 p-2 rounded-lg bg-black/95 border border-white/10 text-[10px] text-white/60 font-normal normal-case tracking-normal shadow-xl">Upload an audio file. Supports MP3, WAV, and most audio formats up to 100MB.</span>
                 </span>
               </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={uploadUrl}
-                  onChange={(e) => setUploadUrl(e.target.value)}
-                  placeholder={uploadFile ? 'File uploaded successfully' : 'Paste audio URL or upload below...'}
-                  className={`${inputClass} flex-1 ${uploadFile && uploadUrl ? 'border-green-500/30 text-green-300/70' : ''}`}
-                  readOnly={!!uploadFile && !!uploadUrl}
-                />
-              </div>
-              <div className="mt-2">
+              <div>
                 <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-white/10 hover:border-red-400/30 cursor-pointer transition-all group">
                   {uploading ? <Loader2 size={14} className="text-red-400 animate-spin" /> : uploadFile && uploadUrl ? <Upload size={14} className="text-green-400" /> : <Upload size={14} className="text-white/30 group-hover:text-red-400" />}
                   <span className={`text-xs ${uploadFile && uploadUrl ? 'text-green-400/70' : 'text-white/30 group-hover:text-white/50'}`}>{uploadFile ? (uploadUrl ? `✓ ${uploadFile.name}` : uploadFile.name) : 'Upload audio file (MP3, WAV, etc.)'}</span>
@@ -541,6 +531,19 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
             <div>
               <label className={labelClass}>{activeFeature === 'add-vocals' ? 'Lyrics / Prompt' : 'Prompt'}</label>
               <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={activeFeature === 'add-vocals' ? 'Write lyrics for the vocals...' : 'Describe what you want...'} rows={3} className={`${inputClass} resize-none`} />
+            </div>
+          )}
+
+          {info.fields.includes('lyrics') && (
+            <div>
+              <label className={labelClass}>
+                Lyrics (optional)
+                <span className="relative group/tip inline-block ml-1 align-middle">
+                  <HelpCircle size={10} className="text-white/20 hover:text-red-400 cursor-help" />
+                  <span className="hidden group-hover/tip:block absolute left-0 top-4 z-50 w-56 p-2 rounded-lg bg-black/95 border border-white/10 text-[10px] text-white/60 font-normal normal-case tracking-normal shadow-xl">Leave empty to keep the original vocals/lyrics. Add new lyrics here to change the words while remixing the style.</span>
+                </span>
+              </label>
+              <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Leave empty to keep original lyrics. Write new lyrics here to change them..." rows={3} className={`${inputClass} resize-none`} />
             </div>
           )}
 
