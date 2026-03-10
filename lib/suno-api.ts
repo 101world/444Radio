@@ -409,7 +409,21 @@ export async function addVocals(params: SunoAddVocalsParams): Promise<SunoTaskRe
 
 /** Add instrumental backing to a vocal/melody recording */
 export async function addInstrumental(params: SunoAddInstrumentalParams): Promise<SunoTaskResponse> {
-  return sunoPost('/generate/add-instrumental', params as unknown as Record<string, unknown>)
+  // Map parameters to match the Suno API specification
+  const requestBody = {
+    uploadUrl: params.uploadUrl,
+    title: params.title,
+    tags: params.tags,
+    negativeTags: params.negativeTags,
+    callBackUrl: params.callBackUrl,
+    vocalGender: params.vocalGender,
+    styleWeight: params.styleWeight,
+    weirdnessConstraint: params.weirdnessConstraint,
+    audioWeight: params.audioWeight,
+    model: params.model || 'V4_5PLUS'
+  }
+  
+  return sunoPost('/generate/add-instrumental', requestBody)
 }
 
 /** Create a reusable persona from a generated track (FREE) */
