@@ -1,10 +1,11 @@
-import { NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { NextRequest, NextResponse } from 'next/server'
 import Replicate from 'replicate'
 import { createClient } from '@supabase/supabase-js'
 import { logCreditTransaction } from '@/lib/credit-transactions'
 import { refundCredits } from '@/lib/refund-credits'
 import { uploadToR2 } from '@/lib/r2-upload'
+import { getAuthUserId } from '@/lib/hybrid-auth'
+import { corsResponse, handleOptions } from '@/lib/cors'
 
 export const maxDuration = 300
 
@@ -59,11 +60,15 @@ async function refundEarnStemCredits(userId: string, earnJobId: string, reason: 
   }
 }
 
-export async function POST(request: Request) {
+export function OPTIONS() {
+  return handleOptions()
+}
+
+export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth()
+    const userId = await getAuthUserId(request)
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
     const body = await request.json()

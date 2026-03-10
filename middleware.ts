@@ -25,6 +25,8 @@ const isPublicRoute = createRouteMatcher([
   '/api/generate/autotune',    // Uses hybrid auth (Clerk session OR Bearer token)
   '/api/storage/upload',       // Used by VisualizerModal (image upload, hybrid auth)
   '/api/upload/media',         // Used by AutotuneModal (audio upload, hybrid auth)
+  '/api/upload/lipsync',        // Used by LipSyncModal (image/audio upload, hybrid auth)
+  '/api/audio/split-stems',     // Used by plugin + website (stem splitting, hybrid auth)
   '/manifest.json',
   '/radio',
   '/creator-v2',               // Creator V2 - no Clerk auth required, dev mode enabled

@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUserId } from '@/lib/hybrid-auth'
 import { uploadToR2 } from '@/lib/r2-upload'
+import { corsResponse, handleOptions } from '@/lib/cors'
+
+export function OPTIONS() {
+  return handleOptions()
+}
 
 export async function POST(req: NextRequest) {
   try {
