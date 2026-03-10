@@ -104,13 +104,13 @@ export default function StyleDNAModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
-      <div className="bg-gradient-to-b from-gray-900 via-gray-900 to-black border border-white/10 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl shadow-purple-500/10">
+    <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4">
+      <div className="bg-gradient-to-b from-[#0a0f14] via-[#080d12] to-black border border-cyan-500/15 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl shadow-cyan-500/10">
         
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-white/10">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/30">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
               <Wand2 size={18} className="text-white" />
             </div>
             <div>
@@ -125,11 +125,11 @@ export default function StyleDNAModal({
 
         <div className="p-5 space-y-5">
           {/* How it works */}
-          <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-3">
-            <p className="text-purple-200 text-xs leading-relaxed">
-              <Sparkles size={12} className="inline mr-1 text-purple-400" />
+          <div className="bg-cyan-500/8 border border-cyan-500/15 rounded-xl p-3">
+            <p className="text-cyan-100/70 text-xs leading-relaxed">
+              <Sparkles size={12} className="inline mr-1 text-cyan-400" />
               Describe your style in a few words — the AI expands it into detailed, optimised genre/style tags 
-              that produce better music generations. Completely <strong className="text-purple-300">free</strong> — no credits needed.
+              that produce better music generations. Completely <strong className="text-cyan-300">free</strong> — no credits needed.
             </p>
           </div>
 
@@ -145,7 +145,7 @@ export default function StyleDNAModal({
               placeholder="e.g. chill lofi beats for studying late at night..."
               rows={3}
               maxLength={1000}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 resize-none focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-all"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 resize-none focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30 transition-all"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault()
@@ -170,7 +170,7 @@ export default function StyleDNAModal({
                   <button
                     key={ex}
                     onClick={() => handleExampleClick(ex)}
-                    className="text-xs px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white hover:border-purple-400/40 hover:bg-purple-500/10 transition-all"
+                    className="text-xs px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white hover:border-cyan-400/40 hover:bg-cyan-500/10 transition-all"
                   >
                     {ex}
                   </button>
@@ -183,7 +183,7 @@ export default function StyleDNAModal({
           <button
             onClick={handleEnhance}
             disabled={isLoading || content.trim().length < 2}
-            className="w-full py-3 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30"
+            className="w-full py-3 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/30"
           >
             {isLoading ? (
               <>
@@ -194,7 +194,7 @@ export default function StyleDNAModal({
               <>
                 <Wand2 size={16} />
                 Enhance Style
-                <span className="text-xs text-purple-200/60 ml-1">Free</span>
+                <span className="text-xs text-cyan-200/60 ml-1">Free</span>
               </>
             )}
           </button>
@@ -205,7 +205,7 @@ export default function StyleDNAModal({
               <label className="block text-xs font-medium text-white/50 uppercase tracking-wider">
                 Enhanced Style Tags
               </label>
-              <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-xl p-4">
+              <div className="bg-cyan-500/8 border border-cyan-500/15 rounded-xl p-4">
                 <p className="text-white text-sm leading-relaxed whitespace-pre-wrap">{result}</p>
               </div>
 
@@ -258,10 +258,10 @@ export default function StyleDNAModal({
                   <button
                     key={i}
                     onClick={() => { setContent(h.input); setResult(h.output) }}
-                    className="w-full text-left p-2.5 rounded-lg bg-white/5 border border-white/10 hover:border-purple-400/30 hover:bg-purple-500/5 transition-all"
+                    className="w-full text-left p-2.5 rounded-lg bg-white/5 border border-white/10 hover:border-cyan-400/30 hover:bg-cyan-500/5 transition-all"
                   >
                     <p className="text-xs text-white/40 truncate">{h.input}</p>
-                    <p className="text-xs text-purple-300/70 truncate mt-0.5">{h.output}</p>
+                    <p className="text-xs text-cyan-300/70 truncate mt-0.5">{h.output}</p>
                   </button>
                 ))}
               </div>
