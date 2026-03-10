@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, Suspense, lazy } from 'react'
+import { useState, useRef, useEffect, useCallback, Suspense, lazy } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices, Upload, RotateCcw, Repeat, Plus, Square, Guitar, AudioLines, Drum, ChevronDown, Crown, Trash2, Search, ChevronUp, Bell } from 'lucide-react'
@@ -519,39 +519,88 @@ function CreatePageContent() {
     scrollToBottom()
   }, [messages])
 
-  // Load chat from localStorage only (single source of truth)
+  // ═══ CHAT SYNC: Load from server (source of truth) with localStorage fallback ═══
+  const chatSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const serverLoadedRef = useRef(false)
+
   useEffect(() => {
+    // 1. Immediately load localStorage for instant display
+    let localMsgs: Message[] = []
     try {
       const savedChat = localStorage.getItem('444radio-chat-messages')
       if (savedChat) {
         const parsed = JSON.parse(savedChat)
         if (Array.isArray(parsed) && parsed.length > 1) {
-          const messagesWithDates = parsed.map((msg: Message) => ({
-            ...msg,
-            timestamp: new Date(msg.timestamp)
-          }))
-          prevMessageCountRef.current = messagesWithDates.length
-          setMessages(messagesWithDates)
+          localMsgs = parsed.map((msg: Message) => ({ ...msg, timestamp: new Date(msg.timestamp) }))
+          prevMessageCountRef.current = localMsgs.length
+          setMessages(localMsgs)
         }
       }
-    } catch (error) {
-      console.error('Failed to load chat from localStorage:', error)
-    }
+    } catch {}
+
+    // 2. Fetch from server to get cross-device/plugin synced messages
+    ;(async () => {
+      try {
+        const res = await fetch('/api/chat/messages?limit=500')
+        if (!res.ok) return
+        const data = await res.json()
+        if (data.messages && Array.isArray(data.messages) && data.messages.length > 1) {
+          const serverMsgs = data.messages.map((m: any) => ({
+            ...m,
+            timestamp: new Date(m.timestamp),
+            isGenerating: false,
+          }))
+          // Adopt server messages when server has more content (covers plugin-generated tracks)
+          if (serverMsgs.length >= localMsgs.length) {
+            prevMessageCountRef.current = serverMsgs.length
+            setMessages(serverMsgs)
+          }
+          serverLoadedRef.current = true
+        }
+      } catch {
+        // Offline — localStorage is fine
+      }
+    })()
   }, [])
 
   // Track message count for generation sync
   const syncedIdsRef = useRef<Set<string>>(new Set())
   const prevMessageCountRef = useRef<number>(1) // welcome message
 
-  // Persist messages to localStorage only (single source of truth)
+  // ═══ CHAT SYNC: Debounced save to server + localStorage on every message change ═══
+  const syncChatToServer = useCallback(async (msgs: Message[]) => {
+    if (msgs.length <= 1) return
+    try {
+      await fetch('/api/chat/messages', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: msgs.filter(m => !m.isGenerating).map(m => ({
+          type: m.type,
+          content: m.content,
+          generationType: m.generationType ?? null,
+          generationId: m.generationId ?? null,
+          result: m.result ?? null,
+          stems: m.stems ?? undefined,
+          timestamp: new Date(m.timestamp).toISOString(),
+        })) })
+      })
+    } catch {
+      // Offline — local cache is still saved
+    }
+  }, [])
+
   useEffect(() => {
+    // Always persist to localStorage (instant cache)
     try {
       localStorage.setItem('444radio-chat-messages', JSON.stringify(messages))
-    } catch (error) {
-      console.error('Failed to save chat to localStorage:', error)
-    }
+    } catch {}
     prevMessageCountRef.current = messages.length
-  }, [messages])
+
+    // Debounced sync to server (3s after last change)
+    if (chatSyncTimerRef.current) clearTimeout(chatSyncTimerRef.current)
+    chatSyncTimerRef.current = setTimeout(() => syncChatToServer(messages), 3000)
+    return () => { if (chatSyncTimerRef.current) clearTimeout(chatSyncTimerRef.current) }
+  }, [messages, syncChatToServer])
 
   // Centralized clear-chat handler: clears chat permanently (no archive)
   const handleClearChat = async () => {
