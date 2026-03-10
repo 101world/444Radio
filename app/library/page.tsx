@@ -197,7 +197,7 @@ export default function LibraryPage() {
           (boughtData.success && Array.isArray(boughtData.bought) ? boughtData.bought : []).map((t: any) => t.audio_url).filter(Boolean)
         )
         const nonStemMusic = uniqueMusic.filter((track: any) =>
-          track.genre !== 'stem' && track.genre !== 'boosted' && track.genre !== 'extract' && track.genre !== 'loop' && track.genre !== 'effects' && track.genre !== 'processed' && track.genre !== 'chords' && track.genre !== 'voice-over' && track.genre !== 'beatmaker' && track.genre !== '444-extend' && track.genre !== '444-inpaint' && track.genre !== '444-cover' && track.genre !== '444-add-vocals' && track.genre !== '444-voice-to-melody' &&
+          track.genre !== 'stem' && track.genre !== 'boosted' && track.genre !== 'extract' && track.genre !== 'loop' && track.genre !== 'effects' && track.genre !== 'processed' && track.genre !== 'chords' && track.genre !== 'voice-over' && track.genre !== 'beatmaker' && track.genre !== '444-extend' && track.genre !== '444-inpaint' && track.genre !== '444-cover' && track.genre !== '444-remix' && track.genre !== '444-add-vocals' && track.genre !== '444-voice-to-melody' &&
           !(track.prompt && typeof track.prompt === 'string' && track.prompt.toLowerCase().includes('purchased from earn')) &&
           !boughtAudioUrls.has(track.audio_url)
         )

@@ -16,8 +16,9 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Query both '444-cover' (correct) and '444-remix' (legacy) genre values from combined_media
     const res = await fetch(
-      `${supabaseUrl}/rest/v1/combined_media?user_id=eq.${userId}&genre=eq.444-cover&order=created_at.desc&limit=200&select=id,title,audio_url,audio_prompt,lyrics,created_at,plays,metadata`,
+      `${supabaseUrl}/rest/v1/combined_media?user_id=eq.${userId}&or=(genre.eq.444-cover,genre.eq.444-remix)&order=created_at.desc&limit=200&select=id,title,audio_url,audio_prompt,lyrics,created_at,plays,metadata`,
       {
         headers: {
           apikey: supabaseKey,
@@ -30,7 +31,7 @@ export async function GET() {
       console.error('Supabase error fetching cover items:', res.status)
 
       const fallbackRes = await fetch(
-        `${supabaseUrl}/rest/v1/music_library?clerk_user_id=eq.${userId}&generation_params=cs.${encodeURIComponent('{"type":"444-cover"}')}&order=created_at.desc&limit=200`,
+        `${supabaseUrl}/rest/v1/music_library?clerk_user_id=eq.${userId}&or=(generation_params.cs.${encodeURIComponent('{"type":"444-cover"}')},generation_params.cs.${encodeURIComponent('{"type":"444-remix"}')})&order=created_at.desc&limit=200`,
         {
           headers: {
             apikey: supabaseKey,

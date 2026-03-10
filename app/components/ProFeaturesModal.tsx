@@ -48,6 +48,7 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
   const [isLoading, setIsLoading] = useState(false)
   const [result, setResult] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
+  const [progressMessage, setProgressMessage] = useState<string | null>(null)
 
   // Form states
   const [audioId, setAudioId] = useState('')
@@ -107,18 +108,31 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
         const blob = new Blob(chunksRef.current, { type: recorder.mimeType })
         setRecordedBlob(blob)
         setIsRecording(false)
-        // Auto-upload the recording
+        // Auto-upload the recording via presigned URL (avoids 413 body limit)
         setUploading(true)
         setError(null)
         try {
           const ext = recorder.mimeType.includes('webm') ? 'webm' : 'mp4'
           const file = new File([blob], `voice-recording-${Date.now()}.${ext}`, { type: recorder.mimeType })
-          const formData = new FormData()
-          formData.append('file', file)
-          const res = await fetch('/api/upload/media', { method: 'POST', body: formData })
-          if (!res.ok) throw new Error('Upload failed')
-          const data = await res.json()
-          setUploadUrl(data.url || data.publicUrl)
+
+          // Step 1: Get presigned URL
+          const metaRes = await fetch('/api/upload/media', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fileName: file.name, fileType: file.type, fileSize: file.size }),
+          })
+          if (!metaRes.ok) throw new Error('Upload failed')
+          const { uploadUrl: presignedUrl, publicUrl } = await metaRes.json()
+
+          // Step 2: Upload directly to R2
+          const uploadRes = await fetch(presignedUrl, {
+            method: 'PUT',
+            headers: { 'Content-Type': file.type },
+            body: file,
+          })
+          if (!uploadRes.ok) throw new Error('Direct upload failed')
+
+          setUploadUrl(publicUrl)
           setUploadFile(file)
         } catch {
           setError('Failed to upload recording. Try again or upload a file instead.')
@@ -174,7 +188,7 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
     setPrompt(''); setStyle(''); setTags(''); setSide('right');
     setInfillStartS(''); setInfillEndS('');
     setAuthor('444 Radio'); setDomainName('444radio.co.in');
-    setResult(null); setError(null); setUploadFile(null);
+    setResult(null); setError(null); setProgressMessage(null); setUploadFile(null);
     setRecordedBlob(null); setRecordingTime(0);
     setInstrumental(false); setVocalGender(''); setNegativeTags('noise, distortion');
     setStyleWeight(50); setWeirdness(50); setAudioWeight(50); setShowRemixAdvanced(false);
@@ -191,14 +205,29 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
     setUploading(true)
     setError(null)
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-      const res = await fetch('/api/upload/media', { method: 'POST', body: formData })
-      if (!res.ok) throw new Error('Upload failed')
-      const data = await res.json()
-      setUploadUrl(data.url || data.publicUrl)
-    } catch (err) {
-      setError('Failed to upload file. You can also paste a direct URL.')
+      // Step 1: Get presigned URL from our API (sends only metadata, avoids 413)
+      const metaRes = await fetch('/api/upload/media', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName: file.name, fileType: file.type, fileSize: file.size }),
+      })
+      if (!metaRes.ok) {
+        const errData = await metaRes.json().catch(() => ({}))
+        throw new Error(errData.error || 'Failed to get upload URL')
+      }
+      const { uploadUrl: presignedUrl, publicUrl } = await metaRes.json()
+
+      // Step 2: Upload file directly to R2 using the presigned URL
+      const uploadRes = await fetch(presignedUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      })
+      if (!uploadRes.ok) throw new Error('Direct upload to storage failed')
+
+      setUploadUrl(publicUrl)
+    } catch (err: any) {
+      setError(err.message || 'Failed to upload file. You can also paste a direct URL.')
     } finally {
       setUploading(false)
     }
@@ -208,6 +237,7 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
     setIsLoading(true)
     setError(null)
     setResult(null)
+    setProgressMessage(null)
 
     try {
       let endpoint = ''
@@ -262,10 +292,16 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
         body: JSON.stringify(body),
       })
 
-      // NDJSON streaming for all features
-      if (!res.ok && res.headers.get('content-type')?.includes('application/json')) {
-        const errData = await res.json()
-        throw new Error(errData.error || `Error (${res.status})`)
+      // Handle non-ok responses (both JSON and NDJSON error cases)
+      if (!res.ok) {
+        const ct = res.headers.get('content-type') || ''
+        if (ct.includes('application/json')) {
+          const errData = await res.json()
+          throw new Error(errData.error || `Error (${res.status})`)
+        }
+        // Non-JSON error (e.g. HTML 502/504 from Vercel)
+        const text = await res.text().catch(() => '')
+        throw new Error(text?.substring(0, 100) || `Server error (${res.status})`)
       }
 
       const reader = res.body?.getReader()
@@ -273,6 +309,7 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
 
       const decoder = new TextDecoder()
       let buffer = ''
+      let gotResult = false
 
       while (true) {
         const { done, value } = await reader.read()
@@ -284,24 +321,38 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
           if (!line.trim()) continue
           try {
             const parsed = JSON.parse(line)
-            if (parsed.type === 'result') {
+            if (parsed.type === 'started') {
+              setProgressMessage('Generation started...')
+            } else if (parsed.type === 'progress') {
+              setProgressMessage(parsed.message || 'Processing...')
+            } else if (parsed.type === 'result') {
+              gotResult = true
               if (parsed.success) {
                 setResult(parsed)
+                setProgressMessage(null)
               } else {
                 setError(parsed.error || 'Generation failed')
+                setProgressMessage(null)
               }
             }
-          } catch { /* skip */ }
+          } catch { /* skip non-JSON lines */ }
         }
       }
       if (buffer.trim()) {
         try {
           const parsed = JSON.parse(buffer)
           if (parsed.type === 'result') {
+            gotResult = true
             if (parsed.success) setResult(parsed)
             else setError(parsed.error || 'Generation failed')
+            setProgressMessage(null)
           }
         } catch { /* ignore */ }
+      }
+      // Stream ended without a result event — likely disconnected or timed out
+      if (!gotResult) {
+        setError('Generation stream ended unexpectedly. Check your library — the track may still have been saved.')
+        setProgressMessage(null)
       }
     } catch (err: any) {
       setError(err.message || 'Something went wrong')
@@ -391,14 +442,15 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
                   type="text"
                   value={uploadUrl}
                   onChange={(e) => setUploadUrl(e.target.value)}
-                  placeholder="Paste audio URL or upload below..."
-                  className={`${inputClass} flex-1`}
+                  placeholder={uploadFile ? 'File uploaded successfully' : 'Paste audio URL or upload below...'}
+                  className={`${inputClass} flex-1 ${uploadFile && uploadUrl ? 'border-green-500/30 text-green-300/70' : ''}`}
+                  readOnly={!!uploadFile && !!uploadUrl}
                 />
               </div>
               <div className="mt-2">
                 <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-white/10 hover:border-red-400/30 cursor-pointer transition-all group">
-                  {uploading ? <Loader2 size={14} className="text-red-400 animate-spin" /> : <Upload size={14} className="text-white/30 group-hover:text-red-400" />}
-                  <span className="text-xs text-white/30 group-hover:text-white/50">{uploadFile ? uploadFile.name : 'Or upload audio file'}</span>
+                  {uploading ? <Loader2 size={14} className="text-red-400 animate-spin" /> : uploadFile && uploadUrl ? <Upload size={14} className="text-green-400" /> : <Upload size={14} className="text-white/30 group-hover:text-red-400" />}
+                  <span className={`text-xs ${uploadFile && uploadUrl ? 'text-green-400/70' : 'text-white/30 group-hover:text-white/50'}`}>{uploadFile ? (uploadUrl ? `✓ ${uploadFile.name}` : uploadFile.name) : 'Upload audio file (MP3, WAV, etc.)'}</span>
                   <input type="file" accept="audio/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])} />
                 </label>
               </div>
@@ -655,6 +707,20 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
             </div>
           )}
 
+          {/* Progress */}
+          {isLoading && progressMessage && (
+            <div className="bg-white/[0.03] border border-white/[0.08] rounded-xl p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Loader2 size={14} className="text-red-400 animate-spin" />
+                <p className="text-xs text-white/60 font-medium">{progressMessage}</p>
+              </div>
+              <div className="w-full h-1 bg-white/[0.05] rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-red-500/60 to-red-400/40 rounded-full animate-pulse" style={{ width: '60%' }} />
+              </div>
+              <p className="text-[10px] text-white/20">This may take 1–3 minutes. Don&apos;t close this window.</p>
+            </div>
+          )}
+
           {/* Result */}
           {result && (
             <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4">
@@ -689,7 +755,7 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
             {isLoading ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
-                Processing...
+                {progressMessage || 'Starting...'}
               </>
             ) : (
               <>
