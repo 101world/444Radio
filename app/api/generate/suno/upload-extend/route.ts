@@ -98,9 +98,18 @@ export async function POST(req: NextRequest) {
         await sendLine({ type: 'progress', message: 'Extending your uploaded audio...', taskId })
 
         const completed = await pollTaskUntilDone(taskId)
-        const cData = completed.data as Record<string, any>
-        const tracks = cData.response?.data || cData?.data || []
-        if (!tracks.length) throw new Error('No tracks returned')
+        console.log('🔄 [UPLOAD-EXTEND] Raw poll response:', JSON.stringify(completed).substring(0, 2000))
+
+        const extractTracks = (data: any): any[] => {
+          return data?.response?.data
+            || data?.response?.sunoData
+            || data?.sunoData
+            || (Array.isArray(data?.response) ? data.response : null)
+            || (Array.isArray(data?.data) ? data.data : null)
+            || []
+        }
+        const tracks = extractTracks(completed.data)
+        if (!tracks.length) throw new Error(`No tracks returned. Response keys: ${JSON.stringify(Object.keys(completed?.data || {}))}, response sub-keys: ${JSON.stringify(Object.keys(completed?.data?.response || {}))}`)
 
         const track = tracks[0]
         const trackAudioUrl = track.audio_url || track.audioUrl || track.stream_audio_url || track.streamAudioUrl || track.song_url || track.songUrl || track.url || track.mp3_url || track.output

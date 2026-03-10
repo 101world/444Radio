@@ -5646,6 +5646,48 @@ function CreatePageContent() {
             onClose={() => setShowProFeaturesModal(false)}
             initialFeature={proFeatureType}
             userCredits={userCredits ?? 0}
+            onGenerated={(result) => {
+              // Update credits
+              if (result.creditsRemaining !== undefined) {
+                setUserCredits(result.creditsRemaining)
+              }
+              refreshCredits()
+              window.dispatchEvent(new Event('credits:refresh'))
+
+              // Add to generation queue
+              const genId = addGeneration({
+                type: 'music',
+                prompt: result.title,
+                title: result.title,
+              })
+              updateGeneration(genId, {
+                status: 'completed',
+                result: { audioUrl: result.audioUrl, title: result.title },
+              })
+
+              // Add result message to chat
+              const featureLabel = result.engine === '444-cover' ? '🎵 Remix'
+                : result.engine === 'add-vocals' ? '🎤 Add Vocals'
+                : result.engine === 'voice-to-melody' ? '🎶 Voice-to-Melody'
+                : result.engine === 'upload-extend' ? '🔄 Extend'
+                : '🎵 Pro Feature'
+
+              const resultMessage: Message = {
+                id: Date.now().toString(),
+                type: 'generation',
+                content: `✅ ${featureLabel}: ${result.title || 'Track'} is ready!`,
+                generationType: 'music',
+                generationId: genId,
+                result: {
+                  audioUrl: result.audioUrl,
+                  title: result.title,
+                  lyrics: result.lyrics,
+                },
+                timestamp: new Date(),
+                isGenerating: false,
+              }
+              setMessages(prev => [...prev, resultMessage])
+            }}
           />
         </Suspense>
       )}

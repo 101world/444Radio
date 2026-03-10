@@ -8,6 +8,7 @@ interface ProFeaturesModalProps {
   onClose: () => void
   initialFeature: 'extend' | 'inpaint' | 'remix' | 'add-vocals' | 'voice-to-melody'
   userCredits: number | null
+  onGenerated?: (result: { audioUrl: string; title: string; lyrics?: string; libraryId?: string; creditsRemaining?: number; engine: string }) => void
 }
 
 const FEATURE_INFO: Record<string, { icon: any; label: string; desc: string; cost: number; fields: string[]; help: string }> = {
@@ -43,7 +44,7 @@ const FEATURE_INFO: Record<string, { icon: any; label: string; desc: string; cos
   },
 }
 
-export default function ProFeaturesModal({ isOpen, onClose, initialFeature, userCredits }: ProFeaturesModalProps) {
+export default function ProFeaturesModal({ isOpen, onClose, initialFeature, userCredits, onGenerated }: ProFeaturesModalProps) {
   const [activeFeature, setActiveFeature] = useState(initialFeature)
   const [isLoading, setIsLoading] = useState(false)
   const [result, setResult] = useState<any>(null)
@@ -329,7 +330,15 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
               gotResult = true
               if (parsed.success) {
                 setResult(parsed)
-                setProgressMessage(null)
+                setProgressMessage(null)                // Notify parent of successful generation
+                onGenerated?.({
+                  audioUrl: parsed.audioUrl,
+                  title: parsed.title || title || 'Generated Track',
+                  lyrics: parsed.lyrics,
+                  libraryId: parsed.libraryId,
+                  creditsRemaining: parsed.creditsRemaining,
+                  engine: activeFeature,
+                })
               } else {
                 setError(parsed.error || 'Generation failed')
                 setProgressMessage(null)
@@ -343,8 +352,19 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
           const parsed = JSON.parse(buffer)
           if (parsed.type === 'result') {
             gotResult = true
-            if (parsed.success) setResult(parsed)
-            else setError(parsed.error || 'Generation failed')
+            if (parsed.success) {
+              setResult(parsed)
+              onGenerated?.({
+                audioUrl: parsed.audioUrl,
+                title: parsed.title || title || 'Generated Track',
+                lyrics: parsed.lyrics,
+                libraryId: parsed.libraryId,
+                creditsRemaining: parsed.creditsRemaining,
+                engine: activeFeature,
+              })
+            } else {
+              setError(parsed.error || 'Generation failed')
+            }
             setProgressMessage(null)
           }
         } catch { /* ignore */ }
