@@ -1,6 +1,6 @@
 'use client'
 
-import { Music, Sparkles, Repeat, Image as ImageIcon, Edit3, Rocket, Upload, X, Mic, Zap, Film, Scissors, Lightbulb, ChevronLeft, Volume2, Layers, AudioLines, RefreshCw, AudioWaveform, Wand2, Replace, Headphones, MicVocal, Crown, HelpCircle } from 'lucide-react'
+import { Music, Sparkles, Repeat, Image as ImageIcon, Edit3, Rocket, Upload, X, Mic, Zap, Film, Scissors, Lightbulb, ChevronLeft, Volume2, Layers, AudioLines, RefreshCw, AudioWaveform, Wand2, Replace, Headphones, MicVocal, Crown, HelpCircle, Globe, Store } from 'lucide-react'
 import { useState } from 'react'
 
 interface FeaturesSidebarProps {
@@ -33,6 +33,7 @@ interface FeaturesSidebarProps {
   onShowBeatMaker: () => void
   onShowCoverArt: () => void
   onOpenRelease: () => void
+  onShowListTrack: () => void
   onShowProExtend: () => void
   onShowProInpaint: () => void
   onShowProRemix: () => void
@@ -97,6 +98,7 @@ export default function FeaturesSidebar({
   onShowBeatMaker,
   onShowCoverArt,
   onOpenRelease,
+  onShowListTrack,
   onShowProExtend,
   onShowProInpaint,
   onShowProRemix,
@@ -118,17 +120,23 @@ export default function FeaturesSidebar({
   const [ideasView, setIdeasView] = useState<'tags' | 'type' | 'genre' | 'generating'>('tags')
   const [promptType, setPromptType] = useState<'song' | 'beat'>('song')
   const [activeSection, setActiveSection] = useState<'create' | 'pro' | 'fx' | 'process' | 'publish'>('create')
+  const [showLangMenu, setShowLangMenu] = useState(false)
+  const [selectedLang, setSelectedLang] = useState('English')
 
   if (!isOpen) return null
 
-  // ═══ TILE DEFINITIONS — vibrant gradients + descriptions ═══
-  const proGradient = (base: string) => isProMode
-    ? 'from-red-500/30 via-red-600/15 to-red-900/25'
-    : base
-  const proGlow = (base: string) => isProMode ? 'shadow-red-500/30' : base
-  const proActiveGrad = (base: string) => isProMode
-    ? 'from-red-500/45 via-red-600/30 to-red-900/40 ring-red-400/70'
-    : base
+  // ═══ TILE DEFINITIONS — unified cyan (standard) / glassmorphism (pro) ═══
+  const tileGrad = isProMode
+    ? 'from-white/[0.06] via-white/[0.03] to-white/[0.01]'
+    : 'from-cyan-500/20 via-cyan-600/12 to-cyan-700/18'
+  const tileGlow = isProMode ? 'shadow-white/15' : 'shadow-cyan-500/20'
+  const tileActiveGrad = isProMode
+    ? 'from-white/[0.14] via-white/[0.08] to-white/[0.04] ring-white/30'
+    : 'from-cyan-400/45 via-cyan-500/35 to-cyan-600/40 ring-cyan-400/60'
+  // Keep helpers for backward compat — they now return unified values
+  const proGradient = (_base: string) => tileGrad
+  const proGlow = (_base: string) => tileGlow
+  const proActiveGrad = (_base: string) => tileActiveGrad
 
   const sections: Record<string, { label: string; emoji: string; tiles: Tile[] }> = {
     create: {
@@ -137,50 +145,50 @@ export default function FeaturesSidebar({
       tiles: [
         {
           icon: Music, label: 'Music', desc: 'AI song generation',
-          gradient: proGradient('from-cyan-400/35 via-blue-500/25 to-indigo-500/30'),
-          glowColor: proGlow('shadow-cyan-400/30'),
-          activeGradient: proActiveGrad('from-cyan-400/50 via-blue-500/40 to-indigo-500/45 ring-cyan-400/70'),
+          gradient: tileGrad,
+          glowColor: tileGlow,
+          activeGradient: tileActiveGrad,
           active: selectedType === 'music' && !isInstrumental, cost: 2,
           onClick: () => { onSelectType('music'); if (isInstrumental) onToggleInstrumental() },
         },
         {
-          icon: AudioLines, label: 'Beats', desc: 'AI drums & samples',
-          gradient: proGradient('from-violet-400/35 via-purple-500/25 to-fuchsia-500/30'),
-          glowColor: proGlow('shadow-violet-400/30'),
-          activeGradient: proActiveGrad('from-violet-400/50 via-purple-500/40 to-fuchsia-500/45 ring-violet-400/70'),
-          active: false, cost: 2,
-          onClick: onShowBeatMaker,
-        },
-        {
           icon: Music, label: 'Inst.', desc: 'No vocals, pure sound',
-          gradient: proGradient('from-purple-400/35 via-indigo-400/25 to-blue-500/30'),
-          glowColor: proGlow('shadow-purple-400/30'),
-          activeGradient: proActiveGrad('from-purple-400/50 via-indigo-400/40 to-blue-500/45 ring-purple-400/70'),
+          gradient: tileGrad,
+          glowColor: tileGlow,
+          activeGradient: tileActiveGrad,
           active: selectedType === 'music' && isInstrumental, cost: 2,
           onClick: () => { onSelectType('music'); if (!isInstrumental) onToggleInstrumental() },
         },
         {
+          icon: AudioLines, label: 'Samples', desc: 'AI drums & samples',
+          gradient: tileGrad,
+          glowColor: tileGlow,
+          activeGradient: tileActiveGrad,
+          active: false, cost: 2,
+          onClick: onShowBeatMaker,
+        },
+        {
           icon: ImageIcon, label: 'Art', desc: 'AI album artwork',
-          gradient: proGradient('from-pink-400/35 via-rose-500/25 to-orange-400/30'),
-          glowColor: proGlow('shadow-pink-400/30'),
-          activeGradient: proActiveGrad('from-pink-400/50 via-rose-500/40 to-orange-400/45 ring-pink-400/70'),
+          gradient: tileGrad,
+          glowColor: tileGlow,
+          activeGradient: tileActiveGrad,
           active: selectedType === 'image', cost: 1,
           onClick: () => { onSelectType('image'); onShowCoverArt() },
         },
         {
           icon: Repeat, label: '444 Remix', desc: 'Remix any song',
-          gradient: proGradient('from-amber-400/35 via-orange-500/25 to-red-400/30'),
-          glowColor: proGlow('shadow-amber-400/30'),
-          activeGradient: proActiveGrad('from-amber-400/50 via-orange-500/40 to-red-400/45 ring-amber-400/70'),
+          gradient: tileGrad,
+          glowColor: tileGlow,
+          activeGradient: tileActiveGrad,
           active: false, cost: 3,
           onClick: onShowProRemix,
           helpText: 'Upload any song and remix it in a new style using 444 Remix Engine. 3 credits.',
         },
         {
           icon: Edit3, label: 'Lyrics', desc: 'Write & edit words',
-          gradient: proGradient('from-emerald-400/35 via-teal-500/25 to-cyan-500/30'),
-          glowColor: proGlow('shadow-emerald-400/30'),
-          activeGradient: proActiveGrad('from-emerald-400/50 via-teal-500/40 to-cyan-500/45 ring-emerald-400/70'),
+          gradient: tileGrad,
+          glowColor: tileGlow,
+          activeGradient: tileActiveGrad,
           active: !!(customTitle || genre || customLyrics || bpm),
           onClick: onShowLyrics,
           hidden: selectedType !== 'music' || isInstrumental,
@@ -188,38 +196,38 @@ export default function FeaturesSidebar({
       ],
     },
     fx: {
-      label: 'Effects',
+      label: 'SFX',
       emoji: '✨',
       tiles: [
         {
-          icon: Sparkles, label: 'SFX', desc: 'Sound effects',
-          gradient: proGradient('from-fuchsia-400/35 via-pink-500/25 to-purple-500/30'),
-          glowColor: proGlow('shadow-fuchsia-400/30'),
-          activeGradient: proActiveGrad('from-fuchsia-400/50 via-pink-500/40 to-purple-500/45 ring-fuchsia-400/70'),
+          icon: Sparkles, label: 'Score', desc: 'Background scoring SFX',
+          gradient: tileGrad,
+          glowColor: tileGlow,
+          activeGradient: tileActiveGrad,
           active: false, cost: 2,
           onClick: onShowEffects,
         },
         {
           icon: Repeat, label: 'Loops', desc: 'Fixed BPM loops',
-          gradient: proGradient('from-cyan-400/35 via-teal-400/25 to-emerald-500/30'),
-          glowColor: proGlow('shadow-cyan-400/30'),
-          activeGradient: proActiveGrad('from-cyan-400/50 via-teal-400/40 to-emerald-500/45 ring-cyan-400/70'),
+          gradient: tileGrad,
+          glowColor: tileGlow,
+          activeGradient: tileActiveGrad,
           active: false, cost: 6,
           onClick: onShowLoopers,
         },
         {
           icon: Music, label: 'Chords', desc: 'Chord & rhythm control',
-          gradient: proGradient('from-violet-400/35 via-indigo-400/25 to-blue-500/30'),
-          glowColor: proGlow('shadow-violet-400/30'),
-          activeGradient: proActiveGrad('from-violet-400/50 via-indigo-400/40 to-blue-500/45 ring-violet-400/70'),
+          gradient: tileGrad,
+          glowColor: tileGlow,
+          activeGradient: tileActiveGrad,
           active: false, cost: 4,
           onClick: onShowMusiConGen,
         },
         {
           icon: Volume2, label: 'Boost', desc: 'Mix & master audio',
-          gradient: proGradient('from-amber-400/35 via-yellow-400/25 to-orange-400/30'),
-          glowColor: proGlow('shadow-amber-400/30'),
-          activeGradient: proActiveGrad('from-amber-400/50 via-yellow-400/40 to-orange-400/45 ring-amber-400/70'),
+          gradient: tileGrad,
+          glowColor: tileGlow,
+          activeGradient: tileActiveGrad,
           active: false, cost: 1,
           onClick: onShowAudioBoost,
         },
@@ -231,49 +239,49 @@ export default function FeaturesSidebar({
       tiles: [
         {
           icon: Scissors, label: 'Stems', desc: 'Vocals, drums, bass',
-          gradient: proGradient('from-teal-400/35 via-emerald-400/25 to-green-500/30'),
-          glowColor: proGlow('shadow-teal-400/30'),
-          activeGradient: proActiveGrad('from-teal-400/50 via-emerald-400/40 to-green-500/45 ring-teal-400/70'),
+          gradient: tileGrad,
+          glowColor: tileGlow,
+          activeGradient: tileActiveGrad,
           active: false, cost: 0,
           onClick: onShowStemSplit,
         },
         {
           icon: Layers, label: 'Extract', desc: 'Pull audio from media',
-          gradient: proGradient('from-blue-400/35 via-sky-400/25 to-cyan-500/30'),
-          glowColor: proGlow('shadow-blue-400/30'),
-          activeGradient: proActiveGrad('from-blue-400/50 via-sky-400/40 to-cyan-500/45 ring-blue-400/70'),
+          gradient: tileGrad,
+          glowColor: tileGlow,
+          activeGradient: tileActiveGrad,
           active: false, cost: 1,
           onClick: onShowExtract,
         },
         {
-          icon: Mic, label: 'Tune', desc: 'Pitch correct vocals',
-          gradient: proGradient('from-rose-400/35 via-pink-400/25 to-fuchsia-500/30'),
-          glowColor: proGlow('shadow-rose-400/30'),
-          activeGradient: proActiveGrad('from-rose-400/50 via-pink-400/40 to-fuchsia-500/45 ring-rose-400/70'),
+          icon: Mic, label: 'Auto Tune', desc: 'Pitch correct vocals',
+          gradient: tileGrad,
+          glowColor: tileGlow,
+          activeGradient: tileActiveGrad,
           active: false, cost: 1,
           onClick: onShowAutotune,
         },
         {
-          icon: Film, label: 'Visual', desc: 'Text/Image to video',
-          gradient: proGradient('from-indigo-400/35 via-violet-400/25 to-purple-500/30'),
-          glowColor: proGlow('shadow-indigo-400/30'),
-          activeGradient: proActiveGrad('from-indigo-400/50 via-violet-400/40 to-purple-500/45 ring-indigo-400/70'),
+          icon: Film, label: 'Visualizer', desc: 'Text/Image to video',
+          gradient: tileGrad,
+          glowColor: tileGlow,
+          activeGradient: tileActiveGrad,
           active: false,
           onClick: onShowVisualizer,
         },
         {
           icon: Mic, label: 'Lip Sync', desc: 'Image + audio to video',
-          gradient: proGradient('from-pink-400/35 via-rose-400/25 to-red-400/30'),
-          glowColor: proGlow('shadow-pink-400/30'),
-          activeGradient: proActiveGrad('from-pink-400/50 via-rose-400/40 to-red-400/45 ring-pink-400/70'),
+          gradient: tileGrad,
+          glowColor: tileGlow,
+          activeGradient: tileActiveGrad,
           active: false,
           onClick: onShowLipSync,
         },
         {
           icon: Film, label: 'Vid→Aud', desc: 'Synced SFX from video',
-          gradient: proGradient('from-orange-400/35 via-amber-400/25 to-yellow-500/30'),
-          glowColor: proGlow('shadow-orange-400/30'),
-          activeGradient: proActiveGrad('from-orange-400/50 via-amber-400/40 to-yellow-500/45 ring-orange-400/70'),
+          gradient: tileGrad,
+          glowColor: tileGlow,
+          activeGradient: tileActiveGrad,
           active: false, cost: 4,
           onClick: onShowVideoToAudio,
         },
@@ -285,19 +293,27 @@ export default function FeaturesSidebar({
       tiles: [
         {
           icon: Upload, label: 'Upload', desc: 'Upload audio & video',
-          gradient: proGradient('from-emerald-400/35 via-green-400/25 to-teal-500/30'),
-          glowColor: proGlow('shadow-emerald-400/30'),
-          activeGradient: proActiveGrad('from-emerald-400/50 via-green-400/40 to-teal-500/45 ring-emerald-400/70'),
+          gradient: tileGrad,
+          glowColor: tileGlow,
+          activeGradient: tileActiveGrad,
           active: false,
           onClick: onShowUpload, size: 'wide',
         },
         {
           icon: Rocket, label: 'Release', desc: 'Publish to feed',
-          gradient: proGradient('from-cyan-400/35 via-blue-400/25 to-violet-500/30'),
-          glowColor: proGlow('shadow-cyan-400/30'),
-          activeGradient: proActiveGrad('from-cyan-400/50 via-blue-400/40 to-violet-500/45 ring-cyan-400/70'),
+          gradient: tileGrad,
+          glowColor: tileGlow,
+          activeGradient: tileActiveGrad,
           active: false,
           onClick: onOpenRelease, size: 'wide',
+        },
+        {
+          icon: Store, label: 'List Track', desc: 'Sell on marketplace',
+          gradient: tileGrad,
+          glowColor: tileGlow,
+          activeGradient: tileActiveGrad,
+          active: false,
+          onClick: onShowListTrack, size: 'wide',
         },
       ],
     },
@@ -310,45 +326,45 @@ export default function FeaturesSidebar({
     tiles: [
       {
         icon: Wand2, label: 'Extend', desc: 'Continue a track from any point',
-        gradient: proGradient('from-violet-500/35 via-purple-500/25 to-fuchsia-500/30'),
-        glowColor: proGlow('shadow-violet-400/30'),
-        activeGradient: proActiveGrad('from-violet-500/50 via-purple-500/40 to-fuchsia-500/45 ring-violet-400/70'),
+        gradient: tileGrad,
+        glowColor: tileGlow,
+        activeGradient: tileActiveGrad,
         active: false, cost: 4,
         onClick: onShowProExtend,
         helpText: 'Upload audio or paste a URL. Choose to extend from the end (right) or add a new intro (left). 4 credits.',
       },
       {
         icon: Replace, label: 'Inpaint', desc: 'Replace a section in a track',
-        gradient: proGradient('from-rose-500/35 via-pink-500/25 to-fuchsia-500/30'),
-        glowColor: proGlow('shadow-rose-400/30'),
-        activeGradient: proActiveGrad('from-rose-500/50 via-pink-500/40 to-fuchsia-500/45 ring-rose-400/70'),
+        gradient: tileGrad,
+        glowColor: tileGlow,
+        activeGradient: tileActiveGrad,
         active: false, cost: 4,
         onClick: onShowProInpaint,
         helpText: 'Upload audio and set start/end times for the section to replace. Add style tags. 4 credits.',
       },
       {
         icon: RefreshCw, label: '444 Remix', desc: 'Remix any song in a new style',
-        gradient: proGradient('from-blue-500/35 via-indigo-500/25 to-violet-500/30'),
-        glowColor: proGlow('shadow-blue-400/30'),
-        activeGradient: proActiveGrad('from-blue-500/50 via-indigo-500/40 to-violet-500/45 ring-blue-400/70'),
+        gradient: tileGrad,
+        glowColor: tileGlow,
+        activeGradient: tileActiveGrad,
         active: false, cost: 3,
         onClick: onShowProRemix,
         helpText: 'Upload any song — with or without vocals. 444 Remix re-creates it in a brand new style. 3 credits.',
       },
       {
         icon: MicVocal, label: 'Add Vocals', desc: 'AI vocals on instrumental',
-        gradient: proGradient('from-pink-500/35 via-rose-500/25 to-red-500/30'),
-        glowColor: proGlow('shadow-pink-400/30'),
-        activeGradient: proActiveGrad('from-pink-500/50 via-rose-500/40 to-red-500/45 ring-pink-400/70'),
+        gradient: tileGrad,
+        glowColor: tileGlow,
+        activeGradient: tileActiveGrad,
         active: false, cost: 5,
         onClick: onShowProAddVocals,
         helpText: 'Upload an instrumental track. The AI generates lyrics/vocals and layers them on top. 5 credits.',
       },
       {
         icon: Headphones, label: 'Melody→Song', desc: 'Hum/sing → full track',
-        gradient: proGradient('from-orange-500/35 via-amber-500/25 to-yellow-500/30'),
-        glowColor: proGlow('shadow-orange-400/30'),
-        activeGradient: proActiveGrad('from-orange-500/50 via-amber-500/40 to-yellow-500/45 ring-orange-400/70'),
+        gradient: tileGrad,
+        glowColor: tileGlow,
+        activeGradient: tileActiveGrad,
         active: false, cost: 5,
         onClick: onShowProVoiceToMelody,
         helpText: 'Upload a vocal recording or hum. The AI creates full instrumental backing to match your melody. 5 credits.',
@@ -363,7 +379,7 @@ export default function FeaturesSidebar({
   const tabIcons: Record<string, { icon: any; label: string }> = {
     create: { icon: Music, label: 'Create' },
     pro: { icon: Crown, label: 'Advanced' },
-    fx: { icon: Sparkles, label: 'FX' },
+    fx: { icon: Sparkles, label: 'SFX' },
     process: { icon: Scissors, label: 'Process' },
     publish: { icon: Rocket, label: 'Publish' },
   }
@@ -376,21 +392,21 @@ export default function FeaturesSidebar({
       {/* ═══ Sidebar Panel ═══ */}
       <div className={`fixed inset-0 md:inset-auto md:left-14 md:top-0 md:h-screen md:w-72 z-50 md:z-40 flex flex-col animate-slideInLeft overflow-hidden ${
         isProMode
-          ? 'bg-gradient-to-b from-[#0d0608] via-[#0a0506] to-[#080404] md:border-r md:border-red-500/15'
+          ? 'bg-gradient-to-b from-[#070709] via-[#050507] to-[#030305] md:border-r md:border-white/[0.12]'
           : 'bg-gradient-to-b from-[#080c14] via-[#060a12] to-[#040810] md:border-r md:border-white/[0.08]'
       }`}>
 
         {/* ── Frosted header ── */}
         <div className={`flex items-center justify-between px-4 h-14 shrink-0 backdrop-blur-xl ${
-          isProMode ? 'bg-red-500/5 border-b border-red-500/10' : 'bg-white/[0.02] border-b border-white/[0.06]'
+          isProMode ? 'bg-white/[0.02] border-b border-white/[0.08]' : 'bg-white/[0.02] border-b border-white/[0.06]'
         }`}>
           <div className="flex items-center gap-3">
             <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
               isProMode
-                ? 'bg-gradient-to-br from-red-500/30 to-red-600/20 shadow-lg shadow-red-500/20'
+                ? 'bg-gradient-to-br from-white/[0.12] to-white/[0.06] shadow-lg shadow-white/10'
                 : 'bg-gradient-to-br from-cyan-500/30 to-blue-600/20 shadow-lg shadow-cyan-500/20'
             }`}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={isProMode ? 'text-red-400' : 'text-cyan-400'}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={isProMode ? 'text-white' : 'text-cyan-400'}>
                 <rect x="3" y="3" width="7" height="7" rx="2" stroke="currentColor" strokeWidth="2"/>
                 <rect x="14" y="3" width="7" height="7" rx="2" stroke="currentColor" strokeWidth="2"/>
                 <rect x="3" y="14" width="7" height="7" rx="2" stroke="currentColor" strokeWidth="2"/>
@@ -403,7 +419,7 @@ export default function FeaturesSidebar({
             {/* Credits pill */}
             <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${
               isProMode
-                ? 'bg-red-500/15 text-red-300 border border-red-500/20'
+                ? 'bg-white/[0.08] text-white border border-white/[0.15]'
                 : 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/20'
             }`}>
               <Zap size={10} />
@@ -418,7 +434,7 @@ export default function FeaturesSidebar({
         {/* ── Section tabs (pill nav) ── */}
         <div className="px-3 pt-3 pb-1 shrink-0">
           <div className={`flex gap-1 p-1 rounded-2xl ${
-            isProMode ? 'bg-red-500/[0.06]' : 'bg-white/[0.03]'
+            isProMode ? 'bg-white/[0.04] border border-white/[0.08]' : 'bg-white/[0.03] border border-white/[0.06]'
           }`}>
             {sectionKeys.map(key => {
               const tab = tabIcons[key]
@@ -428,16 +444,18 @@ export default function FeaturesSidebar({
                 <button
                   key={key}
                   onClick={() => setActiveSection(key)}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-semibold transition-all duration-200 ${
+                  className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-[10px] font-bold tracking-wide transition-all duration-200 ${
                     isActive
                       ? isProMode
-                        ? 'bg-red-500/20 text-red-300 shadow-sm shadow-red-500/10'
-                        : 'bg-white/[0.1] text-white shadow-sm shadow-white/5'
-                      : 'text-white/30 hover:text-white/50 hover:bg-white/[0.03]'
+                        ? 'bg-white/[0.12] text-white shadow-sm shadow-white/10 border border-white/[0.15]'
+                        : 'bg-cyan-500/20 text-cyan-300 shadow-sm shadow-cyan-500/10 border border-cyan-500/20'
+                      : isProMode
+                        ? 'text-white/30 hover:text-white/50 hover:bg-white/[0.04]'
+                        : 'text-white/30 hover:text-white/50 hover:bg-white/[0.03]'
                   }`}
                 >
-                  <Icon size={12} />
-                  <span className="hidden sm:inline">{tab.label}</span>
+                  <Icon size={11} />
+                  <span>{tab.label}</span>
                 </button>
               )
             })}
@@ -448,7 +466,7 @@ export default function FeaturesSidebar({
         <div className="px-3 py-2 shrink-0">
           <div className={`rounded-2xl p-0.5 ${
             isProMode
-              ? 'bg-gradient-to-r from-red-500/20 via-red-600/10 to-red-500/20'
+              ? 'bg-gradient-to-r from-white/[0.1] via-white/[0.05] to-white/[0.1]'
               : 'bg-gradient-to-r from-cyan-500/20 via-blue-500/10 to-purple-500/20'
           }`}>
             <div className="bg-[#0a0c14]/90 rounded-[14px] p-2.5">
@@ -482,13 +500,49 @@ export default function FeaturesSidebar({
                   >
                     <Lightbulb size={12} />
                   </button>
+                  {/* Language selector */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowLangMenu(!showLangMenu)}
+                      className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
+                        showLangMenu
+                          ? isProMode ? 'bg-white/[0.12] text-white' : 'bg-cyan-500/20 text-cyan-300'
+                          : 'bg-white/[0.06] hover:bg-white/[0.1] text-white/30 hover:text-cyan-400'
+                      }`}
+                      title={`Language: ${selectedLang}`}
+                    >
+                      <Globe size={12} />
+                    </button>
+                    {showLangMenu && (
+                      <div className="absolute bottom-9 left-0 z-50 w-36 py-1 rounded-xl bg-black/95 border border-white/10 shadow-xl backdrop-blur-xl max-h-48 overflow-y-auto scrollbar-thin">
+                        {['English', 'Hindi', 'Spanish', 'French', 'Japanese', 'Korean', 'Portuguese', 'Arabic', 'Chinese', 'German', 'Italian', 'Russian', 'Swahili', 'Punjabi', 'Tamil'].map(lang => (
+                          <button
+                            key={lang}
+                            onClick={() => { setSelectedLang(lang); setShowLangMenu(false) }}
+                            className={`w-full text-left px-3 py-1.5 text-[10px] font-medium transition-colors ${
+                              selectedLang === lang
+                                ? isProMode ? 'text-white bg-white/[0.1]' : 'text-cyan-300 bg-cyan-500/10'
+                                : 'text-white/50 hover:text-white/80 hover:bg-white/[0.05]'
+                            }`}
+                          >
+                            {lang}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {selectedLang !== 'English' && (
+                    <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded ${
+                      isProMode ? 'bg-white/[0.08] text-white/60' : 'bg-cyan-500/10 text-cyan-400/60'
+                    }`}>{selectedLang}</span>
+                  )}
                 </div>
                 <button
                   onClick={onSubmitPrompt}
                   disabled={isGenerating || !promptText.trim()}
                   className={`flex items-center gap-1.5 pl-3 pr-3.5 py-1.5 rounded-xl text-[10px] font-bold transition-all disabled:opacity-25 disabled:cursor-not-allowed ${
                     isProMode
-                      ? 'bg-gradient-to-r from-red-600 to-red-500 text-white shadow-lg shadow-red-500/30 hover:shadow-red-500/50'
+                      ? 'bg-gradient-to-r from-white/90 to-white/70 text-black shadow-lg shadow-white/20 hover:shadow-white/40'
                       : 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50'
                   }`}
                 >
@@ -503,7 +557,7 @@ export default function FeaturesSidebar({
         {/* ─── Ideas / Tags Panel ─── */}
         {showIdeas && (
           <div className={`px-3 pb-2 max-h-[35vh] overflow-y-auto scrollbar-thin shrink-0 ${
-            isProMode ? 'border-b border-red-500/10' : 'border-b border-white/[0.06]'
+            isProMode ? 'border-b border-white/[0.06]' : 'border-b border-white/[0.06]'
           }`}>
             {ideasView === 'tags' && (
               <div className="pb-3">
@@ -517,7 +571,7 @@ export default function FeaturesSidebar({
                       onClick={() => setIdeasView('type')}
                       className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
                         isProMode
-                          ? 'bg-red-500/15 text-red-300 hover:bg-red-500/25 border border-red-500/20'
+                          ? 'bg-white/[0.08] text-white/70 hover:bg-white/[0.15] border border-white/[0.12]'
                           : 'bg-gradient-to-r from-purple-500/15 to-pink-500/15 text-purple-300 hover:text-purple-200 border border-purple-500/20'
                       }`}
                     >
@@ -553,7 +607,7 @@ export default function FeaturesSidebar({
                       onClick={() => onTagClick(tag)}
                       className={`px-2 py-1 rounded-lg text-[10px] font-medium transition-all hover:scale-[1.04] ${
                         isProMode
-                          ? 'bg-red-500/10 hover:bg-red-500/20 text-red-200/70 hover:text-white border border-red-500/15 hover:border-red-400/40'
+                          ? 'bg-white/[0.04] hover:bg-white/[0.08] text-white/50 hover:text-white/80 border border-white/[0.08] hover:border-white/[0.15]'
                           : 'bg-white/[0.04] hover:bg-white/[0.08] text-white/40 hover:text-white/70 border border-white/[0.06] hover:border-white/[0.15]'
                       }`}
                     >
@@ -577,7 +631,7 @@ export default function FeaturesSidebar({
                     onClick={() => { setPromptType('song'); setIdeasView('genre') }}
                     className={`group p-4 rounded-2xl border transition-all hover:scale-[1.03] ${
                       isProMode
-                        ? 'bg-gradient-to-br from-red-500/15 to-red-800/15 border-red-500/20 hover:border-red-400/40 shadow-lg shadow-red-500/10'
+                        ? 'bg-gradient-to-br from-white/[0.06] to-white/[0.02] border-white/[0.12] hover:border-white/[0.2] shadow-lg shadow-white/5'
                         : 'bg-gradient-to-br from-purple-500/15 to-pink-500/15 border-purple-500/20 hover:border-purple-400/40 shadow-lg shadow-purple-500/10'
                     }`}
                   >
@@ -589,7 +643,7 @@ export default function FeaturesSidebar({
                     onClick={() => { setPromptType('beat'); setIdeasView('genre') }}
                     className={`group p-4 rounded-2xl border transition-all hover:scale-[1.03] ${
                       isProMode
-                        ? 'bg-gradient-to-br from-red-600/15 to-red-900/15 border-red-500/20 hover:border-red-400/40 shadow-lg shadow-red-600/10'
+                        ? 'bg-gradient-to-br from-white/[0.06] to-white/[0.02] border-white/[0.12] hover:border-white/[0.2] shadow-lg shadow-white/5'
                         : 'bg-gradient-to-br from-cyan-500/15 to-blue-500/15 border-cyan-500/20 hover:border-cyan-400/40 shadow-lg shadow-cyan-500/10'
                     }`}
                   >
@@ -604,7 +658,7 @@ export default function FeaturesSidebar({
             {ideasView === 'genre' && (
               <div className="space-y-2.5 pb-3">
                 <div className="flex items-center justify-between">
-                  <button onClick={() => setIdeasView('type')} className={`text-[10px] hover:opacity-80 flex items-center gap-1 ${isProMode ? 'text-red-400' : 'text-cyan-400'}`}>
+                  <button onClick={() => setIdeasView('type')} className={`text-[10px] hover:opacity-80 flex items-center gap-1 ${isProMode ? 'text-white/60' : 'text-cyan-400'}`}>
                     <ChevronLeft size={12} /> Back
                   </button>
                   <span className="text-xs font-bold text-white/70">Select Genre</span>
@@ -630,7 +684,7 @@ export default function FeaturesSidebar({
                       disabled={isGeneratingIdea}
                       className={`px-1.5 py-1.5 rounded-xl text-[10px] font-medium transition-all hover:scale-[1.04] disabled:opacity-40 border ${
                         isProMode
-                          ? 'bg-red-500/10 hover:bg-red-500/20 border-red-500/15 text-red-200/70 hover:text-white'
+                          ? 'bg-white/[0.04] hover:bg-white/[0.08] border-white/[0.08] text-white/50 hover:text-white/80'
                           : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/[0.06] text-white/40 hover:text-white/70'
                       }`}
                     >
@@ -644,7 +698,7 @@ export default function FeaturesSidebar({
             {ideasView === 'generating' && (
               <div className="space-y-3 text-center py-5">
                 <div className="relative">
-                  <div className={`w-10 h-10 mx-auto border-[3px] rounded-full animate-spin ${isProMode ? 'border-red-500/20 border-t-red-400' : 'border-cyan-500/20 border-t-cyan-400'}`} />
+                  <div className={`w-10 h-10 mx-auto border-[3px] rounded-full animate-spin ${isProMode ? 'border-white/20 border-t-white/70' : 'border-cyan-500/20 border-t-cyan-400'}`} />
                   <div className="absolute inset-0 flex items-center justify-center"><span className="text-lg">🎨</span></div>
                 </div>
                 <div>
@@ -736,21 +790,21 @@ export default function FeaturesSidebar({
 
         {/* ── Bottom bar — Neo-clay 3D morphism ── */}
         <div className={`px-3 py-3 shrink-0 ${
-          isProMode ? 'bg-red-950/30 border-t border-red-500/10' : 'bg-[#0a0e18] border-t border-white/[0.06]'
+          isProMode ? 'bg-black/50 border-t border-white/[0.08]' : 'bg-[#0a0e18] border-t border-white/[0.06]'
         }`}>
           <div className="flex items-center gap-2.5">
-            {/* Neo-clay Vocal button */}
+            {/* Neo-clay Music button (was Vocal) */}
             <button
               onClick={() => { if (isInstrumental) onToggleInstrumental() }}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-2xl text-[11px] font-bold transition-all duration-300 ${
                 !isInstrumental
                   ? isProMode
-                    ? 'bg-gradient-to-b from-red-400 via-red-500 to-red-600 text-white shadow-[0_4px_12px_rgba(239,68,68,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-2px_4px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(239,68,68,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-2px_4px_rgba(0,0,0,0.2)] active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.3)] active:translate-y-[1px]'
+                    ? 'bg-gradient-to-b from-white/80 via-white/70 to-white/60 text-black shadow-[0_4px_12px_rgba(255,255,255,0.2),inset_0_1px_1px_rgba(255,255,255,0.3),inset_0_-2px_4px_rgba(0,0,0,0.1)] hover:shadow-[0_6px_20px_rgba(255,255,255,0.3),inset_0_1px_1px_rgba(255,255,255,0.4),inset_0_-2px_4px_rgba(0,0,0,0.1)] active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.2)] active:translate-y-[1px]'
                     : 'bg-gradient-to-b from-cyan-300 via-cyan-400 to-cyan-600 text-white shadow-[0_4px_12px_rgba(34,211,238,0.4),inset_0_1px_1px_rgba(255,255,255,0.3),inset_0_-2px_4px_rgba(0,0,0,0.15)] hover:shadow-[0_6px_20px_rgba(34,211,238,0.5),inset_0_1px_1px_rgba(255,255,255,0.35),inset_0_-2px_4px_rgba(0,0,0,0.15)] active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.25)] active:translate-y-[1px]'
                   : 'bg-gradient-to-b from-white/[0.08] via-white/[0.05] to-white/[0.02] text-white/35 shadow-[0_2px_6px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.05)] hover:text-white/55 hover:from-white/[0.12] hover:via-white/[0.07] hover:to-white/[0.03]'
               }`}
             >
-              <Mic size={13} /> Vocal
+              <Mic size={13} /> Music
             </button>
 
             {/* Neo-clay Inst button */}
@@ -759,7 +813,7 @@ export default function FeaturesSidebar({
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-2xl text-[11px] font-bold transition-all duration-300 ${
                 isInstrumental
                   ? isProMode
-                    ? 'bg-gradient-to-b from-red-400 via-red-500 to-red-600 text-white shadow-[0_4px_12px_rgba(239,68,68,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-2px_4px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(239,68,68,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-2px_4px_rgba(0,0,0,0.2)] active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.3)] active:translate-y-[1px]'
+                    ? 'bg-gradient-to-b from-white/80 via-white/70 to-white/60 text-black shadow-[0_4px_12px_rgba(255,255,255,0.2),inset_0_1px_1px_rgba(255,255,255,0.3),inset_0_-2px_4px_rgba(0,0,0,0.1)] hover:shadow-[0_6px_20px_rgba(255,255,255,0.3),inset_0_1px_1px_rgba(255,255,255,0.4),inset_0_-2px_4px_rgba(0,0,0,0.1)] active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.2)] active:translate-y-[1px]'
                     : 'bg-gradient-to-b from-violet-400 via-purple-500 to-purple-700 text-white shadow-[0_4px_12px_rgba(139,92,246,0.4),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-2px_4px_rgba(0,0,0,0.15)] hover:shadow-[0_6px_20px_rgba(139,92,246,0.5),inset_0_1px_1px_rgba(255,255,255,0.3),inset_0_-2px_4px_rgba(0,0,0,0.15)] active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.25)] active:translate-y-[1px]'
                   : 'bg-gradient-to-b from-white/[0.08] via-white/[0.05] to-white/[0.02] text-white/35 shadow-[0_2px_6px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.05)] hover:text-white/55 hover:from-white/[0.12] hover:via-white/[0.07] hover:to-white/[0.03]'
               }`}

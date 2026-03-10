@@ -11,9 +11,10 @@ interface MediaUploadModalProps {
   onError?: (error: string) => void
   onStemSplit?: (audioUrl: string, fileName: string) => void
   onShowBeatMaker?: () => void
+  defaultMode?: string | null
 }
 
-export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, onError, onStemSplit, onShowBeatMaker }: MediaUploadModalProps) {
+export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, onError, onStemSplit, onShowBeatMaker, defaultMode }: MediaUploadModalProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [fileType, setFileType] = useState<'audio' | 'video' | 'image' | null>(null)
   const [uploadMode, setUploadMode] = useState<'video-to-audio' | 'audio-remix' | 'stem-split' | 'audio-boost' | 'extract-video' | 'extract-audio' | 'autotune' | 'visualizer' | null>(null)
@@ -43,6 +44,16 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
   const [boostNoiseReduction, setBoostNoiseReduction] = useState(false)
   const [boostFormat, setBoostFormat] = useState('mp3')
   const [boostBitrate, setBoostBitrate] = useState('192k')
+
+  // Apply defaultMode when modal opens
+  useEffect(() => {
+    if (isOpen && defaultMode) {
+      setUploadMode(defaultMode as typeof uploadMode)
+    }
+    if (!isOpen) {
+      setUploadMode(null)
+    }
+  }, [isOpen, defaultMode])
 
   // Detect media type from file
   const detectMediaType = (file: File): 'audio' | 'video' | 'image' | null => {

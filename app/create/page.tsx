@@ -24,6 +24,7 @@ const ProFeaturesModal = lazy(() => import('../components/ProFeaturesModal'))
 import CoverArtGenModal from '../components/CoverArtGenModal'
 const MatrixConsole = lazy(() => import('../components/MatrixConsole'))
 const OutOfCreditsModal = lazy(() => import('../components/OutOfCreditsModal'))
+const ListTrackModal = lazy(() => import('../earn/components/ListTrackModal'))
 import PluginGenerationQueue from '../components/PluginGenerationQueue'
 import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLanguage } from '@/lib/language-hooks'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
@@ -123,10 +124,12 @@ function CreatePageContent() {
   const [showCombineModal, setShowCombineModal] = useState(false)
   const [showReleaseModal, setShowReleaseModal] = useState(false)
   const [showMediaUploadModal, setShowMediaUploadModal] = useState(false)
+  const [mediaUploadDefaultMode, setMediaUploadDefaultMode] = useState<string | null>(null)
   const [showAudioBoostModal, setShowAudioBoostModal] = useState(false)
   const [showAutotuneModal, setShowAutotuneModal] = useState(false)
   const [showVisualizerModal, setShowVisualizerModal] = useState(false)
   const [showLipSyncModal, setShowLipSyncModal] = useState(false)
+  const [showListTrackModal, setShowListTrackModal] = useState(false)
   const [coverArtForModal, setCoverArtForModal] = useState<string | null>(null)
   const [boostAudioUrl, setBoostAudioUrl] = useState('')
   const [boostTrackTitle, setBoostTrackTitle] = useState('')
@@ -2906,11 +2909,11 @@ function CreatePageContent() {
           onShowLoopers={() => setShowLoopersModal(true)}
           onShowMusiConGen={() => setShowMusiConGenModal(true)}
           onShowLyrics={() => setShowLyricsModal(true)}
-          onShowUpload={() => setShowMediaUploadModal(true)}
-          onShowVideoToAudio={() => setShowMediaUploadModal(true)}
-          onShowStemSplit={() => setShowMediaUploadModal(true)}
-          onShowAudioBoost={() => setShowMediaUploadModal(true)}
-          onShowExtract={() => setShowMediaUploadModal(true)}
+          onShowUpload={() => { setMediaUploadDefaultMode(null); setShowMediaUploadModal(true) }}
+          onShowVideoToAudio={() => { setMediaUploadDefaultMode('video-to-audio'); setShowMediaUploadModal(true) }}
+          onShowStemSplit={() => { setMediaUploadDefaultMode('stem-split'); setShowMediaUploadModal(true) }}
+          onShowAudioBoost={() => { setMediaUploadDefaultMode('audio-boost'); setShowMediaUploadModal(true) }}
+          onShowExtract={() => { setMediaUploadDefaultMode('extract-audio'); setShowMediaUploadModal(true) }}
           onShowAutotune={() => setShowAutotuneModal(true)}
           onShowVisualizer={() => setShowVisualizerModal(true)}
           onShowLipSync={() => setShowLipSyncModal(true)}
@@ -2918,6 +2921,7 @@ function CreatePageContent() {
           onShowBeatMaker={() => setShowBeatMakerModal(true)}
           onShowCoverArt={() => setShowCoverArtGenModal(true)}
           onOpenRelease={() => handleOpenRelease()}
+          onShowListTrack={() => setShowListTrackModal(true)}
           onShowProExtend={() => { setProFeatureType('extend'); setShowProFeaturesModal(true) }}
           onShowProInpaint={() => { setProFeatureType('inpaint'); setShowProFeaturesModal(true) }}
           onShowProRemix={() => { setProFeatureType('remix'); setShowProFeaturesModal(true) }}
@@ -5147,7 +5151,8 @@ function CreatePageContent() {
       <Suspense fallback={null}>
         <MediaUploadModal
           isOpen={showMediaUploadModal}
-          onClose={() => setShowMediaUploadModal(false)}
+          onClose={() => { setShowMediaUploadModal(false); setMediaUploadDefaultMode(null) }}
+          defaultMode={mediaUploadDefaultMode}
           onShowBeatMaker={() => setShowBeatMakerModal(true)}
           onStemSplit={(audioUrl, fileName) => {
             // Close upload modal and open SplitStemsModal with the uploaded file
@@ -5663,6 +5668,16 @@ function CreatePageContent() {
         onGenerate={handleCoverArtGenerate}
         initialPrompt={input}
       />
+
+      {/* List Track Modal (from Earn page) */}
+      {showListTrackModal && (
+        <Suspense fallback={null}>
+          <ListTrackModal
+            onClose={() => setShowListTrackModal(false)}
+            onListed={() => { setShowListTrackModal(false); refreshCredits() }}
+          />
+        </Suspense>
+      )}
     </div>
   )
 }
