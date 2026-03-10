@@ -31,7 +31,17 @@ export async function POST(req: NextRequest) {
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await req.json()
-    const { uploadUrl, title, tags, negativeTags: rawNegTags, model = 'V4_5PLUS', vocalGender } = body
+    const {
+      uploadUrl,
+      title,
+      tags,
+      negativeTags: rawNegTags,
+      model = 'V4_5PLUS',
+      vocalGender,
+      styleWeight,
+      weirdnessConstraint,
+      audioWeight,
+    } = body
     const negativeTags = (rawNegTags && String(rawNegTags).trim()) || 'noise, distortion'
 
     if (!uploadUrl || typeof uploadUrl !== 'string') return NextResponse.json({ error: 'uploadUrl is required — provide a public URL to your vocal/melody recording' }, { status: 400 })
@@ -87,6 +97,10 @@ export async function POST(req: NextRequest) {
           negativeTags,
           callBackUrl: 'https://www.444radio.co.in/api/webhook/generation-callback',
           model: validModel,
+          vocalGender,
+          styleWeight,
+          weirdnessConstraint,
+          audioWeight,
         })
         const taskId = taskRes.data.taskId
         await sendLine({ type: 'progress', message: 'Creating instrumental from your melody...', taskId })
