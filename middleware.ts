@@ -27,11 +27,13 @@ const isPublicRoute = createRouteMatcher([
   '/api/upload/media',         // Used by AutotuneModal (audio upload, hybrid auth)
   '/api/upload/lipsync',        // Used by LipSyncModal (image/audio upload, hybrid auth)
   '/api/audio/split-stems',     // Used by plugin + website (stem splitting, hybrid auth)
+  '/api/quests/public(.*)',     // Public quests API for development mode
   '/manifest.json',
   '/radio',
   '/creator-v2',               // Creator V2 - no Clerk auth required, dev mode enabled
   '/input',                    // INPUT live-coding editor - no Clerk auth required
   '/studio',                   // STUDIO pro live-coding page - no Clerk auth required
+  '/quests',                   // Quests page - no Clerk auth required
   '/sitemap.xml',
   '/robots.txt',
 ])

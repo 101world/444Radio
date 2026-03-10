@@ -259,43 +259,25 @@ export default function QuestsPage() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      // Try public API first (for development), fallback to authenticated API
-      const response = await fetch('/api/quests/public')
-      if (!response.ok) {
-        // Fallback to authenticated API
-        const authResponse = await fetch('/api/quests')
-        if (!authResponse.ok) {
-          throw new Error('Failed to fetch quests')
-        }
-        const data = await authResponse.json()
-        setQuests(data.quests || [])
-        setPass(data.pass || null)
-        setTotalCompleted(data.totalCompleted || 0)
-        setUserLevel(data.userLevel || 1)
-        setLevelStats(data.levelStats || {})
-      } else {
-        const data = await response.json()
-        setQuests(data.quests || [])
-        setPass(null) // No pass info in public API
-        setTotalCompleted(0) // No completion data in public API
-        setUserLevel(1) // Default level for public access
-        setLevelStats({}) // No level stats in public API
+      const [questsRes, statsRes] = await Promise.all([
+        fetch('/api/quests'),
+        fetch('/api/quests/stats'),
+      ])
+      const questsData = await questsRes.json()
+      const statsData = await statsRes.json()
+
+      if (questsData.success) {
+        setQuests(questsData.quests || [])
+        setPass(questsData.pass || null)
+        setTotalCompleted(questsData.totalCompleted || 0)
+        setUserLevel(questsData.userLevel || 1)
+        setLevelStats(questsData.levelStats || {})
       }
-      
-      // Try to fetch stats (may not be available in public mode)
-      try {
-        const statsRes = await fetch('/api/quests/stats')
-        const statsData = await statsRes.json()
-        if (statsData.success) {
-          setStats(statsData.stats || null)
-        }
-      } catch (statsErr) {
-        console.warn('Failed to fetch stats:', statsErr)
-        setStats(null)
+      if (statsData.success) {
+        setStats(statsData.stats || null)
       }
     } catch (err) {
       console.error('Failed to fetch quest data:', err)
-      setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setLoading(false)
     }
