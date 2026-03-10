@@ -584,35 +584,31 @@ export default function FeaturesSidebar({
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {[
-                    'upbeat', 'chill', 'energetic', 'melancholic', 'dreamy',
-                    'aggressive', 'dark', 'bright', 'nostalgic', 'euphoric',
-                    'groovy', 'hypnotic', 'moody', 'intense', 'haunting',
-                    'electronic', 'acoustic', 'jazz', 'rock', 'hip-hop',
-                    'heavy bass', 'soft piano', 'guitar solo', 'synthwave',
-                    'lo-fi beats', 'orchestral', 'ambient', 'cinematic',
-                    'trap', 'drill', 'phonk', 'vaporwave', 'future bass',
-                    'drum & bass', 'dubstep', 'house', 'techno', 'trance',
-                    'indie', 'folk', 'blues', 'soul', 'funk', 'disco',
-                    'reggae', 'latin', 'afrobeat', 'amapiano', 'k-pop',
-                    'anime', 'r&b', 'neo-soul', 'boom bap', 'epic',
-                    'romantic', 'sad', 'happy', 'mysterious', 'powerful',
-                    'soft vocals', 'no vocals', 'female vocals', 'male vocals',
-                    'autotune', 'choir', 'melodic rap', 'vocal chops',
-                    'synth lead', 'strings', 'brass', 'flute', 'violin',
-                    'saxophone', '808 drums', 'arpeggiator', 'pad',
-                    'reverb heavy', 'glitchy', 'warm', 'crisp', 'punchy'
-                  ].map((tag) => (
-                    <button
-                      key={tag}
-                      onClick={() => onTagClick(tag)}
-                      className={`px-2 py-1 rounded-lg text-[10px] font-medium transition-all hover:scale-[1.04] ${
-                        isProMode
-                          ? 'bg-white/[0.04] hover:bg-white/[0.08] text-white/50 hover:text-white/80 border border-white/[0.08] hover:border-white/[0.15]'
-                          : 'bg-white/[0.04] hover:bg-white/[0.08] text-white/40 hover:text-white/70 border border-white/[0.06] hover:border-white/[0.15]'
-                      }`}
-                    >
-                      {tag}
-                    </button>
+                    { label: '🎭 Mood & Vibe', tags: ['upbeat', 'chill', 'energetic', 'melancholic', 'dreamy', 'aggressive', 'dark', 'bright', 'nostalgic', 'romantic', 'sad', 'happy', 'mysterious', 'powerful', 'ethereal', 'groovy', 'hypnotic', 'euphoric', 'moody', 'intense', 'laid-back', 'triumphant', 'haunting', 'soothing', 'raw'] },
+                    { label: '🎵 Genre', tags: ['electronic', 'acoustic', 'jazz', 'rock', 'hip-hop', 'trap', 'drill', 'phonk', 'house', 'techno', 'trance', 'dubstep', 'drum & bass', 'future bass', 'synthwave', 'vaporwave', 'lo-fi beats', 'indie', 'folk', 'blues', 'soul', 'funk', 'disco', 'reggae', 'reggaeton', 'latin', 'afrobeat', 'afro house', 'amapiano', 'k-pop', 'j-pop', 'anime', 'r&b', 'neo-soul', 'boom bap', 'country', 'gospel', 'dancehall', 'garage', 'grime', 'hardstyle', 'progressive house', 'deep house', 'minimal techno'] },
+                    { label: '🎸 Instruments', tags: ['heavy bass', 'soft piano', 'guitar solo', 'synth lead', 'strings', 'brass', 'flute', 'violin', 'saxophone', 'acoustic guitar', 'electric guitar', 'grand piano', 'organ', 'cello', 'harp', 'sitar', 'tabla', 'steel drums', '808 drums', 'hi-hats', 'sub bass', 'arpeggiator', 'pad', 'pluck synth', 'marimba', 'kalimba', 'mandolin', 'banjo', 'harmonica', 'trumpet'] },
+                    { label: '🎤 Vocals', tags: ['soft vocals', 'no vocals', 'female vocals', 'male vocals', 'male & female duet', 'raspy vocals', 'falsetto', 'autotune', 'choir', 'harmonies', 'whisper vocals', 'spoken word', 'rap verse', 'melodic rap', 'belting', 'vocal chops', 'ad-libs'] },
+                    { label: '🎬 Production', tags: ['ambient', 'orchestral', 'cinematic', 'epic', 'minimalist', 'layered', 'distorted', 'reverb heavy', 'lo-fi', 'polished', 'gritty', 'spacious', 'punchy', 'warm', 'crisp', 'analog', 'glitchy', 'atmospheric', 'build-up', 'drop', 'breakdown'] },
+                    { label: '📺 Use Case', tags: ['trailer', 'ad', 'commercial', 'music video', 'hollywood', 'bollywood', 'podcast intro', 'gaming', 'workout', 'meditation', 'study music', 'party', 'road trip', 'wedding', 'lullaby', 'alarm tone', 'vlog music'] },
+                  ].map((section) => (
+                    <div key={section.label} className="w-full">
+                      <p className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider mb-1 mt-1.5 first:mt-0">{section.label}</p>
+                      <div className="flex flex-wrap gap-1">
+                        {section.tags.map((tag) => (
+                          <button
+                            key={tag}
+                            onClick={() => onTagClick(tag)}
+                            className={`px-2 py-1 rounded-lg text-[10px] font-medium transition-all hover:scale-[1.04] ${
+                              isProMode
+                                ? 'bg-white/[0.04] hover:bg-white/[0.08] text-white/50 hover:text-white/80 border border-white/[0.08] hover:border-white/[0.15]'
+                                : 'bg-white/[0.04] hover:bg-white/[0.08] text-white/40 hover:text-white/70 border border-white/[0.06] hover:border-white/[0.15]'
+                            }`}
+                          >
+                            {tag}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
