@@ -25,6 +25,7 @@ import CoverArtGenModal from '../components/CoverArtGenModal'
 const MatrixConsole = lazy(() => import('../components/MatrixConsole'))
 const OutOfCreditsModal = lazy(() => import('../components/OutOfCreditsModal'))
 const ListTrackModal = lazy(() => import('../earn/components/ListTrackModal'))
+const StyleDNAModal = lazy(() => import('../components/StyleDNAModal'))
 import PluginGenerationQueue from '../components/PluginGenerationQueue'
 import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLanguage } from '@/lib/language-hooks'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
@@ -186,6 +187,7 @@ function CreatePageContent() {
   const [showBeatMakerModal, setShowBeatMakerModal] = useState(false)
   const [showCoverArtGenModal, setShowCoverArtGenModal] = useState(false)
   const [showProFeaturesModal, setShowProFeaturesModal] = useState(false)
+  const [showStyleDNAModal, setShowStyleDNAModal] = useState(false)
   const [proFeatureType, setProFeatureType] = useState<'extend' | 'inpaint' | 'remix' | 'add-vocals' | 'voice-to-melody'>('extend')
   // Audio recording for voice reference (actual mic capture, not speech-to-text)
   const [isAudioRecording, setIsAudioRecording] = useState(false)
@@ -2976,6 +2978,7 @@ function CreatePageContent() {
           onShowProRemix={() => { setProFeatureType('remix'); setShowProFeaturesModal(true) }}
           onShowProAddVocals={() => { setProFeatureType('add-vocals'); setShowProFeaturesModal(true) }}
           onShowProVoiceToMelody={() => { setProFeatureType('voice-to-melody'); setShowProFeaturesModal(true) }}
+          onShowStyleDNA={() => setShowStyleDNAModal(true)}
           onTagClick={(tag: string) => {
             const newInput = input ? `${input}, ${tag}` : tag
             setInput(newInput.slice(0, MAX_PROMPT_LENGTH))
@@ -5759,6 +5762,16 @@ function CreatePageContent() {
         onGenerate={handleCoverArtGenerate}
         initialPrompt={input}
       />
+
+      {/* Style DNA Modal — free AI style enhancer */}
+      <Suspense fallback={null}>
+        <StyleDNAModal
+          isOpen={showStyleDNAModal}
+          onClose={() => setShowStyleDNAModal(false)}
+          initialContent={genre}
+          onApply={(enhanced) => setGenre(enhanced)}
+        />
+      </Suspense>
 
       {/* List Track Modal (from Earn page) */}
       {showListTrackModal && (

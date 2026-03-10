@@ -39,6 +39,7 @@ interface FeaturesSidebarProps {
   onShowProRemix: () => void
   onShowProAddVocals: () => void
   onShowProVoiceToMelody: () => void
+  onShowStyleDNA: () => void
   onClearChat: () => void
   onToggleInstrumental: () => void
   onToggleRecording: () => void
@@ -104,6 +105,7 @@ export default function FeaturesSidebar({
   onShowProRemix,
   onShowProAddVocals,
   onShowProVoiceToMelody,
+  onShowStyleDNA,
   onClearChat,
   onToggleInstrumental,
   onToggleRecording,
@@ -367,6 +369,15 @@ export default function FeaturesSidebar({
         active: false, cost: 5,
         onClick: onShowProVoiceToMelody,
         helpText: 'Upload a vocal recording or hum. The AI creates full instrumental backing to match your melody. 5 credits.',
+      },
+      {
+        icon: Wand2, label: 'Style DNA', desc: 'AI style tag enhancer',
+        gradient: tileGrad,
+        glowColor: tileGlow,
+        activeGradient: tileActiveGrad,
+        active: false, cost: 0,
+        onClick: onShowStyleDNA,
+        helpText: 'Describe your style in a few words — the AI expands it into optimised genre/style tags for better generations. Free!',
       },
     ],
   }
