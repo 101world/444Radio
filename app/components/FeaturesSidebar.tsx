@@ -191,7 +191,6 @@ export default function FeaturesSidebar({
           activeGradient: tileActiveGrad,
           active: !!(customTitle || genre || customLyrics || bpm),
           onClick: onShowLyrics,
-          hidden: selectedType !== 'music' || isInstrumental,
         },
       ],
     },
@@ -500,6 +499,20 @@ export default function FeaturesSidebar({
                   >
                     <Lightbulb size={12} />
                   </button>
+                  {/* Lyrics modal button */}
+                  {selectedType === 'music' && !isInstrumental && (
+                    <button
+                      onClick={onShowLyrics}
+                      className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
+                        customLyrics
+                          ? isProMode ? 'bg-white/[0.12] text-white' : 'bg-cyan-500/20 text-cyan-300'
+                          : 'bg-white/[0.06] hover:bg-white/[0.1] text-white/30 hover:text-cyan-400'
+                      }`}
+                      title="Lyrics"
+                    >
+                      <Edit3 size={12} />
+                    </button>
+                  )}
                   {/* Language selector */}
                   <div className="relative">
                     <button
