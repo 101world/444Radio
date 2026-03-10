@@ -150,11 +150,17 @@ export async function POST(req: NextRequest) {
     updateTransactionMedia({
       userId,
       type: 'generation_image',
-      mediaUrl: permanentImageUrl,
+      mediaUrl: imageUrl,
       mediaType: 'image',
       title: `Cover: ${prompt.substring(0, 50)}`,
       extraMeta: { model: 'z-image-turbo', song_id: songId },
     }).catch(() => {})
+
+    // Quest progress tracking for cover art generation
+    const { trackQuestProgress, trackModelUsage, trackGenerationStreak } = await import('@/lib/quest-progress')
+    trackQuestProgress(userId, 'generate_cover_art').catch(() => {})
+    trackModelUsage(userId, 'z-image-turbo').catch(() => {})
+    trackGenerationStreak(userId).catch(() => {})
 
     // Update song in database with cover URL
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!

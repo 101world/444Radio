@@ -483,6 +483,12 @@ export async function POST(req: NextRequest) {
                 if (imageR2.success) {
                   response.imageUrl = imageR2.url
                   await logCreditTransaction({ userId, amount: -1, balanceAfter: deductResult!.new_credits - 1, type: 'generation_cover_art', description: `Cover art: ${title}`, metadata: { prompt: imagePrompt } })
+                  
+                  // Quest progress tracking for cover art generation
+                  const { trackQuestProgress, trackModelUsage, trackGenerationStreak } = await import('@/lib/quest-progress')
+                  trackQuestProgress(userId, 'generate_cover_art').catch(() => {})
+                  trackModelUsage(userId, 'z-image-turbo').catch(() => {})
+                  trackGenerationStreak(userId).catch(() => {})
                 }
               }
             } catch (imgErr) {
@@ -809,10 +815,22 @@ export async function POST(req: NextRequest) {
               }
               // Log cover art transaction
               await logCreditTransaction({ userId, amount: -1, balanceAfter: deductResult!.new_credits - 1, type: 'generation_cover_art', description: `Cover art: ${title}`, metadata: { prompt: imagePrompt } })
+              
+              // Quest progress tracking for cover art generation
+              const { trackQuestProgress, trackModelUsage, trackGenerationStreak } = await import('@/lib/quest-progress')
+              trackQuestProgress(userId, 'generate_cover_art').catch(() => {})
+              trackModelUsage(userId, 'z-image-turbo').catch(() => {})
+              trackGenerationStreak(userId).catch(() => {})
             }
           } catch (imageError) {
             console.error('❌ Cover art error:', imageError)
-            await logCreditTransaction({ userId, amount: 0, type: 'generation_cover_art', status: 'failed', description: `Cover art failed: ${title}`, metadata: { error: String(imageError).substring(0, 200) } })
+              await logCreditTransaction({ userId, amount: 0, type: 'generation_cover_art', status: 'failed', description: `Cover art failed: ${title}`, metadata: { error: String(imageError).substring(0, 200) } })
+              
+              // Quest progress tracking for cover art generation (even on failure)
+              const { trackQuestProgress, trackModelUsage, trackGenerationStreak } = await import('@/lib/quest-progress')
+              trackQuestProgress(userId, 'generate_cover_art').catch(() => {})
+              trackModelUsage(userId, 'z-image-turbo').catch(() => {})
+              trackGenerationStreak(userId).catch(() => {})
           }
         }
 

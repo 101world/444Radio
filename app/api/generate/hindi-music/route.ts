@@ -355,7 +355,13 @@ await sendLine({ type: 'started', model: '444-music' })
                   headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
                   body: JSON.stringify({ user_id: userId, image_url: imageR2.url, prompt: imagePrompt, created_at: new Date().toISOString() }),
                 })
-                await logCreditTransaction({ userId, amount: -1, balanceAfter: deductResult!.new_credits - 1, type: 'generation_cover_art', description: `Cover art: ${title}`, metadata: { prompt: imagePrompt } })
+              await logCreditTransaction({ userId, amount: -1, balanceAfter: deductResult!.new_credits - 1, type: 'generation_cover_art', description: `Cover art: ${title}`, metadata: { prompt: imagePrompt } })
+              
+              // Quest progress tracking for cover art generation
+              const { trackQuestProgress, trackModelUsage, trackGenerationStreak } = await import('@/lib/quest-progress')
+              trackQuestProgress(userId, 'generate_cover_art').catch(() => {})
+              trackModelUsage(userId, 'z-image-turbo').catch(() => {})
+              trackGenerationStreak(userId).catch(() => {})
               }
             }
           } catch (imgErr) {
