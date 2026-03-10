@@ -102,8 +102,9 @@ export default function DockedSidebar() {
   // Hide on /plugin — plugin uses its own token-based auth, not Clerk
   if (pathname === '/plugin' || pathname?.startsWith('/plugin')) return null
 
-  // Hide on fullscreen editor pages (Input, Creator V2) — they have their own UI
+  // Hide on fullscreen editor pages (Input, Studio, Creator V2) — they have their own UI
   if (pathname === '/input' || pathname?.startsWith('/input/')) return null
+  if (pathname === '/studio' || pathname?.startsWith('/studio/')) return null
   if (pathname === '/creator-v2' || pathname?.startsWith('/creator-v2/')) return null
 
   // Show on Create page — compact sidebar for navigation
@@ -112,7 +113,7 @@ export default function DockedSidebar() {
     { icon: Home, label: 'Home', href: '/', highlight: false },
     { icon: Zap, label: 'Create', href: '/create', highlight: true, badge: 'Suggested' },
     { icon: Compass, label: 'Radio', href: '/radio', highlight: false },
-    { icon: Terminal, label: 'Input', href: '/input', highlight: 'cyan', badge: 'Live' },
+    { icon: Terminal, label: 'Input v2', href: '/studio', highlight: 'cyan', badge: 'Live' },
     { icon: Library, label: 'Library', href: '/library', highlight: false },
     { icon: Unlock, label: 'Decrypt', href: '/decrypt', highlight: 'cyan' },
     { icon: CreditCard, label: 'Pricing', href: '/pricing', highlight: false },
@@ -126,7 +127,7 @@ export default function DockedSidebar() {
     { icon: Home, label: 'Home', href: '/', highlight: false },
     { icon: Zap, label: 'Create', href: '/create', highlight: true, badge: 'Suggested' },
     { icon: Compass, label: 'Radio', href: '/radio', highlight: false },
-    { icon: Terminal, label: 'Input', href: '/input', highlight: 'cyan', badge: 'Live' },
+    { icon: Terminal, label: 'Input v2', href: '/studio', highlight: 'cyan', badge: 'Live' },
     { icon: Library, label: 'Library', href: '/library', highlight: false },
     { icon: Unlock, label: 'Decrypt', href: '/decrypt', highlight: 'cyan' },
     { icon: CreditCard, label: 'Pricing', href: '/pricing', highlight: false },
