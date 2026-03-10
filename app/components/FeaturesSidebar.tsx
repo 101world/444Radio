@@ -530,18 +530,23 @@ export default function FeaturesSidebar({
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {[
-                    'upbeat', 'chill', 'energetic', 'melancholic', 'ambient',
+                    'upbeat', 'chill', 'energetic', 'melancholic', 'dreamy',
+                    'aggressive', 'dark', 'bright', 'nostalgic', 'euphoric',
+                    'groovy', 'hypnotic', 'moody', 'intense', 'haunting',
                     'electronic', 'acoustic', 'jazz', 'rock', 'hip-hop',
                     'heavy bass', 'soft piano', 'guitar solo', 'synthwave',
-                    'lo-fi beats', 'orchestral', 'dreamy', 'aggressive',
+                    'lo-fi beats', 'orchestral', 'ambient', 'cinematic',
                     'trap', 'drill', 'phonk', 'vaporwave', 'future bass',
                     'drum & bass', 'dubstep', 'house', 'techno', 'trance',
                     'indie', 'folk', 'blues', 'soul', 'funk', 'disco',
-                    'reggae', 'latin', 'afrobeat', 'k-pop', 'anime',
-                    'cinematic', 'epic', 'dark', 'bright', 'nostalgic',
+                    'reggae', 'latin', 'afrobeat', 'amapiano', 'k-pop',
+                    'anime', 'r&b', 'neo-soul', 'boom bap', 'epic',
                     'romantic', 'sad', 'happy', 'mysterious', 'powerful',
                     'soft vocals', 'no vocals', 'female vocals', 'male vocals',
-                    'synth lead', 'strings', 'brass', 'flute', 'violin'
+                    'autotune', 'choir', 'melodic rap', 'vocal chops',
+                    'synth lead', 'strings', 'brass', 'flute', 'violin',
+                    'saxophone', '808 drums', 'arpeggiator', 'pad',
+                    'reverb heavy', 'glitchy', 'warm', 'crisp', 'punchy'
                   ].map((tag) => (
                     <button
                       key={tag}
@@ -612,8 +617,12 @@ export default function FeaturesSidebar({
                     'electronic', 'hip-hop', 'rock', 'jazz', 'ambient',
                     'trap', 'drill', 'phonk', 'house', 'techno',
                     'lo-fi beats', 'synthwave', 'indie', 'folk', 'blues',
-                    'soul', 'funk', 'reggae', 'latin', 'afrobeat',
-                    'orchestral', 'cinematic', 'acoustic', 'vaporwave', 'k-pop'
+                    'soul', 'funk', 'reggae', 'reggaeton', 'latin',
+                    'afrobeat', 'amapiano', 'r&b', 'neo-soul', 'boom bap',
+                    'orchestral', 'cinematic', 'acoustic', 'vaporwave',
+                    'k-pop', 'j-pop', 'dancehall', 'garage', 'grime',
+                    'drum & bass', 'deep house', 'future bass', 'trance',
+                    'disco', 'afro house', 'anime', 'country', 'gospel'
                   ].map((g) => (
                     <button
                       key={g}

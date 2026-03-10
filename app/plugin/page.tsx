@@ -150,28 +150,52 @@ class PluginErrorBoundary extends React.Component<
 
 // ─── Quick Tags (same as create page sidebar) ──────────────────
 const QUICK_TAGS = [
-  'upbeat', 'chill', 'energetic', 'melancholic', 'ambient',
+  // Mood & Vibe
+  'upbeat', 'chill', 'energetic', 'melancholic', 'dreamy',
+  'aggressive', 'dark', 'bright', 'nostalgic', 'romantic',
+  'sad', 'happy', 'mysterious', 'powerful', 'ethereal',
+  'groovy', 'hypnotic', 'euphoric', 'moody', 'intense',
+  'laid-back', 'triumphant', 'haunting', 'soothing', 'raw',
+  // Genre
   'electronic', 'acoustic', 'jazz', 'rock', 'hip-hop',
-  'heavy bass', 'soft piano', 'guitar solo', 'synthwave',
-  'lo-fi beats', 'orchestral', 'dreamy', 'aggressive',
-  'trap', 'drill', 'phonk', 'vaporwave', 'future bass',
-  'drum & bass', 'dubstep', 'house', 'techno', 'trance',
-  'indie', 'folk', 'blues', 'soul', 'funk', 'disco',
-  'reggae', 'latin', 'afrobeat', 'k-pop', 'anime',
-  'cinematic', 'epic', 'dark', 'bright', 'nostalgic',
-  'romantic', 'sad', 'happy', 'mysterious', 'powerful',
+  'trap', 'drill', 'phonk', 'house', 'techno', 'trance',
+  'dubstep', 'drum & bass', 'future bass', 'synthwave',
+  'vaporwave', 'lo-fi beats', 'indie', 'folk', 'blues',
+  'soul', 'funk', 'disco', 'reggae', 'reggaeton', 'latin',
+  'afrobeat', 'afro house', 'amapiano', 'k-pop', 'j-pop',
+  'anime', 'r&b', 'neo-soul', 'boom bap', 'dancehall',
+  'garage', 'grime', 'deep house', 'progressive house',
+  // Instruments
+  'heavy bass', 'soft piano', 'guitar solo', 'synth lead',
+  'strings', 'brass', 'flute', 'violin', 'saxophone',
+  'acoustic guitar', 'electric guitar', '808 drums',
+  'sub bass', 'arpeggiator', 'pad', 'kalimba', 'harp',
+  // Vocals
   'soft vocals', 'no vocals', 'female vocals', 'male vocals',
-  'male & female duet', 'trailer', 'ad', 'commercial',
-  'music video', 'hollywood', 'bollywood',
-  'synth lead', 'strings', 'brass', 'flute', 'violin'
+  'male & female duet', 'raspy vocals', 'falsetto', 'autotune',
+  'choir', 'harmonies', 'rap verse', 'melodic rap', 'vocal chops',
+  // Production
+  'ambient', 'orchestral', 'cinematic', 'epic', 'minimalist',
+  'distorted', 'reverb heavy', 'lo-fi', 'polished', 'gritty',
+  'atmospheric', 'glitchy', 'warm', 'crisp', 'punchy',
+  // Use Case
+  'trailer', 'ad', 'commercial', 'music video',
+  'hollywood', 'bollywood', 'gaming', 'workout',
+  'meditation', 'study music', 'party', 'vlog music'
 ]
 
 const GENRE_OPTIONS = [
   'electronic', 'hip-hop', 'rock', 'jazz', 'ambient',
   'trap', 'drill', 'phonk', 'house', 'techno',
   'lo-fi beats', 'synthwave', 'indie', 'folk', 'blues',
-  'soul', 'funk', 'reggae', 'latin', 'afrobeat',
-  'orchestral', 'cinematic', 'acoustic', 'vaporwave', 'k-pop'
+  'soul', 'funk', 'reggae', 'reggaeton', 'latin',
+  'afrobeat', 'amapiano', 'r&b', 'neo-soul', 'boom bap',
+  'orchestral', 'cinematic', 'acoustic', 'vaporwave',
+  'k-pop', 'j-pop', 'country', 'gospel', 'dancehall',
+  'garage', 'grime', 'drum & bass', 'dubstep',
+  'hardstyle', 'deep house', 'progressive house',
+  'future bass', 'trance', 'minimal techno', 'disco',
+  'afro house', 'anime'
 ]
 
 // ─── Features list (same as FeaturesSidebar) ───────────────────
@@ -3131,17 +3155,14 @@ function PluginPageInner() {
                         <Lightbulb size={14} style={{color:'rgba(6,182,212,0.6)'}} /> Quick Tags
                       </span>
                       <div className="flex gap-2">
-                        <button onClick={() => setShowIdeasFlow(true)} className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all" style={{background:'rgba(6,182,212,0.06)',border:'1px solid rgba(200,200,220,0.12)',color:'rgba(220,220,235,0.7)'}}>✨ IDEAS</button>
+                        <button onClick={() => setShowIdeasFlow(true)} className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-gray-300">✨ IDEAS</button>
                         <button onClick={() => setShowPromptSuggestions(false)} className="p-1 hover:bg-white/10 rounded-lg"><X className="w-4 h-4 text-gray-400" /></button>
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {QUICK_TAGS.map(tag => (
                         <button key={tag} onClick={() => { setInput(prev => prev + (prev ? ', ' : '') + tag) }}
-                          className="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
-                          style={{background:'rgba(6,182,212,0.04)',border:'1px solid rgba(200,200,220,0.1)',color:'rgba(6,182,212,0.6)'}}
-                          onMouseEnter={e => {e.currentTarget.style.background='rgba(6,182,212,0.1)';e.currentTarget.style.borderColor='rgba(6,182,212,0.25)';e.currentTarget.style.color='rgba(255,255,255,0.9)'}}
-                          onMouseLeave={e => {e.currentTarget.style.background='rgba(6,182,212,0.04)';e.currentTarget.style.borderColor='rgba(6,182,212,0.1)';e.currentTarget.style.color='rgba(6,182,212,0.6)'}}>
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105 bg-white/[0.04] hover:bg-cyan-500/15 border border-white/10 hover:border-cyan-400/40 text-gray-400 hover:text-white">
                           {tag}
                         </button>
                       ))}
@@ -3158,11 +3179,11 @@ function PluginPageInner() {
                         <p className="text-sm text-gray-400 text-center">What would you like to create?</p>
                         <div className="grid grid-cols-2 gap-4">
                           <button onClick={() => { setSelectedPromptType('song'); setIdeasStep('genre') }}
-                            className="p-6 rounded-2xl hover:scale-105 transition-all shadow-lg" style={{background:'linear-gradient(135deg, rgba(6,182,212,0.06), rgba(6,182,212,0.02))',border:'2px solid rgba(200,200,220,0.12)'}}>
+                            className="p-6 rounded-2xl hover:scale-105 transition-all shadow-lg bg-white/[0.03] hover:bg-white/[0.06] border-2 border-white/10 hover:border-white/20">
                             <div className="text-4xl mb-3">🎤</div><div className="text-lg font-bold text-white mb-1">Song</div><div className="text-xs text-gray-400">With vocals & lyrics</div>
                           </button>
                           <button onClick={() => { setSelectedPromptType('beat'); setIsInstrumental(true); setIdeasStep('genre') }}
-                            className="p-6 rounded-2xl hover:scale-105 transition-all shadow-lg" style={{background:'linear-gradient(135deg, rgba(6,182,212,0.06), rgba(6,182,212,0.02))',border:'2px solid rgba(200,200,220,0.12)'}}>
+                            className="p-6 rounded-2xl hover:scale-105 transition-all shadow-lg bg-white/[0.03] hover:bg-white/[0.06] border-2 border-white/10 hover:border-white/20">
                             <div className="text-4xl mb-3">🎹</div><div className="text-lg font-bold text-white mb-1">Beat</div><div className="text-xs text-gray-400">Instrumental only</div>
                           </button>
                         </div>
@@ -3171,17 +3192,14 @@ function PluginPageInner() {
                     {ideasStep === 'genre' && (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                          <button onClick={() => setIdeasStep('type')} className="text-sm flex items-center gap-1" style={{color:'rgba(6,182,212,0.6)'}}>← Back</button>
+                          <button onClick={() => setIdeasStep('type')} className="text-sm flex items-center gap-1 text-cyan-400 hover:text-cyan-300">← Back</button>
                           <h3 className="text-lg font-bold text-white">🎵 Select Genre</h3>
                           <button onClick={() => { setShowIdeasFlow(false); setIdeasStep('type') }} className="p-1 hover:bg-white/10 rounded-lg"><X className="w-4 h-4 text-gray-400" /></button>
                         </div>
                         <div className="grid grid-cols-3 gap-2 max-h-80 overflow-y-auto pr-2">
                           {GENRE_OPTIONS.map(g => (
                             <button key={g} onClick={() => handleGeneratePromptIdea(g)} disabled={generatingIdea}
-                              className="px-3 py-2.5 rounded-xl text-xs font-medium transition-all hover:scale-105 disabled:opacity-50"
-                              style={{background:'linear-gradient(135deg, rgba(6,182,212,0.04), rgba(6,182,212,0.08))',border:'1px solid rgba(200,200,220,0.1)',color:'rgba(6,182,212,0.6)'}}
-                              onMouseEnter={e => {e.currentTarget.style.borderColor='rgba(6,182,212,0.25)';e.currentTarget.style.color='rgba(255,255,255,0.9)'}}
-                              onMouseLeave={e => {e.currentTarget.style.borderColor='rgba(6,182,212,0.1)';e.currentTarget.style.color='rgba(6,182,212,0.6)'}}>
+                              className="px-3 py-2.5 rounded-xl text-xs font-medium transition-all hover:scale-105 disabled:opacity-50 bg-white/[0.04] hover:bg-cyan-500/15 border border-white/10 hover:border-cyan-400/40 text-gray-400 hover:text-white">
                               {g}
                             </button>
                           ))}
@@ -3336,9 +3354,9 @@ function PluginPageInner() {
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Prompt Tags</label>
                 <div className="flex flex-wrap gap-1">
-                  {['upbeat', 'chill', 'energetic', 'melancholic', 'ambient', 'electronic', 'acoustic', 'jazz', 'rock', 'hip-hop', 'heavy bass', 'soft piano', 'synthwave', 'lo-fi beats', 'dreamy', 'trap', 'drill', 'phonk'].map(tag => (
+                  {['upbeat', 'chill', 'energetic', 'melancholic', 'ambient', 'electronic', 'acoustic', 'jazz', 'rock', 'hip-hop', 'heavy bass', 'soft piano', 'synthwave', 'lo-fi beats', 'dreamy', 'trap', 'drill', 'phonk', 'house', 'techno', 'dark', 'bright', 'epic', 'cinematic', 'soul', 'funk', 'r&b', 'afrobeat', 'reggae', 'nostalgic', 'euphoric', 'groovy'].map(tag => (
                     <button key={tag} onClick={() => setInput(prev => prev + (prev ? ', ' : '') + tag)}
-                      className="px-2 py-1 rounded-md text-[10px] transition-all" style={{background:'rgba(6,182,212,0.04)',border:'1px solid rgba(200,200,220,0.1)',color:'rgba(6,182,212,0.6)'}}>
+                      className="px-2 py-1 rounded-md text-[10px] transition-all bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-white/20 text-gray-400 hover:text-white">
                       {tag}
                     </button>
                   ))}

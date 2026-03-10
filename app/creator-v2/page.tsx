@@ -29,12 +29,15 @@ const FEATURES = [
 ]
 
 const QUICK_TAGS = [
-  'upbeat', 'chill', 'energetic', 'melancholic', 'ambient',
+  'upbeat', 'chill', 'energetic', 'melancholic', 'dreamy',
+  'aggressive', 'dark', 'bright', 'nostalgic', 'euphoric',
   'electronic', 'acoustic', 'jazz', 'rock', 'hip-hop',
   'heavy bass', 'soft piano', 'guitar solo', 'synthwave',
-  'lo-fi beats', 'orchestral', 'dreamy', 'aggressive',
+  'lo-fi beats', 'orchestral', 'ambient', 'groovy', 'cinematic',
   'trap', 'drill', 'phonk', 'vaporwave', 'future bass',
   'drum & bass', 'dubstep', 'house', 'techno', 'trance',
+  'soul', 'funk', 'r&b', 'afrobeat', 'reggae', 'latin',
+  'k-pop', 'anime', 'epic', 'romantic', 'mysterious',
 ]
 
 export default function CreatorV2Page() {

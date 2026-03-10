@@ -235,7 +235,11 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
                     'upbeat', 'chill', 'energetic', 'melancholic', 'ambient',
                     'electronic', 'acoustic', 'jazz', 'rock', 'hip-hop',
                     'heavy bass', 'soft piano', 'guitar solo', 'synthwave',
-                    'lo-fi beats', 'orchestral', 'dreamy', 'aggressive'
+                    'lo-fi beats', 'orchestral', 'dreamy', 'aggressive',
+                    'trap', 'drill', 'phonk', 'house', 'techno',
+                    'dark', 'bright', 'euphoric', 'groovy', 'cinematic',
+                    'soul', 'funk', 'reggae', 'r&b', 'afrobeat',
+                    'epic', 'nostalgic', 'romantic', 'mysterious', 'powerful'
                   ].map((tag) => (
                     <button
                       key={tag}

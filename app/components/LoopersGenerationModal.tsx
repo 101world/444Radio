@@ -267,7 +267,12 @@ export default function LoopersGenerationModal({
                 {[
                   'techno kick', 'deep bass', 'ambient pad', 'melodic trance',
                   'drum and bass', 'house beat', 'synth lead', 'acid bass',
-                  'trap hi-hats', '808 drums', 'reverb', 'distorted'
+                  'trap hi-hats', '808 drums', 'reverb', 'distorted',
+                  'lo-fi groove', 'funky bassline', 'breakbeat', 'minimal',
+                  'arpeggio', 'dark atmosphere', 'euphoric lead', 'glitch hop',
+                  'dub techno', 'percussive', 'sub bass', 'pluck synth',
+                  'filter sweep', 'sidechain', 'rolling bass', 'chiptune',
+                  'hard kick', 'tribal drums', 'warm chords', 'stab synth'
                 ].map((tag) => (
                   <button
                     key={tag}

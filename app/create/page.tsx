@@ -4116,35 +4116,33 @@ function CreatePageContent() {
                       <option value="turkish">🌐 Türkçe Turkish</option>
                     </select>
                   </div>
+                  {/* Category sections for better organization */}
                   {[
-                    'upbeat', 'chill', 'energetic', 'melancholic', 'ambient',
-                    'electronic', 'acoustic', 'jazz', 'rock', 'hip-hop',
-                    'heavy bass', 'soft piano', 'guitar solo', 'synthwave',
-                    'lo-fi beats', 'orchestral', 'dreamy', 'aggressive',
-                    'trap', 'drill', 'phonk', 'vaporwave', 'future bass',
-                    'drum & bass', 'dubstep', 'house', 'techno', 'trance',
-                    'indie', 'folk', 'blues', 'soul', 'funk', 'disco',
-                    'reggae', 'latin', 'afrobeat', 'k-pop', 'anime',
-                    'cinematic', 'epic', 'dark', 'bright', 'nostalgic',
-                    'romantic', 'sad', 'happy', 'mysterious', 'powerful',
-                    'soft vocals', 'no vocals', 'female vocals', 'male vocals',
-                    'male & female duet',
-                    'synth lead', 'strings', 'brass', 'flute', 'violin',
-                    'trailer', 'ad', 'commercial', 'music video',
-                    'hollywood', 'bollywood',
-                  ].map((tag, idx) => (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => {
-                        const newInput = input ? `${input}, ${tag}` : tag
-                        setInput(newInput.slice(0, MAX_PROMPT_LENGTH))
-                      }}
-                      style={{ animationDelay: `${idx * 15}ms` }}
-                      className="px-3.5 py-2 bg-gradient-to-br from-cyan-500/10 to-cyan-500/20 hover:from-cyan-500/30 hover:to-cyan-500/40 border border-cyan-500/30 hover:border-cyan-400/60 rounded-xl text-sm font-medium text-cyan-200 hover:text-white transition-all duration-200 hover:scale-105 hover:shadow-lg hover:shadow-cyan-500/30 animate-slide-in-up"
-                    >
-                      {tag}
-                    </button>
+                    { label: '🎭 Mood & Vibe', tags: ['upbeat', 'chill', 'energetic', 'melancholic', 'dreamy', 'aggressive', 'dark', 'bright', 'nostalgic', 'romantic', 'sad', 'happy', 'mysterious', 'powerful', 'ethereal', 'groovy', 'hypnotic', 'euphoric', 'moody', 'intense', 'laid-back', 'triumphant', 'haunting', 'soothing', 'raw'] },
+                    { label: '🎵 Genre', tags: ['electronic', 'acoustic', 'jazz', 'rock', 'hip-hop', 'trap', 'drill', 'phonk', 'house', 'techno', 'trance', 'dubstep', 'drum & bass', 'future bass', 'synthwave', 'vaporwave', 'lo-fi beats', 'indie', 'folk', 'blues', 'soul', 'funk', 'disco', 'reggae', 'reggaeton', 'latin', 'afrobeat', 'afro house', 'amapiano', 'k-pop', 'j-pop', 'anime', 'r&b', 'neo-soul', 'boom bap', 'country', 'gospel', 'dancehall', 'garage', 'grime', 'hardstyle', 'progressive house', 'deep house', 'minimal techno'] },
+                    { label: '🎸 Instruments', tags: ['heavy bass', 'soft piano', 'guitar solo', 'synth lead', 'strings', 'brass', 'flute', 'violin', 'saxophone', 'acoustic guitar', 'electric guitar', 'grand piano', 'organ', 'cello', 'harp', 'sitar', 'tabla', 'steel drums', '808 drums', 'hi-hats', 'sub bass', 'arpeggiator', 'pad', 'pluck synth', 'marimba', 'kalimba', 'mandolin', 'banjo', 'harmonica', 'trumpet'] },
+                    { label: '🎤 Vocals', tags: ['soft vocals', 'no vocals', 'female vocals', 'male vocals', 'male & female duet', 'raspy vocals', 'falsetto', 'autotune', 'choir', 'harmonies', 'whisper vocals', 'spoken word', 'rap verse', 'melodic rap', 'belting', 'vocal chops', 'ad-libs'] },
+                    { label: '🎬 Production', tags: ['ambient', 'orchestral', 'cinematic', 'epic', 'minimalist', 'layered', 'distorted', 'reverb heavy', 'lo-fi', 'polished', 'gritty', 'spacious', 'punchy', 'warm', 'crisp', 'analog', 'glitchy', 'atmospheric', 'build-up', 'drop', 'breakdown'] },
+                    { label: '📺 Use Case', tags: ['trailer', 'ad', 'commercial', 'music video', 'hollywood', 'bollywood', 'podcast intro', 'gaming', 'workout', 'meditation', 'study music', 'party', 'road trip', 'wedding', 'lullaby', 'alarm tone', 'vlog music'] },
+                  ].map((section) => (
+                    <div key={section.label} className="w-full">
+                      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5 mt-2 first:mt-0">{section.label}</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {section.tags.map((tag, idx) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => {
+                              const newInput = input ? `${input}, ${tag}` : tag
+                              setInput(newInput.slice(0, MAX_PROMPT_LENGTH))
+                            }}
+                            className="px-3 py-1.5 bg-white/[0.04] hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-400/50 rounded-lg text-xs font-medium text-gray-300 hover:text-white transition-all duration-200 hover:scale-105 hover:shadow-md hover:shadow-cyan-500/20"
+                          >
+                            {tag}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </>
@@ -4223,14 +4221,20 @@ function CreatePageContent() {
                         'electronic', 'hip-hop', 'rock', 'jazz', 'ambient',
                         'trap', 'drill', 'phonk', 'house', 'techno',
                         'lo-fi beats', 'synthwave', 'indie', 'folk', 'blues',
-                        'soul', 'funk', 'reggae', 'latin', 'afrobeat',
-                        'orchestral', 'cinematic', 'acoustic', 'vaporwave', 'k-pop'
+                        'soul', 'funk', 'reggae', 'reggaeton', 'latin',
+                        'afrobeat', 'amapiano', 'r&b', 'neo-soul', 'boom bap',
+                        'orchestral', 'cinematic', 'acoustic', 'vaporwave',
+                        'k-pop', 'j-pop', 'country', 'gospel', 'dancehall',
+                        'garage', 'grime', 'drum & bass', 'dubstep',
+                        'hardstyle', 'deep house', 'progressive house',
+                        'future bass', 'trance', 'minimal techno', 'disco',
+                        'afro house', 'anime'
                       ].map((genre) => (
                         <button
                           key={genre}
                           onClick={() => handleGeneratePromptIdea(genre)}
                           disabled={generatingIdea}
-                          className="px-3 py-2.5 bg-gradient-to-br from-cyan-500/10 to-cyan-500/20 hover:from-cyan-500/30 hover:to-cyan-500/40 border border-cyan-500/30 hover:border-cyan-400/60 rounded-xl text-xs font-medium text-cyan-200 hover:text-white transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-3 py-2.5 bg-white/[0.04] hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-400/50 rounded-xl text-xs font-medium text-gray-300 hover:text-white transition-all hover:scale-105 hover:shadow-md hover:shadow-cyan-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {genre}
                         </button>

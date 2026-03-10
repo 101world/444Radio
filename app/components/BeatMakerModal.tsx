@@ -27,6 +27,9 @@ const QUICK_TAGS = [
   'Cinematic score', 'EDM drop', 'Jazz fusion', 'Ambient pad',
   'Drill beat', 'Reggaeton', 'Afrobeats', 'House groove',
   'Synthwave', 'Acoustic guitar', 'Piano ballad', 'Orchestral',
+  'Phonk beat', 'Amapiano', 'Deep house', 'Techno pulse',
+  'Future bass', 'Drum & bass', 'Dancehall', 'Gospel chords',
+  'Neo-soul keys', 'Vaporwave', 'Progressive house', 'Grime beat',
 ]
 
 const QUICK_PROMPTS = [
