@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
           const cmRes = await fetch(`${supabaseUrl}/rest/v1/combined_media`, {
             method: 'POST',
             headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
-            body: JSON.stringify({ user_id: userId, type: 'audio', title: cleanTitle, audio_prompt: cleanPrompt, lyrics: trackLyric, audio_url: r2.url, is_public: false, genre: cleanStyle || null, metadata: JSON.stringify({ source: '444-upload-extend', model, duration: track.duration }) }),
+            body: JSON.stringify({ user_id: userId, type: 'audio', title: cleanTitle, audio_prompt: cleanPrompt, lyrics: trackLyric, audio_url: r2.url, is_public: false, genre: '444-upload-extend', metadata: JSON.stringify({ source: '444-upload-extend', model, duration: track.duration, style: cleanStyle || null }) }),
           })
           if (cmRes.ok) { const d = await cmRes.json(); libraryId = (Array.isArray(d) ? d[0] : d)?.id }
         } catch {}

@@ -6,8 +6,8 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PU
 
 /**
  * GET /api/library/extend
- * Get user's 444 Extend generations from combined_media
- * Filters rows where genre = '444-extend'
+ * Get user's 444 Extend + Upload-Extend generations from combined_media
+ * Filters rows where genre IN ('444-extend', '444-upload-extend')
  */
 export async function GET() {
   try {
@@ -17,7 +17,7 @@ export async function GET() {
     }
 
     const res = await fetch(
-      `${supabaseUrl}/rest/v1/combined_media?user_id=eq.${userId}&genre=eq.444-extend&order=created_at.desc&limit=200&select=id,title,audio_url,audio_prompt,lyrics,created_at,plays,metadata`,
+      `${supabaseUrl}/rest/v1/combined_media?user_id=eq.${userId}&genre=in.("444-extend","444-upload-extend")&order=created_at.desc&limit=200&select=id,title,audio_url,audio_prompt,lyrics,created_at,plays,metadata`,
       {
         headers: {
           apikey: supabaseKey,
