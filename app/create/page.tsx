@@ -135,8 +135,12 @@ function CreatePageContent() {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [showPromptSuggestions, setShowPromptSuggestions] = useState(false)
   const [showIdeasFlow, setShowIdeasFlow] = useState(false)
-  const [ideasStep, setIdeasStep] = useState<'type' | 'genre' | 'generating'>('type')
+  const [ideasStep, setIdeasStep] = useState<'type' | 'genre' | 'mood' | 'energy' | 'generating'>('type')
   const [selectedPromptType, setSelectedPromptType] = useState<'song' | 'beat'>('song')
+  const [selectedIdeasMood, setSelectedIdeasMood] = useState('')
+  const [selectedIdeasEnergy, setSelectedIdeasEnergy] = useState('')
+  const [selectedIdeasEra, setSelectedIdeasEra] = useState('')
+  const [selectedIdeasGenre, setSelectedIdeasGenre] = useState('')
   const [generatingIdea, setGeneratingIdea] = useState(false)
   const [userCredits, setUserCredits] = useState<number | null>(null)
   const [isLoadingCredits, setIsLoadingCredits] = useState(true)
@@ -1699,7 +1703,7 @@ function CreatePageContent() {
     setInput('')
   }
 
-  const handleGeneratePromptIdea = async (genre: string) => {
+  const handleGeneratePromptIdea = async (genre: string, mood?: string, energy?: string, era?: string) => {
     setGeneratingIdea(true)
     setIdeasStep('generating')
 
@@ -1709,7 +1713,10 @@ function CreatePageContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           genre,
-          promptType: selectedPromptType
+          promptType: selectedPromptType,
+          mood: mood || undefined,
+          energy: energy || undefined,
+          era: era || undefined,
         })
       })
 
@@ -1719,16 +1726,26 @@ function CreatePageContent() {
         // Insert generated prompt into input box
         setInput(data.prompt.slice(0, MAX_PROMPT_LENGTH))
         
-        // Close modals
+        // Close modals & reset states
         setShowIdeasFlow(false)
         setShowPromptSuggestions(false)
         setIdeasStep('type')
+        setSelectedIdeasMood('')
+        setSelectedIdeasEnergy('')
+        setSelectedIdeasEra('')
+        setSelectedIdeasGenre('')
+        
+        // Build description parts
+        const parts = [genre]
+        if (mood) parts.push(mood)
+        if (energy) parts.push(`${energy} energy`)
+        if (era) parts.push(`${era} era`)
         
         // Show success message
         const successMessage: Message = {
           id: Date.now().toString(),
           type: 'assistant',
-          content: `✨ AI generated a ${genre} ${selectedPromptType} prompt for you! Feel free to edit it or hit create!`,
+          content: `✨ AI generated a ${parts.join(' · ')} ${selectedPromptType} prompt for you! Feel free to edit it or hit create!`,
           timestamp: new Date()
         }
         setMessages(prev => [...prev, successMessage])
@@ -1738,7 +1755,7 @@ function CreatePageContent() {
     } catch (error) {
       console.error('Prompt generation error:', error)
       alert('Failed to generate prompt idea. Please try again.')
-      setIdeasStep('genre')
+      setIdeasStep('mood')
     } finally {
       setGeneratingIdea(false)
     }
@@ -4157,6 +4174,10 @@ function CreatePageContent() {
                         onClick={() => {
                           setShowIdeasFlow(false)
                           setIdeasStep('type')
+                          setSelectedIdeasMood('')
+                          setSelectedIdeasEnergy('')
+                          setSelectedIdeasEra('')
+                          setSelectedIdeasGenre('')
                         }}
                         className="p-1 hover:bg-white/10 rounded-lg transition-colors"
                       >
@@ -4214,9 +4235,15 @@ function CreatePageContent() {
                         <X className="w-4 h-4 text-gray-400" />
                       </button>
                     </div>
+                    {/* Step indicator */}
+                    <div className="flex items-center justify-center gap-1.5 mb-1">
+                      <div className="w-6 h-1 rounded-full bg-cyan-400" />
+                      <div className="w-6 h-1 rounded-full bg-white/15" />
+                      <div className="w-6 h-1 rounded-full bg-white/15" />
+                    </div>
                     <p className="text-xs text-gray-400 text-center">Choose a style for your {selectedPromptType}</p>
                     
-                    <div className="grid grid-cols-3 gap-2 max-h-80 overflow-y-auto scrollbar-thin pr-2">
+                    <div className="grid grid-cols-3 gap-2 max-h-72 overflow-y-auto scrollbar-thin pr-2">
                       {[
                         'electronic', 'hip-hop', 'rock', 'jazz', 'ambient',
                         'trap', 'drill', 'phonk', 'house', 'techno',
@@ -4229,17 +4256,185 @@ function CreatePageContent() {
                         'hardstyle', 'deep house', 'progressive house',
                         'future bass', 'trance', 'minimal techno', 'disco',
                         'afro house', 'anime'
-                      ].map((genre) => (
+                      ].map((g) => (
                         <button
-                          key={genre}
-                          onClick={() => handleGeneratePromptIdea(genre)}
+                          key={g}
+                          onClick={() => {
+                            setSelectedIdeasGenre(g)
+                            setIdeasStep('mood')
+                          }}
                           disabled={generatingIdea}
                           className="px-3 py-2.5 bg-white/[0.04] hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-400/50 rounded-xl text-xs font-medium text-gray-300 hover:text-white transition-all hover:scale-105 hover:shadow-md hover:shadow-cyan-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {genre}
+                          {g}
                         </button>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {ideasStep === 'mood' && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <button
+                        onClick={() => setIdeasStep('genre')}
+                        className="text-sm text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+                      >
+                        ← Back
+                      </button>
+                      <h3 className="text-lg font-bold text-white">🎭 Mood & Vibe</h3>
+                      <button
+                        onClick={() => {
+                          setShowIdeasFlow(false)
+                          setIdeasStep('type')
+                        }}
+                        className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+                      >
+                        <X className="w-4 h-4 text-gray-400" />
+                      </button>
+                    </div>
+                    {/* Step indicator */}
+                    <div className="flex items-center justify-center gap-1.5 mb-1">
+                      <div className="w-6 h-1 rounded-full bg-cyan-400" />
+                      <div className="w-6 h-1 rounded-full bg-cyan-400" />
+                      <div className="w-6 h-1 rounded-full bg-white/15" />
+                    </div>
+                    <p className="text-xs text-gray-400 text-center">
+                      <span className="text-cyan-400 font-medium">{selectedIdeasGenre}</span> — What vibe are you going for?
+                    </p>
+                    
+                    <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto scrollbar-thin pr-2">
+                      {[
+                        { emoji: '🔥', label: 'Energetic', desc: 'High-octane adrenaline' },
+                        { emoji: '🌙', label: 'Chill', desc: 'Laid-back & relaxing' },
+                        { emoji: '💔', label: 'Melancholic', desc: 'Emotional & bittersweet' },
+                        { emoji: '🌈', label: 'Euphoric', desc: 'Uplifting & joyful' },
+                        { emoji: '🖤', label: 'Dark', desc: 'Moody & mysterious' },
+                        { emoji: '💫', label: 'Dreamy', desc: 'Ethereal & floating' },
+                        { emoji: '⚡', label: 'Aggressive', desc: 'Raw & intense' },
+                        { emoji: '🌅', label: 'Nostalgic', desc: 'Wistful & warm' },
+                        { emoji: '💃', label: 'Groovy', desc: 'Funky & danceable' },
+                        { emoji: '🏔️', label: 'Epic', desc: 'Grand & cinematic' },
+                        { emoji: '🌊', label: 'Hypnotic', desc: 'Trance-like & repetitive' },
+                        { emoji: '❤️', label: 'Romantic', desc: 'Warm & passionate' },
+                      ].map((m) => (
+                        <button
+                          key={m.label}
+                          onClick={() => {
+                            setSelectedIdeasMood(m.label.toLowerCase())
+                            setIdeasStep('energy')
+                          }}
+                          className="flex items-center gap-3 px-3 py-3 bg-white/[0.04] hover:bg-purple-500/20 border border-white/10 hover:border-purple-400/50 rounded-xl text-left transition-all hover:scale-[1.03] hover:shadow-md hover:shadow-purple-500/20"
+                        >
+                          <span className="text-2xl">{m.emoji}</span>
+                          <div>
+                            <div className="text-sm font-semibold text-white">{m.label}</div>
+                            <div className="text-[10px] text-gray-500">{m.desc}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Skip mood button */}
+                    <button
+                      onClick={() => setIdeasStep('energy')}
+                      className="w-full text-center text-xs text-gray-500 hover:text-gray-300 py-1 transition-colors"
+                    >
+                      Skip — surprise me
+                    </button>
+                  </div>
+                )}
+
+                {ideasStep === 'energy' && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <button
+                        onClick={() => setIdeasStep('mood')}
+                        className="text-sm text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+                      >
+                        ← Back
+                      </button>
+                      <h3 className="text-lg font-bold text-white">⚡ Final Touches</h3>
+                      <button
+                        onClick={() => {
+                          setShowIdeasFlow(false)
+                          setIdeasStep('type')
+                        }}
+                        className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+                      >
+                        <X className="w-4 h-4 text-gray-400" />
+                      </button>
+                    </div>
+                    {/* Step indicator */}
+                    <div className="flex items-center justify-center gap-1.5 mb-1">
+                      <div className="w-6 h-1 rounded-full bg-cyan-400" />
+                      <div className="w-6 h-1 rounded-full bg-cyan-400" />
+                      <div className="w-6 h-1 rounded-full bg-cyan-400" />
+                    </div>
+                    {/* Selection summary */}
+                    <div className="flex items-center justify-center gap-2 flex-wrap">
+                      <span className="px-2 py-0.5 bg-cyan-500/20 border border-cyan-500/30 rounded-full text-[10px] text-cyan-300 font-medium">{selectedIdeasGenre}</span>
+                      {selectedIdeasMood && (
+                        <span className="px-2 py-0.5 bg-purple-500/20 border border-purple-500/30 rounded-full text-[10px] text-purple-300 font-medium">{selectedIdeasMood}</span>
+                      )}
+                    </div>
+
+                    {/* Energy Level */}
+                    <div>
+                      <p className="text-xs font-semibold text-gray-400 mb-2">Energy Level</p>
+                      <div className="grid grid-cols-4 gap-2">
+                        {[
+                          { label: 'Low', icon: '🌿', color: 'from-green-500/20 to-emerald-500/20 border-green-400/40 hover:border-green-400/60' },
+                          { label: 'Medium', icon: '☀️', color: 'from-yellow-500/20 to-amber-500/20 border-yellow-400/40 hover:border-yellow-400/60' },
+                          { label: 'High', icon: '🔥', color: 'from-orange-500/20 to-red-500/20 border-orange-400/40 hover:border-orange-400/60' },
+                          { label: 'Extreme', icon: '💥', color: 'from-red-500/20 to-rose-500/20 border-red-400/40 hover:border-red-400/60' },
+                        ].map((e) => (
+                          <button
+                            key={e.label}
+                            onClick={() => setSelectedIdeasEnergy(e.label.toLowerCase())}
+                            className={`p-2.5 bg-gradient-to-br ${e.color} border rounded-xl text-center transition-all hover:scale-105 ${selectedIdeasEnergy === e.label.toLowerCase() ? 'ring-2 ring-cyan-400 scale-105' : ''}`}
+                          >
+                            <div className="text-xl mb-1">{e.icon}</div>
+                            <div className="text-[10px] font-bold text-white">{e.label}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Era / Decade */}
+                    <div>
+                      <p className="text-xs font-semibold text-gray-400 mb-2">Sonic Era (optional)</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {['Modern', '2010s', '2000s', '90s', '80s', '70s', 'Futuristic', 'Timeless'].map((eraOpt) => (
+                          <button
+                            key={eraOpt}
+                            onClick={() => setSelectedIdeasEra(selectedIdeasEra === eraOpt.toLowerCase() ? '' : eraOpt.toLowerCase())}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105 ${
+                              selectedIdeasEra === eraOpt.toLowerCase()
+                                ? 'bg-cyan-500/30 border border-cyan-400/60 text-cyan-200'
+                                : 'bg-white/[0.04] border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white'
+                            }`}
+                          >
+                            {eraOpt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Generate Button */}
+                    <button
+                      onClick={() => handleGeneratePromptIdea(
+                        selectedIdeasGenre,
+                        selectedIdeasMood || undefined,
+                        selectedIdeasEnergy || undefined,
+                        selectedIdeasEra || undefined,
+                      )}
+                      disabled={generatingIdea}
+                      className="w-full py-3 bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-400 hover:to-purple-400 text-white font-bold rounded-xl transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-cyan-500/30 disabled:opacity-50 text-sm flex items-center justify-center gap-2"
+                    >
+                      <span className="text-lg">✨</span>
+                      Generate Prompt Idea
+                    </button>
                   </div>
                 )}
                 
@@ -4253,7 +4448,14 @@ function CreatePageContent() {
                     </div>
                     <div>
                       <h3 className="text-xl font-bold text-white mb-2">Creating Amazing Prompt...</h3>
-                      <p className="text-sm text-gray-400">AI is crafting the perfect description</p>
+                      <p className="text-sm text-gray-400 mb-3">AI is crafting the perfect description</p>
+                      {/* Show what was selected */}
+                      <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                        {selectedIdeasGenre && <span className="px-2 py-0.5 bg-cyan-500/15 rounded-full text-[10px] text-cyan-400">{selectedIdeasGenre}</span>}
+                        {selectedIdeasMood && <span className="px-2 py-0.5 bg-purple-500/15 rounded-full text-[10px] text-purple-400">{selectedIdeasMood}</span>}
+                        {selectedIdeasEnergy && <span className="px-2 py-0.5 bg-orange-500/15 rounded-full text-[10px] text-orange-400">{selectedIdeasEnergy}</span>}
+                        {selectedIdeasEra && <span className="px-2 py-0.5 bg-emerald-500/15 rounded-full text-[10px] text-emerald-400">{selectedIdeasEra}</span>}
+                      </div>
                     </div>
                   </div>
                 )}
