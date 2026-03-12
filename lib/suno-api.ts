@@ -342,7 +342,17 @@ async function sunoPost<T = SunoTaskResponse>(
     headers: headers(),
     body: JSON.stringify(body),
   })
-  const json = await res.json()
+
+  let json: any
+  try {
+    json = await res.json()
+  } catch (parseErr) {
+    // Response was not valid JSON (e.g. HTML error page)
+    const text = await res.text().catch(() => '<unreadable>')
+    console.error('[SunoAPI] Failed to parse JSON response:', parseErr, 'body:', text)
+    throw new SunoApiError(`Invalid response from Suno API (${res.status})`, res.status)
+  }
+
   if (!res.ok || (json.code && json.code !== 200)) {
     const msg = json.msg || json.message || `Suno API error (${res.status})`
     console.error(`[SunoAPI] Error: ${msg}`, json)

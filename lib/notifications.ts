@@ -71,8 +71,13 @@ export async function createNotification({ userId, type, data }: NotificationDat
     });
 
     if (!res || !res.ok) {
-      const error = res ? await res.text() : 'No response';
-      console.error(`[Notifications] Failed to create ${type} notification for ${userId}:`, error);
+      const errorText = res ? await res.text() : 'No response';
+      // Supabase sometimes returns PGRST204 when schema cache is stale (missing column)
+      if (errorText.includes('PGRST204')) {
+        console.warn(`[Notifications] Supabase schema issue creating ${type} for ${userId}:`, errorText);
+        return false;
+      }
+      console.error(`[Notifications] Failed to create ${type} notification for ${userId}:`, errorText);
       return false;
     }
 
