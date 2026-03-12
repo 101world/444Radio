@@ -111,39 +111,73 @@ export async function POST(req: NextRequest) {
             || (Array.isArray(data?.data) ? data.data : null)
             || []
         }
-        const tracks = extractTracks(completed.data)
-        if (!tracks.length) throw new Error(`No tracks returned. Response keys: ${JSON.stringify(Object.keys(completed?.data || {}))}, response sub-keys: ${JSON.stringify(Object.keys(completed?.data?.response || {}))}`)
-
-        const track = tracks[0]
-        const trackAudioUrl = track.audio_url || track.audioUrl || track.stream_audio_url || track.streamAudioUrl || track.song_url || track.songUrl || track.url || track.mp3_url || track.output
-        if (!trackAudioUrl) throw new Error('No audio URL in result')
-        const trackLyric = track.lyric || track.lyrics || ''
-
-        const fileName = `remix-${cleanTitle.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.wav`
-        const r2 = await downloadAndUploadToR2(trackAudioUrl, userId, 'music', fileName)
-        if (!r2.success) throw new Error(`Storage upload failed: ${r2.error}`)
-
-        await fetch(`${supabaseUrl}/rest/v1/music_library`, {
-          method: 'POST',
-          headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
-          body: JSON.stringify({ clerk_user_id: userId, title: cleanTitle, prompt: cleanPrompt, lyrics: trackLyric, audio_url: r2.url, audio_format: 'wav', generation_params: { engine: '444-remix', type: '444-cover', model, source_url: uploadUrl }, status: 'ready' }),
-        }).catch(() => {})
-
+        // Save both tracks if available
         let libraryId: string | null = null
-        try {
-          const cmRes = await fetch(`${supabaseUrl}/rest/v1/combined_media`, {
+        let secondLibraryId: string | null = null
+        let audioUrl: string | null = null
+        let secondAudioUrl: string | null = null
+        let firstTitle = cleanTitle
+        let secondTitle = `${cleanTitle} (Take 2)`
+        let firstLyrics = ''
+        let secondLyrics = ''
+
+        for (let i = 0; i < Math.min(2, tracks.length); i++) {
+          const track = tracks[i]
+          const trackAudioUrl = track.audio_url || track.audioUrl || track.stream_audio_url || track.streamAudioUrl || track.song_url || track.songUrl || track.url || track.mp3_url || track.output
+          if (!trackAudioUrl) continue
+          const trackLyric = track.lyric || track.lyrics || ''
+          const fileName = `remix-${cleanTitle.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${i + 1}-${Date.now()}.wav`
+          const r2 = await downloadAndUploadToR2(trackAudioUrl, userId, 'music', fileName)
+          if (!r2.success) continue
+
+          const entryTitle = i === 0 ? cleanTitle : `${cleanTitle} (Take 2)`
+          const entryLyrics = trackLyric
+          const musicRes = await fetch(`${supabaseUrl}/rest/v1/music_library`, {
             method: 'POST',
             headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
-            body: JSON.stringify({ user_id: userId, type: 'audio', title: cleanTitle, audio_prompt: cleanPrompt, lyrics: trackLyric, audio_url: r2.url, is_public: false, genre: '444-cover', metadata: JSON.stringify({ source: '444-remix', model, duration: track.duration, style: cleanStyle || null }) }),
-          })
-          if (cmRes.ok) { const d = await cmRes.json(); libraryId = (Array.isArray(d) ? d[0] : d)?.id }
-        } catch {}
+            body: JSON.stringify({ clerk_user_id: userId, title: entryTitle, prompt: cleanPrompt, lyrics: entryLyrics, audio_url: r2.url, audio_format: 'wav', generation_params: { engine: '444-remix', type: '444-cover', model, source_url: uploadUrl, trackNumber: i + 1 }, status: 'ready' }),
+          }).catch(() => {})
 
-        updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: r2.url, mediaType: 'audio', title: cleanTitle, extraMeta: { engine: '444-remix' } }).catch(() => {})
+          let cmId: string | null = null
+          try {
+            const cmRes = await fetch(`${supabaseUrl}/rest/v1/combined_media`, {
+              method: 'POST',
+              headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+              body: JSON.stringify({ user_id: userId, type: 'audio', title: entryTitle, audio_prompt: cleanPrompt, lyrics: entryLyrics, audio_url: r2.url, is_public: false, genre: '444-cover', metadata: JSON.stringify({ source: '444-remix', model, duration: track.duration, style: cleanStyle || null, trackNumber: i + 1 }) }),
+            })
+            if (cmRes.ok) { const d = await cmRes.json(); cmId = (Array.isArray(d) ? d[0] : d)?.id }
+          } catch {}
+
+          if (i === 0) {
+            libraryId = cmId
+            audioUrl = r2.url
+            firstLyrics = entryLyrics
+          } else {
+            secondLibraryId = cmId
+            secondAudioUrl = r2.url
+            secondLyrics = entryLyrics
+          }
+        }
+
+        updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: audioUrl, mediaType: 'audio', title: cleanTitle, extraMeta: { engine: '444-remix' } }).catch(() => {})
         notifyGenerationComplete(userId, libraryId || '', 'music', cleanTitle).catch(() => {})
         notifyCreditDeduct(userId, CREDIT_COST, `444 Remix: ${cleanTitle}`).catch(() => {})
 
-        await sendLine({ type: 'result', success: true, audioUrl: r2.url, title: cleanTitle, lyrics: trackLyric, libraryId, creditsRemaining: deductResult!.new_credits, creditsDeducted: CREDIT_COST })
+        await sendLine({
+          type: 'result',
+          success: true,
+          audioUrl,
+          secondAudioUrl,
+          title: firstTitle,
+          secondTitle: secondAudioUrl ? secondTitle : null,
+          lyrics: firstLyrics,
+          secondLyrics: secondAudioUrl ? secondLyrics : null,
+          libraryId,
+          secondLibraryId,
+          creditsRemaining: deductResult!.new_credits,
+          creditsDeducted: CREDIT_COST,
+          trackCount: secondAudioUrl ? 2 : 1,
+        })
         await writer.close().catch(() => {})
       } catch (error) {
         console.error('❌ Remix error:', error)
