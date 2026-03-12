@@ -140,6 +140,7 @@ export async function POST(req: NextRequest) {
             || (Array.isArray(data?.data) ? data.data : null)
             || []
         }
+        const tracks = extractTracks(completed.data)
         // Save both tracks if available
         let libraryId: string | null = null
         let secondLibraryId: string | null = null
