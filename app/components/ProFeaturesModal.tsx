@@ -785,13 +785,6 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
                   <p className="text-[10px] text-white/30">{result.secondTitle || `${result.title} (Take 2)`}</p>
                 </div>
               )}
-              {result.secondAudioUrl && (
-                <div className="space-y-2 mt-4">
-                  <p className="text-xs font-bold text-green-300">Second take ready!</p>
-                  <audio controls src={result.secondAudioUrl} className="w-full h-10 rounded-lg" />
-                  <p className="text-[10px] text-white/30">{result.secondTitle || `${result.title} (Take 2)`}</p>
-                </div>
-              )}
               {result.videoUrl && (
                 <div className="space-y-2">
                   <p className="text-xs font-bold text-green-300">Video ready!</p>
