@@ -262,7 +262,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     if (typeof window !== 'undefined' && !audioRef.current) {
       audioRef.current = new Audio()
       audioRef.current.crossOrigin = 'anonymous'
-      audioRef.current.preload = 'auto'
+      // avoid aggressive preload warnings; metadata is enough for most cases
+      audioRef.current.preload = 'metadata'
       audioRef.current.volume = volume
 
       return () => {
@@ -271,6 +272,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
           audioRef.current = null
         }
         if (preloadAudioRef.current) {
+          // revoke object URL if we created one
+          if (preloadAudioRef.current.src.startsWith('blob:')) URL.revokeObjectURL(preloadAudioRef.current.src)
           preloadAudioRef.current.pause()
           preloadAudioRef.current = null
         }
@@ -283,6 +286,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     if (!currentTrack || playlist.length <= 1) {
       // Clean up preload if no next track
       if (preloadAudioRef.current) {
+        if (preloadAudioRef.current.src.startsWith('blob:')) URL.revokeObjectURL(preloadAudioRef.current.src)
         preloadAudioRef.current.pause()
         preloadAudioRef.current = null
       }
@@ -291,32 +295,37 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
 
     const nextIndex = (currentIndex + 1) % playlist.length
     const nextTrack = playlist[nextIndex]
-    
+
     if (nextTrack && nextTrack.audioUrl) {
-      
       // Clean up previous preload
       if (preloadAudioRef.current) {
+        if (preloadAudioRef.current.src.startsWith('blob:')) URL.revokeObjectURL(preloadAudioRef.current.src)
         preloadAudioRef.current.pause()
         preloadAudioRef.current = null
       }
-      
-      // Create new preload audio element
-      const preloadAudio = new Audio()
-      preloadAudio.crossOrigin = 'anonymous'
-      preloadAudio.preload = 'auto'
-      
-      // Compute URL using shared computeUrl
-      try {
-        preloadAudio.src = computeUrl(nextTrack.audioUrl)
-        preloadAudio.load()
-        preloadAudioRef.current = preloadAudio
-      } catch (error) {
-        console.warn('Failed to preload next track:', error)
-      }
+
+      // manual fetch to warm the cache without triggering <link rel=preload> warnings
+      (async () => {
+        try {
+          const url = computeUrl(nextTrack.audioUrl)
+          const res = await fetch(url)
+          if (!res.ok) throw new Error(`preload failed: ${res.status}`)
+          const blob = await res.blob()
+          const objectUrl = URL.createObjectURL(blob)
+          const preloadAudio = new Audio()
+          preloadAudio.crossOrigin = 'anonymous'
+          preloadAudio.src = objectUrl
+          // no preload attribute, we'll rely on the fetch above
+          preloadAudioRef.current = preloadAudio
+        } catch (error) {
+          console.warn('Failed to preload next track:', error)
+        }
+      })()
     }
-    
+
     return () => {
       if (preloadAudioRef.current) {
+        if (preloadAudioRef.current.src.startsWith('blob:')) URL.revokeObjectURL(preloadAudioRef.current.src)
         preloadAudioRef.current.pause()
         preloadAudioRef.current = null
       }

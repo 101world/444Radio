@@ -67,8 +67,9 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
     try {
       const response = await fetch(url)
       const arrayBuffer = await response.arrayBuffer()
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+      // offline context avoids the user gesture policy warning
+      const offlineCtx = new (window.OfflineAudioContext || (window as any).webkitOfflineAudioContext)(1, 1, 44100)
+      const audioBuffer = await offlineCtx.decodeAudioData(arrayBuffer)
       const channelData = audioBuffer.getChannelData(0)
 
       const samples = 200
@@ -86,7 +87,7 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
       if (isInput) setInputWaveformData(waveform)
       else setOutputWaveformData(waveform)
 
-      audioContext.close()
+      // offlineCtx does not need explicit close
     } catch (err) {
       console.warn('Could not generate static waveform:', err)
     }

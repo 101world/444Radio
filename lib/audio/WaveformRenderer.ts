@@ -49,8 +49,9 @@ export async function renderWaveform(
     }
 
     const arrayBuffer = await response.arrayBuffer()
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+    // use an OfflineAudioContext to avoid user-gesture restrictions; only decoding is needed
+    const offlineCtx = new (window.OfflineAudioContext || (window as any).webkitOfflineAudioContext)(1, 1, 44100)
+    const audioBuffer = await offlineCtx.decodeAudioData(arrayBuffer)
 
     // Get audio data (use first channel)
     const channelData = audioBuffer.getChannelData(0)
@@ -88,8 +89,7 @@ export async function renderWaveform(
       ctx.fillRect(x, y, barWidth - 1, barHeight)
     }
 
-    // Clean up
-    audioContext.close()
+    // no context to close for offline (garbage-collected)
 
   } catch (error) {
     console.error('Waveform rendering error:', error)
