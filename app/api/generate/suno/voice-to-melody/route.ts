@@ -189,7 +189,7 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: audioUrl, mediaType: 'audio', title: cleanTitle, extraMeta: { engine: '444-voice-to-melody' } }).catch(() => {})
+        updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: audioUrl || undefined, mediaType: 'audio', title: cleanTitle, extraMeta: { engine: '444-voice-to-melody' } }).catch(() => {})
         notifyGenerationComplete(userId, libraryId || '', 'music', cleanTitle).catch(() => {})
         notifyCreditDeduct(userId, CREDIT_COST, `444 Voice-to-Melody: ${cleanTitle}`).catch(() => {})
 
