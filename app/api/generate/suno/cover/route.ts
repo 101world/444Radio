@@ -112,6 +112,7 @@ export async function POST(req: NextRequest) {
             || []
         }
         // Save both tracks if available
+        const tracks = extractTracks(completed.data)
         let libraryId: string | null = null
         let secondLibraryId: string | null = null
         let audioUrl: string | null = null
