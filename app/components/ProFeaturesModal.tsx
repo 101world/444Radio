@@ -8,7 +8,19 @@ interface ProFeaturesModalProps {
   onClose: () => void
   initialFeature: 'extend' | 'inpaint' | 'remix' | 'add-vocals' | 'voice-to-melody'
   userCredits: number | null
-  onGenerated?: (result: { audioUrl: string; title: string; lyrics?: string; libraryId?: string; creditsRemaining?: number; engine: string }) => void
+  onGenerated?: (result: { audioUrl: string;
+                                                   secondAudioUrl?: string;
+                                                   title: string;
+                                                   secondTitle?: string;
+                                                   lyrics?: string;
+                                                   secondLyrics?: string;
+                                                   libraryId?: string;
+                                                   secondLibraryId?: string;
+                                                   creditsRemaining?: number;
+                                                   creditsDeducted?: number;
+                                                   engine: string;
+                                                   trackCount?: number;
+  }) => void
 }
 
 const FEATURE_INFO: Record<string, { icon: any; label: string; desc: string; cost: number; fields: string[]; help: string }> = {
@@ -333,11 +345,17 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
                 setProgressMessage(null)                // Notify parent of successful generation
                 onGenerated?.({
                   audioUrl: parsed.audioUrl,
+                  secondAudioUrl: parsed.secondAudioUrl,
                   title: parsed.title || title || 'Generated Track',
+                  secondTitle: parsed.secondTitle,
                   lyrics: parsed.lyrics,
+                  secondLyrics: parsed.secondLyrics,
                   libraryId: parsed.libraryId,
+                  secondLibraryId: parsed.secondLibraryId,
                   creditsRemaining: parsed.creditsRemaining,
+                  creditsDeducted: parsed.creditsDeducted,
                   engine: activeFeature,
+                  trackCount: parsed.trackCount,
                 })
               } else {
                 setError(parsed.error || 'Generation failed')
@@ -356,11 +374,17 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
               setResult(parsed)
               onGenerated?.({
                 audioUrl: parsed.audioUrl,
+                secondAudioUrl: parsed.secondAudioUrl,
                 title: parsed.title || title || 'Generated Track',
+                secondTitle: parsed.secondTitle,
                 lyrics: parsed.lyrics,
+                secondLyrics: parsed.secondLyrics,
                 libraryId: parsed.libraryId,
+                secondLibraryId: parsed.secondLibraryId,
                 creditsRemaining: parsed.creditsRemaining,
+                creditsDeducted: parsed.creditsDeducted,
                 engine: activeFeature,
+                trackCount: parsed.trackCount,
               })
             } else {
               setError(parsed.error || 'Generation failed')
@@ -752,6 +776,20 @@ export default function ProFeaturesModal({ isOpen, onClose, initialFeature, user
                   <p className="text-xs font-bold text-green-300">Generation complete!</p>
                   <audio controls src={result.audioUrl} className="w-full h-10 rounded-lg" />
                   <p className="text-[10px] text-white/30">{result.title}</p>
+                </div>
+              )}
+              {result.secondAudioUrl && (
+                <div className="space-y-2 mt-4">
+                  <p className="text-xs font-bold text-green-300">Second take ready!</p>
+                  <audio controls src={result.secondAudioUrl} className="w-full h-10 rounded-lg" />
+                  <p className="text-[10px] text-white/30">{result.secondTitle || `${result.title} (Take 2)`}</p>
+                </div>
+              )}
+              {result.secondAudioUrl && (
+                <div className="space-y-2 mt-4">
+                  <p className="text-xs font-bold text-green-300">Second take ready!</p>
+                  <audio controls src={result.secondAudioUrl} className="w-full h-10 rounded-lg" />
+                  <p className="text-[10px] text-white/30">{result.secondTitle || `${result.title} (Take 2)`}</p>
                 </div>
               )}
               {result.videoUrl && (

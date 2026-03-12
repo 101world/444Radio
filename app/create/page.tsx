@@ -69,6 +69,7 @@ interface Message {
     secondTitle?: string
     prompt?: string
     lyrics?: string
+    secondLyrics?: string
     trackCount?: number
   }
   stems?: Record<string, string>
@@ -5715,7 +5716,12 @@ function CreatePageContent() {
               })
               updateGeneration(genId, {
                 status: 'completed',
-                result: { audioUrl: result.audioUrl, title: result.title },
+                result: {
+                  audioUrl: result.audioUrl,
+                  secondAudioUrl: result.secondAudioUrl,
+                  title: result.title,
+                  secondTitle: result.secondTitle,
+                },
               })
 
               // Add result message to chat
@@ -5725,16 +5731,22 @@ function CreatePageContent() {
                 : result.engine === 'upload-extend' ? '🔄 Extend'
                 : '🎵 Pro Feature'
 
+              const trackCount = result.trackCount === 2 || result.secondAudioUrl ? 2 : 1
               const resultMessage: Message = {
                 id: Date.now().toString(),
                 type: 'generation',
-                content: `✅ ${featureLabel}: ${result.title || 'Track'} is ready!`,
+                content: trackCount === 2
+                  ? `✅ ${featureLabel}: ${result.title || 'Track'} – 2 takes ready!`
+                  : `✅ ${featureLabel}: ${result.title || 'Track'} is ready!`,
                 generationType: 'music',
                 generationId: genId,
                 result: {
                   audioUrl: result.audioUrl,
+                  secondAudioUrl: result.secondAudioUrl,
                   title: result.title,
+                  secondTitle: result.secondTitle,
                   lyrics: result.lyrics,
+                  secondLyrics: result.secondLyrics,
                 },
                 timestamp: new Date(),
                 isGenerating: false,
