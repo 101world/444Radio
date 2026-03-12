@@ -57,6 +57,31 @@ export async function GET() {
       created_at: item.created_at,
     }))
 
+    // Additionally include legacy Suno "cover" remixes stored in combined_media
+    try {
+      const cmRes = await fetch(
+        `${supabaseUrl}/rest/v1/combined_media?user_id=eq.${userId}&or=(genre.eq.444-cover,genre.eq.444-remix)&order=created_at.desc&limit=200&select=id,title,audio_url,audio_prompt,lyrics,created_at,plays,metadata`,
+        {
+          headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
+        }
+      )
+      if (cmRes.ok) {
+        const cmData = await cmRes.json()
+        const cmTracks = (cmData || []).map((item: any) => ({
+          id: item.id,
+          title: item.title || 'Untitled Remix',
+          audioUrl: item.audio_url,
+          plays: item.plays || 0,
+          created_at: item.created_at,
+          // keep metadata for potential client use
+          metadata: item.metadata,
+        }))
+        remixes.push(...cmTracks)
+      }
+    } catch (e) {
+      console.warn('Failed to fetch combined_media remixes:', e)
+    }
+
     return NextResponse.json({ success: true, remixes })
   } catch (error) {
     console.error('Error fetching remixes:', error)

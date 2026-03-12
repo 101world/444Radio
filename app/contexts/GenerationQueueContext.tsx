@@ -12,11 +12,15 @@ export interface GenerationItem {
   progress?: number
   result?: {
     audioUrl?: string
+    secondAudioUrl?: string
     imageUrl?: string
     videoUrl?: string
     title?: string
+    secondTitle?: string
     lyrics?: string
+    secondLyrics?: string
     prompt?: string
+    trackCount?: number
     stems?: Record<string, string>
     variations?: Array<{ url: string; variation: number }>
     creditsUsed?: number

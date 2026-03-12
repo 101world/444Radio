@@ -1583,13 +1583,18 @@ function CreatePageContent() {
           error: result.error
         })
       } else {
+        // Persist full result including optional second take and track count
         updateGeneration(genId, {
           status: 'completed',
           result: {
             audioUrl: 'audioUrl' in result ? result.audioUrl : undefined,
-            imageUrl: 'imageUrl' in result ? result.imageUrl : undefined,
+            secondAudioUrl: 'secondAudioUrl' in (result as any) ? (result as any).secondAudioUrl : undefined,
             title: result.title,
-            lyrics: 'lyrics' in result ? result.lyrics : undefined
+            secondTitle: 'secondTitle' in (result as any) ? (result as any).secondTitle : undefined,
+            lyrics: 'lyrics' in result ? result.lyrics : undefined,
+            secondLyrics: 'secondLyrics' in (result as any) ? (result as any).secondLyrics : undefined,
+            imageUrl: 'imageUrl' in result ? result.imageUrl : undefined,
+            trackCount: 'trackCount' in (result as any) ? (result as any).trackCount : undefined,
           }
         })
       }
@@ -2200,6 +2205,7 @@ function CreatePageContent() {
         secondTitle: resultData.secondTitle || null,
         prompt,
         lyrics: resultData.lyrics || lyrics,
+        secondLyrics: resultData.secondLyrics || null,
         creditsRemaining: resultData.creditsRemaining,
         trackCount: resultData.trackCount || 1,
       }
