@@ -22,7 +22,12 @@ interface CodeConfig {
 }
 
 const VALID_CODES: Record<string, CodeConfig> = {
+  // public promo code used on marketing materials
   'FREE THE MUSIC': { credits: 44,  description: 'Free the Music — 44 free credits',  policy: 'lifetime'  },
+
+  // secret one-time code requested by team: gives 444 credits once per account
+  // Users should not see hints in the UI; this is for special cases only.
+  '444 IS AN OG': { credits: 444, description: 'Secret OG code – 444 free credits', policy: 'lifetime' },
 }
 
 export async function POST(req: NextRequest) {
