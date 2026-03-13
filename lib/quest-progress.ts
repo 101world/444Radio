@@ -17,9 +17,22 @@
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-/** In-memory cache to prevent spamming quest checks for the same user+action */
-const recentlyTracked = new Map<string, number>()
-const DEDUP_WINDOW_MS = 30_000 // Don't re-check same user+action within 30s
+// Previously we kept an in-memory map to dedupe the same user+action
+// for a 30 second window. That convenience caused major problems: if a user
+// performed legitimate actions rapidly (e.g. generating multiple songs or
+// sharing tracks within the same minute) only the *first* event was applied,
+// leaving daily/weekly/monthly quests largely untouched. The progress bar
+// would stay at 1/5 or 1/25 even though the user had done the work.
+//
+// The serverless environment also meant the cache was per-instance and
+// therefore unreliable. It's simpler and more correct to drop the dedup logic
+// entirely and let each invocation increment progress. Rare duplicate calls
+// (from retries or double-clicks) are harmless and easier to reason about.
+//
+// We keep the constants around in case we want a more sophisticated strategy
+// later, but the map is no longer used.
+//
+const DEDUP_WINDOW_MS = 0 // no deduplication by default
 
 function headers() {
   return {
@@ -86,19 +99,13 @@ export async function trackQuestProgress(
   try {
     if (!supabaseUrl || !supabaseKey) return
 
-    // Dedup: skip if we just tracked this user+action recently
-    const dedupKey = `${userId}:${action}`
-    const lastRun = recentlyTracked.get(dedupKey)
-    if (lastRun && Date.now() - lastRun < DEDUP_WINDOW_MS) return
-    recentlyTracked.set(dedupKey, Date.now())
-
-    // Evict stale entries periodically (keep map small)
-    if (recentlyTracked.size > 500) {
-      const now = Date.now()
-      for (const [k, v] of recentlyTracked) {
-        if (now - v > DEDUP_WINDOW_MS) recentlyTracked.delete(k)
-      }
-    }
+    // NOTE: deduplication has been disabled (DEDUP_WINDOW_MS = 0).
+    // Previous logic prevented any second increment for the same action
+    // within a time window, which broke multi-step quests when users were
+    // actively generating/sharing in short bursts. Dropping this check lets
+    // every call to trackQuestProgress count toward progress.
+    // If future abuse proves a problem we can reintroduce a per-request
+    // identifier or more targeted dedup strategy.
 
     // 1-3. Fetch quest pass, active quests, and user quests IN PARALLEL
     const [passRes, allQRes, uqRes] = await Promise.all([

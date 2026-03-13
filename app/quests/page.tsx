@@ -105,10 +105,12 @@ function QuestCard({ quest, hasPass, onStart, onClaim, starting, claiming }: {
 }) {
   const colors = getQuestTypeColor(quest.quest_type)
   const progress = quest.userProgress
-  const pct = progress ? Math.min(100, Math.round((progress.progress / progress.target) * 100)) : 0
+  const target = quest.requirement?.target || 0
+  const current = progress ? progress.progress : 0
+  const pct = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0
   const isCompleted = progress?.status === 'completed'
   const isClaimed = progress?.status === 'claimed'
-  const isActive = progress?.status === 'active'
+  const isActive = progress ? progress.status === 'active' : false
 
   return (
     <div className={`group relative bg-gradient-to-br ${colors.bg} backdrop-blur-2xl border ${colors.border} rounded-2xl p-5 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg ${colors.glow} shadow-xl shadow-black/10`}>
@@ -134,13 +136,13 @@ function QuestCard({ quest, hasPass, onStart, onClaim, starting, claiming }: {
       <h3 className="text-white font-bold text-lg mb-1 tracking-tight">{quest.title}</h3>
       <p className="text-gray-400 text-sm mb-4 line-clamp-2">{quest.description}</p>
 
-      {/* Progress bar */}
-      {progress && (
+      {/* Progress bar – always show when a quest has a numeric target */}
+      {(target > 0) && (
         <div className="mb-4">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-gray-500 text-xs">Progress</span>
             <span className={`text-xs font-mono font-bold ${isCompleted || isClaimed ? 'text-cyan-300' : colors.text}`}>
-              {progress.progress}/{progress.target}
+              {current}/{target}
             </span>
           </div>
           <div className="h-2 bg-black/50 rounded-full overflow-hidden border border-white/5">
