@@ -486,7 +486,8 @@ export async function POST(req: NextRequest) {
                   
                   // Quest progress tracking for cover art generation
                   const { trackQuestProgress, trackModelUsage, trackGenerationStreak } = await import('@/lib/quest-progress')
-                  trackQuestProgress(userId, 'generate_cover_art').catch(() => {})
+                  console.log(`💡 cover-art route music-only: calling trackQuestProgress for user=${userId}`)
+                  trackQuestProgress(userId, 'generate_cover_art').catch(err => console.error('cover-art quest track error', err))
                   trackModelUsage(userId, 'z-image-turbo').catch(() => {})
                   trackGenerationStreak(userId).catch(() => {})
                 }
