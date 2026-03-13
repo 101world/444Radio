@@ -124,11 +124,18 @@ export async function trackQuestProgress(
     ])
 
     const passes = await passRes.json()
-    if (!passes?.length) return // no pass → skip silently
+    if (!passes?.length) {
+      // no active pass, nothing to do. Log for debugging so we can see why
+      console.log(`🏁 trackQuestProgress: user=${userId} action=${action} skipped (no active pass)`) 
+      return // no pass → skip silently
+    }
 
     const allQuests: Array<{ id: string; requirement: { action: string; target: number }; quest_level: number }> = await allQRes.json()
     const matchingQuests = (allQuests || []).filter(q => q.requirement?.action === action)
-    if (!matchingQuests.length) return
+    if (!matchingQuests.length) {
+      console.log(`🏁 trackQuestProgress: user=${userId} action=${action} skipped (no matching active quests)`) 
+      return
+    }
 
     const uqRaw = await uqRes.json().catch(() => [])
     const existingUQ: Array<{ id: string; quest_id: string; progress: number; target: number; status: string }> = 
@@ -173,6 +180,9 @@ export async function trackQuestProgress(
 
     // 6. Update progress on all active quests matching this action
     const matchingQuestIds = new Set(matchingQuests.map(q => q.id))
+    if (matchingQuestIds.size === 0) {
+      console.log(`🏁 trackQuestProgress: user=${userId} action=${action} no active quests to update`) 
+    }
     for (const uq of activeUQ) {
       if (!matchingQuestIds.has(uq.quest_id)) continue
 
