@@ -124,6 +124,8 @@ export async function trackQuestProgress(
     ])
 
     const passes = await passRes.json()
+    // log the pass rows we got (usually 0 or 1)
+    console.log(`🔐 trackQuestProgress: user=${userId} action=${action} passCheck =>`, passes)
     if (!passes?.length) {
       // no active pass, nothing to do. Log for debugging so we can see why
       console.log(`🏁 trackQuestProgress: user=${userId} action=${action} skipped (no active pass)`) 
