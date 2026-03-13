@@ -183,6 +183,9 @@ export async function trackQuestProgress(
     if (matchingQuestIds.size === 0) {
       console.log(`🏁 trackQuestProgress: user=${userId} action=${action} no active quests to update`) 
     }
+
+    // log which quests will be updated
+    console.log(`✅ trackQuestProgress: user=${userId} action=${action} will update ${matchingQuestIds.size} quest(s)`, [...matchingQuestIds])
     for (const uq of activeUQ) {
       if (!matchingQuestIds.has(uq.quest_id)) continue
 
@@ -207,6 +210,7 @@ export async function trackQuestProgress(
         }
       )
 
+      console.log(`✔ progress updated for user=${userId} quest=${uq.quest_id} progress=${newProgress}/${uq.target} (completed=${completed})`)
       if (completed) {
         console.log(`🏆 Quest completed: user=${userId} quest=${uq.quest_id} action=${action}`)
       }
