@@ -15,3 +15,8 @@ DELETE FROM quests
 WHERE id IN (
   SELECT id FROM duplicates WHERE rn > 1
 );
+
+-- Create a unique index to prevent duplicates in the future.
+-- This guards against re-inserting the same quest definition.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_quests_unique_definition
+  ON quests (title, quest_type, quest_level, requirement);
